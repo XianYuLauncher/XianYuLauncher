@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
@@ -103,10 +102,8 @@ public class GameLaunchService : IGameLaunchService
                 throw new FileNotFoundException($"游戏JSON文件不存在: {jsonPath}");
             }
             
-            // 5. 读取版本信息 (使用 MinecraftVersionService 以支持继承和深度分析)
-            // 原有代码: string versionJson = await File.ReadAllTextAsync(jsonPath, cancellationToken);
-            // 原有代码: var versionInfo = JsonConvert.DeserializeObject<VersionInfo>(versionJson);
-            var versionInfo = await _minecraftVersionService.GetVersionInfoAsync(versionName, null, allowNetwork: false).ConfigureAwait(false);
+            // 5. 读取统一解析后的版本信息
+            var versionInfo = await GetResolvedVersionInfoAsync(versionName, minecraftPath, cancellationToken).ConfigureAwait(false);
             
             if (versionInfo == null)
             {
@@ -266,11 +263,10 @@ public class GameLaunchService : IGameLaunchService
             }
             _logger.LogInformation("JSON 文件存在");
             
-            // 7. 读取版本信息
+            // 7. 读取统一解析后的版本信息
             _logger.LogInformation("步骤 7: 读取版本信息");
             statusCallback?.Invoke("正在读取版本信息...");
-            string versionJson = await File.ReadAllTextAsync(jsonPath, cancellationToken);
-            var versionInfo = VersionManifestJsonHelper.DeserializeVersionInfo(versionJson);
+            var versionInfo = await GetResolvedVersionInfoAsync(versionName, minecraftPath, cancellationToken);
             
             if (versionInfo == null)
             {
@@ -424,6 +420,18 @@ public class GameLaunchService : IGameLaunchService
             
             return new GameLaunchResult { Success = false, ErrorMessage = $"启动失败: {ex.Message}" };
         }
+    }
+
+    private async Task<VersionInfo?> GetResolvedVersionInfoAsync(
+        string versionName,
+        string minecraftPath,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        return await _minecraftVersionService
+            .GetVersionInfoAsync(versionName, minecraftPath, allowNetwork: false)
+            .ConfigureAwait(false);
     }
 
     /// <summary>

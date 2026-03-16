@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -7,6 +9,8 @@ using Moq;
 using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
+using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
 
@@ -19,6 +23,7 @@ public class OptifineInstallerTests : IDisposable
     private readonly Mock<IVersionInfoManager> _mockVersionInfoManager;
     private readonly Mock<IJavaRuntimeService> _mockJavaRuntimeService;
     private readonly Mock<ILogger<OptifineInstaller>> _mockLogger;
+    private readonly IUnifiedVersionManifestResolver _manifestResolver;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly OptifineInstaller _optifineInstaller;
     private readonly string _testDirectory;
@@ -30,6 +35,7 @@ public class OptifineInstallerTests : IDisposable
         _mockVersionInfoManager = new Mock<IVersionInfoManager>();
         _mockJavaRuntimeService = new Mock<IJavaRuntimeService>();
         _mockLogger = new Mock<ILogger<OptifineInstaller>>();
+        _manifestResolver = new UnifiedVersionManifestResolver();
         _downloadSourceFactory = new DownloadSourceFactory();
 
         _optifineInstaller = new OptifineInstaller(
@@ -38,6 +44,7 @@ public class OptifineInstallerTests : IDisposable
             _mockVersionInfoManager.Object,
             _mockJavaRuntimeService.Object,
             _downloadSourceFactory,
+            _manifestResolver,
             _mockLogger.Object);
             
         _testDirectory = Path.Combine(Path.GetTempPath(), $"OptifineInstallerTests_{Guid.NewGuid()}");
@@ -129,6 +136,100 @@ public class OptifineInstallerTests : IDisposable
         // Act & Assert
         await Assert.ThrowsAsync<ModLoaderInstallException>(() =>
             _optifineInstaller.InstallAsync("nonexistent", "HD_U_I7", _testDirectory));
+    }
+
+    [Fact]
+    public void ResolveVersionInfo_MergeListsAndPreservesBaseJavaVersion()
+    {
+        var original = new VersionInfo
+        {
+            Id = "1.20.4",
+            AssetIndex = new AssetIndex { Id = "1.20" },
+            JavaVersion = new MinecraftJavaVersion { MajorVersion = 17 },
+            Arguments = new Arguments
+            {
+                Game = new List<object> { "--username", "Steve" },
+                Jvm = new List<object> { "-Dbase=true" }
+            },
+            Libraries = new List<Library>
+            {
+                new() { Name = "com.mojang:brigadier:1.0.18" }
+            }
+        };
+        var optifine = new VersionInfo
+        {
+            MainClass = "optifine.launcher.Main",
+            Arguments = new Arguments
+            {
+                Game = new List<object> { "--quickPlaySingleplayer", "World" },
+                Jvm = new List<object> { "-Doptifine=true" }
+            },
+            Libraries = new List<Library>
+            {
+                new() { Name = "optifine:OptiFine:1.20.4_HD_U_I7" }
+            }
+        };
+
+        var method = typeof(OptifineInstaller).GetMethod("ResolveVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+
+        var merged = Assert.IsType<VersionInfo>(method!.Invoke(_optifineInstaller, new object[] { original, optifine, "optifine-1.20.4-HD_U_I7" }));
+
+        Assert.Equal("optifine.launcher.Main", merged.MainClass);
+        Assert.Equal(17, merged.JavaVersion!.MajorVersion);
+        Assert.Equal("1.20", merged.Assets);
+        Assert.Collection(
+            merged.Arguments!.Game!,
+            argument => Assert.Equal("--username", argument),
+            argument => Assert.Equal("Steve", argument),
+            argument => Assert.Equal("--quickPlaySingleplayer", argument),
+            argument => Assert.Equal("World", argument));
+        Assert.Collection(
+            merged.Arguments.Jvm!,
+            argument => Assert.Equal("-Dbase=true", argument),
+            argument => Assert.Equal("-Doptifine=true", argument));
+        Assert.Collection(
+            merged.Libraries!,
+            library => Assert.Equal("optifine:OptiFine:1.20.4_HD_U_I7", library.Name),
+            library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name));
+    }
+
+    [Fact]
+    public void CreateSimpleOptifineVersionInfo_PreservesBaseLibrariesBeforeOptifineFallbackLibrary()
+    {
+        var original = new VersionInfo
+        {
+            Id = "1.20.4",
+            AssetIndex = new AssetIndex { Id = "1.20" },
+            Libraries = new List<Library>
+            {
+                new() { Name = "com.mojang:brigadier:1.0.18" },
+                new() { Name = "com.google.guava:guava:21.0" }
+            },
+            Arguments = new Arguments
+            {
+                Game = new List<object> { "--username", "Alex" }
+            }
+        };
+
+        var method = typeof(OptifineInstaller).GetMethod("CreateSimpleOptifineVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
+
+        Assert.NotNull(method);
+
+        var resolved = Assert.IsType<VersionInfo>(method!.Invoke(_optifineInstaller, new object[] { "optifine-1.20.4-HD_U_I7", "1.20.4", "HD_U_I7", original }));
+
+        Assert.Equal("net.minecraft.client.main.Main", resolved.MainClass);
+        Assert.Equal("1.20", resolved.Assets);
+        Assert.Collection(
+            resolved.Libraries!,
+            library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name),
+            library => Assert.Equal("com.google.guava:guava:21.0", library.Name),
+            library => Assert.Equal("optifine:OptiFine:1.20.4_HD_U_I7", library.Name));
+        Assert.Collection(
+            resolved.Arguments!.Game!,
+            argument => Assert.Equal("--username", argument),
+            argument => Assert.Equal("Alex", argument));
     }
 
     #endregion

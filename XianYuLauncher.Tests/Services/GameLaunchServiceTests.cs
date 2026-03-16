@@ -25,16 +25,7 @@ public class GameLaunchServiceTests : IDisposable
             .Setup(service => service.GetFullVersionInfoAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<bool>()))
             .ReturnsAsync(new VersionConfig { ModLoaderType = "forge" });
 
-        _gameLaunchService = new GameLaunchService(
-            Mock.Of<IJavaRuntimeService>(),
-            Mock.Of<IVersionConfigService>(),
-            Mock.Of<IFileService>(),
-            Mock.Of<ILocalSettingsService>(),
-            Mock.Of<IMinecraftVersionService>(),
-            _mockVersionInfoService.Object,
-            Mock.Of<ILaunchSettingsResolver>(),
-            Mock.Of<IGameDirResolver>(),
-            Mock.Of<ILogger<GameLaunchService>>());
+        _gameLaunchService = CreateGameLaunchService(versionInfoService: _mockVersionInfoService.Object);
 
         _testDirectory = Path.Combine(Path.GetTempPath(), $"GameLaunchServiceTests_{Guid.NewGuid()}");
         Directory.CreateDirectory(_testDirectory);
@@ -233,6 +224,142 @@ public class GameLaunchServiceTests : IDisposable
             classpath.Split(';', StringSplitOptions.RemoveEmptyEntries));
     }
 
+    [Fact]
+    public async Task GenerateLaunchCommandAsync_UsesResolvedManifestAndExplicitMinecraftPath()
+    {
+        const string versionName = "forge-1.20.1";
+        string minecraftPath = _testDirectory;
+        string versionDir = Path.Combine(minecraftPath, "versions", versionName);
+        string jarPath = Path.Combine(versionDir, $"{versionName}.jar");
+        string jsonPath = Path.Combine(versionDir, $"{versionName}.json");
+        string gameDir = Path.Combine(_testDirectory, "gameDir");
+
+        Directory.CreateDirectory(versionDir);
+        await File.WriteAllTextAsync(jarPath, string.Empty);
+        await File.WriteAllTextAsync(jsonPath, "{}");
+
+        var profile = new MinecraftProfile
+        {
+            Id = "player-id",
+            Name = "Steve",
+            IsOffline = true
+        };
+
+        var fileServiceMock = new Mock<IFileService>();
+        fileServiceMock.Setup(service => service.GetMinecraftDataPath()).Returns(minecraftPath);
+
+        var minecraftVersionServiceMock = new Mock<IMinecraftVersionService>();
+        minecraftVersionServiceMock
+            .Setup(service => service.GetVersionInfoAsync(versionName, minecraftPath, false))
+            .ReturnsAsync(new VersionInfo
+            {
+                MainClass = "net.minecraft.client.main.Main",
+                JavaVersion = new MinecraftJavaVersion { MajorVersion = 17 },
+                Libraries = new List<Library>(),
+                AssetIndex = new AssetIndex { Id = "1.20.1" }
+            });
+
+        var versionConfigServiceMock = new Mock<IVersionConfigService>();
+        versionConfigServiceMock
+            .Setup(service => service.LoadConfigAsync(versionName))
+            .ReturnsAsync(new VersionConfig());
+
+        var launchSettingsResolverMock = new Mock<ILaunchSettingsResolver>();
+        launchSettingsResolverMock
+            .Setup(service => service.ResolveAsync(It.IsAny<VersionConfig>(), 17))
+            .ReturnsAsync(new EffectiveLaunchSettings
+            {
+                JavaPath = Path.Combine(_testDirectory, "fake-jre", "bin", "java.exe")
+            });
+
+        var gameDirResolverMock = new Mock<IGameDirResolver>();
+        gameDirResolverMock
+            .Setup(service => service.GetGameDirForVersionAsync(versionName))
+            .ReturnsAsync(gameDir);
+
+        var service = CreateGameLaunchService(
+            fileService: fileServiceMock.Object,
+            minecraftVersionService: minecraftVersionServiceMock.Object,
+            versionConfigService: versionConfigServiceMock.Object,
+            versionInfoService: _mockVersionInfoService.Object,
+            launchSettingsResolver: launchSettingsResolverMock.Object,
+            gameDirResolver: gameDirResolverMock.Object);
+
+        var command = await service.GenerateLaunchCommandAsync(versionName, profile);
+
+        Assert.Contains("net.minecraft.client.main.Main", command, StringComparison.Ordinal);
+        minecraftVersionServiceMock.Verify(
+            svc => svc.GetVersionInfoAsync(versionName, minecraftPath, false),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task LaunchGameAsync_UsesResolvedManifestInsteadOfRawVersionJson()
+    {
+        const string versionName = "forge-1.20.1";
+        string minecraftPath = _testDirectory;
+        string versionDir = Path.Combine(minecraftPath, "versions", versionName);
+        string jarPath = Path.Combine(versionDir, $"{versionName}.jar");
+        string jsonPath = Path.Combine(versionDir, $"{versionName}.json");
+        string gameDir = Path.Combine(_testDirectory, "launch-game-dir");
+
+        Directory.CreateDirectory(versionDir);
+        await File.WriteAllTextAsync(jarPath, string.Empty);
+        await File.WriteAllTextAsync(jsonPath, "{}");
+
+        var profile = new MinecraftProfile
+        {
+            Id = "player-id",
+            Name = "Alex",
+            IsOffline = true
+        };
+
+        var fileServiceMock = new Mock<IFileService>();
+        fileServiceMock.Setup(service => service.GetMinecraftDataPath()).Returns(minecraftPath);
+
+        var minecraftVersionServiceMock = new Mock<IMinecraftVersionService>();
+        minecraftVersionServiceMock
+            .Setup(service => service.GetVersionInfoAsync(versionName, minecraftPath, false))
+            .ReturnsAsync(new VersionInfo
+            {
+                MainClass = "net.minecraft.client.main.Main",
+                JavaVersion = new MinecraftJavaVersion { MajorVersion = 17 },
+                Libraries = new List<Library>(),
+                AssetIndex = new AssetIndex { Id = "1.20.1" }
+            });
+
+        var versionConfigServiceMock = new Mock<IVersionConfigService>();
+        versionConfigServiceMock
+            .Setup(service => service.LoadConfigAsync(versionName))
+            .ReturnsAsync(new VersionConfig());
+
+        var launchSettingsResolverMock = new Mock<ILaunchSettingsResolver>();
+        launchSettingsResolverMock
+            .Setup(service => service.ResolveAsync(It.IsAny<VersionConfig>(), 17))
+            .ReturnsAsync(new EffectiveLaunchSettings());
+
+        var gameDirResolverMock = new Mock<IGameDirResolver>();
+        gameDirResolverMock
+            .Setup(service => service.GetGameDirForVersionAsync(versionName))
+            .ReturnsAsync(gameDir);
+
+        var service = CreateGameLaunchService(
+            fileService: fileServiceMock.Object,
+            minecraftVersionService: minecraftVersionServiceMock.Object,
+            versionConfigService: versionConfigServiceMock.Object,
+            versionInfoService: _mockVersionInfoService.Object,
+            launchSettingsResolver: launchSettingsResolverMock.Object,
+            gameDirResolver: gameDirResolverMock.Object);
+
+        var result = await service.LaunchGameAsync(versionName, profile);
+
+        Assert.False(result.Success);
+        Assert.Equal("未找到Java运行时环境，请先安装Java", result.ErrorMessage);
+        minecraftVersionServiceMock.Verify(
+            svc => svc.GetVersionInfoAsync(versionName, minecraftPath, false),
+            Times.Once);
+    }
+
     private async Task<string> InvokeBuildClasspathAsync(
         VersionInfo versionInfo,
         string versionName,
@@ -271,5 +398,26 @@ public class GameLaunchServiceTests : IDisposable
         Assert.NotNull(method);
 
         return Assert.IsType<string>(method!.Invoke(_gameLaunchService, new object?[] { libraryName, librariesPath, classifier }));
+    }
+
+    private static GameLaunchService CreateGameLaunchService(
+        IJavaRuntimeService? javaRuntimeService = null,
+        IVersionConfigService? versionConfigService = null,
+        IFileService? fileService = null,
+        IMinecraftVersionService? minecraftVersionService = null,
+        IVersionInfoService? versionInfoService = null,
+        ILaunchSettingsResolver? launchSettingsResolver = null,
+        IGameDirResolver? gameDirResolver = null)
+    {
+        return new GameLaunchService(
+            javaRuntimeService ?? Mock.Of<IJavaRuntimeService>(),
+            versionConfigService ?? Mock.Of<IVersionConfigService>(),
+            fileService ?? Mock.Of<IFileService>(),
+            Mock.Of<ILocalSettingsService>(),
+            minecraftVersionService ?? Mock.Of<IMinecraftVersionService>(),
+            versionInfoService ?? Mock.Of<IVersionInfoService>(),
+            launchSettingsResolver ?? Mock.Of<ILaunchSettingsResolver>(),
+            gameDirResolver ?? Mock.Of<IGameDirResolver>(),
+            Mock.Of<ILogger<GameLaunchService>>());
     }
 }

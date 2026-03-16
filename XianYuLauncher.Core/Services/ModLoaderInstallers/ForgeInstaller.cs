@@ -25,6 +25,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
     private readonly IProcessorExecutor _processorExecutor;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly ILocalSettingsService _localSettingsService;
+    private readonly IUnifiedVersionManifestResolver _manifestResolver;
     
     /// <summary>
     /// Forge Maven仓库URL（官方源备用）
@@ -42,12 +43,14 @@ public class ForgeInstaller : ModLoaderInstallerBase
         DownloadSourceFactory downloadSourceFactory,
         ILocalSettingsService localSettingsService,
         IJavaRuntimeService javaRuntimeService,
+        IUnifiedVersionManifestResolver manifestResolver,
         ILogger<ForgeInstaller> logger)
         : base(downloadManager, libraryManager, versionInfoManager, javaRuntimeService, logger)
     {
         _processorExecutor = processorExecutor;
         _downloadSourceFactory = downloadSourceFactory;
         _localSettingsService = localSettingsService;
+        _manifestResolver = manifestResolver;
     }
 
     /// <inheritdoc/>
@@ -247,7 +250,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 98));
 
             // 12. 合并版本JSON并保存
-            var mergedVersionInfo = MergeVersionInfo(originalVersionInfo, forgeVersionInfo, installProfileLibraries);
+            var mergedVersionInfo = ResolveVersionInfo(originalVersionInfo, forgeVersionInfo, installProfileLibraries);
             mergedVersionInfo.Id = versionId;
             
             await SaveVersionJsonAsync(versionDirectory, versionId, mergedVersionInfo);
@@ -568,7 +571,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
         return VersionManifestJsonHelper.DeserializeVersionInfo(versionJsonContent) ?? new VersionInfo();
     }
 
-    private VersionInfo MergeVersionInfo(VersionInfo original, VersionInfo? forge, List<Library> additionalLibraries)
+    private VersionInfo ResolveVersionInfo(VersionInfo original, VersionInfo? forge, List<Library> additionalLibraries)
     {
         // 确保输入参数不为null
         if (original == null)
@@ -576,43 +579,39 @@ public class ForgeInstaller : ModLoaderInstallerBase
             throw new ArgumentNullException(nameof(original));
         }
 
-        var mergedLaunchArguments = VersionArgumentsMergeHelper.Merge(
-            original.Arguments,
-            original.MinecraftArguments,
-            forge?.Arguments,
-            forge?.MinecraftArguments,
-            LegacyArgumentMergeMode.PreferAnyWithLoaderPriority,
-            ModernArgumentMergeMode.OverrideSections);
+        Logger.LogDebug("安装期额外依赖库不会写入最终manifest: {Count}", additionalLibraries?.Count ?? 0);
 
-        // 构建合并后的JSON - 完全合并原版和Forge的所有字段
-        var merged = new VersionInfo
+        var manifestPatch = CreateManifestPatch(original, forge);
+        var resolutionResult = _manifestResolver.ResolvePatch(
+            original,
+            manifestPatch,
+            ManifestResolutionOptions.CreateLoaderPatchOptions(
+                ModLoaderType,
+                LibraryRepositoryProfile.Forge,
+                legacyArgumentMergeMode: LegacyArgumentMergeMode.PreferAnyWithLoaderPriority,
+                modernArgumentMergeMode: ModernArgumentMergeMode.OverrideSections));
+
+        Logger.LogInformation("通过ManifestPatch解析了 {LibraryCount} 个Forge依赖库", manifestPatch.Libraries?.Count ?? 0);
+        Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", resolutionResult.ResolvedManifest.Libraries?.Count ?? 0);
+
+        return resolutionResult.ResolvedManifest;
+    }
+
+    private static ManifestPatch CreateManifestPatch(VersionInfo original, VersionInfo? forge)
+    {
+        return new ManifestPatch
         {
             Id = forge?.Id ?? original.Id,
-            Type = forge?.Type ?? original.Type,
-            Time = forge?.Time ?? original.Time,
-            ReleaseTime = forge?.ReleaseTime ?? original.ReleaseTime,
-            Url = original.Url,
-            MainClass = forge?.MainClass ?? original.MainClass,
-            // 关键字段：从原版复制资源索引信息
-            AssetIndex = original.AssetIndex,
+            Type = forge?.Type,
+            Time = forge?.Time,
+            ReleaseTime = forge?.ReleaseTime,
             Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,
-            // 关键字段：从原版复制下载信息
-            Downloads = original.Downloads,
-            // 关键字段：Java版本信息
-            JavaVersion = forge?.JavaVersion ?? original.JavaVersion,
-            Arguments = mergedLaunchArguments.Arguments,
-            MinecraftArguments = mergedLaunchArguments.MinecraftArguments,
-            Libraries = new List<Library>()
+            MainClass = forge?.MainClass,
+            JavaVersion = forge?.JavaVersion,
+            Arguments = forge?.Arguments,
+            MinecraftArguments = forge?.MinecraftArguments,
+            Libraries = forge?.Libraries != null ? new List<Library>(forge.Libraries) : null
         };
-
-        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(forge?.Libraries, original.Libraries);
-        Logger.LogInformation("合并了 {LibraryCount} 个Forge依赖库", forge?.Libraries?.Count ?? 0);
-
-        LibraryDownloadUrlHelper.EnsureArtifactDownloads(merged.Libraries, LibraryRepositoryProfile.Forge);
-
-        Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
-
-        return merged;
     }
 
     private void CleanupTempFiles(string? extractedPath)

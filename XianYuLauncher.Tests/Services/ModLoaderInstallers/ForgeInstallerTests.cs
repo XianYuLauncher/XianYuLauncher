@@ -11,9 +11,9 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
-using XianYuLauncher.Core.Contracts.Services;
 
 namespace XianYuLauncher.Tests.Services.ModLoaderInstallers;
 
@@ -26,6 +26,7 @@ public class ForgeInstallerTests : IDisposable
     private readonly Mock<ILocalSettingsService> _mockLocalSettingsService;
     private readonly Mock<IJavaRuntimeService> _mockJavaRuntimeService;
     private readonly Mock<ILogger<ForgeInstaller>> _mockLogger;
+    private readonly IUnifiedVersionManifestResolver _manifestResolver;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly ForgeInstaller _forgeInstaller;
     private readonly string _testDirectory;
@@ -39,6 +40,7 @@ public class ForgeInstallerTests : IDisposable
         _mockLocalSettingsService = new Mock<ILocalSettingsService>();
         _mockJavaRuntimeService = new Mock<IJavaRuntimeService>();
         _mockLogger = new Mock<ILogger<ForgeInstaller>>();
+        _manifestResolver = new UnifiedVersionManifestResolver();
         _downloadSourceFactory = new DownloadSourceFactory();
 
         _forgeInstaller = new ForgeInstaller(
@@ -49,6 +51,7 @@ public class ForgeInstallerTests : IDisposable
             _downloadSourceFactory,
             _mockLocalSettingsService.Object,
             _mockJavaRuntimeService.Object,
+            _manifestResolver,
             _mockLogger.Object);
             
         _testDirectory = Path.Combine(Path.GetTempPath(), $"ForgeInstallerTests_{Guid.NewGuid()}");
@@ -251,7 +254,7 @@ public class ForgeInstallerTests : IDisposable
     }
 
     [Fact]
-    public void MergeVersionInfo_DoesNotIncludeInstallProfileLibrariesInFinalManifest()
+    public void ResolveVersionInfo_DoesNotIncludeInstallProfileLibrariesInFinalManifest()
     {
         var original = new VersionInfo
         {
@@ -276,7 +279,7 @@ public class ForgeInstallerTests : IDisposable
             new() { Name = "com.google.guava:guava:32.1.2-jre" }
         };
 
-        var method = typeof(ForgeInstaller).GetMethod("MergeVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
+        var method = typeof(ForgeInstaller).GetMethod("ResolveVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
 
         Assert.NotNull(method);
 
@@ -287,11 +290,15 @@ public class ForgeInstallerTests : IDisposable
             library => Assert.Equal("net.minecraftforge:forge:49.0.30", library.Name),
             library => Assert.Equal("com.google.guava:guava:21.0", library.Name),
             library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name));
+        Assert.Equal("1.20", merged.Assets);
         Assert.DoesNotContain(merged.Libraries!, library => library.Name == "com.google.guava:guava:32.1.2-jre");
+        Assert.Equal(
+            "https://maven.minecraftforge.net/net/minecraftforge/forge/49.0.30/forge-49.0.30.jar",
+            merged.Libraries![0].Downloads!.Artifact!.Url);
     }
 
     [Fact]
-    public void MergeVersionInfo_OverrideSections_PreservesBaseDefaultUserJvmWhenForgeOmitsIt()
+    public void ResolveVersionInfo_OverrideSections_PreservesBaseDefaultUserJvmWhenForgeOmitsIt()
     {
         var original = new VersionInfo
         {
@@ -315,7 +322,7 @@ public class ForgeInstallerTests : IDisposable
             Libraries = new List<Library>()
         };
 
-        var method = typeof(ForgeInstaller).GetMethod("MergeVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
+        var method = typeof(ForgeInstaller).GetMethod("ResolveVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
 
         Assert.NotNull(method);
 
@@ -323,6 +330,7 @@ public class ForgeInstallerTests : IDisposable
 
         Assert.NotNull(merged.Arguments);
         Assert.Null(merged.MinecraftArguments);
+        Assert.Equal("1.20", merged.Assets);
         Assert.Collection(
             merged.Arguments!.Game!,
             argument => Assert.Equal("--fml.mcVersion", argument),

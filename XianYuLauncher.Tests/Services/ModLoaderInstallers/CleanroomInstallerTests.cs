@@ -6,6 +6,7 @@ using Moq;
 using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
 
@@ -14,7 +15,7 @@ namespace XianYuLauncher.Tests.Services.ModLoaderInstallers;
 public class CleanroomInstallerTests
 {
     [Fact]
-    public void MergeVersionInfo_PrefersCleanroomLibrariesWithoutDroppingJna()
+    public void ResolveVersionInfo_PrefersCleanroomLibrariesWithoutDroppingJna()
     {
         var installer = new CleanroomInstaller(
             Mock.Of<IDownloadManager>(),
@@ -23,6 +24,7 @@ public class CleanroomInstallerTests
             Mock.Of<IProcessorExecutor>(),
             Mock.Of<IJavaRuntimeService>(),
             new DownloadSourceFactory(),
+            new UnifiedVersionManifestResolver(),
             Mock.Of<ILogger<CleanroomInstaller>>());
 
         var original = new VersionInfo
@@ -47,7 +49,7 @@ public class CleanroomInstallerTests
             }
         };
 
-        var method = typeof(CleanroomInstaller).GetMethod("MergeVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
+        var method = typeof(CleanroomInstaller).GetMethod("ResolveVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
 
         Assert.NotNull(method);
 
@@ -59,10 +61,15 @@ public class CleanroomInstallerTests
             library => Assert.Equal("net.java.dev.jna:jna:5.13.0", library.Name),
             library => Assert.Equal("org.ow2.asm:asm:9.7", library.Name),
             library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name));
+        Assert.Equal("1.12", merged.Assets);
+        Assert.Equal(21, merged.JavaVersion!.MajorVersion);
+        Assert.Equal(
+            "https://repo.cleanroommc.com/releases/com/cleanroommc/cleanroom/0.4.2-alpha/cleanroom-0.4.2-alpha.jar",
+            merged.Libraries![0].Downloads!.Artifact!.Url);
     }
 
     [Fact]
-    public void MergeVersionInfo_DoesNotIncludeInstallProfileLibrariesInFinalManifest()
+    public void ResolveVersionInfo_DoesNotIncludeInstallProfileLibrariesInFinalManifest()
     {
         var installer = new CleanroomInstaller(
             Mock.Of<IDownloadManager>(),
@@ -71,6 +78,7 @@ public class CleanroomInstallerTests
             Mock.Of<IProcessorExecutor>(),
             Mock.Of<IJavaRuntimeService>(),
             new DownloadSourceFactory(),
+            new UnifiedVersionManifestResolver(),
             Mock.Of<ILogger<CleanroomInstaller>>());
 
         var original = new VersionInfo
@@ -96,7 +104,7 @@ public class CleanroomInstallerTests
             new() { Name = "com.google.guava:guava:32.1.2-jre" }
         };
 
-        var method = typeof(CleanroomInstaller).GetMethod("MergeVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
+        var method = typeof(CleanroomInstaller).GetMethod("ResolveVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
 
         Assert.NotNull(method);
 
@@ -107,6 +115,7 @@ public class CleanroomInstallerTests
             library => Assert.Equal("com.cleanroommc:cleanroom:0.4.2-alpha", library.Name),
             library => Assert.Equal("com.google.guava:guava:21.0", library.Name),
             library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name));
+        Assert.Equal("1.12", merged.Assets);
         Assert.DoesNotContain(merged.Libraries!, library => library.Name == "com.google.guava:guava:32.1.2-jre");
     }
 }

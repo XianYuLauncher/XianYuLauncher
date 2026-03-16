@@ -10,9 +10,9 @@ using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
-using XianYuLauncher.Core.Contracts.Services;
 
 namespace XianYuLauncher.Tests.Services.ModLoaderInstallers;
 
@@ -25,6 +25,7 @@ public class NeoForgeInstallerTests : IDisposable
     private readonly Mock<ILocalSettingsService> _mockLocalSettingsService;
     private readonly Mock<IJavaRuntimeService> _mockJavaRuntimeService;
     private readonly Mock<ILogger<NeoForgeInstaller>> _mockLogger;
+    private readonly IUnifiedVersionManifestResolver _manifestResolver;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly NeoForgeInstaller _neoForgeInstaller;
     private readonly string _testDirectory;
@@ -38,6 +39,7 @@ public class NeoForgeInstallerTests : IDisposable
         _mockLocalSettingsService = new Mock<ILocalSettingsService>();
         _mockJavaRuntimeService = new Mock<IJavaRuntimeService>();
         _mockLogger = new Mock<ILogger<NeoForgeInstaller>>();
+        _manifestResolver = new UnifiedVersionManifestResolver();
         _downloadSourceFactory = new DownloadSourceFactory();
 
         _neoForgeInstaller = new NeoForgeInstaller(
@@ -48,6 +50,7 @@ public class NeoForgeInstallerTests : IDisposable
             _downloadSourceFactory,
             _mockLocalSettingsService.Object,
             _mockJavaRuntimeService.Object,
+            _manifestResolver,
             _mockLogger.Object);
             
         _testDirectory = Path.Combine(Path.GetTempPath(), $"NeoForgeInstallerTests_{Guid.NewGuid()}");
@@ -142,7 +145,7 @@ public class NeoForgeInstallerTests : IDisposable
     }
 
     [Fact]
-    public void MergeVersionInfo_DoesNotIncludeInstallProfileLibrariesInFinalManifest()
+    public void ResolveVersionInfo_DoesNotIncludeInstallProfileLibrariesInFinalManifest()
     {
         var original = new VersionInfo
         {
@@ -167,7 +170,7 @@ public class NeoForgeInstallerTests : IDisposable
             new() { Name = "com.google.guava:guava:32.1.2-jre" }
         };
 
-        var method = typeof(NeoForgeInstaller).GetMethod("MergeVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
+        var method = typeof(NeoForgeInstaller).GetMethod("ResolveVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
 
         Assert.NotNull(method);
 
@@ -178,7 +181,11 @@ public class NeoForgeInstallerTests : IDisposable
             library => Assert.Equal("net.neoforged:neoforge:20.4.200", library.Name),
             library => Assert.Equal("com.google.guava:guava:21.0", library.Name),
             library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name));
+        Assert.Equal("1.20", merged.Assets);
         Assert.DoesNotContain(merged.Libraries!, library => library.Name == "com.google.guava:guava:32.1.2-jre");
+        Assert.Equal(
+            "https://maven.neoforged.net/releases/net/neoforged/neoforge/20.4.200/neoforge-20.4.200.jar",
+            merged.Libraries![0].Downloads!.Artifact!.Url);
     }
 
     #endregion

@@ -24,6 +24,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
     private readonly IProcessorExecutor _processorExecutor;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly ILocalSettingsService _localSettingsService;
+    private readonly IUnifiedVersionManifestResolver _manifestResolver;
     
     /// <summary>
     /// NeoForge Maven仓库URL（官方源备用）
@@ -41,12 +42,14 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
         DownloadSourceFactory downloadSourceFactory,
         ILocalSettingsService localSettingsService,
         IJavaRuntimeService javaRuntimeService,
+        IUnifiedVersionManifestResolver manifestResolver,
         ILogger<NeoForgeInstaller> logger)
         : base(downloadManager, libraryManager, versionInfoManager, javaRuntimeService, logger)
     {
         _processorExecutor = processorExecutor;
         _downloadSourceFactory = downloadSourceFactory;
         _localSettingsService = localSettingsService;
+        _manifestResolver = manifestResolver;
     }
 
     /// <inheritdoc/>
@@ -258,7 +261,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 98));
 
             // 11. 合并版本JSON并保存
-            var mergedVersionInfo = MergeVersionInfo(originalVersionInfo, neoforgeVersionInfo, installProfileLibraries);
+            var mergedVersionInfo = ResolveVersionInfo(originalVersionInfo, neoforgeVersionInfo, installProfileLibraries);
             mergedVersionInfo.Id = versionId;
             
             await SaveVersionJsonAsync(versionDirectory, versionId, mergedVersionInfo);
@@ -425,7 +428,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
         LibraryDownloadUrlHelper.EnsureArtifactDownloads(libraries, LibraryRepositoryProfile.NeoForge);
     }
 
-    private VersionInfo MergeVersionInfo(VersionInfo original, VersionInfo? neoforge, List<Library> additionalLibraries)
+    private VersionInfo ResolveVersionInfo(VersionInfo original, VersionInfo? neoforge, List<Library> additionalLibraries)
     {
         // 确保输入参数不为null
         if (original == null)
@@ -433,44 +436,39 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             throw new ArgumentNullException(nameof(original));
         }
 
-        var mergedLaunchArguments = VersionArgumentsMergeHelper.Merge(
-            original.Arguments,
-            original.MinecraftArguments,
-            neoforge?.Arguments,
-            neoforge?.MinecraftArguments,
-            LegacyArgumentMergeMode.PreferAnyWithLoaderPriority,
-            ModernArgumentMergeMode.OverrideSections);
+        Logger.LogDebug("安装期额外依赖库不会写入最终manifest: {Count}", additionalLibraries?.Count ?? 0);
 
-        // 构建合并后的JSON - 完全合并原版和NeoForge的所有字段
-        var merged = new VersionInfo
+        var manifestPatch = CreateManifestPatch(original, neoforge);
+        var resolutionResult = _manifestResolver.ResolvePatch(
+            original,
+            manifestPatch,
+            ManifestResolutionOptions.CreateLoaderPatchOptions(
+                ModLoaderType,
+                LibraryRepositoryProfile.NeoForge,
+                legacyArgumentMergeMode: LegacyArgumentMergeMode.PreferAnyWithLoaderPriority,
+                modernArgumentMergeMode: ModernArgumentMergeMode.OverrideSections));
+
+        Logger.LogInformation("通过ManifestPatch解析了 {LibraryCount} 个NeoForge依赖库", manifestPatch.Libraries?.Count ?? 0);
+        Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", resolutionResult.ResolvedManifest.Libraries?.Count ?? 0);
+
+        return resolutionResult.ResolvedManifest;
+    }
+
+    private static ManifestPatch CreateManifestPatch(VersionInfo original, VersionInfo? neoforge)
+    {
+        return new ManifestPatch
         {
             Id = neoforge?.Id ?? original.Id,
-            Type = neoforge?.Type ?? original.Type,
-            Time = neoforge?.Time ?? original.Time,
-            ReleaseTime = neoforge?.ReleaseTime ?? original.ReleaseTime,
-            Url = original.Url,
-            MainClass = neoforge?.MainClass ?? original.MainClass,
-            // 关键字段：从原版复制资源索引信息
-            AssetIndex = original.AssetIndex,
+            Type = neoforge?.Type,
+            Time = neoforge?.Time,
+            ReleaseTime = neoforge?.ReleaseTime,
             Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,
-            // 关键字段：从原版复制下载信息
-            Downloads = original.Downloads,
-            // 关键字段：Java版本信息
-            JavaVersion = neoforge?.JavaVersion ?? original.JavaVersion,
-            Arguments = mergedLaunchArguments.Arguments,
-            MinecraftArguments = mergedLaunchArguments.MinecraftArguments,
-            Libraries = new List<Library>()
+            MainClass = neoforge?.MainClass,
+            JavaVersion = neoforge?.JavaVersion,
+            Arguments = neoforge?.Arguments,
+            MinecraftArguments = neoforge?.MinecraftArguments,
+            Libraries = neoforge?.Libraries != null ? new List<Library>(neoforge.Libraries) : null
         };
-
-        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(neoforge?.Libraries, original.Libraries);
-        Logger.LogInformation("合并了 {LibraryCount} 个NeoForge依赖库", neoforge?.Libraries?.Count ?? 0);
-
-        // 为所有库处理downloads字段，确保它们有正确的downloads信息
-        EnsureLibraryUrls(merged.Libraries);
-
-        Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
-
-        return merged;
     }
 
     private void CleanupTempFiles(string? extractedPath)
