@@ -217,147 +217,6 @@ public class VersionInfoManagerTests : IDisposable
     }
 
     #endregion
-
-    #region MergeVersionInfo 测试
-
-    [Fact]
-    public void MergeVersionInfo_NullParent_ReturnsChild()
-    {
-        // Arrange
-        var child = new VersionInfo
-        {
-            Id = "fabric-1.20.4",
-            MainClass = "net.fabricmc.loader.launch.knot.KnotClient"
-        };
-
-        // Act
-        var result = _versionInfoManager.MergeVersionInfo(child, null!);
-
-        // Assert
-        Assert.Same(child, result);
-    }
-
-    [Fact]
-    public void MergeVersionInfo_MergesLibraries()
-    {
-        // Arrange
-        var child = new VersionInfo
-        {
-            Id = "fabric-1.20.4",
-            Libraries = new List<Library>
-            {
-                new Library { Name = "net.fabricmc:fabric-loader:0.15.0" }
-            }
-        };
-        
-        var parent = new VersionInfo
-        {
-            Id = "1.20.4",
-            Libraries = new List<Library>
-            {
-                new Library { Name = "com.mojang:minecraft:1.20.4" }
-            }
-        };
-
-        // Act
-        var result = _versionInfoManager.MergeVersionInfo(child, parent);
-
-        // Assert
-        Assert.Equal(2, result.Libraries!.Count);
-    }
-
-    [Fact]
-    public void MergeVersionInfo_ChildLibrariesStayInFrontAndWinConflicts()
-    {
-        var child = new VersionInfo
-        {
-            Id = "fabric-1.20.4",
-            Libraries = new List<Library>
-            {
-                new() { Name = "net.fabricmc:fabric-loader:0.15.0" },
-                new() { Name = "com.google.guava:guava:32.1.2-jre" }
-            }
-        };
-        var parent = new VersionInfo
-        {
-            Id = "1.20.4",
-            Libraries = new List<Library>
-            {
-                new() { Name = "com.google.guava:guava:21.0" },
-                new() { Name = "com.mojang:brigadier:1.0.18" }
-            }
-        };
-
-        var result = _versionInfoManager.MergeVersionInfo(child, parent);
-
-        Assert.Collection(
-            result.Libraries!,
-            library => Assert.Equal("net.fabricmc:fabric-loader:0.15.0", library.Name),
-            library => Assert.Equal("com.google.guava:guava:32.1.2-jre", library.Name),
-            library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name));
-    }
-
-    [Fact]
-    public void MergeVersionInfo_ChildOverridesParent()
-    {
-        // Arrange
-        var child = new VersionInfo
-        {
-            Id = "fabric-1.20.4",
-            MainClass = "net.fabricmc.loader.launch.knot.KnotClient"
-        };
-        
-        var parent = new VersionInfo
-        {
-            Id = "1.20.4",
-            MainClass = "net.minecraft.client.main.Main",
-            Assets = "1.20",
-            JavaVersion = new MinecraftJavaVersion { MajorVersion = 17 }
-        };
-
-        // Act
-        var result = _versionInfoManager.MergeVersionInfo(child, parent);
-
-        // Assert
-        Assert.Equal("net.fabricmc.loader.launch.knot.KnotClient", result.MainClass);
-        Assert.Equal("1.20", result.Assets);
-        Assert.Equal(17, result.JavaVersion!.MajorVersion);
-    }
-
-    [Fact]
-    public void MergeVersionInfo_InheritsFromParent()
-    {
-        // Arrange
-        var child = new VersionInfo
-        {
-            Id = "fabric-1.20.4"
-            // 没有 MainClass, Assets, JavaVersion
-        };
-        
-        var parent = new VersionInfo
-        {
-            Id = "1.20.4",
-            MainClass = "net.minecraft.client.main.Main",
-            Assets = "1.20",
-            JavaVersion = new MinecraftJavaVersion { MajorVersion = 17 },
-            Downloads = new Downloads
-            {
-                Client = new DownloadFile { Url = "https://example.com/client.jar" }
-            }
-        };
-
-        // Act
-        var result = _versionInfoManager.MergeVersionInfo(child, parent);
-
-        // Assert
-        Assert.Equal("net.minecraft.client.main.Main", result.MainClass);
-        Assert.Equal("1.20", result.Assets);
-        Assert.Equal(17, result.JavaVersion!.MajorVersion);
-        Assert.NotNull(result.Downloads);
-    }
-
-    #endregion
-
     #region GetVersionInfoAsync 测试
 
     [Fact]
@@ -462,7 +321,13 @@ public class VersionInfoManagerTests : IDisposable
 
         await File.WriteAllTextAsync(
             Path.Combine(childVersionDir, $"{childVersionId}.json"),
-            JsonConvert.SerializeObject(childVersionInfo, Formatting.Indented));
+            JsonConvert.SerializeObject(
+                childVersionInfo,
+                Formatting.Indented,
+                new JsonSerializerSettings
+                {
+                    NullValueHandling = NullValueHandling.Ignore
+                }));
 
         var result = await _versionInfoManager.GetVersionInfoAsync(childVersionId, _testDirectory, allowNetwork: false);
 
@@ -472,6 +337,79 @@ public class VersionInfoManagerTests : IDisposable
         Assert.Collection(
             result.Libraries!,
             library => Assert.Equal("net.fabricmc:fabric-loader:0.15.0", library.Name),
+            library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name));
+    }
+
+    [Fact]
+    public async Task GetVersionInfoAsync_LegacyInheritsFromManifest_PreservesParentDownloadsAndChildMinecraftArgumentsOffline()
+    {
+        var parentVersionId = "1.20.4";
+        var parentVersionDir = Path.Combine(_testDirectory, "versions", parentVersionId);
+        Directory.CreateDirectory(parentVersionDir);
+
+        var parentVersionInfo = new VersionInfo
+        {
+            Id = parentVersionId,
+            MainClass = "net.minecraft.client.main.Main",
+            Assets = "1.20",
+            AssetIndex = new AssetIndex
+            {
+                Id = "1.20",
+                Url = "https://example.com/assets/1.20.json",
+                Sha1 = "asset-sha1"
+            },
+            Downloads = new Downloads
+            {
+                Client = new DownloadFile
+                {
+                    Url = "https://example.com/client.jar",
+                    Sha1 = "client-sha1"
+                }
+            },
+            JavaVersion = new MinecraftJavaVersion { MajorVersion = 17 },
+            Libraries = new List<Library>
+            {
+                new() { Name = "com.mojang:brigadier:1.0.18" }
+            }
+        };
+
+        await File.WriteAllTextAsync(
+            Path.Combine(parentVersionDir, $"{parentVersionId}.json"),
+            VersionManifestJsonHelper.SerializeVersionJson(parentVersionInfo));
+
+        var childVersionId = "forge-legacy-1.20.4";
+        var childVersionDir = Path.Combine(_testDirectory, "versions", childVersionId);
+        Directory.CreateDirectory(childVersionDir);
+
+        var childVersionInfo = new VersionInfo
+        {
+            Id = childVersionId,
+            InheritsFrom = parentVersionId,
+            MainClass = "cpw.mods.bootstraplauncher.BootstrapLauncher",
+            MinecraftArguments = "--tweakClass net.minecraftforge.fml.common.launcher.FMLTweaker",
+            Libraries = new List<Library>
+            {
+                new() { Name = "net.minecraftforge:forge:49.0.30" }
+            }
+        };
+
+        await File.WriteAllTextAsync(
+            Path.Combine(childVersionDir, $"{childVersionId}.json"),
+            JsonConvert.SerializeObject(childVersionInfo, Formatting.Indented));
+
+        var result = await _versionInfoManager.GetVersionInfoAsync(childVersionId, _testDirectory, allowNetwork: false);
+
+        Assert.Equal(childVersionId, result.Id);
+        Assert.Equal("cpw.mods.bootstraplauncher.BootstrapLauncher", result.MainClass);
+        Assert.Equal("--tweakClass net.minecraftforge.fml.common.launcher.FMLTweaker", result.MinecraftArguments);
+        Assert.Equal("1.20", result.Assets);
+        Assert.Equal("1.20", result.AssetIndex!.Id);
+        Assert.Equal("https://example.com/assets/1.20.json", result.AssetIndex.Url);
+        Assert.Equal(17, result.JavaVersion!.MajorVersion);
+        Assert.Equal("https://example.com/client.jar", result.Downloads!.Client!.Url);
+        Assert.Collection(
+            result.Libraries!,
+            library => Assert.Equal("net.minecraftforge:forge:49.0.30", library.Name),
             library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name));
     }
 

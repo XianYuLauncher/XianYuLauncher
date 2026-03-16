@@ -258,24 +258,6 @@ public class VersionInfoManager : IVersionInfoManager
         await File.WriteAllTextAsync(configPath, jsonContent);
         _logger.LogInformation("已保存版本配置: {ConfigPath}", configPath);
     }
-
-
-    /// <inheritdoc/>
-    public VersionInfo MergeVersionInfo(VersionInfo childVersion, VersionInfo parentVersion)
-    {
-        if (childVersion == null)
-        {
-            throw new ArgumentNullException(nameof(childVersion));
-        }
-
-        if (parentVersion == null)
-        {
-            return childVersion;
-        }
-
-        return _manifestResolver.ResolveInheritance(childVersion, parentVersion).ResolvedManifest;
-    }
-
     #region 私有辅助方法
 
     /// <summary>

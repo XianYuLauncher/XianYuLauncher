@@ -503,7 +503,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
     /// <summary>
     /// 合并版本信息
     /// </summary>
-    private VersionInfo ResolveVersionInfo(VersionInfo original, VersionInfo? cleanroom, List<Library> additionalLibraries)
+    internal VersionInfo ResolveVersionInfo(VersionInfo original, VersionInfo? cleanroom, List<Library> additionalLibraries)
     {
         if (original == null)
         {

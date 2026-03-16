@@ -428,7 +428,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
         LibraryDownloadUrlHelper.EnsureArtifactDownloads(libraries, LibraryRepositoryProfile.NeoForge);
     }
 
-    private VersionInfo ResolveVersionInfo(VersionInfo original, VersionInfo? neoforge, List<Library> additionalLibraries)
+    internal VersionInfo ResolveVersionInfo(VersionInfo original, VersionInfo? neoforge, List<Library> additionalLibraries)
     {
         // 确保输入参数不为null
         if (original == null)
