@@ -280,7 +280,7 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
         return libraries;
     }
 
-    private VersionInfo ResolveVersionInfo(VersionInfo original, JObject fabricProfile, string versionId)
+    internal VersionInfo ResolveVersionInfo(VersionInfo original, JObject fabricProfile, string versionId)
     {
         var manifestPatch = CreateManifestPatch(original, fabricProfile, versionId);
         var resolutionResult = _manifestResolver.ResolvePatch(

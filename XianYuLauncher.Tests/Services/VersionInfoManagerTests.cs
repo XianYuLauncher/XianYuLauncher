@@ -321,7 +321,13 @@ public class VersionInfoManagerTests : IDisposable
 
         await File.WriteAllTextAsync(
             Path.Combine(childVersionDir, $"{childVersionId}.json"),
-            JsonConvert.SerializeObject(childVersionInfo, Formatting.Indented));
+            JsonConvert.SerializeObject(
+                childVersionInfo,
+                Formatting.Indented,
+                new JsonSerializerSettings
+                {
+                    NullValueHandling = NullValueHandling.Ignore
+                }));
 
         var result = await _versionInfoManager.GetVersionInfoAsync(childVersionId, _testDirectory, allowNetwork: false);
 

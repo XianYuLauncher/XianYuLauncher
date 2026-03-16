@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -75,7 +74,7 @@ public class VersionManifestRoundTripRegressionTests : IDisposable
         }
         """);
 
-        var resolvedManifest = InvokePrivate<VersionInfo>(installer, "ResolveVersionInfo", original, fabricProfile, "legacyfabric-1.8.9");
+        var resolvedManifest = installer.ResolveVersionInfo(original, fabricProfile, "legacyfabric-1.8.9");
 
         await SaveVersionManifestAsync("legacyfabric-1.8.9", resolvedManifest);
 
@@ -128,9 +127,7 @@ public class VersionManifestRoundTripRegressionTests : IDisposable
             }
         };
 
-        var resolvedManifest = InvokePrivate<VersionInfo>(
-            installer,
-            "ResolveVersionInfo",
+        var resolvedManifest = installer.ResolveVersionInfo(
             original,
             neoforge,
             new List<Library> { new() { Name = "com.google.guava:guava:32.1.2-jre" } });
@@ -188,7 +185,7 @@ public class VersionManifestRoundTripRegressionTests : IDisposable
             }
         };
 
-        var resolvedManifest = InvokePrivate<VersionInfo>(installer, "ResolveVersionInfo", original, cleanroom, new List<Library>());
+        var resolvedManifest = installer.ResolveVersionInfo(original, cleanroom, new List<Library>());
 
         await SaveVersionManifestAsync("cleanroom-0.4.2-alpha", resolvedManifest);
 
@@ -215,12 +212,5 @@ public class VersionManifestRoundTripRegressionTests : IDisposable
         await File.WriteAllTextAsync(
             Path.Combine(versionDirectory, $"{versionId}.json"),
             VersionManifestJsonHelper.SerializeVersionJson(versionInfo));
-    }
-
-    private static T InvokePrivate<T>(object instance, string methodName, params object[] arguments)
-    {
-        var method = instance.GetType().GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
-        Assert.NotNull(method);
-        return Assert.IsType<T>(method!.Invoke(instance, arguments));
     }
 }
