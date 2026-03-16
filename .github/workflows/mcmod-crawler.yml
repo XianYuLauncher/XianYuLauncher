@@ -114,6 +114,7 @@ jobs:
           : > "$LOCAL_INPUT"
 
       - name: Run crawler
+        id: run_crawler
         shell: bash
         run: |
           CMD=(python -u scripts/mcmod_crawler.py
@@ -136,14 +137,14 @@ jobs:
           "${CMD[@]}"
 
       - name: Upload result as workflow artifact
-        if: ${{ always() }}
+        if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: mcmod-data-output
           path: ${{ env.LOCAL_OUTPUT }}
 
       - name: Update gist file
-        if: ${{ always() && !inputs.dry_run }}
+        if: ${{ !inputs.dry_run && steps.run_crawler.outcome == 'success' }}
         shell: bash
         env:
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
