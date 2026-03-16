@@ -23,6 +23,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
 {
     private readonly IProcessorExecutor _processorExecutor;
     private readonly DownloadSourceFactory _sourceFactory;
+    private readonly IUnifiedVersionManifestResolver _manifestResolver;
 
     /// <inheritdoc/>
     public override string ModLoaderType => "Cleanroom";
@@ -34,11 +35,13 @@ public class CleanroomInstaller : ModLoaderInstallerBase
         IProcessorExecutor processorExecutor,
         IJavaRuntimeService javaRuntimeService,
         DownloadSourceFactory sourceFactory,
+        IUnifiedVersionManifestResolver manifestResolver,
         ILogger<CleanroomInstaller> logger)
         : base(downloadManager, libraryManager, versionInfoManager, javaRuntimeService, logger)
     {
         _processorExecutor = processorExecutor;
         _sourceFactory = sourceFactory ?? throw new ArgumentNullException(nameof(sourceFactory));
+        _manifestResolver = manifestResolver;
     }
 
     /// <inheritdoc/>
@@ -264,7 +267,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
 
             // 11. 合并版本JSON并保存
             Logger.LogInformation("合并版本信息");
-            var mergedVersionInfo = MergeVersionInfo(originalVersionInfo, cleanroomVersionInfo, installProfileLibraries);
+            var mergedVersionInfo = ResolveVersionInfo(originalVersionInfo, cleanroomVersionInfo, installProfileLibraries);
             mergedVersionInfo.Id = versionId;
             
             Logger.LogInformation("保存版本JSON文件");
@@ -500,51 +503,46 @@ public class CleanroomInstaller : ModLoaderInstallerBase
     /// <summary>
     /// 合并版本信息
     /// </summary>
-    private VersionInfo MergeVersionInfo(VersionInfo original, VersionInfo? cleanroom, List<Library> additionalLibraries)
+    private VersionInfo ResolveVersionInfo(VersionInfo original, VersionInfo? cleanroom, List<Library> additionalLibraries)
     {
         if (original == null)
         {
             throw new ArgumentNullException(nameof(original));
         }
 
-        var specializationStrategy = ModLoaderSpecializationStrategyFactory.GetStrategy(ModLoaderType);
-        var specializationContext = new ModLoaderSpecializationContext(original, cleanroom);
+        Logger.LogDebug("安装期额外依赖库不会写入最终manifest: {Count}", additionalLibraries?.Count ?? 0);
 
-        var mergedLaunchArguments = VersionArgumentsMergeHelper.Merge(
-            original.Arguments,
-            original.MinecraftArguments,
-            cleanroom?.Arguments,
-            cleanroom?.MinecraftArguments,
-            LegacyArgumentMergeMode.PreferAnyWithLoaderPriority,
-            ModernArgumentMergeMode.OverrideSections);
+        var manifestPatch = CreateManifestPatch(original, cleanroom);
+        var resolutionResult = _manifestResolver.ResolvePatch(
+            original,
+            manifestPatch,
+            ManifestResolutionOptions.CreateLoaderPatchOptions(
+                ModLoaderType,
+                LibraryRepositoryProfile.Cleanroom,
+                legacyArgumentMergeMode: LegacyArgumentMergeMode.PreferAnyWithLoaderPriority,
+                modernArgumentMergeMode: ModernArgumentMergeMode.OverrideSections));
 
-        var merged = new VersionInfo
+        Logger.LogInformation("通过ManifestPatch解析了 {LibraryCount} 个Cleanroom依赖库", manifestPatch.Libraries?.Count ?? 0);
+        Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", resolutionResult.ResolvedManifest.Libraries?.Count ?? 0);
+
+        return resolutionResult.ResolvedManifest;
+    }
+
+    private static ManifestPatch CreateManifestPatch(VersionInfo original, VersionInfo? cleanroom)
+    {
+        return new ManifestPatch
         {
             Id = cleanroom?.Id ?? original.Id,
-            Type = cleanroom?.Type ?? original.Type,
-            Time = cleanroom?.Time ?? original.Time,
-            ReleaseTime = cleanroom?.ReleaseTime ?? original.ReleaseTime,
-            Url = original.Url,
-            MainClass = cleanroom?.MainClass ?? original.MainClass,
-            AssetIndex = original.AssetIndex,
+            Type = cleanroom?.Type,
+            Time = cleanroom?.Time,
+            ReleaseTime = cleanroom?.ReleaseTime,
             Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,
-            Downloads = original.Downloads,
-            JavaVersion = specializationStrategy.ResolveJavaVersion(cleanroom?.JavaVersion ?? original.JavaVersion, specializationContext),
-            Arguments = mergedLaunchArguments.Arguments,
-            MinecraftArguments = mergedLaunchArguments.MinecraftArguments,
-            Libraries = new List<Library>()
+            MainClass = cleanroom?.MainClass,
+            JavaVersion = cleanroom?.JavaVersion,
+            Arguments = cleanroom?.Arguments,
+            MinecraftArguments = cleanroom?.MinecraftArguments,
+            Libraries = cleanroom?.Libraries != null ? new List<Library>(cleanroom.Libraries) : null
         };
-
-        var baseLibraries = specializationStrategy.PrepareBaseLibraries(specializationContext);
-
-        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(cleanroom?.Libraries, baseLibraries);
-        Logger.LogInformation("合并了 {LibraryCount} 个Cleanroom依赖库", cleanroom?.Libraries?.Count ?? 0);
-
-        LibraryDownloadUrlHelper.EnsureArtifactDownloads(merged.Libraries, LibraryRepositoryProfile.Cleanroom);
-
-        Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
-
-        return merged;
     }
 
     private void CleanupTempFiles(string? extractedPath)

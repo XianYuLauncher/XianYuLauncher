@@ -22,6 +22,7 @@ namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 public class OptifineInstaller : ModLoaderInstallerBase
 {
     private readonly DownloadSourceFactory _downloadSourceFactory;
+    private readonly IUnifiedVersionManifestResolver _manifestResolver;
 
     /// <inheritdoc/>
     public override string ModLoaderType => "Optifine";
@@ -32,10 +33,12 @@ public class OptifineInstaller : ModLoaderInstallerBase
         IVersionInfoManager versionInfoManager,
         IJavaRuntimeService javaRuntimeService,
         DownloadSourceFactory downloadSourceFactory,
+        IUnifiedVersionManifestResolver manifestResolver,
         ILogger<OptifineInstaller> logger)
         : base(downloadManager, libraryManager, versionInfoManager, javaRuntimeService, logger)
     {
         _downloadSourceFactory = downloadSourceFactory;
+        _manifestResolver = manifestResolver;
     }
 
     /// <inheritdoc/>
@@ -255,7 +258,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
                     System.Diagnostics.Debug.WriteLine($"[OptiFineInstaller] OptiFine mainClass: {installedVersionInfo?.MainClass ?? "null"}");
                     
                     // 合并版本信息
-                    var mergedVersionInfo = MergeVersionInfo(originalVersionInfo, installedVersionInfo, versionId);
+                    var mergedVersionInfo = ResolveVersionInfo(originalVersionInfo, installedVersionInfo, versionId);
                     
                     Logger.LogInformation("合并后的 mainClass: {MainClass}", mergedVersionInfo.MainClass);
                     System.Diagnostics.Debug.WriteLine($"[OptiFineInstaller] 合并后 mainClass: {mergedVersionInfo.MainClass}");
@@ -437,40 +440,35 @@ public class OptifineInstaller : ModLoaderInstallerBase
         return "java";
     }
 
-    private VersionInfo MergeVersionInfo(VersionInfo original, VersionInfo? optifine, string versionId)
+    private VersionInfo ResolveVersionInfo(VersionInfo original, VersionInfo? optifine, string versionId)
     {
-        var mergedLaunchArguments = VersionArgumentsMergeHelper.Merge(
-            original.Arguments,
-            original.MinecraftArguments,
-            optifine?.Arguments,
-            optifine?.MinecraftArguments,
-            LegacyArgumentMergeMode.PreferAnyWithLoaderPriority,
-            ModernArgumentMergeMode.MergeLists);
+        var manifestPatch = CreateOptifineManifestPatch(original, optifine, versionId);
+        var resolutionResult = _manifestResolver.ResolvePatch(
+            original,
+            manifestPatch,
+            ManifestResolutionOptions.CreateLoaderPatchOptions(
+                ModLoaderType,
+                legacyArgumentMergeMode: LegacyArgumentMergeMode.PreferAnyWithLoaderPriority,
+                modernArgumentMergeMode: ModernArgumentMergeMode.MergeLists));
 
-        var merged = new VersionInfo
+        Logger.LogInformation("通过ManifestPatch解析了 {LibraryCount} 个Optifine依赖库", manifestPatch.Libraries?.Count ?? 0);
+        Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", resolutionResult.ResolvedManifest.Libraries?.Count ?? 0);
+
+        return resolutionResult.ResolvedManifest;
+    }
+
+    private static ManifestPatch CreateOptifineManifestPatch(VersionInfo original, VersionInfo? optifine, string versionId)
+    {
+        return new ManifestPatch
         {
             Id = versionId,
-            Type = original.Type,
             Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            ReleaseTime = original.ReleaseTime,
-            Url = original.Url,
-            MainClass = optifine?.MainClass ?? original.MainClass,
-            // 关键字段：从原版复制
-            AssetIndex = original.AssetIndex,
             Assets = original.Assets ?? original.AssetIndex?.Id ?? original.Id,
-            Downloads = original.Downloads,
-            JavaVersion = original.JavaVersion,
-            // 参数处理
-            Arguments = mergedLaunchArguments.Arguments,
-            MinecraftArguments = mergedLaunchArguments.MinecraftArguments,
-            Libraries = new List<Library>()
+            MainClass = optifine?.MainClass,
+            Arguments = optifine?.Arguments,
+            MinecraftArguments = optifine?.MinecraftArguments,
+            Libraries = optifine?.Libraries != null ? new List<Library>(optifine.Libraries) : null
         };
-
-        merged.Libraries = VersionLibraryMergeHelper.MergeLibraries(optifine?.Libraries, original.Libraries);
-        Logger.LogInformation("合并了 {LibraryCount} 个Optifine依赖库", optifine?.Libraries?.Count ?? 0);
-        Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", merged.Libraries.Count);
-
-        return merged;
     }
 
     private VersionInfo CreateSimpleOptifineVersionInfo(
@@ -481,34 +479,39 @@ public class OptifineInstaller : ModLoaderInstallerBase
     {
         var optifineLibraryName = $"optifine:OptiFine:{minecraftVersionId}_{optifineVersion}";
 
-        var merged = new VersionInfo
+        var manifestPatch = new ManifestPatch
         {
             Id = versionId,
-            Type = originalVersionInfo.Type,
             Time = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"),
-            ReleaseTime = originalVersionInfo.ReleaseTime,
-            Url = originalVersionInfo.Url,
-            MainClass = "net.minecraft.client.main.Main",
-            AssetIndex = originalVersionInfo.AssetIndex,
             Assets = originalVersionInfo.Assets ?? originalVersionInfo.AssetIndex?.Id ?? originalVersionInfo.Id,
-            Downloads = originalVersionInfo.Downloads,
-            JavaVersion = originalVersionInfo.JavaVersion,
-            Arguments = originalVersionInfo.Arguments,
-            MinecraftArguments = originalVersionInfo.MinecraftArguments,
+            MainClass = "net.minecraft.client.main.Main",
             Libraries = new List<Library>()
         };
 
-        if (originalVersionInfo.Libraries != null)
-        {
-            merged.Libraries.AddRange(originalVersionInfo.Libraries);
-        }
-
-        merged.Libraries.Add(new Library
+        manifestPatch.Libraries!.Add(new Library
         {
             Name = optifineLibraryName
         });
 
-        return merged;
+        var resolvedManifest = _manifestResolver.ResolvePatch(
+            originalVersionInfo,
+            manifestPatch,
+            ManifestResolutionOptions.CreateLoaderPatchOptions(
+                ModLoaderType,
+                legacyArgumentMergeMode: LegacyArgumentMergeMode.PreferAnyWithLoaderPriority,
+                modernArgumentMergeMode: ModernArgumentMergeMode.MergeLists)).ResolvedManifest;
+
+        if (resolvedManifest.Libraries != null)
+        {
+            var optifineLibrary = resolvedManifest.Libraries.FirstOrDefault(library => library.Name == optifineLibraryName);
+            if (optifineLibrary != null)
+            {
+                resolvedManifest.Libraries.Remove(optifineLibrary);
+                resolvedManifest.Libraries.Add(optifineLibrary);
+            }
+        }
+
+        return resolvedManifest;
     }
 
     private void CopyDirectory(string sourceDir, string destDir)
