@@ -7,6 +7,7 @@ using Newtonsoft.Json.Linq;
 using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
 
@@ -14,10 +15,12 @@ namespace XianYuLauncher.Tests.Services.ModLoaderInstallers;
 
 public class LegacyFabricInstallerTests
 {
+    private readonly IUnifiedVersionManifestResolver _manifestResolver;
     private readonly LegacyFabricInstaller _legacyFabricInstaller;
 
     public LegacyFabricInstallerTests()
     {
+        _manifestResolver = new UnifiedVersionManifestResolver();
         _legacyFabricInstaller = new LegacyFabricInstaller(
             Mock.Of<IDownloadManager>(),
             Mock.Of<ILibraryManager>(),
@@ -25,11 +28,12 @@ public class LegacyFabricInstallerTests
             new DownloadSourceFactory(),
             Mock.Of<ILocalSettingsService>(),
             Mock.Of<IJavaRuntimeService>(),
+            _manifestResolver,
             Mock.Of<ILogger<LegacyFabricInstaller>>());
     }
 
     [Fact]
-    public void MergeVersionInfo_ShouldPreserveArtifactMetadata_WhenCompletingLibraryUrls()
+    public void ResolveVersionInfo_ShouldPreserveArtifactMetadata_WhenCompletingLibraryUrls()
     {
         var original = new VersionInfo
         {
@@ -71,7 +75,7 @@ public class LegacyFabricInstallerTests
         }
         """);
 
-        var method = typeof(LegacyFabricInstaller).GetMethod("MergeVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
+        var method = typeof(LegacyFabricInstaller).GetMethod("ResolveVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
 
         Assert.NotNull(method);
 

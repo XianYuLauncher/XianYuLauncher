@@ -11,7 +11,9 @@ using Newtonsoft.Json.Linq;
 using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
 using XianYuLauncher.Core.Contracts.Services;
@@ -26,6 +28,7 @@ public class FabricInstallerTests : IDisposable
     private readonly Mock<ILocalSettingsService> _mockLocalSettingsService;
     private readonly Mock<IJavaRuntimeService> _mockJavaRuntimeService;
     private readonly Mock<ILogger<FabricInstaller>> _mockLogger;
+    private readonly IUnifiedVersionManifestResolver _manifestResolver;
     private readonly DownloadSourceFactory _downloadSourceFactory;
     private readonly FabricInstaller _fabricInstaller;
     private readonly string _testDirectory;
@@ -38,6 +41,7 @@ public class FabricInstallerTests : IDisposable
         _mockLocalSettingsService = new Mock<ILocalSettingsService>();
         _mockJavaRuntimeService = new Mock<IJavaRuntimeService>();
         _mockLogger = new Mock<ILogger<FabricInstaller>>();
+        _manifestResolver = new UnifiedVersionManifestResolver();
         _downloadSourceFactory = new DownloadSourceFactory();
 
         _fabricInstaller = new FabricInstaller(
@@ -47,6 +51,7 @@ public class FabricInstallerTests : IDisposable
             _downloadSourceFactory,
             _mockLocalSettingsService.Object,
             _mockJavaRuntimeService.Object,
+            _manifestResolver,
             _mockLogger.Object);
             
         _testDirectory = Path.Combine(Path.GetTempPath(), $"FabricInstallerTests_{Guid.NewGuid()}");
@@ -142,7 +147,7 @@ public class FabricInstallerTests : IDisposable
     }
 
     [Fact]
-    public void MergeVersionInfo_MergesModernArgumentsAndRetainsDefaultUserJvm()
+    public void ResolveVersionInfo_UsesManifestPatchAndRetainsDefaultUserJvm()
     {
         var original = new VersionInfo
         {
@@ -163,11 +168,15 @@ public class FabricInstallerTests : IDisposable
             "jvm": ["-Dfabric=true"],
             "default-user-jvm": ["-XX:+UseZGC"]
           },
-          "libraries": []
+                    "libraries": [
+                        {
+                            "name": "net.fabricmc:fabric-loader:0.15.0"
+                        }
+                    ]
         }
         """);
 
-        var method = typeof(FabricInstaller).GetMethod("MergeVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
+        var method = typeof(FabricInstaller).GetMethod("ResolveVersionInfo", BindingFlags.Instance | BindingFlags.NonPublic);
 
         Assert.NotNull(method);
 
@@ -175,6 +184,7 @@ public class FabricInstallerTests : IDisposable
 
         Assert.NotNull(merged.Arguments);
         Assert.Null(merged.MinecraftArguments);
+        Assert.Equal("1.20", merged.Assets);
         Assert.Collection(
             merged.Arguments!.Game!,
             argument => Assert.Equal("--username", argument),
@@ -186,6 +196,9 @@ public class FabricInstallerTests : IDisposable
             merged.Arguments.DefaultUserJvm!,
             argument => Assert.Equal("-XX:+UseG1GC", argument),
             argument => Assert.Equal("-XX:+UseZGC", argument));
+        Assert.Equal(
+            "https://maven.fabricmc.net/net/fabricmc/fabric-loader/0.15.0/fabric-loader-0.15.0.jar",
+            merged.Libraries![0].Downloads!.Artifact!.Url);
     }
 
     #endregion
