@@ -41,4 +41,25 @@ public class VersionLibraryMergeHelperTests
             "org.lwjgl:lwjgl",
             VersionLibraryMergeHelper.GetLibraryConflictKey("org.lwjgl:lwjgl:3.3.1"));
     }
+
+    [Fact]
+    public void MergeLibraries_ShouldKeepDistinctClassifierEntriesWhileResolvingSameClassifierConflicts()
+    {
+        var preferredLibraries = new List<Library>
+        {
+            new() { Name = "org.lwjgl:lwjgl-glfw:3.3.1:natives-windows" }
+        };
+        var fallbackLibraries = new List<Library>
+        {
+            new() { Name = "org.lwjgl:lwjgl-glfw:3.3.1" },
+            new() { Name = "org.lwjgl:lwjgl-glfw:3.3.0:natives-windows" }
+        };
+
+        var mergedLibraries = VersionLibraryMergeHelper.MergeLibraries(preferredLibraries, fallbackLibraries);
+
+        Assert.Collection(
+            mergedLibraries,
+            library => Assert.Equal("org.lwjgl:lwjgl-glfw:3.3.1:natives-windows", library.Name),
+            library => Assert.Equal("org.lwjgl:lwjgl-glfw:3.3.1", library.Name));
+    }
 }

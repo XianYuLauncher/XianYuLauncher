@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.VersionAnalysis.Models;
 
 namespace XianYuLauncher.Core.VersionAnalysis
@@ -59,7 +60,7 @@ namespace XianYuLauncher.Core.VersionAnalysis
                             using (var reader = new StreamReader(stream))
                             {
                                 string json = reader.ReadToEnd();
-                                var info = JsonConvert.DeserializeObject<JarVersionInfo>(json);
+                                var info = VersionManifestJsonHelper.DeserializeJarVersionInfo(json);
                                 
                                 // 严格使用 'id' 字段，它是标准的版本标识 (如 "26.1-snapshot-1")
                                 // 'name' 字段 (如 "26.1 Snapshot 1") 大多是显示用途，包含空格等非标准字符，不可用于逻辑判断

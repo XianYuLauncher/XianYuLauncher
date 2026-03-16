@@ -180,7 +180,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
             
             // 保存原版JSON到临时目录
             var tempJsonPath = Path.Combine(tempOriginalVersionDirectory, $"{minecraftVersionId}.json");
-            var originalJsonContent = JsonConvert.SerializeObject(originalVersionInfo, Formatting.Indented);
+            var originalJsonContent = VersionManifestJsonHelper.SerializeVersionJson(originalVersionInfo);
             await File.WriteAllTextAsync(tempJsonPath, originalJsonContent, cancellationToken);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 60));
@@ -249,7 +249,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
                 if (File.Exists(installedJsonPath))
                 {
                     var installedJsonContent = await File.ReadAllTextAsync(installedJsonPath, cancellationToken);
-                    var installedVersionInfo = JsonConvert.DeserializeObject<VersionInfo>(installedJsonContent);
+                    var installedVersionInfo = VersionManifestJsonHelper.DeserializeVersionInfo(installedJsonContent);
                     
                     Logger.LogInformation("OptiFine 安装器生成的 mainClass: {MainClass}", installedVersionInfo?.MainClass ?? "null");
                     System.Diagnostics.Debug.WriteLine($"[OptiFineInstaller] OptiFine mainClass: {installedVersionInfo?.MainClass ?? "null"}");

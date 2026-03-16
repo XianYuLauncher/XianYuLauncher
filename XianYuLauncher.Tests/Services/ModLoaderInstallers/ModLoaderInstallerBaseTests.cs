@@ -92,7 +92,7 @@ public sealed class ModLoaderInstallerBaseTests : IDisposable
 
         protected override IDownloadSource? GetLibraryDownloadSource() => _downloadSource;
 
-        public Task SaveVersionJsonPublicAsync(string versionDirectory, string versionId, object versionInfo)
+        public Task SaveVersionJsonPublicAsync(string versionDirectory, string versionId, VersionInfo versionInfo)
         {
             return SaveVersionJsonAsync(versionDirectory, versionId, versionInfo);
         }

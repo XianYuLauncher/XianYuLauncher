@@ -220,7 +220,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 {
                     _logger.LogInformation("从本地文件获取{ModLoaderType}版本信息: {JsonPath}", modLoaderType, jsonPath);
                     string jsonContent = await File.ReadAllTextAsync(jsonPath);
-                    var modLoaderVersionInfo = JsonConvert.DeserializeObject<VersionInfo>(jsonContent);
+                    var modLoaderVersionInfo = VersionManifestJsonHelper.DeserializeVersionInfo(jsonContent);
                     
                     // 处理继承关系
                     if (!string.IsNullOrEmpty(modLoaderVersionInfo.InheritsFrom))
@@ -294,7 +294,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             {
                 _logger.LogInformation("从本地文件获取Minecraft版本信息: {JsonPath}", jsonPath);
                 string jsonContent = await File.ReadAllTextAsync(jsonPath);
-                var localVersionInfo = JsonConvert.DeserializeObject<VersionInfo>(jsonContent);
+                var localVersionInfo = VersionManifestJsonHelper.DeserializeVersionInfo(jsonContent);
                 return localVersionInfo;
             }
             
@@ -321,7 +321,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                         // 添加Debug输出，显示获取到的原始JSON内容（前500个字符）
                         System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取到Minecraft版本{versionId}的原始JSON内容:\n{response.Substring(0, Math.Min(500, response.Length))}...");
                         
-                        var apiVersionInfo = JsonConvert.DeserializeObject<VersionInfo>(response);
+                        var apiVersionInfo = VersionManifestJsonHelper.DeserializeVersionInfo(response);
                         _logger.LogInformation("成功获取Minecraft版本{VersionId}的详细信息", versionId);
                         return apiVersionInfo;
                     }

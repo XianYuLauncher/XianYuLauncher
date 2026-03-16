@@ -71,7 +71,7 @@ public class VersionInfoManager : IVersionInfoManager
                 versionManifestUrl,
                 cancellationToken);
 
-            var manifest = JsonConvert.DeserializeObject<VersionManifest>(jsonContent);
+            var manifest = VersionManifestJsonHelper.DeserializeVersionManifest(jsonContent);
             if (manifest == null)
             {
                 throw new VersionNotFoundException("无法解析版本清单");
@@ -328,7 +328,7 @@ public class VersionInfoManager : IVersionInfoManager
         try
         {
             var jsonContent = await File.ReadAllTextAsync(jsonPath);
-            var versionInfo = JsonConvert.DeserializeObject<VersionInfo>(jsonContent);
+            var versionInfo = VersionManifestJsonHelper.DeserializeVersionInfo(jsonContent);
             return versionInfo;
         }
         catch (Exception ex)
@@ -354,7 +354,7 @@ public class VersionInfoManager : IVersionInfoManager
         }
 
         var jsonContent = await _downloadManager.DownloadStringAsync(versionEntry.Url, cancellationToken);
-        var versionInfo = JsonConvert.DeserializeObject<VersionInfo>(jsonContent);
+        var versionInfo = VersionManifestJsonHelper.DeserializeVersionInfo(jsonContent);
 
         if (versionInfo == null)
         {
