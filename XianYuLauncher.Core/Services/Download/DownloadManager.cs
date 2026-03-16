@@ -74,7 +74,19 @@ public class DownloadManager : IDownloadManager
         Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
-        return DownloadFileInternalAsync(url, targetPath, expectedSha1, progressCallback, null, cancellationToken);
+        return DownloadFileInternalAsync(url, targetPath, expectedSha1, progressCallback, null, true, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<DownloadResult> DownloadFileAsync(
+        string url,
+        string targetPath,
+        string? expectedSha1,
+        Action<DownloadProgressStatus>? progressCallback,
+        bool allowShardedDownload,
+        CancellationToken cancellationToken = default)
+    {
+        return DownloadFileInternalAsync(url, targetPath, expectedSha1, progressCallback, null, allowShardedDownload, cancellationToken);
     }
 
     private async Task<DownloadResult> DownloadFileInternalAsync(
@@ -83,6 +95,7 @@ public class DownloadManager : IDownloadManager
         string? expectedSha1 = null,
         Action<DownloadProgressStatus>? progressCallback = null,
         int? maxConcurrency = null,
+        bool allowShardedDownload = true,
         CancellationToken cancellationToken = default)
     {
         int retryCount = 0;
@@ -107,11 +120,16 @@ public class DownloadManager : IDownloadManager
                     await Task.Delay(delayMs, cancellationToken);
                 }
 
-                var contentLength = await GetContentLengthAsync(url, cancellationToken);
-                bool useShardedDownload = contentLength.HasValue &&
-                                          contentLength.Value > ShardingThreshold &&
-                                          threadCount > 1 &&
-                                          await CanUseShardedDownloadAsync(url, contentLength.Value, cancellationToken);
+                long? contentLength = null;
+                bool useShardedDownload = false;
+
+                if (allowShardedDownload && threadCount > 1)
+                {
+                    contentLength = await GetContentLengthAsync(url, cancellationToken);
+                    useShardedDownload = contentLength.HasValue &&
+                                         contentLength.Value > ShardingThreshold &&
+                                         await CanUseShardedDownloadAsync(url, contentLength.Value, cancellationToken);
+                }
                 
                 if (useShardedDownload)
                 {
@@ -248,6 +266,7 @@ public class DownloadManager : IDownloadManager
                     task.ExpectedSha1,
                     null, // 不监听单个文件进度
                     1,    // 强制单文件并发数为1 (禁用内部分片并发)
+                    false,
                     ct);
 
                 results.Enqueue(result);
@@ -308,14 +327,15 @@ public class DownloadManager : IDownloadManager
     {
         try {
             using var request = new HttpRequestMessage(HttpMethod.Head, url);
-            if (IsBmclapiUrl(url)) request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             if (response.IsSuccessStatusCode) {
                 return response.Content.Headers.ContentLength;
             }
         } catch (OperationCanceledException) when (ct.IsCancellationRequested) {
             throw;
-        } catch { } // Fallback
+        } catch (Exception ex) {
+            _logger.LogDebug(ex, "获取文件长度失败，回退直连下载: {Url}", url);
+        }
         return null;
     }
 
@@ -348,7 +368,6 @@ public class DownloadManager : IDownloadManager
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            if (IsBmclapiUrl(url)) request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
             request.Headers.Range = new RangeHeaderValue(0, probeEnd);
 
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
@@ -447,7 +466,6 @@ public class DownloadManager : IDownloadManager
         EnsureDirectory(targetPath);
         try {
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            if (IsBmclapiUrl(url)) request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             response.EnsureSuccessStatusCode();
 
@@ -560,7 +578,6 @@ public class DownloadManager : IDownloadManager
         while (retry <= maxRetries) {
             try {
                 using var request = new HttpRequestMessage(HttpMethod.Get, url);
-                if (IsBmclapiUrl(url)) request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
                 request.Headers.Range = new RangeHeaderValue(start, end);
                 using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
                 
@@ -617,7 +634,6 @@ public class DownloadManager : IDownloadManager
     }
     private void CleanupFile(string path) { if (File.Exists(path)) try { File.Delete(path); } catch { } }
     private void MoveFile(string temp, string target) { if (File.Exists(target)) File.Delete(target); File.Move(temp, target); }
-    private static bool IsBmclapiUrl(string url) => url?.Contains("bmclapi", StringComparison.OrdinalIgnoreCase) == true;
 
     private static HttpClient CreateHttpClient(HttpMessageHandler? httpMessageHandler = null)
     {

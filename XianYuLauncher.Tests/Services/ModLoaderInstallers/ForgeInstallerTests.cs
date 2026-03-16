@@ -173,10 +173,10 @@ public class ForgeInstallerTests : IDisposable
         string primaryUrl = _downloadSourceFactory.GetForgeSource().GetLibraryUrl(library.Name, officialUrl);
 
         _mockDownloadManager
-            .Setup(manager => manager.DownloadFileAsync(primaryUrl, targetPath, "sha1", null, It.IsAny<CancellationToken>()))
+            .Setup(manager => manager.DownloadFileAsync(primaryUrl, targetPath, "sha1", null, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(DownloadResult.Failed(primaryUrl, "HTTP 500"));
         _mockDownloadManager
-            .Setup(manager => manager.DownloadFileAsync(officialUrl, targetPath, "sha1", null, It.IsAny<CancellationToken>()))
+            .Setup(manager => manager.DownloadFileAsync(officialUrl, targetPath, "sha1", null, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(DownloadResult.Succeeded(targetPath, officialUrl));
 
         var method = typeof(ForgeInstaller).GetMethod("DownloadInstallProfileLibrariesAsync", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -194,10 +194,10 @@ public class ForgeInstallerTests : IDisposable
         await task;
 
         _mockDownloadManager.Verify(
-            manager => manager.DownloadFileAsync(primaryUrl, targetPath, "sha1", null, It.IsAny<CancellationToken>()),
+            manager => manager.DownloadFileAsync(primaryUrl, targetPath, "sha1", null, false, It.IsAny<CancellationToken>()),
             Times.Once);
         _mockDownloadManager.Verify(
-            manager => manager.DownloadFileAsync(officialUrl, targetPath, "sha1", null, It.IsAny<CancellationToken>()),
+            manager => manager.DownloadFileAsync(officialUrl, targetPath, "sha1", null, false, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -232,7 +232,7 @@ public class ForgeInstallerTests : IDisposable
         string primaryUrl = _downloadSourceFactory.GetForgeSource().GetLibraryUrl(library.Name, officialUrl);
 
         _mockDownloadManager
-            .Setup(manager => manager.DownloadFileAsync(It.IsAny<string>(), targetPath, "sha1", null, It.IsAny<CancellationToken>()))
+            .Setup(manager => manager.DownloadFileAsync(It.IsAny<string>(), targetPath, "sha1", null, false, It.IsAny<CancellationToken>()))
             .ReturnsAsync(DownloadResult.Failed(primaryUrl, "HTTP 500"));
 
         var method = typeof(ForgeInstaller).GetMethod("DownloadInstallProfileLibrariesAsync", BindingFlags.Instance | BindingFlags.NonPublic);

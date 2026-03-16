@@ -170,6 +170,40 @@ public sealed class DownloadManagerTests : IDisposable
         rangeRequests.Count(range => range is not null).Should().Be(1);
     }
 
+    [Fact]
+    public async Task DownloadFileAsync_AllowShardedDownloadFalse_ShouldSkipHeadAndRangeProbe()
+    {
+        byte[] content = CreatePayload(12 * 1024 * 1024);
+        string expectedSha1 = ComputeSha1(content);
+        var methods = new List<HttpMethod>();
+        var rangeRequests = new List<string?>();
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            methods.Add(request.Method);
+            rangeRequests.Add(request.Headers.Range?.ToString());
+
+            request.Method.Should().Be(HttpMethod.Get);
+            request.Headers.Range.Should().BeNull();
+
+            return Task.FromResult(CreateDirectResponse(content));
+        });
+
+        var downloadManager = CreateDownloadManager(handler, shardCount: 4);
+        string targetPath = Path.Combine(_testDirectory, "direct-only.jar");
+
+        DownloadResult result = await downloadManager.DownloadFileAsync(
+            "https://downloads.example.com/assets/library.jar",
+            targetPath,
+            expectedSha1,
+            progressCallback: null,
+            allowShardedDownload: false);
+
+        result.Success.Should().BeTrue();
+        File.ReadAllBytes(targetPath).Should().Equal(content);
+        methods.Should().ContainSingle().Which.Should().Be(HttpMethod.Get);
+        rangeRequests.Should().ContainSingle().Which.Should().BeNull();
+    }
+
     private static DownloadManager CreateDownloadManager(HttpMessageHandler handler, int shardCount)
     {
         var localSettingsServiceMock = new Mock<ILocalSettingsService>();

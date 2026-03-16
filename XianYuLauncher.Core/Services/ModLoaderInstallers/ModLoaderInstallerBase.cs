@@ -317,7 +317,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
     }
 
     /// <summary>
-    /// 构建库文件下载URL
+    /// 构建库文件下载计划，包含主下载源、官方回退源和目标路径。
     /// </summary>
     protected virtual LibraryDownloadPlan? BuildLibraryDownloadPlan(ModLoaderLibrary library, string targetPath)
     {
@@ -382,6 +382,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
                         plan.TargetPath,
                         plan.ExpectedSha1,
                         null,
+                        false,
                         ct);
 
                     if (!result.Success &&
@@ -395,6 +396,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
                             plan.TargetPath,
                             plan.ExpectedSha1,
                             null,
+                            false,
                             ct);
                     }
 
