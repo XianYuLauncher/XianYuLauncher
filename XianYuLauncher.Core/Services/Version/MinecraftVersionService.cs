@@ -211,132 +211,42 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     modLoaderType, versionId, versionConfig.ModLoaderVersion);
                 System.Diagnostics.Debug.WriteLine($"[MinecraftVersionService] 深度分析结果: {modLoaderType}, Version: {versionConfig.ModLoaderVersion}");
             }
-            
-            if (isModLoaderVersion)
-            {
-                // 从本地找到ModLoader版本JSON文件
-                
-                if (File.Exists(jsonPath))
-                {
-                    _logger.LogInformation("从本地文件获取{ModLoaderType}版本信息: {JsonPath}", modLoaderType, jsonPath);
-                    string jsonContent = await File.ReadAllTextAsync(jsonPath);
-                    var modLoaderVersionInfo = VersionManifestJsonHelper.DeserializeVersionInfo(jsonContent);
-                    
-                    // 处理继承关系
-                    if (!string.IsNullOrEmpty(modLoaderVersionInfo.InheritsFrom))
-                    {
-                        _logger.LogInformation("{ModLoaderType}版本{VersionId}继承自{InheritsFrom}，正在获取父版本信息", 
-                            modLoaderType, versionId, modLoaderVersionInfo.InheritsFrom);
-                        // 递归获取父版本信息，但不允许网络请求
-                        try
-                        {
-                            var parentVersionInfo = await GetVersionInfoAsync(modLoaderVersionInfo.InheritsFrom, minecraftDirectory, allowNetwork: false);
-                            
-                            // 合并版本信息
-                            modLoaderVersionInfo.Libraries = VersionLibraryMergeHelper.MergeLibraries(
-                                modLoaderVersionInfo.Libraries,
-                                parentVersionInfo.Libraries);
-                            
-                            // 合并其他必要的属性
-                            if (string.IsNullOrEmpty(modLoaderVersionInfo.MainClass))
-                                modLoaderVersionInfo.MainClass = parentVersionInfo.MainClass;
-                            if (modLoaderVersionInfo.Arguments == null)
-                                modLoaderVersionInfo.Arguments = parentVersionInfo.Arguments;
-                            if (modLoaderVersionInfo.AssetIndex == null)
-                                modLoaderVersionInfo.AssetIndex = parentVersionInfo.AssetIndex;
-                            if (string.IsNullOrEmpty(modLoaderVersionInfo.Assets))
-                                modLoaderVersionInfo.Assets = parentVersionInfo.Assets;
-                            if (modLoaderVersionInfo.Downloads == null)
-                                modLoaderVersionInfo.Downloads = parentVersionInfo.Downloads;
-                            if (modLoaderVersionInfo.JavaVersion == null)
-                                modLoaderVersionInfo.JavaVersion = parentVersionInfo.JavaVersion;
-                            if (string.IsNullOrEmpty(modLoaderVersionInfo.Type))
-                                modLoaderVersionInfo.Type = parentVersionInfo.Type;
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogWarning("获取父版本信息失败，但继续执行，假设所有必要信息都已包含在{ModLoaderType}版本信息中: {ExceptionMessage}", 
-                                modLoaderType, ex.Message);
-                            // 如果获取父版本信息失败，继续执行，假设ModLoader版本信息已经包含了所有必要的信息
-                        }
-                    }
-                    
-                    // 修复ModLoader依赖库的URL - 确保所有依赖库都有完整的下载URL
-                    if (modLoaderVersionInfo.Libraries != null)
-                    {
-                        foreach (var library in modLoaderVersionInfo.Libraries)
-                        {
-                            if (library.Downloads?.Artifact?.Url != null)
-                            {
-                                string? fixedUrl = LibraryDownloadUrlHelper.ResolveArtifactUrl(
-                                    library.Name,
-                                    library.Downloads.Artifact.Url);
 
-                                if (!string.IsNullOrEmpty(fixedUrl) && fixedUrl != library.Downloads.Artifact.Url)
-                                {
-                                    _logger.LogInformation("修复{ModLoaderType}依赖库URL: {OldUrl} -> {NewUrl}", 
-                                        modLoaderType, 
-                                        library.Downloads.Artifact.Url, fixedUrl);
-                                    library.Downloads.Artifact.Url = fixedUrl;
-                                }
-                            }
-                        }
-                    }
-                    
-                    return modLoaderVersionInfo;
-                }
-            }
-            
-            // 2. 尝试从本地查找非Fabric版本
-            
-            
             if (File.Exists(jsonPath))
             {
-                _logger.LogInformation("从本地文件获取Minecraft版本信息: {JsonPath}", jsonPath);
-                string jsonContent = await File.ReadAllTextAsync(jsonPath);
-                var localVersionInfo = VersionManifestJsonHelper.DeserializeVersionInfo(jsonContent);
-                return localVersionInfo;
+                _logger.LogInformation("从统一解析路径获取本地Minecraft版本信息: {JsonPath}", jsonPath);
             }
-            
-            // 3. 如果本地文件不存在，才从API获取（仅当允许网络请求时）
-            if (allowNetwork)
-            {
-                try
-                {
-                    using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10)))
-                    {
-                        var manifest = await GetVersionManifestAsync();
-                        var versionEntry = manifest.Versions.Find(v => v.Id == versionId);
-                        if (versionEntry == null)
-                        {
-                            _logger.LogWarning("未找到Minecraft版本{VersionId}", versionId);
-                            throw new Exception($"Version {versionId} not found");
-                        }
 
-                        var downloadSource = _downloadSourceFactory.GetVersionManifestSource();
-                        var versionInfoUrl = downloadSource.GetVersionInfoUrl(versionId, versionEntry.Url);
-                        
-                        var response = await _downloadManager.DownloadStringAsync(versionInfoUrl, cts.Token);
-                        
-                        // 添加Debug输出，显示获取到的原始JSON内容（前500个字符）
-                        System.Diagnostics.Debug.WriteLine($"[DEBUG] 获取到Minecraft版本{versionId}的原始JSON内容:\n{response.Substring(0, Math.Min(500, response.Length))}...");
-                        
-                        var apiVersionInfo = VersionManifestJsonHelper.DeserializeVersionInfo(response);
-                        _logger.LogInformation("成功获取Minecraft版本{VersionId}的详细信息", versionId);
-                        return apiVersionInfo;
+            var resolvedVersionInfo = await _versionInfoManager.GetVersionInfoAsync(
+                versionId,
+                defaultMinecraftDirectory,
+                allowNetwork);
+
+            if (isModLoaderVersion && resolvedVersionInfo.Libraries != null)
+            {
+                foreach (var library in resolvedVersionInfo.Libraries)
+                {
+                    if (library.Downloads?.Artifact?.Url == null)
+                    {
+                        continue;
+                    }
+
+                    string? fixedUrl = LibraryDownloadUrlHelper.ResolveArtifactUrl(
+                        library.Name,
+                        library.Downloads.Artifact.Url);
+
+                    if (!string.IsNullOrEmpty(fixedUrl) && fixedUrl != library.Downloads.Artifact.Url)
+                    {
+                        _logger.LogInformation("修复{ModLoaderType}依赖库URL: {OldUrl} -> {NewUrl}",
+                            modLoaderType,
+                            library.Downloads.Artifact.Url,
+                            fixedUrl);
+                        library.Downloads.Artifact.Url = fixedUrl;
                     }
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "从网络获取Minecraft版本信息失败，尝试使用本地缓存");
-                    throw new Exception($"Failed to get version info for {versionId} from network, and no local cache found", ex);
-                }
             }
-            else
-            {
-                // 不允许网络请求且本地文件不存在
-                throw new Exception($"Local version info not found for {versionId} and network requests are not allowed");
-            }
+
+            return resolvedVersionInfo;
         }
         catch (Exception ex)
         {

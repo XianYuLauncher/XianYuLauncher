@@ -15,13 +15,15 @@ internal static class VersionManagementServiceExtensions
     {
         services.AddSingleton<ILibraryManager, LibraryManager>();
         services.AddSingleton<IAssetManager, AssetManager>();
+        services.AddSingleton<IUnifiedVersionManifestResolver, UnifiedVersionManifestResolver>();
 
         services.AddSingleton<IVersionInfoManager>(sp =>
         {
             var downloadManager = sp.GetRequiredService<IDownloadManager>();
             var downloadSourceFactory = sp.GetRequiredService<DownloadSourceFactory>();
+            var manifestResolver = sp.GetRequiredService<IUnifiedVersionManifestResolver>();
             var logger = sp.GetRequiredService<ILogger<VersionInfoManager>>();
-            return new VersionInfoManager(downloadManager, downloadSourceFactory, logger);
+            return new VersionInfoManager(downloadManager, downloadSourceFactory, manifestResolver, logger);
         });
 
         services.AddSingleton<IJavaRuntimeService, JavaRuntimeService>();

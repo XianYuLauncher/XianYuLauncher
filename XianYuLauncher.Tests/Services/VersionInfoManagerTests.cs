@@ -21,6 +21,7 @@ public class VersionInfoManagerTests : IDisposable
     private readonly Mock<IDownloadManager> _mockDownloadManager;
     private readonly Mock<ILogger<VersionInfoManager>> _mockLogger;
     private readonly DownloadSourceFactory _downloadSourceFactory;
+    private readonly IUnifiedVersionManifestResolver _manifestResolver;
     private readonly VersionInfoManager _versionInfoManager;
     private readonly string _testDirectory;
 
@@ -29,7 +30,8 @@ public class VersionInfoManagerTests : IDisposable
         _mockDownloadManager = new Mock<IDownloadManager>();
         _mockLogger = new Mock<ILogger<VersionInfoManager>>();
         _downloadSourceFactory = new DownloadSourceFactory();
-        _versionInfoManager = new VersionInfoManager(_mockDownloadManager.Object, _downloadSourceFactory, _mockLogger.Object);
+        _manifestResolver = new UnifiedVersionManifestResolver();
+        _versionInfoManager = new VersionInfoManager(_mockDownloadManager.Object, _downloadSourceFactory, _manifestResolver, _mockLogger.Object);
         _testDirectory = Path.Combine(Path.GetTempPath(), $"VersionInfoManagerTests_{Guid.NewGuid()}");
         Directory.CreateDirectory(_testDirectory);
     }
@@ -419,6 +421,58 @@ public class VersionInfoManagerTests : IDisposable
         _mockDownloadManager.Verify(
             manager => manager.DownloadStringAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task GetVersionInfoAsync_LocalVersionWithInheritance_ResolvesThroughUnifiedResolver()
+    {
+        var parentVersionId = "1.20.4";
+        var parentVersionDir = Path.Combine(_testDirectory, "versions", parentVersionId);
+        Directory.CreateDirectory(parentVersionDir);
+
+        var parentVersionInfo = new VersionInfo
+        {
+            Id = parentVersionId,
+            MainClass = "net.minecraft.client.main.Main",
+            Assets = "1.20",
+            Libraries = new List<Library>
+            {
+                new() { Name = "com.mojang:brigadier:1.0.18" }
+            }
+        };
+
+        await File.WriteAllTextAsync(
+            Path.Combine(parentVersionDir, $"{parentVersionId}.json"),
+            VersionManifestJsonHelper.SerializeVersionJson(parentVersionInfo));
+
+        var childVersionId = "fabric-1.20.4";
+        var childVersionDir = Path.Combine(_testDirectory, "versions", childVersionId);
+        Directory.CreateDirectory(childVersionDir);
+
+        var childVersionInfo = new VersionInfo
+        {
+            Id = childVersionId,
+            InheritsFrom = parentVersionId,
+            MainClass = "net.fabricmc.loader.impl.launch.knot.KnotClient",
+            Libraries = new List<Library>
+            {
+                new() { Name = "net.fabricmc:fabric-loader:0.15.0" }
+            }
+        };
+
+        await File.WriteAllTextAsync(
+            Path.Combine(childVersionDir, $"{childVersionId}.json"),
+            JsonConvert.SerializeObject(childVersionInfo, Formatting.Indented));
+
+        var result = await _versionInfoManager.GetVersionInfoAsync(childVersionId, _testDirectory, allowNetwork: false);
+
+        Assert.Equal(childVersionId, result.Id);
+        Assert.Equal("net.fabricmc.loader.impl.launch.knot.KnotClient", result.MainClass);
+        Assert.Equal("1.20", result.Assets);
+        Assert.Collection(
+            result.Libraries!,
+            library => Assert.Equal("net.fabricmc:fabric-loader:0.15.0", library.Name),
+            library => Assert.Equal("com.mojang:brigadier:1.0.18", library.Name));
     }
 
     [Fact]
