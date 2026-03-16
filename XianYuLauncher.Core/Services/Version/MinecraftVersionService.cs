@@ -192,9 +192,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             
             // 初始化目录变量（使用与GetInstalledVersionsAsync相同的默认路径）
             string defaultMinecraftDirectory = minecraftDirectory ?? _fileService.GetMinecraftDataPath();
-            string versionsDirectory = Path.Combine(defaultMinecraftDirectory, MinecraftPathConsts.Versions);
-            string versionDirectory = Path.Combine(versionsDirectory, versionId);
-            string jsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
+            string versionDirectory = Path.Combine(defaultMinecraftDirectory, MinecraftPathConsts.Versions, versionId);
             
             // 1. 使用 VersionInfoService 进行深度分析
             // 这将涵盖：读取配置文件、分析 arguments 参数、分析 libraries 依赖库、分析 Jar 主类
@@ -210,11 +208,6 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 _logger.LogInformation("经深度分析识别为 {ModLoaderType} 版本: {VersionId} (LoaderVer: {LoaderVer})", 
                     modLoaderType, versionId, versionConfig.ModLoaderVersion);
                 System.Diagnostics.Debug.WriteLine($"[MinecraftVersionService] 深度分析结果: {modLoaderType}, Version: {versionConfig.ModLoaderVersion}");
-            }
-
-            if (File.Exists(jsonPath))
-            {
-                _logger.LogInformation("从统一解析路径获取本地Minecraft版本信息: {JsonPath}", jsonPath);
             }
 
             var resolvedVersionInfo = await _versionInfoManager.GetVersionInfoAsync(
