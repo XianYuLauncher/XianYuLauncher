@@ -59,6 +59,24 @@ public interface IDownloadManager
         string? expectedSha1 = null,
         Action<DownloadProgressStatus>? progressCallback = null, 
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 下载单个文件到指定路径，并可显式控制是否允许分片下载。
+    /// </summary>
+    /// <param name="url">下载URL</param>
+    /// <param name="targetPath">目标文件路径</param>
+    /// <param name="expectedSha1">预期的SHA1哈希值（可选，用于验证）</param>
+    /// <param name="progressCallback">进度回调</param>
+    /// <param name="allowShardedDownload">是否允许在大文件场景下使用分片下载</param>
+    /// <param name="cancellationToken">取消令牌</param>
+    /// <returns>下载结果</returns>
+    Task<DownloadResult> DownloadFileAsync(
+        string url,
+        string targetPath,
+        string? expectedSha1,
+        Action<DownloadProgressStatus>? progressCallback,
+        bool allowShardedDownload,
+        CancellationToken cancellationToken = default);
         
     /// <summary>
     /// 下载文件内容到内存

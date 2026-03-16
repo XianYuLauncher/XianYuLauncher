@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -19,6 +21,13 @@ namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 /// </summary>
 public abstract class ModLoaderInstallerBase : IModLoaderInstaller
 {
+    protected sealed record LibraryDownloadPlan(
+        string LibraryName,
+        string PrimaryUrl,
+        string? FallbackUrl,
+        string TargetPath,
+        string? ExpectedSha1);
+
     protected readonly IDownloadManager DownloadManager;
     protected readonly ILibraryManager LibraryManager;
     protected readonly IVersionInfoManager VersionInfoManager;
@@ -273,7 +282,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         Action<double>? progressCallback,
         CancellationToken cancellationToken)
     {
-        var downloadTasks = new List<DownloadTask>();
+        var downloadPlans = new List<LibraryDownloadPlan>();
 
         foreach (var library in libraries)
         {
@@ -287,73 +296,138 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
                 continue;
             }
 
-            var downloadUrl = BuildLibraryDownloadUrl(library);
-            if (string.IsNullOrEmpty(downloadUrl))
+            var downloadPlan = BuildLibraryDownloadPlan(library, libraryPath);
+            if (downloadPlan == null)
             {
                 Logger.LogWarning("无法构建库文件下载URL: {LibraryName}", library.Name);
                 continue;
             }
 
-            downloadTasks.Add(new DownloadTask
-            {
-                Url = downloadUrl,
-                TargetPath = libraryPath,
-                ExpectedSha1 = library.Sha1,
-                Description = $"库文件: {library.Name}",
-                Priority = 0
-            });
+            downloadPlans.Add(downloadPlan);
         }
 
-        if (downloadTasks.Count == 0)
+        if (downloadPlans.Count == 0)
         {
             Logger.LogInformation("所有库文件已存在，无需下载");
             progressCallback?.Invoke(100);
             return;
         }
 
-        Logger.LogInformation("开始下载 {Count} 个库文件", downloadTasks.Count);
-
-        var results = await DownloadManager.DownloadFilesAsync(
-            downloadTasks,
-            maxConcurrency: 4,
-            progressCallback != null ? (Action<DownloadProgressStatus>)(status => progressCallback(status.Percent)) : null,
-            cancellationToken);
-
-        var failedCount = 0;
-        foreach (var result in results)
-        {
-            if (!result.Success)
-            {
-                failedCount++;
-                Logger.LogWarning("库文件下载失败: {Url}, 错误: {Error}", result.Url, result.ErrorMessage);
-            }
-        }
-
-        if (failedCount > 0)
-        {
-            Logger.LogWarning("部分库文件下载失败: {FailedCount}/{TotalCount}", failedCount, downloadTasks.Count);
-        }
+        await DownloadLibraryPlansAsync(downloadPlans, progressCallback, cancellationToken);
     }
 
     /// <summary>
-    /// 构建库文件下载URL
+    /// 构建库文件下载计划，包含主下载源、官方回退源和目标路径。
     /// </summary>
-    protected virtual string? BuildLibraryDownloadUrl(ModLoaderLibrary library)
+    protected virtual LibraryDownloadPlan? BuildLibraryDownloadPlan(ModLoaderLibrary library, string targetPath)
     {
-        var originalUrl = LibraryDownloadUrlHelper.ResolveArtifactUrl(
+        var officialUrl = LibraryDownloadUrlHelper.ResolveArtifactUrl(
             library.Name,
             library.Url,
             GetLibraryRepositoryProfile());
 
-        if (string.IsNullOrWhiteSpace(originalUrl))
+        if (string.IsNullOrWhiteSpace(officialUrl))
         {
             return null;
         }
 
         var downloadSource = GetLibraryDownloadSource();
-        return downloadSource != null
-            ? downloadSource.GetLibraryUrl(library.Name, originalUrl)
-            : originalUrl;
+        var primaryUrl = downloadSource != null
+            ? downloadSource.GetLibraryUrl(library.Name, officialUrl)
+            : officialUrl;
+
+        return new LibraryDownloadPlan(
+            library.Name,
+            primaryUrl,
+            officialUrl,
+            targetPath,
+            library.Sha1);
+    }
+
+    protected async Task DownloadLibraryPlansAsync(
+        IEnumerable<LibraryDownloadPlan> downloadPlans,
+        Action<double>? progressCallback,
+        CancellationToken cancellationToken,
+        int maxConcurrency = 4)
+    {
+        var planList = downloadPlans
+            .GroupBy(plan => plan.TargetPath, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
+
+        if (planList.Count == 0)
+        {
+            progressCallback?.Invoke(100);
+            return;
+        }
+
+        Logger.LogInformation("开始下载 {Count} 个库文件", planList.Count);
+
+        int completedCount = 0;
+        var failures = new ConcurrentBag<string>();
+
+        await Parallel.ForEachAsync(
+            planList,
+            new ParallelOptions
+            {
+                MaxDegreeOfParallelism = Math.Max(1, maxConcurrency),
+                CancellationToken = cancellationToken
+            },
+            async (plan, ct) =>
+            {
+                try
+                {
+                    var result = await DownloadManager.DownloadFileAsync(
+                        plan.PrimaryUrl,
+                        plan.TargetPath,
+                        plan.ExpectedSha1,
+                        null,
+                        false,
+                        ct);
+
+                    if (!result.Success &&
+                        !string.IsNullOrWhiteSpace(plan.FallbackUrl) &&
+                        !string.Equals(plan.PrimaryUrl, plan.FallbackUrl, StringComparison.OrdinalIgnoreCase))
+                    {
+                        Logger.LogWarning("库文件主下载源失败，切换到官方源: {LibraryName} -> {FallbackUrl}", plan.LibraryName, plan.FallbackUrl);
+
+                        result = await DownloadManager.DownloadFileAsync(
+                            plan.FallbackUrl,
+                            plan.TargetPath,
+                            plan.ExpectedSha1,
+                            null,
+                            false,
+                            ct);
+                    }
+
+                    if (!result.Success)
+                    {
+                        Logger.LogWarning("库文件下载失败: {LibraryName}, 错误: {Error}", plan.LibraryName, result.ErrorMessage);
+                        failures.Add($"{plan.LibraryName}: {result.ErrorMessage}");
+                    }
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogWarning(ex, "库文件下载异常: {LibraryName}", plan.LibraryName);
+                    failures.Add($"{plan.LibraryName}: {ex.Message}");
+                }
+                finally
+                {
+                    var currentCompleted = Interlocked.Increment(ref completedCount);
+                    progressCallback?.Invoke((double)currentCompleted / planList.Count * 100);
+                }
+            });
+
+        if (!failures.IsEmpty)
+        {
+            var errorMessage = string.Join("; ", failures.OrderBy(message => message, StringComparer.OrdinalIgnoreCase));
+            Logger.LogWarning("部分库文件下载失败: {ErrorMessage}", errorMessage);
+            throw new InvalidOperationException($"部分库文件下载失败: {errorMessage}");
+        }
     }
 
     /// <summary>

@@ -25,11 +25,13 @@ public class DownloadManager : IDownloadManager
     private readonly HttpClient _httpClient;
     private readonly ILogger<DownloadManager> _logger;
     private readonly ILocalSettingsService _localSettingsService;
+    private readonly ConcurrentDictionary<string, bool> _rangeSupportCache = new(StringComparer.OrdinalIgnoreCase);
 
     // 默认分片下载阈值 (10MB)
     private const long ShardingThreshold = 10 * 1024 * 1024;
     // 最小分片大小 (1MB)
     private const long MinChunkSize = 1 * 1024 * 1024;
+    private const int RangeProbeSizeBytes = 1024;
     private const int DefaultMaxRetries = 3;
     private const int DefaultRetryBaseDelayMs = 1000;
     private const string DownloadThreadCountKey = "DownloadThreadCount";
@@ -37,22 +39,31 @@ public class DownloadManager : IDownloadManager
     public DownloadManager(
         ILogger<DownloadManager> logger,
         ILocalSettingsService localSettingsService)
+        : this(logger, localSettingsService, CreateHttpClient())
     {
-        _logger = logger;
-        _localSettingsService = localSettingsService;
+    }
 
-        var handler = new SocketsHttpHandler
-        {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
-            MaxConnectionsPerServer = 1000,
-            AutomaticDecompression = System.Net.DecompressionMethods.All
-        };
+    public DownloadManager(
+        ILogger<DownloadManager> logger,
+        ILocalSettingsService localSettingsService,
+        HttpMessageHandler httpMessageHandler)
+        : this(logger, localSettingsService, CreateHttpClient(httpMessageHandler))
+    {
+    }
 
-        _httpClient = new HttpClient(handler)
+    private DownloadManager(
+        ILogger<DownloadManager> logger,
+        ILocalSettingsService localSettingsService,
+        HttpClient httpClient)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _localSettingsService = localSettingsService ?? throw new ArgumentNullException(nameof(localSettingsService));
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+
+        if (!_httpClient.DefaultRequestHeaders.UserAgent.Any())
         {
-            Timeout = TimeSpan.FromMinutes(60)
-        };
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionHelper.GetUserAgent());
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(VersionHelper.GetUserAgent());
+        }
     }
 
     /// <inheritdoc/>
@@ -63,7 +74,19 @@ public class DownloadManager : IDownloadManager
         Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
-        return DownloadFileInternalAsync(url, targetPath, expectedSha1, progressCallback, null, cancellationToken);
+        return DownloadFileInternalAsync(url, targetPath, expectedSha1, progressCallback, null, true, cancellationToken);
+    }
+
+    /// <inheritdoc/>
+    public Task<DownloadResult> DownloadFileAsync(
+        string url,
+        string targetPath,
+        string? expectedSha1,
+        Action<DownloadProgressStatus>? progressCallback,
+        bool allowShardedDownload,
+        CancellationToken cancellationToken = default)
+    {
+        return DownloadFileInternalAsync(url, targetPath, expectedSha1, progressCallback, null, allowShardedDownload, cancellationToken);
     }
 
     private async Task<DownloadResult> DownloadFileInternalAsync(
@@ -72,6 +95,7 @@ public class DownloadManager : IDownloadManager
         string? expectedSha1 = null,
         Action<DownloadProgressStatus>? progressCallback = null,
         int? maxConcurrency = null,
+        bool allowShardedDownload = true,
         CancellationToken cancellationToken = default)
     {
         int retryCount = 0;
@@ -96,14 +120,18 @@ public class DownloadManager : IDownloadManager
                     await Task.Delay(delayMs, cancellationToken);
                 }
 
-                var (contentLength, supportsRange) = await GetContentInfoAsync(url, cancellationToken);
-                if (ModDownloadPlanningHelper.ShouldForceDirectDownload(url))
+                long? contentLength = null;
+                bool useShardedDownload = false;
+
+                if (allowShardedDownload && threadCount > 1)
                 {
-                    supportsRange = false;
-                    _logger.LogInformation("检测到不兼容 Range 的下载地址，回退为直连下载: {Url}", url);
+                    contentLength = await GetContentLengthAsync(url, cancellationToken);
+                    useShardedDownload = contentLength.HasValue &&
+                                         contentLength.Value > ShardingThreshold &&
+                                         await CanUseShardedDownloadAsync(url, contentLength.Value, cancellationToken);
                 }
                 
-                if (supportsRange && contentLength.HasValue && contentLength.Value > ShardingThreshold && threadCount > 1)
+                if (useShardedDownload)
                 {
                     await DownloadFileShardedAsync(url, targetPath, contentLength.Value, threadCount, progressCallback, cancellationToken);
                 }
@@ -114,7 +142,18 @@ public class DownloadManager : IDownloadManager
                 
                 if (!string.IsNullOrEmpty(expectedSha1))
                 {
-                    await ValidateFileAsync(targetPath, expectedSha1, cancellationToken);
+                    try
+                    {
+                        await ValidateFileAsync(targetPath, expectedSha1, cancellationToken);
+                    }
+                    catch (HashVerificationException ex) when (useShardedDownload)
+                    {
+                        MarkHostRangeSupport(url, false, "分片下载后 SHA1 校验失败");
+                        _logger.LogWarning(ex, "分片下载结果校验失败，回退为直连重试: {Url}", url);
+
+                        await DownloadFileDirectAsync(url, targetPath, contentLength, progressCallback, cancellationToken);
+                        await ValidateFileAsync(targetPath, expectedSha1, cancellationToken);
+                    }
                 }
 
                 _logger.LogInformation($"文件下载成功: {targetPath}");
@@ -227,6 +266,7 @@ public class DownloadManager : IDownloadManager
                     task.ExpectedSha1,
                     null, // 不监听单个文件进度
                     1,    // 强制单文件并发数为1 (禁用内部分片并发)
+                    false,
                     ct);
 
                 results.Enqueue(result);
@@ -283,19 +323,141 @@ public class DownloadManager : IDownloadManager
         return Math.Max(1, count ?? 4);
     }
 
-    private async Task<(long? ContentLength, bool SupportsRange)> GetContentInfoAsync(string url, CancellationToken ct)
+    private async Task<long?> GetContentLengthAsync(string url, CancellationToken ct)
     {
         try {
             using var request = new HttpRequestMessage(HttpMethod.Head, url);
-            if (IsBmclapiUrl(url)) request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             if (response.IsSuccessStatusCode) {
-                var supportsRange = response.Headers.AcceptRanges.Contains("bytes") || 
-                                    (response.Content.Headers.ContentLength.HasValue && response.Content.Headers.ContentLength > 0);
-                return (response.Content.Headers.ContentLength, supportsRange);
+                return response.Content.Headers.ContentLength;
             }
-        } catch { } // Fallback
-        return (null, false);
+        } catch (OperationCanceledException) when (ct.IsCancellationRequested) {
+            throw;
+        } catch (Exception ex) {
+            _logger.LogDebug(ex, "获取文件长度失败，回退直连下载: {Url}", url);
+        }
+        return null;
+    }
+
+    private async Task<bool> CanUseShardedDownloadAsync(string url, long totalBytes, CancellationToken ct)
+    {
+        string? host = GetRangeSupportCacheKey(url);
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return false;
+        }
+
+        if (_rangeSupportCache.TryGetValue(host, out bool cachedSupportsRange))
+        {
+            return cachedSupportsRange;
+        }
+
+        bool supportsRange = await ProbePartialRangeSupportAsync(url, totalBytes, ct);
+        MarkHostRangeSupport(url, supportsRange, supportsRange ? "Range 探测通过" : "Range 探测失败，回退直连");
+        return supportsRange;
+    }
+
+    private async Task<bool> ProbePartialRangeSupportAsync(string url, long totalBytes, CancellationToken ct)
+    {
+        long probeEnd = Math.Min(RangeProbeSizeBytes - 1, totalBytes - 1);
+        if (probeEnd < 0)
+        {
+            return false;
+        }
+
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Range = new RangeHeaderValue(0, probeEnd);
+
+            using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            if (response.StatusCode != HttpStatusCode.PartialContent)
+            {
+                return false;
+            }
+
+            if (!IsExpectedContentRange(response.Content.Headers.ContentRange, 0, probeEnd, totalBytes))
+            {
+                return false;
+            }
+
+            long expectedBytes = probeEnd + 1;
+            if (response.Content.Headers.ContentLength.HasValue &&
+                response.Content.Headers.ContentLength.Value != expectedBytes)
+            {
+                return false;
+            }
+
+            using var stream = await response.Content.ReadAsStreamAsync(ct);
+            var buffer = new byte[4096];
+            long totalRead = 0;
+
+            while (totalRead <= expectedBytes)
+            {
+                int bytesToRead = (int)Math.Min(buffer.Length, expectedBytes + 1 - totalRead);
+                int bytesRead = await stream.ReadAsync(buffer.AsMemory(0, bytesToRead), ct);
+                if (bytesRead == 0)
+                {
+                    break;
+                }
+
+                totalRead += bytesRead;
+                if (totalRead > expectedBytes)
+                {
+                    return false;
+                }
+            }
+
+            return totalRead == expectedBytes;
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "下载源 Range 探测失败，回退直连: {Url}", url);
+            return false;
+        }
+    }
+
+    private void MarkHostRangeSupport(string url, bool supportsRange, string reason)
+    {
+        string? host = GetRangeSupportCacheKey(url);
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return;
+        }
+
+        bool changed = !_rangeSupportCache.TryGetValue(host, out bool previousValue) || previousValue != supportsRange;
+        _rangeSupportCache[host] = supportsRange;
+
+        if (changed)
+        {
+            _logger.LogInformation(
+                "已缓存下载源 Range 能力: Host={Host}, SupportsRange={SupportsRange}, Reason={Reason}",
+                host,
+                supportsRange,
+                reason);
+        }
+    }
+
+    private static bool IsExpectedContentRange(ContentRangeHeaderValue? contentRange, long expectedStart, long expectedEnd, long totalBytes)
+    {
+        if (contentRange == null ||
+            !contentRange.HasRange ||
+            contentRange.From != expectedStart ||
+            contentRange.To != expectedEnd)
+        {
+            return false;
+        }
+
+        return !contentRange.Length.HasValue || contentRange.Length.Value == totalBytes;
+    }
+
+    private static string? GetRangeSupportCacheKey(string url)
+    {
+        return Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.Host : null;
     }
 
     private async Task DownloadFileDirectAsync(string url, string targetPath, long? knownTotalBytes, Action<DownloadProgressStatus>? progress, CancellationToken ct)
@@ -304,7 +466,6 @@ public class DownloadManager : IDownloadManager
         EnsureDirectory(targetPath);
         try {
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            if (IsBmclapiUrl(url)) request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             response.EnsureSuccessStatusCode();
 
@@ -417,7 +578,6 @@ public class DownloadManager : IDownloadManager
         while (retry <= maxRetries) {
             try {
                 using var request = new HttpRequestMessage(HttpMethod.Get, url);
-                if (IsBmclapiUrl(url)) request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
                 request.Headers.Range = new RangeHeaderValue(start, end);
                 using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
                 
@@ -474,5 +634,19 @@ public class DownloadManager : IDownloadManager
     }
     private void CleanupFile(string path) { if (File.Exists(path)) try { File.Delete(path); } catch { } }
     private void MoveFile(string temp, string target) { if (File.Exists(target)) File.Delete(target); File.Move(temp, target); }
-    private static bool IsBmclapiUrl(string url) => url?.Contains("bmclapi", StringComparison.OrdinalIgnoreCase) == true;
+
+    private static HttpClient CreateHttpClient(HttpMessageHandler? httpMessageHandler = null)
+    {
+        HttpMessageHandler handler = httpMessageHandler ?? new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+            MaxConnectionsPerServer = 1000,
+            AutomaticDecompression = DecompressionMethods.All
+        };
+
+        return new HttpClient(handler)
+        {
+            Timeout = TimeSpan.FromMinutes(60)
+        };
+    }
 }
