@@ -224,7 +224,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             var versionJsonContent = await File.ReadAllTextAsync(versionJsonPath, cancellationToken);
             Logger.LogDebug("version.json 内容长度: {Length}", versionJsonContent.Length);
             
-            var cleanroomVersionInfo = Newtonsoft.Json.JsonConvert.DeserializeObject<VersionInfo>(versionJsonContent) ?? new VersionInfo();
+            var cleanroomVersionInfo = VersionManifestJsonHelper.DeserializeVersionInfo(versionJsonContent) ?? new VersionInfo();
             Logger.LogInformation("成功解析 version.json，MainClass: {MainClass}", cleanroomVersionInfo.MainClass);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 90));

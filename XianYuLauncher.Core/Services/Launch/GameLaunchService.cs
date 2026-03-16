@@ -270,7 +270,7 @@ public class GameLaunchService : IGameLaunchService
             _logger.LogInformation("步骤 7: 读取版本信息");
             statusCallback?.Invoke("正在读取版本信息...");
             string versionJson = await File.ReadAllTextAsync(jsonPath, cancellationToken);
-            var versionInfo = JsonConvert.DeserializeObject<VersionInfo>(versionJson);
+            var versionInfo = VersionManifestJsonHelper.DeserializeVersionInfo(versionJson);
             
             if (versionInfo == null)
             {

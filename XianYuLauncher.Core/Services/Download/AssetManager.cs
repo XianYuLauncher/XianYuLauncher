@@ -360,7 +360,7 @@ public class AssetManager : IAssetManager
         try
         {
             var jsonContent = await File.ReadAllTextAsync(versionJsonPath);
-            var versionInfo = JsonConvert.DeserializeObject<VersionInfo>(jsonContent);
+            var versionInfo = VersionManifestJsonHelper.DeserializeVersionInfo(jsonContent);
             
             // 优先使用 AssetIndex.Id，其次使用 Assets 字段
             return versionInfo?.AssetIndex?.Id ?? versionInfo?.Assets ?? versionId;

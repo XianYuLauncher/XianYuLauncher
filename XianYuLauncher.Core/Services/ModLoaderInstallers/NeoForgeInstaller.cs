@@ -213,7 +213,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             }
 
             var versionJsonContent = await File.ReadAllTextAsync(versionJsonPath, cancellationToken);
-            var neoforgeVersionInfo = JsonConvert.DeserializeObject<VersionInfo>(versionJsonContent);
+            var neoforgeVersionInfo = VersionManifestJsonHelper.DeserializeVersionInfo(versionJsonContent);
 
             // 补全version.json中库的下载链接并下载
             if (neoforgeVersionInfo?.Libraries != null)

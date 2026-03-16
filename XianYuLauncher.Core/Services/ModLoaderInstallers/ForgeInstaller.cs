@@ -566,7 +566,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
         }
 
         var versionJsonContent = await File.ReadAllTextAsync(versionJsonPath, cancellationToken);
-        return JsonConvert.DeserializeObject<VersionInfo>(versionJsonContent) ?? new VersionInfo();
+        return VersionManifestJsonHelper.DeserializeVersionInfo(versionJsonContent) ?? new VersionInfo();
     }
 
     private VersionInfo MergeVersionInfo(VersionInfo original, VersionInfo? forge, List<Library> additionalLibraries)

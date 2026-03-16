@@ -171,18 +171,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
     protected async Task SaveVersionJsonAsync(string versionDirectory, string versionId, object versionInfo)
     {
         var jsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
-        var serializer = JsonSerializer.Create(new JsonSerializerSettings
-        {
-            NullValueHandling = NullValueHandling.Ignore
-        });
-        var jsonToken = JToken.FromObject(versionInfo, serializer);
-
-        if (jsonToken is JObject jsonObject)
-        {
-            jsonObject.Remove("inheritsFrom");
-        }
-
-        var jsonContent = jsonToken.ToString(Formatting.Indented);
+        var jsonContent = VersionManifestJsonHelper.SerializeVersionJson(versionInfo);
         await File.WriteAllTextAsync(jsonPath, jsonContent);
 
         Logger.LogInformation("已保存版本JSON: {JsonPath}", jsonPath);

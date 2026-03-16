@@ -72,7 +72,7 @@ public class VersionInfoService : IVersionInfoService
             try
             {
                 string jsonContent = await File.ReadAllTextAsync(jsonPath);
-                manifest = JsonConvert.DeserializeObject<MinecraftVersionManifest>(jsonContent);
+                manifest = VersionManifestJsonHelper.DeserializeMinecraftVersionManifest(jsonContent);
             }
             catch (Exception ex)
             {
