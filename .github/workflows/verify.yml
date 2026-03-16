@@ -1,0 +1,116 @@
+name: Validation
+
+on:
+  push:
+    branches:
+      - main
+      - "ci/**"
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  merge_group:
+    types:
+      - checks_requested
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validation-${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core-tests:
+    name: Core Tests
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Test XianYuLauncher.Tests
+        shell: pwsh
+        run: |
+          dotnet test XianYuLauncher.Tests/XianYuLauncher.Tests.csproj `
+            -p:WarningLevel=0 `
+            -clp:ErrorsOnly `
+            --logger "trx;LogFileName=XianYuLauncher.Tests.trx" `
+            --results-directory "$env:GITHUB_WORKSPACE\TestResults\XianYuLauncher.Tests"
+
+      - name: Test XianYuLauncher.IntegrationTests
+        shell: pwsh
+        run: |
+          dotnet test XianYuLauncher.IntegrationTests/XianYuLauncher.IntegrationTests.csproj `
+            -p:WarningLevel=0 `
+            -clp:ErrorsOnly `
+            --logger "trx;LogFileName=XianYuLauncher.IntegrationTests.trx" `
+            --results-directory "$env:GITHUB_WORKSPACE\TestResults\XianYuLauncher.IntegrationTests"
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-test-results
+          path: TestResults/**/*.trx
+          if-no-files-found: error
+
+  winui-build-smoke:
+    name: WinUI Build Smoke
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore
+        shell: pwsh
+        run: |
+          nuget restore XianYuLauncher.slnx -ConfigFile NuGet.config
+
+      - name: Build WinUI app
+        shell: pwsh
+        run: |
+          $artifactDir = Join-Path $env:GITHUB_WORKSPACE "artifacts"
+          New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+
+          msbuild XianYuLauncher/XianYuLauncher.csproj `
+            -p:Configuration=Debug `
+            -p:Platform=x64 `
+            -p:WarningLevel=0 `
+            -clp:ErrorsOnly `
+            -bl:"$artifactDir\verify-app.binlog"
+
+      - name: Upload build log
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-build-log
+          path: artifacts/verify-app.binlog
+          if-no-files-found: error
