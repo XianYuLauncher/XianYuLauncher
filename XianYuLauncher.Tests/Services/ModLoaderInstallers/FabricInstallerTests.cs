@@ -11,12 +11,10 @@ using Newtonsoft.Json.Linq;
 using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
-using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
-using XianYuLauncher.Core.Contracts.Services;
 
 namespace XianYuLauncher.Tests.Services.ModLoaderInstallers;
 

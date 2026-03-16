@@ -14,7 +14,6 @@ using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
-using XianYuLauncher.Core.Contracts.Services;
 
 namespace XianYuLauncher.Tests.Services.ModLoaderInstallers;
 

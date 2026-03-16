@@ -284,7 +284,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
         string versionId,
         bool isAddonMode)
     {
-        var manifestPatch = CreateManifestPatch(baseVersion, artifact, versionId, isAddonMode);
+        var manifestPatch = CreateManifestPatch(baseVersion, artifact, versionId);
         var resolutionResult = _manifestResolver.ResolvePatch(
             baseVersion,
             manifestPatch,
@@ -304,8 +304,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
     private static ManifestPatch CreateManifestPatch(
         VersionInfo baseVersion,
         LiteLoaderArtifact artifact,
-        string versionId,
-        bool isAddonMode)
+        string versionId)
     {
         const string tweakClass = "com.mumfrey.liteloader.launch.LiteLoaderTweaker";
         const string mainClass = "net.minecraft.launchwrapper.Launch";
