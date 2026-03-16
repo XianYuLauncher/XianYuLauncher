@@ -43,6 +43,10 @@ public class ForgeInstallerTests : IDisposable
         _manifestResolver = new UnifiedVersionManifestResolver();
         _downloadSourceFactory = new DownloadSourceFactory();
 
+        _mockDownloadManager
+            .Setup(x => x.GetConfiguredThreadCountAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(4);
+
         _forgeInstaller = new ForgeInstaller(
             _mockDownloadManager.Object,
             _mockLibraryManager.Object,

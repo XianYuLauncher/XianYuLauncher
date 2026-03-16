@@ -100,6 +100,11 @@ public interface IDownloadManager
         int maxConcurrency = 4, // 兼容性参数，将被全局配置覆盖
         Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 获取用户配置的下载线程数（用于批量/并发下载）。
+    /// </summary>
+    Task<int> GetConfiguredThreadCountAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>

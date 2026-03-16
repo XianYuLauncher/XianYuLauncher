@@ -348,7 +348,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         IEnumerable<LibraryDownloadPlan> downloadPlans,
         Action<double>? progressCallback,
         CancellationToken cancellationToken,
-        int maxConcurrency = 4)
+        int? maxConcurrency = null)
     {
         var planList = downloadPlans
             .GroupBy(plan => plan.TargetPath, StringComparer.OrdinalIgnoreCase)
@@ -361,7 +361,8 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
             return;
         }
 
-        Logger.LogInformation("开始下载 {Count} 个库文件", planList.Count);
+        int parallelism = maxConcurrency ?? await DownloadManager.GetConfiguredThreadCountAsync(cancellationToken);
+        Logger.LogInformation("开始下载 {Count} 个库文件，并发数: {Parallelism}", planList.Count, parallelism);
 
         int completedCount = 0;
         var failures = new ConcurrentBag<string>();
@@ -370,7 +371,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
             planList,
             new ParallelOptions
             {
-                MaxDegreeOfParallelism = Math.Max(1, maxConcurrency),
+                MaxDegreeOfParallelism = Math.Max(1, parallelism),
                 CancellationToken = cancellationToken
             },
             async (plan, ct) =>

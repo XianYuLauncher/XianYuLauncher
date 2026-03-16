@@ -291,6 +291,12 @@ public class DownloadManager : IDownloadManager
     }
 
     /// <inheritdoc/>
+    public Task<int> GetConfiguredThreadCountAsync(CancellationToken cancellationToken = default)
+    {
+        return GetConfiguredThreadCountInternalAsync();
+    }
+
+    /// <inheritdoc/>
     public async Task<byte[]> DownloadBytesAsync(string url, CancellationToken cancellationToken = default)
     {
         using var response = await _httpClient.GetAsync(url, cancellationToken);
@@ -310,7 +316,7 @@ public class DownloadManager : IDownloadManager
 
     private const string DownloadShardCountKey = "DownloadShardCount";
 
-    private async Task<int> GetConfiguredThreadCountAsync()
+    private async Task<int> GetConfiguredThreadCountInternalAsync()
     {
         var count = await _localSettingsService.ReadSettingAsync<int?>(DownloadThreadCountKey);
         return Math.Max(1, count ?? 32);
