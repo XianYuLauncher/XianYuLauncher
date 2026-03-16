@@ -11,14 +11,15 @@ namespace XianYuLauncher.Core.Helpers;
 /// </summary>
 public static class VersionManifestJsonHelper
 {
-    private static readonly JsonSerializer ManifestSerializer = JsonSerializer.Create(new JsonSerializerSettings
+    private static readonly JsonSerializerSettings ManifestSerializerSettings = new()
     {
         NullValueHandling = NullValueHandling.Ignore
-    });
+    };
 
-    public static string SerializeVersionJson(object versionManifest)
+    public static string SerializeVersionJson(VersionInfo versionInfo)
     {
-        var jsonToken = JToken.FromObject(versionManifest, ManifestSerializer);
+        var serializer = JsonSerializer.Create(ManifestSerializerSettings);
+        var jsonToken = JToken.FromObject(versionInfo, serializer);
 
         if (jsonToken is JObject jsonObject)
         {

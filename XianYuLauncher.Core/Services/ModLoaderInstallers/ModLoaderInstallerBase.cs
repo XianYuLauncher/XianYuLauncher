@@ -168,7 +168,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
     /// <summary>
     /// 保存版本JSON文件
     /// </summary>
-    protected async Task SaveVersionJsonAsync(string versionDirectory, string versionId, object versionInfo)
+    protected async Task SaveVersionJsonAsync(string versionDirectory, string versionId, VersionInfo versionInfo)
     {
         var jsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
         var jsonContent = VersionManifestJsonHelper.SerializeVersionJson(versionInfo);
