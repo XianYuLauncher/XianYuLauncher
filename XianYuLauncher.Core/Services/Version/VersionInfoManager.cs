@@ -21,6 +21,7 @@ public class VersionInfoManager : IVersionInfoManager
 {
     private readonly IDownloadManager _downloadManager;
     private readonly DownloadSourceFactory _downloadSourceFactory;
+    private readonly IUnifiedVersionManifestResolver _manifestResolver;
     private readonly ILogger<VersionInfoManager> _logger;
 
     /// <summary>
@@ -38,10 +39,12 @@ public class VersionInfoManager : IVersionInfoManager
     public VersionInfoManager(
         IDownloadManager downloadManager,
         DownloadSourceFactory downloadSourceFactory,
+        IUnifiedVersionManifestResolver manifestResolver,
         ILogger<VersionInfoManager> logger)
     {
         _downloadManager = downloadManager;
         _downloadSourceFactory = downloadSourceFactory;
+        _manifestResolver = manifestResolver;
         _logger = logger;
 
         _logger.LogInformation("VersionInfoManager 初始化完成");
@@ -270,37 +273,7 @@ public class VersionInfoManager : IVersionInfoManager
             return childVersion;
         }
 
-        childVersion.Libraries = VersionLibraryMergeHelper.MergeLibraries(
-            childVersion.Libraries,
-            parentVersion.Libraries);
-
-        // 合并其他属性（子版本优先）
-        if (string.IsNullOrEmpty(childVersion.MainClass))
-            childVersion.MainClass = parentVersion.MainClass;
-
-        if (childVersion.Arguments == null)
-            childVersion.Arguments = parentVersion.Arguments;
-
-        if (childVersion.AssetIndex == null)
-            childVersion.AssetIndex = parentVersion.AssetIndex;
-
-        if (string.IsNullOrEmpty(childVersion.Assets))
-            childVersion.Assets = parentVersion.Assets;
-
-        if (childVersion.Downloads == null)
-            childVersion.Downloads = parentVersion.Downloads;
-
-        if (childVersion.JavaVersion == null)
-            childVersion.JavaVersion = parentVersion.JavaVersion;
-
-        if (string.IsNullOrEmpty(childVersion.Type))
-            childVersion.Type = parentVersion.Type;
-
-        // 合并 MinecraftArguments（旧版本格式）
-        if (string.IsNullOrEmpty(childVersion.MinecraftArguments))
-            childVersion.MinecraftArguments = parentVersion.MinecraftArguments;
-
-        return childVersion;
+        return _manifestResolver.ResolveInheritance(childVersion, parentVersion).ResolvedManifest;
     }
 
     #region 私有辅助方法
@@ -390,7 +363,7 @@ public class VersionInfoManager : IVersionInfoManager
                 allowNetwork,
                 cancellationToken);
 
-            return MergeVersionInfo(childVersion, parentVersion);
+            return _manifestResolver.ResolveInheritance(childVersion, parentVersion).ResolvedManifest;
         }
         catch (Exception ex)
         {
