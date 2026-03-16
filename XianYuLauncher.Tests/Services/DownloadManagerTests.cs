@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
@@ -40,11 +41,11 @@ public sealed class DownloadManagerTests : IDisposable
     {
         byte[] content = CreatePayload(12 * 1024 * 1024);
         string expectedSha1 = ComputeSha1(content);
-        var rangeRequests = new List<string?>();
+        var rangeRequests = new ConcurrentQueue<string?>();
         var handler = new StubHttpMessageHandler(request =>
         {
             string? rangeHeader = request.Headers.Range?.ToString();
-            rangeRequests.Add(rangeHeader);
+            rangeRequests.Enqueue(rangeHeader);
 
             if (request.Method == HttpMethod.Head)
             {
@@ -86,11 +87,11 @@ public sealed class DownloadManagerTests : IDisposable
     {
         byte[] content = CreatePayload(12 * 1024 * 1024);
         string expectedSha1 = ComputeSha1(content);
-        var rangeRequests = new List<string?>();
+        var rangeRequests = new ConcurrentQueue<string?>();
         var handler = new StubHttpMessageHandler(request =>
         {
             string? rangeHeader = request.Headers.Range?.ToString();
-            rangeRequests.Add(rangeHeader);
+            rangeRequests.Enqueue(rangeHeader);
 
             if (request.Method == HttpMethod.Head)
             {
@@ -137,11 +138,11 @@ public sealed class DownloadManagerTests : IDisposable
     {
         byte[] content = CreatePayload(12 * 1024 * 1024);
         string expectedSha1 = ComputeSha1(content);
-        var rangeRequests = new List<string?>();
+        var rangeRequests = new ConcurrentQueue<string?>();
         var handler = new StubHttpMessageHandler(request =>
         {
             string? rangeHeader = request.Headers.Range?.ToString();
-            rangeRequests.Add(rangeHeader);
+            rangeRequests.Enqueue(rangeHeader);
 
             if (request.Method == HttpMethod.Head)
             {
@@ -175,12 +176,12 @@ public sealed class DownloadManagerTests : IDisposable
     {
         byte[] content = CreatePayload(12 * 1024 * 1024);
         string expectedSha1 = ComputeSha1(content);
-        var methods = new List<HttpMethod>();
-        var rangeRequests = new List<string?>();
+        var methods = new ConcurrentQueue<HttpMethod>();
+        var rangeRequests = new ConcurrentQueue<string?>();
         var handler = new StubHttpMessageHandler(request =>
         {
-            methods.Add(request.Method);
-            rangeRequests.Add(request.Headers.Range?.ToString());
+            methods.Enqueue(request.Method);
+            rangeRequests.Enqueue(request.Headers.Range?.ToString());
 
             request.Method.Should().Be(HttpMethod.Get);
             request.Headers.Range.Should().BeNull();
