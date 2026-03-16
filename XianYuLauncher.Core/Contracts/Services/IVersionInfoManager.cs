@@ -70,11 +70,4 @@ public interface IVersionInfoManager
     /// <param name="config">版本配置</param>
     Task SaveVersionConfigAsync(string versionId, string minecraftDirectory, VersionConfig config);
     
-    /// <summary>
-    /// 合并版本信息（处理继承关系）
-    /// </summary>
-    /// <param name="childVersion">子版本信息</param>
-    /// <param name="parentVersion">父版本信息</param>
-    /// <returns>合并后的版本信息</returns>
-    VersionInfo MergeVersionInfo(VersionInfo childVersion, VersionInfo parentVersion);
 }
