@@ -59,24 +59,26 @@ public class HashLookupCenterTests
             "scope-ttl",
             new[] { "hash-ttl" },
             FetchAsync,
-            successTtl: TimeSpan.FromMilliseconds(60),
-            emptyTtl: TimeSpan.FromMilliseconds(30));
+            successTtl: TimeSpan.FromMilliseconds(150),
+            emptyTtl: TimeSpan.FromMilliseconds(80));
+
+        await Task.Delay(50);
 
         await center.GetOrFetchModrinthVersionsByHashesAsync(
             "scope-ttl",
             new[] { "hash-ttl" },
             FetchAsync,
-            successTtl: TimeSpan.FromMilliseconds(60),
-            emptyTtl: TimeSpan.FromMilliseconds(30));
+            successTtl: TimeSpan.FromMilliseconds(150),
+            emptyTtl: TimeSpan.FromMilliseconds(80));
 
-        await Task.Delay(120);
+        await Task.Delay(200);
 
         await center.GetOrFetchModrinthVersionsByHashesAsync(
             "scope-ttl",
             new[] { "hash-ttl" },
             FetchAsync,
-            successTtl: TimeSpan.FromMilliseconds(60),
-            emptyTtl: TimeSpan.FromMilliseconds(30));
+            successTtl: TimeSpan.FromMilliseconds(150),
+            emptyTtl: TimeSpan.FromMilliseconds(80));
 
         Assert.Equal(2, fetchCalls);
     }
