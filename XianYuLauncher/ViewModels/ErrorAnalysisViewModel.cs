@@ -37,7 +37,7 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private string _crashReason = string.Empty;
         
-        // 新增：用于ListView的日志行集合
+        // 新增：用于 ListView 的日志行集合
         [ObservableProperty]
         private ObservableCollection<string> _logLines = new();
 
@@ -634,7 +634,7 @@ namespace XianYuLauncher.ViewModels
                 if (_isAiAnalyzing != value)
                 {
                     _isAiAnalyzing = value;
-                    // 确保在UI线程上触发PropertyChanged事件
+                    // 确保在 UI 线程上触发 PropertyChanged 事件
                     if (!_uiDispatcher.TryEnqueue(() =>
                     {
                         OnPropertyChanged(nameof(IsAiAnalyzing));
@@ -659,7 +659,7 @@ namespace XianYuLauncher.ViewModels
                 if (_isAiAnalysisAvailable != value)
                 {
                     _isAiAnalysisAvailable = value;
-                    // 确保在UI线程上触发PropertyChanged事件
+                    // 确保在 UI 线程上触发 PropertyChanged 事件
                     if (!_uiDispatcher.TryEnqueue(() =>
                     {
                         OnPropertyChanged(nameof(IsAiAnalysisAvailable));
@@ -684,7 +684,7 @@ namespace XianYuLauncher.ViewModels
         // 计算属性，用于控制取消按钮的可见性
     public Microsoft.UI.Xaml.Visibility CancelButtonVisibility => IsAiAnalyzing ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
     
-    // 手动实现了属性，不再需要自动生成的partial方法
+    // 手动实现了属性，不再需要自动生成的 partial 方法
         
         // 原始日志数据
         private string _originalLog = string.Empty;
@@ -692,7 +692,7 @@ namespace XianYuLauncher.ViewModels
         private List<string> _gameOutput = new();
         private List<string> _gameError = new();
         private bool _isGameCrashed = false;
-        private string _versionId = string.Empty; // 当前启动的版本ID
+        private string _versionId = string.Empty; // 当前启动的版本 ID
         private string _minecraftPath = string.Empty; // Minecraft 路径
         
         // 节流机制相关字段
@@ -722,7 +722,7 @@ namespace XianYuLauncher.ViewModels
         _gameOutput = new List<string>(gameOutput);
         _gameError = new List<string>(gameError);
         
-        // 清空并重新填充UI集合
+        // 清空并重新填充 UI 集合
         LogLines.Clear();
         
         // 添加头部信息
@@ -750,7 +750,7 @@ namespace XianYuLauncher.ViewModels
     }
     
     /// <summary>
-    /// 设置游戏崩溃状态，只有在游戏崩溃时才会触发AI分析
+    /// 设置游戏崩溃状态，只有在游戏崩溃时才会触发 AI 分析
     /// </summary>
     /// <param name="isCrashed">是否崩溃</param>
     public void SetGameCrashStatus(bool isCrashed)
@@ -790,7 +790,7 @@ namespace XianYuLauncher.ViewModels
             ChatMessages.Add(new UiChatMessage("assistant", "..."));
         });
         
-        // Give UI a moment to render the new messages
+        // 短暂等待 UI 渲染新消息
         await Task.Delay(50);
 
         try {
@@ -1029,7 +1029,7 @@ namespace XianYuLauncher.ViewModels
     private async Task<string> ExecuteListInstalledModsAsync()
     {
         if (string.IsNullOrWhiteSpace(_versionId) || string.IsNullOrWhiteSpace(_minecraftPath))
-            return "无法获取版本信息，未设置版本ID或Minecraft路径。";
+            return "无法获取版本信息，未设置版本 ID 或 Minecraft 路径。";
 
         var modsPath = Path.Combine(_minecraftPath, MinecraftPathConsts.Versions, _versionId, MinecraftPathConsts.Mods);
         if (!Directory.Exists(modsPath))
@@ -1070,10 +1070,10 @@ namespace XianYuLauncher.ViewModels
             var config = await versionInfoService.GetFullVersionInfoAsync(_versionId, versionDirectory, preferCache: true);
 
             var sb = new StringBuilder();
-            sb.AppendLine($"版本ID: {_versionId}");
-            sb.AppendLine($"Minecraft版本: {config.MinecraftVersion}");
+            sb.AppendLine($"版本 ID: {_versionId}");
+            sb.AppendLine($"Minecraft 版本: {config.MinecraftVersion}");
             sb.AppendLine($"ModLoader: {config.ModLoaderType ?? "vanilla"} {config.ModLoaderVersion ?? ""}");
-            sb.AppendLine($"Java路径: {(string.IsNullOrEmpty(config.JavaPath) ? "使用全局设置" : config.JavaPath)}");
+            sb.AppendLine($"Java 路径: {(string.IsNullOrEmpty(config.JavaPath) ? "使用全局设置" : config.JavaPath)}");
             sb.AppendLine($"内存设置: 自动={config.AutoMemoryAllocation}, 初始={config.InitialHeapMemory}GB, 最大={config.MaximumHeapMemory}GB");
             return sb.ToString();
         }
@@ -1400,7 +1400,7 @@ namespace XianYuLauncher.ViewModels
                 ResetFixActionState();
             });
             
-            // Give UI a moment to update
+            // 短暂等待 UI 更新
             await Task.Delay(50);
             
             // 创建取消令牌
@@ -1646,7 +1646,7 @@ namespace XianYuLauncher.ViewModels
     /// <summary>
     /// 设置版本信息（用于导出日志时包含 version.json）
     /// </summary>
-    /// <param name="versionId">版本ID</param>
+    /// <param name="versionId">版本 ID</param>
     /// <param name="minecraftPath">Minecraft 路径</param>
     public void SetVersionInfo(string versionId, string minecraftPath)
     {
@@ -1679,7 +1679,7 @@ namespace XianYuLauncher.ViewModels
         _gameOutput = new List<string>();
         _gameError = new List<string>();
         
-        // 清空UI集合
+        // 清空 UI 集合
         LogLines.Clear();
         LogLines.Add("=== 实时游戏日志 ===");
         LogLines.Add($"日志开始时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
@@ -1715,7 +1715,7 @@ namespace XianYuLauncher.ViewModels
             _gameOutput.Add(logLine);
         }
         
-        // 直接添加到UI集合，利用虚拟化提升性能
+        // 直接添加到 UI 集合，利用虚拟化提升性能
         AddLogLineToUI(logLine);
         
         ScheduleLogUpdate();
@@ -1733,14 +1733,14 @@ namespace XianYuLauncher.ViewModels
             _gameError.Add(logLine);
         }
         
-        // 直接添加到UI集合，利用虚拟化提升性能
+        // 直接添加到 UI 集合，利用虚拟化提升性能
         AddLogLineToUI(logLine);
         
         ScheduleLogUpdate();
     }
     
     /// <summary>
-    /// 添加日志行到UI集合（在UI线程上执行）
+    /// 添加日志行到 UI 集合（在 UI 线程上执行）
     /// </summary>
     private void AddLogLineToUI(string line)
     {
@@ -1770,7 +1770,7 @@ namespace XianYuLauncher.ViewModels
             _isUpdateScheduled = true;
             var delay = LogUpdateIntervalMs - (int)timeSinceLastUpdate.TotalMilliseconds;
             
-            // 使用Task.Delay实现延迟更新，避免阻塞主线程
+            // 使用 Task.Delay 实现延迟更新，避免阻塞主线程
             Task.Delay(delay).ContinueWith(_ =>
             {
                 if (_isUpdateScheduled)
@@ -1820,7 +1820,7 @@ namespace XianYuLauncher.ViewModels
             sb.AppendLine();
 
             // 设置崩溃原因属性
-            // 确保在UI线程上更新属性
+            // 确保在 UI 线程上更新属性
             if (_uiDispatcher.HasThreadAccess)
             {
                 CrashReason = errorAnalysis;
@@ -1855,7 +1855,7 @@ namespace XianYuLauncher.ViewModels
         string finalLog = sb.ToString();
         _originalLog = finalLog; // 保存原始日志
 
-        // 确保在UI线程上更新FullLog属性
+        // 确保在 UI 线程上更新 FullLog 属性
         if (_uiDispatcher.HasThreadAccess)
         {
             FullLog = finalLog;
@@ -1899,7 +1899,7 @@ namespace XianYuLauncher.ViewModels
                 return "致命错误导致崩溃";
             }
             
-            // 检查Java异常（排除警告中的异常）
+            // 检查 Java 异常（排除警告中的异常）
             if (ContainsKeywordWithContext(gameError, "java.lang.Exception", "[ERROR]", "[FATAL]") || 
                 ContainsKeywordWithContext(gameOutput, "java.lang.Exception", "[ERROR]", "[FATAL]"))
             {
@@ -1987,7 +1987,7 @@ namespace XianYuLauncher.ViewModels
         /// <returns>是否包含关键词</returns>
         private bool ContainsKeyword(List<string> lines, string keyword)
         {
-            // 使用高效的循环方式，避免LINQ的额外开销
+            // 使用高效的循环方式，避免 LINQ 的额外开销
             for (int i = 0; i < lines.Count; i++)
             {
                 if (lines[i].Contains(keyword, StringComparison.OrdinalIgnoreCase))
@@ -2031,7 +2031,7 @@ namespace XianYuLauncher.ViewModels
                 string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
                 Directory.CreateDirectory(tempDir);
 
-                // 1. 生成启动参数.bat文件 (已脱敏)
+                // 1. 生成启动参数 .bat 文件（已脱敏）
                 string batFilePath = Path.Combine(tempDir, "启动参数.bat");
                 string sanitizedLaunchCommand = await _logSanitizerService.SanitizeAsync(_launchCommand);
                 await File.WriteAllTextAsync(batFilePath, sanitizedLaunchCommand);
@@ -2121,7 +2121,7 @@ namespace XianYuLauncher.ViewModels
                     // 不中断导出流程，继续执行
                 }
 
-                // 获取用户选择的zip文件路径
+                // 获取用户选择的 zip 文件路径
                 string zipFilePath = selectedFile.Path;
 
                 // 如果文件已存在，先删除
@@ -2130,7 +2130,7 @@ namespace XianYuLauncher.ViewModels
                     File.Delete(zipFilePath);
                 }
 
-                // 创建zip文件
+                // 创建 zip 文件
                 ZipFile.CreateFromDirectory(tempDir, zipFilePath);
 
                 // 清理临时目录

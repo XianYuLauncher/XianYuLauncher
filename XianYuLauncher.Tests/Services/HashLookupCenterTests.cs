@@ -43,7 +43,8 @@ public class HashLookupCenterTests
     [Fact]
     public async Task GetOrFetchModrinthVersionsByHashesAsync_ShouldRespectSuccessTtl()
     {
-        var center = new HashLookupCenter();
+        var timeProvider = new FakeTimeProvider();
+        var center = new HashLookupCenter(timeProvider);
         var fetchCalls = 0;
 
         Task<Dictionary<string, ModrinthVersion>> FetchAsync(IReadOnlyCollection<string> hashes)
@@ -59,24 +60,24 @@ public class HashLookupCenterTests
             "scope-ttl",
             new[] { "hash-ttl" },
             FetchAsync,
-            successTtl: TimeSpan.FromMilliseconds(60),
-            emptyTtl: TimeSpan.FromMilliseconds(30));
+            successTtl: TimeSpan.FromMilliseconds(150),
+            emptyTtl: TimeSpan.FromMilliseconds(80));
 
         await center.GetOrFetchModrinthVersionsByHashesAsync(
             "scope-ttl",
             new[] { "hash-ttl" },
             FetchAsync,
-            successTtl: TimeSpan.FromMilliseconds(60),
-            emptyTtl: TimeSpan.FromMilliseconds(30));
+            successTtl: TimeSpan.FromMilliseconds(150),
+            emptyTtl: TimeSpan.FromMilliseconds(80));
 
-        await Task.Delay(120);
+        timeProvider.Advance(TimeSpan.FromMilliseconds(151));
 
         await center.GetOrFetchModrinthVersionsByHashesAsync(
             "scope-ttl",
             new[] { "hash-ttl" },
             FetchAsync,
-            successTtl: TimeSpan.FromMilliseconds(60),
-            emptyTtl: TimeSpan.FromMilliseconds(30));
+            successTtl: TimeSpan.FromMilliseconds(150),
+            emptyTtl: TimeSpan.FromMilliseconds(80));
 
         Assert.Equal(2, fetchCalls);
     }
@@ -117,5 +118,17 @@ public class HashLookupCenterTests
             cancellationToken: cts.Token);
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await task.WaitAsync(TimeSpan.FromSeconds(2)));
+    }
+
+    private sealed class FakeTimeProvider : TimeProvider
+    {
+        private DateTimeOffset _utcNow = DateTimeOffset.UnixEpoch;
+
+        public override DateTimeOffset GetUtcNow() => _utcNow;
+
+        public void Advance(TimeSpan elapsed)
+        {
+            _utcNow = _utcNow.Add(elapsed);
+        }
     }
 }

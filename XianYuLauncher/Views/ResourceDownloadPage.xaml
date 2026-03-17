@@ -73,7 +73,7 @@
             <!-- 标题区域 -->
             <StackPanel Grid.Column="0">
                 <TextBlock x:Name="PageTitle" x:Uid="ResourceDownloadPage_PageTitle" Text="资源下载" Style="{ThemeResource TitleTextBlockStyle}" />
-                <TextBlock x:Name="PageSubtitle" x:Uid="ResourceDownloadPage_PageSubtitle" Text="下载和管理Minecraft资源" Style="{StaticResource BodyTextStyle}" Margin="0,8,0,0" Opacity="0.7" />
+                <TextBlock x:Name="PageSubtitle" x:Uid="ResourceDownloadPage_PageSubtitle" Text="下载和管理 Minecraft 资源" Style="{StaticResource BodyTextStyle}" Margin="0,8,0,0" Opacity="0.7" />
             </StackPanel>
 
             <!-- 收藏夹拖放区域 -->
@@ -187,7 +187,7 @@
 
         <!-- 主要内容区域 -->
         <Grid Grid.Row="1">
-            <!-- TabView控件 -->
+            <!-- TabView 控件 -->
             <TabView 
                 x:Name="ResourceTabView" 
                 HorizontalAlignment="Stretch" 
@@ -324,8 +324,8 @@
                                     </ListView.Resources>
                                     <ListView.ItemsPanel>
                                         <ItemsPanelTemplate>
-                                            <!-- 使用ItemsStackPanel替代VirtualizingStackPanel，提供更好的平滑滚动支持 -->
-                                            <!-- ItemsStackPanel默认启用虚拟化，不需要设置VirtualizationMode属性 -->
+                                            <!-- 使用 ItemsStackPanel 替代 VirtualizingStackPanel，提供更好的平滑滚动支持 -->
+                                            <!-- ItemsStackPanel 默认启用虚拟化，不需要设置 VirtualizationMode 属性 -->
                                             <ItemsStackPanel/>
                                         </ItemsPanelTemplate>
                                     </ListView.ItemsPanel>
@@ -373,12 +373,12 @@
                         </Grid>
                     </TabViewItem>
 
-                    <!-- Mod下载标签 -->
+                    <!-- Mod 下载标签 -->
                     <TabViewItem>
                         <TabViewItem.Header>
                             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                                 <FontIcon Glyph="" FontSize="16" />
-                                <TextBlock x:Uid="ResourceDownloadPage_ModTabHeader" Text="Mod下载" VerticalAlignment="Center" />
+                                <TextBlock x:Uid="ResourceDownloadPage_ModTabHeader" Text="Mod 下载" VerticalAlignment="Center" />
                             </StackPanel>
                         </TabViewItem.Header>
                         <Grid>
@@ -393,7 +393,7 @@
                                 <RowDefinition Height="Auto" />
                             </Grid.RowDefinitions>
 
-                            <!-- Mod搜索和过滤 - 单行布局 -->
+                            <!-- Mod 搜索和过滤 - 单行布局 -->
                             <Grid Grid.Row="0" Margin="20,10,20,10">
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto"/>
@@ -485,7 +485,7 @@
                                 HorizontalAlignment="Center"
                                 Visibility="{Binding IsModProcessing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
-                            <!-- Mod列表 -->
+                            <!-- Mod 列表 -->
                             <ScrollViewer 
                                 x:Name="ModListScrollViewer"
                                 Grid.Row="2"
@@ -495,7 +495,7 @@
                                 ViewChanged="ModListScrollViewer_ScrollChanged"
                                 LayoutUpdated="ModListScrollViewer_LayoutUpdated"
                                 SizeChanged="ModListScrollViewer_SizeChanged">
-                                    <!-- Mod列表 -->
+                                    <!-- Mod 列表 -->
                                     <ListView 
                                         x:Name="ModListView"
                                         SelectionMode="Single"
@@ -736,10 +736,10 @@
                                                                 </Border.Background>
                                                             </Border>
 
-                                                            <!-- Dark Overlay to ensure text readability or consistent look -->
+                                                            <!-- 深色遮罩，保证文字可读性与视觉一致 -->
                                                             <Rectangle Fill="{ThemeResource SolidBackgroundFillColorBaseAltBrush}" Opacity="0.4"/>
                                                             
-                                                            <!-- Main Image (Sits on top, effectively hiding the blurred background if it exists) -->
+                                                            <!-- 主图（置于顶层，覆盖模糊背景） -->
                                                             <Image Source="{Binding FeaturedGallery, Mode=OneWay, TargetNullValue={x:Null}}" Stretch="UniformToFill"/>
                                                         </Grid>
                                                     </Border>
@@ -959,10 +959,10 @@
                                                                 </Border.Background>
                                                             </Border>
 
-                                                            <!-- Dark Overlay to ensure text readability or consistent look -->
+                                                            <!-- 深色遮罩，保证文字可读性与视觉一致 -->
                                                             <Rectangle Fill="{ThemeResource SolidBackgroundFillColorBaseAltBrush}" Opacity="0.4"/>
                                                             
-                                                            <!-- Main Image (Sits on top, effectively hiding the blurred background if it exists) -->
+                                                            <!-- 主图（置于顶层，覆盖模糊背景） -->
                                                             <Image Source="{Binding FeaturedGallery, Mode=OneWay, TargetNullValue={x:Null}}" Stretch="UniformToFill"/>
                                                         </Grid>
                                                     </Border>

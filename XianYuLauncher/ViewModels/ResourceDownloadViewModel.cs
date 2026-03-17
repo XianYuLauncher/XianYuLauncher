@@ -184,7 +184,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         FilteredVersions = new ObservableCollection<Core.Models.VersionEntry>(tempList);
     }
 
-    // Mod下载相关属性和命令
+    // Mod 下载相关属性和命令
     [ObservableProperty]
     private string _searchQuery = string.Empty;
 
@@ -413,7 +413,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [ObservableProperty]
     private ObservableCollection<string> _worldAvailableLoaders = new();
     
-    // CurseForge类别缓存（内存缓存，避免每次都请求API）
+    // CurseForge 类别缓存（内存缓存，避免每次都请求 API）
     private static Dictionary<int, List<CurseForgeCategory>> _curseForgeCategoryCache = new();
     
     [ObservableProperty]
@@ -644,7 +644,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [ObservableProperty]
     private string _selectedWorldVersion = string.Empty;
     
-    // TabView选中索引，用于控制显示哪个标签页
+    // TabView 选中索引，用于控制显示哪个标签页
     [ObservableProperty]
     private int _selectedTabIndex = 0;
     
@@ -2216,7 +2216,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 
                 if (IsCurseForgeEnabled)
                 {
-                    // 从CurseForge API加载类别
+                    // 从 CurseForge API 加载类别
                     var curseForgeCategories = await GetCurseForgeCategoriesAsync(resourceType);
                     categories.AddRange(curseForgeCategories);
                 }
@@ -2274,7 +2274,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     }
     
     /// <summary>
-    /// 获取Modrinth类别（仅API来源）
+    /// 获取 Modrinth 类别（仅 API 来源）
     /// </summary>
     private async Task<List<Models.CategoryItem>> GetModrinthCategoriesAsync(string resourceType)
     {
@@ -2859,7 +2859,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         }
     }
 
-    // Mod下载命令
+    // Mod 下载命令
     [RelayCommand]
     private async Task SearchModsAsync()
     {

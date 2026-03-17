@@ -147,8 +147,8 @@ public sealed partial class MainWindow : WindowEx
     {
         try
         {
-            // 只在Content加载完成后应用字体，避免干扰XAML解析器
-            // 这样可以确保XAML解析错误能正常报告，而不会被字体修改掩盖
+            // 只在 Content 加载完成后应用字体，避免干扰 XAML 解析器
+            // 这样可以确保 XAML 解析错误能正常报告，而不会被字体修改掩盖
             if (Content is Microsoft.UI.Xaml.Controls.Control rootControl)
             {
                 // 创建FontFamily对象或使用null（默认字体）
@@ -191,11 +191,10 @@ public sealed partial class MainWindow : WindowEx
         }
     }
 
-    // this handles updating the caption button colors correctly when Windows system theme is changed
-    // while the app is open
+    // Windows 系统主题变更时更新标题栏按钮颜色（应用打开期间）
     private void Settings_ColorValuesChanged(UISettings sender, object args)
     {
-        // This calls comes off-thread, hence we will need to dispatch it to current app's thread
+        // 回调来自非 UI 线程，需派发到当前应用的 UI 线程
         dispatcherQueue.TryEnqueue(() =>
         {
             TitleBarHelper.ApplySystemThemeToCaptionButtons();
