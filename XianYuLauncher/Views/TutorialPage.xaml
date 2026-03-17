@@ -175,7 +175,7 @@
                             <TextBlock x:Uid="TutorialPage_MinecraftPathTitle" Text="Minecraft 游戏目录" Style="{ThemeResource BodyStrongTextBlockStyle}" />
                             <TextBlock 
                                 x:Uid="TutorialPage_MinecraftPathDescription"
-                                Text="这是存放游戏版本、存档和模组的地方。" 
+                                Text="Minecraft游戏目录，包含versions、saves等文件夹" 
                                 Style="{ThemeResource CaptionTextBlockStyle}" 
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                             
@@ -187,7 +187,7 @@
                                 <TextBox 
                                     x:Uid="TutorialPage_MinecraftPathTextBox"
                                     Text="{x:Bind ViewModel.MinecraftPath, Mode=TwoWay}" 
-                                    PlaceholderText="选择目录..." 
+                                    PlaceholderText="请选择Minecraft游戏目录" 
                                     HorizontalAlignment="Stretch"/>
                                 <Button 
                                     Grid.Column="1"
@@ -342,12 +342,6 @@
                                     CommandParameter="Manual"/>
                              </StackPanel>
                              
-                             <!-- Removed Converter check for Visibility as user said it was just a sketch. 
-                                  Checking the original showed a TextBox for Java Path. 
-                                  I will keep it visible but disabled or enabled based on mode? 
-                                  Original showed it always but user would toggle mode.
-                                  Let's just show it. 
-                             -->
                              <Grid ColumnSpacing="8">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
