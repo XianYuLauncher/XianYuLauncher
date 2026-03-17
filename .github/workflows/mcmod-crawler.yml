@@ -1,5 +1,8 @@
 name: McMod Crawler (Manual to Gist)
 
+run-name: >-
+  McMod Crawler · ${{ inputs.mode }} · ${{ inputs.gist_filename }}${{ inputs.mode == 'append' && format(' · max {0}', inputs.max_items) || '' }}${{ inputs.mode == 'patch' && format(' · {0}-{1}', inputs.patch_start_id, inputs.patch_end_id) || '' }}${{ inputs.dry_run && ' · dry-run' || '' }}
+
 on:
   workflow_dispatch:
     inputs:
@@ -7,28 +10,27 @@ on:
         description: "Gist 中保存的文件名"
         required: true
         default: "mod_data.txt"
+      mode:
+        description: "运行模式：append=增量抓取，patch=区间修补，full-rebuild=全量重建"
+        required: true
+        type: choice
+        default: "append"
+        options:
+          - append
+          - patch
+          - full-rebuild
       max_items:
-        description: "本次最多抓取条数（0=不限制）"
+        description: "仅 append 模式生效：本次最多抓取条数（0=不限制）"
         required: true
         default: "300"
-      patch_mode:
-        description: "是否启用 patch 模式（仅替换指定区间）"
-        required: true
-        type: boolean
-        default: false
-      patch_start:
-        description: "Patch 模式起始 ID（从1开始）"
+      patch_start_id:
+        description: "仅 patch 模式生效：起始 ID（包含，从 1 开始）"
         required: false
         default: "1"
-      patch_count:
-        description: "Patch 模式替换条数（与 patch_start 配合）"
+      patch_end_id:
+        description: "仅 patch 模式生效：结束 ID（包含）"
         required: false
         default: "100"
-      full_rebuild:
-        description: "是否忽略旧文件并全量重建"
-        required: true
-        type: boolean
-        default: false
       dry_run:
         description: "仅运行抓取，不上传回 Gist"
         required: true
@@ -55,11 +57,54 @@ jobs:
         shell: bash
         run: |
           GIST_ID="${{ secrets.GIST_ID }}"
+          MODE="${{ inputs.mode }}"
 
           if [ -z "$GIST_ID" ]; then
             echo "Missing required secret: GIST_ID" >&2
             exit 1
           fi
+
+          case "$MODE" in
+            append)
+              if ! [[ "${{ inputs.max_items }}" =~ ^[0-9]+$ ]]; then
+                echo "append 模式下 max_items 必须是 >= 0 的整数" >&2
+                exit 1
+              fi
+              echo "CRAWLER_MODE=append" >> "$GITHUB_ENV"
+              echo "CRAWLER_MAX_ITEMS=${{ inputs.max_items }}" >> "$GITHUB_ENV"
+              ;;
+            patch)
+              if ! [[ "${{ inputs.patch_start_id }}" =~ ^[1-9][0-9]*$ ]]; then
+                echo "patch 模式下 patch_start_id 必须是 >= 1 的整数" >&2
+                exit 1
+              fi
+              if ! [[ "${{ inputs.patch_end_id }}" =~ ^[1-9][0-9]*$ ]]; then
+                echo "patch 模式下 patch_end_id 必须是 >= 1 的整数" >&2
+                exit 1
+              fi
+
+              PATCH_START=${{ inputs.patch_start_id }}
+              PATCH_END=${{ inputs.patch_end_id }}
+
+              if [ "$PATCH_END" -lt "$PATCH_START" ]; then
+                echo "patch_end_id 必须 >= patch_start_id" >&2
+                exit 1
+              fi
+
+              PATCH_COUNT=$((PATCH_END - PATCH_START + 1))
+
+              echo "CRAWLER_MODE=patch" >> "$GITHUB_ENV"
+              echo "CRAWLER_PATCH_START=$PATCH_START" >> "$GITHUB_ENV"
+              echo "CRAWLER_PATCH_COUNT=$PATCH_COUNT" >> "$GITHUB_ENV"
+              ;;
+            full-rebuild)
+              echo "CRAWLER_MODE=full-rebuild" >> "$GITHUB_ENV"
+              ;;
+            *)
+              echo "Unsupported mode: $MODE" >&2
+              exit 1
+              ;;
+          esac
 
           echo "GIST_ID=$GIST_ID" >> "$GITHUB_ENV"
           echo "GIST_FILENAME=${{ inputs.gist_filename }}" >> "$GITHUB_ENV"
@@ -67,7 +112,7 @@ jobs:
           echo "LOCAL_OUTPUT=$RUNNER_TEMP/${{ inputs.gist_filename }}.new" >> "$GITHUB_ENV"
 
       - name: Download existing data from Gist
-        if: ${{ !inputs.full_rebuild }}
+        if: ${{ inputs.mode != 'full-rebuild' }}
         shell: bash
         env:
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
@@ -108,7 +153,7 @@ jobs:
           PY
 
       - name: Prepare empty input for full rebuild
-        if: ${{ inputs.full_rebuild }}
+        if: ${{ inputs.mode == 'full-rebuild' }}
         shell: bash
         run: |
           : > "$LOCAL_INPUT"
@@ -120,17 +165,19 @@ jobs:
           CMD=(python -u scripts/mcmod_crawler.py
             --input "$LOCAL_INPUT"
             --output "$LOCAL_OUTPUT"
-            --start-id "1"
-            --max-items "${{ inputs.max_items }}")
+            --start-id "1")
 
-          # enable patch mode if requested
-          if [ "${{ inputs.patch_mode }}" = "true" ]; then
-            CMD+=(--patch-mode)
-            CMD+=(--patch-start "${{ inputs.patch_start }}")
-            CMD+=(--patch-count "${{ inputs.patch_count }}")
+          if [ "$CRAWLER_MODE" = "append" ]; then
+            CMD+=(--max-items "$CRAWLER_MAX_ITEMS")
           fi
 
-          if [ "${{ inputs.full_rebuild }}" = "true" ]; then
+          if [ "$CRAWLER_MODE" = "patch" ]; then
+            CMD+=(--patch-mode)
+            CMD+=(--patch-start "$CRAWLER_PATCH_START")
+            CMD+=(--patch-count "$CRAWLER_PATCH_COUNT")
+          fi
+
+          if [ "$CRAWLER_MODE" = "full-rebuild" ]; then
             CMD+=(--full-rebuild)
           fi
 
