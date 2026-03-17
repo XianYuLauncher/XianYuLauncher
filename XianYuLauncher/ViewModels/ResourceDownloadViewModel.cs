@@ -456,6 +456,21 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     [ObservableProperty]
     private bool _isResourcePackLoading = false;
+
+    [ObservableProperty]
+    private bool _isResourcePackCategoryLoading = false;
+
+    public bool IsResourcePackProcessing => IsResourcePackLoading || IsResourcePackCategoryLoading;
+
+    partial void OnIsResourcePackLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsResourcePackProcessing));
+    }
+
+    partial void OnIsResourcePackCategoryLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsResourcePackProcessing));
+    }
     
     [ObservableProperty]
     private bool _isResourcePackLoadingMore = false;
@@ -481,6 +496,21 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     [ObservableProperty]
     private bool _isShaderPackLoading = false;
+
+    [ObservableProperty]
+    private bool _isShaderPackCategoryLoading = false;
+
+    public bool IsShaderPackProcessing => IsShaderPackLoading || IsShaderPackCategoryLoading;
+
+    partial void OnIsShaderPackLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsShaderPackProcessing));
+    }
+
+    partial void OnIsShaderPackCategoryLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsShaderPackProcessing));
+    }
     
     [ObservableProperty]
     private bool _isShaderPackLoadingMore = false;
@@ -506,6 +536,21 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     [ObservableProperty]
     private bool _isModpackLoading = false;
+
+    [ObservableProperty]
+    private bool _isModpackCategoryLoading = false;
+
+    public bool IsModpackProcessing => IsModpackLoading || IsModpackCategoryLoading;
+
+    partial void OnIsModpackLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsModpackProcessing));
+    }
+
+    partial void OnIsModpackCategoryLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsModpackProcessing));
+    }
     
     [ObservableProperty]
     private bool _isModpackLoadingMore = false;
@@ -531,6 +576,21 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     [ObservableProperty]
     private bool _isDatapackLoading = false;
+
+    [ObservableProperty]
+    private bool _isDatapackCategoryLoading = false;
+
+    public bool IsDatapackProcessing => IsDatapackLoading || IsDatapackCategoryLoading;
+
+    partial void OnIsDatapackLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsDatapackProcessing));
+    }
+
+    partial void OnIsDatapackCategoryLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsDatapackProcessing));
+    }
     
     [ObservableProperty]
     private bool _isDatapackLoadingMore = false;
@@ -556,6 +616,21 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     [ObservableProperty]
     private bool _isWorldLoading = false;
+
+    [ObservableProperty]
+    private bool _isWorldCategoryLoading = false;
+
+    public bool IsWorldProcessing => IsWorldLoading || IsWorldCategoryLoading;
+
+    partial void OnIsWorldLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsWorldProcessing));
+    }
+
+    partial void OnIsWorldCategoryLoadingChanged(bool value)
+    {
+        OnPropertyChanged(nameof(IsWorldProcessing));
+    }
     
     [ObservableProperty]
     private bool _isWorldLoadingMore = false;
@@ -2077,6 +2152,31 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             ? SelectedModCategoryDisplayNames[0]
             : $"已选 {SelectedModCategoryDisplayNames.Count} 项";
     }
+
+    private void SetCategoryLoadingState(string resourceType, bool isLoading)
+    {
+        switch (resourceType.Trim().ToLowerInvariant())
+        {
+            case "mod":
+                IsModCategoryLoading = isLoading;
+                break;
+            case "shader":
+                IsShaderPackCategoryLoading = isLoading;
+                break;
+            case "resourcepack":
+                IsResourcePackCategoryLoading = isLoading;
+                break;
+            case "datapack":
+                IsDatapackCategoryLoading = isLoading;
+                break;
+            case "modpack":
+                IsModpackCategoryLoading = isLoading;
+                break;
+            case "world":
+                IsWorldCategoryLoading = isLoading;
+                break;
+        }
+    }
     
     /// <summary>
     /// 加载类别列表
@@ -2084,12 +2184,13 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     /// <param name="resourceType">资源类型：mod, shader, resourcepack, datapack, modpack</param>
     public async Task LoadCategoriesAsync(string resourceType)
     {
-        var isModCategoryRequest = string.Equals(resourceType, "mod", StringComparison.OrdinalIgnoreCase);
-
-        if (isModCategoryRequest)
+        if (string.IsNullOrWhiteSpace(resourceType))
         {
-            IsModCategoryLoading = true;
+            return;
         }
+
+        resourceType = resourceType.Trim().ToLowerInvariant();
+        SetCategoryLoadingState(resourceType, true);
 
         try
         {
@@ -2129,7 +2230,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 .ToList();
             
             // 更新对应的类别集合并重置选中的类别为"all"
-            switch (resourceType.ToLower())
+            switch (resourceType)
             {
                 case "mod":
                     ModCategories = new ObservableCollection<Models.CategoryItem>(uniqueCategories);
@@ -2168,10 +2269,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         }
         finally
         {
-            if (isModCategoryRequest)
-            {
-                IsModCategoryLoading = false;
-            }
+            SetCategoryLoadingState(resourceType, false);
         }
     }
     
@@ -3702,7 +3800,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [RelayCommand(CanExecute = nameof(CanLoadMoreResourcePacks))]
     public async Task LoadMoreResourcePacksAsync()
     {
-        if (IsResourcePackLoading || IsResourcePackLoadingMore || !ResourcePackHasMoreResults)
+        if (IsResourcePackProcessing || IsResourcePackLoadingMore || !ResourcePackHasMoreResults)
         {
             return;
         }
@@ -3847,7 +3945,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     private bool CanLoadMoreResourcePacks()
     {
-        return !IsResourcePackLoading && !IsResourcePackLoadingMore && ResourcePackHasMoreResults;
+        return !IsResourcePackProcessing && !IsResourcePackLoadingMore && ResourcePackHasMoreResults;
     }
     
     [RelayCommand]
@@ -4074,7 +4172,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [RelayCommand(CanExecute = nameof(CanLoadMoreShaderPacks))]
     public async Task LoadMoreShaderPacksAsync()
     {
-        if (IsShaderPackLoading || IsShaderPackLoadingMore || !ShaderPackHasMoreResults)
+        if (IsShaderPackProcessing || IsShaderPackLoadingMore || !ShaderPackHasMoreResults)
         {
             return;
         }
@@ -4220,7 +4318,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     private bool CanLoadMoreShaderPacks()
     {
-        return !IsShaderPackLoading && !IsShaderPackLoadingMore && ShaderPackHasMoreResults;
+        return !IsShaderPackProcessing && !IsShaderPackLoadingMore && ShaderPackHasMoreResults;
     }
     
     [RelayCommand]
@@ -4442,7 +4540,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [RelayCommand(CanExecute = nameof(CanLoadMoreModpacks))]
     public async Task LoadMoreModpacksAsync()
     {
-        if (IsModpackLoading || IsModpackLoadingMore || !ModpackHasMoreResults)
+        if (IsModpackProcessing || IsModpackLoadingMore || !ModpackHasMoreResults)
         {
             return;
         }
@@ -4591,7 +4689,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     private bool CanLoadMoreModpacks()
     {
-        return !IsModpackLoading && !IsModpackLoadingMore && ModpackHasMoreResults;
+        return !IsModpackProcessing && !IsModpackLoadingMore && ModpackHasMoreResults;
     }
     
     [RelayCommand]
@@ -4813,7 +4911,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [RelayCommand(CanExecute = nameof(CanLoadMoreDatapacks))]
     public async Task LoadMoreDatapacksAsync()
     {
-        if (IsDatapackLoading || IsDatapackLoadingMore || !DatapackHasMoreResults)
+        if (IsDatapackProcessing || IsDatapackLoadingMore || !DatapackHasMoreResults)
         {
             return;
         }
@@ -4958,7 +5056,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     private bool CanLoadMoreDatapacks()
     {
-        return !IsDatapackLoading && !IsDatapackLoadingMore && DatapackHasMoreResults;
+        return !IsDatapackProcessing && !IsDatapackLoadingMore && DatapackHasMoreResults;
     }
     
     [RelayCommand]
@@ -5089,7 +5187,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [RelayCommand(CanExecute = nameof(CanLoadMoreWorlds))]
     public async Task LoadMoreWorldsAsync()
     {
-        if (IsWorldLoading || IsWorldLoadingMore || !WorldHasMoreResults)
+        if (IsWorldProcessing || IsWorldLoadingMore || !WorldHasMoreResults)
         {
             return;
         }
@@ -5181,7 +5279,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     private bool CanLoadMoreWorlds()
     {
-        return !IsWorldLoading && !IsWorldLoadingMore && WorldHasMoreResults;
+        return !IsWorldProcessing && !IsWorldLoadingMore && WorldHasMoreResults;
     }
     
     [RelayCommand]

@@ -333,8 +333,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         var verticalOffset = scrollViewer.VerticalOffset;
         var scrollableHeight = scrollViewer.ScrollableHeight;
         var viewportHeight = scrollViewer.ViewportHeight;
-        var shouldLoadMore = !ViewModel.IsResourcePackLoadingMore && ViewModel.ResourcePackHasMoreResults &&
-            (scrollableHeight <= 0 || verticalOffset + viewportHeight >= scrollableHeight - 100);
+        var shouldLoadMore = (scrollableHeight <= 0 || verticalOffset + viewportHeight >= scrollableHeight - 100) &&
+            ViewModel.LoadMoreResourcePacksCommand.CanExecute(null);
         if (shouldLoadMore)
             ViewModel.LoadMoreResourcePacksCommand.Execute(null);
     }
@@ -441,8 +441,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         var verticalOffset = scrollViewer.VerticalOffset;
         var scrollableHeight = scrollViewer.ScrollableHeight;
         var viewportHeight = scrollViewer.ViewportHeight;
-        var shouldLoadMore = !ViewModel.IsModLoadingMore && ViewModel.ModHasMoreResults &&
-            (scrollableHeight <= 0 || verticalOffset + viewportHeight >= scrollableHeight - 100);
+        var shouldLoadMore = (scrollableHeight <= 0 || verticalOffset + viewportHeight >= scrollableHeight - 100) &&
+            ViewModel.LoadMoreModsCommand.CanExecute(null);
         if (shouldLoadMore)
             ViewModel.LoadMoreModsCommand.Execute(null);
     }
@@ -1304,8 +1304,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         var verticalOffset = scrollViewer.VerticalOffset;
         var scrollableHeight = scrollViewer.ScrollableHeight;
         var viewportHeight = scrollViewer.ViewportHeight;
-        var shouldLoadMore = !ViewModel.IsShaderPackLoadingMore && ViewModel.ShaderPackHasMoreResults &&
-            (scrollableHeight <= 0 || verticalOffset + viewportHeight >= scrollableHeight - 100);
+        var shouldLoadMore = (scrollableHeight <= 0 || verticalOffset + viewportHeight >= scrollableHeight - 100) &&
+            ViewModel.LoadMoreShaderPacksCommand.CanExecute(null);
         if (shouldLoadMore)
             ViewModel.LoadMoreShaderPacksCommand.Execute(null);
     }
@@ -1395,8 +1395,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         var verticalOffset = scrollViewer.VerticalOffset;
         var scrollableHeight = scrollViewer.ScrollableHeight;
         var viewportHeight = scrollViewer.ViewportHeight;
-        var shouldLoadMore = !ViewModel.IsModpackLoadingMore && ViewModel.ModpackHasMoreResults &&
-            (scrollableHeight <= 0 || verticalOffset + viewportHeight >= scrollableHeight - 100);
+        var shouldLoadMore = (scrollableHeight <= 0 || verticalOffset + viewportHeight >= scrollableHeight - 100) &&
+            ViewModel.LoadMoreModpacksCommand.CanExecute(null);
         if (shouldLoadMore)
             ViewModel.LoadMoreModpacksCommand.Execute(null);
     }
@@ -1486,8 +1486,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         var verticalOffset = scrollViewer.VerticalOffset;
         var scrollableHeight = scrollViewer.ScrollableHeight;
         var viewportHeight = scrollViewer.ViewportHeight;
-        var shouldLoadMore = !ViewModel.IsDatapackLoadingMore && ViewModel.DatapackHasMoreResults &&
-            (scrollableHeight <= 0 || verticalOffset + viewportHeight >= scrollableHeight - 100);
+        var shouldLoadMore = (scrollableHeight <= 0 || verticalOffset + viewportHeight >= scrollableHeight - 100) &&
+            ViewModel.LoadMoreDatapacksCommand.CanExecute(null);
         if (shouldLoadMore)
             ViewModel.LoadMoreDatapacksCommand.Execute(null);
     }

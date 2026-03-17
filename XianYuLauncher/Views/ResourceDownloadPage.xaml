@@ -569,7 +569,8 @@
                                                 IsActive="{Binding IsModLoadingMore, Mode=OneWay}" 
                                                 Width="32" Height="32" 
                                                 Margin="0,10,0,10" 
-                                                HorizontalAlignment="Center"/>
+                                                HorizontalAlignment="Center"
+                                                Visibility="{Binding IsModLoadingMore, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                         </ListView.Footer>
                                     </ListView>
                             </ScrollViewer>
@@ -680,10 +681,10 @@
                             <ProgressRing
                                 Grid.Row="2"
                                 Margin="20"
-                                IsActive="{Binding IsShaderPackLoading, Mode=OneWay}"
+                                IsActive="{Binding IsShaderPackProcessing, Mode=OneWay}"
                                 VerticalAlignment="Center"
                                 HorizontalAlignment="Center"
-                                Visibility="{Binding IsShaderPackLoading, Mode=OneWay}"/>
+                                Visibility="{Binding IsShaderPackProcessing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                             <!-- 光影列表 -->
                             <ScrollViewer 
@@ -711,7 +712,7 @@
                                         StretchContentForSingleRow="False"
                                         OneRowModeEnabled="False"
                                         ItemContainerStyle="{StaticResource CardGridViewItemStyle}"
-                                        Visibility="{Binding IsShaderPackLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                        Visibility="{Binding IsShaderPackProcessing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                         <controls:AdaptiveGridView.ItemTemplate>
                                             <DataTemplate x:DataType="models:ModrinthProject">
                                                 <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -791,7 +792,8 @@
                                                 IsActive="{Binding IsShaderPackLoadingMore, Mode=OneWay}" 
                                                 Width="32" Height="32" 
                                                 Margin="0,10,0,10" 
-                                                HorizontalAlignment="Center"/>
+                                                HorizontalAlignment="Center"
+                                                Visibility="{Binding IsShaderPackLoadingMore, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                         </controls:AdaptiveGridView.Footer>
                                     </controls:AdaptiveGridView>
                             </ScrollViewer>
@@ -902,10 +904,10 @@
                             <ProgressRing
                                 Grid.Row="2"
                                 Margin="20"
-                                IsActive="{Binding IsResourcePackLoading, Mode=OneWay}"
+                                IsActive="{Binding IsResourcePackProcessing, Mode=OneWay}"
                                 VerticalAlignment="Center"
                                 HorizontalAlignment="Center"
-                                Visibility="{Binding IsResourcePackLoading, Mode=OneWay}"/>
+                                Visibility="{Binding IsResourcePackProcessing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                             <!-- 资源包列表 -->
                             <ScrollViewer 
@@ -933,7 +935,7 @@
                                         StretchContentForSingleRow="False"
                                         OneRowModeEnabled="False"
                                         ItemContainerStyle="{StaticResource CardGridViewItemStyle}"
-                                        Visibility="{Binding IsResourcePackLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                        Visibility="{Binding IsResourcePackProcessing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                         <controls:AdaptiveGridView.ItemTemplate>
                                             <DataTemplate x:DataType="models:ModrinthProject">
                                                 <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
@@ -1013,7 +1015,8 @@
                                                 IsActive="{Binding IsResourcePackLoadingMore, Mode=OneWay}" 
                                                 Width="32" Height="32" 
                                                 Margin="0,10,0,10" 
-                                                HorizontalAlignment="Center"/>
+                                                HorizontalAlignment="Center"
+                                                Visibility="{Binding IsResourcePackLoadingMore, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                         </controls:AdaptiveGridView.Footer>
                                     </controls:AdaptiveGridView>
                             </ScrollViewer>
@@ -1125,10 +1128,10 @@
                             <ProgressRing
                                 Grid.Row="2"
                                 Margin="20"
-                                IsActive="{Binding IsDatapackLoading, Mode=OneWay}"
+                                IsActive="{Binding IsDatapackProcessing, Mode=OneWay}"
                                 VerticalAlignment="Center"
                                 HorizontalAlignment="Center"
-                                Visibility="{Binding IsDatapackLoading, Mode=OneWay}"/>
+                                Visibility="{Binding IsDatapackProcessing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                             <!-- 数据包列表 -->
                             <ScrollViewer 
@@ -1151,7 +1154,7 @@
                                         AllowDrop="True"
                                         IsItemClickEnabled="True"
                                         ItemClick="DatapackListView_ItemClick"
-                                        Visibility="{Binding IsDatapackLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                        Visibility="{Binding IsDatapackProcessing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                         <ListView.Resources>
                                             <Style TargetType="ScrollViewer">
                                                 <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
@@ -1214,7 +1217,8 @@
                                                 IsActive="{Binding IsDatapackLoadingMore, Mode=OneWay}" 
                                                 Width="32" Height="32" 
                                                 Margin="0,10,0,10" 
-                                                HorizontalAlignment="Center"/>
+                                                HorizontalAlignment="Center"
+                                                Visibility="{Binding IsDatapackLoadingMore, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                         </ListView.Footer>
                                     </ListView>
                             </ScrollViewer>
@@ -1326,10 +1330,10 @@
                             <ProgressRing
                                 Grid.Row="2"
                                 Margin="20"
-                                IsActive="{Binding IsModpackLoading, Mode=OneWay}"
+                                IsActive="{Binding IsModpackProcessing, Mode=OneWay}"
                                 VerticalAlignment="Center"
                                 HorizontalAlignment="Center"
-                                Visibility="{Binding IsModpackLoading, Mode=OneWay}"/>
+                                Visibility="{Binding IsModpackProcessing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                             <!-- 整合包列表 -->
                             <ScrollViewer 
@@ -1352,7 +1356,7 @@
                                         AllowDrop="True"
                                         IsItemClickEnabled="True"
                                         ItemClick="ModpackListView_ItemClick"
-                                        Visibility="{Binding IsModpackLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                        Visibility="{Binding IsModpackProcessing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                         <ListView.Resources>
                                             <Style TargetType="ScrollViewer">
                                                 <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
@@ -1415,7 +1419,8 @@
                                                 IsActive="{Binding IsModpackLoadingMore, Mode=OneWay}" 
                                                 Width="32" Height="32" 
                                                 Margin="0,10,0,10" 
-                                                HorizontalAlignment="Center"/>
+                                                HorizontalAlignment="Center"
+                                                Visibility="{Binding IsModpackLoadingMore, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                         </ListView.Footer>
                                     </ListView>
                             </ScrollViewer>
@@ -1529,10 +1534,10 @@
                             <ProgressRing
                                 Grid.Row="2"
                                 Margin="20"
-                                IsActive="{Binding IsWorldLoading, Mode=OneWay}"
+                                IsActive="{Binding IsWorldProcessing, Mode=OneWay}"
                                 VerticalAlignment="Center"
                                 HorizontalAlignment="Center"
-                                Visibility="{Binding IsWorldLoading, Mode=OneWay}"/>
+                                Visibility="{Binding IsWorldProcessing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
 
                             <!-- 世界列表 -->
                             <ScrollViewer 
@@ -1555,7 +1560,7 @@
                                         AllowDrop="True"
                                         IsItemClickEnabled="True"
                                         ItemClick="WorldListView_ItemClick"
-                                        Visibility="{Binding IsWorldLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                        Visibility="{Binding IsWorldProcessing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                                         <ListView.Resources>
                                             <Style TargetType="ScrollViewer">
                                                 <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
@@ -1618,7 +1623,8 @@
                                                 IsActive="{Binding IsWorldLoadingMore, Mode=OneWay}" 
                                                 Width="32" Height="32" 
                                                 Margin="0,10,0,10" 
-                                                HorizontalAlignment="Center"/>
+                                                HorizontalAlignment="Center"
+                                                Visibility="{Binding IsWorldLoadingMore, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                         </ListView.Footer>
                                     </ListView>
                             </ScrollViewer>
