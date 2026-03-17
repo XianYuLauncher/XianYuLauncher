@@ -7,8 +7,41 @@ on:
       - "v*"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: build-release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'workflow_dispatch' }}
+
 jobs:
-  build:
+  guard-dispatch:
+    name: Validate Dispatch Intent
+    runs-on: ubuntu-latest
+    outputs:
+      publish_release: ${{ steps.intent.outputs.publish_release }}
+
+    steps:
+    - name: Validate manual mode
+      id: intent
+      shell: bash
+      run: |
+        if [[ "${{ github.ref }}" == refs/tags/v* ]] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+          echo "publish_release=true" >> "$GITHUB_OUTPUT"
+        else
+          echo "publish_release=false" >> "$GITHUB_OUTPUT"
+        fi
+
+  validate:
+    name: Validation Gate
+    needs: guard-dispatch
+    uses: ./.github/workflows/verify.yml
+    with:
+      upload_artifacts: false
+
+  package:
+    name: Package (${{ matrix.platform }})
+    needs: validate
     strategy:
       matrix:
         platform: [x86, x64, arm64]
@@ -94,79 +127,9 @@ jobs:
     - name: Configure Channel
       shell: powershell
       run: |
-        $refName = "${{ github.ref_name }}"
-        $manifestPath = "XianYuLauncher/Package.appxmanifest"
-        [xml]$xml = Get-Content $manifestPath
-        
-        # 默认先把版本号提取出来 (去掉 v)
-        $version = $refName
-        if ($version.StartsWith("v")) { $version = $version.Substring(1) }
-        # 提取基础版本号 (例如 1.4.0)
-        if ($version -match '^(\d+\.\d+\.\d+)(.*)$') { 
-            $baseVer = $matches[1]
-            $suffix = $matches[2]
-            
-            # 默认 Revision 为 0
-            $revision = 0
-            
-            # 尝试从后缀中提取数字作为 Revision
-            # 例如: -dev1 -> 1, -beta05 -> 5
-            if ($suffix -match '(\d+)$') {
-                $revision = [int]$matches[1]
-            }
-            
-            # 组合成 MSIX 需要的四段式 (Major.Minor.Build.Revision)
-            $cleanVer = "$baseVer.$revision"
-            
-            $xml.Package.Identity.Version = $cleanVer
-            Write-Host "Set Package Version: $cleanVer (Base: $baseVer, Rev: $revision)"
-        }
-
-        # 判断是否为 Dev/Beta 通道 (包含 -dev, -beta 或非 Tag 触发)
-        # 这里逻辑：只要 Tag 里带 '-' (如 v1.4.0-dev)，或者干脆不是 v开头的 Tag，都算 Dev
-        if ($refName -match '-' -or -not ($refName -match '^v\d')) {
-            Write-Host "Channel: DEV/BETA"
-            
-            # 1. 修改包名 (Identity Name)
-            $oldName = $xml.Package.Identity.Name
-            $xml.Package.Identity.Name = "$oldName.Dev"
-            Write-Host "Updated Identity Name: $oldName -> $($xml.Package.Identity.Name)"
-            
-            # 2. 修改显示名称 (DisplayName)
-            # 注意: ms-resource: 是资源引用，不支持直接加后缀，需要直接改原始 manifest 里的字符串值
-            # 如果原始值是 ms-resource:AppDisplayName，必须保留，但这里我们无法轻易修改 PRI 资源表
-            # 临时方案: 直接硬编码显示名称，绕过资源引用 (仅用于 Dev)
-            $xml.Package.Properties.DisplayName = "XianYu Launcher (Dev)"
-            
-            # 同时修改 VisualElements 里的名称
-            if ($xml.Package.Applications.Application.VisualElements) {
-                # 同理，硬编码名称
-                $xml.Package.Applications.Application.VisualElements.DisplayName = "XianYu Launcher (Dev)"
-            }
-            
-            # 3. 替换图标 (Assets/Dev 下的所有文件覆盖到 Assets)
-            $devAssetsPath = "XianYuLauncher/Assets/Dev"
-            $targetAssetsPath = "XianYuLauncher/Assets"
-            
-            if (Test-Path $devAssetsPath) {
-                Get-ChildItem -Path $devAssetsPath -File | ForEach-Object {
-                    $dest = Join-Path $targetAssetsPath $_.Name
-                    Copy-Item $_.FullName $dest -Force
-                    Write-Host "Replaced Asset: $($_.Name)"
-                }
-            } else {
-                Write-Warning "Dev assets directory not found at $devAssetsPath"
-            }
-            
-            # 4. 设置编译宏 (供 C# 代码使用)
-            echo "Build_Constants=DEV_CHANNEL" >> $env:GITHUB_ENV
-        } else {
-            Write-Host "Channel: STABLE"
-            # Stable 不需要改 Manifest，保持原样
-            echo "Build_Constants=RELEASE_CHANNEL" >> $env:GITHUB_ENV
-        }
-        
-        $xml.Save($manifestPath)
+        .\scripts\ci\configure-build-channel.ps1 `
+          -RefName "${{ github.ref_name }}" `
+          -ManifestPath "XianYuLauncher/Package.appxmanifest"
 
     # 5. 还原包
     - name: Restore
@@ -380,9 +343,13 @@ jobs:
         if-no-files-found: error
 
   release:
-    needs: build
+    needs:
+      - guard-dispatch
+      - package
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: needs.guard-dispatch.outputs.publish_release == 'true'
+    permissions:
+      contents: write
     
     steps:
     - name: Checkout
@@ -393,7 +360,9 @@ jobs:
     - name: Download Artifacts
       uses: actions/download-artifact@v4
       with:
+        pattern: Package-*
         path: artifacts
+        merge-multiple: true
         
     - name: Display structure of downloaded files
       run: ls -R artifacts
