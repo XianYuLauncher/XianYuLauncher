@@ -175,7 +175,7 @@
                             <TextBlock x:Uid="TutorialPage_MinecraftPathTitle" Text="Minecraft 游戏目录" Style="{ThemeResource BodyStrongTextBlockStyle}" />
                             <TextBlock 
                                 x:Uid="TutorialPage_MinecraftPathDescription"
-                                Text="Minecraft游戏目录，包含versions、saves等文件夹" 
+                                Text="Minecraft 游戏目录，包含 versions、saves 等文件夹" 
                                 Style="{ThemeResource CaptionTextBlockStyle}" 
                                 Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
                             

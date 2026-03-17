@@ -53,7 +53,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     // 标记是否已经加载过版本数据
     private bool _versionsLoaded = false;
     
-    // 标记是否已经加载过Mod数据
+    // 标记是否已经加载过 Mod 数据
     private bool _modsLoaded = false;
     
     // 标记是否已经加载过资源包数据
@@ -93,11 +93,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         // 在页面加载完成后检查是否需要切换标签页
         Loaded += (sender, e) =>
         {
-            // 使用静态属性TargetTabIndex来控制标签页切换
+            // 使用静态属性 TargetTabIndex 来控制标签页切换
             if (TargetTabIndex > 0)
             {
                 ResourceTabView.SelectedIndex = TargetTabIndex;
-                // 重置TargetTabIndex，避免下次打开时仍然使用旧值
+                // 重置 TargetTabIndex，避免下次打开时仍然使用旧值
                 TargetTabIndex = 0;
             }
         };
@@ -111,7 +111,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     {
         ApplyProtocolNavigationParameter(parameter);
 
-        // 直接使用Dispatcher延迟执行，确保TabView已经初始化完成
+        // 直接使用 Dispatcher 延迟执行，确保 TabView 已经初始化完成
         _uiDispatcher.TryEnqueue(() =>
         {
             // 导航缓存场景下，恢复上次选中的标签页
@@ -193,7 +193,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     }
 
     /// <summary>
-    /// TabView选择变化事件处理程序，实现延迟加载
+    /// TabView 选择变化事件处理程序，实现延迟加载
     /// </summary>
     private async void ResourceTabView_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
@@ -203,7 +203,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             _ = ViewModel.EnsureAvailableVersionsAsync();
         }
 
-        // 根据SelectedIndex执行不同的延迟加载逻辑，不再依赖标签标题文本
+        // 根据 SelectedIndex 执行不同的延迟加载逻辑，不再依赖标签标题文本
         switch (ResourceTabView.SelectedIndex)
         {
             case 0: // 版本下载标签页
@@ -213,7 +213,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
                     _versionsLoaded = true;
                 }
                 break;
-            case 1: // Mod下载标签页
+            case 1: // Mod 下载标签页
                 if (!_modsLoaded)
                 {
                     await ViewModel.LoadCategoriesAsync("mod");
@@ -457,8 +457,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private async void ModSearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
-        // 只有当Mod下载标签页被选中时，才执行搜索
-        if (ResourceTabView.SelectedIndex == 1) // Mod下载标签页索引
+        // 只有当 Mod 下载标签页被选中时，才执行搜索
+        if (ResourceTabView.SelectedIndex == 1) // Mod 下载标签页索引
         {
             await ViewModel.SearchModsCommand.ExecuteAsync(null);
         }
@@ -1516,13 +1516,13 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     }
 
     /// <summary>
-    /// Modrinth平台切换事件处理程序
+    /// Modrinth 平台切换事件处理程序
     /// </summary>
     private async void ModrinthToggleButton_Click(object sender, RoutedEventArgs e) =>
         await HandlePlatformToggleAsync(1, _modsLoaded, () => ViewModel.SearchModsCommand.ExecuteAsync(null));
 
     /// <summary>
-    /// CurseForge平台切换事件处理程序
+    /// CurseForge 平台切换事件处理程序
     /// </summary>
     private async void CurseForgeToggleButton_Click(object sender, RoutedEventArgs e) =>
         await HandlePlatformToggleAsync(1, _modsLoaded, () => ViewModel.SearchModsCommand.ExecuteAsync(null));

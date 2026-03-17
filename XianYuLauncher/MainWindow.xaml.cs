@@ -147,8 +147,8 @@ public sealed partial class MainWindow : WindowEx
     {
         try
         {
-            // 只在Content加载完成后应用字体，避免干扰XAML解析器
-            // 这样可以确保XAML解析错误能正常报告，而不会被字体修改掩盖
+            // 只在 Content 加载完成后应用字体，避免干扰 XAML 解析器
+            // 这样可以确保 XAML 解析错误能正常报告，而不会被字体修改掩盖
             if (Content is Microsoft.UI.Xaml.Controls.Control rootControl)
             {
                 // 创建FontFamily对象或使用null（默认字体）
