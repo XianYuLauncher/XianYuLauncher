@@ -26,18 +26,30 @@ namespace XianYuLauncher.Tests
             var libraryManager = new LibraryManager(downloadManager, logger);
 
             string libraryName = "net.neoforged:mergetool:2.0.0:api@jar";
-            string librariesDirectory = @"E:\libraries";
+            string librariesDirectory = Path.Combine(Path.GetTempPath(), $"LibraryManagerTests_{Guid.NewGuid():N}");
 
-            // Act
-            string path = libraryManager.GetLibraryPath(libraryName, librariesDirectory);
+            Directory.CreateDirectory(librariesDirectory);
 
-            // Assert
-            // Expected: ...\mergetool-2.0.0-api.jar
-            // On Windows, separators are backslashes
-            string expectedEndsWith = Path.Combine("net", "neoforged", "mergetool", "2.0.0", "mergetool-2.0.0-api.jar");
-            
-            Assert.EndsWith(expectedEndsWith, path);
-            Assert.DoesNotContain(".jar.jar", path);
+            try
+            {
+                // Act
+                string path = libraryManager.GetLibraryPath(libraryName, librariesDirectory);
+
+                // Assert
+                // Expected: ...\mergetool-2.0.0-api.jar
+                // On Windows, separators are backslashes
+                string expectedEndsWith = Path.Combine("net", "neoforged", "mergetool", "2.0.0", "mergetool-2.0.0-api.jar");
+
+                Assert.EndsWith(expectedEndsWith, path);
+                Assert.DoesNotContain(".jar.jar", path);
+            }
+            finally
+            {
+                if (Directory.Exists(librariesDirectory))
+                {
+                    Directory.Delete(librariesDirectory, true);
+                }
+            }
         }
     }
 }
