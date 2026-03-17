@@ -21,9 +21,16 @@ public sealed class HashLookupCenter : IHashLookupCenter
     private static readonly TimeSpan CleanupInterval = TimeSpan.FromMinutes(1);
     private const int CleanupTriggerThreshold = 256;
 
+    private readonly TimeProvider _timeProvider;
     private readonly object _cleanupSyncRoot = new();
-    private DateTimeOffset _lastCleanupAt = DateTimeOffset.UtcNow;
+    private DateTimeOffset _lastCleanupAt;
     private int _cleanupCounter;
+
+    public HashLookupCenter(TimeProvider? timeProvider = null)
+    {
+        _timeProvider = timeProvider ?? TimeProvider.System;
+        _lastCleanupAt = GetUtcNow();
+    }
 
     public async Task<Dictionary<string, ModrinthVersion>> GetOrFetchModrinthVersionsByHashesAsync(
         string scope,
@@ -345,7 +352,7 @@ public sealed class HashLookupCenter : IHashLookupCenter
     private bool TryGetModrinthCache(string scope, string hash, out ModrinthVersion? value)
     {
         var key = BuildPerItemKey(scope, hash);
-        var now = DateTimeOffset.UtcNow;
+        var now = GetUtcNow();
 
         if (_modrinthHashCache.TryGetValue(key, out var entry) && entry.ExpiresAt > now)
         {
@@ -360,13 +367,13 @@ public sealed class HashLookupCenter : IHashLookupCenter
 
     private void SetModrinthCache(string scope, string hash, ModrinthVersion? value, TimeSpan ttl)
     {
-        _modrinthHashCache[BuildPerItemKey(scope, hash)] = new CacheEntry<ModrinthVersion?>(value, DateTimeOffset.UtcNow.Add(ttl));
+        _modrinthHashCache[BuildPerItemKey(scope, hash)] = new CacheEntry<ModrinthVersion?>(value, GetUtcNow().Add(ttl));
     }
 
     private bool TryGetCurseForgeExact(string scope, uint fingerprint, out CurseForgeFingerprintMatch? value)
     {
         var key = BuildPerItemKey(scope, fingerprint.ToString());
-        var now = DateTimeOffset.UtcNow;
+        var now = GetUtcNow();
 
         if (_curseForgeExactCache.TryGetValue(key, out var entry) && entry.ExpiresAt > now)
         {
@@ -382,13 +389,13 @@ public sealed class HashLookupCenter : IHashLookupCenter
     private void SetCurseForgeExact(string scope, uint fingerprint, CurseForgeFingerprintMatch? value, TimeSpan ttl)
     {
         _curseForgeExactCache[BuildPerItemKey(scope, fingerprint.ToString())] =
-            new CacheEntry<CurseForgeFingerprintMatch?>(value, DateTimeOffset.UtcNow.Add(ttl));
+            new CacheEntry<CurseForgeFingerprintMatch?>(value, GetUtcNow().Add(ttl));
     }
 
     private bool TryGetCurseForgeUnmatched(string scope, uint fingerprint, out bool value)
     {
         var key = BuildPerItemKey(scope, fingerprint.ToString());
-        var now = DateTimeOffset.UtcNow;
+        var now = GetUtcNow();
 
         if (_curseForgeUnmatchedCache.TryGetValue(key, out var entry) && entry.ExpiresAt > now)
         {
@@ -404,7 +411,7 @@ public sealed class HashLookupCenter : IHashLookupCenter
     private void SetCurseForgeUnmatched(string scope, uint fingerprint, bool value, TimeSpan ttl)
     {
         _curseForgeUnmatchedCache[BuildPerItemKey(scope, fingerprint.ToString())] =
-            new CacheEntry<bool>(value, DateTimeOffset.UtcNow.Add(ttl));
+            new CacheEntry<bool>(value, GetUtcNow().Add(ttl));
     }
 
     private static string BuildPerItemKey(string scope, string item)
@@ -419,7 +426,7 @@ public sealed class HashLookupCenter : IHashLookupCenter
             return;
         }
 
-        var now = DateTimeOffset.UtcNow;
+        var now = GetUtcNow();
 
         lock (_cleanupSyncRoot)
         {
@@ -456,7 +463,7 @@ public sealed class HashLookupCenter : IHashLookupCenter
 
     private bool TryGetModrinthProjectCache(string key, out ModrinthProjectDetail? value)
     {
-        var now = DateTimeOffset.UtcNow;
+        var now = GetUtcNow();
         if (_modrinthProjectCache.TryGetValue(key, out var entry) && entry.ExpiresAt > now)
         {
             value = entry.Value;
@@ -480,7 +487,7 @@ public sealed class HashLookupCenter : IHashLookupCenter
         {
             var result = await fetchAsync(projectIdOrSlug);
             var ttl = result == null ? emptyTtl : successTtl;
-            _modrinthProjectCache[cacheKey] = new CacheEntry<ModrinthProjectDetail?>(result, DateTimeOffset.UtcNow.Add(ttl));
+            _modrinthProjectCache[cacheKey] = new CacheEntry<ModrinthProjectDetail?>(result, GetUtcNow().Add(ttl));
             System.Diagnostics.Debug.WriteLine($"[HashLookupCenter][ModrinthProject] 远端返回: scope={scope}, project={projectIdOrSlug}, 有结果={result != null}");
             return result;
         }
@@ -518,6 +525,8 @@ public sealed class HashLookupCenter : IHashLookupCenter
         result.InstalledFingerprints ??= new List<uint>();
         return result;
     }
+
+    private DateTimeOffset GetUtcNow() => _timeProvider.GetUtcNow();
 
     private sealed record CacheEntry<TValue>(TValue Value, DateTimeOffset ExpiresAt);
 
