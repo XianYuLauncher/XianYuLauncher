@@ -45,8 +45,6 @@ jobs:
         shell: pwsh
         run: |
           dotnet test XianYuLauncher.Tests/XianYuLauncher.Tests.csproj `
-            -p:WarningLevel=0 `
-            -clp:ErrorsOnly `
             --logger "trx;LogFileName=XianYuLauncher.Tests.trx" `
             --results-directory "$env:GITHUB_WORKSPACE\TestResults\XianYuLauncher.Tests"
 
@@ -54,8 +52,6 @@ jobs:
         shell: pwsh
         run: |
           dotnet test XianYuLauncher.IntegrationTests/XianYuLauncher.IntegrationTests.csproj `
-            -p:WarningLevel=0 `
-            -clp:ErrorsOnly `
             --logger "trx;LogFileName=XianYuLauncher.IntegrationTests.trx" `
             --results-directory "$env:GITHUB_WORKSPACE\TestResults\XianYuLauncher.IntegrationTests"
 
@@ -103,8 +99,6 @@ jobs:
           msbuild XianYuLauncher/XianYuLauncher.csproj `
             -p:Configuration=Debug `
             -p:Platform=x64 `
-            -p:WarningLevel=0 `
-            -clp:ErrorsOnly `
             -bl:"$artifactDir\verify-app.binlog"
 
       - name: Upload build log
