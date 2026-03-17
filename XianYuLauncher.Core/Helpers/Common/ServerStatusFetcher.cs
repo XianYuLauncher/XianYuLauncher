@@ -1,4 +1,4 @@
-﻿using System.Net.Sockets;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -177,9 +177,7 @@ namespace XianYuLauncher.Core.Helpers
                 foreach (var line in lines)
                 {
                     var l = line.Trim();
-                    // Output format: svr hostname = mc.hypixel.net
-                    // Note: Depending on locale, this might vary. 
-                    // But 'svr hostname' and 'port' are fairly standard in nslookup output.
+                    // nslookup 输出格式：svr hostname = mc.hypixel.net（随系统语言可能变化，svr hostname 与 port 较通用）
                     if (l.Contains("svr hostname", StringComparison.OrdinalIgnoreCase))
                     {
                         var parts = l.Split('=');
@@ -192,8 +190,7 @@ namespace XianYuLauncher.Core.Helpers
                     }
                 }
                 
-                // If target or port is missing, maybe try regex backup for localization?
-                // For now, assume English output or consistent identifiers.
+                // 若 target 或 port 缺失，可考虑用正则兜底适配本地化；当前假定英文输出或固定标识符。
 
                 if (!string.IsNullOrEmpty(target) && port.HasValue)
                 {

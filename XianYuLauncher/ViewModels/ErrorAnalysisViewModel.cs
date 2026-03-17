@@ -790,7 +790,7 @@ namespace XianYuLauncher.ViewModels
             ChatMessages.Add(new UiChatMessage("assistant", "..."));
         });
         
-        // Give UI a moment to render the new messages
+        // 短暂等待 UI 渲染新消息
         await Task.Delay(50);
 
         try {
@@ -1400,7 +1400,7 @@ namespace XianYuLauncher.ViewModels
                 ResetFixActionState();
             });
             
-            // Give UI a moment to update
+            // 短暂等待 UI 更新
             await Task.Delay(50);
             
             // 创建取消令牌

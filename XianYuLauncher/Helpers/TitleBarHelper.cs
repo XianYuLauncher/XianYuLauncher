@@ -9,9 +9,9 @@ using Windows.UI.ViewManagement;
 
 namespace XianYuLauncher.Helpers;
 
-// Helper class to workaround custom title bar bugs.
-// DISCLAIMER: The resource key names and color values used below are subject to change. Do not depend on them.
-// https://github.com/microsoft/TemplateStudio/issues/4516
+// 自定义标题栏的兼容处理（规避 WinUI 已知问题）。
+// 注意：下方使用的资源键名与颜色值可能随 WinUI 更新而变化，请勿强依赖。
+// 参考：https://github.com/microsoft/TemplateStudio/issues/4516
 internal class TitleBarHelper
 {
     private const int WAINACTIVE = 0x00;

@@ -31,10 +31,8 @@ namespace XianYuLauncher.Helpers
                 writer.Write((short)1);      // Count, 1 image
 
                 // 2. Directory Entry
-                // We need valid width/height from PNG to be perfectly spec compliant, 
-                // but 0 means 256px or "look at image". 
-                // For simplicity without image parsing lib, we use 0 (256) which is common for Vista+ PNG icons.
-                // Or we can try to peek PNG header.
+                // PNG 需有效宽高以符合规范，0 表示 256px 或"从图像读取"。
+                // 无图像解析库时使用 0 (256)，Vista+ PNG 图标常见做法；也可从 IHDR 解析。
                 
                 int width = 0;
                 int height = 0;

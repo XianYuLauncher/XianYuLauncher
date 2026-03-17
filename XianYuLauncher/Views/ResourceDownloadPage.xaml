@@ -736,10 +736,10 @@
                                                                 </Border.Background>
                                                             </Border>
 
-                                                            <!-- Dark Overlay to ensure text readability or consistent look -->
+                                                            <!-- 深色遮罩，保证文字可读性与视觉一致 -->
                                                             <Rectangle Fill="{ThemeResource SolidBackgroundFillColorBaseAltBrush}" Opacity="0.4"/>
                                                             
-                                                            <!-- Main Image (Sits on top, effectively hiding the blurred background if it exists) -->
+                                                            <!-- 主图（置于顶层，覆盖模糊背景） -->
                                                             <Image Source="{Binding FeaturedGallery, Mode=OneWay, TargetNullValue={x:Null}}" Stretch="UniformToFill"/>
                                                         </Grid>
                                                     </Border>
@@ -959,10 +959,10 @@
                                                                 </Border.Background>
                                                             </Border>
 
-                                                            <!-- Dark Overlay to ensure text readability or consistent look -->
+                                                            <!-- 深色遮罩，保证文字可读性与视觉一致 -->
                                                             <Rectangle Fill="{ThemeResource SolidBackgroundFillColorBaseAltBrush}" Opacity="0.4"/>
                                                             
-                                                            <!-- Main Image (Sits on top, effectively hiding the blurred background if it exists) -->
+                                                            <!-- 主图（置于顶层，覆盖模糊背景） -->
                                                             <Image Source="{Binding FeaturedGallery, Mode=OneWay, TargetNullValue={x:Null}}" Stretch="UniformToFill"/>
                                                         </Grid>
                                                     </Border>
