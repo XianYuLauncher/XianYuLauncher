@@ -11,14 +11,13 @@ on:
         required: true
         default: "mod_data.txt"
       mode:
-        description: "运行模式：append=增量抓取，patch=区间修补，full-rebuild=全量重建"
+        description: "运行模式：append=增量抓取，patch=区间修补"
         required: true
         type: choice
         default: "append"
         options:
           - append
           - patch
-          - full-rebuild
       max_items:
         description: "仅 append 模式生效：本次最多抓取条数（0=不限制）"
         required: true
@@ -97,9 +96,6 @@ jobs:
               echo "CRAWLER_PATCH_START=$PATCH_START" >> "$GITHUB_ENV"
               echo "CRAWLER_PATCH_COUNT=$PATCH_COUNT" >> "$GITHUB_ENV"
               ;;
-            full-rebuild)
-              echo "CRAWLER_MODE=full-rebuild" >> "$GITHUB_ENV"
-              ;;
             *)
               echo "Unsupported mode: $MODE" >&2
               exit 1
@@ -112,7 +108,6 @@ jobs:
           echo "LOCAL_OUTPUT=$RUNNER_TEMP/${{ inputs.gist_filename }}.new" >> "$GITHUB_ENV"
 
       - name: Download existing data from Gist
-        if: ${{ inputs.mode != 'full-rebuild' }}
         shell: bash
         env:
           GIST_TOKEN: ${{ secrets.GIST_TOKEN }}
@@ -152,12 +147,6 @@ jobs:
           print(f"已写入本地输入文件: {local_input}, 字符数={len(content)}")
           PY
 
-      - name: Prepare empty input for full rebuild
-        if: ${{ inputs.mode == 'full-rebuild' }}
-        shell: bash
-        run: |
-          : > "$LOCAL_INPUT"
-
       - name: Run crawler
         id: run_crawler
         shell: bash
@@ -175,10 +164,6 @@ jobs:
             CMD+=(--patch-mode)
             CMD+=(--patch-start "$CRAWLER_PATCH_START")
             CMD+=(--patch-count "$CRAWLER_PATCH_COUNT")
-          fi
-
-          if [ "$CRAWLER_MODE" = "full-rebuild" ]; then
-            CMD+=(--full-rebuild)
           fi
 
           "${CMD[@]}"
