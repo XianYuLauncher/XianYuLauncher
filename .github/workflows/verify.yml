@@ -29,7 +29,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: validation-${{ github.workflow }}-${{ github.event.pull_request.head.ref || github.ref }}
+  group: validation-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

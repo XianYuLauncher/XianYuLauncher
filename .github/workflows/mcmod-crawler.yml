@@ -57,9 +57,15 @@ jobs:
         run: |
           GIST_ID="${{ secrets.GIST_ID }}"
           MODE="${{ inputs.mode }}"
+          GIST_FILENAME_INPUT="${{ inputs.gist_filename }}"
 
           if [ -z "$GIST_ID" ]; then
             echo "Missing required secret: GIST_ID" >&2
+            exit 1
+          fi
+
+          if ! [[ "$GIST_FILENAME_INPUT" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+            echo "gist_filename 仅允许英文字母、数字、点、下划线和短横线，且必须以字母或数字开头" >&2
             exit 1
           fi
 
@@ -103,9 +109,9 @@ jobs:
           esac
 
           echo "GIST_ID=$GIST_ID" >> "$GITHUB_ENV"
-          echo "GIST_FILENAME=${{ inputs.gist_filename }}" >> "$GITHUB_ENV"
-          echo "LOCAL_INPUT=$RUNNER_TEMP/${{ inputs.gist_filename }}" >> "$GITHUB_ENV"
-          echo "LOCAL_OUTPUT=$RUNNER_TEMP/${{ inputs.gist_filename }}.new" >> "$GITHUB_ENV"
+          echo "GIST_FILENAME=$GIST_FILENAME_INPUT" >> "$GITHUB_ENV"
+          echo "LOCAL_INPUT=$RUNNER_TEMP/$GIST_FILENAME_INPUT" >> "$GITHUB_ENV"
+          echo "LOCAL_OUTPUT=$RUNNER_TEMP/$GIST_FILENAME_INPUT.new" >> "$GITHUB_ENV"
 
       - name: Download existing data from Gist
         shell: bash
