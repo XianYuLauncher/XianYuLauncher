@@ -276,6 +276,9 @@ namespace XianYuLauncher.ViewModels
         
         // CurseForge文件加载取消令牌源
         private CancellationTokenSource? _curseForgeLoadCancellationTokenSource;
+
+        // 图标预取取消令牌源（每次加载时重建，支持快速切换 Mod 时取消旧请求）
+        private CancellationTokenSource? _iconLoadCancellationTokenSource;
         
         // 项目类型：mod 或 resourcepack
         [ObservableProperty]
@@ -452,6 +455,13 @@ namespace XianYuLauncher.ViewModels
                 _sourceType = null;
             }
 
+            // 取消上一次图标预取，避免快速切换 Mod 时堆积无效请求
+            _iconLoadCancellationTokenSource?.Cancel();
+            _iconLoadCancellationTokenSource?.Dispose();
+            var iconCts = new CancellationTokenSource();
+            _iconLoadCancellationTokenSource = iconCts;
+            var iconCt = iconCts.Token;
+
             ModId = modId;
             await _uiDispatcher.RunOnUiThreadAsync(() => ModHeaderIcon = null);
             IsLoading = true;
@@ -465,11 +475,11 @@ namespace XianYuLauncher.ViewModels
                 // 判断是否为CurseForge的Mod（ProjectId以"curseforge-"开头）
                 if (modId.StartsWith("curseforge-"))
                 {
-                    await LoadCurseForgeModDetailsAsync(modId);
+                    await LoadCurseForgeModDetailsAsync(modId, iconCt);
                 }
                 else
                 {
-                    await LoadModrinthModDetailsAsync(modId);
+                    await LoadModrinthModDetailsAsync(modId, iconCt);
                 }
             }
             catch (Exception ex)
@@ -479,6 +489,13 @@ namespace XianYuLauncher.ViewModels
             }
             finally
             {
+                // PrefetchModHeaderIconAsync 已 await 完成；若字段仍为本次 CTS，则安全释放
+                if (ReferenceEquals(_iconLoadCancellationTokenSource, iconCts))
+                {
+                    iconCts.Dispose();
+                    _iconLoadCancellationTokenSource = null;
+                }
+
                 await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     if (ModHeaderIcon == null)
@@ -548,13 +565,13 @@ namespace XianYuLauncher.ViewModels
             }
         }
         
-        private async Task LoadModrinthModDetailsAsync(string modId)
+        private async Task LoadModrinthModDetailsAsync(string modId, CancellationToken iconCt)
         {
             try
             {
                 var result = await _modDetailLoadOrchestrator.LoadModrinthModDetailsAsync(modId, _passedModInfo, _sourceType);
                 ApplyModDetailResult(result);
-                await PrefetchModHeaderIconAsync(CancellationToken.None);
+                await PrefetchModHeaderIconAsync(iconCt);
                 PublisherList.Clear();
                 _modTeamId = result.TeamId;
                 StartLoadPublishersInBackground();
@@ -570,11 +587,11 @@ namespace XianYuLauncher.ViewModels
         /// <summary>
         /// 加载CurseForge Mod详情
         /// </summary>
-        private async Task LoadCurseForgeModDetailsAsync(string modId)
+        private async Task LoadCurseForgeModDetailsAsync(string modId, CancellationToken iconCt)
         {
             var result = await _modDetailLoadOrchestrator.LoadCurseForgeModDetailsAsync(modId, _passedModInfo, _sourceType);
             ApplyModDetailResult(result);
-            await PrefetchModHeaderIconAsync(CancellationToken.None);
+            await PrefetchModHeaderIconAsync(iconCt);
 
             PublisherList.Clear();
             _modTeamId = null;
@@ -675,7 +692,7 @@ namespace XianYuLauncher.ViewModels
             OnPropertyChanged(nameof(DisplayModDescription));
 
             ModDownloads = result.ModDownloads;
-            ModIconUrl = result.ModIconUrl ?? string.Empty;
+            ModIconUrl = result.ModIconUrl;
             ModLicense = result.ModLicense;
             ModAuthor = result.ModAuthor;
             ModSlug = result.ModSlug;
@@ -1953,6 +1970,14 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         public void OnNavigatedFrom()
         {
+            // 取消图标预取任务
+            if (_iconLoadCancellationTokenSource != null)
+            {
+                _iconLoadCancellationTokenSource.Cancel();
+                _iconLoadCancellationTokenSource.Dispose();
+                _iconLoadCancellationTokenSource = null;
+            }
+
             // 取消CurseForge后台加载任务
             if (_curseForgeLoadCancellationTokenSource != null)
             {
