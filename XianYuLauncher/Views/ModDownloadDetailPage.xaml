@@ -104,8 +104,8 @@
                                     VerticalAlignment="Top"
                                     Margin="0,4,0,0"
                                     Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
-                            <Border CornerRadius="8" Clip="{Binding ElementName=ImageBorder, Path=CornerRadius}">
-                                <Image x:Name="ImageBorder" Source="{x:Bind ViewModel.ModHeaderIcon, Mode=OneWay}" Width="80" Height="80" Stretch="UniformToFill" />
+                            <Border x:Name="IconBorder" CornerRadius="8">
+                                <Image Source="{x:Bind ViewModel.ModHeaderIcon, Mode=OneWay}" Width="80" Height="80" Stretch="UniformToFill" />
                             </Border>
                             <StackPanel VerticalAlignment="Center">
                                 <TextBlock Text="{x:Bind ViewModel.ModName, Mode=OneWay}" FontSize="24" FontWeight="Bold" />
