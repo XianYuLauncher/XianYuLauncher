@@ -131,9 +131,9 @@ public class DownloadManager : IDownloadManager
                                          await CanUseShardedDownloadAsync(url, contentLength.Value, cancellationToken);
                 }
                 
-                if (useShardedDownload)
+                if (useShardedDownload && contentLength is long resolvedContentLength)
                 {
-                    await DownloadFileShardedAsync(url, targetPath, contentLength.Value, threadCount, progressCallback, cancellationToken);
+                    await DownloadFileShardedAsync(url, targetPath, resolvedContentLength, threadCount, progressCallback, cancellationToken);
                 }
                 else
                 {

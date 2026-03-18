@@ -66,8 +66,12 @@ public class VersionConfigService : IVersionConfigService
     {
         if (jObject[propertyName] is JToken token && token.Type == expectedType)
         {
-            value = token.Value<T>();
-            return true;
+            var typedValue = token.Value<T>();
+            if (typedValue is not null)
+            {
+                value = typedValue;
+                return true;
+            }
         }
 
         value = default!;

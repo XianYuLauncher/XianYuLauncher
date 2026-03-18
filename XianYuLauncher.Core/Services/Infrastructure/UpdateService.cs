@@ -602,7 +602,7 @@ public class UpdateService
         try
         {
             // 加载证书
-            var certificate = new X509Certificate2(certificateFilePath);
+            using var certificate = X509CertificateLoader.LoadCertificateFromFile(certificateFilePath);
             _logger.LogInformation("加载证书成功，主题: {Subject}, 颁发者: {Issuer}, 序列号: {SerialNumber}", 
                 certificate.Subject, certificate.Issuer, certificate.SerialNumber);
             Debug.WriteLine($"[DEBUG] 加载证书成功，主题: {certificate.Subject}, 颁发者: {certificate.Issuer}, 序列号: {certificate.SerialNumber}");
