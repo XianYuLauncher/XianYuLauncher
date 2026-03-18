@@ -488,18 +488,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         }
     }
 
-    private void ModFilterControl_RefreshVersionsRequested(object sender, EventArgs e)
-    {
-        if (ModFilterControl == null) return;
-
-        // 重新生成版本列表
-        var versions = CreateVersionTokenItems();
-        ModFilterControl.VersionsSource = new ObservableCollection<TokenItem>(versions);
-
-        // 重新设置选中状态
-        ModFilterControl.SetSelectedVersions(ViewModel.SelectedVersions);
-    }
-
     private void ModFilterFlyout_Opening(object sender, object e)
     {
         _modFilterSelectionSnapshot = GetModFilterSelectionStateKey();
@@ -552,18 +540,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         {
             await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
         }
-    }
-
-    private void ShaderPackFilterControl_RefreshVersionsRequested(object sender, EventArgs e)
-    {
-        if (ShaderPackFilterControl == null) return;
-
-        // 重新生成版本列表
-        var versions = CreateVersionTokenItems();
-        ShaderPackFilterControl.VersionsSource = new ObservableCollection<TokenItem>(versions);
-
-        // 重新设置选中状态
-        ShaderPackFilterControl.SetSelectedVersions(ViewModel.SelectedShaderPackVersions);
     }
 
     private void RefreshShaderPackFilterTokenItems()
@@ -625,15 +601,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         }
     }
 
-    private void ResourcePackFilterControl_RefreshVersionsRequested(object sender, EventArgs e)
-    {
-        if (ResourcePackFilterControl == null) return;
-
-        var versions = CreateVersionTokenItems();
-        ResourcePackFilterControl.VersionsSource = new ObservableCollection<TokenItem>(versions);
-        ResourcePackFilterControl.SetSelectedVersions(ViewModel.SelectedResourcePackVersions);
-    }
-
     private void RefreshResourcePackFilterTokenItems()
     {
         if (ResourcePackFilterControl == null) return;
@@ -683,15 +650,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         {
             await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
         }
-    }
-
-    private void DatapackFilterControl_RefreshVersionsRequested(object sender, EventArgs e)
-    {
-        if (DatapackFilterControl == null) return;
-
-        var versions = CreateVersionTokenItems();
-        DatapackFilterControl.VersionsSource = new ObservableCollection<TokenItem>(versions);
-        DatapackFilterControl.SetSelectedVersions(ViewModel.SelectedDatapackVersions);
     }
 
     private void RefreshDatapackFilterTokenItems()
@@ -745,15 +703,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         }
     }
 
-    private void ModpackFilterControl_RefreshVersionsRequested(object sender, EventArgs e)
-    {
-        if (ModpackFilterControl == null) return;
-
-        var versions = CreateVersionTokenItems();
-        ModpackFilterControl.VersionsSource = new ObservableCollection<TokenItem>(versions);
-        ModpackFilterControl.SetSelectedVersions(ViewModel.SelectedModpackVersions);
-    }
-
     private void RefreshModpackFilterTokenItems()
     {
         if (ModpackFilterControl == null) return;
@@ -803,15 +752,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         {
             await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
         }
-    }
-
-    private void WorldFilterControl_RefreshVersionsRequested(object sender, EventArgs e)
-    {
-        if (WorldFilterControl == null) return;
-
-        var versions = CreateVersionTokenItems();
-        WorldFilterControl.VersionsSource = new ObservableCollection<TokenItem>(versions);
-        WorldFilterControl.SetSelectedVersions(ViewModel.SelectedWorldVersions);
     }
 
     private void RefreshWorldFilterTokenItems()
