@@ -30,7 +30,7 @@ namespace XianYuLauncher.Core.Services
         /// </summary>
         /// <param name="progressCallback">下载进度回调</param>
         /// <returns>陶瓦插件可执行文件的本地路径</returns>
-        public async Task<string> EnsureTerracottaAsync(Action<double>? progressCallback = null)
+        public async Task<string?> EnsureTerracottaAsync(Action<double>? progressCallback = null)
         {
             Log.Information("[TerracottaService] 开始检查并下载陶瓦插件");
             
@@ -129,7 +129,7 @@ namespace XianYuLauncher.Core.Services
         /// 获取本地缓存的陶瓦插件路径
         /// </summary>
         /// <returns>本地缓存路径，如果不存在返回null</returns>
-        private string GetCachedTerracottaPath(string architecture)
+        private string? GetCachedTerracottaPath(string architecture)
         {
             // 查找缓存目录中所有匹配当前架构的可执行文件
             string[] executableFiles = Directory.GetFiles(_cacheDirectory, "*.exe");
@@ -193,7 +193,7 @@ namespace XianYuLauncher.Core.Services
         /// <summary>
         /// 获取最新版本信息
         /// </summary>
-        private async Task<TerracottaRelease> GetLatestReleaseInfo(string apiUrl)
+        private async Task<TerracottaRelease?> GetLatestReleaseInfo(string apiUrl)
         {
             try
             {

@@ -190,7 +190,7 @@ public class CustomDownloadSource : IDownloadSource
         return ApplyTemplate("client_json", _template.GetClientJsonUrl(versionId, originalUrl), context);
     }
 
-    public string GetLibraryUrl(string libraryName, string originalUrl)
+    public string GetLibraryUrl(string libraryName, string? originalUrl)
     {
         return ApplyTemplate("library", _template.GetLibraryUrl(libraryName, originalUrl));
     }

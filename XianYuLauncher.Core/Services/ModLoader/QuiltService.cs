@@ -61,7 +61,7 @@ public class QuiltService
                     result.Response.EnsureSuccessStatusCode();
                     string json = await result.Response.Content.ReadAsStringAsync();
                     System.Diagnostics.Debug.WriteLine($"[QuiltService] 成功获取 Quilt 版本列表 (使用源: {result.UsedSourceKey} -> {result.UsedDomain})");
-                    return JsonSerializer.Deserialize<List<QuiltLoaderVersion>>(json);
+                    return JsonSerializer.Deserialize<List<QuiltLoaderVersion>>(json) ?? new List<QuiltLoaderVersion>();
                 }
                 else
                 {
@@ -130,6 +130,6 @@ public class QuiltService
         
         response.EnsureSuccessStatusCode();
         string json = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<List<QuiltLoaderVersion>>(json);
+        return JsonSerializer.Deserialize<List<QuiltLoaderVersion>>(json) ?? new List<QuiltLoaderVersion>();
     }
 }

@@ -70,7 +70,7 @@ public class ModrinthService
 
     public ModrinthService(
         HttpClient httpClient,
-        DownloadSourceFactory downloadSourceFactory = null,
+        DownloadSourceFactory? downloadSourceFactory = null,
         FallbackDownloadManager? fallbackDownloadManager = null,
         IHashLookupCenter? hashLookupCenter = null)
     {
@@ -89,7 +89,7 @@ public class ModrinthService
     /// <summary>
     /// 获取指定下载源对应的User-Agent
     /// </summary>
-    private string GetUserAgent(IDownloadSource source = null)
+    private string GetUserAgent(IDownloadSource? source = null)
     {
         source ??= GetModrinthSource();
         if (source.RequiresModrinthUserAgent)
@@ -107,7 +107,7 @@ public class ModrinthService
     /// <summary>
     /// 创建带有正确User-Agent的HttpRequestMessage
     /// </summary>
-    private HttpRequestMessage CreateRequest(HttpMethod method, string url, IDownloadSource source = null)
+    private HttpRequestMessage CreateRequest(HttpMethod method, string url, IDownloadSource? source = null)
     {
         var request = new HttpRequestMessage(method, url);
         request.Headers.Add("User-Agent", GetUserAgent(source));
@@ -210,7 +210,7 @@ public class ModrinthService
     /// <returns>搜索结果</returns>
     public async Task<ModrinthSearchResult> SearchModsAsync(
         string query = "",
-        List<List<string>> facets = null,
+        List<List<string>>? facets = null,
         string index = "relevance",
         int offset = 0,
         int limit = 20,
@@ -251,7 +251,7 @@ public class ModrinthService
             response.EnsureSuccessStatusCode();
             
             // 解析JSON到对象
-            return JsonSerializer.Deserialize<ModrinthSearchResult>(json);
+            return JsonSerializer.Deserialize<ModrinthSearchResult>(json) ?? new ModrinthSearchResult();
         }
         catch (HttpRequestException ex)
         {
@@ -435,7 +435,7 @@ public class ModrinthService
     /// </summary>
     /// <param name="projectId">项目ID</param>
     /// <returns>项目详情（搜索结果格式）</returns>
-    public async Task<ModrinthProject> GetProjectByIdFromSearchAsync(string projectId)
+    public async Task<ModrinthProject?> GetProjectByIdFromSearchAsync(string projectId)
     {
         if (string.IsNullOrWhiteSpace(projectId)) return null;
 
@@ -562,7 +562,7 @@ public class ModrinthService
               response.EnsureSuccessStatusCode();
               
               var content = await response.Content.ReadAsStringAsync();
-              return JsonSerializer.Deserialize<List<ModrinthTeamMember>>(content);
+              return JsonSerializer.Deserialize<List<ModrinthTeamMember>>(content) ?? new List<ModrinthTeamMember>();
           }
           catch (Exception ex)
           {
@@ -921,7 +921,7 @@ public class ModrinthService
         /// </summary>
         /// <param name="versionId">版本ID</param>
         /// <returns>版本详细信息</returns>
-        public async Task<ModrinthVersion> GetVersionByIdAsync(string versionId)
+        public async Task<ModrinthVersion?> GetVersionByIdAsync(string versionId)
         {
             try
             {

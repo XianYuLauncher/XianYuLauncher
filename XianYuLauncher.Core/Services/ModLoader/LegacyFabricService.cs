@@ -61,7 +61,7 @@ public class LegacyFabricService
                     result.Response.EnsureSuccessStatusCode();
                     string json = await result.Response.Content.ReadAsStringAsync();
                     System.Diagnostics.Debug.WriteLine($"[LegacyFabricService] 成功获取 Legacy Fabric 版本列表 (使用源: {result.UsedSourceKey} -> {result.UsedDomain})");
-                    return JsonSerializer.Deserialize<List<FabricLoaderVersion>>(json);
+                    return JsonSerializer.Deserialize<List<FabricLoaderVersion>>(json) ?? new List<FabricLoaderVersion>();
                 }
                 else
                 {
@@ -130,6 +130,6 @@ public class LegacyFabricService
         
         response.EnsureSuccessStatusCode();
         string json = await response.Content.ReadAsStringAsync();
-        return JsonSerializer.Deserialize<List<FabricLoaderVersion>>(json);
+        return JsonSerializer.Deserialize<List<FabricLoaderVersion>>(json) ?? new List<FabricLoaderVersion>();
     }
 }

@@ -294,7 +294,7 @@ public class UpdateService
     /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>下载结果，成功返回true，失败返回false</returns>
-    public async Task<bool> DownloadUpdatePackageAsync(UpdateInfo updateInfo, string downloadPath, Action<DownloadProgressInfo> progressCallback = null, CancellationToken cancellationToken = default)
+    public async Task<bool> DownloadUpdatePackageAsync(UpdateInfo updateInfo, string downloadPath, Action<DownloadProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("开始下载更新包，版本: {Version}", updateInfo.version);
         Debug.WriteLine($"[DEBUG] 开始下载更新包，版本: {updateInfo.version}");
@@ -358,7 +358,7 @@ public class UpdateService
     /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>下载结果，成功返回true，失败返回false</returns>
-    private async Task<bool> DownloadFileAsync(string url, string savePath, Action<DownloadProgressInfo> progressCallback = null, CancellationToken cancellationToken = default)
+    private async Task<bool> DownloadFileAsync(string url, string savePath, Action<DownloadProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
     {
         // 创建目录
         string directory = GetParentDirectoryOrThrow(savePath);
@@ -484,7 +484,7 @@ public class UpdateService
     /// </summary>
     /// <param name="zipFilePath">ZIP文件路径</param>
     /// <returns>包含解压目录、证书文件路径和MSIX文件路径的元组</returns>
-    public async Task<(string ExtractDirectory, string CertificateFilePath, string MsixFilePath)> ExtractUpdatePackageAsync(string zipFilePath)
+    public async Task<(string ExtractDirectory, string? CertificateFilePath, string MsixFilePath)> ExtractUpdatePackageAsync(string zipFilePath)
     {
         _logger.LogInformation("开始解压更新包: {ZipFilePath}", zipFilePath);
         Debug.WriteLine($"[DEBUG] 开始解压更新包: {zipFilePath}");
@@ -505,7 +505,7 @@ public class UpdateService
             });
             
             // 查找证书文件 (*.cer)
-            string certificateFilePath = FindFileByPattern(extractDirectory, "*.cer");
+            string? certificateFilePath = FindFileByPattern(extractDirectory, "*.cer");
             if (string.IsNullOrEmpty(certificateFilePath))
             {
                 _logger.LogWarning("在解压目录中未找到证书文件 (*.cer): {ExtractDirectory}", extractDirectory);
@@ -518,7 +518,7 @@ public class UpdateService
             }
             
             // 查找MSIX文件 (*.msix)
-            string msixFilePath = FindFileByPattern(extractDirectory, "*.msix");
+            string? msixFilePath = FindFileByPattern(extractDirectory, "*.msix");
             if (string.IsNullOrEmpty(msixFilePath))
             {
                 _logger.LogError("在解压目录中未找到MSIX文件 (*.msix): {ExtractDirectory}", extractDirectory);
@@ -555,7 +555,7 @@ public class UpdateService
     /// <param name="directory">要搜索的目录</param>
     /// <param name="searchPattern">搜索模式，如"*.cer"</param>
     /// <returns>找到的第一个文件路径，如果没有找到则返回null</returns>
-    private string FindFileByPattern(string directory, string searchPattern)
+    private string? FindFileByPattern(string directory, string searchPattern)
     {
         _logger.LogInformation("在目录中查找文件: {Directory}, 模式: {SearchPattern}", directory, searchPattern);
         Debug.WriteLine($"[DEBUG] 在目录中查找文件: {directory}, 模式: {searchPattern}");

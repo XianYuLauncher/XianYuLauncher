@@ -255,7 +255,7 @@ public class CurseForgeService
             return JsonSerializer.Deserialize<CurseForgeSearchResult>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
-            });
+            }) ?? new CurseForgeSearchResult();
         }
         catch (HttpRequestException ex)
         {
@@ -290,7 +290,7 @@ public class CurseForgeService
     public async Task<CurseForgeSearchResult> SearchResourcesAsync(
         int classId,
         string searchFilter = "",
-        string gameVersion = null,
+        string? gameVersion = null,
         int? modLoaderType = null,
         int? categoryId = null,
         int index = 0,
@@ -320,7 +320,7 @@ public class CurseForgeService
             return JsonSerializer.Deserialize<CurseForgeSearchResult>(json, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
-            });
+            }) ?? new CurseForgeSearchResult();
         }
         catch (HttpRequestException ex)
         {
@@ -418,7 +418,7 @@ public class CurseForgeService
     /// <returns>文件列表</returns>
     public async Task<List<CurseForgeFile>> GetModFilesAsync(
         int modId,
-        string gameVersion = null,
+        string? gameVersion = null,
         int? modLoaderType = null,
         int index = 0,
         int pageSize = 50)
@@ -471,7 +471,7 @@ public class CurseForgeService
     public async Task<bool> DownloadFileAsync(
         string downloadUrl,
         string destinationPath,
-        Action<string, double> progressCallback = null,
+        Action<string, double>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
         try
@@ -678,7 +678,7 @@ public class CurseForgeService
     /// <param name="modId">Mod ID</param>
     /// <param name="fileId">文件ID</param>
     /// <returns>文件详情</returns>
-    public async Task<CurseForgeFile> GetFileAsync(int modId, int fileId)
+    public async Task<CurseForgeFile?> GetFileAsync(int modId, int fileId)
     {
         try
         {
@@ -728,8 +728,8 @@ public class CurseForgeService
     public async Task<int> ProcessDependenciesAsync(
         List<CurseForgeDependency> dependencies,
         string destinationPath,
-        CurseForgeFile currentFile = null,
-        Action<string, double> progressCallback = null,
+        CurseForgeFile? currentFile = null,
+        Action<string, double>? progressCallback = null,
         CancellationToken cancellationToken = default,
         bool checkModId = true,
         Func<CurseForgeModDetail, Task<string>>? resolveDestinationPathAsync = null)
@@ -748,8 +748,8 @@ public class CurseForgeService
     private async Task<int> ProcessDependenciesInternalAsync(
         List<CurseForgeDependency> dependencies,
         string destinationPath,
-        CurseForgeFile currentFile,
-        Action<string, double> progressCallback,
+        CurseForgeFile? currentFile,
+        Action<string, double>? progressCallback,
         CancellationToken cancellationToken,
         bool checkModId,
         Func<CurseForgeModDetail, Task<string>>? resolveDestinationPathAsync,

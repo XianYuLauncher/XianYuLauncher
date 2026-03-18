@@ -199,7 +199,7 @@ public class BmclapiDownloadSource : IDownloadSource
     /// <param name="libraryName">库名称</param>
     /// <param name="originalUrl">原始URL（如果有）</param>
     /// <returns>依赖库下载URL</returns>
-    public string GetLibraryUrl(string libraryName, string originalUrl = null)
+    public string GetLibraryUrl(string libraryName, string? originalUrl = null)
     {
         // 如果提供了原始URL，转换为BMCLAPI URL
         if (!string.IsNullOrEmpty(originalUrl))

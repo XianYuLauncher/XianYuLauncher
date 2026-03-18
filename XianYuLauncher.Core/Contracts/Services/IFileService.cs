@@ -17,7 +17,7 @@ public interface IFileService
     /// 获取启动器缓存目录路径（用于存储新闻、Modrinth、CurseForge等缓存）
     /// </summary>
     string GetLauncherCachePath();
-    T Read<T>(string folderPath, string fileName);
+    T? Read<T>(string folderPath, string fileName);
     void Save<T>(string folderPath, string fileName, T content);
     void Delete(string folderPath, string fileName);
 }

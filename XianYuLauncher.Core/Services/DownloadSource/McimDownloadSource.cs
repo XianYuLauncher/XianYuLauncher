@@ -237,7 +237,7 @@ public class McimDownloadSource : IDownloadSource
         return "https://repo.mumfrey.com/content/repositories/snapshots/" + relativePath;
     }
     
-    public string GetLibraryUrl(string libraryName, string originalUrl = null) => originalUrl ?? string.Empty;
+    public string GetLibraryUrl(string libraryName, string? originalUrl = null) => originalUrl ?? string.Empty;
     
     public string GetClientJarUrl(string versionId, string originalUrl) => originalUrl;
     

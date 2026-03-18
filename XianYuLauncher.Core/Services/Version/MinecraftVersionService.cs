@@ -89,7 +89,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     /// <param name="cancellationToken">取消令牌</param>
     /// <param name="customVersionName">自定义版本名称</param>
     [Obsolete("请使用 DownloadMultiModLoaderVersionAsync 代替")]
-    public async Task DownloadOptifineForgeVersionAsync(string minecraftVersionId, string forgeVersion, string optifineType, string optifinePatch, string versionsDirectory, string librariesDirectory, Action<DownloadProgressStatus> progressCallback, CancellationToken cancellationToken = default, string customVersionName = null)
+    public async Task DownloadOptifineForgeVersionAsync(string minecraftVersionId, string forgeVersion, string optifineType, string optifinePatch, string versionsDirectory, string librariesDirectory, Action<DownloadProgressStatus> progressCallback, CancellationToken cancellationToken = default, string? customVersionName = null)
     {
         try
         {
@@ -196,7 +196,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         }
     }
 
-    public async Task<VersionInfo> GetVersionInfoAsync(string versionId, string minecraftDirectory = null, bool allowNetwork = true)
+    public async Task<VersionInfo> GetVersionInfoAsync(string versionId, string? minecraftDirectory = null, bool allowNetwork = true)
     {
         try
         {
@@ -294,7 +294,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         return downloadSource.GetResourceUrl("server", serverUrl);
     }
 
-    public async Task<string> GetVersionInfoJsonAsync(string versionId, string minecraftDirectory = null, bool allowNetwork = true)
+    public async Task<string> GetVersionInfoJsonAsync(string versionId, string? minecraftDirectory = null, bool allowNetwork = true)
     {
         try
         {
@@ -371,7 +371,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         }
     }
     
-    public async Task<List<string>> GetInstalledVersionsAsync(string minecraftDirectory = null)
+    public async Task<List<string>> GetInstalledVersionsAsync(string? minecraftDirectory = null)
     {
         try
         {
@@ -412,20 +412,20 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     }
 
     // 接口实现 - 与IMinecraftVersionService接口保持一致
-    public async Task DownloadVersionAsync(string versionId, string targetDirectory, string customVersionName = null, string? versionIconPath = null)
+    public async Task DownloadVersionAsync(string versionId, string targetDirectory, string? customVersionName = null, string? versionIconPath = null)
     {
         // 调用带有进度回调的重载版本，传递null作为进度回调
         await DownloadVersionAsync(versionId, targetDirectory, null, customVersionName, versionIconPath);
     }
 
     [Obsolete("此重载已过时，请使用包含 versionIconPath 参数的 DownloadVersionAsync 重载。")]
-    public async Task DownloadVersionAsync(string versionId, string targetDirectory, Action<DownloadProgressStatus> progressCallback, string customVersionName = null)
+    public async Task DownloadVersionAsync(string versionId, string targetDirectory, Action<DownloadProgressStatus> progressCallback, string? customVersionName = null)
     {
         await DownloadVersionAsync(versionId, targetDirectory, progressCallback, customVersionName, null);
     }
     
     // 带有进度回调的重载版本
-    public async Task DownloadVersionAsync(string versionId, string targetDirectory, Action<DownloadProgressStatus> progressCallback = null, string customVersionName = null, string? versionIconPath = null)
+    public async Task DownloadVersionAsync(string versionId, string targetDirectory, Action<DownloadProgressStatus>? progressCallback = null, string? customVersionName = null, string? versionIconPath = null)
     {
         try
         {
@@ -595,7 +595,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     /// <param name="modLoaderVersion">Mod Loader版本</param>
     /// <param name="minecraftDirectory">Minecraft目录</param>
     /// <param name="progressCallback">进度回调</param>
-    public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<DownloadProgressStatus> progressCallback = null, string customVersionName = null, string? versionIconPath = null)
+    public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<DownloadProgressStatus>? progressCallback = null, string? customVersionName = null, string? versionIconPath = null)
     {
         await DownloadModLoaderVersionAsync(minecraftVersionId, modLoaderType, modLoaderVersion, minecraftDirectory, progressCallback, CancellationToken.None, customVersionName, versionIconPath);
     }
@@ -610,7 +610,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <param name="customVersionName">自定义版本名称</param>
-    public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<DownloadProgressStatus> progressCallback = null, CancellationToken cancellationToken = default, string customVersionName = null, string? versionIconPath = null)
+    public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<DownloadProgressStatus>? progressCallback = null, CancellationToken cancellationToken = default, string? customVersionName = null, string? versionIconPath = null)
     {
         try
         {
@@ -737,7 +737,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         return anyRuleMatched ? result : false;
     }
 
-    public async Task DownloadLibrariesAsync(string versionId, string librariesDirectory, Action<DownloadProgressStatus> progressCallback = null, bool allowNetwork = true)
+    public async Task DownloadLibrariesAsync(string versionId, string librariesDirectory, Action<DownloadProgressStatus>? progressCallback = null, bool allowNetwork = true)
         {
             try
             {
@@ -910,7 +910,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     /// <summary>
     /// 构建库文件的本地路径
     /// </summary>
-    private string GetLibraryFilePath(string libraryName, string librariesDirectory, string classifier = null)
+    private string GetLibraryFilePath(string libraryName, string librariesDirectory, string? classifier = null)
     {
         // 解析库名称：groupId:artifactId:version[:classifier]
         var parts = libraryName.Split(':');
@@ -1018,7 +1018,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     /// <summary>
     /// 下载单个库文件（使用 DownloadManager）
     /// </summary>
-    private async Task DownloadLibraryFileAsync(DownloadFile downloadFile, string targetPath, string libraryName = null)
+    private async Task DownloadLibraryFileAsync(DownloadFile downloadFile, string targetPath, string? libraryName = null)
     {
         // 如果文件已存在且哈希匹配，则跳过下载
         // DownloadManager 会自动处理 SHA1 验证，但我们先检查以避免不必要的下载
@@ -1216,7 +1216,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     
 
 
-    public async Task EnsureVersionDependenciesAsync(string versionId, string minecraftDirectory, Action<DownloadProgressStatus> progressCallback = null, Action<string>? currentDownloadCallback = null)
+    public async Task EnsureVersionDependenciesAsync(string versionId, string minecraftDirectory, Action<DownloadProgressStatus>? progressCallback = null, Action<string>? currentDownloadCallback = null)
     {
         try
         {
@@ -1373,7 +1373,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         }
     }
 
-    public async Task DownloadAllAssetObjectsAsync(string versionId, string minecraftDirectory, Action<DownloadProgressStatus> progressCallback = null, Action<string>? currentDownloadCallback = null)
+    public async Task DownloadAllAssetObjectsAsync(string versionId, string minecraftDirectory, Action<DownloadProgressStatus>? progressCallback = null, Action<string>? currentDownloadCallback = null)
     {
         try
         {
@@ -1790,7 +1790,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         return File.Exists(assetSavePath);
     }
 
-    public async Task EnsureAssetIndexAsync(string versionId, string minecraftDirectory, Action<DownloadProgressStatus> progressCallback = null)
+    public async Task EnsureAssetIndexAsync(string versionId, string minecraftDirectory, Action<DownloadProgressStatus>? progressCallback = null)
     {
         try
         {
@@ -1897,7 +1897,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     /// <summary>
     /// 下载文件（通用方法）
     /// </summary>
-    private async Task DownloadFileAsync(string url, string targetPath, Action<double> progressCallback = null)
+    private async Task DownloadFileAsync(string url, string targetPath, Action<double>? progressCallback = null)
     {
         try
         {

@@ -250,7 +250,7 @@ public class MicrosoftAuthService
     /// 获取微软登录设备代码
     /// </summary>
     /// <returns>设备代码响应</returns>
-    public async Task<DeviceCodeResponse> GetMicrosoftDeviceCodeAsync()
+        public async Task<DeviceCodeResponse?> GetMicrosoftDeviceCodeAsync()
     {
         try
         {
@@ -439,7 +439,7 @@ public class MicrosoftAuthService
         }
     }
 
-    private async Task<TokenResponse> ExchangeCodeForTokenAsync(string code, string redirectUri)
+    private async Task<TokenResponse?> ExchangeCodeForTokenAsync(string code, string redirectUri)
     {
         try
         {
@@ -585,7 +585,7 @@ public class MicrosoftAuthService
     /// 获取设备代码对
     /// </summary>
     /// <returns>设备代码响应</returns>
-    private async Task<DeviceCodeResponse> GetDeviceCodeAsync()
+    private async Task<DeviceCodeResponse?> GetDeviceCodeAsync()
     {
         try
         {
@@ -618,7 +618,7 @@ public class MicrosoftAuthService
     /// <param name="interval">轮询间隔（秒）</param>
     /// <param name="expiresIn">过期时间（秒）</param>
     /// <returns>令牌响应</returns>
-    private async Task<TokenResponse> PollAuthorizationStatusAsync(string deviceCode, int interval, int expiresIn)
+    private async Task<TokenResponse?> PollAuthorizationStatusAsync(string deviceCode, int interval, int expiresIn)
     {
         try
         {
@@ -734,7 +734,7 @@ public class MicrosoftAuthService
         catch (Exception ex)
         {
             Log.Error(ex, "Xbox Live身份验证失败");
-            return (null, null);
+            return (null, string.Empty);
         }
     }
     
@@ -798,7 +798,7 @@ public class MicrosoftAuthService
         catch (Exception ex)
         {
             Log.Error(ex, "XSTS身份验证失败");
-            return (null, null);
+            return (null, string.Empty);
         }
     }
     
@@ -808,7 +808,7 @@ public class MicrosoftAuthService
     /// <param name="uhs">用户哈希值</param>
     /// <param name="xstsToken">XSTS令牌</param>
     /// <returns>Minecraft身份验证响应</returns>
-    private async Task<(MinecraftAuthResponse, string)> LoginWithXboxAsync(string uhs, string xstsToken)
+    private async Task<(MinecraftAuthResponse?, string)> LoginWithXboxAsync(string uhs, string xstsToken)
     {
         try
         {
@@ -859,7 +859,7 @@ public class MicrosoftAuthService
     /// </summary>
     /// <param name="minecraftToken">Minecraft访问令牌</param>
     /// <returns>游戏拥有情况响应</returns>
-    private async Task<(EntitlementsResponse, string)> CheckEntitlementsAsync(string minecraftToken)
+    private async Task<(EntitlementsResponse?, string)> CheckEntitlementsAsync(string minecraftToken)
     {
         try
         {
@@ -893,7 +893,7 @@ public class MicrosoftAuthService
         catch (Exception ex)
         {
             Log.Error(ex, "检查游戏拥有情况失败");
-            return (null, null);
+            return (null, string.Empty);
         }
     }
     
@@ -1069,7 +1069,7 @@ public class MicrosoftAuthService
         catch (Exception ex)
         {
             Log.Error(ex, "获取玩家信息失败");
-            return (null, null);
+            return (null, string.Empty);
         }
     }
     

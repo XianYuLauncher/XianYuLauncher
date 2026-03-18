@@ -153,7 +153,7 @@ public class FileService : IFileService
         return AppEnvironment.SafeCachePath;
     }
 
-    public T Read<T>(string folderPath, string fileName)
+    public T? Read<T>(string folderPath, string fileName)
     {
         var filePath = Path.Combine(folderPath, fileName);
         if (File.Exists(filePath))
