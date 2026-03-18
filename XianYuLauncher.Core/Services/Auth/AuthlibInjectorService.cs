@@ -937,21 +937,21 @@ public class ExternalUser
 internal class AuthlibInjectorLatestInfo
 {
     public int build_number { get; set; }
-    public string version { get; set; }
-    public string release_time { get; set; }
-    public string download_url { get; set; }
-    public AuthlibInjectorChecksums checksums { get; set; }
+    public string version { get; set; } = string.Empty;
+    public string release_time { get; set; } = string.Empty;
+    public string download_url { get; set; } = string.Empty;
+    public AuthlibInjectorChecksums checksums { get; set; } = new();
 }
     
 internal class AuthlibInjectorChecksums
 {
-    public string sha256 { get; set; }
+    public string sha256 { get; set; } = string.Empty;
 }
     
 // 内部类：缓存信息
 internal class AuthlibInjectorCache
 {
     public int build_number { get; set; }
-    public string version { get; set; }
-    public string release_time { get; set; }
+    public string version { get; set; } = string.Empty;
+    public string release_time { get; set; } = string.Empty;
 }

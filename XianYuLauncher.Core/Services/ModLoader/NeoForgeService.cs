@@ -15,12 +15,12 @@ namespace XianYuLauncher.Core.Services;
 /// </summary>
 public class BmclapiNeoForgeVersion
 {
-    public string _id { get; set; }
-    public string rawVersion { get; set; }
+    public string _id { get; set; } = null!;
+    public string rawVersion { get; set; } = null!;
     public int __v { get; set; }
-    public string installerPath { get; set; }
-    public string mcversion { get; set; }
-    public string version { get; set; }
+    public string installerPath { get; set; } = null!;
+    public string mcversion { get; set; } = null!;
+    public string version { get; set; } = null!;
 }
 
 /// <summary>

@@ -446,7 +446,7 @@ public sealed partial class VersionManagementPage : Page
     #region 资源包预览
     
     // 存储当前预览的资源包和加载的纹理
-    private ResourcePackInfo _currentPreviewPack;
+    private ResourcePackInfo? _currentPreviewPack;
     private Dictionary<string, CanvasBitmap> _previewBitmaps = new Dictionary<string, CanvasBitmap>();
     private Dictionary<ResourcePackInfo, CanvasControl> _canvasControls = new Dictionary<ResourcePackInfo, CanvasControl>(); // 存储每个资源包对应的 Canvas
     

@@ -15,17 +15,17 @@ public class CategoryItem
     /// <summary>
     /// 类别标识（Modrinth使用）
     /// </summary>
-    public string Tag { get; set; }
+    public string Tag { get; set; } = string.Empty;
     
     /// <summary>
     /// 显示名称
     /// </summary>
-    public string DisplayName { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
     
     /// <summary>
     /// 来源平台（modrinth或curseforge）
     /// </summary>
-    public string Source { get; set; }
+    public string Source { get; set; } = string.Empty;
     
     /// <summary>
     /// 是否为"全部"选项

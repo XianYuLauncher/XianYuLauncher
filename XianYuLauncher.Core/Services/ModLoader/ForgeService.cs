@@ -15,13 +15,13 @@ namespace XianYuLauncher.Core.Services;
 /// </summary>
 public class BmclapiForgeVersion
 {
-    public string _id { get; set; }
+    public string _id { get; set; } = null!;
     public int __v { get; set; }
     public int build { get; set; }
-    public List<object> files { get; set; }
-    public string mcversion { get; set; }
-    public string modified { get; set; }
-    public string version { get; set; }
+    public List<object> files { get; set; } = new();
+    public string mcversion { get; set; } = null!;
+    public string modified { get; set; } = null!;
+    public string version { get; set; } = null!;
 }
 
 

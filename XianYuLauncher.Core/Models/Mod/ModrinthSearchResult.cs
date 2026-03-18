@@ -90,31 +90,31 @@ public class ModrinthSearchResult
         /// 项目ID
         /// </summary>
         [JsonPropertyName("project_id")]
-        public string ProjectId { get; set; }
+        public string ProjectId { get; set; } = null!;
 
         /// <summary>
         /// 项目类型
         /// </summary>
         [JsonPropertyName("project_type")]
-        public string ProjectType { get; set; }
+        public string ProjectType { get; set; } = null!;
 
         /// <summary>
         /// 项目标识符
         /// </summary>
         [JsonPropertyName("slug")]
-        public string Slug { get; set; }
+        public string Slug { get; set; } = null!;
 
         /// <summary>
         /// 作者
         /// </summary>
         [JsonPropertyName("author")]
-        public string Author { get; set; }
+        public string Author { get; set; } = null!;
 
         /// <summary>
         /// 标题
         /// </summary>
         [JsonPropertyName("title")]
-        public string Title { get; set; }
+        public string Title { get; set; } = null!;
 
         /// <summary>
         /// 显示的标题（自动应用名称翻译）
@@ -136,13 +136,13 @@ public class ModrinthSearchResult
         /// 描述
         /// </summary>
         [JsonPropertyName("description")]
-        public string Description { get; set; }
+        public string Description { get; set; } = null!;
         
         /// <summary>
         /// 翻译后的描述（来自MCIM翻译API）
         /// </summary>
         [JsonIgnore]
-        public string TranslatedDescription { get; set; }
+        public string TranslatedDescription { get; set; } = string.Empty;
         
         /// <summary>
         /// 显示的描述（优先使用翻译，如果没有则使用原始描述）
@@ -204,25 +204,25 @@ public class ModrinthSearchResult
         /// </summary>
         [JsonPropertyName("icon_url")]
         [JsonConverter(typeof(StringToUriConverter))]
-        public Uri IconUrl { get; set; }
+        public Uri IconUrl { get; set; } = null!;
 
         /// <summary>
         /// 创建日期
         /// </summary>
         [JsonPropertyName("date_created")]
-        public string DateCreated { get; set; }
+        public string DateCreated { get; set; } = null!;
 
         /// <summary>
         /// 修改日期
         /// </summary>
         [JsonPropertyName("date_modified")]
-        public string DateModified { get; set; }
+        public string DateModified { get; set; } = null!;
 
         /// <summary>
         /// 最新版本ID（用于API调用，不适合直接显示）
         /// </summary>
         [JsonPropertyName("latest_version")]
-        public string LatestVersionId { get; set; }
+        public string LatestVersionId { get; set; } = null!;
         
         /// <summary>
         /// 最新支持的游戏版本（从versions列表中获取最后一项）
@@ -244,19 +244,19 @@ public class ModrinthSearchResult
         /// 许可证
         /// </summary>
         [JsonPropertyName("license")]
-        public string License { get; set; }
+        public string License { get; set; } = null!;
 
         /// <summary>
         /// 客户端支持情况
         /// </summary>
         [JsonPropertyName("client_side")]
-        public string ClientSide { get; set; }
+        public string ClientSide { get; set; } = null!;
 
         /// <summary>
         /// 服务端支持情况
         /// </summary>
         [JsonPropertyName("server_side")]
-        public string ServerSide { get; set; }
+        public string ServerSide { get; set; } = null!;
 
         /// <summary>
         /// 图片库
@@ -270,7 +270,7 @@ public class ModrinthSearchResult
         /// </summary>
         [JsonPropertyName("featured_gallery")]
         [JsonConverter(typeof(StringToUriConverter))]
-        public Uri FeaturedGallery { get; set; }
+        public Uri FeaturedGallery { get; set; } = null!;
 
         /// <summary>
         /// 支持的模组加载器
@@ -327,19 +327,19 @@ public class ModrinthSearchResult
         /// 项目标识符
         /// </summary>
         [JsonPropertyName("slug")]
-        public string Slug { get; set; }
+        public string Slug { get; set; } = null!;
 
         /// <summary>
         /// 项目名称
         /// </summary>
         [JsonPropertyName("title")]
-        public string Title { get; set; }
+        public string Title { get; set; } = null!;
 
         /// <summary>
         /// 项目简介
         /// </summary>
         [JsonPropertyName("description")]
-        public string Description { get; set; }
+        public string Description { get; set; } = null!;
 
         /// <summary>
         /// 分类列表
@@ -351,25 +351,25 @@ public class ModrinthSearchResult
         /// 客户端支持情况
         /// </summary>
         [JsonPropertyName("client_side")]
-        public string ClientSide { get; set; }
+        public string ClientSide { get; set; } = null!;
 
         /// <summary>
         /// 服务端支持情况
         /// </summary>
         [JsonPropertyName("server_side")]
-        public string ServerSide { get; set; }
+        public string ServerSide { get; set; } = null!;
 
         /// <summary>
         /// 项目详细描述
         /// </summary>
         [JsonPropertyName("body")]
-        public string Body { get; set; }
+        public string Body { get; set; } = null!;
 
         /// <summary>
         /// 项目状态
         /// </summary>
         [JsonPropertyName("status")]
-        public string Status { get; set; }
+        public string Status { get; set; } = null!;
 
         /// <summary>
         /// 额外分类列表
@@ -382,28 +382,28 @@ public class ModrinthSearchResult
         /// </summary>
         [JsonPropertyName("issues_url")]
         [JsonConverter(typeof(StringToUriConverter))]
-        public Uri IssuesUrl { get; set; }
+        public Uri IssuesUrl { get; set; } = null!;
 
         /// <summary>
         /// 源代码URL
         /// </summary>
         [JsonPropertyName("source_url")]
         [JsonConverter(typeof(StringToUriConverter))]
-        public Uri SourceUrl { get; set; }
+        public Uri SourceUrl { get; set; } = null!;
 
         /// <summary>
         /// Wiki URL
         /// </summary>
         [JsonPropertyName("wiki_url")]
         [JsonConverter(typeof(StringToUriConverter))]
-        public Uri WikiUrl { get; set; }
+        public Uri WikiUrl { get; set; } = null!;
 
         /// <summary>
         /// Discord邀请URL
         /// </summary>
         [JsonPropertyName("discord_url")]
         [JsonConverter(typeof(StringToUriConverter))]
-        public Uri DiscordUrl { get; set; }
+        public Uri DiscordUrl { get; set; } = null!;
 
         /// <summary>
         /// 捐赠链接列表
@@ -415,7 +415,7 @@ public class ModrinthSearchResult
         /// 项目类型
         /// </summary>
         [JsonPropertyName("project_type")]
-        public string ProjectType { get; set; }
+        public string ProjectType { get; set; } = null!;
 
         /// <summary>
         /// 下载次数
@@ -428,7 +428,7 @@ public class ModrinthSearchResult
         /// </summary>
         [JsonPropertyName("icon_url")]
         [JsonConverter(typeof(StringToUriConverter))]
-        public Uri IconUrl { get; set; }
+        public Uri IconUrl { get; set; } = null!;
 
         /// <summary>
         /// 项目颜色
@@ -440,37 +440,37 @@ public class ModrinthSearchResult
         /// 项目ID
         /// </summary>
         [JsonPropertyName("id")]
-        public string Id { get; set; }
+        public string Id { get; set; } = null!;
 
         /// <summary>
         /// 作者
         /// </summary>
         [JsonPropertyName("author")]
-        public string Author { get; set; }
+        public string Author { get; set; } = null!;
 
         /// <summary>
         /// 团队ID
         /// </summary>
         [JsonPropertyName("team")]
-        public string Team { get; set; }
+        public string Team { get; set; } = null!;
 
         /// <summary>
         /// 发布日期
         /// </summary>
         [JsonPropertyName("published")]
-        public string Published { get; set; }
+        public string Published { get; set; } = null!;
 
         /// <summary>
         /// 更新日期
         /// </summary>
         [JsonPropertyName("updated")]
-        public string Updated { get; set; }
+        public string Updated { get; set; } = null!;
 
         /// <summary>
         /// 审批日期
         /// </summary>
         [JsonPropertyName("approved")]
-        public string Approved { get; set; }
+        public string Approved { get; set; } = null!;
 
         /// <summary>
         /// 关注数
@@ -482,7 +482,7 @@ public class ModrinthSearchResult
         /// 许可证
         /// </summary>
         [JsonPropertyName("license")]
-        public License License { get; set; }
+        public License License { get; set; } = null!;
 
         /// <summary>
         /// 版本ID列表
@@ -512,7 +512,7 @@ public class ModrinthSearchResult
         /// 团队成员（仅当API未返回作者信息且触发了自动获取团队逻辑时才会填充，或者手动获取）
         /// </summary>
         [JsonIgnore]
-        public List<ModrinthTeamMember> TeamMembers { get; set; }
+        public List<ModrinthTeamMember> TeamMembers { get; set; } = new();
     }
 
 /// <summary>
@@ -524,14 +524,14 @@ public class DonationUrl
     /// 平台
     /// </summary>
     [JsonPropertyName("platform")]
-    public string Platform { get; set; }
+    public string Platform { get; set; } = null!;
 
     /// <summary>
     /// 捐赠URL
     /// </summary>
     [JsonPropertyName("url")]
     [JsonConverter(typeof(StringToUriConverter))]
-    public Uri Url { get; set; }
+    public Uri Url { get; set; } = null!;
 }
 
 /// <summary>
@@ -543,20 +543,20 @@ public class License
     /// 许可证ID
     /// </summary>
     [JsonPropertyName("id")]
-    public string Id { get; set; }
+    public string Id { get; set; } = null!;
 
     /// <summary>
     /// 许可证名称
     /// </summary>
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = null!;
 
     /// <summary>
     /// 许可证URL
     /// </summary>
     [JsonPropertyName("url")]
     [JsonConverter(typeof(StringToUriConverter))]
-    public Uri Url { get; set; }
+    public Uri Url { get; set; } = null!;
 }
 
 /// <summary>
@@ -569,19 +569,19 @@ public class GalleryImage
     /// </summary>
     [JsonPropertyName("url")]
     [JsonConverter(typeof(StringToUriConverter))]
-    public Uri Url { get; set; }
+    public Uri Url { get; set; } = null!;
 
     /// <summary>
     /// 图片标题
     /// </summary>
     [JsonPropertyName("title")]
-    public string Title { get; set; }
+    public string Title { get; set; } = null!;
 
     /// <summary>
     /// 图片描述
     /// </summary>
     [JsonPropertyName("description")]
-    public string Description { get; set; }
+    public string Description { get; set; } = null!;
 
     /// <summary>
     /// 是否为主图
@@ -593,7 +593,7 @@ public class GalleryImage
     /// 创建日期
     /// </summary>
     [JsonPropertyName("created")]
-    public string Created { get; set; }
+    public string Created { get; set; } = null!;
 
     /// <summary>
     /// 排序索引
@@ -614,25 +614,25 @@ public class Dependency
     /// 版本ID
     /// </summary>
     [JsonPropertyName("version_id")]
-    public string VersionId { get; set; }
+    public string VersionId { get; set; } = null!;
     
     /// <summary>
     /// 项目ID
     /// </summary>
     [JsonPropertyName("project_id")]
-    public string ProjectId { get; set; }
+    public string ProjectId { get; set; } = null!;
     
     /// <summary>
     /// 文件名
     /// </summary>
     [JsonPropertyName("file_name")]
-    public string FileName { get; set; }
+    public string FileName { get; set; } = null!;
     
     /// <summary>
     /// 依赖类型
     /// </summary>
     [JsonPropertyName("dependency_type")]
-    public string DependencyType { get; set; }
+    public string DependencyType { get; set; } = null!;
 }
 
 /// <summary>
@@ -655,37 +655,37 @@ public class ModrinthVersion
     /// 版本ID
     /// </summary>
     [JsonPropertyName("id")]
-    public string Id { get; set; }
+    public string Id { get; set; } = null!;
 
     /// <summary>
     /// 版本号
     /// </summary>
     [JsonPropertyName("version_number")]
-    public string VersionNumber { get; set; }
+    public string VersionNumber { get; set; } = null!;
 
     /// <summary>
     /// 版本标题
     /// </summary>
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = null!;
 
     /// <summary>
     /// 版本描述
     /// </summary>
     [JsonPropertyName("changelog")]
-    public string Changelog { get; set; }
+    public string Changelog { get; set; } = null!;
 
     /// <summary>
     /// 版本类型
     /// </summary>
     [JsonPropertyName("version_type")]
-    public string VersionType { get; set; }
+    public string VersionType { get; set; } = null!;
 
     /// <summary>
     /// 项目ID
     /// </summary>
     [JsonPropertyName("project_id")]
-    public string ProjectId { get; set; }
+    public string ProjectId { get; set; } = null!;
 
     /// <summary>
     /// 支持的游戏版本
@@ -703,7 +703,7 @@ public class ModrinthVersion
     /// 发布日期
     /// </summary>
     [JsonPropertyName("date_published")]
-    public string DatePublished { get; set; }
+    public string DatePublished { get; set; } = null!;
 
     /// <summary>
     /// 下载次数
@@ -739,20 +739,20 @@ public class ModrinthVersionFile
     /// 文件ID
     /// </summary>
     [JsonPropertyName("hashes")]
-    public Dictionary<string, string> Hashes { get; set; }
+    public Dictionary<string, string> Hashes { get; set; } = new();
 
     /// <summary>
     /// 文件URL
     /// </summary>
     [JsonPropertyName("url")]
     [JsonConverter(typeof(StringToUriConverter))]
-    public Uri Url { get; set; }
+    public Uri Url { get; set; } = null!;
 
     /// <summary>
     /// 文件名
     /// </summary>
     [JsonPropertyName("filename")]
-    public string Filename { get; set; }
+    public string Filename { get; set; } = null!;
 
     /// <summary>
     /// 文件大小
@@ -770,7 +770,7 @@ public class ModrinthVersionFile
     /// 文件类型
     /// </summary>
     [JsonPropertyName("file_type")]
-    public string FileType { get; set; }
+    public string FileType { get; set; } = null!;
 }
 
 /// <summary>
@@ -782,19 +782,19 @@ public class ModrinthTeamMember
     /// 团队ID
     /// </summary>
     [JsonPropertyName("team_id")]
-    public string TeamId { get; set; }
+    public string TeamId { get; set; } = null!;
 
     /// <summary>
     /// 用户信息
     /// </summary>
     [JsonPropertyName("user")]
-    public ModrinthUser User { get; set; }
+    public ModrinthUser User { get; set; } = null!;
 
     /// <summary>
     /// 角色
     /// </summary>
     [JsonPropertyName("role")]
-    public string Role { get; set; }
+    public string Role { get; set; } = null!;
     
     /// <summary>
     /// 排序顺序
@@ -812,24 +812,24 @@ public class ModrinthUser
     /// 用户ID
     /// </summary>
     [JsonPropertyName("id")]
-    public string Id { get; set; }
+    public string Id { get; set; } = null!;
 
     /// <summary>
     /// 用户名
     /// </summary>
     [JsonPropertyName("username")]
-    public string Username { get; set; }
+    public string Username { get; set; } = null!;
 
     /// <summary>
     /// 显示名称
     /// </summary>
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = null!;
     
     /// <summary>
     /// 头像URL
     /// </summary>
     [JsonPropertyName("avatar_url")]
     [JsonConverter(typeof(StringToUriConverter))]
-    public Uri AvatarUrl { get; set; }
+    public Uri AvatarUrl { get; set; } = null!;
 }

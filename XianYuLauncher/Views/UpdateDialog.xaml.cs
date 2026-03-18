@@ -42,7 +42,7 @@ public sealed partial class UpdateDialog : UserControl
     /// <summary>
     /// 关闭弹窗事件
     /// </summary>
-    public event EventHandler<bool> CloseDialog;
+    public event EventHandler<bool>? CloseDialog;
     
     /// <summary>
     /// 触发关闭弹窗事件

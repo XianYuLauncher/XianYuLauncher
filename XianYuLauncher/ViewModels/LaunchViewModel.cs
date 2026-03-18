@@ -39,10 +39,10 @@ public partial class LaunchViewModel : ObservableRecipient
     private int _windowHeight = 720;
 
     [ObservableProperty]
-    private string _quickPlayWorld;
+    private string? _quickPlayWorld;
 
     [ObservableProperty]
-    private string _quickPlayServer;
+    private string? _quickPlayServer;
 
     [ObservableProperty]
     private int? _quickPlayPort;
@@ -1567,10 +1567,10 @@ public partial class LaunchViewModel : ObservableRecipient
             _temporaryJavaOverridePath = null;
             
             // 快速启动支持
-            string currentQuickPlayWorld = QuickPlayWorld;
+            string? currentQuickPlayWorld = QuickPlayWorld;
             QuickPlayWorld = null;
             
-            string currentQuickPlayServer = QuickPlayServer;
+            string? currentQuickPlayServer = QuickPlayServer;
             QuickPlayServer = null;
             
             int? currentQuickPlayPort = QuickPlayPort;

@@ -27,8 +27,8 @@ namespace XianYuLauncher.ViewModels;
 // 玩家信息类，用于显示玩家列表
 public class RoomPlayer
 {
-    public string Name { get; set; }
-    public Microsoft.UI.Xaml.Media.Imaging.BitmapImage Avatar { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public Microsoft.UI.Xaml.Media.Imaging.BitmapImage Avatar { get; set; } = new();
 }
 
 public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigationAware

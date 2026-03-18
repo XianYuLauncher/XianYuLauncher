@@ -1227,12 +1227,12 @@ namespace XianYuLauncher.Views
         /// </summary>
         private class YggdrasilMetadata
         {
-            public Meta meta { get; set; }
-            public string serverName { get; set; }
+            public Meta meta { get; set; } = new();
+            public string serverName { get; set; } = string.Empty;
             
             public class Meta
             {
-                public string serverName { get; set; }
+                public string serverName { get; set; } = string.Empty;
                 [Newtonsoft.Json.JsonProperty(PropertyName = "feature.no_email_login")]
                 public bool feature_no_email_login { get; set; }
             }
@@ -1472,12 +1472,12 @@ namespace XianYuLauncher.Views
         /// </summary>
         private class ExternalProfile
         {
-            public string Id { get; set; }
-            public string Name { get; set; }
-            public string AuthServer { get; set; }
-            public string AccessToken { get; set; }
-            public string ClientToken { get; set; }
-            public BitmapImage Avatar { get; set; }
+            public string Id { get; set; } = string.Empty;
+            public string Name { get; set; } = string.Empty;
+            public string AuthServer { get; set; } = string.Empty;
+            public string AccessToken { get; set; } = string.Empty;
+            public string ClientToken { get; set; } = string.Empty;
+            public BitmapImage Avatar { get; set; } = new();
         }
 
         /// <summary>

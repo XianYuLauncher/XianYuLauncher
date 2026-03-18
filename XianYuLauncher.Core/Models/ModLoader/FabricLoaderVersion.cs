@@ -11,19 +11,19 @@ public class FabricLoaderVersion
     /// 加载器信息
     /// </summary>
     [JsonPropertyName("loader")]
-    public FabricComponent Loader { get; set; }
+    public FabricComponent Loader { get; set; } = null!;
 
     /// <summary>
     /// 中间层信息
     /// </summary>
     [JsonPropertyName("intermediary")]
-    public FabricComponent Intermediary { get; set; }
+    public FabricComponent Intermediary { get; set; } = null!;
 
     /// <summary>
     /// 启动器元数据
     /// </summary>
     [JsonPropertyName("launcherMeta")]
-    public FabricLauncherMeta LauncherMeta { get; set; }
+    public FabricLauncherMeta LauncherMeta { get; set; } = null!;
 }
 
 /// <summary>
@@ -35,7 +35,7 @@ public class FabricComponent
     /// 分隔符
     /// </summary>
     [JsonPropertyName("separator")]
-    public string Separator { get; set; }
+    public string Separator { get; set; } = null!;
 
     /// <summary>
     /// 构建号
@@ -47,13 +47,13 @@ public class FabricComponent
     /// Maven坐标
     /// </summary>
     [JsonPropertyName("maven")]
-    public string Maven { get; set; }
+    public string Maven { get; set; } = null!;
 
     /// <summary>
     /// 版本号
     /// </summary>
     [JsonPropertyName("version")]
-    public string Version { get; set; }
+    public string Version { get; set; } = null!;
 
     /// <summary>
     /// 是否稳定版本
@@ -83,7 +83,7 @@ public class FabricLauncherMeta
     /// 依赖库信息
     /// </summary>
     [JsonPropertyName("libraries")]
-    public FabricLibraries Libraries { get; set; }
+    public FabricLibraries Libraries { get; set; } = null!;
 }
 
 /// <summary>
@@ -95,25 +95,25 @@ public class FabricLibraries
     /// 客户端专用依赖库
     /// </summary>
     [JsonPropertyName("client")]
-    public List<FabricLibrary> Client { get; set; }
+    public List<FabricLibrary> Client { get; set; } = new();
 
     /// <summary>
     /// 通用依赖库
     /// </summary>
     [JsonPropertyName("common")]
-    public List<FabricLibrary> Common { get; set; }
+    public List<FabricLibrary> Common { get; set; } = new();
 
     /// <summary>
     /// 服务端专用依赖库
     /// </summary>
     [JsonPropertyName("server")]
-    public List<FabricLibrary> Server { get; set; }
+    public List<FabricLibrary> Server { get; set; } = new();
 
     /// <summary>
     /// 主类信息
     /// </summary>
     [JsonPropertyName("mainClass")]
-    public FabricMainClass MainClass { get; set; }
+    public FabricMainClass MainClass { get; set; } = null!;
 }
 
 /// <summary>
@@ -125,37 +125,37 @@ public class FabricLibrary
     /// Maven坐标
     /// </summary>
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = null!;
 
     /// <summary>
     /// 下载URL
     /// </summary>
     [JsonPropertyName("url")]
-    public string Url { get; set; }
+    public string Url { get; set; } = null!;
 
     /// <summary>
     /// MD5哈希值
     /// </summary>
     [JsonPropertyName("md5")]
-    public string Md5 { get; set; }
+    public string Md5 { get; set; } = null!;
 
     /// <summary>
     /// SHA1哈希值
     /// </summary>
     [JsonPropertyName("sha1")]
-    public string Sha1 { get; set; }
+    public string Sha1 { get; set; } = null!;
 
     /// <summary>
     /// SHA256哈希值
     /// </summary>
     [JsonPropertyName("sha256")]
-    public string Sha256 { get; set; }
+    public string Sha256 { get; set; } = null!;
 
     /// <summary>
     /// SHA512哈希值
     /// </summary>
     [JsonPropertyName("sha512")]
-    public string Sha512 { get; set; }
+    public string Sha512 { get; set; } = null!;
 
     /// <summary>
     /// 文件大小
@@ -173,11 +173,11 @@ public class FabricMainClass
     /// 客户端主类
     /// </summary>
     [JsonPropertyName("client")]
-    public string Client { get; set; }
+    public string Client { get; set; } = null!;
 
     /// <summary>
     /// 服务端主类
     /// </summary>
     [JsonPropertyName("server")]
-    public string Server { get; set; }
+    public string Server { get; set; } = null!;
 }

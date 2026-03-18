@@ -34,9 +34,9 @@ namespace XianYuLauncher.ViewModels;
 /// </summary>
 public class JavaVersionInfo
 {
-    public string Version { get; set; }
+    public string Version { get; set; } = string.Empty;
     public int MajorVersion { get; set; }
-    public string Path { get; set; }
+    public string Path { get; set; } = string.Empty;
     public bool IsJDK { get; set; }
     
     public override string ToString()
@@ -518,14 +518,6 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// 材质类型列表，用于ComboBox数据源
     /// </summary>
     public List<XianYuLauncher.Core.Services.MaterialType> MaterialTypes => Enum.GetValues<XianYuLauncher.Core.Services.MaterialType>().ToList();
-    
-    /// <summary>
-    /// 材质类型选择命令
-    /// </summary>
-    public ICommand SwitchMaterialTypeCommand
-    {
-        get;
-    }
     
     /// <summary>
     /// 背景图片路径

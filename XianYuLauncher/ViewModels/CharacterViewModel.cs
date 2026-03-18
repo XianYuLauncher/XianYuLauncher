@@ -60,7 +60,7 @@ namespace XianYuLauncher.ViewModels
         /// 当前活跃角色
         /// </summary>
         [ObservableProperty]
-        private MinecraftProfile _activeProfile;
+        private MinecraftProfile _activeProfile = new() { IsOffline = true };
 
         /// <summary>
         /// 离线用户名
@@ -507,10 +507,15 @@ namespace XianYuLauncher.ViewModels
                 // 2. 如果删除的是当前活跃角色，切换到第一个角色
                 if (ActiveProfile == profile)
                 {
-                    ActiveProfile = Profiles.FirstOrDefault();
-                    if (ActiveProfile != null)
+                    var nextProfile = Profiles.FirstOrDefault();
+                    if (nextProfile != null)
                     {
+                        ActiveProfile = nextProfile;
                         ActiveProfile.IsActive = true;
+                    }
+                    else
+                    {
+                        ActiveProfile = new MinecraftProfile { IsOffline = true };
                     }
                 }
                 

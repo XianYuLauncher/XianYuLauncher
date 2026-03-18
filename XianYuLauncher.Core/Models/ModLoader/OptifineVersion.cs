@@ -11,19 +11,19 @@ public class OptifineVersion
     /// Optifine版本类型（如HD_U_J7）
     /// </summary>
     [JsonProperty("type")]
-    public string Type { get; set; }
+    public string Type { get; set; } = string.Empty;
     
     /// <summary>
     /// Optifine补丁版本（如pre10）
     /// </summary>
     [JsonProperty("patch")]
-    public string Patch { get; set; }
+    public string Patch { get; set; } = string.Empty;
     
     /// <summary>
     /// 兼容的Forge版本
     /// </summary>
     [JsonProperty("forge")]
-    public string Forge { get; set; }
+    public string Forge { get; set; } = string.Empty;
     
     /// <summary>
     /// 完整的Optifine版本名称（Type_Patch）

@@ -25,7 +25,7 @@ namespace XianYuLauncher.Services;
 /// </summary>
 public class DialogService : IDialogService
 {
-    private XamlRoot _xamlRoot;
+    private XamlRoot? _xamlRoot;
     // 使用信号量确保同一时间只有一个弹窗显示，防止 WinUI 崩溃 (COM 0x80000019)
     private readonly SemaphoreSlim _dialogSemaphore = new(1, 1);
     private readonly HttpClient _httpClient = new HttpClient();

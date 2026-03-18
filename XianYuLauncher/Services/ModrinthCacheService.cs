@@ -536,11 +536,11 @@ public class ModrinthCacheService
 public class ModrinthCacheData
 {
     public DateTime CacheTime { get; set; }
-    public string ResourceType { get; set; }
-    public string Query { get; set; }
-    public string Loader { get; set; }
-    public string Version { get; set; }
-    public string Category { get; set; }
+    public string ResourceType { get; set; } = string.Empty;
+    public string Query { get; set; } = string.Empty;
+    public string Loader { get; set; } = string.Empty;
+    public string Version { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
     public int TotalHits { get; set; }
     public List<ModrinthProject> Items { get; set; } = new();
 }

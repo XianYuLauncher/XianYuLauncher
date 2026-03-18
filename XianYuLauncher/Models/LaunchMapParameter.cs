@@ -2,11 +2,11 @@ namespace XianYuLauncher.Models;
 
 public class LaunchMapParameter
 {
-    public string VersionId { get; set; }
-    public string WorldFolder { get; set; }
+    public string VersionId { get; set; } = string.Empty;
+    public string WorldFolder { get; set; } = string.Empty;
     
     // Server Join Parameters
-    public string ServerAddress { get; set; }
+    public string ServerAddress { get; set; } = string.Empty;
     public int? ServerPort { get; set; }
     
     /// <summary>

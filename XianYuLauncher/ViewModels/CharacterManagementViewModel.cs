@@ -29,10 +29,10 @@ namespace XianYuLauncher.ViewModels
     /// </summary>
     public class BuiltInSkin
     {
-        public string Name { get; set; }
-        public string Variant { get; set; }
-        public ImageSource Icon { get; set; }
-        public string TextureUri { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Variant { get; set; } = string.Empty;
+        public ImageSource Icon { get; set; } = null!;
+        public string TextureUri { get; set; } = string.Empty;
     }
 
     /// <summary>
@@ -169,7 +169,7 @@ namespace XianYuLauncher.ViewModels
         /// 当前角色信息
         /// </summary>
         [ObservableProperty]
-        private MinecraftProfile _currentProfile;
+        private MinecraftProfile _currentProfile = new() { IsOffline = true };
         
         /// <summary>
         /// 原始UUID，用于保存时查找要更新的角色

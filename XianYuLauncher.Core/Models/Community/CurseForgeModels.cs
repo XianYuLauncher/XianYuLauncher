@@ -13,7 +13,7 @@ public class CurseForgeSearchResult
     public List<CurseForgeMod> Data { get; set; } = new();
     
     [JsonPropertyName("pagination")]
-    public CurseForgePagination Pagination { get; set; }
+    public CurseForgePagination Pagination { get; set; } = null!;
 }
 
 /// <summary>
@@ -46,19 +46,19 @@ public class CurseForgeMod
     public int GameId { get; set; }
     
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = null!;
     
     [JsonPropertyName("slug")]
-    public string Slug { get; set; }
+    public string Slug { get; set; } = null!;
     
     [JsonPropertyName("links")]
-    public CurseForgeLinks Links { get; set; }
+    public CurseForgeLinks Links { get; set; } = null!;
     
     [JsonPropertyName("summary")]
-    public string Summary { get; set; }
+    public string Summary { get; set; } = null!;
 
     [JsonPropertyName("description")]
-    public string Description { get; set; }
+    public string Description { get; set; } = null!;
     
     [JsonPropertyName("status")]
     public int Status { get; set; }
@@ -79,7 +79,7 @@ public class CurseForgeMod
     public List<CurseForgeAuthor> Authors { get; set; } = new();
     
     [JsonPropertyName("logo")]
-    public CurseForgeLogo Logo { get; set; }
+    public CurseForgeLogo Logo { get; set; } = null!;
     
     [JsonPropertyName("screenshots")]
     public List<CurseForgeScreenshot> Screenshots { get; set; } = new();
@@ -118,16 +118,16 @@ public class CurseForgeMod
 public class CurseForgeLinks
 {
     [JsonPropertyName("websiteUrl")]
-    public string WebsiteUrl { get; set; }
+    public string WebsiteUrl { get; set; } = null!;
     
     [JsonPropertyName("wikiUrl")]
-    public string WikiUrl { get; set; }
+    public string WikiUrl { get; set; } = null!;
     
     [JsonPropertyName("issuesUrl")]
-    public string IssuesUrl { get; set; }
+    public string IssuesUrl { get; set; } = null!;
     
     [JsonPropertyName("sourceUrl")]
-    public string SourceUrl { get; set; }
+    public string SourceUrl { get; set; } = null!;
 }
 
 /// <summary>
@@ -142,16 +142,16 @@ public class CurseForgeCategory
     public int GameId { get; set; }
     
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = null!;
     
     [JsonPropertyName("slug")]
-    public string Slug { get; set; }
+    public string Slug { get; set; } = null!;
     
     [JsonPropertyName("url")]
-    public string Url { get; set; }
+    public string Url { get; set; } = null!;
     
     [JsonPropertyName("iconUrl")]
-    public string IconUrl { get; set; }
+    public string IconUrl { get; set; } = null!;
     
     [JsonPropertyName("dateModified")]
     public DateTime DateModified { get; set; }
@@ -175,10 +175,10 @@ public class CurseForgeAuthor
     public int Id { get; set; }
     
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = null!;
     
     [JsonPropertyName("url")]
-    public string Url { get; set; }
+    public string Url { get; set; } = null!;
 }
 
 /// <summary>
@@ -193,16 +193,16 @@ public class CurseForgeLogo
     public int ModId { get; set; }
     
     [JsonPropertyName("title")]
-    public string Title { get; set; }
+    public string Title { get; set; } = null!;
     
     [JsonPropertyName("description")]
-    public string Description { get; set; }
+    public string Description { get; set; } = null!;
     
     [JsonPropertyName("thumbnailUrl")]
-    public string ThumbnailUrl { get; set; }
+    public string ThumbnailUrl { get; set; } = null!;
     
     [JsonPropertyName("url")]
-    public string Url { get; set; }
+    public string Url { get; set; } = null!;
 }
 
 /// <summary>
@@ -217,16 +217,16 @@ public class CurseForgeScreenshot
     public int ModId { get; set; }
     
     [JsonPropertyName("title")]
-    public string Title { get; set; }
+    public string Title { get; set; } = null!;
     
     [JsonPropertyName("description")]
-    public string Description { get; set; }
+    public string Description { get; set; } = null!;
     
     [JsonPropertyName("thumbnailUrl")]
-    public string ThumbnailUrl { get; set; }
+    public string ThumbnailUrl { get; set; } = null!;
     
     [JsonPropertyName("url")]
-    public string Url { get; set; }
+    public string Url { get; set; } = null!;
 }
 
 /// <summary>
@@ -247,10 +247,10 @@ public class CurseForgeFile
     public bool IsAvailable { get; set; }
     
     [JsonPropertyName("displayName")]
-    public string DisplayName { get; set; }
+    public string DisplayName { get; set; } = null!;
     
     [JsonPropertyName("fileName")]
-    public string FileName { get; set; }
+    public string FileName { get; set; } = null!;
     
     [JsonPropertyName("releaseType")]
     public int ReleaseType { get; set; } // 1=Release, 2=Beta, 3=Alpha
@@ -271,7 +271,7 @@ public class CurseForgeFile
     public long DownloadCount { get; set; }
     
     [JsonPropertyName("downloadUrl")]
-    public string DownloadUrl { get; set; }
+    public string DownloadUrl { get; set; } = null!;
     
     [JsonPropertyName("gameVersions")]
     public List<string> GameVersions { get; set; } = new();
@@ -301,7 +301,7 @@ public class CurseForgeFile
 public class CurseForgeFileHash
 {
     [JsonPropertyName("value")]
-    public string Value { get; set; }
+    public string Value { get; set; } = null!;
     
     [JsonPropertyName("algo")]
     public int Algo { get; set; } // 1=Sha1, 2=Md5
@@ -313,13 +313,13 @@ public class CurseForgeFileHash
 public class CurseForgeSortableGameVersion
 {
     [JsonPropertyName("gameVersionName")]
-    public string GameVersionName { get; set; }
+    public string GameVersionName { get; set; } = null!;
     
     [JsonPropertyName("gameVersionPadded")]
-    public string GameVersionPadded { get; set; }
+    public string GameVersionPadded { get; set; } = null!;
     
     [JsonPropertyName("gameVersion")]
-    public string GameVersion { get; set; }
+    public string GameVersion { get; set; } = null!;
     
     [JsonPropertyName("gameVersionReleaseDate")]
     public DateTime GameVersionReleaseDate { get; set; }
@@ -346,7 +346,7 @@ public class CurseForgeDependency
 public class CurseForgeModule
 {
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = null!;
     
     [JsonPropertyName("fingerprint")]
     public long Fingerprint { get; set; }
@@ -358,13 +358,13 @@ public class CurseForgeModule
 public class CurseForgeFileIndex
 {
     [JsonPropertyName("gameVersion")]
-    public string GameVersion { get; set; }
+    public string GameVersion { get; set; } = null!;
     
     [JsonPropertyName("fileId")]
     public int FileId { get; set; }
     
     [JsonPropertyName("filename")]
-    public string Filename { get; set; }
+    public string Filename { get; set; } = null!;
     
     [JsonPropertyName("releaseType")]
     public int ReleaseType { get; set; }
@@ -382,7 +382,7 @@ public class CurseForgeFileIndex
 public class CurseForgeModDetailResponse
 {
     [JsonPropertyName("data")]
-    public CurseForgeModDetail Data { get; set; }
+    public CurseForgeModDetail Data { get; set; } = null!;
 }
 
 /// <summary>
@@ -402,7 +402,7 @@ public class CurseForgeFilesResponse
     public List<CurseForgeFile> Data { get; set; } = new();
     
     [JsonPropertyName("pagination")]
-    public CurseForgePagination Pagination { get; set; }
+    public CurseForgePagination Pagination { get; set; } = null!;
 }
 
 /// <summary>
@@ -438,7 +438,7 @@ public class CurseForgeFilesListResponse
 public class CurseForgeFileResponse
 {
     [JsonPropertyName("data")]
-    public CurseForgeFile Data { get; set; }
+    public CurseForgeFile Data { get; set; } = null!;
 }
 
 #region CurseForge 整合包 Manifest 模型
@@ -449,28 +449,28 @@ public class CurseForgeFileResponse
 public class CurseForgeManifest
 {
     [JsonPropertyName("minecraft")]
-    public CurseForgeManifestMinecraft Minecraft { get; set; }
+    public CurseForgeManifestMinecraft Minecraft { get; set; } = null!;
     
     [JsonPropertyName("manifestType")]
-    public string ManifestType { get; set; }
+    public string ManifestType { get; set; } = null!;
     
     [JsonPropertyName("manifestVersion")]
     public int ManifestVersion { get; set; }
     
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = null!;
     
     [JsonPropertyName("version")]
-    public string Version { get; set; }
+    public string Version { get; set; } = null!;
     
     [JsonPropertyName("author")]
-    public string Author { get; set; }
+    public string Author { get; set; } = null!;
     
     [JsonPropertyName("files")]
     public List<CurseForgeManifestFile> Files { get; set; } = new();
     
     [JsonPropertyName("overrides")]
-    public string Overrides { get; set; }
+    public string Overrides { get; set; } = null!;
 }
 
 /// <summary>
@@ -479,7 +479,7 @@ public class CurseForgeManifest
 public class CurseForgeManifestMinecraft
 {
     [JsonPropertyName("version")]
-    public string Version { get; set; }
+    public string Version { get; set; } = null!;
     
     [JsonPropertyName("modLoaders")]
     public List<CurseForgeManifestModLoader> ModLoaders { get; set; } = new();
@@ -491,7 +491,7 @@ public class CurseForgeManifestMinecraft
 public class CurseForgeManifestModLoader
 {
     [JsonPropertyName("id")]
-    public string Id { get; set; }
+    public string Id { get; set; } = null!;
     
     [JsonPropertyName("primary")]
     public bool Primary { get; set; }
@@ -523,7 +523,7 @@ public class CurseForgeManifestFile
 public class CurseForgeFingerprintMatchesResponse
 {
     [JsonPropertyName("data")]
-    public CurseForgeFingerprintMatchesResult Data { get; set; }
+    public CurseForgeFingerprintMatchesResult Data { get; set; } = null!;
 }
 
 /// <summary>
@@ -562,7 +562,7 @@ public class CurseForgeFingerprintMatch
     public int Id { get; set; }
     
     [JsonPropertyName("file")]
-    public CurseForgeFile File { get; set; }
+    public CurseForgeFile File { get; set; } = null!;
     
     [JsonPropertyName("latestFiles")]
     public List<CurseForgeFile> LatestFiles { get; set; } = new();

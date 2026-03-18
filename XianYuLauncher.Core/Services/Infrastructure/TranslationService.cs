@@ -46,7 +46,7 @@ public class TranslationService : ITranslationService
     /// <summary>
     /// 翻译服务单例实例（用于Models中访问）
     /// </summary>
-    public static TranslationService Instance { get; private set; }
+    public static TranslationService Instance { get; private set; } = null!;
 
     // 添加一个静态属性来存储当前语言设置
     private static string _currentLanguage = "zh-CN";

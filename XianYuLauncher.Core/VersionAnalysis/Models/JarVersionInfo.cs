@@ -8,13 +8,13 @@ namespace XianYuLauncher.Core.VersionAnalysis.Models
     public class JarVersionInfo
     {
         [JsonProperty("id")]
-        public string Id { get; set; }
+        public string Id { get; set; } = null!;
 
         [JsonProperty("name")]
-        public string Name { get; set; }
+        public string Name { get; set; } = null!;
 
         [JsonProperty("release_target")]
-        public string ReleaseTarget { get; set; }
+        public string ReleaseTarget { get; set; } = null!;
 
         [JsonProperty("world_version")]
         public int WorldVersion { get; set; }
@@ -23,10 +23,10 @@ namespace XianYuLauncher.Core.VersionAnalysis.Models
         public int ProtocolVersion { get; set; }
         
         [JsonProperty("pack_version")]
-        public PackVersion PackVersion { get; set; }
+        public PackVersion PackVersion { get; set; } = null!;
 
         [JsonProperty("build_time")]
-        public string BuildTime { get; set; }
+        public string BuildTime { get; set; } = null!;
         
         [JsonProperty("java_version")]
         public int JavaVersion { get; set; }

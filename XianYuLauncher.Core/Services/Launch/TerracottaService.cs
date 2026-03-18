@@ -350,31 +350,31 @@ namespace XianYuLauncher.Core.Services
             public int id { get; set; }
             
             [JsonProperty("tag_name")]
-            public string tag_name { get; set; }
+            public string tag_name { get; set; } = null!;
             
             [JsonProperty("name")]
-            public string name { get; set; }
+            public string name { get; set; } = null!;
             
             [JsonProperty("assets")]
-            public List<TerracottaAsset> assets { get; set; }
+            public List<TerracottaAsset> assets { get; set; } = new();
         }
         
         private class TerracottaAsset
         {
             [JsonProperty("name")]
-            public string name { get; set; }
+            public string name { get; set; } = null!;
             
             [JsonProperty("browser_download_url")]
-            public string browser_download_url { get; set; }
+            public string browser_download_url { get; set; } = null!;
         }
         
         private class TerracottaCache
         {
             [JsonProperty("tag_name")]
-            public string tag_name { get; set; }
+            public string tag_name { get; set; } = string.Empty;
             
             [JsonProperty("download_date")]
-            public string download_date { get; set; }
+            public string download_date { get; set; } = string.Empty;
         }
         
         #endregion

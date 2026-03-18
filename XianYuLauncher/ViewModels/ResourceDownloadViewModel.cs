@@ -671,7 +671,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private ObservableCollection<InstalledGameVersionViewModel> _favoritesInstallVersions = new();
 
     [ObservableProperty]
-    private InstalledGameVersionViewModel _selectedFavoritesInstallVersion;
+    private InstalledGameVersionViewModel? _selectedFavoritesInstallVersion;
 
     [ObservableProperty]
     private bool _isFavoritesDownloading;

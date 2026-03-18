@@ -196,7 +196,7 @@ public class ModrinthRecommendationService
 public class ModrinthRecommendationCache
 {
     public DateTime CacheTime { get; set; }
-    public ModrinthRandomProject Project { get; set; }
+    public ModrinthRandomProject Project { get; set; } = null!;
 }
 
 /// <summary>
@@ -205,23 +205,23 @@ public class ModrinthRecommendationCache
 public class ModrinthRandomProject
 {
     [JsonProperty("id")]
-    public string Id { get; set; }
+    public string Id { get; set; } = null!;
     
     [JsonProperty("slug")]
-    public string Slug { get; set; }
+    public string Slug { get; set; } = null!;
     
     [JsonProperty("title")]
-    public string Title { get; set; }
+    public string Title { get; set; } = null!;
     
     [JsonProperty("project_type")]
-    public string ProjectType { get; set; }
+    public string ProjectType { get; set; } = null!;
     
     [JsonProperty("client_side")]
-    public string ClientSide { get; set; }
+    public string ClientSide { get; set; } = null!;
     
     [JsonProperty("server_side")]
-    public string ServerSide { get; set; }
+    public string ServerSide { get; set; } = null!;
     
     [JsonProperty("game_versions")]
-    public List<string> GameVersions { get; set; }
+    public List<string> GameVersions { get; set; } = new();
 }

@@ -13,12 +13,12 @@ public class JavaVersionDownloadOption
     /// <summary>
     /// 版本名称 (例如 "17.0.8", "21.0.0")
     /// </summary>
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     
     /// <summary>
     /// 组件标识 (例如 "java-runtime-gamma")
     /// </summary>
-    public string Component { get; set; }
+    public string Component { get; set; } = string.Empty;
     
     /// <summary>
     /// 显示名称

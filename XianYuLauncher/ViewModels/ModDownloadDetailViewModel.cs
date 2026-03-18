@@ -40,7 +40,7 @@ namespace XianYuLauncher.ViewModels
         private readonly ILogger<ModDownloadDetailViewModel> _logger;
 
         [ObservableProperty]
-        private string _modId;
+        private string _modId = string.Empty;
         
         [ObservableProperty]
         private string _modSlug = string.Empty;
