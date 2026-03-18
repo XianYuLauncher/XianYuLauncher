@@ -3,17 +3,15 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
-using System.Runtime.InteropServices.WindowsRuntime;
 using System.Threading;
 using System.Threading.Tasks;
-using Windows.Storage.Streams;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
@@ -40,7 +38,7 @@ namespace XianYuLauncher.ViewModels
         private readonly IUiDispatcher _uiDispatcher;
         private readonly ShellViewModel _shellViewModel;
         private readonly IGameDirResolver _gameDirResolver;
-        private readonly IHttpClientFactory _httpClientFactory;
+        private readonly IHttpImageSourceService _httpImageSourceService;
         private readonly ILogger<ModDownloadDetailViewModel> _logger;
 
         [ObservableProperty]
@@ -163,13 +161,7 @@ namespace XianYuLauncher.ViewModels
         /// 详情页头部图标（预取并解码后再结束骨架屏，避免 Image 绑定远程 URI 时长时间空白）。
         /// </summary>
         [ObservableProperty]
-        private BitmapImage? _modHeaderIcon;
-
-        /// <summary>
-        /// 远程图标的内存流：在下次替换详情或改用 ms-appx 占位前保持存活，
-        /// 避免 <see cref="BitmapImage.SetSourceAsync"/> 返回后内部仍异步读流导致异常。
-        /// </summary>
-        private InMemoryRandomAccessStream? _modHeaderIconStream;
+        private ImageSource? _modHeaderIcon;
 
         [ObservableProperty]
         private long _modDownloads = 0;
@@ -419,7 +411,7 @@ namespace XianYuLauncher.ViewModels
             IUiDispatcher uiDispatcher,
             ShellViewModel shellViewModel,
             IGameDirResolver gameDirResolver,
-            IHttpClientFactory httpClientFactory,
+            IHttpImageSourceService httpImageSourceService,
             ILogger<ModDownloadDetailViewModel> logger)
         {
             _curseForgeService = curseForgeService;
@@ -435,7 +427,7 @@ namespace XianYuLauncher.ViewModels
             _uiDispatcher = uiDispatcher;
             _shellViewModel = shellViewModel;
             _gameDirResolver = gameDirResolver;
-            _httpClientFactory = httpClientFactory;
+            _httpImageSourceService = httpImageSourceService;
             _logger = logger;
         }
         
@@ -461,11 +453,7 @@ namespace XianYuLauncher.ViewModels
             }
 
             ModId = modId;
-            await _uiDispatcher.RunOnUiThreadAsync(() =>
-            {
-                ReleaseModHeaderIconStream();
-                ModHeaderIcon = null;
-            });
+            await _uiDispatcher.RunOnUiThreadAsync(() => ModHeaderIcon = null);
             IsLoading = true;
             ErrorMessage = string.Empty;
             
@@ -702,17 +690,10 @@ namespace XianYuLauncher.ViewModels
             }
         }
 
-        private void ReleaseModHeaderIconStream()
-        {
-            _modHeaderIconStream?.Dispose();
-            _modHeaderIconStream = null;
-        }
-
         private Task SetModHeaderPlaceholderAsync()
         {
             return _uiDispatcher.RunOnUiThreadAsync(() =>
             {
-                ReleaseModHeaderIconStream();
                 ModHeaderIcon = new BitmapImage(new Uri("ms-appx:///Assets/Placeholder.png"));
             });
         }
@@ -741,66 +722,21 @@ namespace XianYuLauncher.ViewModels
                             return;
                         }
 
-                        ReleaseModHeaderIconStream();
                         ModHeaderIcon = new BitmapImage(new Uri(url));
                     });
                     return;
                 }
 
-                if (!Uri.TryCreate(url, UriKind.Absolute, out var uri)
-                    || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-                {
-                    await SetModHeaderPlaceholderAsync();
-                    return;
-                }
+                var imageSource = await _httpImageSourceService.LoadFromUrlAsync(url, ct).ConfigureAwait(false);
 
-                var client = _httpClientFactory.CreateClient();
-                client.Timeout = TimeSpan.FromSeconds(15);
-                client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "XianYuLauncher/1.0 (detail-icon)");
-                using var response = await client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
-                response.EnsureSuccessStatusCode();
-                var bytes = await response.Content.ReadAsByteArrayAsync(ct).ConfigureAwait(false);
-                if (bytes.Length == 0)
-                {
-                    await SetModHeaderPlaceholderAsync();
-                    return;
-                }
-
-                if (ModId != expectedModId)
-                {
-                    return;
-                }
-
-                await _uiDispatcher.RunOnUiThreadAsync(async () =>
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     if (ModId != expectedModId)
                     {
                         return;
                     }
 
-                    try
-                    {
-                        ReleaseModHeaderIconStream();
-                        var stream = new InMemoryRandomAccessStream();
-                        await stream.WriteAsync(bytes.AsBuffer());
-                        stream.Seek(0);
-                        _modHeaderIconStream = stream;
-                        var bitmap = new BitmapImage();
-                        await bitmap.SetSourceAsync(stream);
-                        if (ModId != expectedModId)
-                        {
-                            ReleaseModHeaderIconStream();
-                            return;
-                        }
-
-                        ModHeaderIcon = bitmap;
-                    }
-                    catch (Exception ex)
-                    {
-                        WriteDebugLog($"[ModDetail] 图标解码失败: {ex.Message}");
-                        ReleaseModHeaderIconStream();
-                        ModHeaderIcon = new BitmapImage(new Uri("ms-appx:///Assets/Placeholder.png"));
-                    }
+                    ModHeaderIcon = imageSource ?? new BitmapImage(new Uri("ms-appx:///Assets/Placeholder.png"));
                 });
             }
             catch (Exception ex)
