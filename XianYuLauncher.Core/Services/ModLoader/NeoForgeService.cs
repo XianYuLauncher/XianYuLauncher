@@ -136,7 +136,7 @@ public class NeoForgeService
     /// </summary>
     private List<string> ParseBmclapiNeoForgeResponse(string json, string minecraftVersion)
     {
-        var versions = JsonSerializer.Deserialize<List<BmclapiNeoForgeVersion>>(json);
+        var versions = JsonSerializer.Deserialize<List<BmclapiNeoForgeVersion>>(json) ?? new List<BmclapiNeoForgeVersion>();
         // 过滤出匹配 Minecraft 版本的 NeoForge 版本
         var versionList = versions
             .Where(v => v.mcversion == minecraftVersion)
@@ -208,7 +208,7 @@ public class NeoForgeService
         string json = await response.Content.ReadAsStringAsync();
         
         // 解析JSON数据
-        var versions = JsonSerializer.Deserialize<List<BmclapiNeoForgeVersion>>(json);
+        var versions = JsonSerializer.Deserialize<List<BmclapiNeoForgeVersion>>(json) ?? new List<BmclapiNeoForgeVersion>();
         
         // 提取版本号列表
         var versionList = versions.Select(v => v.version).ToList();

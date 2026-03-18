@@ -100,6 +100,10 @@ namespace XianYuLauncher.Core.Helpers
                 try 
                 {
                     var jsonNode = JsonNode.Parse(json);
+                        if (jsonNode == null)
+                        {
+                            return (null, "数据解析失败", 0, 0, latency);
+                        }
                     
                     int online = 0;
                     int max = 0;

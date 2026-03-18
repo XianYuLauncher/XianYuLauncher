@@ -8,19 +8,19 @@ namespace XianYuLauncher.Core.Models;
 /// <summary>
 /// 将字符串转换为Uri的JSON转换器
 /// </summary>
-public class StringToUriConverter : JsonConverter<Uri>
+public class StringToUriConverter : JsonConverter<Uri?>
 {
-    public override Uri Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    public override Uri? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
         try
         {
-            string urlString = reader.GetString();
+            string? urlString = reader.GetString();
             if (string.IsNullOrEmpty(urlString))
             {
                 return null;
             }
             
-            if (Uri.TryCreate(urlString, UriKind.Absolute, out Uri uri))
+            if (Uri.TryCreate(urlString, UriKind.Absolute, out Uri? uri))
             {
                 return uri;
             }
@@ -33,7 +33,7 @@ public class StringToUriConverter : JsonConverter<Uri>
         }
     }
 
-    public override void Write(Utf8JsonWriter writer, Uri value, JsonSerializerOptions options)
+    public override void Write(Utf8JsonWriter writer, Uri? value, JsonSerializerOptions options)
     {
         writer.WriteStringValue(value?.ToString());
     }

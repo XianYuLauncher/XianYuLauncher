@@ -60,7 +60,7 @@ namespace XianYuLauncher.Core.Services
                 // 4. 检查本地缓存
                 progressCallback?.Invoke(30); // 30% - 检查本地缓存
                 var cacheFile = Path.Combine(_cacheDirectory, TerracottaCacheFile);
-                TerracottaCache cache = null;
+                TerracottaCache? cache = null;
                 
                 if (File.Exists(cacheFile))
                 {
@@ -311,10 +311,21 @@ namespace XianYuLauncher.Core.Services
                         if (!reader.Entry.IsDirectory)
                         {
                             // 构建目标文件路径
+                            if (string.IsNullOrWhiteSpace(reader.Entry.Key))
+                            {
+                                continue;
+                            }
+
                             string entryDestinationPath = Path.Combine(destinationPath, reader.Entry.Key);
                             
                             // 创建目录
-                            Directory.CreateDirectory(Path.GetDirectoryName(entryDestinationPath));
+                            string? entryDirectory = Path.GetDirectoryName(entryDestinationPath);
+                            if (string.IsNullOrWhiteSpace(entryDirectory))
+                            {
+                                throw new InvalidOperationException($"无法确定解压目标目录: {entryDestinationPath}");
+                            }
+
+                            Directory.CreateDirectory(entryDirectory);
                             
                             // 解压文件
                             using (var entryStream = reader.OpenEntryStream())

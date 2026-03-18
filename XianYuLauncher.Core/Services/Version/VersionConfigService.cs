@@ -61,6 +61,18 @@ public class VersionConfigService : IVersionConfigService
     {
         _fileService = fileService;
     }
+
+    private static bool TryReadValue<T>(JObject jObject, string propertyName, JTokenType expectedType, out T value)
+    {
+        if (jObject[propertyName] is JToken token && token.Type == expectedType)
+        {
+            value = token.Value<T>();
+            return true;
+        }
+
+        value = default!;
+        return false;
+    }
     
     /// <summary>
     /// 加载版本配置
@@ -118,14 +130,14 @@ public class VersionConfigService : IVersionConfigService
                 if (jObject["LiteLoaderVersion"] != null)
                     config.LiteLoaderVersion = jObject["LiteLoaderVersion"]?.ToString();
                 
-                if (jObject["AutoMemoryAllocation"] != null && jObject["AutoMemoryAllocation"].Type == JTokenType.Boolean)
-                    config.AutoMemoryAllocation = jObject["AutoMemoryAllocation"].Value<bool>();
+                if (TryReadValue(jObject, "AutoMemoryAllocation", JTokenType.Boolean, out bool autoMemoryAllocation))
+                    config.AutoMemoryAllocation = autoMemoryAllocation;
                 
-                if (jObject["InitialHeapMemory"] != null && jObject["InitialHeapMemory"].Type == JTokenType.Float)
-                    config.InitialHeapMemory = jObject["InitialHeapMemory"].Value<double>();
+                if (TryReadValue(jObject, "InitialHeapMemory", JTokenType.Float, out double initialHeapMemory))
+                    config.InitialHeapMemory = initialHeapMemory;
                 
-                if (jObject["MaximumHeapMemory"] != null && jObject["MaximumHeapMemory"].Type == JTokenType.Float)
-                    config.MaximumHeapMemory = jObject["MaximumHeapMemory"].Value<double>();
+                if (TryReadValue(jObject, "MaximumHeapMemory", JTokenType.Float, out double maximumHeapMemory))
+                    config.MaximumHeapMemory = maximumHeapMemory;
                 
                 if (jObject["JavaPath"] != null)
                     config.JavaPath = jObject["JavaPath"]?.ToString() ?? string.Empty;
@@ -133,19 +145,18 @@ public class VersionConfigService : IVersionConfigService
                 if (jObject["GarbageCollectorMode"] != null)
                     config.GarbageCollectorMode = GarbageCollectorModeHelper.Normalize(jObject["GarbageCollectorMode"]?.ToString());
                 
-                if (jObject["UseGlobalJavaSetting"] != null && jObject["UseGlobalJavaSetting"].Type == JTokenType.Boolean)
-                    config.UseGlobalJavaSetting = jObject["UseGlobalJavaSetting"].Value<bool>();
+                if (TryReadValue(jObject, "UseGlobalJavaSetting", JTokenType.Boolean, out bool useGlobalJavaSetting))
+                    config.UseGlobalJavaSetting = useGlobalJavaSetting;
                 
-                if (jObject["OverrideMemory"] != null && jObject["OverrideMemory"].Type == JTokenType.Boolean)
-                    config.OverrideMemory = jObject["OverrideMemory"].Value<bool>();
+                if (TryReadValue(jObject, "OverrideMemory", JTokenType.Boolean, out bool overrideMemory))
+                    config.OverrideMemory = overrideMemory;
                 
-                if (jObject["OverrideResolution"] != null && jObject["OverrideResolution"].Type == JTokenType.Boolean)
-                    config.OverrideResolution = jObject["OverrideResolution"].Value<bool>();
+                if (TryReadValue(jObject, "OverrideResolution", JTokenType.Boolean, out bool overrideResolution))
+                    config.OverrideResolution = overrideResolution;
                 
                 // 处理 WindowWidth - 可能是 "Auto" 字符串或整数
-                if (jObject["WindowWidth"] != null)
+                if (jObject["WindowWidth"] is JToken widthToken)
                 {
-                    var widthToken = jObject["WindowWidth"];
                     if (widthToken.Type == JTokenType.String)
                     {
                         var widthStr = widthToken.ToString();
@@ -165,9 +176,8 @@ public class VersionConfigService : IVersionConfigService
                 }
                 
                 // 处理 WindowHeight - 可能是 "Auto" 字符串或整数
-                if (jObject["WindowHeight"] != null)
+                if (jObject["WindowHeight"] is JToken heightToken)
                 {
-                    var heightToken = jObject["WindowHeight"];
                     if (heightToken.Type == JTokenType.String)
                     {
                         var heightStr = heightToken.ToString();
@@ -187,15 +197,15 @@ public class VersionConfigService : IVersionConfigService
                 }
                 
                 // 处理统计字段
-                if (jObject["LaunchCount"] != null && jObject["LaunchCount"].Type == JTokenType.Integer)
-                    config.LaunchCount = jObject["LaunchCount"].Value<int>();
+                if (TryReadValue(jObject, "LaunchCount", JTokenType.Integer, out int launchCount))
+                    config.LaunchCount = launchCount;
                 
-                if (jObject["TotalPlayTimeSeconds"] != null && jObject["TotalPlayTimeSeconds"].Type == JTokenType.Integer)
-                    config.TotalPlayTimeSeconds = jObject["TotalPlayTimeSeconds"].Value<long>();
+                if (TryReadValue(jObject, "TotalPlayTimeSeconds", JTokenType.Integer, out long totalPlayTimeSeconds))
+                    config.TotalPlayTimeSeconds = totalPlayTimeSeconds;
                 
-                if (jObject["LastLaunchTime"] != null)
+                if (jObject["LastLaunchTime"] is JToken lastLaunchTimeToken)
                 {
-                    if (DateTime.TryParse(jObject["LastLaunchTime"].ToString(), out var lastLaunch))
+                    if (DateTime.TryParse(lastLaunchTimeToken.ToString(), out var lastLaunch))
                         config.LastLaunchTime = lastLaunch;
                 }
 

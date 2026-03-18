@@ -40,8 +40,9 @@ public class ErrorKnowledgeBaseService
             if (File.Exists(_knowledgeBasePath))
             {
                 var json = await File.ReadAllTextAsync(_knowledgeBasePath);
-                _knowledgeBase = JsonConvert.DeserializeObject<ErrorKnowledgeBase>(json);
-                await ApplyLocalizationAsync(_knowledgeBase, currentLanguage);
+                    var knowledgeBase = JsonConvert.DeserializeObject<ErrorKnowledgeBase>(json) ?? new ErrorKnowledgeBase();
+                    await ApplyLocalizationAsync(knowledgeBase, currentLanguage);
+                    _knowledgeBase = knowledgeBase;
                 _loadedLanguage = currentLanguage;
                 System.Diagnostics.Debug.WriteLine($"[ErrorKnowledgeBase] 成功加载知识库，共 {_knowledgeBase?.Errors.Count ?? 0} 条规则");
             }

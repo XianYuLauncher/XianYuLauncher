@@ -229,7 +229,7 @@ public class BmclapiDownloadSource : IDownloadSource
         string groupId = parts[0];
         string artifactId = parts[1];
         string version = parts[2];
-        string classifier = null;
+           string? classifier = null;
         string extension = "jar";
         
         // 处理带有分类器的情况

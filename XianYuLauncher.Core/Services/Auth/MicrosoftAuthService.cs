@@ -397,8 +397,8 @@ public class MicrosoftAuthService
             var request = context.Request;
             var response = context.Response;
 
-            string code = request.QueryString["code"];
-            string error = request.QueryString["error"];
+            string? code = request.QueryString["code"];
+            string? error = request.QueryString["error"];
 
             // 返回简单的响应页面
             string responseString = "<html><head><meta charset='utf-8'><title>Login Result</title><style>body{font-family:'Segoe UI',sans-serif;text-align:center;padding:50px;}</style></head><body>";
@@ -639,6 +639,10 @@ public class MicrosoftAuthService
                 
                 var responseContent = await response.Content.ReadAsStringAsync();
                 var tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(responseContent);
+                if (tokenResponse == null)
+                {
+                    throw new InvalidOperationException("微软设备登录令牌响应解析失败");
+                }
                 
                 if (string.IsNullOrEmpty(tokenResponse.Error) || tokenResponse.Error == "authorization_pending")
                 {

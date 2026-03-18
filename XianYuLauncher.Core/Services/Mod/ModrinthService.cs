@@ -1167,7 +1167,8 @@ public class ModrinthService
                     // 新增：检查项目ID是否已存在（命中后比较 hash，一致跳过；不一致走替换）
                     if (existingProjectIds != null && !string.IsNullOrEmpty(depVersionInfo.ProjectId))
                     {
-                        if (existingProjectIds.TryGetValue(depVersionInfo.ProjectId, out string localFilePath))
+                            if (existingProjectIds.TryGetValue(depVersionInfo.ProjectId, out string? localFilePath) &&
+                                !string.IsNullOrEmpty(localFilePath))
                         {
                             existingProjectFilePath = localFilePath;
                             System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 命中 ProjectID: 依赖项目={depVersionInfo.ProjectId}, 本地文件={localFilePath}");
@@ -1197,7 +1198,8 @@ public class ModrinthService
                     if (!string.IsNullOrEmpty(existingProjectFilePath))
                     {
                         if (File.Exists(existingProjectFilePath) &&
-                            primaryFile.Hashes.TryGetValue("sha1", out string targetSha1))
+                            primaryFile.Hashes.TryGetValue("sha1", out string? targetSha1) &&
+                            !string.IsNullOrEmpty(targetSha1))
                         {
                             string localSha1 = CalculateSHA1(existingProjectFilePath);
                             if (localSha1.Equals(targetSha1, StringComparison.OrdinalIgnoreCase))
@@ -1230,7 +1232,8 @@ public class ModrinthService
                     if (File.Exists(filePath))
                     {
                         System.Diagnostics.Debug.WriteLine($"  - 文件已存在，检查SHA1");
-                        if (primaryFile.Hashes.TryGetValue("sha1", out string expectedSha1))
+                        if (primaryFile.Hashes.TryGetValue("sha1", out string? expectedSha1) &&
+                            !string.IsNullOrEmpty(expectedSha1))
                         {
                             string existingSha1 = CalculateSHA1(filePath);
                             alreadyExists = existingSha1.Equals(expectedSha1, StringComparison.OrdinalIgnoreCase);
@@ -1394,7 +1397,9 @@ public class ModrinthService
                     cancellationToken.ThrowIfCancellationRequested();
 
                     unresolvedHashes.Remove(kvp.Key);
-                    if (!string.IsNullOrEmpty(kvp.Value.ProjectId) && hashToFilePath.TryGetValue(kvp.Key, out string filePath))
+                    if (!string.IsNullOrEmpty(kvp.Value.ProjectId) &&
+                        hashToFilePath.TryGetValue(kvp.Key, out string? filePath) &&
+                        !string.IsNullOrEmpty(filePath))
                     {
                         result[kvp.Value.ProjectId] = filePath;
                         batchResolvedCount++;
@@ -1416,7 +1421,9 @@ public class ModrinthService
                 try
                 {
                     var versionInfo = await GetVersionFileByHashAsync(hash, "sha1");
-                    if (!string.IsNullOrEmpty(versionInfo?.ProjectId) && hashToFilePath.TryGetValue(hash, out string filePath))
+                    if (!string.IsNullOrEmpty(versionInfo?.ProjectId) &&
+                        hashToFilePath.TryGetValue(hash, out string? filePath) &&
+                        !string.IsNullOrEmpty(filePath))
                     {
                         result[versionInfo.ProjectId] = filePath;
                         singleResolvedCount++;

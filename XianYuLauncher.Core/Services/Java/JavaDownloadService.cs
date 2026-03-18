@@ -69,9 +69,13 @@ public class JavaDownloadService : IJavaDownloadService
 
         var mainManifest = await FetchMainManifestAsync(cancellationToken);
         var options = new List<JavaVersionDownloadOption>();
+        if (mainManifest == null)
+        {
+            return options;
+        }
 
         // 获取对应平台的字典
-        Dictionary<string, List<JavaRuntimeVariant>> platformDict = GetPlatformDictionary(mainManifest, platformKey);
+        var platformDict = GetPlatformDictionary(mainManifest, platformKey);
 
         if (platformDict != null)
         {
@@ -114,7 +118,7 @@ public class JavaDownloadService : IJavaDownloadService
         };
     }
 
-    public async Task<string> DownloadAndInstallJavaAsync(string component, Action<double> progressCallback, Action<string> statusCallback, CancellationToken cancellationToken = default)
+    public async Task<string> DownloadAndInstallJavaAsync(string component, Action<double> progressCallback, Action<string>? statusCallback, CancellationToken cancellationToken = default)
     {
         // 1. 确定运行平台
         var platformKey = GetPlatformKey();
@@ -125,7 +129,8 @@ public class JavaDownloadService : IJavaDownloadService
 
         // 2. 获取所有 Java 运行时清单
         statusCallback?.Invoke("正在获取 Java 运行时清单...");
-        var mainManifest = await FetchMainManifestAsync(cancellationToken);
+        var mainManifest = await FetchMainManifestAsync(cancellationToken)
+            ?? throw new InvalidOperationException("无法获取 Java 运行时清单");
 
         // 3. 在清单中查找对应的组件
         var variant = FindBestVariant(mainManifest, platformKey, component);
@@ -239,18 +244,20 @@ public class JavaDownloadService : IJavaDownloadService
         try
         {
             var json = await _downloadManager.DownloadStringAsync(transformedUrl, token);
-            return JsonConvert.DeserializeObject<JavaRuntimeFileManifest>(json);
+            return JsonConvert.DeserializeObject<JavaRuntimeFileManifest>(json)
+                ?? throw new InvalidOperationException("Java 文件清单解析失败");
         }
         catch (OperationCanceledException) { throw; }
         catch
         {
             // 回退到官方源
             var json = await _downloadManager.DownloadStringAsync(url, token);
-            return JsonConvert.DeserializeObject<JavaRuntimeFileManifest>(json);
+            return JsonConvert.DeserializeObject<JavaRuntimeFileManifest>(json)
+                ?? throw new InvalidOperationException("Java 文件清单解析失败");
         }
     }
 
-    private async Task DownloadFilesAsync(JavaRuntimeFileManifest manifest, string installDir, Action<double> progressCallback, Action<string> statusCallback, CancellationToken token)
+    private async Task DownloadFilesAsync(JavaRuntimeFileManifest manifest, string installDir, Action<double> progressCallback, Action<string>? statusCallback, CancellationToken token)
     {
         // 读取文件下载源设置
         var downloadSourceType = await _localSettingsService.ReadSettingAsync<string>("FileDownloadSource") ?? "official";

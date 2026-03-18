@@ -357,7 +357,7 @@ public class CurseForgeService
             string json = await response.Content.ReadAsStringAsync();
             
             // 2. 尝试获取描述 (允许失败)
-            string descJson = null;
+              string? descJson = null;
             try
             {
                 var descResponse = await SendGetWithFallbackAsync(descUrl);
@@ -381,13 +381,13 @@ public class CurseForgeService
                      using var doc = JsonDocument.Parse(descJson);
                      if (doc.RootElement.TryGetProperty("data", out var dataProp))
                      {
-                         detailResult.Data.Description = dataProp.GetString();
+                         detailResult.Data.Description = dataProp.GetString() ?? string.Empty;
                      }
                  }
                  catch {}
             }
             
-            return detailResult?.Data;
+            return detailResult?.Data ?? throw new InvalidOperationException($"CurseForge 未返回 Mod 详情数据: {modId}");
         }
         catch (HttpRequestException ex)
         {
@@ -492,7 +492,7 @@ public class CurseForgeService
             progressCallback?.Invoke(fileName, 0);
             
             // 创建父目录
-            string parentDir = Path.GetDirectoryName(destinationPath);
+            string? parentDir = Path.GetDirectoryName(destinationPath);
             if (!string.IsNullOrEmpty(parentDir))
             {
                 Directory.CreateDirectory(parentDir);
@@ -841,7 +841,7 @@ public class CurseForgeService
                 }
                 
                 // 选择合适的文件版本
-                CurseForgeFile depFile = null;
+                CurseForgeFile? depFile = null;
                 
                 if (currentFile != null && currentFile.GameVersions != null && currentFile.GameVersions.Count > 0)
                 {

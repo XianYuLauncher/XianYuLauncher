@@ -109,8 +109,9 @@ public class GameLaunchService : IGameLaunchService
             {
                 throw new InvalidOperationException("无法从本地文件读取版本元数据 (VersionInfo 为空)，请确保版本文件存在且完整");
             }
+            var resolvedVersionInfo = versionInfo;
             // 针对旧版 Forge 处理: 如果没有 mainClass，尝试从 inheritsFrom 补全，或者报错
-            if (string.IsNullOrEmpty(versionInfo.MainClass))
+            if (string.IsNullOrEmpty(resolvedVersionInfo.MainClass))
             {
                  // 注意：GetVersionInfoAsync 应该已经处理了继承合并。如果还是空，说明真的没有。
                  throw new InvalidOperationException("无法获取主启动类 (MainClass)，请检查版本文件完整性");
@@ -131,17 +132,18 @@ public class GameLaunchService : IGameLaunchService
             {
                 throw new InvalidOperationException("未找到Java运行时环境，请先安装Java");
             }
+            string resolvedJavaPath = javaPath;
             
             // 8. 构建启动参数
             var launchArgs = await BuildLaunchArgumentsAsync(
-                versionInfo, profile, config, effectiveSettings, versionName, versionDir, gameDir,
-                jarPath, librariesPath, assetsPath, javaPath, minecraftPath, null);
+                resolvedVersionInfo, profile, config, effectiveSettings, versionName, versionDir, gameDir,
+                jarPath, librariesPath, assetsPath, resolvedJavaPath, minecraftPath, null);
             
             // 9. 生成完整命令
-            string javaExecutable = javaPath;
-            if (javaPath.EndsWith("java.exe", StringComparison.OrdinalIgnoreCase))
+            string javaExecutable = resolvedJavaPath;
+            if (resolvedJavaPath.EndsWith("java.exe", StringComparison.OrdinalIgnoreCase))
             {
-                string javawPath = javaPath.Substring(0, javaPath.Length - 8) + "javaw.exe";
+                string javawPath = resolvedJavaPath.Substring(0, resolvedJavaPath.Length - 8) + "javaw.exe";
                 if (File.Exists(javawPath))
                 {
                     javaExecutable = javawPath;
@@ -273,9 +275,10 @@ public class GameLaunchService : IGameLaunchService
                 _logger.LogError("解析版本信息失败");
                 return new GameLaunchResult { Success = false, ErrorMessage = "解析版本信息失败" };
             }
-            _logger.LogInformation("版本信息解析成功，主类: {MainClass}", versionInfo.MainClass);
+            var resolvedVersionInfo = versionInfo;
+            _logger.LogInformation("版本信息解析成功，主类: {MainClass}", resolvedVersionInfo.MainClass);
             
-            if (string.IsNullOrEmpty(versionInfo.MainClass))
+            if (string.IsNullOrEmpty(resolvedVersionInfo.MainClass))
             {
                 _logger.LogError("主类信息为空");
                 return new GameLaunchResult { Success = false, ErrorMessage = "无法获取主类信息" };
@@ -313,6 +316,7 @@ public class GameLaunchService : IGameLaunchService
                 _logger.LogError("未找到 Java 运行时环境");
                 return new GameLaunchResult { Success = false, ErrorMessage = "未找到Java运行时环境，请先安装Java" };
             }
+            string resolvedJavaPath = javaPath;
             _logger.LogInformation("选中 Java 路径: {JavaPath}", javaPath);
             
             // 10. 确保版本依赖完整
@@ -347,16 +351,16 @@ public class GameLaunchService : IGameLaunchService
             _logger.LogInformation("步骤 11: 构建启动参数");
             statusCallback?.Invoke("正在构建启动参数...");
             var launchArgs = await BuildLaunchArgumentsAsync(
-                versionInfo, profile, config, effectiveSettings, versionName, versionDir, gameDir,
-                jarPath, librariesPath, assetsPath, javaPath, minecraftPath, quickPlaySingleplayer, quickPlayServer, quickPlayPort);
+                resolvedVersionInfo, profile, config, effectiveSettings, versionName, versionDir, gameDir,
+                jarPath, librariesPath, assetsPath, resolvedJavaPath, minecraftPath, quickPlaySingleplayer, quickPlayServer, quickPlayPort);
             _logger.LogInformation("启动参数构建完成，共 {Count} 个参数", launchArgs.Count);
             
             // 12. 创建进程
             _logger.LogInformation("步骤 12: 创建游戏进程");
-            string javaExecutable = javaPath;
-            if (javaPath.EndsWith("java.exe", StringComparison.OrdinalIgnoreCase))
+            string javaExecutable = resolvedJavaPath;
+            if (resolvedJavaPath.EndsWith("java.exe", StringComparison.OrdinalIgnoreCase))
             {
-                string javawPath = javaPath.Substring(0, javaPath.Length - 8) + "javaw.exe";
+                string javawPath = resolvedJavaPath.Substring(0, resolvedJavaPath.Length - 8) + "javaw.exe";
                 if (File.Exists(javawPath))
                 {
                     _logger.LogInformation("使用 javaw.exe 替代 java.exe");
@@ -531,12 +535,16 @@ public class GameLaunchService : IGameLaunchService
             args.Add("-Dminecraft.launcher.version=1.0");
         }
         
+        var resolvedVersionInfo = versionInfo ?? throw new InvalidOperationException("版本信息为空，无法构建启动参数");
+        var resolvedProfile = profile ?? throw new InvalidOperationException("角色信息为空，无法构建启动参数");
+        string mainClass = resolvedVersionInfo.MainClass ?? throw new InvalidOperationException("主启动类为空，无法构建启动参数");
+
         // 外置登录 authlib-injector 支持
-        bool isExternalLogin = profile != null && !string.IsNullOrEmpty(profile.AuthServer) && profile.TokenType == "external";
+        bool isExternalLogin = !string.IsNullOrEmpty(resolvedProfile.AuthServer) && resolvedProfile.TokenType == "external";
         if (isExternalLogin && _authlibCallback != null)
         {
             System.Diagnostics.Debug.WriteLine("[GameLaunchService] 检测到外置登录角色，添加authlib-injector参数");
-            var externalJvmArgs = await _authlibCallback.GetJvmArgumentsAsync(profile.AuthServer);
+            var externalJvmArgs = await _authlibCallback.GetJvmArgumentsAsync(resolvedProfile.AuthServer!);
             args.InsertRange(0, externalJvmArgs);
         }
         
@@ -546,13 +554,13 @@ public class GameLaunchService : IGameLaunchService
         _logger.LogInformation("JVM 参数合并去重完成，最终参数数量: {Count}", args.Count);
         
         // 确定 userType
-        string userType = isExternalLogin ? "mojang" : (profile.IsOffline ? "offline" : "msa");
+        string userType = isExternalLogin ? "mojang" : (resolvedProfile.IsOffline ? "offline" : "msa");
         
         // 添加主类
-        args.Add(versionInfo.MainClass);
+        args.Add(mainClass);
         
         // 处理游戏参数
-        await AddGameArgumentsAsync(args, versionInfo, profile, config, versionName, gameDir, assetsPath, userType, quickPlaySingleplayer, quickPlayServer, quickPlayPort);
+        await AddGameArgumentsAsync(args, resolvedVersionInfo, resolvedProfile, config, versionName, gameDir, assetsPath, userType, quickPlaySingleplayer, quickPlayServer, quickPlayPort);
         
         // 分辨率参数
         args.Add("--width");
