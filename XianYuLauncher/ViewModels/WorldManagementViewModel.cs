@@ -115,7 +115,13 @@ public partial class WorldManagementViewModel : ObservableRecipient
     private string _allowCommands = string.Empty;
     
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(IsOverviewTabSelected))]
+    [NotifyPropertyChangedFor(nameof(IsDataPacksTabSelected))]
     private int _selectedTabIndex = 0;
+
+    public bool IsOverviewTabSelected => SelectedTabIndex == 0;
+
+    public bool IsDataPacksTabSelected => SelectedTabIndex == 1;
     
     [ObservableProperty]
     private string _currentVersionId = string.Empty;
@@ -169,8 +175,7 @@ public partial class WorldManagementViewModel : ObservableRecipient
             _cancellationTokenSource?.Dispose();
             _cancellationTokenSource = new CancellationTokenSource();
             
-            WorldPath = worldPath;
-            WorldName = Path.GetFileName(worldPath);
+            ResetWorldState(worldPath);
             
             System.Diagnostics.Debug.WriteLine($"[WorldManagement] WorldPath 已设置: {WorldPath}");
             System.Diagnostics.Debug.WriteLine($"[WorldManagement] WorldName 已设置: {WorldName}");
@@ -190,6 +195,28 @@ public partial class WorldManagementViewModel : ObservableRecipient
             throw;
         }
     }
+
+    private void ResetWorldState(string worldPath)
+    {
+        WorldPath = worldPath;
+        WorldName = Path.GetFileName(worldPath);
+        WorldIcon = null;
+        Seed = UnknownText;
+        Difficulty = UnknownText;
+        GameMode = UnknownText;
+        WorldSize = UnknownText;
+        CreationTime = DateTime.MinValue;
+        LastPlayedTime = DateTime.MinValue;
+        PlayTime = UnknownText;
+        McDays = UnknownText;
+        AllowCommands = UnknownText;
+        SelectedTabIndex = 0;
+
+        _dataPacksLoaded = false;
+        DataPacks.Clear();
+        IsDataPackListEmpty = true;
+        IsLoadingDataPacks = false;
+    }
     
     public void Cleanup()
     {
@@ -207,7 +234,7 @@ public partial class WorldManagementViewModel : ObservableRecipient
         {
             cancellationToken.ThrowIfCancellationRequested();
             
-            // 在后台线程读取所有数据
+            // 先读取轻量字段，让页面结构尽快稳定显示；目录大小单独延后计算。
             var data = await Task.Run(() =>
             {
                 System.Diagnostics.Debug.WriteLine($"[WorldManagement] 后台线程 - 开始读取数据");
@@ -222,7 +249,6 @@ public partial class WorldManagementViewModel : ObservableRecipient
                         Seed = UnknownText,
                         Difficulty = UnknownText,
                         GameMode = UnknownText,
-                        WorldSize = "0 MB",
                         CreationTime = DateTime.MinValue,
                         LastPlayedTime = DateTime.MinValue,
                         PlayTime = "0",
@@ -309,17 +335,12 @@ public partial class WorldManagementViewModel : ObservableRecipient
                     var dirInfo = new DirectoryInfo(WorldPath);
                     DateTime creationTime = DateTime.MinValue;
                     DateTime lastPlayedTime = DateTime.MinValue;
-                    string worldSize = "0 MB";
                     
                     if (dirInfo.Exists)
                     {
                         creationTime = dirInfo.CreationTime;
                         lastPlayedTime = dirInfo.LastWriteTime;
-                        
-                        // 计算大小
-                        long size = CalculateDirectorySize(dirInfo);
-                        worldSize = FormatFileSize(size);
-                        System.Diagnostics.Debug.WriteLine($"[WorldManagement] 后台线程 - 文件夹信息读取完成, 大小: {worldSize}");
+                        System.Diagnostics.Debug.WriteLine($"[WorldManagement] 后台线程 - 文件夹时间信息读取完成");
                     }
                     
                     return new
@@ -328,7 +349,6 @@ public partial class WorldManagementViewModel : ObservableRecipient
                         Seed = worldData?.Seed.ToString() ?? UnknownText,
                         Difficulty = LocalizeDifficulty(worldData?.Difficulty ?? DifficultyType.Unknown),
                         GameMode = LocalizeGameMode(worldData?.GameMode ?? GameModeType.Unknown),
-                        WorldSize = worldSize,
                         CreationTime = creationTime,
                         LastPlayedTime = lastPlayedTime,
                         PlayTime = playTime,
@@ -351,7 +371,6 @@ public partial class WorldManagementViewModel : ObservableRecipient
                         Seed = UnknownText,
                         Difficulty = UnknownText,
                         GameMode = UnknownText,
-                        WorldSize = "0 MB",
                         CreationTime = DateTime.MinValue,
                         LastPlayedTime = DateTime.MinValue,
                         PlayTime = "0",
@@ -385,7 +404,7 @@ public partial class WorldManagementViewModel : ObservableRecipient
                         try
                         {
                             var bitmap = new BitmapImage();
-                            bitmap.UriSource = new Uri(data.IconPath);
+                            bitmap.UriSource = new Uri($"file:///{data.IconPath.Replace('\\', '/')}");
                             WorldIcon = bitmap;
                         }
                         catch (Exception iconEx)
@@ -402,9 +421,6 @@ public partial class WorldManagementViewModel : ObservableRecipient
                     
                     System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程 - 设置游戏模式: {data.GameMode}");
                     GameMode = data.GameMode;
-                    
-                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程 - 设置世界大小: {data.WorldSize}");
-                    WorldSize = data.WorldSize;
                     
                     System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程 - 设置创建时间: {data.CreationTime}");
                     CreationTime = data.CreationTime;
@@ -429,6 +445,8 @@ public partial class WorldManagementViewModel : ObservableRecipient
                     System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程堆栈: {ex.StackTrace}");
                 }
             });
+
+            await LoadWorldSizeAsync(WorldPath, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -438,6 +456,40 @@ public partial class WorldManagementViewModel : ObservableRecipient
         {
             System.Diagnostics.Debug.WriteLine($"[WorldManagement] LoadWorldDataAsync 异常: {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"[WorldManagement] 堆栈: {ex.StackTrace}");
+        }
+    }
+
+    private async Task LoadWorldSizeAsync(string worldPath, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var size = await Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                var dirInfo = new DirectoryInfo(worldPath);
+                return dirInfo.Exists ? CalculateDirectorySize(dirInfo) : 0L;
+            }, cancellationToken);
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            _uiDispatcher.TryEnqueue(() =>
+            {
+                if (!string.Equals(WorldPath, worldPath, StringComparison.OrdinalIgnoreCase))
+                {
+                    return;
+                }
+
+                WorldSize = FormatFileSize(size);
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            System.Diagnostics.Debug.WriteLine("[WorldManagement] 世界大小计算已取消");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[WorldManagement] 世界大小计算失败: {ex.Message}");
         }
     }
     

@@ -12,7 +12,7 @@ namespace XianYuLauncher.ViewModels;
 
 public partial class WorldManagementViewModel
 {
-    private const int MinDataPackLoadingDurationMs = 280;
+    private const int MaxConcurrentDataPackDetailLoads = 4;
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowDataPackEmptyState))]
@@ -24,7 +24,7 @@ public partial class WorldManagementViewModel
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(ShowDataPackEmptyState))]
-    private bool _isLoadingDataPacks = true; // 默认为 true，防止闪烁
+    private bool _isLoadingDataPacks;
 
     /// <summary>
     /// 是否显示空列表状态（仅当列表为空且不在加载时显示）
@@ -37,9 +37,6 @@ public partial class WorldManagementViewModel
     private async Task LoadDataPacksAsync(CancellationToken cancellationToken)
     {
         System.Diagnostics.Debug.WriteLine($"[WorldManagement] LoadDataPacksAsync 开始");
-        var loadStartTime = DateTime.UtcNow;
-        
-        // 立即设置加载状态，防止空列表提示闪烁
         IsLoadingDataPacks = true;
         
         try
@@ -55,18 +52,13 @@ public partial class WorldManagementViewModel
                 {
                     DataPacks.Clear();
                     IsDataPackListEmpty = true;
-                });
-
-                await EnsureDataPackLoadingMinDurationAsync(loadStartTime, cancellationToken);
-                _uiDispatcher.TryEnqueue(() =>
-                {
                     IsLoadingDataPacks = false;
                 });
                 return;
             }
             
-            // 在后台线程读取数据包列表并加载所有详细信息
-            var dataPackList = await Task.Run(async () =>
+            // 先读取基础列表并立即呈现，详情采用渐进补齐。
+            var dataPackList = await Task.Run(() =>
             {
                 var list = new List<DataPackInfo>();
                 
@@ -84,6 +76,7 @@ public partial class WorldManagementViewModel
                         cancellationToken.ThrowIfCancellationRequested();
                         
                         var dataPackInfo = new DataPackInfo(folder);
+                        dataPackInfo.IsLoadingDescription = true;
                         list.Add(dataPackInfo);
                     }
                     
@@ -93,17 +86,11 @@ public partial class WorldManagementViewModel
                         cancellationToken.ThrowIfCancellationRequested();
                         
                         var dataPackInfo = new DataPackInfo(zip);
+                        dataPackInfo.IsLoadingDescription = true;
                         list.Add(dataPackInfo);
                     }
                     
                     System.Diagnostics.Debug.WriteLine($"[WorldManagement] 找到 {list.Count} 个数据包");
-                    
-                    // 预加载所有数据包的详细信息（图标、描述、翻译）
-                    foreach (var dataPack in list)
-                    {
-                        cancellationToken.ThrowIfCancellationRequested();
-                        await LoadDataPackDetailsFullyAsync(dataPack, cancellationToken);
-                    }
                 }
                 catch (OperationCanceledException)
                 {
@@ -120,7 +107,7 @@ public partial class WorldManagementViewModel
             
             cancellationToken.ThrowIfCancellationRequested();
             
-            // 在 UI 线程更新列表（此时所有数据都已加载完成）
+            // 先在 UI 线程展示基础列表，避免长时间空白。
             _uiDispatcher.TryEnqueue(() =>
             {
                 DataPacks.Clear();
@@ -133,9 +120,17 @@ public partial class WorldManagementViewModel
                 System.Diagnostics.Debug.WriteLine($"[WorldManagement] 数据包列表已更新，共 {DataPacks.Count} 个");
             });
 
-            await EnsureDataPackLoadingMinDurationAsync(loadStartTime, cancellationToken);
+            if (dataPackList.Count == 0)
+            {
+                _uiDispatcher.TryEnqueue(() =>
+                {
+                    IsLoadingDataPacks = false;
+                });
+                return;
+            }
 
-            // 关闭加载指示器
+            await LoadDataPackDetailsIncrementallyAsync(dataPackList, cancellationToken);
+
             _uiDispatcher.TryEnqueue(() =>
             {
                 IsLoadingDataPacks = false;
@@ -152,7 +147,6 @@ public partial class WorldManagementViewModel
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[WorldManagement] LoadDataPacksAsync 异常: {ex.Message}");
-            await EnsureDataPackLoadingMinDurationAsync(loadStartTime, cancellationToken);
             _uiDispatcher.TryEnqueue(() =>
             {
                 IsLoadingDataPacks = false;
@@ -160,158 +154,26 @@ public partial class WorldManagementViewModel
         }
     }
 
-    private static async Task EnsureDataPackLoadingMinDurationAsync(DateTime startTime, CancellationToken cancellationToken)
+    private async Task LoadDataPackDetailsIncrementallyAsync(
+        IReadOnlyCollection<DataPackInfo> dataPackList,
+        CancellationToken cancellationToken)
     {
-        var elapsed = (int)(DateTime.UtcNow - startTime).TotalMilliseconds;
-        var remain = MinDataPackLoadingDurationMs - elapsed;
-        if (remain > 0)
+        using var semaphore = new SemaphoreSlim(MaxConcurrentDataPackDetailLoads);
+
+        var loadTasks = dataPackList.Select(async dataPack =>
         {
-            await Task.Delay(remain, cancellationToken);
-        }
-    }
-    
-    /// <summary>
-    /// 完整加载数据包详细信息（图标、描述、翻译）- 在后台线程中同步完成
-    /// </summary>
-    private async Task LoadDataPackDetailsFullyAsync(DataPackInfo dataPack, CancellationToken cancellationToken)
-    {
-        try
-        {
-            // 1. 读取基本信息（图标和原始描述）
-            var details = await Task.Run(() =>
+            await semaphore.WaitAsync(cancellationToken);
+            try
             {
-                string? iconPath = null;
-                string description = string.Empty;
-                int packFormat = 0;
-                
-                try
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    
-                    if (Directory.Exists(dataPack.FilePath))
-                    {
-                        // 文件夹形式的数据包
-                        var packMcmetaPath = Path.Combine(dataPack.FilePath, "pack.mcmeta");
-                        var iconFilePath = Path.Combine(dataPack.FilePath, "icon.png");
-                        
-                        if (File.Exists(iconFilePath))
-                        {
-                            iconPath = iconFilePath;
-                        }
-                        
-                        if (File.Exists(packMcmetaPath))
-                        {
-                            var (desc, format) = ReadPackMcmeta(packMcmetaPath);
-                            description = desc;
-                            packFormat = format;
-                        }
-                    }
-                    else if (File.Exists(dataPack.FilePath) && Path.GetExtension(dataPack.FilePath).Equals(FileExtensionConsts.Zip, StringComparison.OrdinalIgnoreCase))
-                    {
-                        // ZIP 文件形式的数据包
-                        using var archive = ZipFile.OpenRead(dataPack.FilePath);
-                        
-                        // 读取图标
-                        var iconEntry = archive.GetEntry("icon.png");
-                        if (iconEntry != null)
-                        {
-                            // 提取图标到缓存目录
-                            var cachePath = Path.Combine(Path.GetTempPath(), "XianYuLauncher", "datapack_icons");
-                            Directory.CreateDirectory(cachePath);
-                            
-                            var iconFileName = $"{Path.GetFileNameWithoutExtension(dataPack.FilePath)}_icon.png";
-                            var tempIconPath = Path.Combine(cachePath, iconFileName);
-                            
-                            // 如果图标已存在且有效，直接使用
-                            if (!File.Exists(tempIconPath) || new FileInfo(tempIconPath).Length == 0)
-                            {
-                                iconEntry.ExtractToFile(tempIconPath, true);
-                            }
-                            
-                            iconPath = tempIconPath;
-                        }
-                        
-                        // 读取 pack.mcmeta
-                        var packMcmetaEntry = archive.GetEntry("pack.mcmeta");
-                        if (packMcmetaEntry != null)
-                        {
-                            using var stream = packMcmetaEntry.Open();
-                            using var reader = new StreamReader(stream);
-                            var json = reader.ReadToEnd();
-                            var (desc, format) = ParsePackMcmeta(json);
-                            description = desc;
-                            packFormat = format;
-                        }
-                    }
-                }
-                catch (OperationCanceledException)
-                {
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] 读取数据包详情失败 ({dataPack.Name}): {ex.Message}");
-                }
-                
-                return new { IconPath = iconPath, Description = description, PackFormat = packFormat };
-            }, cancellationToken);
-            
-            cancellationToken.ThrowIfCancellationRequested();
-            
-            // 2. 加载图标（必须在 UI 线程）
-            if (!string.IsNullOrEmpty(details.IconPath))
-            {
-                var iconPath = details.IconPath;
-                var tcs = new TaskCompletionSource<bool>();
-                
-                _uiDispatcher.TryEnqueue(() =>
-                {
-                    try
-                    {
-                        var bitmap = new BitmapImage();
-                        bitmap.UriSource = new Uri($"file:///{iconPath.Replace('\\', '/')}");
-                        dataPack.Icon = bitmap;
-                        tcs.SetResult(true);
-                    }
-                    catch (Exception ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[WorldManagement] 加载图标失败: {ex.Message}");
-                        tcs.SetResult(false);
-                    }
-                });
-                
-                await tcs.Task;
+                await LoadDataPackDetailsAsync(dataPack, cancellationToken);
             }
-            
-            // 3. 设置 PackFormat
-            dataPack.PackFormat = details.PackFormat;
-            
-            // 4. 尝试获取翻译（使用 ModInfoService，带缓存）
-            var metadata = await _modInfoService.GetModInfoAsync(dataPack.FilePath, cancellationToken);
-            
-            if (metadata != null && !string.IsNullOrEmpty(metadata.Description))
+            finally
             {
-                // 成功获取翻译
-                dataPack.Description = metadata.Description;
-                dataPack.Source = metadata.Source;
+                semaphore.Release();
             }
-            else
-            {
-                // 使用原始描述
-                dataPack.Description = details.Description;
-            }
-            
-            System.Diagnostics.Debug.WriteLine($"[WorldManagement] 数据包详情已完整加载: {dataPack.Name}");
-        }
-        catch (OperationCanceledException)
-        {
-            System.Diagnostics.Debug.WriteLine($"[WorldManagement] 数据包详情加载已取消: {dataPack.Name}");
-            throw;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[WorldManagement] LoadDataPackDetailsFullyAsync 异常: {ex.Message}");
-        }
+        });
+
+        await Task.WhenAll(loadTasks);
     }
     
     /// <summary>
@@ -334,13 +196,18 @@ public partial class WorldManagementViewModel
                     
                     if (Directory.Exists(dataPack.FilePath))
                     {
-                        // 文件夹形式的数据包
+                        // 文件夹形式的数据包（官方为 pack.png，少数资源包曾用 icon.png）
                         var packMcmetaPath = Path.Combine(dataPack.FilePath, "pack.mcmeta");
-                        var iconFilePath = Path.Combine(dataPack.FilePath, "icon.png");
-                        
-                        if (File.Exists(iconFilePath))
+                        var packPngPath = Path.Combine(dataPack.FilePath, "pack.png");
+                        var iconLegacyPath = Path.Combine(dataPack.FilePath, "icon.png");
+
+                        if (File.Exists(packPngPath))
                         {
-                            iconPath = iconFilePath;
+                            iconPath = packPngPath;
+                        }
+                        else if (File.Exists(iconLegacyPath))
+                        {
+                            iconPath = iconLegacyPath;
                         }
                         
                         if (File.Exists(packMcmetaPath))
@@ -355,26 +222,23 @@ public partial class WorldManagementViewModel
                         // ZIP 文件形式的数据包
                         using var archive = ZipFile.OpenRead(dataPack.FilePath);
                         
-                        // 读取图标
-                        var iconEntry = archive.GetEntry("icon.png");
-                        if (iconEntry != null)
+                        var imageEntry = archive.GetEntry("pack.png") ?? archive.GetEntry("icon.png");
+                        if (imageEntry != null)
                         {
-                            // 提取图标到缓存目录
                             var cachePath = Path.Combine(Path.GetTempPath(), "XianYuLauncher", "datapack_icons");
                             Directory.CreateDirectory(cachePath);
                             
-                            var iconFileName = $"{Path.GetFileNameWithoutExtension(dataPack.FilePath)}_icon.png";
+                            var iconFileName = $"{Path.GetFileNameWithoutExtension(dataPack.FilePath)}_pack.png";
                             var tempIconPath = Path.Combine(cachePath, iconFileName);
                             
-                            // 如果图标已存在且有效，直接使用
                             if (!File.Exists(tempIconPath) || new FileInfo(tempIconPath).Length == 0)
                             {
-                                iconEntry.ExtractToFile(tempIconPath, true);
+                                imageEntry.ExtractToFile(tempIconPath, true);
                             }
                             
                             iconPath = tempIconPath;
                         }
-                        
+
                         // 读取 pack.mcmeta
                         var packMcmetaEntry = archive.GetEntry("pack.mcmeta");
                         if (packMcmetaEntry != null)
@@ -416,7 +280,7 @@ public partial class WorldManagementViewModel
                     }
                     catch (Exception ex)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[WorldManagement] 加载图标失败: {ex.Message}");
+                        System.Diagnostics.Debug.WriteLine($"[WorldManagement] 加载图标失败 ({dataPack.Name}): {ex.Message}");
                     }
                 }
                 

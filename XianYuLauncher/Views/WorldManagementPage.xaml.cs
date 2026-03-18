@@ -1,14 +1,16 @@
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
-using XianYuLauncher.ViewModels;
+using Windows.ApplicationModel.DataTransfer;
+using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Models;
+using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Views;
 
 public sealed partial class WorldManagementPage : Page
 {
     public WorldManagementViewModel ViewModel { get; }
+    private readonly IUiDispatcher _uiDispatcher;
 
     public WorldManagementPage()
     {
@@ -17,6 +19,7 @@ public sealed partial class WorldManagementPage : Page
         try
         {
             ViewModel = App.GetService<WorldManagementViewModel>();
+            _uiDispatcher = App.GetService<IUiDispatcher>();
             System.Diagnostics.Debug.WriteLine("[WorldManagementPage] ViewModel 已获取");
             
             InitializeComponent();
@@ -64,8 +67,6 @@ public sealed partial class WorldManagementPage : Page
         }
     }
     
-    private int _currentTabIndex = 0;
-
     private async void Page_Loaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         System.Diagnostics.Debug.WriteLine("[WorldManagementPage] Page_Loaded 开始");
@@ -78,12 +79,6 @@ public sealed partial class WorldManagementPage : Page
                 await ViewModel.InitializeAsync(_pendingWorldPath);
                 System.Diagnostics.Debug.WriteLine("[WorldManagementPage] ViewModel 初始化完成");
                 _pendingWorldPath = null;
-                
-                // 初始化完成后，导航到概览页并传递 ViewModel，首次导航不使用动画
-                if (ContentFrame != null)
-                {
-                    ContentFrame.Navigate(typeof(WorldOverviewPage), ViewModel, new SuppressNavigationTransitionInfo());
-                }
             }
             catch (Exception ex)
             {
@@ -103,39 +98,66 @@ public sealed partial class WorldManagementPage : Page
 
     private async void NavigationView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
     {
-        if (args.SelectedItem is NavigationViewItem item && ContentFrame != null)
+        await Task.CompletedTask;
+    }
+
+    private async void WorldTabSelectorBar_SelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    {
+        if (sender.SelectedItem is not SelectorBarItem selectedItem)
         {
-            var tag = item.Tag?.ToString();
-            int newTabIndex = 0;
-            Type pageType = typeof(WorldOverviewPage);
-            
-            // 确定要导航的页面和索引
-            switch (tag)
-            {
-                case "overview":
-                    newTabIndex = 0;
-                    pageType = typeof(WorldOverviewPage);
-                    break;
-                case "datapacks":
-                    newTabIndex = 1;
-                    pageType = typeof(WorldDataPacksPage);
-                    break;
-                default:
-                    return;
-            }
-            
-            // 确定滑动方向
-            var effect = newTabIndex > _currentTabIndex 
-                ? SlideNavigationTransitionEffect.FromRight 
-                : SlideNavigationTransitionEffect.FromLeft;
-            
-            // 导航到新页面，带滑动动画，并传递 ViewModel
-            ContentFrame.Navigate(pageType, ViewModel, new SlideNavigationTransitionInfo { Effect = effect });
-            
-            _currentTabIndex = newTabIndex;
-            
-            // 触发延迟加载
-            await ViewModel.OnSelectedTabChangedAsync(newTabIndex);
+            return;
         }
+
+        var newTabIndex = sender.Items.IndexOf(selectedItem);
+        if (newTabIndex < 0)
+        {
+            return;
+        }
+
+        ViewModel.SelectedTabIndex = newTabIndex;
+        if (newTabIndex == 1)
+        {
+            EnsureDataPacksPage();
+        }
+
+        await ViewModel.OnSelectedTabChangedAsync(newTabIndex);
+    }
+
+    private void CopySeedButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        if (string.IsNullOrEmpty(ViewModel.Seed))
+        {
+            return;
+        }
+
+        var dataPackage = new DataPackage();
+        dataPackage.SetText(ViewModel.Seed);
+        Clipboard.SetContent(dataPackage);
+
+        if (sender is not Button button)
+        {
+            return;
+        }
+
+        var originalToolTip = ToolTipService.GetToolTip(button);
+        ToolTipService.SetToolTip(button, "已复制！");
+
+        _ = new System.Threading.Timer(_ =>
+        {
+            _uiDispatcher.TryEnqueue(() =>
+            {
+                ToolTipService.SetToolTip(button, originalToolTip);
+            });
+        }, null, 2000, System.Threading.Timeout.Infinite);
+    }
+
+    private void EnsureDataPacksPage()
+    {
+        if (DataPacksFrame.Content is WorldDataPacksPage)
+        {
+            return;
+        }
+
+        DataPacksFrame.Navigate(typeof(WorldDataPacksPage), ViewModel);
     }
 }
