@@ -181,7 +181,12 @@ public class LocalSettingsService : ILocalSettingsService
                         return default;
                     }
                 }
-                return (T)obj;
+                if (obj is T typedValue)
+                {
+                    return typedValue;
+                }
+
+                return default;
             }
         }
 
@@ -192,13 +197,13 @@ public class LocalSettingsService : ILocalSettingsService
     {
         if (RuntimeHelper.IsMSIX)
         {
-            ApplicationData.Current.LocalSettings.Values[key] = await Json.StringifyAsync(value);
+            ApplicationData.Current.LocalSettings.Values[key] = await Json.StringifyAsync(value!);
         }
         else
         {
             await InitializeAsync();
 
-            _settings[key] = value;
+            _settings[key] = value!;
             
             // 调试：检查保存的Java版本数量
             if (key == "JavaVersions" && value is List<object> javaList)

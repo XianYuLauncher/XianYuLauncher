@@ -15,12 +15,12 @@ namespace XianYuLauncher.Core.Services;
 /// </summary>
 public class BmclapiNeoForgeVersion
 {
-    public string _id { get; set; }
-    public string rawVersion { get; set; }
+    public string _id { get; set; } = null!;
+    public string rawVersion { get; set; } = null!;
     public int __v { get; set; }
-    public string installerPath { get; set; }
-    public string mcversion { get; set; }
-    public string version { get; set; }
+    public string installerPath { get; set; } = null!;
+    public string mcversion { get; set; } = null!;
+    public string version { get; set; } = null!;
 }
 
 /// <summary>
@@ -136,7 +136,7 @@ public class NeoForgeService
     /// </summary>
     private List<string> ParseBmclapiNeoForgeResponse(string json, string minecraftVersion)
     {
-        var versions = JsonSerializer.Deserialize<List<BmclapiNeoForgeVersion>>(json);
+        var versions = JsonSerializer.Deserialize<List<BmclapiNeoForgeVersion>>(json) ?? new List<BmclapiNeoForgeVersion>();
         // 过滤出匹配 Minecraft 版本的 NeoForge 版本
         var versionList = versions
             .Where(v => v.mcversion == minecraftVersion)
@@ -208,7 +208,7 @@ public class NeoForgeService
         string json = await response.Content.ReadAsStringAsync();
         
         // 解析JSON数据
-        var versions = JsonSerializer.Deserialize<List<BmclapiNeoForgeVersion>>(json);
+        var versions = JsonSerializer.Deserialize<List<BmclapiNeoForgeVersion>>(json) ?? new List<BmclapiNeoForgeVersion>();
         
         // 提取版本号列表
         var versionList = versions.Select(v => v.version).ToList();

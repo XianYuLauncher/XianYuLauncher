@@ -185,7 +185,7 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 日志集合变化时自动滚动到底部
         /// </summary>
-        private void LogLines_CollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+        private void LogLines_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
         {
             // 只在添加新项时滚动
             if (e.Action == NotifyCollectionChangedAction.Add)

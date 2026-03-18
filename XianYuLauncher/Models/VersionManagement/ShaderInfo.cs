@@ -32,7 +32,7 @@ public partial class ShaderInfo : ObservableObject, IVersionManagementResourceIn
     /// 光影图标路径
     /// </summary>
     [ObservableProperty]
-    private string _icon;
+    private string _icon = string.Empty;
     
     /// <summary>
     /// 光影描述（已翻译）

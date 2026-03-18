@@ -512,7 +512,7 @@ public class DownloadSourceFactory
     /// </summary>
     /// <typeparam name="TSource">下载源类型</typeparam>
     /// <returns>下载源实例，如果不存在则返回null</returns>
-    public TSource GetSourceByType<TSource>() where TSource : IDownloadSource
+    public TSource? GetSourceByType<TSource>() where TSource : IDownloadSource
     {
         return _sources.Values.OfType<TSource>().FirstOrDefault();
     }

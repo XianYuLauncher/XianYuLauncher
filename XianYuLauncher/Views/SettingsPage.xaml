@@ -356,7 +356,7 @@
                                   MinWidth="200">
                             <ComboBox.ItemTemplate>
                                 <DataTemplate x:DataType="viewModels:GameIsolationModeOption">
-                                    <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}" />
+                                    <TextBlock Text="{x:Bind DisplayName, Mode=OneTime}" />
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
                         </ComboBox>

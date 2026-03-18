@@ -33,13 +33,13 @@ public class JavaRuntimeManifest
 public class JavaRuntimeVariant
 {
     [JsonProperty("availability")]
-    public JavaRuntimeAvailability Availability { get; set; }
+    public JavaRuntimeAvailability Availability { get; set; } = null!;
 
     [JsonProperty("manifest")]
-    public JavaRuntimeManifestRef Manifest { get; set; }
+    public JavaRuntimeManifestRef Manifest { get; set; } = null!;
 
     [JsonProperty("version")]
-    public JavaRuntimeVersion Version { get; set; }
+    public JavaRuntimeVersion Version { get; set; } = null!;
 }
 
 public class JavaRuntimeAvailability
@@ -54,22 +54,22 @@ public class JavaRuntimeAvailability
 public class JavaRuntimeManifestRef
 {
     [JsonProperty("sha1")]
-    public string Sha1 { get; set; }
+    public string Sha1 { get; set; } = null!;
 
     [JsonProperty("size")]
     public long Size { get; set; }
 
     [JsonProperty("url")]
-    public string Url { get; set; }
+    public string Url { get; set; } = null!;
 }
 
 public class JavaRuntimeVersion
 {
     [JsonProperty("name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = null!;
 
     [JsonProperty("released")]
-    public string Released { get; set; }
+    public string Released { get; set; } = null!;
 }
 
 public class JavaRuntimeFileManifest
@@ -81,10 +81,10 @@ public class JavaRuntimeFileManifest
 public class JavaRuntimeFile
 {
     [JsonProperty("type")]
-    public string Type { get; set; } // "file" or "directory"
+    public string Type { get; set; } = null!; // "file" or "directory"
 
     [JsonProperty("downloads")]
-    public JavaRuntimeDownloads Downloads { get; set; }
+    public JavaRuntimeDownloads Downloads { get; set; } = null!;
 
     [JsonProperty("executable")]
     public bool Executable { get; set; }
@@ -93,20 +93,20 @@ public class JavaRuntimeFile
 public class JavaRuntimeDownloads
 {
     [JsonProperty("raw")]
-    public JavaRuntimeDownloadInfo Raw { get; set; }
+    public JavaRuntimeDownloadInfo Raw { get; set; } = null!;
 
     [JsonProperty("lzma")]
-    public JavaRuntimeDownloadInfo Lzma { get; set; }
+    public JavaRuntimeDownloadInfo Lzma { get; set; } = null!;
 }
 
 public class JavaRuntimeDownloadInfo
 {
     [JsonProperty("sha1")]
-    public string Sha1 { get; set; }
+    public string Sha1 { get; set; } = null!;
 
     [JsonProperty("size")]
     public long Size { get; set; }
 
     [JsonProperty("url")]
-    public string Url { get; set; }
+    public string Url { get; set; } = null!;
 }

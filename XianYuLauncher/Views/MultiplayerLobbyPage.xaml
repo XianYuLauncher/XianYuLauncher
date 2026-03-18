@@ -153,14 +153,14 @@
                                     Background="{ThemeResource CardBackgroundFillColorSecondary}" 
                                     Padding="4">
                                     <Image 
-                                        Source="{x:Bind Avatar, Mode=OneWay}" 
+                                        Source="{x:Bind Avatar, Mode=OneTime}" 
                                         Width="24" 
                                         Height="24" 
                                         Stretch="Fill" />
                                 </Border>
                                 <!-- 玩家名称 -->
                                 <TextBlock 
-                                    Text="{x:Bind Name, Mode=OneWay}" 
+                                    Text="{x:Bind Name, Mode=OneTime}" 
                                     Style="{ThemeResource BodyTextBlockStyle}" 
                                     FontSize="16" 
                                     VerticalAlignment="Center" />

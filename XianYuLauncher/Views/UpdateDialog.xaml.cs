@@ -33,7 +33,7 @@ public sealed partial class UpdateDialog : UserControl
     /// </summary>
     /// <param name="sender">发送者</param>
     /// <param name="result">结果</param>
-    private void ViewModel_CloseDialog(object sender, bool result)
+    private void ViewModel_CloseDialog(object? sender, bool result)
     {
         // 通知父窗口关闭弹窗
         OnCloseDialog(result);
@@ -42,7 +42,7 @@ public sealed partial class UpdateDialog : UserControl
     /// <summary>
     /// 关闭弹窗事件
     /// </summary>
-    public event EventHandler<bool> CloseDialog;
+    public event EventHandler<bool>? CloseDialog;
     
     /// <summary>
     /// 触发关闭弹窗事件

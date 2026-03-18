@@ -30,7 +30,7 @@ public partial class SaveInfo : ObservableObject
     /// 存档图标路径
     /// </summary>
     [ObservableProperty]
-    private string _icon;
+    private string _icon = string.Empty;
     
     /// <summary>
     /// 最后游玩时间

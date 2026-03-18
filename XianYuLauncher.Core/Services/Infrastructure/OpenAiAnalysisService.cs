@@ -141,9 +141,8 @@ namespace XianYuLauncher.Core.Services
             await using var responseStream = await response.Content.ReadAsStreamAsync();
             using var reader = new System.IO.StreamReader(responseStream);
 
-            while (!reader.EndOfStream)
+            while (await reader.ReadLineAsync() is { } line)
             {
-                var line = await reader.ReadLineAsync();
                 if (string.IsNullOrWhiteSpace(line)) continue;
                 if (!line.StartsWith("data:", StringComparison.OrdinalIgnoreCase)) continue;
 

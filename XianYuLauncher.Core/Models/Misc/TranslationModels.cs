@@ -9,16 +9,16 @@ namespace XianYuLauncher.Core.Models
     public class McimTranslationResponse
     {
         [JsonProperty("project_id")]
-        public string ProjectId { get; set; }
+        public string ProjectId { get; set; } = null!;
         
         [JsonProperty("modid")]
         public int? ModId { get; set; }
         
         [JsonProperty("translated")]
-        public string Translated { get; set; }
+        public string Translated { get; set; } = null!;
         
         [JsonProperty("original")]
-        public string Original { get; set; }
+        public string Original { get; set; } = null!;
         
         [JsonProperty("translated_at")]
         public DateTime TranslatedAt { get; set; }

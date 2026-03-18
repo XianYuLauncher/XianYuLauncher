@@ -34,9 +34,9 @@ namespace XianYuLauncher.ViewModels;
 /// </summary>
 public class JavaVersionInfo
 {
-    public string Version { get; set; }
+    public string Version { get; set; } = string.Empty;
     public int MajorVersion { get; set; }
-    public string Path { get; set; }
+    public string Path { get; set; } = string.Empty;
     public bool IsJDK { get; set; }
     
     public override string ToString()
@@ -518,14 +518,6 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// 材质类型列表，用于ComboBox数据源
     /// </summary>
     public List<XianYuLauncher.Core.Services.MaterialType> MaterialTypes => Enum.GetValues<XianYuLauncher.Core.Services.MaterialType>().ToList();
-    
-    /// <summary>
-    /// 材质类型选择命令
-    /// </summary>
-    public ICommand SwitchMaterialTypeCommand
-    {
-        get;
-    }
     
     /// <summary>
     /// 背景图片路径
@@ -1140,7 +1132,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         SwitchLanguageCommand = new RelayCommand<string>(
             async (param) =>
             {
-                if (Language != param)
+                if (!string.IsNullOrWhiteSpace(param) && Language != param)
                 {
                     Language = param;
                     await _personalizationSettingsDomainService.SetLanguageAsync(param);
@@ -1839,7 +1831,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// <summary>
     /// 应用字体到整个应用程序
     /// </summary>
-    private void ApplyFontToApplication(string fontFamilyName)
+    private void ApplyFontToApplication(string? fontFamilyName)
     {
         try
         {
@@ -1912,7 +1904,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
             if (App.MainWindow != null && App.MainWindow.Content is Microsoft.UI.Xaml.Controls.Control rootControl)
             {
                 // 创建FontFamily对象或使用null（默认字体）
-                Microsoft.UI.Xaml.Media.FontFamily fontFamily = null;
+                Microsoft.UI.Xaml.Media.FontFamily? fontFamily = null;
                 if (fontFamilyName != null && fontFamilyName != "默认")
                 {
                     fontFamily = new Microsoft.UI.Xaml.Media.FontFamily(fontFamilyName);
@@ -1955,7 +1947,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// <summary>
     /// 遍历视觉树，将字体应用到所有控件
     /// </summary>
-    private void ApplyFontToVisualTree(Microsoft.UI.Xaml.DependencyObject root, Microsoft.UI.Xaml.Media.FontFamily fontFamily)
+    private void ApplyFontToVisualTree(Microsoft.UI.Xaml.DependencyObject root, Microsoft.UI.Xaml.Media.FontFamily? fontFamily)
     {
         // 应用到当前元素（如果是Control类型）
         if (root is Microsoft.UI.Xaml.Controls.Control control)

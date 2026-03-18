@@ -65,7 +65,6 @@ public sealed partial class WorldManagementPage : Page
     }
     
     private int _currentTabIndex = 0;
-    private bool _isFirstNavigation = true;
 
     private async void Page_Loaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
@@ -84,7 +83,6 @@ public sealed partial class WorldManagementPage : Page
                 if (ContentFrame != null)
                 {
                     ContentFrame.Navigate(typeof(WorldOverviewPage), ViewModel, new SuppressNavigationTransitionInfo());
-                    _isFirstNavigation = false;
                 }
             }
             catch (Exception ex)

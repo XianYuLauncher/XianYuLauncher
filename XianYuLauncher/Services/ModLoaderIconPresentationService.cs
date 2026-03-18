@@ -159,7 +159,7 @@ public sealed class ModLoaderIconPresentationService : IModLoaderIconPresentatio
             return "LiteLoader";
         }
 
-        return selectedModLoaderName;
+        return selectedModLoaderName ?? string.Empty;
     }
 
     private static bool IsLoaderStillSelected(

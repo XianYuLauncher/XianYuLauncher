@@ -27,7 +27,7 @@ namespace XianYuLauncher.Helpers
             
             if (parameter != null)
             {
-                string paramStr = parameter.ToString();
+                string paramStr = parameter.ToString() ?? string.Empty;
                 if (!string.IsNullOrEmpty(paramStr))
                 {
                     // 检查是否包含两个参数

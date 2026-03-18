@@ -1132,6 +1132,9 @@ Continue downloading?</value>
   <data name="VersionListPage_ExportModpackDialog.Title" xml:space="preserve">
     <value>Export Modpack</value>
   </data>
+  <data name="VersionListPage_PrepareExportText" xml:space="preserve">
+    <value>Preparing to export version</value>
+  </data>
   <data name="VersionListPage_VersionNumberLabel.Text" xml:space="preserve">
     <value>Version: </value>
   </data>
@@ -1536,6 +1539,21 @@ Continue downloading?</value>
   </data>
   <data name="VersionManagerPage_Subtitle_SelectVersion" xml:space="preserve">
     <value>Please select a version to manage</value>
+  </data>
+  <data name="ResourceItemOptionsText.Text" xml:space="preserve">
+    <value>Player Settings</value>
+  </data>
+  <data name="ResourceItemMods.Text" xml:space="preserve">
+    <value>Mods</value>
+  </data>
+  <data name="ResourceItemShaderpacks.Text" xml:space="preserve">
+    <value>Shader Packs</value>
+  </data>
+  <data name="ResourceItemResourcepacks.Text" xml:space="preserve">
+    <value>Resource Packs</value>
+  </data>
+  <data name="ResourceItemConfig.Text" xml:space="preserve">
+    <value>Config Files</value>
   </data>
   <data name="VersionManagerPage_DeleteScreenshotMenuItem.Text" xml:space="preserve">
     <value>Delete</value>

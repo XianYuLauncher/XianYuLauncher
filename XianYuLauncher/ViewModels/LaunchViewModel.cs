@@ -34,15 +34,11 @@ namespace XianYuLauncher.ViewModels;
 
 public partial class LaunchViewModel : ObservableRecipient
 {
-    // 分辨率设置字段
-    private int _windowWidth = 1280;
-    private int _windowHeight = 720;
+    [ObservableProperty]
+    private string? _quickPlayWorld;
 
     [ObservableProperty]
-    private string _quickPlayWorld;
-
-    [ObservableProperty]
-    private string _quickPlayServer;
+    private string? _quickPlayServer;
 
     [ObservableProperty]
     private int? _quickPlayPort;
@@ -317,7 +313,7 @@ public partial class LaunchViewModel : ObservableRecipient
     /// 当前选中角色
     /// </summary>
     [ObservableProperty]
-    private MinecraftProfile _selectedProfile;
+    private MinecraftProfile _selectedProfile = new() { IsOffline = true };
     
     /// <summary>
     /// 角色选择按钮显示文本
@@ -1009,7 +1005,7 @@ public partial class LaunchViewModel : ObservableRecipient
         if (_recommendedMod != null)
         {
             // 推荐位不强制限定 sourceType，避免 datapack 等资源被误按 mod 规则过滤版本。
-             var param = new Tuple<XianYuLauncher.Core.Models.ModrinthProject, string>(
+             var param = new Tuple<XianYuLauncher.Core.Models.ModrinthProject, string?>(
                  new XianYuLauncher.Core.Models.ModrinthProject { 
                      ProjectId = _recommendedMod.Id, 
                      Slug = _recommendedMod.Slug,
@@ -1045,7 +1041,7 @@ public partial class LaunchViewModel : ObservableRecipient
                 case "mod_detail":
                     if (item.ActionPayload is ModrinthRandomProject recommended)
                     {
-                        var param = new Tuple<XianYuLauncher.Core.Models.ModrinthProject, string>(
+                        var param = new Tuple<XianYuLauncher.Core.Models.ModrinthProject, string?>(
                             new XianYuLauncher.Core.Models.ModrinthProject
                             {
                                 ProjectId = recommended.Id,
@@ -1278,7 +1274,7 @@ public partial class LaunchViewModel : ObservableRecipient
                 if (InstalledVersions.Any())
                 {
                     // 尝试从本地设置中读取保存的版本
-                    string savedVersion = await _localSettingsService.ReadSettingAsync<string>(SelectedVersionKey);
+                    string? savedVersion = await _localSettingsService.ReadSettingAsync<string>(SelectedVersionKey);
                     
                     // 如果保存的版本存在于安装列表中，则使用保存的版本，否则选择最新版本
                     if (!string.IsNullOrEmpty(savedVersion) && InstalledVersions.Contains(savedVersion))
@@ -1513,6 +1509,13 @@ public partial class LaunchViewModel : ObservableRecipient
             return;
         }
 
+        if (SelectedProfile == null)
+        {
+            _logger.LogWarning("未选择角色，启动中止");
+            LaunchStatus = "LaunchPage_PleaseSelectCharacterText".GetLocalized();
+            return;
+        }
+
         // 使用 RegionValidator 检查地区限制
         _logger.LogInformation("开始检查地区限制...");
         var regionValidation = _regionValidator.ValidateLoginMethod(SelectedProfile);
@@ -1567,10 +1570,10 @@ public partial class LaunchViewModel : ObservableRecipient
             _temporaryJavaOverridePath = null;
             
             // 快速启动支持
-            string currentQuickPlayWorld = QuickPlayWorld;
+            string? currentQuickPlayWorld = QuickPlayWorld;
             QuickPlayWorld = null;
             
-            string currentQuickPlayServer = QuickPlayServer;
+            string? currentQuickPlayServer = QuickPlayServer;
             QuickPlayServer = null;
             
             int? currentQuickPlayPort = QuickPlayPort;

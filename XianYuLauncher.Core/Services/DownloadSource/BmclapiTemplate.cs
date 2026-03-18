@@ -45,7 +45,7 @@ public class BmclapiTemplate : DownloadSourceTemplate
         return "{baseUrl}/version/{version}/json";
     }
 
-    public override string GetLibraryUrl(string libraryName, string originalUrl)
+    public override string GetLibraryUrl(string libraryName, string? originalUrl)
     {
         if (!string.IsNullOrEmpty(originalUrl))
         {

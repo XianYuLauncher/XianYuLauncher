@@ -10,8 +10,8 @@ namespace XianYuLauncher.Controls;
 
 public sealed partial class MotionBackgroundControl : UserControl
 {
-    private Compositor _compositor;
-    private ContainerVisual _rootContainer;
+    private Compositor _compositor = null!;
+    private ContainerVisual _rootContainer = null!;
     private readonly Random _random = new Random();
     private readonly List<Visual> _orbs = new List<Visual>();
     private DispatcherTimer _resizeTimer;
@@ -139,17 +139,13 @@ public sealed partial class MotionBackgroundControl : UserControl
         if (_rootContainer != null && _orbs.Count > 0) return;
 
         // 1. 获取 Compositor
-        _rootContainer = ElementCompositionPreview.GetElementVisual(CompositionHost) as ContainerVisual;
-        if (_rootContainer == null)
+        var visual = ElementCompositionPreview.GetElementVisual(CompositionHost);
+        _compositor = visual.Compositor;
+        var rootContainer = visual as ContainerVisual;
+        _rootContainer = rootContainer ?? _compositor.CreateContainerVisual();
+        if (rootContainer == null)
         {
-            var visual = ElementCompositionPreview.GetElementVisual(CompositionHost);
-            _compositor = visual.Compositor;
-            _rootContainer = _compositor.CreateContainerVisual();
             ElementCompositionPreview.SetElementChildVisual(CompositionHost, _rootContainer);
-        }
-        else
-        {
-            _compositor = _rootContainer.Compositor;
         }
 
         // 确保容器填满画布

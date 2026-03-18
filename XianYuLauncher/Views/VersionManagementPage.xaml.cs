@@ -83,7 +83,7 @@ public sealed partial class VersionManagementPage : Page
     /// <summary>
         /// 监听ViewModel属性变化，显示或隐藏弹窗
         /// </summary>
-        private async void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private async void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             // 如果页面正在卸载，直接返回
             if (_isUnloading)
@@ -446,7 +446,7 @@ public sealed partial class VersionManagementPage : Page
     #region 资源包预览
     
     // 存储当前预览的资源包和加载的纹理
-    private ResourcePackInfo _currentPreviewPack;
+    private ResourcePackInfo? _currentPreviewPack;
     private Dictionary<string, CanvasBitmap> _previewBitmaps = new Dictionary<string, CanvasBitmap>();
     private Dictionary<ResourcePackInfo, CanvasControl> _canvasControls = new Dictionary<ResourcePackInfo, CanvasControl>(); // 存储每个资源包对应的 Canvas
     

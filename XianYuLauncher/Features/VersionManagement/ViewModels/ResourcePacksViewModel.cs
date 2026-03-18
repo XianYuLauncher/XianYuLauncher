@@ -99,8 +99,8 @@ public partial class ResourcePacksViewModel : ResourceManagementViewModelBase<Re
                     var resourcePackFolders = Directory.GetDirectories(folderPath);
                     var resourcePackZips = Directory.GetFiles(folderPath, "*.zip");
 
-                    list.AddRange(resourcePackFolders.Select(f => new ResourcePackInfo(f) { Icon = null }));
-                    list.AddRange(resourcePackZips.Select(f => new ResourcePackInfo(f) { Icon = null }));
+                    list.AddRange(resourcePackFolders.Select(f => new ResourcePackInfo(f) { Icon = string.Empty }));
+                    list.AddRange(resourcePackZips.Select(f => new ResourcePackInfo(f) { Icon = string.Empty }));
                 }
             }
             catch (Exception ex)

@@ -859,8 +859,8 @@ public sealed partial class VersionListPage : Page
                     });
                     
                     // 打开文件保存对话框需要在UI线程执行
-                    StorageFile file = null;
-                    var filePickerTask = new TaskCompletionSource<StorageFile>();
+                    StorageFile? file = null;
+                    var filePickerTask = new TaskCompletionSource<StorageFile?>();
 
                     try
                     {
@@ -1375,7 +1375,7 @@ public sealed partial class VersionListPage : Page
     /// <summary>
     /// 资源目录列表变化事件处理，根据资源目录数量设置StackPanel的可见性
     /// </summary>
-    private void ResourceDirectories_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+    private void ResourceDirectories_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
         // 资源目录变化处理已移至动态创建的弹窗中
     }

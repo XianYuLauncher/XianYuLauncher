@@ -104,7 +104,7 @@ public partial class MinecraftVersionService
     /// <param name="versionId">版本ID</param>
     /// <param name="minecraftDirectory">Minecraft目录，如果为null则使用默认目录</param>
     /// <returns>版本配置</returns>
-    public async Task<VersionConfig?> GetVersionConfigAsync(string versionId, string minecraftDirectory = null)
+    public async Task<VersionConfig?> GetVersionConfigAsync(string versionId, string? minecraftDirectory = null)
     {
         if (string.IsNullOrEmpty(minecraftDirectory))
         {

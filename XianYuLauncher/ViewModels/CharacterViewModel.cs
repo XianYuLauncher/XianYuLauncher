@@ -34,14 +34,16 @@ namespace XianYuLauncher.ViewModels
         /// <summary>
         /// 监听Profiles集合的变化
         /// </summary>
-        partial void OnProfilesChanged(ObservableCollection<MinecraftProfile> newValue)
+        partial void OnProfilesChanged(ObservableCollection<MinecraftProfile>? oldValue, ObservableCollection<MinecraftProfile> newValue)
         {
             // 移除旧集合的事件监听（如果有）
-            if (newValue != null)
+            if (oldValue != null)
             {
-                newValue.CollectionChanged -= Profiles_CollectionChanged;
-                newValue.CollectionChanged += Profiles_CollectionChanged;
+                oldValue.CollectionChanged -= Profiles_CollectionChanged;
             }
+
+            newValue.CollectionChanged -= Profiles_CollectionChanged;
+            newValue.CollectionChanged += Profiles_CollectionChanged;
             
             // 更新IsProfilesEmpty属性
             IsProfilesEmpty = newValue.Count == 0;
@@ -50,7 +52,7 @@ namespace XianYuLauncher.ViewModels
         /// <summary>
         /// 当Profiles集合的元素变化时触发
         /// </summary>
-        private void Profiles_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        private void Profiles_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             // 更新IsProfilesEmpty属性
             IsProfilesEmpty = Profiles.Count == 0;
@@ -60,7 +62,7 @@ namespace XianYuLauncher.ViewModels
         /// 当前活跃角色
         /// </summary>
         [ObservableProperty]
-        private MinecraftProfile _activeProfile;
+        private MinecraftProfile _activeProfile = new() { IsOffline = true };
 
         /// <summary>
         /// 离线用户名
@@ -144,7 +146,7 @@ namespace XianYuLauncher.ViewModels
                     ActiveProfile.IsActive = true;
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // 处理异常
                 Profiles.Clear();
@@ -174,7 +176,7 @@ namespace XianYuLauncher.ViewModels
         /// <summary>
         /// 请求显示离线登录对话框的事件
         /// </summary>
-        public event EventHandler RequestShowOfflineLoginDialog;
+        public event EventHandler? RequestShowOfflineLoginDialog;
 
         /// <summary>
         /// 显示离线登录对话框命令
@@ -507,10 +509,15 @@ namespace XianYuLauncher.ViewModels
                 // 2. 如果删除的是当前活跃角色，切换到第一个角色
                 if (ActiveProfile == profile)
                 {
-                    ActiveProfile = Profiles.FirstOrDefault();
-                    if (ActiveProfile != null)
+                    var nextProfile = Profiles.FirstOrDefault();
+                    if (nextProfile != null)
                     {
+                        ActiveProfile = nextProfile;
                         ActiveProfile.IsActive = true;
+                    }
+                    else
+                    {
+                        ActiveProfile = new MinecraftProfile { IsOffline = true };
                     }
                 }
                 

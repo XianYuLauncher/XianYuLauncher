@@ -129,7 +129,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 // 获取真实的物理路径（非虚拟化路径）
                 // 已经在 TerracottaService 中确保返回的是 SafeAppDataPath (LocalState)
                 // 所以这里无需再做任何复杂的转换逻辑，直接使用即可
-                string realTerracottaDir = Path.GetDirectoryName(terracottaPath);
+                string realTerracottaDir = Path.GetDirectoryName(terracottaPath) ?? Windows.Storage.ApplicationData.Current.LocalFolder.Path;
                 
                 // 临时文件目录
                 string realTempDir = Path.Combine(realTerracottaDir, "temp");
@@ -448,7 +448,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                                     if (root.TryGetProperty("room", out JsonElement roomElement) && 
                                         roomElement.ValueKind == JsonValueKind.String)
                                     {
-                                        string roomId = roomElement.GetString();
+                                        string roomId = roomElement.GetString() ?? string.Empty;
                                         if (!string.IsNullOrEmpty(roomId))
                                         {
                                             Log.Information($"[Multiplayer] 成功创建/加入房间: {roomId}");
@@ -464,7 +464,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                                             }
                                             
                                             // 导航到联机大厅页面，传递端口和房间ID信息
-                                            _navigationService.NavigateTo(typeof(MultiplayerLobbyViewModel).FullName, new { RoomId = roomId, Port = port });
+                                            _navigationService.NavigateTo(typeof(MultiplayerLobbyViewModel).FullName!, new { RoomId = roomId, Port = port });
                                             
                                             // 退出循环
                                             return;
@@ -642,7 +642,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 if (!string.IsNullOrEmpty(terracottaPath) && File.Exists(terracottaPath))
                 {
                     // 获取真实的物理路径（与HostGame相同的逻辑）
-                    string terracottaDir = Path.GetDirectoryName(terracottaPath);
+                    string terracottaDir = Path.GetDirectoryName(terracottaPath) ?? Windows.Storage.ApplicationData.Current.LocalFolder.Path;
                     string realTerracottaDir = terracottaDir;
                     string realTempDir;
                     
@@ -667,12 +667,12 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                                 }
                                 else
                                 {
-                                    realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir), "temp");
+                                    realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir) ?? realTerracottaDir, "temp");
                                 }
                             }
                             catch
                             {
-                                realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir), "temp");
+                                realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir) ?? realTerracottaDir, "temp");
                             }
                         }
                         else
@@ -690,12 +690,12 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                                     realTerracottaDir = realPath;
                                 }
                             }
-                            realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir), "temp");
+                            realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir) ?? realTerracottaDir, "temp");
                         }
                     }
                     else
                     {
-                        realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir), "temp");
+                        realTempDir = Path.Combine(Path.GetDirectoryName(realTerracottaDir) ?? realTerracottaDir, "temp");
                     }
                     
                     Directory.CreateDirectory(realTempDir);
@@ -821,7 +821,6 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     }
                     
                     // 4. 轮询访问http://localhost:{端口}/state，直到state为guest-ok
-                    bool isGuestOk = false;
                     string url = string.Empty;
                     
                     for (int i = 0; i < 30 && !cancellationToken.IsCancellationRequested; i++) // 最多尝试30次，每次间隔1秒
@@ -847,8 +846,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                                         if (root.TryGetProperty("url", out JsonElement urlElement) &&
                                             urlElement.ValueKind == JsonValueKind.String)
                                         {
-                                            url = urlElement.GetString();
-                                            isGuestOk = true;
+                                            url = urlElement.GetString() ?? string.Empty;
                                             Log.Information($"[Multiplayer-Join] 加入成功, URL: {url}");
                                             break;
                                         }
@@ -877,7 +875,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     if (isSuccess && !string.IsNullOrEmpty(url))
                     {
                         // 5. 导航至联机大厅页，传递房间号、端口和房客标识
-                    _navigationService.NavigateTo(typeof(MultiplayerLobbyViewModel).FullName, new { 
+                        _navigationService.NavigateTo(typeof(MultiplayerLobbyViewModel).FullName!, new { 
                             RoomId = roomId, 
                             Port = port, 
                             IsGuest = true, 

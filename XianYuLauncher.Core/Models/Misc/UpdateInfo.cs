@@ -10,12 +10,12 @@ public class DownloadMirror
     /// <summary>
     /// 镜像名称
     /// </summary>
-    public string name { get; set; }
+    public string name { get; set; } = string.Empty;
     
     /// <summary>
     /// 镜像URL（旧版本兼容字段）
     /// </summary>
-    public string url { get; set; }
+    public string url { get; set; } = string.Empty;
     
     /// <summary>
     /// 不同架构的下载URL映射
@@ -31,7 +31,7 @@ public class UpdateInfo
     /// <summary>
     /// 最新版本号
     /// </summary>
-    public string version { get; set; }
+    public string version { get; set; } = string.Empty;
     
     /// <summary>
     /// 发布时间
@@ -41,12 +41,12 @@ public class UpdateInfo
     /// <summary>
     /// 下载镜像列表
     /// </summary>
-    public List<DownloadMirror> download_mirrors { get; set; }
+    public List<DownloadMirror> download_mirrors { get; set; } = new();
     
     /// <summary>
     /// 更新日志
     /// </summary>
-    public List<string> changelog { get; set; }
+    public List<string> changelog { get; set; } = new();
     
     /// <summary>
     /// 是否为重要更新

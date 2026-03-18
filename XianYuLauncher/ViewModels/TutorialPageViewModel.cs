@@ -219,9 +219,9 @@ namespace XianYuLauncher.ViewModels
         private string _loginStatus = string.Empty;
         
         // 保存微软登录结果
-        private MinecraftProfile _pendingMicrosoftProfile = null;
+        private MinecraftProfile? _pendingMicrosoftProfile = null;
         
-        public string PendingProfileId => _pendingMicrosoftProfile?.Id;
+        public string? PendingProfileId => _pendingMicrosoftProfile?.Id;
         
         // 计算属性：是否未在登录中（用于x:Bind绑定）
         public bool IsNotLoggingIn => !IsLoggingIn;
@@ -344,7 +344,7 @@ namespace XianYuLauncher.ViewModels
             try
             {
                 string profilesFilePath = Path.Combine(MinecraftPath, MinecraftFileConsts.ProfilesJson);
-                string profilesDirectory = Path.GetDirectoryName(profilesFilePath);
+                string? profilesDirectory = Path.GetDirectoryName(profilesFilePath);
                 if (!string.IsNullOrEmpty(profilesDirectory))
                 {
                     Directory.CreateDirectory(profilesDirectory);
@@ -740,7 +740,7 @@ namespace XianYuLauncher.ViewModels
                 if (result != null)
                 {
                     // 处理角色选择
-                    ExternalProfile selectedProfile = result.SelectedProfile;
+                    ExternalProfile? selectedProfile = result.SelectedProfile;
 
                     if (selectedProfile == null && result.AvailableProfiles != null && result.AvailableProfiles.Count > 0)
                     {
@@ -1042,7 +1042,7 @@ namespace XianYuLauncher.ViewModels
                 // 异步加载Java设置
                 var javaSelectionModeStr = await _localSettingsService.ReadSettingAsync<string>("JavaSelectionMode");
                 JavaSelectionMode = (JavaSelectionMode)System.Enum.Parse(typeof(JavaSelectionMode), javaSelectionModeStr ?? "Auto");
-                JavaPath = await _localSettingsService.ReadSettingAsync<string>("JavaPath");
+                JavaPath = await _localSettingsService.ReadSettingAsync<string>("JavaPath") ?? string.Empty;
             }
             catch (Exception ex)
             {

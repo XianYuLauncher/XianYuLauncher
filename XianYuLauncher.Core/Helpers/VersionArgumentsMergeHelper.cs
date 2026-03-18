@@ -169,12 +169,12 @@ public static class VersionArgumentsMergeHelper
         List<object> destination,
         HashSet<string> seen)
     {
-        if (!HasEntries(source))
+            if (source == null || source.Count == 0)
         {
             return;
         }
 
-        foreach (var argument in source)
+            foreach (var argument in source)
         {
             var key = GetArgumentKey(argument);
             if (key == null || !seen.Add(key))

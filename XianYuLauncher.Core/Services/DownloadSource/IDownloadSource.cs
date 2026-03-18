@@ -341,7 +341,7 @@ public interface IDownloadSource
     /// <param name="libraryName">库名称</param>
     /// <param name="originalUrl">原始URL（如果有）</param>
     /// <returns>依赖库下载URL</returns>
-    string GetLibraryUrl(string libraryName, string originalUrl = null);
+    string GetLibraryUrl(string libraryName, string? originalUrl = null);
     
     /// <summary>
     /// 获取客户端JAR下载URL

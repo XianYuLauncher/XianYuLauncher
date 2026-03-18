@@ -9,7 +9,7 @@ namespace XianYuLauncher.ViewModels
     /// </summary>
     internal class MinecraftVersionComparer : IComparer<string>
     {
-        public int Compare(string x, string y)
+        public int Compare(string? x, string? y)
         {
             if (x == y) return 0;
             if (string.IsNullOrEmpty(x)) return -1;

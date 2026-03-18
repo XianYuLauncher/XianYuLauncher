@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using System.Diagnostics;
@@ -49,6 +50,12 @@ public class UpdateService
         
         // 默认版本，应由 UI 层通过 SetCurrentVersion 设置正确的 MSIX 包版本
         _currentVersion = new Version(1, 0, 0, 0);
+    }
+
+    private static string GetParentDirectoryOrThrow(string path)
+    {
+        return Path.GetDirectoryName(path)
+            ?? throw new InvalidDataException($"无法解析路径的父目录: {path}");
     }
     
     /// <summary>
@@ -139,28 +146,44 @@ public class UpdateService
             _logger.LogInformation("检查 Dev 更新: {Url}", url);
 
             var response = await _downloadManager.DownloadStringAsync(url);
-            dynamic releases = JsonConvert.DeserializeObject(response);
+            var releases = JArray.Parse(response);
 
-            foreach (var release in releases)
+            foreach (var release in releases.OfType<JObject>())
             {
-                string tagName = release.tag_name;
+                string? tagName = release.Value<string>("tag_name");
+                if (string.IsNullOrWhiteSpace(tagName))
+                {
+                    continue;
+                }
                 
                 // 寻找最新的 Pre-release (即 Dev/Beta)，或者Tag包含 dev/beta 的版本（防止CI未正确标记Prerelease）
-                if ((bool)release.prerelease == true || 
+                bool isPrerelease = release.Value<bool?>("prerelease") == true;
+                if (isPrerelease || 
                     tagName.Contains("dev", StringComparison.OrdinalIgnoreCase) || 
                     tagName.Contains("beta", StringComparison.OrdinalIgnoreCase))
                 {
-                    string body = release.body ?? "No changelog provided.";
-                    string publishedAt = release.published_at;
+                    string body = release.Value<string>("body") ?? "No changelog provided.";
+                    if (release.Value<string>("published_at") is not string publishedAt || !DateTime.TryParse(publishedAt, out var publishedAtValue))
+                    {
+                        continue;
+                    }
                     
                     string? downloadUrl = null;
                     var archUrls = new Dictionary<string, string>();
                     
-                    foreach (var asset in release.assets)
+                    if (release["assets"] is not JArray assets)
                     {
-                        string name = asset.name;
-                        // url 变量名冲突，改为 assetUrl
-                        string assetUrl = asset.browser_download_url;
+                        continue;
+                    }
+
+                    foreach (var asset in assets.OfType<JObject>())
+                    {
+                        string? name = asset.Value<string>("name");
+                        string? assetUrl = asset.Value<string>("browser_download_url");
+                        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(assetUrl))
+                        {
+                            continue;
+                        }
                         
                         if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                         {
@@ -187,18 +210,20 @@ public class UpdateService
 
                     if (archUrls.Count > 0 || !string.IsNullOrEmpty(downloadUrl))
                     {
+                        string resolvedDownloadUrl = downloadUrl ?? archUrls.Values.First();
+
                         // 构造 UpdateInfo
                         var info = new UpdateInfo
                         {
                             version = tagName.StartsWith("v") ? tagName.Substring(1) : tagName,
-                            release_time = DateTime.Parse(publishedAt),
+                            release_time = publishedAtValue,
                             changelog = new List<string>(body.Split('\n')),
                             download_mirrors = new List<DownloadMirror>
                             {
                                 new DownloadMirror
                                 {
                                     name = "GitHub (Dev)",
-                                    url = downloadUrl ?? archUrls.Values.FirstOrDefault(),
+                                    url = resolvedDownloadUrl,
                                     arch_urls = archUrls
                                 }
                             }
@@ -269,7 +294,7 @@ public class UpdateService
     /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>下载结果，成功返回true，失败返回false</returns>
-    public async Task<bool> DownloadUpdatePackageAsync(UpdateInfo updateInfo, string downloadPath, Action<DownloadProgressInfo> progressCallback = null, CancellationToken cancellationToken = default)
+    public async Task<bool> DownloadUpdatePackageAsync(UpdateInfo updateInfo, string downloadPath, Action<DownloadProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("开始下载更新包，版本: {Version}", updateInfo.version);
         Debug.WriteLine($"[DEBUG] 开始下载更新包，版本: {updateInfo.version}");
@@ -288,7 +313,7 @@ public class UpdateService
                 string downloadUrl = mirror.url; // 默认使用旧版本URL（兼容旧版客户端）
                 
                 // 如果有arch_urls字段，根据当前架构选择URL
-                if (mirror.arch_urls != null && mirror.arch_urls.TryGetValue(currentArchitecture, out string archUrl))
+                if (mirror.arch_urls != null && mirror.arch_urls.TryGetValue(currentArchitecture, out string? archUrl) && !string.IsNullOrWhiteSpace(archUrl))
                 {
                     downloadUrl = archUrl;
                     _logger.LogInformation("使用架构特定URL: {ArchUrl} (架构: {CurrentArchitecture})", downloadUrl, currentArchitecture);
@@ -333,10 +358,10 @@ public class UpdateService
     /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>下载结果，成功返回true，失败返回false</returns>
-    private async Task<bool> DownloadFileAsync(string url, string savePath, Action<DownloadProgressInfo> progressCallback = null, CancellationToken cancellationToken = default)
+    private async Task<bool> DownloadFileAsync(string url, string savePath, Action<DownloadProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
     {
         // 创建目录
-        string directory = Path.GetDirectoryName(savePath);
+        string directory = GetParentDirectoryOrThrow(savePath);
         if (!Directory.Exists(directory))
         {
             Directory.CreateDirectory(directory);
@@ -407,7 +432,7 @@ public class UpdateService
             }
 
             // 解析基础版本
-            if (Version.TryParse(basePart, out Version baseVer))
+            if (Version.TryParse(basePart, out Version? baseVer) && baseVer != null)
             {
                 // 构建完整的四段版本号 (Major.Minor.Build.Revision)
                 int major = baseVer.Major;
@@ -459,7 +484,7 @@ public class UpdateService
     /// </summary>
     /// <param name="zipFilePath">ZIP文件路径</param>
     /// <returns>包含解压目录、证书文件路径和MSIX文件路径的元组</returns>
-    public async Task<(string ExtractDirectory, string CertificateFilePath, string MsixFilePath)> ExtractUpdatePackageAsync(string zipFilePath)
+    public async Task<(string ExtractDirectory, string? CertificateFilePath, string MsixFilePath)> ExtractUpdatePackageAsync(string zipFilePath)
     {
         _logger.LogInformation("开始解压更新包: {ZipFilePath}", zipFilePath);
         Debug.WriteLine($"[DEBUG] 开始解压更新包: {zipFilePath}");
@@ -480,7 +505,7 @@ public class UpdateService
             });
             
             // 查找证书文件 (*.cer)
-            string certificateFilePath = FindFileByPattern(extractDirectory, "*.cer");
+            string? certificateFilePath = FindFileByPattern(extractDirectory, "*.cer");
             if (string.IsNullOrEmpty(certificateFilePath))
             {
                 _logger.LogWarning("在解压目录中未找到证书文件 (*.cer): {ExtractDirectory}", extractDirectory);
@@ -493,7 +518,7 @@ public class UpdateService
             }
             
             // 查找MSIX文件 (*.msix)
-            string msixFilePath = FindFileByPattern(extractDirectory, "*.msix");
+            string? msixFilePath = FindFileByPattern(extractDirectory, "*.msix");
             if (string.IsNullOrEmpty(msixFilePath))
             {
                 _logger.LogError("在解压目录中未找到MSIX文件 (*.msix): {ExtractDirectory}", extractDirectory);
@@ -530,7 +555,7 @@ public class UpdateService
     /// <param name="directory">要搜索的目录</param>
     /// <param name="searchPattern">搜索模式，如"*.cer"</param>
     /// <returns>找到的第一个文件路径，如果没有找到则返回null</returns>
-    private string FindFileByPattern(string directory, string searchPattern)
+    private string? FindFileByPattern(string directory, string searchPattern)
     {
         _logger.LogInformation("在目录中查找文件: {Directory}, 模式: {SearchPattern}", directory, searchPattern);
         Debug.WriteLine($"[DEBUG] 在目录中查找文件: {directory}, 模式: {searchPattern}");
@@ -577,7 +602,7 @@ public class UpdateService
         try
         {
             // 加载证书
-            var certificate = new X509Certificate2(certificateFilePath);
+            using var certificate = X509CertificateLoader.LoadCertificateFromFile(certificateFilePath);
             _logger.LogInformation("加载证书成功，主题: {Subject}, 颁发者: {Issuer}, 序列号: {SerialNumber}", 
                 certificate.Subject, certificate.Issuer, certificate.SerialNumber);
             Debug.WriteLine($"[DEBUG] 加载证书成功，主题: {certificate.Subject}, 颁发者: {certificate.Issuer}, 序列号: {certificate.SerialNumber}");
@@ -657,10 +682,14 @@ public class UpdateService
                 WindowStyle = ProcessWindowStyle.Hidden // 隐藏窗口
             };
             
-            using (var p = Process.Start(certPsi))
+            using var process = Process.Start(certPsi);
+            if (process == null)
             {
-                await p.WaitForExitAsync();
+                _logger.LogWarning("证书安装命令未能启动: {CertPath}", cerFilePath);
+                return;
             }
+
+            await process.WaitForExitAsync();
             _logger.LogInformation("证书安装命令执行完成");
         }
         catch (Exception ex)
@@ -739,7 +768,13 @@ public class UpdateService
 
                 foreach (var depFile in allDepFiles)
                 {
-                    string depDirName = Path.GetFileName(Path.GetDirectoryName(depFile)).ToLower();
+                    string? depDirPath = Path.GetDirectoryName(depFile);
+                    if (string.IsNullOrWhiteSpace(depDirPath))
+                    {
+                        continue;
+                    }
+
+                    string depDirName = Path.GetFileName(depDirPath).ToLowerInvariant();
                     // 筛选规则：通用依赖(neutral) 或 匹配当前包架构的依赖
                     bool shouldInclude = depDirName == "dependencies" || 
                                          depDirName == "neutral" || 

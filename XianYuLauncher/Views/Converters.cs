@@ -39,7 +39,7 @@ namespace XianYuLauncher.Views
                 isTrue = boolValue;
             }
 
-            string[] values = parameter?.ToString().Split(',') ?? new string[] { "", "" };
+            string[] values = parameter?.ToString()?.Split(',') ?? new string[] { "", "" };
             if (values.Length < 2)
             {
                 values = new string[] { "", "" };

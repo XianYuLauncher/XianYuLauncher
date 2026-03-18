@@ -75,7 +75,7 @@
             </ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="models:AnnouncementButton">
-                    <Button Content="{x:Bind text, Mode=OneWay}"
+                    <Button Content="{x:Bind text, Mode=OneTime}"
                             Click="AnnouncementButton_Click" />
                 </DataTemplate>
             </ItemsControl.ItemTemplate>

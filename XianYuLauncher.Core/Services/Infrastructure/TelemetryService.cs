@@ -71,13 +71,13 @@ public class TelemetryService
                 await _localSettingsService.SaveSettingAsync("IsFirstLaunchTelemetrySent", true);
             });
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             System.Diagnostics.Debug.WriteLine("[Telemetry] 首次启动遥测检查失败");
         }
     }
 
-    private async Task SendTelemetryDataAsync<T>(T data, JsonSerializerOptions? options = null, Func<Task> onSuccess = null)
+    private async Task SendTelemetryDataAsync<T>(T data, JsonSerializerOptions? options = null, Func<Task>? onSuccess = null)
     {
         var json = options == null ? JsonSerializer.Serialize(data) : JsonSerializer.Serialize(data, options);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -100,7 +100,7 @@ public class TelemetryService
                     System.Diagnostics.Debug.WriteLine($"[Telemetry] 遥测数据发送失败: {response.StatusCode}");
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 System.Diagnostics.Debug.WriteLine("[Telemetry] 发送异常");
             }
@@ -127,7 +127,7 @@ public class TelemetryService
             
             await SendTelemetryDataAsync(telemetryData);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             System.Diagnostics.Debug.WriteLine("[Telemetry] 启动统计发送失败");
         }
@@ -173,7 +173,7 @@ public class TelemetryService
 
             await SendTelemetryDataAsync(data, options);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             System.Diagnostics.Debug.WriteLine("[Telemetry] 游戏会话统计发送失败");
         }

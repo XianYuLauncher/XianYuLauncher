@@ -16,7 +16,7 @@ public abstract class DownloadSourceTemplate
     public abstract string GetResourceUrl(string resourceType, string originalUrl);
     public abstract string GetClientJarUrl(string versionId, string originalUrl);
     public abstract string GetClientJsonUrl(string versionId, string originalUrl);
-    public abstract string GetLibraryUrl(string libraryName, string originalUrl);
+    public abstract string GetLibraryUrl(string libraryName, string? originalUrl);
 
     // ModLoader 资源
     public abstract string GetNeoForgeVersionsUrl(string minecraftVersion);

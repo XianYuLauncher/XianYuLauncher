@@ -5,7 +5,7 @@ namespace XianYuLauncher.Helpers;
 
 public class PathToImageSourceConverter : IValueConverter
 {
-    public object Convert(object value, Type targetType, object parameter, string language)
+    public object? Convert(object? value, Type targetType, object? parameter, string language)
     {
         if (value is not string path || string.IsNullOrWhiteSpace(path))
         {
@@ -33,7 +33,7 @@ public class PathToImageSourceConverter : IValueConverter
         return null;
     }
 
-    public object ConvertBack(object value, Type targetType, object parameter, string language)
+    public object? ConvertBack(object? value, Type targetType, object? parameter, string language)
     {
         return null;
     }

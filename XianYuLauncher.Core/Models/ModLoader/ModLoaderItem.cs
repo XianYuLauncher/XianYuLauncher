@@ -13,17 +13,17 @@ public class OptifineVersionInfo
     /// <summary>
     /// Optifine版本名（Type_Patch格式）
     /// </summary>
-    public string VersionName { get; set; }
+    public string VersionName { get; set; } = string.Empty;
     
     /// <summary>
     /// 兼容的Forge版本
     /// </summary>
-    public string CompatibleForgeVersion { get; set; }
+    public string CompatibleForgeVersion { get; set; } = string.Empty;
     
     /// <summary>
     /// 完整的Optifine版本对象
     /// </summary>
-    public OptifineVersion FullVersion { get; set; }
+    public OptifineVersion FullVersion { get; set; } = null!;
     
     /// <summary>
     /// 显示的兼容信息

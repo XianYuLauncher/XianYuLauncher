@@ -27,8 +27,8 @@ namespace XianYuLauncher.ViewModels;
 // 玩家信息类，用于显示玩家列表
 public class RoomPlayer
 {
-    public string Name { get; set; }
-    public Microsoft.UI.Xaml.Media.Imaging.BitmapImage Avatar { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public Microsoft.UI.Xaml.Media.Imaging.BitmapImage Avatar { get; set; } = new();
 }
 
 public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigationAware
@@ -110,7 +110,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
         LoadCurrentProfileName();
     }
     
-    private void OnTimerTick(object sender, object e)
+    private void OnTimerTick(object? sender, object? e)
     {
         _elapsedTime += TimeSpan.FromSeconds(1);
         try
@@ -189,7 +189,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
     /// <summary>
     /// 玩家列表计时器触发事件
     /// </summary>
-    private async void OnPlayerListTimerTick(object sender, object e)
+    private async void OnPlayerListTimerTick(object? sender, object? e)
     {
         await UpdatePlayerListAsync();
     }
@@ -229,7 +229,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
                             if (profileElement.TryGetProperty("name", out JsonElement nameElement) &&
                                 nameElement.ValueKind == JsonValueKind.String)
                             {
-                                string playerName = nameElement.GetString();
+                                string playerName = nameElement.GetString() ?? string.Empty;
                                 
                                 // 创建玩家对象
                                 newPlayerList.Add(new RoomPlayer
@@ -373,7 +373,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
                     if (root.TryGetProperty("easytier_version", out JsonElement easytierVersionElement) &&
                         easytierVersionElement.ValueKind == JsonValueKind.String)
                     {
-                        EasyTierVersion = easytierVersionElement.GetString();
+                        EasyTierVersion = easytierVersionElement.GetString() ?? EasyTierVersion;
                     }
                 }
             }

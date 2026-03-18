@@ -328,15 +328,21 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
         {
             library.Downloads ??= new LibraryDownloads();
 
-            var parts = library.Name?.Split(':');
-            if (parts == null || parts.Length < 3)
+            var libraryName = library.Name;
+            if (string.IsNullOrWhiteSpace(libraryName))
+            {
+                continue;
+            }
+
+            var parts = libraryName.Split(':');
+            if (parts.Length < 3)
             {
                 continue;
             }
 
             string artifactId = parts[1];
             string? baseUrl = LibraryDownloadUrlHelper.ResolveRepositoryBaseUrl(
-                library.Name,
+                libraryName,
                 library.Url,
                 LibraryRepositoryProfile.LegacyFabric);
 

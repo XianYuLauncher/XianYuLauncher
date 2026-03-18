@@ -103,8 +103,8 @@ public partial class ShadersViewModel : ResourceManagementViewModelBase<ShaderIn
                     var shaderFolders = Directory.GetDirectories(folderPath);
                     var shaderZips = Directory.GetFiles(folderPath, "*.zip");
 
-                    list.AddRange(shaderFolders.Select(f => new ShaderInfo(f) { Icon = null }));
-                    list.AddRange(shaderZips.Select(f => new ShaderInfo(f) { Icon = null }));
+                    list.AddRange(shaderFolders.Select(f => new ShaderInfo(f) { Icon = string.Empty }));
+                    list.AddRange(shaderZips.Select(f => new ShaderInfo(f) { Icon = string.Empty }));
                 }
             }
             catch (Exception ex)

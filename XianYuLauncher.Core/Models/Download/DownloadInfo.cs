@@ -68,25 +68,25 @@ public class UpdatePackageInfo
     /// <summary>
     /// 包ID
     /// </summary>
-    public string PackageId { get; set; }
+    public string PackageId { get; set; } = string.Empty;
     
     /// <summary>
     /// MSIX包路径
     /// </summary>
-    public string MsixPath { get; set; }
+    public string MsixPath { get; set; } = string.Empty;
     
     /// <summary>
     /// 证书路径
     /// </summary>
-    public string CertificatePath { get; set; }
+    public string CertificatePath { get; set; } = string.Empty;
     
     /// <summary>
     /// 安装脚本路径
     /// </summary>
-    public string InstallScriptPath { get; set; }
+    public string InstallScriptPath { get; set; } = string.Empty;
     
     /// <summary>
     /// 更新版本
     /// </summary>
-    public string Version { get; set; }
+    public string Version { get; set; } = string.Empty;
 }

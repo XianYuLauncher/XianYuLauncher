@@ -245,17 +245,17 @@
                                                 Height="6"
                                                 CornerRadius="3"
                                                 Background="{ThemeResource AccentFillColorDefaultBrush}"
-                                                Visibility="{x:Bind IsPrimaryDot, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                Visibility="{x:Bind IsPrimaryDot, Mode=OneTime, Converter={StaticResource BoolToVisibilityConverter}}" />
                                             <Border
                                                 Width="6"
                                                 Height="6"
                                                 CornerRadius="3"
                                                 Background="{ThemeResource TextFillColorSecondaryBrush}"
-                                                Visibility="{x:Bind IsPrimaryDot, Mode=OneWay, Converter={StaticResource BoolToVisibilityInverseConverter}}" />
+                                                Visibility="{x:Bind IsPrimaryDot, Mode=OneTime, Converter={StaticResource BoolToVisibilityInverseConverter}}" />
                                         </Grid>
                                         <TextBlock
                                             Grid.Column="1"
-                                            Text="{x:Bind DisplayText, Mode=OneWay}"
+                                            Text="{x:Bind DisplayText, Mode=OneTime}"
                                             Style="{StaticResource CaptionTextBlockStyle}"
                                             TextTrimming="CharacterEllipsis" />
                                     </Grid>

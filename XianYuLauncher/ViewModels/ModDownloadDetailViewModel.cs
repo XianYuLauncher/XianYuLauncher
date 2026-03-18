@@ -40,7 +40,7 @@ namespace XianYuLauncher.ViewModels
         private readonly ILogger<ModDownloadDetailViewModel> _logger;
 
         [ObservableProperty]
-        private string _modId;
+        private string _modId = string.Empty;
         
         [ObservableProperty]
         private string _modSlug = string.Empty;
@@ -82,7 +82,7 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private bool _isPublisherListDialogOpen = false;
 
-        private string _modTeamId; // 保存Modrinth Team ID用于懒加载
+        private string? _modTeamId; // 保存Modrinth Team ID用于懒加载
         private bool _isBackgroundPublisherLoading;
 
         private void WriteDebugLog(string message) => _logger.LogDebug("{Message}", message);
@@ -264,10 +264,10 @@ namespace XianYuLauncher.ViewModels
         }
 
         // 安装取消令牌源
-        private CancellationTokenSource _installCancellationTokenSource;
+        private CancellationTokenSource? _installCancellationTokenSource;
         
         // CurseForge文件加载取消令牌源
-        private CancellationTokenSource _curseForgeLoadCancellationTokenSource;
+        private CancellationTokenSource? _curseForgeLoadCancellationTokenSource;
         
         // 项目类型：mod 或 resourcepack
         [ObservableProperty]
@@ -332,24 +332,24 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         public bool IsQuickInstallButtonVisible => ProjectType != "modpack";
         
-        private CancellationTokenSource _downloadCancellationTokenSource;
+        private CancellationTokenSource? _downloadCancellationTokenSource;
         
         // 一键安装相关属性
         [ObservableProperty]
         private ObservableCollection<InstalledGameVersionViewModel> _quickInstallGameVersions = new();
         
         [ObservableProperty]
-        private InstalledGameVersionViewModel _selectedQuickInstallVersion;
+        private InstalledGameVersionViewModel? _selectedQuickInstallVersion;
         
         [ObservableProperty]
         private ObservableCollection<ModVersionViewModel> _quickInstallModVersions = new();
         
         [ObservableProperty]
-        private ModVersionViewModel _selectedQuickInstallModVersion;
+        private ModVersionViewModel? _selectedQuickInstallModVersion;
         
         // 自定义下载路径相关属性
-        private string _customDownloadPath;
-        public string CustomDownloadPath
+        private string? _customDownloadPath;
+        public string? CustomDownloadPath
         {
             get => _customDownloadPath;
             set => SetProperty(ref _customDownloadPath, value);
@@ -422,12 +422,12 @@ namespace XianYuLauncher.ViewModels
         }
         
         // 保存从列表页传递过来的Mod信息，用于优先显示作者
-        private ModrinthProject _passedModInfo;
+        private ModrinthProject? _passedModInfo;
         // 保存来源类型，用于过滤版本
-        private string _sourceType;
+        private string? _sourceType;
 
         // 接受ModrinthProject对象和来源类型的重载
-        public async Task LoadModDetailsAsync(ModrinthProject mod, string sourceType)
+        public async Task LoadModDetailsAsync(ModrinthProject mod, string? sourceType)
         {
             _passedModInfo = mod;
             _sourceType = sourceType;
@@ -796,7 +796,7 @@ namespace XianYuLauncher.ViewModels
                     // 创建现有版本的字典
                     var existingVersionsDict = existingLoader.ModVersions
                         .Where(v => v.OriginalCurseForgeFile != null)
-                        .ToDictionary(v => v.OriginalCurseForgeFile.Id);
+                        .ToDictionary(v => v.OriginalCurseForgeFile!.Id);
                     
                     // 移除不再存在的版本
                     var toRemove = existingVersionsDict.Keys.Except(newVersionsDict.Keys).ToList();
@@ -848,8 +848,8 @@ namespace XianYuLauncher.ViewModels
                 VersionNumber = versionItem.VersionNumber,
                 ReleaseDate = versionItem.ReleaseDate,
                 Changelog = versionItem.Changelog,
-                DownloadUrl = versionItem.DownloadUrl,
-                FileName = versionItem.FileName,
+                DownloadUrl = versionItem.DownloadUrl ?? string.Empty,
+                FileName = versionItem.FileName ?? string.Empty,
                 Loaders = versionItem.Loaders.ToList(),
                 VersionType = versionItem.VersionType,
                 GameVersion = gameVersion,
@@ -861,37 +861,43 @@ namespace XianYuLauncher.ViewModels
         
         // 下载弹窗相关属性
         [ObservableProperty]
-        private ModVersionViewModel _selectedModVersion;
+        private ModVersionViewModel? _selectedModVersion;
 
         [ObservableProperty]
         private string _downloadDialogTitle = "选择下载方式";
 
         [ObservableProperty]
-        private string _downloadDirectory;
+        private string _downloadDirectory = string.Empty;
 
         // 已安装的游戏版本列表
         [ObservableProperty]
-        private ObservableCollection<InstalledGameVersionViewModel> _installedGameVersions;
+        private ObservableCollection<InstalledGameVersionViewModel> _installedGameVersions = new();
 
         // 选中的游戏版本
         [ObservableProperty]
-        private InstalledGameVersionViewModel _selectedInstalledVersion;
+        private InstalledGameVersionViewModel? _selectedInstalledVersion;
 
         // 存档选择相关属性
         [ObservableProperty]
         private ObservableCollection<string> _saveNames = new ObservableCollection<string>();
 
         [ObservableProperty]
-        private string _selectedSaveName;
+        private string? _selectedSaveName;
 
         [ObservableProperty]
         private string _saveSelectionTip = "选择要安装数据包的存档";
 
         // 打开下载弹窗命令
         [RelayCommand]
-        public async Task OpenDownloadDialog(ModVersionViewModel modVersion)
+        public async Task OpenDownloadDialog(ModVersionViewModel? modVersion)
         {
             WriteDebugLog($"OpenDownloadDialog 命令被调用，Mod 版本: {modVersion?.VersionNumber}");
+            if (modVersion == null)
+            {
+                await ShowMessageAsync("未选择要下载的Mod版本");
+                return;
+            }
+
             SelectedModVersion = modVersion;
             
             // 如果是整合包，直接进入整合包安装流程，跳过普通下载弹窗
@@ -950,7 +956,8 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         private async Task HandleCustomLocationDownloadAsync()
         {
-            if (SelectedModVersion == null)
+            var selectedModVersion = SelectedModVersion;
+            if (selectedModVersion == null)
             {
                 await ShowMessageAsync("请先选择要下载的Mod版本");
                 return;
@@ -962,21 +969,21 @@ namespace XianYuLauncher.ViewModels
             var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
             WinRT.Interop.InitializeWithWindow.Initialize(filePicker, windowHandle);
             
-            filePicker.SuggestedFileName = SelectedModVersion.FileName;
+            filePicker.SuggestedFileName = selectedModVersion.FileName;
             filePicker.FileTypeChoices.Add("Mod文件", new[] { FileExtensionConsts.Jar });
             
             var file = await filePicker.PickSaveFileAsync();
             
             if (file != null)
             {
-                string folderPath = Path.GetDirectoryName(file.Path);
+                string? folderPath = Path.GetDirectoryName(file.Path);
                 SetCustomDownloadPath(folderPath);
-                await DownloadModAsync(SelectedModVersion);
+                await DownloadModAsync(selectedModVersion);
             }
         }
         
         // 保存当前正在下载的Mod版本，用于存档选择后继续下载
-        private ModVersionViewModel _currentDownloadingModVersion;
+        private ModVersionViewModel? _currentDownloadingModVersion;
         
         // 依赖相关属性
         [ObservableProperty]
@@ -986,7 +993,7 @@ namespace XianYuLauncher.ViewModels
         private bool _isLoadingDependencies = false;
         
         // 当前正在下载的游戏版本上下文（用于解决跨流程/弹窗操作时 SelectedInstalledVersion 可能丢失的问题）
-        private InstalledGameVersionViewModel _currentDownloadingGameVersion;
+        private InstalledGameVersionViewModel? _currentDownloadingGameVersion;
 
         private async Task<string> ResolveTargetGameDirAsync(InstalledGameVersionViewModel? targetVersion)
         {
@@ -1084,12 +1091,14 @@ namespace XianYuLauncher.ViewModels
                 IsDownloading = true;
                 DownloadStatus = "正在准备下载...";
                 
-                if (_currentDownloadingModVersion == null)
+                var currentDownloadingModVersion = _currentDownloadingModVersion;
+                if (currentDownloadingModVersion == null)
                 {
                     throw new Exception("未找到正在下载的Mod版本");
                 }
                 
-                if (string.IsNullOrEmpty(SelectedSaveName))
+                string? selectedSaveName = SelectedSaveName;
+                if (string.IsNullOrEmpty(selectedSaveName))
                 {
                     IsDownloading = false;
                     DownloadStatus = "下载已取消";
@@ -1108,24 +1117,24 @@ namespace XianYuLauncher.ViewModels
                     savesDir = await ResolveSavesDirectoryAsync(null);
                 }
                 
-                string selectedSaveDir = Path.Combine(savesDir, SelectedSaveName);
+                string selectedSaveDir = Path.Combine(savesDir, selectedSaveName);
                 string targetDir = Path.Combine(selectedSaveDir, MinecraftPathConsts.Datapacks);
                 
                 _fileService.CreateDirectory(targetDir);
                 
-                string savePath = Path.Combine(targetDir, _currentDownloadingModVersion.FileName);
+                string savePath = Path.Combine(targetDir, currentDownloadingModVersion.FileName);
 
                 // 如果URL缺失且是CurseForge资源，尝试手动构造
-                if (string.IsNullOrEmpty(_currentDownloadingModVersion.DownloadUrl) && 
-                    _currentDownloadingModVersion.IsCurseForge && 
-                    _currentDownloadingModVersion.OriginalCurseForgeFile != null)
+                if (string.IsNullOrEmpty(currentDownloadingModVersion.DownloadUrl) && 
+                    currentDownloadingModVersion.IsCurseForge && 
+                    currentDownloadingModVersion.OriginalCurseForgeFile != null)
                 {
                     try 
                     {
-                        _currentDownloadingModVersion.DownloadUrl = _curseForgeService.ConstructDownloadUrl(
-                            _currentDownloadingModVersion.OriginalCurseForgeFile.Id,
-                            _currentDownloadingModVersion.OriginalCurseForgeFile.FileName ?? _currentDownloadingModVersion.FileName);
-                        WriteDebugLog($"CompleteDatapackDownloadAsync 手动构造下载 URL: {_currentDownloadingModVersion.DownloadUrl}");
+                        currentDownloadingModVersion.DownloadUrl = _curseForgeService.ConstructDownloadUrl(
+                            currentDownloadingModVersion.OriginalCurseForgeFile.Id,
+                            currentDownloadingModVersion.OriginalCurseForgeFile.FileName ?? currentDownloadingModVersion.FileName);
+                        WriteDebugLog($"CompleteDatapackDownloadAsync 手动构造下载 URL: {currentDownloadingModVersion.DownloadUrl}");
                     }
                     catch (Exception ex)
                     {
@@ -1135,9 +1144,9 @@ namespace XianYuLauncher.ViewModels
 
                 InitializeDownloadTeachingTip();
 
-                await ProcessDependenciesForResourceAsync(_currentDownloadingModVersion, targetDir, targetVersion);
+                await ProcessDependenciesForResourceAsync(currentDownloadingModVersion, targetDir, targetVersion);
 
-                string resolvedDownloadUrl = _modResourceDownloadOrchestrator.EnsureDownloadUrl(_currentDownloadingModVersion);
+                string resolvedDownloadUrl = _modResourceDownloadOrchestrator.EnsureDownloadUrl(currentDownloadingModVersion);
                 if (string.IsNullOrWhiteSpace(resolvedDownloadUrl))
                 {
                     throw new Exception("无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
@@ -1419,8 +1428,15 @@ namespace XianYuLauncher.ViewModels
         [RelayCommand]
         public async Task DownloadToSelectedVersionAsync()
         {
+            var selectedModVersion = SelectedModVersion;
+            if (selectedModVersion == null)
+            {
+                await ShowMessageAsync("请先选择要下载的Mod版本");
+                return;
+            }
+
             // 加载已安装的游戏版本
-            await LoadInstalledGameVersions(SelectedModVersion);
+            await LoadInstalledGameVersions(selectedModVersion);
             
             // 通过 DialogService 显示版本选择弹窗
             var selected = await _dialogService.ShowListSelectionDialogAsync(
@@ -1437,7 +1453,7 @@ namespace XianYuLauncher.ViewModels
             {
                 SelectedInstalledVersion = selected;
                 _currentDownloadingGameVersion = selected;
-                await DownloadModAsync(SelectedModVersion);
+                await DownloadModAsync(selectedModVersion);
             }
         }
 
@@ -1454,7 +1470,7 @@ namespace XianYuLauncher.ViewModels
         }
         
         // 设置自定义下载路径的方法
-        public void SetCustomDownloadPath(string path)
+        public void SetCustomDownloadPath(string? path)
         {
             CustomDownloadPath = path;
             UseCustomDownloadPath = !string.IsNullOrEmpty(path);
@@ -1465,10 +1481,17 @@ namespace XianYuLauncher.ViewModels
         [RelayCommand]
         public async Task ConfirmDownloadAsync()
         {
+            var selectedModVersion = SelectedModVersion;
+            if (selectedModVersion == null)
+            {
+                await ShowMessageAsync("请先选择要下载的Mod版本");
+                return;
+            }
+
             if (SelectedInstalledVersion != null)
             {
                 _currentDownloadingGameVersion = SelectedInstalledVersion;
-                await DownloadModAsync(SelectedModVersion);
+                await DownloadModAsync(selectedModVersion);
             }
         }
 
@@ -1502,13 +1525,19 @@ namespace XianYuLauncher.ViewModels
         }
 
         [RelayCommand]
-        public async Task DownloadModAsync(ModVersionViewModel modVersion)
+        public async Task DownloadModAsync(ModVersionViewModel? modVersion)
         {
             WriteDebugLog("DownloadModAsync 开始执行");
             WriteDebugLog($"DownloadModAsync ProjectType: {ProjectType}");
             WriteDebugLog($"DownloadModAsync ModVersion: {modVersion?.VersionNumber}");
             WriteDebugLog($"DownloadModAsync UseCustomDownloadPath: {UseCustomDownloadPath}");
             WriteDebugLog($"DownloadModAsync SelectedInstalledVersion: {SelectedInstalledVersion?.OriginalVersionName}");
+
+            if (modVersion == null)
+            {
+                await ShowMessageAsync("未选择要下载的Mod版本");
+                return;
+            }
             
             // 如果是整合包，使用整合包安装流程
             if (ProjectType == "modpack")
@@ -1526,12 +1555,6 @@ namespace XianYuLauncher.ViewModels
 
             try
             {
-                if (modVersion == null)
-                {
-                    WriteWarningLog("DownloadModAsync 参数 modVersion 为 null");
-                    throw new Exception("未选择要下载的Mod版本");
-                }
-                
                 // 确保有可用的游戏版本上下文
                 var targetVersion = _currentDownloadingGameVersion ?? SelectedInstalledVersion;
 
@@ -1567,9 +1590,10 @@ namespace XianYuLauncher.ViewModels
                 string savePath;
                 
                 // 如果使用自定义下载路径
-                if (UseCustomDownloadPath && !string.IsNullOrEmpty(CustomDownloadPath))
+                string? customDownloadPath = CustomDownloadPath;
+                if (UseCustomDownloadPath && !string.IsNullOrEmpty(customDownloadPath))
                 {
-                    savePath = Path.Combine(CustomDownloadPath, modVersion.FileName);
+                    savePath = Path.Combine(customDownloadPath, modVersion.FileName);
                 }
                 else
                 {
@@ -1653,6 +1677,7 @@ namespace XianYuLauncher.ViewModels
             InstallProgress = 0;
             InstallProgressText = "0%";
             _installCancellationTokenSource = new CancellationTokenSource();
+            var installCancellationTokenSource = _installCancellationTokenSource;
 
             var dialogCloseTcs = new TaskCompletionSource<bool>();
 
@@ -1707,7 +1732,7 @@ namespace XianYuLauncher.ViewModels
                     ModIconUrl,
                     ModId,
                     modVersion.VersionNumber,
-                    _installCancellationTokenSource.Token);
+                    installCancellationTokenSource.Token);
 
                 if (result.Success)
                 {
@@ -1720,9 +1745,9 @@ namespace XianYuLauncher.ViewModels
                     dialogCloseTcs.TrySetResult(true);
                     if (result.ErrorMessage != "安装已取消")
                     {
-                        ErrorMessage = result.ErrorMessage;
+                        ErrorMessage = result.ErrorMessage ?? string.Empty;
                         InstallStatus = "安装失败！";
-                        await ShowMessageAsync($"整合包安装失败: {result.ErrorMessage}");
+                        await ShowMessageAsync($"整合包安装失败: {result.ErrorMessage ?? "未知错误"}");
                     }
                     else
                     {
@@ -1775,9 +1800,10 @@ namespace XianYuLauncher.ViewModels
 
                 // 确定目标 saves 目录
                 string savesDir;
-                if (UseCustomDownloadPath && !string.IsNullOrEmpty(CustomDownloadPath))
+                string? customDownloadPath = CustomDownloadPath;
+                if (UseCustomDownloadPath && !string.IsNullOrEmpty(customDownloadPath))
                 {
-                    savesDir = CustomDownloadPath;
+                    savesDir = customDownloadPath;
                 }
                 else
                 {
@@ -2012,14 +2038,14 @@ namespace XianYuLauncher.ViewModels
                     // 先尝试从配置文件读取版本信息
                     var versionConfig = await _minecraftVersionService.GetVersionConfigAsync(version, minecraftDirectory);
                     
-                    string gameVersion = null;
+                    string gameVersion = string.Empty;
                     string loaderType = "vanilla";
                     string loaderVersion = "";
                     
                     if (versionConfig != null)
                     {
                         // 从配置文件获取信息
-                        gameVersion = versionConfig.MinecraftVersion;
+                        gameVersion = versionConfig.MinecraftVersion ?? string.Empty;
                         loaderType = versionConfig.ModLoaderType?.ToLower() ?? "vanilla";
                         loaderVersion = versionConfig.ModLoaderVersion ?? "";
                         
@@ -2171,19 +2197,26 @@ namespace XianYuLauncher.ViewModels
         {
             try
             {
+                var selectedQuickInstallVersion = SelectedQuickInstallVersion;
+                if (selectedQuickInstallVersion == null)
+                {
+                    await ShowMessageAsync("请先选择要安装的游戏版本。");
+                    return;
+                }
+
                 // 加载兼容的Mod版本
                 LoadQuickInstallModVersions();
                 
                 if (QuickInstallModVersions.Count == 0)
                 {
-                    await ShowMessageAsync($"未找到支持 {SelectedQuickInstallVersion.DisplayName} 的Mod版本。");
+                    await ShowMessageAsync($"未找到支持 {selectedQuickInstallVersion.DisplayName} 的Mod版本。");
                     return;
                 }
                 
                 // 通过 DialogService 显示 Mod 版本选择弹窗
                 var selected = await _dialogService.ShowModVersionSelectionDialogAsync(
                     "选择Mod版本",
-                    $"请选择要安装到 {SelectedQuickInstallVersion.DisplayName} 的Mod版本：",
+                    $"请选择要安装到 {selectedQuickInstallVersion.DisplayName} 的Mod版本：",
                     QuickInstallModVersions,
                     v => v.VersionNumber,
                     v => string.IsNullOrEmpty(v.VersionType) ? v.VersionType : char.ToUpper(v.VersionType[0]) + v.VersionType[1..],
@@ -2196,7 +2229,7 @@ namespace XianYuLauncher.ViewModels
                 if (selected != null)
                 {
                     SelectedQuickInstallModVersion = selected;
-                    await DownloadModVersionToGameAsync(selected, SelectedQuickInstallVersion);
+                    await DownloadModVersionToGameAsync(selected, selectedQuickInstallVersion);
                 }
             }
             catch (Exception ex)
@@ -2215,8 +2248,15 @@ namespace XianYuLauncher.ViewModels
             
             try
             {
-                var selectedGameVersion = SelectedQuickInstallVersion.GameVersion;
-                var selectedLoaders = SelectedQuickInstallVersion.AllLoaders ?? new List<string> { SelectedQuickInstallVersion.LoaderType };
+                var selectedQuickInstallVersion = SelectedQuickInstallVersion;
+                if (selectedQuickInstallVersion == null)
+                {
+                    WriteWarningLog("QuickInstall 未选择游戏版本，跳过 Mod 版本加载");
+                    return;
+                }
+
+                var selectedGameVersion = selectedQuickInstallVersion.GameVersion;
+                var selectedLoaders = selectedQuickInstallVersion.AllLoaders ?? new List<string> { selectedQuickInstallVersion.LoaderType };
                 
                 WriteDebugLog($"QuickInstall 开始加载 Mod 版本，游戏版本: {selectedGameVersion}");
                 WriteDebugLog($"QuickInstall 游戏支持的加载器: {string.Join(", ", selectedLoaders)}");

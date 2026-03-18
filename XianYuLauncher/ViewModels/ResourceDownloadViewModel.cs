@@ -230,7 +230,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     /// </summary>
     private async Task ReloadCurrentTabCategories()
     {
-        string resourceType = SelectedTabIndex switch
+        string? resourceType = SelectedTabIndex switch
         {
             1 => "mod",
             2 => "shader",
@@ -648,14 +648,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     [ObservableProperty]
     private int _selectedTabIndex = 0;
     
-    // 标记各个标签页是否已经加载过数据（用于防止重复搜索）
-    private bool _modsLoadedOnce = false;
-    private bool _shaderPacksLoadedOnce = false;
-    private bool _resourcePacksLoadedOnce = false;
-    private bool _datapacksLoadedOnce = false;
-    private bool _modpacksLoadedOnce = false;
-    private bool _worldsLoadedOnce = false;
-
     // 版本列表缓存相关
     private const string VersionCacheFileName = "version_cache.json";
     private const string VersionCacheTimeKey = "VersionListCacheTime";
@@ -671,7 +663,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private ObservableCollection<InstalledGameVersionViewModel> _favoritesInstallVersions = new();
 
     [ObservableProperty]
-    private InstalledGameVersionViewModel _selectedFavoritesInstallVersion;
+    private InstalledGameVersionViewModel? _selectedFavoritesInstallVersion;
 
     [ObservableProperty]
     private bool _isFavoritesDownloading;
@@ -1637,7 +1629,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         };
     }
 
-    private static string NormalizeProjectType(string projectType)
+    private static string NormalizeProjectType(string? projectType)
     {
         if (string.IsNullOrEmpty(projectType)) return "mod";
 
@@ -2516,7 +2508,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         IsVersionLoading = true;
         try
         {
-            List<Core.Models.VersionEntry> versionList = null;
+            List<Core.Models.VersionEntry>? versionList = null;
             
             // 检查缓存
             if (!forceRefresh)
@@ -2596,11 +2588,11 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             {
                 var cacheData = versionList.Select(v => new CachedVersionEntry
                 {
-                    Id = v.Id,
-                    Type = v.Type,
-                    Url = v.Url,
-                    Time = v.Time,
-                    ReleaseTime = v.ReleaseTime
+                    Id = v.Id ?? string.Empty,
+                    Type = v.Type ?? string.Empty,
+                    Url = v.Url ?? string.Empty,
+                    Time = v.Time ?? string.Empty,
+                    ReleaseTime = v.ReleaseTime ?? string.Empty
                 }).ToList();
                 
                 var cacheFilePath = System.IO.Path.Combine(_fileService.GetLauncherCachePath(), VersionCacheFileName);
@@ -2849,7 +2841,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             // 导航到版本选择页面
             _navigationService.NavigateTo(typeof(ModLoaderSelectorViewModel).FullName!, versionId);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             // 处理异常
         }
@@ -2873,9 +2865,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
-            // 标记Mod标签页已加载过数据
-            _modsLoadedOnce = true;
-            
             // 获取搜索关键词（支持中文转英文）
             var searchKeyword = _translationService.GetEnglishKeywordForSearch(SearchQuery);
             var selectedCategoryTags = GetSelectedModCategoryTags();
@@ -3105,7 +3094,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         {
             try
             {
-                McimTranslationResponse translation = null;
+                McimTranslationResponse? translation = null;
                 Task<McimTranslationResponse?> task;
 
                 // 根据项目ID判断是Modrinth还是CurseForge
@@ -3603,9 +3592,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
-            // 标记资源包标签页已加载过数据
-            _resourcePacksLoadedOnce = true;
-            
             // 获取搜索关键词（支持中文转英文）
             var searchKeyword = _translationService.GetEnglishKeywordForSearch(ResourcePackSearchQuery);
 
@@ -3973,9 +3959,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
-            // 标记光影标签页已加载过数据
-            _shaderPacksLoadedOnce = true;
-
             // 获取搜索关键词（支持中文转英文）
             var searchKeyword = _translationService.GetEnglishKeywordForSearch(ShaderPackSearchQuery);
 
@@ -4343,9 +4326,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
-            // 标记整合包标签页已加载过数据
-            _modpacksLoadedOnce = true;
-            
             // 获取搜索关键词（支持中文转英文）
             var searchKeyword = _translationService.GetEnglishKeywordForSearch(ModpackSearchQuery);
 
@@ -4714,9 +4694,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
-            // 标记数据包标签页已加载过数据
-            _datapacksLoadedOnce = true;
-            
             // 获取搜索关键词（支持中文转英文）
             var searchKeyword = _translationService.GetEnglishKeywordForSearch(DatapackSearchQuery);
 
@@ -5081,9 +5058,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
-            // 标记世界标签页已加载过数据
-            _worldsLoadedOnce = true;
-            
             // 获取搜索关键词（支持中文转英文）
             var searchKeyword = _translationService.GetEnglishKeywordForSearch(WorldSearchQuery);
 

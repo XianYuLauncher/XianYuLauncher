@@ -56,7 +56,7 @@ public sealed class AuthlibInjectorService
     /// 下载authlib-injector（如果需要）
     /// </summary>
     /// <returns>authlib-injector.jar的本地路径</returns>
-    public async Task<string> EnsureAuthlibInjectorAsync()
+        public async Task<string?> EnsureAuthlibInjectorAsync()
     {
         _logger.LogInformation("[AuthlibInjector] ========== 开始检查并下载 authlib-injector ==========");
             
@@ -286,6 +286,11 @@ public sealed class AuthlibInjectorService
             
         // 确保目录存在
         var directory = Path.GetDirectoryName(localPath);
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            throw new InvalidOperationException($"无法确定 authlib-injector 下载目录: {localPath}");
+        }
+
         if (!Directory.Exists(directory))
         {
             _logger.LogDebug("[AuthlibInjector] 创建目录: {Directory}", directory);
@@ -937,21 +942,21 @@ public class ExternalUser
 internal class AuthlibInjectorLatestInfo
 {
     public int build_number { get; set; }
-    public string version { get; set; }
-    public string release_time { get; set; }
-    public string download_url { get; set; }
-    public AuthlibInjectorChecksums checksums { get; set; }
+    public string version { get; set; } = string.Empty;
+    public string release_time { get; set; } = string.Empty;
+    public string download_url { get; set; } = string.Empty;
+    public AuthlibInjectorChecksums checksums { get; set; } = new();
 }
     
 internal class AuthlibInjectorChecksums
 {
-    public string sha256 { get; set; }
+    public string sha256 { get; set; } = string.Empty;
 }
     
 // 内部类：缓存信息
 internal class AuthlibInjectorCache
 {
     public int build_number { get; set; }
-    public string version { get; set; }
-    public string release_time { get; set; }
+    public string version { get; set; } = string.Empty;
+    public string release_time { get; set; } = string.Empty;
 }

@@ -270,7 +270,7 @@
                                                             Opacity="0.6" />
                                                         <TextBlock 
                                                             x:Uid="ProfilePage_ProfileTypeValue" 
-                                                            Text="{x:Bind Mode=OneWay, Converter={StaticResource ProfileTypeConverter}}" 
+                                                            Text="{x:Bind Mode=OneTime, Converter={StaticResource ProfileTypeConverter}}" 
                                                             FontSize="13" 
                                                             Opacity="0.6" 
                                                             FontWeight="SemiBold" />

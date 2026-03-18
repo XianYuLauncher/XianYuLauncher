@@ -87,7 +87,7 @@ public class CurseForgeCacheService
     /// <summary>
     /// 获取缓存的搜索结果
     /// </summary>
-    public async Task<CurseForgeCacheData> GetCachedSearchResultAsync(
+    public async Task<CurseForgeCacheData?> GetCachedSearchResultAsync(
         string resourceType, 
         string query, 
         string loader, 
@@ -151,8 +151,8 @@ public class CurseForgeCacheService
             // 注意：这里我们使用原始 URL 来查找缓存文件
             if (item.IconUrl.Scheme == "file") continue;
 
-            var localPath = GetCachedImagePath(item.IconUrl.ToString());
-            if (File.Exists(localPath))
+            string? localPath = GetCachedImagePath(item.IconUrl.ToString());
+            if (!string.IsNullOrEmpty(localPath) && File.Exists(localPath))
             {
                 // 将 IconUrl 替换为本地文件 URI
                 item.IconUrl = new Uri($"file:///{localPath.Replace('\\', '/')}");
@@ -221,7 +221,7 @@ public class CurseForgeCacheService
             var cacheKey = GenerateCacheKey(resourceType, query, loader, version, category);
             var cacheFilePath = Path.Combine(GetCacheRootPath(), $"{cacheKey}.json");
             
-            CurseForgeCacheData cacheData;
+            CurseForgeCacheData? cacheData;
             
             if (File.Exists(cacheFilePath))
             {
@@ -411,7 +411,7 @@ public class CurseForgeCacheService
     /// <summary>
     /// 获取缓存的图片路径
     /// </summary>
-    public string GetCachedImagePath(string imageUrl)
+    public string? GetCachedImagePath(string imageUrl)
     {
         if (string.IsNullOrEmpty(imageUrl)) return null;
         
@@ -559,11 +559,11 @@ public class CurseForgeCacheService
 public class CurseForgeCacheData
 {
     public DateTime CacheTime { get; set; }
-    public string ResourceType { get; set; }
-    public string Query { get; set; }
-    public string Loader { get; set; }
-    public string Version { get; set; }
-    public string Category { get; set; }
+    public string ResourceType { get; set; } = string.Empty;
+    public string Query { get; set; } = string.Empty;
+    public string Loader { get; set; } = string.Empty;
+    public string Version { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
     public int TotalHits { get; set; }
     public List<ModrinthProject> Items { get; set; } = new();
 }

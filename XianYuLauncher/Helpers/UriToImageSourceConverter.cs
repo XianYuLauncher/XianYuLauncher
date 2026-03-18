@@ -9,9 +9,9 @@ namespace XianYuLauncher.Helpers
     /// </summary>
     public class UriToImageSourceConverter : IValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, string language)
+        public object? Convert(object? value, Type targetType, object? parameter, string language)
         {
-            if (value is Uri uri && uri != null)
+            if (value is Uri uri)
             {
                 try
                 {
@@ -26,7 +26,7 @@ namespace XianYuLauncher.Helpers
             return null;
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, string language)
+        public object? ConvertBack(object? value, Type targetType, object? parameter, string language)
         {
             throw new NotImplementedException();
         }

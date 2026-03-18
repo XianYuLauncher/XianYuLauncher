@@ -109,7 +109,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
                         .Select(modFile =>
                         {
                             var modInfo = new ModInfo(modFile);
-                            modInfo.Icon = null;
+                            modInfo.Icon = string.Empty;
                             return modInfo;
                         })
                         .ToList();
@@ -655,7 +655,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
     {
         try
         {
-            ModrinthVersion modrinthVersion = sourceVersion;
+            ModrinthVersion? modrinthVersion = sourceVersion;
             if (modrinthVersion == null)
             {
                 string sha1Hash = _context.CalculateSHA1(mod.FilePath);

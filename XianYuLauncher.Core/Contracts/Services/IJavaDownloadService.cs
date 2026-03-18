@@ -13,12 +13,12 @@ public class JavaVersionDownloadOption
     /// <summary>
     /// 版本名称 (例如 "17.0.8", "21.0.0")
     /// </summary>
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
     
     /// <summary>
     /// 组件标识 (例如 "java-runtime-gamma")
     /// </summary>
-    public string Component { get; set; }
+    public string Component { get; set; } = string.Empty;
     
     /// <summary>
     /// 显示名称
@@ -52,5 +52,5 @@ public interface IJavaDownloadService
     /// <param name="statusCallback">状态文本回调</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>安装完成后的 Java 可执行文件路径</returns>
-    Task<string> DownloadAndInstallJavaAsync(string component, Action<double> progressCallback, Action<string> statusCallback, CancellationToken cancellationToken = default);
+    Task<string> DownloadAndInstallJavaAsync(string component, Action<double> progressCallback, Action<string>? statusCallback, CancellationToken cancellationToken = default);
 }

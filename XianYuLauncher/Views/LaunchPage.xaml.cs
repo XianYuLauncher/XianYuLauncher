@@ -19,6 +19,7 @@ using XianYuLauncher.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using Serilog;
+using Newtonsoft.Json.Linq;
 
 namespace XianYuLauncher.Views;
 
@@ -34,7 +35,7 @@ public sealed partial class LaunchPage : Page
     private const string DefaultAvatarPath = "ms-appx:///Assets/Icons/Avatars/Steve.png";
     private const string AvatarCacheFolder = AppDataFileConsts.AvatarCacheFolder;
     private readonly INavigationService _navigationService;
-    private BitmapImage _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
+    private BitmapImage? _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
     private int _versionIconLoadRequestId;
     public LaunchPage()
     {
@@ -126,7 +127,7 @@ public sealed partial class LaunchPage : Page
     /// <summary>
     /// 当ViewModel属性变化时触发
     /// </summary>
-    private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         // 当SelectedProfile变化时，重新加载头像
         if (e.PropertyName == nameof(ViewModel.SelectedProfile))
@@ -256,7 +257,7 @@ public sealed partial class LaunchPage : Page
     private void AddVersionMenuItem_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         // 导航到资源下载页面
-        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName);
+        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
     }
 
     /// <summary>
@@ -279,7 +280,7 @@ public sealed partial class LaunchPage : Page
     private void AddProfileMenuItem_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         // 导航到角色页面
-        _navigationService.NavigateTo(typeof(CharacterViewModel).FullName);
+        _navigationService.NavigateTo(typeof(CharacterViewModel).FullName!);
     }
 
     /// <summary>
@@ -288,7 +289,7 @@ public sealed partial class LaunchPage : Page
     private void ViewMoreNews_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         // 导航到新闻列表页面
-        _navigationService.NavigateTo(typeof(NewsListViewModel).FullName);
+        _navigationService.NavigateTo(typeof(NewsListViewModel).FullName!);
     }
 
     private async void NewsCardItem_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)
@@ -533,7 +534,7 @@ public sealed partial class LaunchPage : Page
     /// <summary>
     /// 从缓存加载头像
     /// </summary>
-    private async Task<BitmapImage> LoadAvatarFromCache(string uuid)
+    private async Task<BitmapImage?> LoadAvatarFromCache(string uuid)
     {
         try
         {
@@ -578,23 +579,19 @@ public sealed partial class LaunchPage : Page
             }
 
             var jsonResponse = await response.Content.ReadAsStringAsync();
-            dynamic profileData = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonResponse);
-            if (profileData == null || profileData.properties == null || profileData.properties.Count == 0)
+            var profileData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(jsonResponse);
+            var properties = profileData?["properties"] as JArray;
+            if (properties == null || properties.Count == 0)
             {
                 Log.Warning("[Avatar.LaunchPage] Session API 响应无 properties，URL: {Url}", mojangUri.ToString());
                 return await ProcessSteveAvatarAsync();
             }
 
             // 3. 提取base64编码的textures数据
-            string texturesBase64 = null;
-            foreach (var property in profileData.properties)
-            {
-                if (property.name == "textures")
-                {
-                    texturesBase64 = property.value;
-                    break;
-                }
-            }
+            string? texturesBase64 = properties
+                .OfType<JObject>()
+                .FirstOrDefault(property => string.Equals(property["name"]?.ToString(), "textures", StringComparison.Ordinal))?
+                ["value"]?.ToString();
 
             if (string.IsNullOrEmpty(texturesBase64))
             {
@@ -605,14 +602,10 @@ public sealed partial class LaunchPage : Page
             // 4. 解码base64数据
             byte[] texturesBytes = Convert.FromBase64String(texturesBase64);
             string texturesJson = System.Text.Encoding.UTF8.GetString(texturesBytes);
-            dynamic texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject(texturesJson);
+            var texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(texturesJson);
 
             // 5. 提取皮肤URL
-            string skinUrl = null;
-            if (texturesData != null && texturesData.textures != null && texturesData.textures.SKIN != null)
-            {
-                skinUrl = texturesData.textures.SKIN.url;
-            }
+            string? skinUrl = texturesData?["textures"]?["SKIN"]?["url"]?.ToString();
 
             if (string.IsNullOrEmpty(skinUrl))
             {
@@ -651,7 +644,7 @@ public sealed partial class LaunchPage : Page
     /// <param name="skinUrl">皮肤URL或本地资源URI</param>
     /// <param name="uuid">玩家UUID，用于保存头像到缓存</param>
     /// <returns>裁剪后的头像</returns>
-    private async Task<BitmapImage> CropAvatarFromSkinAsync(string skinUrl, string uuid = null)
+    private async Task<BitmapImage?> CropAvatarFromSkinAsync(string skinUrl, string? uuid = null)
     {
         try
         {
@@ -750,8 +743,8 @@ public sealed partial class LaunchPage : Page
         }
         catch (Exception)
         {
-            // 处理失败时返回null，让调用者处理
-            return null;
+            // 处理失败时回退到原始史蒂夫头像，避免调用方继续处理 null。
+            return new BitmapImage(new Uri(DefaultAvatarPath));
         }
     }
 }

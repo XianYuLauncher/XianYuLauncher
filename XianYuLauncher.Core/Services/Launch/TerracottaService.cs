@@ -30,7 +30,7 @@ namespace XianYuLauncher.Core.Services
         /// </summary>
         /// <param name="progressCallback">下载进度回调</param>
         /// <returns>陶瓦插件可执行文件的本地路径</returns>
-        public async Task<string> EnsureTerracottaAsync(Action<double>? progressCallback = null)
+        public async Task<string?> EnsureTerracottaAsync(Action<double>? progressCallback = null)
         {
             Log.Information("[TerracottaService] 开始检查并下载陶瓦插件");
             
@@ -60,7 +60,7 @@ namespace XianYuLauncher.Core.Services
                 // 4. 检查本地缓存
                 progressCallback?.Invoke(30); // 30% - 检查本地缓存
                 var cacheFile = Path.Combine(_cacheDirectory, TerracottaCacheFile);
-                TerracottaCache cache = null;
+                TerracottaCache? cache = null;
                 
                 if (File.Exists(cacheFile))
                 {
@@ -129,7 +129,7 @@ namespace XianYuLauncher.Core.Services
         /// 获取本地缓存的陶瓦插件路径
         /// </summary>
         /// <returns>本地缓存路径，如果不存在返回null</returns>
-        private string GetCachedTerracottaPath(string architecture)
+        private string? GetCachedTerracottaPath(string architecture)
         {
             // 查找缓存目录中所有匹配当前架构的可执行文件
             string[] executableFiles = Directory.GetFiles(_cacheDirectory, "*.exe");
@@ -193,7 +193,7 @@ namespace XianYuLauncher.Core.Services
         /// <summary>
         /// 获取最新版本信息
         /// </summary>
-        private async Task<TerracottaRelease> GetLatestReleaseInfo(string apiUrl)
+        private async Task<TerracottaRelease?> GetLatestReleaseInfo(string apiUrl)
         {
             try
             {
@@ -311,10 +311,21 @@ namespace XianYuLauncher.Core.Services
                         if (!reader.Entry.IsDirectory)
                         {
                             // 构建目标文件路径
+                            if (string.IsNullOrWhiteSpace(reader.Entry.Key))
+                            {
+                                continue;
+                            }
+
                             string entryDestinationPath = Path.Combine(destinationPath, reader.Entry.Key);
                             
                             // 创建目录
-                            Directory.CreateDirectory(Path.GetDirectoryName(entryDestinationPath));
+                            string? entryDirectory = Path.GetDirectoryName(entryDestinationPath);
+                            if (string.IsNullOrWhiteSpace(entryDirectory))
+                            {
+                                throw new InvalidOperationException($"无法确定解压目标目录: {entryDestinationPath}");
+                            }
+
+                            Directory.CreateDirectory(entryDirectory);
                             
                             // 解压文件
                             using (var entryStream = reader.OpenEntryStream())
@@ -350,31 +361,31 @@ namespace XianYuLauncher.Core.Services
             public int id { get; set; }
             
             [JsonProperty("tag_name")]
-            public string tag_name { get; set; }
+            public string tag_name { get; set; } = null!;
             
             [JsonProperty("name")]
-            public string name { get; set; }
+            public string name { get; set; } = null!;
             
             [JsonProperty("assets")]
-            public List<TerracottaAsset> assets { get; set; }
+            public List<TerracottaAsset> assets { get; set; } = new();
         }
         
         private class TerracottaAsset
         {
             [JsonProperty("name")]
-            public string name { get; set; }
+            public string name { get; set; } = null!;
             
             [JsonProperty("browser_download_url")]
-            public string browser_download_url { get; set; }
+            public string browser_download_url { get; set; } = null!;
         }
         
         private class TerracottaCache
         {
             [JsonProperty("tag_name")]
-            public string tag_name { get; set; }
+            public string tag_name { get; set; } = string.Empty;
             
             [JsonProperty("download_date")]
-            public string download_date { get; set; }
+            public string download_date { get; set; } = string.Empty;
         }
         
         #endregion

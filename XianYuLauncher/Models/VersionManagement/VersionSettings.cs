@@ -8,12 +8,12 @@ public class VersionSettings
     /// <summary>
     /// ModLoader类型（fabric, neoforge, forge）
     /// </summary>
-    public string ModLoaderType { get; set; }
+    public string ModLoaderType { get; set; } = string.Empty;
     
     /// <summary>
     /// ModLoader版本号
     /// </summary>
-    public string ModLoaderVersion { get; set; }
+    public string ModLoaderVersion { get; set; } = string.Empty;
     
     /// <summary>
     /// Optifine版本号
@@ -28,7 +28,7 @@ public class VersionSettings
     /// <summary>
     /// Minecraft版本号
     /// </summary>
-    public string MinecraftVersion { get; set; }
+    public string MinecraftVersion { get; set; } = string.Empty;
     
     /// <summary>
     /// 配置文件创建时间

@@ -70,7 +70,7 @@ public class ModrinthService
 
     public ModrinthService(
         HttpClient httpClient,
-        DownloadSourceFactory downloadSourceFactory = null,
+        DownloadSourceFactory? downloadSourceFactory = null,
         FallbackDownloadManager? fallbackDownloadManager = null,
         IHashLookupCenter? hashLookupCenter = null)
     {
@@ -89,7 +89,7 @@ public class ModrinthService
     /// <summary>
     /// 获取指定下载源对应的User-Agent
     /// </summary>
-    private string GetUserAgent(IDownloadSource source = null)
+    private string GetUserAgent(IDownloadSource? source = null)
     {
         source ??= GetModrinthSource();
         if (source.RequiresModrinthUserAgent)
@@ -107,7 +107,7 @@ public class ModrinthService
     /// <summary>
     /// 创建带有正确User-Agent的HttpRequestMessage
     /// </summary>
-    private HttpRequestMessage CreateRequest(HttpMethod method, string url, IDownloadSource source = null)
+    private HttpRequestMessage CreateRequest(HttpMethod method, string url, IDownloadSource? source = null)
     {
         var request = new HttpRequestMessage(method, url);
         request.Headers.Add("User-Agent", GetUserAgent(source));
@@ -210,7 +210,7 @@ public class ModrinthService
     /// <returns>搜索结果</returns>
     public async Task<ModrinthSearchResult> SearchModsAsync(
         string query = "",
-        List<List<string>> facets = null,
+        List<List<string>>? facets = null,
         string index = "relevance",
         int offset = 0,
         int limit = 20,
@@ -251,7 +251,7 @@ public class ModrinthService
             response.EnsureSuccessStatusCode();
             
             // 解析JSON到对象
-            return JsonSerializer.Deserialize<ModrinthSearchResult>(json);
+            return JsonSerializer.Deserialize<ModrinthSearchResult>(json) ?? new ModrinthSearchResult();
         }
         catch (HttpRequestException ex)
         {
@@ -435,7 +435,7 @@ public class ModrinthService
     /// </summary>
     /// <param name="projectId">项目ID</param>
     /// <returns>项目详情（搜索结果格式）</returns>
-    public async Task<ModrinthProject> GetProjectByIdFromSearchAsync(string projectId)
+    public async Task<ModrinthProject?> GetProjectByIdFromSearchAsync(string projectId)
     {
         if (string.IsNullOrWhiteSpace(projectId)) return null;
 
@@ -562,7 +562,7 @@ public class ModrinthService
               response.EnsureSuccessStatusCode();
               
               var content = await response.Content.ReadAsStringAsync();
-              return JsonSerializer.Deserialize<List<ModrinthTeamMember>>(content);
+              return JsonSerializer.Deserialize<List<ModrinthTeamMember>>(content) ?? new List<ModrinthTeamMember>();
           }
           catch (Exception ex)
           {
@@ -921,7 +921,7 @@ public class ModrinthService
         /// </summary>
         /// <param name="versionId">版本ID</param>
         /// <returns>版本详细信息</returns>
-        public async Task<ModrinthVersion> GetVersionByIdAsync(string versionId)
+        public async Task<ModrinthVersion?> GetVersionByIdAsync(string versionId)
         {
             try
             {
@@ -1167,7 +1167,8 @@ public class ModrinthService
                     // 新增：检查项目ID是否已存在（命中后比较 hash，一致跳过；不一致走替换）
                     if (existingProjectIds != null && !string.IsNullOrEmpty(depVersionInfo.ProjectId))
                     {
-                        if (existingProjectIds.TryGetValue(depVersionInfo.ProjectId, out string localFilePath))
+                            if (existingProjectIds.TryGetValue(depVersionInfo.ProjectId, out string? localFilePath) &&
+                                !string.IsNullOrEmpty(localFilePath))
                         {
                             existingProjectFilePath = localFilePath;
                             System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 命中 ProjectID: 依赖项目={depVersionInfo.ProjectId}, 本地文件={localFilePath}");
@@ -1197,7 +1198,8 @@ public class ModrinthService
                     if (!string.IsNullOrEmpty(existingProjectFilePath))
                     {
                         if (File.Exists(existingProjectFilePath) &&
-                            primaryFile.Hashes.TryGetValue("sha1", out string targetSha1))
+                            primaryFile.Hashes.TryGetValue("sha1", out string? targetSha1) &&
+                            !string.IsNullOrEmpty(targetSha1))
                         {
                             string localSha1 = CalculateSHA1(existingProjectFilePath);
                             if (localSha1.Equals(targetSha1, StringComparison.OrdinalIgnoreCase))
@@ -1230,7 +1232,8 @@ public class ModrinthService
                     if (File.Exists(filePath))
                     {
                         System.Diagnostics.Debug.WriteLine($"  - 文件已存在，检查SHA1");
-                        if (primaryFile.Hashes.TryGetValue("sha1", out string expectedSha1))
+                        if (primaryFile.Hashes.TryGetValue("sha1", out string? expectedSha1) &&
+                            !string.IsNullOrEmpty(expectedSha1))
                         {
                             string existingSha1 = CalculateSHA1(filePath);
                             alreadyExists = existingSha1.Equals(expectedSha1, StringComparison.OrdinalIgnoreCase);
@@ -1394,7 +1397,9 @@ public class ModrinthService
                     cancellationToken.ThrowIfCancellationRequested();
 
                     unresolvedHashes.Remove(kvp.Key);
-                    if (!string.IsNullOrEmpty(kvp.Value.ProjectId) && hashToFilePath.TryGetValue(kvp.Key, out string filePath))
+                    if (!string.IsNullOrEmpty(kvp.Value.ProjectId) &&
+                        hashToFilePath.TryGetValue(kvp.Key, out string? filePath) &&
+                        !string.IsNullOrEmpty(filePath))
                     {
                         result[kvp.Value.ProjectId] = filePath;
                         batchResolvedCount++;
@@ -1416,7 +1421,9 @@ public class ModrinthService
                 try
                 {
                     var versionInfo = await GetVersionFileByHashAsync(hash, "sha1");
-                    if (!string.IsNullOrEmpty(versionInfo?.ProjectId) && hashToFilePath.TryGetValue(hash, out string filePath))
+                    if (!string.IsNullOrEmpty(versionInfo?.ProjectId) &&
+                        hashToFilePath.TryGetValue(hash, out string? filePath) &&
+                        !string.IsNullOrEmpty(filePath))
                     {
                         result[versionInfo.ProjectId] = filePath;
                         singleResolvedCount++;

@@ -31,13 +31,13 @@ public class MicrosoftAuthService
     public class DeviceCodeResponse
     {
         [JsonProperty("device_code")]
-        public string DeviceCode { get; set; }
+        public string DeviceCode { get; set; } = string.Empty;
         
         [JsonProperty("user_code")]
-        public string UserCode { get; set; }
+        public string UserCode { get; set; } = string.Empty;
         
         [JsonProperty("verification_uri")]
-        public string VerificationUri { get; set; }
+        public string VerificationUri { get; set; } = string.Empty;
         
         [JsonProperty("expires_in")]
         public int ExpiresIn { get; set; }
@@ -46,62 +46,62 @@ public class MicrosoftAuthService
         public int Interval { get; set; }
         
         [JsonProperty("message")]
-        public string Message { get; set; }
+        public string Message { get; set; } = string.Empty;
     }
     
     // 令牌响应
     public class TokenResponse
     {
         [JsonProperty("token_type")]
-        public string TokenType { get; set; }
+        public string TokenType { get; set; } = string.Empty;
         
         [JsonProperty("scope")]
-        public string Scope { get; set; }
+        public string Scope { get; set; } = string.Empty;
         
         [JsonProperty("expires_in")]
         public int ExpiresIn { get; set; }
         
         [JsonProperty("access_token")]
-        public string AccessToken { get; set; }
+        public string AccessToken { get; set; } = string.Empty;
         
         [JsonProperty("refresh_token")]
-        public string RefreshToken { get; set; }
+        public string RefreshToken { get; set; } = string.Empty;
         
         [JsonProperty("id_token")]
-        public string IdToken { get; set; }
+        public string IdToken { get; set; } = string.Empty;
         
         // 错误信息
         [JsonProperty("error")]
-        public string Error { get; set; }
+        public string Error { get; set; } = string.Empty;
         
         [JsonProperty("error_description")]
-        public string ErrorDescription { get; set; }
+        public string ErrorDescription { get; set; } = string.Empty;
     }
     
     // Xbox Live身份验证响应
     public class XboxLiveAuthResponse
     {
         [JsonProperty("IssueInstant")]
-        public string IssueInstant { get; set; }
+        public string IssueInstant { get; set; } = string.Empty;
         
         [JsonProperty("NotAfter")]
-        public string NotAfter { get; set; }
+        public string NotAfter { get; set; } = string.Empty;
         
         [JsonProperty("Token")]
-        public string Token { get; set; }
+        public string Token { get; set; } = string.Empty;
         
         [JsonProperty("DisplayClaims")]
-        public XboxLiveDisplayClaims DisplayClaims { get; set; }
+        public XboxLiveDisplayClaims DisplayClaims { get; set; } = null!;
         
         public class XboxLiveDisplayClaims
         {
             [JsonProperty("xui")]
-            public XuiItem[] Xui { get; set; }
+            public XuiItem[] Xui { get; set; } = Array.Empty<XuiItem>();
             
             public class XuiItem
             {
                 [JsonProperty("uhs")]
-                public string Uhs { get; set; }
+                public string Uhs { get; set; } = string.Empty;
             }
         }
     }
@@ -110,26 +110,26 @@ public class MicrosoftAuthService
     public class XstsAuthResponse
     {
         [JsonProperty("IssueInstant")]
-        public string IssueInstant { get; set; }
+        public string IssueInstant { get; set; } = string.Empty;
         
         [JsonProperty("NotAfter")]
-        public string NotAfter { get; set; }
+        public string NotAfter { get; set; } = string.Empty;
         
         [JsonProperty("Token")]
-        public string Token { get; set; }
+        public string Token { get; set; } = string.Empty;
         
         [JsonProperty("DisplayClaims")]
-        public XstsDisplayClaims DisplayClaims { get; set; }
+        public XstsDisplayClaims DisplayClaims { get; set; } = null!;
         
         public class XstsDisplayClaims
         {
             [JsonProperty("xui")]
-            public XuiItem[] Xui { get; set; }
+            public XuiItem[] Xui { get; set; } = Array.Empty<XuiItem>();
             
             public class XuiItem
             {
                 [JsonProperty("uhs")]
-                public string Uhs { get; set; }
+                public string Uhs { get; set; } = string.Empty;
             }
         }
     }
@@ -138,16 +138,16 @@ public class MicrosoftAuthService
     public class MinecraftAuthResponse
     {
         [JsonProperty("username")]
-        public string Username { get; set; }
+        public string Username { get; set; } = string.Empty;
         
         [JsonProperty("roles")]
-        public string[] Roles { get; set; }
+        public string[] Roles { get; set; } = Array.Empty<string>();
         
         [JsonProperty("access_token")]
-        public string AccessToken { get; set; }
+        public string AccessToken { get; set; } = string.Empty;
         
         [JsonProperty("token_type")]
-        public string TokenType { get; set; }
+        public string TokenType { get; set; } = string.Empty;
         
         [JsonProperty("expires_in")]
         public int ExpiresIn { get; set; }
@@ -157,21 +157,21 @@ public class MicrosoftAuthService
     public class EntitlementsResponse
     {
         [JsonProperty("items")]
-        public EntitlementItem[] Items { get; set; }
+        public EntitlementItem[] Items { get; set; } = Array.Empty<EntitlementItem>();
         
         [JsonProperty("signature")]
-        public string Signature { get; set; }
+        public string Signature { get; set; } = string.Empty;
         
         [JsonProperty("keyId")]
-        public string KeyId { get; set; }
+        public string KeyId { get; set; } = string.Empty;
         
         public class EntitlementItem
         {
             [JsonProperty("name")]
-            public string Name { get; set; }
+            public string Name { get; set; } = string.Empty;
             
             [JsonProperty("signature")]
-            public string Signature { get; set; }
+            public string Signature { get; set; } = string.Empty;
         }
     }
     
@@ -179,48 +179,48 @@ public class MicrosoftAuthService
     public class ProfileResponse
     {
         [JsonProperty("id")]
-        public string Id { get; set; }
+        public string Id { get; set; } = string.Empty;
         
         [JsonProperty("name")]
-        public string Name { get; set; }
+        public string Name { get; set; } = string.Empty;
         
         [JsonProperty("skins")]
-        public Skin[] Skins { get; set; }
+        public Skin[] Skins { get; set; } = Array.Empty<Skin>();
         
         [JsonProperty("capes")]
-        public Cape[] Capes { get; set; }
+        public Cape[] Capes { get; set; } = Array.Empty<Cape>();
         
         public class Skin
         {
             [JsonProperty("id")]
-            public string Id { get; set; }
+            public string Id { get; set; } = string.Empty;
             
             [JsonProperty("state")]
-            public string State { get; set; }
+            public string State { get; set; } = string.Empty;
             
             [JsonProperty("url")]
-            public string Url { get; set; }
+            public string Url { get; set; } = string.Empty;
             
             [JsonProperty("variant")]
-            public string Variant { get; set; }
+            public string Variant { get; set; } = string.Empty;
             
             [JsonProperty("alias")]
-            public string Alias { get; set; }
+            public string Alias { get; set; } = string.Empty;
         }
         
         public class Cape
         {
             [JsonProperty("id")]
-            public string Id { get; set; }
+            public string Id { get; set; } = string.Empty;
             
             [JsonProperty("state")]
-            public string State { get; set; }
+            public string State { get; set; } = string.Empty;
             
             [JsonProperty("url")]
-            public string Url { get; set; }
+            public string Url { get; set; } = string.Empty;
             
             [JsonProperty("alias")]
-            public string Alias { get; set; }
+            public string Alias { get; set; } = string.Empty;
         }
     }
     
@@ -228,20 +228,20 @@ public class MicrosoftAuthService
     public class LoginResult
     {
         public bool Success { get; set; }
-        public string Username { get; set; }
-        public string Uuid { get; set; }
-        public string AccessToken { get; set; }
-        public string RefreshToken { get; set; }
-        public string ErrorMessage { get; set; }
+        public string Username { get; set; } = string.Empty;
+        public string Uuid { get; set; } = string.Empty;
+        public string AccessToken { get; set; } = string.Empty;
+        public string RefreshToken { get; set; } = string.Empty;
+        public string ErrorMessage { get; set; } = string.Empty;
         
         // 扩展字段：玩家完整信息
-        public ProfileResponse.Skin[] Skins { get; set; }
-        public ProfileResponse.Cape[] Capes { get; set; }
-        public string IssueInstant { get; set; }
-        public string NotAfter { get; set; }
-        public string[] Roles { get; set; }
+        public ProfileResponse.Skin[] Skins { get; set; } = Array.Empty<ProfileResponse.Skin>();
+        public ProfileResponse.Cape[] Capes { get; set; } = Array.Empty<ProfileResponse.Cape>();
+        public string IssueInstant { get; set; } = string.Empty;
+        public string NotAfter { get; set; } = string.Empty;
+        public string[] Roles { get; set; } = Array.Empty<string>();
         public int ExpiresIn { get; set; }
-        public string TokenType { get; set; }
+        public string TokenType { get; set; } = string.Empty;
     }
     
     #endregion
@@ -250,7 +250,7 @@ public class MicrosoftAuthService
     /// 获取微软登录设备代码
     /// </summary>
     /// <returns>设备代码响应</returns>
-    public async Task<DeviceCodeResponse> GetMicrosoftDeviceCodeAsync()
+        public async Task<DeviceCodeResponse?> GetMicrosoftDeviceCodeAsync()
     {
         try
         {
@@ -397,8 +397,8 @@ public class MicrosoftAuthService
             var request = context.Request;
             var response = context.Response;
 
-            string code = request.QueryString["code"];
-            string error = request.QueryString["error"];
+            string? code = request.QueryString["code"];
+            string? error = request.QueryString["error"];
 
             // 返回简单的响应页面
             string responseString = "<html><head><meta charset='utf-8'><title>Login Result</title><style>body{font-family:'Segoe UI',sans-serif;text-align:center;padding:50px;}</style></head><body>";
@@ -439,7 +439,7 @@ public class MicrosoftAuthService
         }
     }
 
-    private async Task<TokenResponse> ExchangeCodeForTokenAsync(string code, string redirectUri)
+    private async Task<TokenResponse?> ExchangeCodeForTokenAsync(string code, string redirectUri)
     {
         try
         {
@@ -585,7 +585,7 @@ public class MicrosoftAuthService
     /// 获取设备代码对
     /// </summary>
     /// <returns>设备代码响应</returns>
-    private async Task<DeviceCodeResponse> GetDeviceCodeAsync()
+    private async Task<DeviceCodeResponse?> GetDeviceCodeAsync()
     {
         try
         {
@@ -618,7 +618,7 @@ public class MicrosoftAuthService
     /// <param name="interval">轮询间隔（秒）</param>
     /// <param name="expiresIn">过期时间（秒）</param>
     /// <returns>令牌响应</returns>
-    private async Task<TokenResponse> PollAuthorizationStatusAsync(string deviceCode, int interval, int expiresIn)
+    private async Task<TokenResponse?> PollAuthorizationStatusAsync(string deviceCode, int interval, int expiresIn)
     {
         try
         {
@@ -639,6 +639,10 @@ public class MicrosoftAuthService
                 
                 var responseContent = await response.Content.ReadAsStringAsync();
                 var tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(responseContent);
+                if (tokenResponse == null)
+                {
+                    throw new InvalidOperationException("微软设备登录令牌响应解析失败");
+                }
                 
                 if (string.IsNullOrEmpty(tokenResponse.Error) || tokenResponse.Error == "authorization_pending")
                 {
@@ -730,7 +734,7 @@ public class MicrosoftAuthService
         catch (Exception ex)
         {
             Log.Error(ex, "Xbox Live身份验证失败");
-            return (null, null);
+            return (null, string.Empty);
         }
     }
     
@@ -794,7 +798,7 @@ public class MicrosoftAuthService
         catch (Exception ex)
         {
             Log.Error(ex, "XSTS身份验证失败");
-            return (null, null);
+            return (null, string.Empty);
         }
     }
     
@@ -804,7 +808,7 @@ public class MicrosoftAuthService
     /// <param name="uhs">用户哈希值</param>
     /// <param name="xstsToken">XSTS令牌</param>
     /// <returns>Minecraft身份验证响应</returns>
-    private async Task<(MinecraftAuthResponse, string)> LoginWithXboxAsync(string uhs, string xstsToken)
+    private async Task<(MinecraftAuthResponse?, string)> LoginWithXboxAsync(string uhs, string xstsToken)
     {
         try
         {
@@ -855,7 +859,7 @@ public class MicrosoftAuthService
     /// </summary>
     /// <param name="minecraftToken">Minecraft访问令牌</param>
     /// <returns>游戏拥有情况响应</returns>
-    private async Task<(EntitlementsResponse, string)> CheckEntitlementsAsync(string minecraftToken)
+    private async Task<(EntitlementsResponse?, string)> CheckEntitlementsAsync(string minecraftToken)
     {
         try
         {
@@ -889,7 +893,7 @@ public class MicrosoftAuthService
         catch (Exception ex)
         {
             Log.Error(ex, "检查游戏拥有情况失败");
-            return (null, null);
+            return (null, string.Empty);
         }
     }
     
@@ -1065,7 +1069,7 @@ public class MicrosoftAuthService
         catch (Exception ex)
         {
             Log.Error(ex, "获取玩家信息失败");
-            return (null, null);
+            return (null, string.Empty);
         }
     }
     
