@@ -72,7 +72,7 @@ public class ModrinthCacheService
     /// <summary>
     /// 获取缓存的搜索结果
     /// </summary>
-    public async Task<ModrinthCacheData> GetCachedSearchResultAsync(
+    public async Task<ModrinthCacheData?> GetCachedSearchResultAsync(
         string resourceType, 
         string query, 
         string loader, 
@@ -137,8 +137,8 @@ public class ModrinthCacheService
             // 如果 IconUrl 已经是 file://Schema，说明已经被替换过，或者需要小心处理
             if (item.IconUrl.Scheme == "file") continue;
 
-            var localPath = GetCachedImagePath(item.IconUrl.ToString());
-            if (File.Exists(localPath))
+            string? localPath = GetCachedImagePath(item.IconUrl.ToString());
+            if (!string.IsNullOrEmpty(localPath) && File.Exists(localPath))
             {
                 // 将 IconUrl 替换为本地文件 URI
                 // 使用 AbsoluteUri 确保格式正确
@@ -208,7 +208,7 @@ public class ModrinthCacheService
             var cacheKey = GenerateCacheKey(resourceType, query, loader, version, category);
             var cacheFilePath = Path.Combine(GetCacheRootPath(), $"{cacheKey}.json");
             
-            ModrinthCacheData cacheData;
+            ModrinthCacheData? cacheData;
             
             if (File.Exists(cacheFilePath))
             {
@@ -319,7 +319,7 @@ public class ModrinthCacheService
     /// <summary>
     /// 获取缓存的图片路径
     /// </summary>
-    public string GetCachedImagePath(string imageUrl)
+    public string? GetCachedImagePath(string imageUrl)
     {
         if (string.IsNullOrEmpty(imageUrl)) return null;
         

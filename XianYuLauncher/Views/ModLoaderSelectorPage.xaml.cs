@@ -109,7 +109,7 @@ public sealed partial class ModLoaderSelectorPage : Page
     /// <typeparam name="T">父元素类型</typeparam>
     /// <param name="element">子元素</param>
     /// <returns>父元素或null</returns>
-    private T FindParent<T>(Microsoft.UI.Xaml.DependencyObject element) where T : Microsoft.UI.Xaml.DependencyObject
+    private T? FindParent<T>(Microsoft.UI.Xaml.DependencyObject element) where T : Microsoft.UI.Xaml.DependencyObject
     {
         while (element != null)
         {

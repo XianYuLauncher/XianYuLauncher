@@ -34,7 +34,7 @@ public partial class MapInfo : ObservableObject
     /// 地图图标路径
     /// </summary>
     [ObservableProperty]
-    private string _icon;
+    private string _icon = string.Empty;
     
     /// <summary>
     /// 地图大小（格式化字符串，如 "125 MB"）

@@ -25,7 +25,6 @@ using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Models;
-using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Models.VersionManagement;
 using Microsoft.UI.Xaml;
 using XianYuLauncher.Features.VersionManagement.Services;
@@ -2721,7 +2720,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                         
                         OnPropertyChanged(nameof(IsSaveListEmpty));
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                     }
                 });
@@ -2731,7 +2730,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     saveInfos,
                     _pageCancellationTokenSource?.Token ?? CancellationToken.None);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
             }
             

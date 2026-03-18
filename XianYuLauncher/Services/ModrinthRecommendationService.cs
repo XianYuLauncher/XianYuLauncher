@@ -28,7 +28,7 @@ public class ModrinthRecommendationService
     
     public ModrinthRecommendationService(
         IFileService fileService, 
-        DownloadSourceFactory downloadSourceFactory = null,
+        DownloadSourceFactory? downloadSourceFactory = null,
         FallbackDownloadManager? fallbackDownloadManager = null)
     {
         _fileService = fileService;

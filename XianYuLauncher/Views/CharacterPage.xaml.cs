@@ -1,4 +1,4 @@
-using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Input; using Microsoft.UI.Xaml.Navigation; using Microsoft.UI.Xaml.Media; using XianYuLauncher.Contracts.Services; using XianYuLauncher.ViewModels; using Microsoft.UI.Xaml.Media.Imaging; using System; using System.Linq; using System.IO; using System.Net.Http; using System.Net.Http.Headers; using System.Threading.Tasks; using Windows.ApplicationModel.DataTransfer; using Windows.Storage; using Windows.Storage.Streams; using Microsoft.Graphics.Canvas; using Microsoft.Graphics.Canvas.Geometry; using Microsoft.Graphics.Canvas.UI.Xaml; using System.Diagnostics; using XianYuLauncher.Helpers; using Serilog;
+using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Input; using Microsoft.UI.Xaml.Navigation; using Microsoft.UI.Xaml.Media; using XianYuLauncher.Contracts.Services; using XianYuLauncher.ViewModels; using Microsoft.UI.Xaml.Media.Imaging; using System; using System.Linq; using System.IO; using System.Net.Http; using System.Net.Http.Headers; using System.Threading.Tasks; using Windows.ApplicationModel.DataTransfer; using Windows.Storage; using Windows.Storage.Streams; using Microsoft.Graphics.Canvas; using Microsoft.Graphics.Canvas.Geometry; using Microsoft.Graphics.Canvas.UI.Xaml; using System.Diagnostics; using XianYuLauncher.Helpers; using Serilog; using Newtonsoft.Json.Linq;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -19,7 +19,7 @@ namespace XianYuLauncher.Views
         private readonly IUiDispatcher _uiDispatcher;
         private readonly HttpClient _httpClient = new HttpClient();
         private const string AvatarCacheFolder = AppDataFileConsts.AvatarCacheFolder;
-        private BitmapImage _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
+        private BitmapImage? _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
 
         public CharacterPage()
         {
@@ -51,7 +51,7 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 当ViewModel属性变化时触发
         /// </summary>
-        private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             // 当角色列表替换时，重新加载所有头像
             if (e.PropertyName == nameof(ViewModel.Profiles))
@@ -65,7 +65,7 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 当角色列表内容变化时触发（添加、删除等）
         /// </summary>
-        private void Profiles_CollectionChanged(object sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        private void Profiles_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
             // 当添加新角色时，重新加载所有头像
             if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Add)
@@ -223,7 +223,7 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 从缓存加载头像
         /// </summary>
-        private async Task<BitmapImage> LoadAvatarFromCache(string uuid)
+        private async Task<BitmapImage?> LoadAvatarFromCache(string uuid)
         {
             try
             {
@@ -395,24 +395,25 @@ namespace XianYuLauncher.Views
                 // 2. 解析JSON响应
                 var jsonResponse = await response.Content.ReadAsStringAsync();
                 Debug.WriteLine($"[角色Page] API响应内容: {jsonResponse}");
-                dynamic profileData = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonResponse);
-                if (profileData == null || profileData.properties == null || profileData.properties.Count == 0)
+                var profileData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(jsonResponse);
+                var properties = profileData?["properties"] as JArray;
+                if (properties == null || properties.Count == 0)
                 {
                     Log.Warning("[Avatar.CharacterPage] Session API 响应无 properties，URL: {Url}", mojangUri.ToString());
                     return await GetDefaultSteveAvatarAsync();
                 }
                 
                 // 3. 提取base64编码的textures数据
-                string texturesBase64 = null;
-                foreach (var property in profileData.properties)
+                string? texturesBase64 = properties
+                    .OfType<JObject>()
+                    .FirstOrDefault(property => string.Equals(property["name"]?.ToString(), "textures", StringComparison.Ordinal))?
+                    ["value"]?.ToString();
+
+                if (!string.IsNullOrEmpty(texturesBase64))
                 {
-                    if (property.name == "textures")
-                    {
-                        texturesBase64 = property.value;
-                        Debug.WriteLine($"[角色Page] 提取到textures的base64数据: {texturesBase64.Substring(0, Math.Min(50, texturesBase64.Length))}...");
-                        break;
-                    }
+                    Debug.WriteLine($"[角色Page] 提取到textures的base64数据: {texturesBase64.Substring(0, Math.Min(50, texturesBase64.Length))}...");
                 }
+
                 if (string.IsNullOrEmpty(texturesBase64))
                 {
                     Debug.WriteLine($"[角色Page] 未找到textures属性，使用默认史蒂夫图标");
@@ -423,13 +424,12 @@ namespace XianYuLauncher.Views
                 byte[] texturesBytes = Convert.FromBase64String(texturesBase64);
                 string texturesJson = System.Text.Encoding.UTF8.GetString(texturesBytes);
                 Debug.WriteLine($"[角色Page] 解码后的textures JSON: {texturesJson}");
-                dynamic texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject(texturesJson);
+                var texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(texturesJson);
                 
                 // 5. 提取皮肤URL
-                string skinUrl = null;
-                if (texturesData != null && texturesData.textures != null && texturesData.textures.SKIN != null)
+                string? skinUrl = texturesData?["textures"]?["SKIN"]?["url"]?.ToString();
+                if (!string.IsNullOrEmpty(skinUrl))
                 {
-                    skinUrl = texturesData.textures.SKIN.url;
                     Log.Information("[Avatar.CharacterPage] 解析到皮肤 URL: {SkinUrl}", skinUrl);
                 }
                 if (string.IsNullOrEmpty(skinUrl))
@@ -496,7 +496,7 @@ namespace XianYuLauncher.Views
         /// <param name="skinUrl">皮肤URL或本地资源URI</param>
         /// <param name="uuid">玩家UUID，用于保存头像到缓存</param>
         /// <returns>裁剪后的头像</returns>
-        private async Task<BitmapImage> CropAvatarFromSkinAsync(string skinUrl, string uuid = null)
+        private async Task<BitmapImage?> CropAvatarFromSkinAsync(string skinUrl, string? uuid = null)
         {
             try
             {
@@ -552,7 +552,7 @@ namespace XianYuLauncher.Views
         /// 处理史蒂夫头像，使用Win2D确保清晰显示
         /// </summary>
         /// <returns>处理后的史蒂夫头像</returns>
-        private async Task<BitmapImage> ProcessSteveAvatarAsync()
+        private async Task<BitmapImage?> ProcessSteveAvatarAsync()
         {
             try
             {
@@ -818,7 +818,7 @@ namespace XianYuLauncher.Views
         /// <param name="name">元素名称（可选）</param>
         /// <param name="additionalCondition">额外条件（可选）</param>
         /// <returns>找到的元素列表</returns>
-        private List<T> FindAllChildren<T>(DependencyObject parent, string name = null, Func<T, bool> additionalCondition = null) where T : FrameworkElement
+        private List<T> FindAllChildren<T>(DependencyObject parent, string? name = null, Func<T, bool>? additionalCondition = null) where T : FrameworkElement
         {
             var results = new List<T>();
             
@@ -857,7 +857,7 @@ namespace XianYuLauncher.Views
         /// <param name="name">元素名称（可选）</param>
         /// <param name="additionalCondition">额外条件（可选）</param>
         /// <returns>找到的元素，或null</returns>
-        private T FindChild<T>(DependencyObject parent, string name = null, Func<T, bool> additionalCondition = null) where T : FrameworkElement
+        private T? FindChild<T>(DependencyObject parent, string? name = null, Func<T, bool>? additionalCondition = null) where T : FrameworkElement
         {
             if (parent == null)
                 return null;
@@ -1115,7 +1115,7 @@ namespace XianYuLauncher.Views
                        response.StatusCode == System.Net.HttpStatusCode.Found ||
                        response.StatusCode == System.Net.HttpStatusCode.SeeOther)
                 {
-                    string redirectUrl = response.Headers.Location?.ToString();
+                    string? redirectUrl = response.Headers.Location?.ToString();
                     if (string.IsNullOrEmpty(redirectUrl)) break;
                     
                     // 处理相对重定向URL
@@ -1135,7 +1135,7 @@ namespace XianYuLauncher.Views
                 // 4. 检查ALI头
                 if (response.Headers.TryGetValues("X-Authlib-Injector-API-Location", out var aliValues))
                 {
-                    string aliUrl = aliValues.FirstOrDefault();
+                    string? aliUrl = aliValues.FirstOrDefault();
                     if (!string.IsNullOrEmpty(aliUrl))
                     {
                         // 处理相对URL
@@ -1189,7 +1189,7 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 获取Yggdrasil服务器元数据
         /// </summary>
-        private async Task<YggdrasilMetadata> GetYggdrasilMetadataAsync(string authServerUrl)
+        private async Task<YggdrasilMetadata?> GetYggdrasilMetadataAsync(string authServerUrl)
         {
             try
             {
@@ -1404,16 +1404,34 @@ namespace XianYuLauncher.Views
                 }
 
                 // 2. 解析可用角色
-                var availableProfiles = new List<ExternalProfile>();
-                foreach (var profile in authResponse.availableProfiles)
+                string? accessToken = authResponse["accessToken"]?.ToString();
+                string? clientToken = authResponse["clientToken"]?.ToString();
+                var availableProfilesToken = authResponse["availableProfiles"] as JArray;
+
+                if (string.IsNullOrWhiteSpace(accessToken) || string.IsNullOrWhiteSpace(clientToken) || availableProfilesToken == null)
                 {
+                    Debug.WriteLine("[角色Page] 外置登录失败: 认证响应缺少必要字段");
+                    await ShowLoginErrorDialogAsync("外置登录失败: 认证服务器响应不完整");
+                    return;
+                }
+
+                var availableProfiles = new List<ExternalProfile>();
+                foreach (var profile in availableProfilesToken.OfType<JObject>())
+                {
+                    string? profileId = profile["id"]?.ToString();
+                    string? profileName = profile["name"]?.ToString();
+                    if (string.IsNullOrWhiteSpace(profileId) || string.IsNullOrWhiteSpace(profileName))
+                    {
+                        continue;
+                    }
+
                     availableProfiles.Add(new ExternalProfile
                     {
-                        Id = profile.id.ToString(),
-                        Name = profile.name.ToString(),
+                        Id = profileId,
+                        Name = profileName,
                         AuthServer = authServer,
-                        AccessToken = authResponse.accessToken.ToString(),
-                        ClientToken = authResponse.clientToken.ToString()
+                        AccessToken = accessToken,
+                        ClientToken = clientToken
                     });
                 }
 
@@ -1483,7 +1501,7 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 发送Yggdrasil认证请求
         /// </summary>
-        private async Task<dynamic> AuthenticateWithYggdrasilAsync(string authServer, string username, string password)
+        private async Task<JObject?> AuthenticateWithYggdrasilAsync(string authServer, string username, string password)
         {
             try
             {
@@ -1530,7 +1548,7 @@ namespace XianYuLauncher.Views
                 // 解析响应
                 string responseJson = await response.Content.ReadAsStringAsync();
                 Debug.WriteLine($"[角色Page] 认证响应: {responseJson}");
-                return Newtonsoft.Json.JsonConvert.DeserializeObject(responseJson);
+                return Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(responseJson);
             }
             catch (Exception ex)
             {
@@ -1658,7 +1676,7 @@ namespace XianYuLauncher.Views
                     profile.Name, profile.Id, profile.AuthServer ?? "(null)");
                 
                 // 外置登录角色，使用用户提供的认证服务器
-                string authServer = profile.AuthServer;
+                string? authServer = profile.AuthServer;
                 if (string.IsNullOrEmpty(authServer))
                 {
                     Log.Warning("[Avatar.CharacterPage] 外置角色 AuthServer 为空，角色: {Name}", profile.Name);

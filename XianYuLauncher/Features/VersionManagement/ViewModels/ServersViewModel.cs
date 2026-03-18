@@ -204,7 +204,7 @@ public partial class ServersViewModel : ObservableObject
             ServerPort = port
         };
 
-        _navigationService.NavigateTo(typeof(LaunchViewModel).FullName, param);
+        _navigationService.NavigateTo(typeof(LaunchViewModel).FullName!, param);
     }
 
     [RelayCommand]

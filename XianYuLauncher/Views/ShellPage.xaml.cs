@@ -171,8 +171,14 @@ public sealed partial class ShellPage : Page
                 var ext = System.IO.Path.GetExtension(item.Path ?? string.Empty)?.ToLowerInvariant();
                 if (ext == FileExtensionConsts.Mrpack || ext == FileExtensionConsts.Zip)
                 {
+                    var itemPath = item.Path;
+                    if (string.IsNullOrEmpty(itemPath))
+                    {
+                        continue;
+                    }
+
                     var navigationService = App.GetService<Contracts.Services.INavigationService>();
-                    navigationService?.NavigateTo(typeof(ViewModels.VersionListViewModel).FullName);
+                    navigationService?.NavigateTo(typeof(ViewModels.VersionListViewModel).FullName!);
 
                     _uiDispatcher.EnqueueAsync(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
                     {
@@ -181,7 +187,7 @@ public sealed partial class ShellPage : Page
                             var vm = App.GetService<ViewModels.VersionListViewModel>();
                             if (vm != null)
                             {
-                                await vm.ImportModpackFromPathAsync(item.Path);
+                                await vm.ImportModpackFromPathAsync(itemPath);
                             }
                         }
                         catch (Exception ex)
@@ -204,7 +210,7 @@ public sealed partial class ShellPage : Page
                     if (!string.IsNullOrEmpty(draggedText))
                     {
                         var navigationService = App.GetService<Contracts.Services.INavigationService>();
-                        navigationService?.NavigateTo(typeof(ViewModels.CharacterViewModel).FullName);
+                        navigationService?.NavigateTo(typeof(ViewModels.CharacterViewModel).FullName!);
 
                         _uiDispatcher.EnqueueAsync(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
                         {
@@ -327,7 +333,7 @@ public sealed partial class ShellPage : Page
         }
     }
 
-    private void OnMotionSettingsChanged(object sender, EventArgs e)
+    private void OnMotionSettingsChanged(object? sender, EventArgs e)
     {
         _uiDispatcher.TryEnqueue(() => LoadMotionSettingsAsync());
     }

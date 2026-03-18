@@ -26,7 +26,8 @@
     <AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
     <!--<PackageCertificateThumbprint>327A38EBE17C4905857F79FF203FE85A32C3EBA0</PackageCertificateThumbprint>-->
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
-    <NoWarn>$(NoWarn);MVVMTK0045</NoWarn>
+        <!-- WinUIEx.WindowEx 会在 XAML 生成的 XamlTypeInfo.g.cs 中引入已过时的 WinUIEx.Icon 类型给，故忽略 CS0612 警告。 -->
+        <NoWarn>$(NoWarn);MVVMTK0045;0612</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -98,7 +99,7 @@
   <ItemGroup>
     <Folder Include="plugins\" />
   </ItemGroup>
-  
+
   <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
   </PropertyGroup>

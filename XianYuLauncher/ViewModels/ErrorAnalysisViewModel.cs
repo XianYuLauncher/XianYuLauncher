@@ -307,7 +307,7 @@ namespace XianYuLauncher.ViewModels
                 : string.Empty;
 
             var modrinthService = App.GetService<XianYuLauncher.Core.Services.ModrinthService>();
-            List<List<string>> facets = null;
+            List<List<string>>? facets = null;
             if (!string.IsNullOrWhiteSpace(loader))
             {
                 facets = new List<List<string>>
@@ -701,7 +701,7 @@ namespace XianYuLauncher.ViewModels
         private bool _isUpdateScheduled = false;
         
         // 用于存储当前崩溃分析的取消令牌
-        private System.Threading.CancellationTokenSource _aiAnalysisCts = null;
+        private System.Threading.CancellationTokenSource? _aiAnalysisCts;
 
         // 设置日志数据
     public void SetLogData(string launchCommand, List<string> gameOutput, List<string> gameError)

@@ -761,10 +761,10 @@
                                                             <Border CornerRadius="4" Width="24" Height="24">
                                                                 <Image Source="{Binding IconUrl, Mode=OneWay}" Stretch="UniformToFill"/>
                                                             </Border>
-                                                            <TextBlock x:Name="ShaderTitleText" Grid.Column="1" Text="{x:Bind DisplayTitle, Mode=OneWay}"
+                                                            <TextBlock x:Name="ShaderTitleText" Grid.Column="1" Text="{x:Bind DisplayTitle, Mode=OneTime}"
                                                                        FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
                                                                 <ToolTipService.ToolTip>
-                                                                    <ToolTip Content="{x:Bind DisplayTitle, Mode=OneWay}"
+                                                                    <ToolTip Content="{x:Bind DisplayTitle, Mode=OneTime}"
                                                                              IsEnabled="{x:Bind ShaderTitleText.IsTextTrimmed, Mode=OneWay}" />
                                                                 </ToolTipService.ToolTip>
                                                             </TextBlock>
@@ -984,10 +984,10 @@
                                                             <Border CornerRadius="4" Width="24" Height="24">
                                                                 <Image Source="{Binding IconUrl, Mode=OneWay}" Stretch="UniformToFill"/>
                                                             </Border>
-                                                            <TextBlock x:Name="ResourcePackTitleText" Grid.Column="1" Text="{x:Bind DisplayTitle, Mode=OneWay}"
+                                                            <TextBlock x:Name="ResourcePackTitleText" Grid.Column="1" Text="{x:Bind DisplayTitle, Mode=OneTime}"
                                                                        FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
                                                                 <ToolTipService.ToolTip>
-                                                                    <ToolTip Content="{x:Bind DisplayTitle, Mode=OneWay}"
+                                                                    <ToolTip Content="{x:Bind DisplayTitle, Mode=OneTime}"
                                                                              IsEnabled="{x:Bind ResourcePackTitleText.IsTextTrimmed, Mode=OneWay}" />
                                                                 </ToolTipService.ToolTip>
                                                             </TextBlock>

@@ -11,6 +11,7 @@ using Windows.Storage;
 using Windows.Storage.Streams;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Helpers;
+using Newtonsoft.Json.Linq;
 
 namespace XianYuLauncher.Views
 {
@@ -31,7 +32,7 @@ namespace XianYuLauncher.Views
             ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         }
 
-        private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ViewModel.CurrentPageIndex))
             {
@@ -239,8 +240,8 @@ namespace XianYuLauncher.Views
 
                 if (string.IsNullOrEmpty(ViewModel.ProfileName)) return;
                 
-                string uuid = null;
-                string authServer = null;
+                string? uuid = null;
+                string? authServer = null;
 
                 if (ViewModel.IsExternalLogin)
                 {
@@ -276,7 +277,7 @@ namespace XianYuLauncher.Views
             }
         }
 
-        private async Task<string> GetUuidFromMojangApiAsync(string name)
+        private async Task<string?> GetUuidFromMojangApiAsync(string name)
         {
              try 
              {
@@ -285,15 +286,15 @@ namespace XianYuLauncher.Views
                 if (response.IsSuccessStatusCode)
                 {
                     var json = await response.Content.ReadAsStringAsync();
-                    dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
-                    return data.id;
+                    var data = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(json);
+                    return data?["id"]?.ToString();
                 }
              }
              catch {}
              return null;
         }
 
-        private async Task LoadAvatarFromNetworkAsync(string authServer, string uuid)
+        private async Task LoadAvatarFromNetworkAsync(string? authServer, string uuid)
         { 
             try
             {
@@ -328,37 +329,26 @@ namespace XianYuLauncher.Views
             catch {}
         }
 
-        private async Task<BitmapImage> GetAvatarFromApiAsync(Uri sessionServerUri)
+        private async Task<BitmapImage?> GetAvatarFromApiAsync(Uri sessionServerUri)
         {
              try
              {
                 var response = await _httpClient.GetStringAsync(sessionServerUri);
-                dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(response);
+                var data = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(response);
                 
-                string textureProperty = null;
-                if (data.properties != null)
-                {
-                    foreach(var prop in data.properties)
-                    {
-                        if (prop.name == "textures")
-                        {
-                            textureProperty = prop.value;
-                            break;
-                        }
-                    }
-                }
+                var properties = data?["properties"] as JArray;
+                string? textureProperty = properties
+                    ?.OfType<JObject>()
+                    .FirstOrDefault(prop => string.Equals(prop["name"]?.ToString(), "textures", StringComparison.Ordinal))?
+                    ["value"]?.ToString();
                 
                 if (string.IsNullOrEmpty(textureProperty)) return null;
                 
                 var jsonBytes = Convert.FromBase64String(textureProperty);
                 var json = System.Text.Encoding.UTF8.GetString(jsonBytes);
-                dynamic textureData = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+                var textureData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(json);
                 
-                string skinUrl = null;
-                if (textureData.textures != null && textureData.textures.SKIN != null)
-                {
-                    skinUrl = textureData.textures.SKIN.url;
-                }
+                string? skinUrl = textureData?["textures"]?["SKIN"]?["url"]?.ToString();
                 
                 if (string.IsNullOrEmpty(skinUrl)) return null;
                 
@@ -370,7 +360,7 @@ namespace XianYuLauncher.Views
              }
         }
 
-        private async Task<BitmapImage> CropAvatarFromSkinAsync(string skinUrl)
+        private async Task<BitmapImage?> CropAvatarFromSkinAsync(string skinUrl)
         {
             try
             {

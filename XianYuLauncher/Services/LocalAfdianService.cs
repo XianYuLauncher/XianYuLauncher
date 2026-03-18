@@ -36,7 +36,7 @@ public class LocalAfdianService : IAfdianService
                 .Where(s => !string.IsNullOrWhiteSpace(s.Name))
                 .Select(s => new AfdianSponsor
                 {
-                    Name = s.Name.Trim(),
+                    Name = s.Name?.Trim() ?? string.Empty,
                     Avatar = s.Avatar ?? string.Empty,
                     AllSumAmount = string.IsNullOrWhiteSpace(s.AllSumAmount) ? "0.00" : s.AllSumAmount!,
                     UserId = string.Empty,

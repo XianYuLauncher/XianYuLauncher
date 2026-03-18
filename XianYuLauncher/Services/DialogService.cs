@@ -17,6 +17,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Helpers;
 using Serilog;
+using Newtonsoft.Json.Linq;
 
 namespace XianYuLauncher.Services;
 
@@ -104,7 +105,7 @@ public class DialogService : IDialogService
         }
     }
 
-    private XamlRoot GetXamlRoot()
+    private XamlRoot? GetXamlRoot()
     {
         // 如果显式设置了 XamlRoot，优先使用
         if (_xamlRoot != null)
@@ -661,20 +662,13 @@ public class DialogService : IDialogService
                     Log.Information("[Avatar.DialogService] 加载角色 {Name} 头像，Session URL: {Url}", item.Name, sessionUrl);
                     
                     var response = await _httpClient.GetStringAsync(sessionUrl, avatarLoadCts.Token);
-                    dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(response);
+                    var data = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(response);
                     
-                    string textureProperty = null;
-                    if (data?.properties != null)
-                    {
-                        foreach(var prop in data.properties)
-                        {
-                           if (prop.name == "textures")
-                           {
-                               textureProperty = prop.value;
-                               break;
-                           }
-                        }
-                    }
+                    var properties = data?["properties"] as JArray;
+                    string? textureProperty = properties
+                        ?.OfType<JObject>()
+                        .FirstOrDefault(prop => string.Equals(prop["name"]?.ToString(), "textures", StringComparison.Ordinal))?
+                        ["value"]?.ToString();
                     if (string.IsNullOrEmpty(textureProperty))
                     {
                         Log.Warning("[Avatar.DialogService] 角色 {Name} Session API 无 textures，URL: {Url}", item.Name, sessionUrl);
@@ -684,13 +678,9 @@ public class DialogService : IDialogService
                     {
                         var jsonBytes = Convert.FromBase64String(textureProperty);
                         var json = System.Text.Encoding.UTF8.GetString(jsonBytes);
-                        dynamic textureData = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+                        var textureData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(json);
 
-                        string skinUrl = null;
-                        if (textureData.textures != null && textureData.textures.SKIN != null)
-                        {
-                           skinUrl = textureData.textures.SKIN.url;
-                        }
+                        string? skinUrl = textureData?["textures"]?["SKIN"]?["url"]?.ToString();
 
                         if (!string.IsNullOrEmpty(skinUrl))
                         {
@@ -802,7 +792,7 @@ public class DialogService : IDialogService
         }
     }
 
-    private async Task<BitmapImage> ProcessAvatarBytesAsync(byte[] skinBytes)
+    private async Task<BitmapImage?> ProcessAvatarBytesAsync(byte[] skinBytes)
     {
         try
         {

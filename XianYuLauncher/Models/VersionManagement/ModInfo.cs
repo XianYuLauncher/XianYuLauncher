@@ -51,7 +51,7 @@ public partial class ModInfo : ObservableObject, IVersionManagementResourceInfo
     /// Mod图标
     /// </summary>
     [ObservableProperty]
-    private string _icon;
+    private string _icon = string.Empty;
     
     /// <summary>
     /// Mod描述（已翻译）

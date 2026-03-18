@@ -180,7 +180,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         return index >= 0;
     }
 
-    private async void ViewModel_PropertyChanged(object sender, PropertyChangedEventArgs e)
+    private async void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(ViewModel.ModCategories)
             || e.PropertyName == nameof(ViewModel.AvailableVersions)

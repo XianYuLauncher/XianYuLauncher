@@ -15,14 +15,15 @@ public class PathToUriConverter : IValueConverter
     /// <param name="parameter">转换器参数</param>
     /// <param name="language">语言</param>
     /// <returns>转换后的Uri，如果输入为空则返回null</returns>
-    public object Convert(object value, Type targetType, object parameter, string language)
+    public object? Convert(object? value, Type targetType, object? parameter, string language)
     {
         if (value is string path && !string.IsNullOrEmpty(path))
         {
             try
             {
                 // 检查路径是否已经是Uri格式
-                if (Uri.TryCreate(path, UriKind.Absolute, out Uri uriResult) && 
+                if (Uri.TryCreate(path, UriKind.Absolute, out var uriResult) &&
+                    uriResult is not null &&
                     (uriResult.Scheme == Uri.UriSchemeHttp || 
                      uriResult.Scheme == Uri.UriSchemeHttps || 
                      uriResult.Scheme == "ms-appx" ||
@@ -59,7 +60,7 @@ public class PathToUriConverter : IValueConverter
     /// <param name="parameter">转换器参数</param>
     /// <param name="language">语言</param>
     /// <returns>转换后的本地文件路径，如果输入为空则返回null</returns>
-    public object ConvertBack(object value, Type targetType, object parameter, string language)
+    public object? ConvertBack(object? value, Type targetType, object? parameter, string language)
     {
         if (value is Uri uri)
         {

@@ -33,7 +33,7 @@ public partial class ResourcePackInfo : ObservableObject, IVersionManagementReso
     /// 资源包图标路径
     /// </summary>
     [ObservableProperty]
-    private string _icon;
+    private string _icon = string.Empty;
     
     /// <summary>
     /// 资源包描述（已翻译）

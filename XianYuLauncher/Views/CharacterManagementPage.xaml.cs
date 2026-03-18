@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
+using Newtonsoft.Json.Linq;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
@@ -64,7 +65,7 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 当ViewModel属性变化时触发
         /// </summary>
-        private void ViewModel_PropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             // 当CurrentProfile变化时，重新加载头像
             if (e.PropertyName == nameof(ViewModel.CurrentProfile))
@@ -188,7 +189,7 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 当CurrentSkin变化时触发
         /// </summary>
-        private void ViewModel_CurrentSkinChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void ViewModel_CurrentSkinChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             // 当CurrentSkin变化时，强制刷新头像
             if (e.PropertyName == nameof(ViewModel.CurrentSkin))
@@ -393,7 +394,7 @@ namespace XianYuLauncher.Views
             try
             {
                 // 1. 构建profile.properties URL
-                string authServer = ViewModel.CurrentProfile.AuthServer;
+                string? authServer = ViewModel.CurrentProfile.AuthServer;
                 string uuid = ViewModel.CurrentProfile.Id;
                 
                 if (string.IsNullOrEmpty(authServer))
@@ -422,22 +423,28 @@ namespace XianYuLauncher.Views
 
                 // 3. 解析响应
                 var responseJson = await response.Content.ReadAsStringAsync();
-                dynamic profileData = Newtonsoft.Json.JsonConvert.DeserializeObject(responseJson);
+                var profileData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(responseJson);
+                var properties = profileData?["properties"] as JArray;
 
                 // 4. 检查properties
-                if (profileData == null || profileData.properties == null || profileData.properties.Count == 0)
+                if (properties == null || properties.Count == 0)
                 {
                     Log.Warning("[Avatar.CharacterManagementPage] 外置登录 profile.properties 为空，URL: {Url}", sessionUrl);
                     return (string.Empty, string.Empty);
                 }
 
                 // 5. 查找textures属性
-                string texturesBase64 = null;
-                foreach (var property in profileData.properties)
+                string? texturesBase64 = null;
+                foreach (var property in properties)
                 {
-                    if (property.name == "textures")
+                    if (property is not JObject propertyObject)
                     {
-                        texturesBase64 = property.value;
+                        continue;
+                    }
+
+                    if (string.Equals(propertyObject["name"]?.Value<string>(), "textures", StringComparison.Ordinal))
+                    {
+                        texturesBase64 = propertyObject["value"]?.Value<string>();
                         break;
                     }
                 }
@@ -451,23 +458,12 @@ namespace XianYuLauncher.Views
                 // 6. 解码textures
                 byte[] texturesBytes = Convert.FromBase64String(texturesBase64);
                 string texturesJson = System.Text.Encoding.UTF8.GetString(texturesBytes);
-                dynamic texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject(texturesJson);
+                var texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(texturesJson);
 
                 // 7. 提取皮肤和披风URL
-                string skinUrl = string.Empty;
-                string capeUrl = string.Empty;
-
-                if (texturesData != null && texturesData.textures != null)
-                {
-                    if (texturesData.textures.SKIN != null)
-                    {
-                        skinUrl = texturesData.textures.SKIN.url;
-                    }
-                    if (texturesData.textures.CAPE != null)
-                    {
-                        capeUrl = texturesData.textures.CAPE.url;
-                    }
-                }
+                var texturesNode = texturesData?["textures"];
+                string skinUrl = texturesNode?["SKIN"]?["url"]?.Value<string>() ?? string.Empty;
+                string capeUrl = texturesNode?["CAPE"]?["url"]?.Value<string>() ?? string.Empty;
 
                 Log.Information("[Avatar.CharacterManagementPage] 外置登录解析到皮肤 URL: {SkinUrl}, 披风: {CapeUrl}",
                     string.IsNullOrEmpty(skinUrl) ? "(空)" : skinUrl, string.IsNullOrEmpty(capeUrl) ? "(空)" : capeUrl);
@@ -618,7 +614,7 @@ namespace XianYuLauncher.Views
                 else
                 {
                     // 2. 正版玩家处理逻辑
-                    BitmapImage cachedAvatar = null;
+                    BitmapImage? cachedAvatar = null;
                     
                     // 只有在不强制刷新时才尝试从缓存加载
                     if (!forceRefresh)
@@ -641,8 +637,8 @@ namespace XianYuLauncher.Views
                         // 但是，如果 UpdateSkinInWebViewAsync 已经拿到新的（通过 ViewModel.CurrentSkin），那么我们这里也可以拿。
                         // 如果 ViewModel.CurrentSkin 是 null 或 url 为空，才去 Fetch Profile。
                         
-                        string currentSkinUrl = ViewModel.CurrentSkin?.Url;
-                        BitmapImage networkAvatar = null;
+                        string? currentSkinUrl = ViewModel.CurrentSkin?.Url;
+                        BitmapImage? networkAvatar = null;
 
                         if (!string.IsNullOrEmpty(currentSkinUrl))
                         {
@@ -680,7 +676,7 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 从缓存加载头像
         /// </summary>
-        private async Task<BitmapImage> LoadAvatarFromCacheAsync(string uuid)
+        private async Task<BitmapImage?> LoadAvatarFromCacheAsync(string uuid)
         {
             try
             {
@@ -706,16 +702,16 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 从网络加载头像
         /// </summary>
-        private async Task<BitmapImage> LoadAvatarFromNetworkAsync(MinecraftProfile profile)
+        private async Task<BitmapImage?> LoadAvatarFromNetworkAsync(MinecraftProfile? profile)
         {
             if (profile == null) return null;
             string uuid = profile.Id;
             try
             {
                 Uri sessionUri;
-                if (profile.TokenType == "external" && !string.IsNullOrEmpty(profile.AuthServer))
+                string? authServer = profile.AuthServer;
+                if (profile.TokenType == "external" && !string.IsNullOrEmpty(authServer))
                 {
-                    string authServer = profile.AuthServer;
                     if (!authServer.EndsWith("/")) authServer += "/";
                     sessionUri = new Uri($"{authServer}sessionserver/session/minecraft/profile/{uuid}");
                     Log.Information("[Avatar.CharacterManagementPage] 外置登录回退到 Session API，URL: {Url}", sessionUri.ToString());
@@ -733,19 +729,25 @@ namespace XianYuLauncher.Views
                 }
                 
                 var jsonResponse = await response.Content.ReadAsStringAsync();
-                dynamic profileData = Newtonsoft.Json.JsonConvert.DeserializeObject(jsonResponse);
-                if (profileData == null || profileData.properties == null || profileData.properties.Count == 0)
+                var profileData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(jsonResponse);
+                var properties = profileData?["properties"] as JArray;
+                if (properties == null || properties.Count == 0)
                 {
                     Log.Warning("[Avatar.CharacterManagementPage] Session API 响应无 properties，URL: {Url}", sessionUri.ToString());
                     return null;
                 }
                 
-                string texturesBase64 = null;
-                foreach (var property in profileData.properties)
+                string? texturesBase64 = null;
+                foreach (var property in properties)
                 {
-                    if (property.name == "textures")
+                    if (property is not JObject propertyObject)
                     {
-                        texturesBase64 = property.value;
+                        continue;
+                    }
+
+                    if (string.Equals(propertyObject["name"]?.Value<string>(), "textures", StringComparison.Ordinal))
+                    {
+                        texturesBase64 = propertyObject["value"]?.Value<string>();
                         break;
                     }
                 }
@@ -754,13 +756,9 @@ namespace XianYuLauncher.Views
                 
                 byte[] texturesBytes = Convert.FromBase64String(texturesBase64);
                 string texturesJson = System.Text.Encoding.UTF8.GetString(texturesBytes);
-                dynamic texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject(texturesJson);
+                var texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(texturesJson);
                 
-                string skinUrl = null;
-                if (texturesData != null && texturesData.textures != null && texturesData.textures.SKIN != null)
-                {
-                    skinUrl = texturesData.textures.SKIN.url;
-                }
+                string? skinUrl = texturesData?["textures"]?["SKIN"]?["url"]?.Value<string>();
                 if (string.IsNullOrEmpty(skinUrl))
                 {
                     Log.Warning("[Avatar.CharacterManagementPage] Session API 响应无皮肤 URL，URL: {Url}", sessionUri.ToString());
@@ -779,7 +777,7 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 从皮肤纹理中裁剪头像区域
         /// </summary>
-        private async Task<BitmapImage> CropAvatarFromSkinAsync(string skinUrl, string uuid = null)
+        private async Task<BitmapImage?> CropAvatarFromSkinAsync(string skinUrl, string? uuid = null)
         {
             try
             {
@@ -809,7 +807,7 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 处理史蒂夫头像，使用Win2D确保清晰显示
         /// </summary>
-        private async Task<BitmapImage> ProcessSteveAvatarAsync()
+        private async Task<BitmapImage?> ProcessSteveAvatarAsync()
         {
             try
             {
@@ -920,12 +918,13 @@ namespace XianYuLauncher.Views
             if (imageSource is BitmapImage bitmapImage)
             {
                 // 对于BitmapImage，我们需要从原始URL重新下载，因为BitmapImage的像素数据不容易直接访问
-                if (!string.IsNullOrEmpty(ViewModel.CurrentSkin.Url))
+                string? currentSkinUrl = ViewModel.CurrentSkin?.Url;
+                if (!string.IsNullOrEmpty(currentSkinUrl))
                 {
                     using (var httpClient = new HttpClient())
                     {
                         httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
-                        var response = await httpClient.GetAsync(ViewModel.CurrentSkin.Url);
+                        var response = await httpClient.GetAsync(currentSkinUrl);
                         if (response.IsSuccessStatusCode)
                         {
                             using (var stream = await response.Content.ReadAsStreamAsync())
@@ -1001,7 +1000,7 @@ namespace XianYuLauncher.Views
 
                 // 3. 让用户选择皮肤模型
                 var result = await _dialogService.ShowSkinModelSelectionDialogAsync();
-                string model = result switch
+                string? model = result switch
                 {
                     SkinModelSelectionResult.Steve => "",
                     SkinModelSelectionResult.Alex => "slim",
@@ -1058,7 +1057,12 @@ namespace XianYuLauncher.Views
         private async Task UploadExternalSkinAsync(Windows.Storage.StorageFile file, string model)
         {
             // 1. 准备API请求 - 使用PUT方法
-            string authServer = ViewModel.CurrentProfile.AuthServer;
+            string? authServer = ViewModel.CurrentProfile.AuthServer;
+            if (string.IsNullOrWhiteSpace(authServer))
+            {
+                throw new InvalidOperationException("外置登录 AuthServer 为空，无法上传皮肤");
+            }
+
             string baseUrl = authServer.TrimEnd('/') + "/";
             string uuid = ViewModel.CurrentProfile.Id.Replace("-", ""); // 移除UUID中的连字符
             string apiUrl = $"{baseUrl}api/user/profile/{uuid}/skin";
@@ -1301,7 +1305,12 @@ namespace XianYuLauncher.Views
         private async Task UploadExternalCapeAsync(Windows.Storage.StorageFile file)
         {
             // 1. 准备API请求 - 使用PUT方法
-            string authServer = ViewModel.CurrentProfile.AuthServer;
+            string? authServer = ViewModel.CurrentProfile.AuthServer;
+            if (string.IsNullOrWhiteSpace(authServer))
+            {
+                throw new InvalidOperationException("外置登录 AuthServer 为空，无法上传披风");
+            }
+
             string baseUrl = authServer.TrimEnd('/') + "/";
             string uuid = ViewModel.CurrentProfile.Id.Replace("-", ""); // 移除UUID中的连字符
             string apiUrl = $"{baseUrl}api/user/profile/{uuid}/cape";

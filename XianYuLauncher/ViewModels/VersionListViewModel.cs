@@ -38,7 +38,6 @@ public partial class VersionListViewModel : ObservableRecipient
         public string Name { get; set; } = string.Empty;
 
         /// <summary>
-        /// 版本类型（Release/Snapshot/Beta/Alpha）
         /// </summary>
         public string Type { get; set; } = string.Empty;
 
@@ -52,7 +51,6 @@ public partial class VersionListViewModel : ObservableRecipient
         /// </summary>
         public DateTime InstallDate { get; set; }
 
-        /// <summary>
         /// 版本号
         /// </summary>
         public string VersionNumber { get; set; } = string.Empty;
@@ -754,7 +752,10 @@ public partial class VersionListViewModel : ObservableRecipient
             try 
             {
                 var dialogService = App.GetService<IDialogService>();
-                await dialogService?.ShowMessageDialogAsync("创建失败", "创建快捷方式时发生错误，请稍后重试。");
+                if (dialogService != null)
+                {
+                    await dialogService.ShowMessageDialogAsync("创建失败", "创建快捷方式时发生错误，请稍后重试。");
+                }
             }
             catch (Exception dialogEx)
             {
@@ -1405,7 +1406,7 @@ public partial class VersionListViewModel : ObservableRecipient
             StatusMessage = $"正在生成 {version.Name} 的启动参数...";
             
             // 生成启动命令
-            string launchCommand = await GenerateLaunchCommandAsync(version.Name);
+            string? launchCommand = await GenerateLaunchCommandAsync(version.Name);
             
             if (string.IsNullOrEmpty(launchCommand))
             {
@@ -1636,7 +1637,7 @@ public partial class VersionListViewModel : ObservableRecipient
     /// <summary>
     /// 生成启动命令
     /// </summary>
-    private async Task<string> GenerateLaunchCommandAsync(string versionName)
+    private async Task<string?> GenerateLaunchCommandAsync(string versionName)
     {
         try
         {

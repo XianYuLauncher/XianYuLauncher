@@ -341,7 +341,7 @@ public partial class UpdateDialogViewModel : ObservableRecipient
     /// <summary>
     /// 关闭弹窗事件
     /// </summary>
-    public event EventHandler<bool> CloseDialog;
+    public event EventHandler<bool>? CloseDialog;
     
     /// <summary>
     /// 构造函数

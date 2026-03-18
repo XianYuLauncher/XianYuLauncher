@@ -63,9 +63,15 @@ public sealed partial class MainWindow : WindowEx
                 var ext = System.IO.Path.GetExtension(item.Path ?? string.Empty)?.ToLowerInvariant();
                 if (ext == FileExtensionConsts.Mrpack || ext == FileExtensionConsts.Zip)
                 {
+                    var itemPath = item.Path;
+                    if (string.IsNullOrEmpty(itemPath))
+                    {
+                        continue;
+                    }
+
                     var navigationService = App.GetService<Contracts.Services.INavigationService>();
                     // Navigate to VersionListPage
-                    navigationService?.NavigateTo(typeof(ViewModels.VersionListViewModel).FullName);
+                    navigationService?.NavigateTo(typeof(ViewModels.VersionListViewModel).FullName!);
 
                     // Call import on UI dispatcher. Avoid DI lookup in MainWindow constructor path.
                     var enqueued = dispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
@@ -75,7 +81,7 @@ public sealed partial class MainWindow : WindowEx
                             var vm = App.GetService<ViewModels.VersionListViewModel>();
                             if (vm != null)
                             {
-                                await vm.ImportModpackFromPathAsync(item.Path);
+                                await vm.ImportModpackFromPathAsync(itemPath);
                             }
                         }
                         catch (Exception ex)
@@ -143,7 +149,7 @@ public sealed partial class MainWindow : WindowEx
     /// <summary>
     /// 应用字体到整个应用程序
     /// </summary>
-    private void ApplyFontToApplication(string fontFamilyName)
+    private void ApplyFontToApplication(string? fontFamilyName)
     {
         try
         {
@@ -152,7 +158,7 @@ public sealed partial class MainWindow : WindowEx
             if (Content is Microsoft.UI.Xaml.Controls.Control rootControl)
             {
                 // 创建FontFamily对象或使用null（默认字体）
-                Microsoft.UI.Xaml.Media.FontFamily fontFamily = null;
+                Microsoft.UI.Xaml.Media.FontFamily? fontFamily = null;
                 if (!string.IsNullOrEmpty(fontFamilyName) && fontFamilyName != "默认")
                 {
                     fontFamily = new Microsoft.UI.Xaml.Media.FontFamily(fontFamilyName);
@@ -174,7 +180,7 @@ public sealed partial class MainWindow : WindowEx
     /// <summary>
     /// 遍历视觉树，将字体应用到所有控件
     /// </summary>
-    private void ApplyFontToVisualTree(Microsoft.UI.Xaml.DependencyObject root, Microsoft.UI.Xaml.Media.FontFamily fontFamily)
+    private void ApplyFontToVisualTree(Microsoft.UI.Xaml.DependencyObject root, Microsoft.UI.Xaml.Media.FontFamily? fontFamily)
     {
         // 应用到当前元素（如果是Control类型）
         if (root is Microsoft.UI.Xaml.Controls.Control control)

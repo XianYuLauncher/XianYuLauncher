@@ -72,7 +72,13 @@ internal static class VersionManagementModUpdateOps
                     }
 
                     System.Diagnostics.Debug.WriteLine($"[Modrinth] 正在更新 Mod: {Path.GetFileName(modFilePath)}");
-                    var latestFile = info.Files.FirstOrDefault(file => file.Primary) ?? info.Files[0];
+                    var files = info.Files;
+                    if (files == null || files.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    var latestFile = files.FirstOrDefault(file => file.Primary) ?? files[0];
                     if (string.IsNullOrEmpty(latestFile.Url?.ToString()) || string.IsNullOrEmpty(latestFile.Filename))
                     {
                         continue;

@@ -21,9 +21,6 @@ public sealed partial class SettingsPage : Page
 
     private int _clickCount = 0;
     private const string EasterEggModeKey = "EasterEggMode";
-    
-    // 防止 ToggleSwitch 事件递归触发的标志
-    private bool _isTogglingSwitch = false;
 
     // 自动测速服务（用于事件驱动刷新缓存）
     private readonly IAutoSpeedTestService _autoSpeedTestService;

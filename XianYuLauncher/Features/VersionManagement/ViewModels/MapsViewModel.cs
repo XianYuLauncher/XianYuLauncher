@@ -104,7 +104,7 @@ public partial class MapsViewModel : ObservableObject
                 {
                     foreach (var mapFolder in Directory.GetDirectories(savesPath))
                     {
-                        var mapInfo = new MapInfo(mapFolder) { Icon = null };
+                        var mapInfo = new MapInfo(mapFolder) { Icon = string.Empty };
                         _ = mapInfo.LoadBasicInfoAsync().ContinueWith(t =>
                         {
                             if (t.IsFaulted)
@@ -221,7 +221,7 @@ public partial class MapsViewModel : ObservableObject
             VersionId = _context.SelectedVersion.Name,
             WorldFolder = map.FileName
         };
-        _navigationService.NavigateTo(typeof(LaunchViewModel).FullName, param);
+        _navigationService.NavigateTo(typeof(LaunchViewModel).FullName!, param);
     }
 
     [RelayCommand]

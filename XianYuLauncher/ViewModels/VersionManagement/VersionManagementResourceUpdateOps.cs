@@ -61,7 +61,13 @@ internal static class VersionManagementResourceUpdateOps
                         continue;
                     }
 
-                    var latestFile = info.Files.FirstOrDefault(f => f.Primary) ?? info.Files[0];
+                    var files = info.Files;
+                    if (files == null || files.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    var latestFile = files.FirstOrDefault(f => f.Primary) ?? files[0];
                     if (string.IsNullOrEmpty(latestFile.Url?.ToString()) || string.IsNullOrEmpty(latestFile.Filename))
                     {
                         continue;
@@ -256,7 +262,13 @@ internal static class VersionManagementResourceUpdateOps
                         continue;
                     }
 
-                    var latestFile = info.Files.FirstOrDefault(f => f.Primary) ?? info.Files[0];
+                    var files = info.Files;
+                    if (files == null || files.Count == 0)
+                    {
+                        continue;
+                    }
+
+                    var latestFile = files.FirstOrDefault(f => f.Primary) ?? files[0];
                     if (string.IsNullOrEmpty(latestFile.Url?.ToString()) || string.IsNullOrEmpty(latestFile.Filename))
                     {
                         continue;

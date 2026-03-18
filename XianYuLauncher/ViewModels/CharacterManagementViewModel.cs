@@ -21,6 +21,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using Windows.ApplicationModel;
 using Windows.Storage;
+using Newtonsoft.Json.Linq;
 
 namespace XianYuLauncher.ViewModels
 {
@@ -90,7 +91,7 @@ namespace XianYuLauncher.ViewModels
         /// <summary>
         /// 处理皮肤头部纹理 (Win2D Crop & Resize)
         /// </summary>
-        private async Task<ImageSource> ProcessHeadTextureAsync(string textureUri)
+        private async Task<ImageSource?> ProcessHeadTextureAsync(string textureUri)
         {
             try
             {
@@ -174,7 +175,7 @@ namespace XianYuLauncher.ViewModels
         /// <summary>
         /// 原始UUID，用于保存时查找要更新的角色
         /// </summary>
-        private string _originalUUID;
+        private string _originalUUID = string.Empty;
 
         /// <summary>
         /// 当前角色变化时，通知相关属性更新
@@ -200,7 +201,7 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         /// <param name="skinUrl">皮肤纹理URL</param>
         /// <returns>处理后的皮肤纹理</returns>
-        private async Task<Microsoft.UI.Xaml.Media.ImageSource> ProcessSkinTextureAsync(string skinUrl)
+        private async Task<Microsoft.UI.Xaml.Media.ImageSource?> ProcessSkinTextureAsync(string skinUrl)
         {
             try
             {
@@ -720,7 +721,7 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         /// <param name="capeUrl">披风纹理URL</param>
         /// <returns>处理后的披风图标</returns>
-        private async Task<ImageSource> ProcessCapeIconAsync(string capeUrl)
+        private async Task<ImageSource?> ProcessCapeIconAsync(string capeUrl)
         {
             try
             {
@@ -831,9 +832,10 @@ namespace XianYuLauncher.ViewModels
                         var request = new HttpRequestMessage(HttpMethod.Get, apiUrl);
                         
                         // 添加Authorization请求头
-                        if (!string.IsNullOrWhiteSpace(CurrentProfile.AccessToken))
+                        string? accessToken = CurrentProfile?.AccessToken;
+                        if (!string.IsNullOrWhiteSpace(accessToken))
                         {
-                            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", CurrentProfile.AccessToken);
+                            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
                         }
                         
                         // 发送请求
@@ -913,7 +915,7 @@ namespace XianYuLauncher.ViewModels
                         }
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     CapeList = new List<CapeInfo>();
                     SelectedCape = null;
@@ -938,8 +940,13 @@ namespace XianYuLauncher.ViewModels
             {
                 // 1. 构建profile.properties URL
                 // 通常格式：https://authserver.example.com/sessionserver/session/minecraft/profile/{uuid}
-                string authServer = CurrentProfile.AuthServer;
+                string? authServer = CurrentProfile.AuthServer;
                 string uuid = CurrentProfile.Id;
+
+                if (string.IsNullOrWhiteSpace(authServer))
+                {
+                    return;
+                }
                 
                 // 确保authServer以/结尾，否则添加/
                 string baseUrl = authServer.TrimEnd('/') + "/";
@@ -958,24 +965,20 @@ namespace XianYuLauncher.ViewModels
 
                 // 3. 解析响应
                 var responseJson = await response.Content.ReadAsStringAsync();
-                dynamic profileData = Newtonsoft.Json.JsonConvert.DeserializeObject(responseJson);
+                var profileData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(responseJson);
 
                 // 4. 检查properties
-                if (profileData == null || profileData.properties == null || profileData.properties.Count == 0)
+                var properties = profileData?["properties"] as JArray;
+                if (properties == null || properties.Count == 0)
                 {
                     return;
                 }
 
                 // 5. 查找textures属性
-                string texturesBase64 = null;
-                foreach (var property in profileData.properties)
-                {
-                    if (property.name == "textures")
-                    {
-                        texturesBase64 = property.value;
-                        break;
-                    }
-                }
+                string? texturesBase64 = properties
+                    .OfType<JObject>()
+                    .FirstOrDefault(property => string.Equals(property["name"]?.ToString(), "textures", StringComparison.Ordinal))?
+                    ["value"]?.ToString();
 
                 if (string.IsNullOrEmpty(texturesBase64))
                 {
@@ -985,62 +988,54 @@ namespace XianYuLauncher.ViewModels
                 // 6. 解码textures
                 byte[] texturesBytes = Convert.FromBase64String(texturesBase64);
                 string texturesJson = System.Text.Encoding.UTF8.GetString(texturesBytes);
-                dynamic texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject(texturesJson);
+                var texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(texturesJson);
 
                 // 7. 提取皮肤和披风URL
-                string skinUrl = string.Empty;
-                string capeUrl = string.Empty;
+                string? skinUrl = texturesData?["textures"]?["SKIN"]?["url"]?.ToString();
+                string? capeUrl = texturesData?["textures"]?["CAPE"]?["url"]?.ToString();
 
-                if (texturesData != null && texturesData.textures != null)
+                if (texturesData?["textures"] != null)
                 {
                     // 处理皮肤纹理
-                    if (texturesData.textures.SKIN != null)
+                    if (!string.IsNullOrEmpty(skinUrl))
                     {
-                        skinUrl = texturesData.textures.SKIN.url;
-                        if (!string.IsNullOrEmpty(skinUrl))
+                        try
                         {
-                            try
+                            // 使用WIN2D处理皮肤纹理，确保清晰显示
+                            CurrentSkinTexture = await ProcessSkinTextureAsync(skinUrl);
+                            
+                            // 创建临时SkinInfo对象，用于保存皮肤信息
+                            CurrentSkin = new SkinInfo
                             {
-                                // 使用WIN2D处理皮肤纹理，确保清晰显示
-                                CurrentSkinTexture = await ProcessSkinTextureAsync(skinUrl);
-                                
-                                // 创建临时SkinInfo对象，用于保存皮肤信息
-                                CurrentSkin = new SkinInfo
-                                {
-                                    Id = "external-skin",
-                                    State = "ACTIVE",
-                                    Url = skinUrl,
-                                    Variant = texturesData.textures.SKIN.metadata?.model?.ToString() == "slim" ? "slim" : "classic"
-                                };
-                            }
-                            catch (Exception)
-                            {
-                                CurrentSkinTexture = null;
-                                CurrentSkin = null;
-                            }
+                                Id = "external-skin",
+                                State = "ACTIVE",
+                                Url = skinUrl,
+                                Variant = string.Equals(texturesData["textures"]?["SKIN"]?["metadata"]?["model"]?.ToString(), "slim", StringComparison.Ordinal) ? "slim" : "classic"
+                            };
+                        }
+                        catch (Exception)
+                        {
+                            CurrentSkinTexture = null;
+                            CurrentSkin = null;
                         }
                     }
                     
                     // 处理披风纹理
-                    if (texturesData.textures.CAPE != null)
+                    if (!string.IsNullOrEmpty(capeUrl))
                     {
-                        capeUrl = texturesData.textures.CAPE.url;
-                        if (!string.IsNullOrEmpty(capeUrl))
+                        try
                         {
-                            try
-                            {
-                                // 使用WIN2D处理披风纹理，确保清晰显示
-                                CurrentCapeTexture = await ProcessCapeTextureAsync(capeUrl);
-                            }
-                            catch (Exception)
-                            {
-                                CurrentCapeTexture = null;
-                            }
+                            // 使用WIN2D处理披风纹理，确保清晰显示
+                            CurrentCapeTexture = await ProcessCapeTextureAsync(capeUrl);
+                        }
+                        catch (Exception)
+                        {
+                            CurrentCapeTexture = null;
                         }
                     }
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // 处理异常
             }
@@ -1051,7 +1046,7 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         /// <param name="capeUrl">披风纹理URL</param>
         /// <returns>处理后的披风纹理</returns>
-        private async Task<Microsoft.UI.Xaml.Media.ImageSource> ProcessCapeTextureAsync(string capeUrl)
+        private async Task<Microsoft.UI.Xaml.Media.ImageSource?> ProcessCapeTextureAsync(string capeUrl)
         {
             try
             {

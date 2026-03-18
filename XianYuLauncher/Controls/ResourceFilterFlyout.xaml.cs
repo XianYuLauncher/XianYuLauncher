@@ -91,7 +91,13 @@ public sealed partial class ResourceFilterFlyout : Microsoft.UI.Xaml.Controls.Us
     /// <summary>
     /// 当需要刷新版本列表时触发（CheckBox 点击时）
     /// </summary>
-    public event EventHandler? RefreshVersionsRequested;
+    private EventHandler? _refreshVersionsRequested;
+
+    public event EventHandler? RefreshVersionsRequested
+    {
+        add => _refreshVersionsRequested += value;
+        remove => _refreshVersionsRequested -= value;
+    }
 
     #endregion
 
