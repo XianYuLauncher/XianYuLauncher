@@ -1012,9 +1012,6 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     private async Task LoadAfdianSponsorsAsync()
     {
-        var watch = Stopwatch.StartNew();
-        Debug.WriteLine("[SettingsViewModel][LoadAfdianSponsors] 开始");
-
         try
         {
             IsLoadingSponsors = true;
@@ -1033,19 +1030,16 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
                             sponsor.Avatar
                         ));
                     }
-                    
-                    Log.Information($"[SettingsViewModel] 成功加载 {sponsors.Count} 位爱发电赞助者");
                 });
             }
         }
         catch (Exception ex)
         {
-            Log.Warning($"[SettingsViewModel] 加载爱发电赞助者失败: {ex.Message}");
+            Log.Warning(ex, "[Settings] 加载爱发电赞助者失败");
         }
         finally
         {
             IsLoadingSponsors = false;
-            Debug.WriteLine($"[SettingsViewModel][LoadAfdianSponsors] 结束，耗时={watch.ElapsedMilliseconds}ms，当前数量={AcknowledgmentPersons.Count}");
         }
     }
 
@@ -1195,73 +1189,33 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
 
     private async Task InitializeAsync()
     {
-        var initWatch = Stopwatch.StartNew();
-        Debug.WriteLine("[SettingsViewModel][Init] 开始");
+        await LoadJavaPathAsync();
+        await LoadGameIsolationSettingsAsync();
+        await LoadJavaSelectionModeAsync();
+        await LoadMinecraftPathsAsync();
+        await LoadAISettingsAsync();
+        await LoadMaterialSettingsAsync();
+        await LoadDownloadDependenciesAsync();
+        await LoadEnableTelemetryAsync();
+        await LoadHideSnapshotVersionsAsync();
+        await LoadDownloadThreadCountAsync();
+        await LoadEnableRealTimeLogsAsync();
+        await LoadNavigationStyleAsync();
+        await LoadAutoUpdateCheckModeAsync();
+        await LoadGlobalLaunchSettingsAsync();
 
-        async Task MeasureStepAsync(string stepName, Func<Task> action)
+        if (!_uiDispatcher.TryEnqueue(DispatcherQueuePriority.Low, RefreshCacheSizeInfo))
         {
-            var stepWatch = Stopwatch.StartNew();
-            Debug.WriteLine($"[SettingsViewModel][Init.Step] {stepName} 开始");
-            await action();
-            Debug.WriteLine($"[SettingsViewModel][Init.Step] {stepName} 完成，耗时={stepWatch.ElapsedMilliseconds}ms，总耗时={initWatch.ElapsedMilliseconds}ms");
+            Log.Warning("[Settings] 缓存统计刷新排队失败");
         }
 
-        try
-        {
-            var baseWatch = Stopwatch.StartNew();
-            Debug.WriteLine("[SettingsViewModel][Init] 开始加载基础设置");
+        await LoadJavaVersionsAsync();
+        await LoadDownloadSourcesAsync(_downloadSourcesLoadCts.Token);
 
-            await MeasureStepAsync("LoadJavaPath", LoadJavaPathAsync);
-            await MeasureStepAsync("LoadGameIsolationSettings", LoadGameIsolationSettingsAsync);
-            await MeasureStepAsync("LoadJavaSelectionMode", LoadJavaSelectionModeAsync);
-            await MeasureStepAsync("LoadMinecraftPaths", LoadMinecraftPathsAsync);
-            await MeasureStepAsync("LoadAISettings", LoadAISettingsAsync);
-            await MeasureStepAsync("LoadMaterialSettings", LoadMaterialSettingsAsync);
-            await MeasureStepAsync("LoadDownloadDependencies", LoadDownloadDependenciesAsync);
-            await MeasureStepAsync("LoadEnableTelemetry", LoadEnableTelemetryAsync);
-            await MeasureStepAsync("LoadHideSnapshotVersions", LoadHideSnapshotVersionsAsync);
-            await MeasureStepAsync("LoadDownloadThreadCount", LoadDownloadThreadCountAsync);
-            await MeasureStepAsync("LoadEnableRealTimeLogs", LoadEnableRealTimeLogsAsync);
-            await MeasureStepAsync("LoadNavigationStyle", LoadNavigationStyleAsync);
-            await MeasureStepAsync("LoadAutoUpdateCheckMode", LoadAutoUpdateCheckModeAsync);
-            await MeasureStepAsync("LoadGlobalLaunchSettings", LoadGlobalLaunchSettingsAsync);
+        // 初始化完成后按当前 AutoSelectFastestSource 状态同步测速展示，避免首次进入显示残留 "-"。
+        await LoadSpeedTestCacheAsync();
 
-            Debug.WriteLine("[SettingsViewModel][Init] 缓存统计刷新已排队");
-            if (!_uiDispatcher.TryEnqueue(DispatcherQueuePriority.Low, () =>
-            {
-                var cacheWatch = Stopwatch.StartNew();
-                RefreshCacheSizeInfo();
-                Debug.WriteLine($"[SettingsViewModel][Init] 缓存统计刷新完成，耗时={cacheWatch.ElapsedMilliseconds}ms");
-            }))
-            {
-                Debug.WriteLine("[SettingsViewModel][Init] 缓存统计刷新排队失败");
-            }
-
-            Debug.WriteLine($"[SettingsViewModel][Init] 基础设置加载完成，步骤耗时={baseWatch.ElapsedMilliseconds}ms，总耗时={initWatch.ElapsedMilliseconds}ms");
-
-            var stepWatch = Stopwatch.StartNew();
-            Debug.WriteLine("[SettingsViewModel][Init] 开始加载已保存的 Java 版本");
-            await LoadJavaVersionsAsync();
-            Debug.WriteLine($"[SettingsViewModel][Init] 已保存的 Java 版本加载完成，步骤耗时={stepWatch.ElapsedMilliseconds}ms，总耗时={initWatch.ElapsedMilliseconds}ms");
-
-            stepWatch.Restart();
-            Debug.WriteLine("[SettingsViewModel][Init] 开始加载下载源设置");
-            await LoadDownloadSourcesAsync(_downloadSourcesLoadCts.Token);
-            Debug.WriteLine($"[SettingsViewModel][Init] 下载源设置加载完成，步骤耗时={stepWatch.ElapsedMilliseconds}ms，总耗时={initWatch.ElapsedMilliseconds}ms");
-
-            // 初始化完成后按当前 AutoSelectFastestSource 状态同步测速展示，避免首次进入显示残留 "-"。
-            stepWatch.Restart();
-            Debug.WriteLine("[SettingsViewModel][Init] 开始加载测速缓存");
-            await LoadSpeedTestCacheAsync();
-            Debug.WriteLine($"[SettingsViewModel][Init] 测速缓存加载完成，步骤耗时={stepWatch.ElapsedMilliseconds}ms，总耗时={initWatch.ElapsedMilliseconds}ms");
-
-            Debug.WriteLine("[SettingsViewModel][Init] 爱发电赞助者加载已排队");
-            RunFireAndForget(LoadAfdianSponsorsAsync(), "加载爱发电赞助者");
-        }
-        finally
-        {
-            Debug.WriteLine($"[SettingsViewModel][Init] 结束，总耗时={initWatch.ElapsedMilliseconds}ms");
-        }
+        RunFireAndForget(LoadAfdianSponsorsAsync(), "加载爱发电赞助者");
     }
 
     private void QueueSettingWrite(string key, Func<Task> writeAction, int debounceMilliseconds = 250)
@@ -2294,79 +2248,69 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// 加载保存的Java版本列表
     /// </summary>
     private async Task LoadJavaVersionsAsync()
+    {
+        IsLoadingJavaVersions = true;
+        try
         {
-            var watch = Stopwatch.StartNew();
-            Debug.WriteLine("[SettingsViewModel][LoadJavaVersions] 开始");
-            IsLoadingJavaVersions = true;
-            try
+            Console.WriteLine("加载保存的Java版本列表...");
+            // 注意：存储在磁盘上的是 Core.Models.JavaVersion 对象 (属性为 FullVersion)，
+            // 而我们 ViewModel 使用的是 JavaVersionInfo (属性为 Version)。
+            // 直接反序列化到 JavaVersionInfo 会导致 Version 属性为空用。
+            // 修复方案：先读取为 JavaVersion，再映射到 JavaVersionInfo。
+
+            var savedCoreVersions = await _gameSettingsDomainService.LoadJavaVersionsAsync();
+
+            if (savedCoreVersions != null && savedCoreVersions.Count > 0)
             {
-                Console.WriteLine("加载保存的Java版本列表...");
-                // 注意：存储在磁盘上的是 Core.Models.JavaVersion 对象 (属性为 FullVersion)，
-                // 而我们 ViewModel 使用的是 JavaVersionInfo (属性为 Version)。
-                // 直接反序列化到 JavaVersionInfo 会导致 Version 属性为空用。
-                // 修复方案：先读取为 JavaVersion，再映射到 JavaVersionInfo。
-
-                var savedCoreVersions = await _gameSettingsDomainService.LoadJavaVersionsAsync();
-
-                if (savedCoreVersions != null && savedCoreVersions.Count > 0)
+                // 检测脏数据：如果所有条目的 FullVersion 为空，说明数据格式损坏（可能由旧版教程页写入）
+                bool isCorrupted = savedCoreVersions.All(v => string.IsNullOrEmpty(v.FullVersion));
+                if (isCorrupted)
                 {
-                    // 诊断日志：打印每条数据的实际字段值
-                    foreach (var v in savedCoreVersions)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[LoadJava] FullVersion='{v.FullVersion}', Path='{v.Path}', MajorVersion={v.MajorVersion}");
-                    }
+                    Log.Warning("[Settings] 检测到损坏的 Java 版本数据，自动触发重新扫描");
+                    await RefreshJavaVersionsAsync();
+                    return;
+                }
 
-                    // 检测脏数据：如果所有条目的 FullVersion 为空，说明数据格式损坏（可能由旧版教程页写入）
-                    bool isCorrupted = savedCoreVersions.All(v => string.IsNullOrEmpty(v.FullVersion));
-                    System.Diagnostics.Debug.WriteLine($"[LoadJava] isCorrupted={isCorrupted}, count={savedCoreVersions.Count}");
-                    if (isCorrupted)
-                    {
-                        System.Diagnostics.Debug.WriteLine("[LoadJava] 检测到损坏的Java版本数据，自动触发重新扫描...");
-                        await RefreshJavaVersionsAsync();
-                        return;
-                    }
+                Console.WriteLine($"加载到{savedCoreVersions.Count}个Java版本");
 
-                    Console.WriteLine($"加载到{savedCoreVersions.Count}个Java版本");
-
-                    int validCount = 0;
-                    foreach (var coreVer in savedCoreVersions)
+                int validCount = 0;
+                foreach (var coreVer in savedCoreVersions)
+                {
+                    if (File.Exists(coreVer.Path))
                     {
-                        if (File.Exists(coreVer.Path))
+                        JavaVersions.Add(new JavaVersionInfo
                         {
-                            JavaVersions.Add(new JavaVersionInfo
-                            {
-                                Version = coreVer.FullVersion, // 关键：手动映射 FullVersion -> Version
-                                MajorVersion = coreVer.MajorVersion,
-                                Path = coreVer.Path,
-                                IsJDK = coreVer.IsJDK
-                            });
-                            validCount++;
-                        }
-                        else
-                        {
-                            Console.WriteLine($"跳过无效的Java版本（文件不存在）: {coreVer.Path}");
-                        }
+                            Version = coreVer.FullVersion, // 关键：手动映射 FullVersion -> Version
+                            MajorVersion = coreVer.MajorVersion,
+                            Path = coreVer.Path,
+                            IsJDK = coreVer.IsJDK
+                        });
+                        validCount++;
                     }
-
-                    Console.WriteLine($"有效Java版本数量: {validCount}");
-
-                    // 如果过滤掉了一些版本，需要重新保存
-                    if (validCount < savedCoreVersions.Count)
+                    else
                     {
-                        await SaveJavaVersionsAsync();
+                        Console.WriteLine($"跳过无效的Java版本（文件不存在）: {coreVer.Path}");
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"加载Java版本列表失败: {ex.Message}");
-            }
-            finally
-            {
-                IsLoadingJavaVersions = false;
-                Debug.WriteLine($"[SettingsViewModel][LoadJavaVersions] 结束，耗时={watch.ElapsedMilliseconds}ms，当前数量={JavaVersions.Count}");
+
+                Console.WriteLine($"有效Java版本数量: {validCount}");
+
+                // 如果过滤掉了一些版本，需要重新保存
+                if (validCount < savedCoreVersions.Count)
+                {
+                    await SaveJavaVersionsAsync();
+                }
             }
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"加载Java版本列表失败: {ex.Message}");
+        }
+        finally
+        {
+            IsLoadingJavaVersions = false;
+        }
+    }
 
     
     /// <summary>
@@ -2407,7 +2351,6 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     {
         if (IsLoadingJavaVersions)
         {
-            Debug.WriteLine("[SettingsViewModel][JavaVersions] 跳过自动保存：正在批量加载/刷新");
             return;
         }
 
@@ -2880,18 +2823,8 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     private async Task LoadDownloadSourcesAsync(CancellationToken cancellationToken = default)
     {
-        var watch = Stopwatch.StartNew();
-        Debug.WriteLine("[SettingsViewModel][LoadDownloadSources] 开始");
-
-        try
-        {
-            var state = await _downloadSourceSettingsService.LoadAsync(cancellationToken);
-            ApplyDownloadSourceState(state);
-        }
-        finally
-        {
-            Debug.WriteLine($"[SettingsViewModel][LoadDownloadSources] 结束，耗时={watch.ElapsedMilliseconds}ms");
-        }
+        var state = await _downloadSourceSettingsService.LoadAsync(cancellationToken);
+        ApplyDownloadSourceState(state);
     }
 
     private void ApplyDownloadSourceState(DownloadSourceSettingsState state)
@@ -3405,11 +3338,8 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     {
         if (_speedTestService == null)
         {
-            Debug.WriteLine("[SettingsViewModel][LoadSpeedTestCache] 跳过：_speedTestService 为空");
             return;
         }
-
-        var watch = Stopwatch.StartNew();
 
         try
         {
@@ -3419,10 +3349,6 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         catch (Exception ex)
         {
             Serilog.Log.Warning(ex, "[Settings] 加载测速缓存失败");
-        }
-        finally
-        {
-            Debug.WriteLine($"[SettingsViewModel][LoadSpeedTestCache] 结束，耗时={watch.ElapsedMilliseconds}ms");
         }
     }
 
@@ -3595,42 +3521,25 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     private async Task LoadCustomSourcesAsync()
     {
-        var watch = Stopwatch.StartNew();
-        Debug.WriteLine("[SettingsViewModel][LoadCustomSources] 开始");
-
         try
         {
-            Log.Information("[Settings] 开始加载自定义下载源列表...");
-            Log.Information($"[Settings] _customSourceManager 是否为 null: {_customSourceManager == null}");
-            
             if (_customSourceManager == null)
             {
                 Log.Error("[Settings] _customSourceManager 为 null，无法加载自定义源列表");
                 return;
             }
-            
-            Log.Information("[Settings] 开始调用 GetAllSources()");
-            var sources = _customSourceManager.GetAllSources();
-            Log.Information($"[Settings] 从 CustomSourceManager 获取到 {sources.Count} 个源");
 
-            Log.Information("[Settings] 开始清空并填充 CustomSources 集合");
+            var sources = _customSourceManager.GetAllSources();
             CustomSources.Clear();
             foreach (var source in sources)
             {
                 var vm = CustomSourceViewModel.FromCoreModel(source);
-                Log.Information($"[Settings] 添加源到列表: {vm.Name}, Enabled={vm.Enabled}, Key={vm.Key}");
                 CustomSources.Add(vm);
             }
-
-            Log.Information($"[Settings] 已加载 {CustomSources.Count} 个自定义下载源到 UI");
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[Settings] 加载自定义下载源列表失败");
-        }
-        finally
-        {
-            Debug.WriteLine($"[SettingsViewModel][LoadCustomSources] 结束，耗时={watch.ElapsedMilliseconds}ms，当前数量={CustomSources.Count}");
         }
     }
     
@@ -3794,18 +3703,12 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     [RelayCommand]
     private async Task RefreshCustomSourcesAsync()
     {
-        Log.Information("[Settings] RefreshCustomSourcesAsync 命令被调用");
-        System.Diagnostics.Debug.WriteLine("[Settings] RefreshCustomSourcesAsync 命令被调用");
         try
         {
-            System.Diagnostics.Debug.WriteLine("[Settings] 准备调用 LoadCustomSourcesAsync");
             await LoadCustomSourcesAsync();
-            System.Diagnostics.Debug.WriteLine("[Settings] LoadCustomSourcesAsync 调用完成");
-            Log.Information("[Settings] RefreshCustomSourcesAsync 完成");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Settings] RefreshCustomSourcesAsync 失败: {ex.Message}");
             Log.Error(ex, "[Settings] RefreshCustomSourcesAsync 失败");
         }
     }
