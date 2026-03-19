@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -86,8 +85,8 @@ public class LegacyFabricInstallerTests
             "legacyfabric-1.8.9"
         }));
 
-        var loaderLibrary = Assert.Single(merged.Libraries!.Where(library => library.Name == "net.legacyfabric:intermediary:1.8.9"));
-        var baseLibrary = Assert.Single(merged.Libraries.Where(library => library.Name == "com.mojang:brigadier:1.0.18"));
+        var loaderLibrary = Assert.Single(merged.Libraries!, library => library.Name == "net.legacyfabric:intermediary:1.8.9");
+        var baseLibrary = Assert.Single(merged.Libraries!, library => library.Name == "com.mojang:brigadier:1.0.18");
 
         Assert.NotNull(loaderLibrary.Downloads?.Artifact);
         Assert.Equal(

@@ -38,7 +38,6 @@ public class JavaRuntimeServiceTests
 
     [Theory]
     [InlineData("")]
-    [InlineData(null)]
     [InlineData("invalid")]
     [InlineData("abc.def")]
     public void TryParseJavaVersion_InvalidVersionString_ReturnsFalse(string versionString)
@@ -47,6 +46,15 @@ public class JavaRuntimeServiceTests
         var result = _service.TryParseJavaVersion(versionString, out int majorVersion);
 
         // Assert
+        Assert.False(result);
+        Assert.Equal(0, majorVersion);
+    }
+
+    [Fact]
+    public void TryParseJavaVersion_Null_ReturnsFalse()
+    {
+        var result = _service.TryParseJavaVersion(null, out int majorVersion);
+
         Assert.False(result);
         Assert.Equal(0, majorVersion);
     }
@@ -95,10 +103,7 @@ public class JavaRuntimeServiceTests
     [Fact]
     public async Task SelectBestJavaAsync_WithVersionSpecificPath_ReturnsSpecificPath()
     {
-        // Arrange
-        var specificPath = @"C:\Java\jdk-17\bin\java.exe";
-        
-        // Create a temporary file to simulate java.exe
+        // Arrange — create a temporary file to simulate java.exe
         var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         Directory.CreateDirectory(tempDir);
         var tempJavaPath = Path.Combine(tempDir, "java.exe");

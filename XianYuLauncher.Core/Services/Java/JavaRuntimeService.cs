@@ -182,7 +182,7 @@ public class JavaRuntimeService : IJavaRuntimeService
     /// <summary>
     /// 验证 Java 路径是否有效
     /// </summary>
-    public Task<bool> ValidateJavaPathAsync(string javaPath)
+    public Task<bool> ValidateJavaPathAsync(string? javaPath)
     {
         if (string.IsNullOrEmpty(javaPath))
         {
@@ -287,7 +287,7 @@ public class JavaRuntimeService : IJavaRuntimeService
     /// <summary>
     /// 解析 Java 版本号
     /// </summary>
-    public bool TryParseJavaVersion(string versionString, out int majorVersion)
+    public bool TryParseJavaVersion(string? versionString, out int majorVersion)
     {
         majorVersion = 0;
         

@@ -19,7 +19,7 @@ namespace XianYuLauncher.Tests
             // Arrange
             var mockLocalSettings = new Mock<ILocalSettingsService>();
             mockLocalSettings.Setup(x => x.ReadSettingAsync<string>(It.IsAny<string>()))
-                .ReturnsAsync((string)null);
+                .ReturnsAsync((string?)null);
                 
             var downloadManager = new DownloadManager(new NullLogger<DownloadManager>(), mockLocalSettings.Object);
             var logger = new NullLogger<LibraryManager>();
