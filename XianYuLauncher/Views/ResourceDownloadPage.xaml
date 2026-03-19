@@ -290,8 +290,8 @@
                                     Grid.Column="2"
                                     Margin="10,0,0,0"
                                     Command="{Binding RefreshVersionsCommand}">
-                                    <Grid>
-                                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe72c;" Visibility="{Binding IsRefreshing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                                    <Grid Width="20" Height="20">
+                                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe72c;" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsRefreshing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
                                         <ProgressRing IsActive="{Binding IsRefreshing, Mode=OneWay}" Width="20" Height="20" Visibility="{Binding IsRefreshing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
                                     </Grid>
                                 </Button>
