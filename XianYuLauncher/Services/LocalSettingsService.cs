@@ -249,22 +249,28 @@ public class LocalSettingsService : ILocalSettingsService
 
     private static bool TryReadDirectValue<T>(object obj, out T? value)
     {
+        var targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+
+        if (targetType == typeof(string) && obj is string stringObject)
+        {
+            if (string.Equals(stringObject, "null", StringComparison.Ordinal))
+            {
+                value = default;
+                return true;
+            }
+
+            value = (T?)(object?)UnwrapStoredString(stringObject);
+            return true;
+        }
+
         if (obj is T typedValue)
         {
             value = typedValue;
             return true;
         }
 
-        var targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
-
         if (obj is string stringValue)
         {
-            if (targetType == typeof(string))
-            {
-                value = (T?)(object?)UnwrapStoredString(stringValue);
-                return true;
-            }
-
             if (targetType == typeof(bool) && TryParseStoredBool(stringValue, out var boolValue))
             {
                 object boxed = Nullable.GetUnderlyingType(typeof(T)) is not null ? (bool?)boolValue : boolValue;
@@ -296,10 +302,12 @@ public class LocalSettingsService : ILocalSettingsService
         switch (value)
         {
             case null:
-                directStorageValue = string.Empty;
+                directStorageValue = "null";
                 return true;
             case string stringValue:
-                directStorageValue = stringValue;
+                directStorageValue = ShouldStoreStringAsJson(stringValue)
+                    ? JsonConvert.ToString(stringValue)
+                    : stringValue;
                 return true;
             case bool boolValue:
                 directStorageValue = boolValue;
@@ -316,6 +324,12 @@ public class LocalSettingsService : ILocalSettingsService
         }
     }
 
+    private static bool ShouldStoreStringAsJson(string value)
+    {
+        return string.Equals(value, "null", StringComparison.Ordinal)
+            || (value.Length >= 2 && value[0] == '"' && value[^1] == '"');
+    }
+
     private static string UnwrapStoredString(string rawValue)
     {
         if (rawValue.Length < 2 || rawValue[0] != '"' || rawValue[^1] != '"')
@@ -323,13 +337,14 @@ public class LocalSettingsService : ILocalSettingsService
             return rawValue;
         }
 
-        return rawValue[1..^1]
-            .Replace("\\\"", "\"")
-            .Replace("\\\\", "\\")
-            .Replace("\\n", "\n")
-            .Replace("\\r", "\r")
-            .Replace("\\t", "\t")
-            .Replace("\\/", "/");
+        try
+        {
+            return JsonConvert.DeserializeObject<string>(rawValue) ?? string.Empty;
+        }
+        catch (JsonException)
+        {
+            return rawValue;
+        }
     }
 
     private static bool TryParseStoredBool(string rawValue, out bool value)

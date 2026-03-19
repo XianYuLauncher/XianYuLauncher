@@ -1661,24 +1661,32 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     private async Task LoadMaterialSettingsAsync()
     {
-        var state = await _personalizationSettingsDomainService.LoadMaterialStateAsync();
-        MaterialType = state.MaterialType;
-        MotionSpeed = state.MotionSpeed;
-        var colors = state.MotionColors;
-        if (colors.Length == 5)
-        {
-            MotionColor1 = ParseColor(colors[0]);
-            MotionColor2 = ParseColor(colors[1]);
-            MotionColor3 = ParseColor(colors[2]);
-            MotionColor4 = ParseColor(colors[3]);
-            MotionColor5 = ParseColor(colors[4]);
-        }
+        _isInitializingMotionSettings = true;
 
-        // 移除设置页打开时的材质刷新，避免窗口闪烁
-        // 材质在应用启动时已经由MainWindow.ApplyMaterialSettings()应用
-        BackgroundImagePath = state.BackgroundImagePath;
-        BackgroundBlurAmount = state.BackgroundBlurAmount;
-        _isInitializingMotionSettings = false;
+        try
+        {
+            var state = await _personalizationSettingsDomainService.LoadMaterialStateAsync();
+            MaterialType = state.MaterialType;
+            MotionSpeed = state.MotionSpeed;
+            var colors = state.MotionColors;
+            if (colors.Length == 5)
+            {
+                MotionColor1 = ParseColor(colors[0]);
+                MotionColor2 = ParseColor(colors[1]);
+                MotionColor3 = ParseColor(colors[2]);
+                MotionColor4 = ParseColor(colors[3]);
+                MotionColor5 = ParseColor(colors[4]);
+            }
+
+            // 移除设置页打开时的材质刷新，避免窗口闪烁
+            // 材质在应用启动时已经由MainWindow.ApplyMaterialSettings()应用
+            BackgroundImagePath = state.BackgroundImagePath;
+            BackgroundBlurAmount = state.BackgroundBlurAmount;
+        }
+        finally
+        {
+            _isInitializingMotionSettings = false;
+        }
     }
     
     /// <summary>
@@ -2252,7 +2260,6 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         IsLoadingJavaVersions = true;
         try
         {
-            Console.WriteLine("加载保存的Java版本列表...");
             // 注意：存储在磁盘上的是 Core.Models.JavaVersion 对象 (属性为 FullVersion)，
             // 而我们 ViewModel 使用的是 JavaVersionInfo (属性为 Version)。
             // 直接反序列化到 JavaVersionInfo 会导致 Version 属性为空用。
@@ -2271,9 +2278,8 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
                     return;
                 }
 
-                Console.WriteLine($"加载到{savedCoreVersions.Count}个Java版本");
-
                 int validCount = 0;
+                int invalidCount = 0;
                 foreach (var coreVer in savedCoreVersions)
                 {
                     if (File.Exists(coreVer.Path))
@@ -2289,11 +2295,14 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
                     }
                     else
                     {
-                        Console.WriteLine($"跳过无效的Java版本（文件不存在）: {coreVer.Path}");
+                        invalidCount++;
                     }
                 }
 
-                Console.WriteLine($"有效Java版本数量: {validCount}");
+                if (invalidCount > 0)
+                {
+                    Log.Warning("[Settings] Java 版本列表中发现 {InvalidCount} 个无效路径，已在保存时清理", invalidCount);
+                }
 
                 // 如果过滤掉了一些版本，需要重新保存
                 if (validCount < savedCoreVersions.Count)
@@ -2304,7 +2313,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"加载Java版本列表失败: {ex.Message}");
+            Log.Error(ex, "[Settings] 加载 Java 版本列表失败");
         }
         finally
         {
@@ -2322,7 +2331,6 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         {
             // 复制当前列表以避免在保存过程中被修改
             var infoVersions = JavaVersions.ToList();
-            Console.WriteLine($"保存{infoVersions.Count}个Java版本");
             
             // 关键：必须映射回 Core.Models.JavaVersion，否则属性名不匹配 (Version -> FullVersion)
             // 会导致下次读取时 FullVersion 为空
@@ -2335,12 +2343,10 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
             }).ToList();
             
             await _gameSettingsDomainService.SaveJavaVersionsAsync(coreVersions);
-            Console.WriteLine("Java版本列表保存成功");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"保存Java版本列表失败: {ex.Message}");
-            Console.WriteLine($"异常堆栈: {ex.StackTrace}");
+            Log.Error(ex, "[Settings] 保存 Java 版本列表失败");
         }
     }
     
@@ -2628,14 +2634,14 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
                     return;
                 }
 
-                System.Diagnostics.Debug.WriteLine("[SettingsViewModel] Minecraft 路径列表格式无效，已回退到默认目录并重建配置");
+                    Log.Warning("[Settings] Minecraft 路径列表格式无效，已回退到默认目录并重建配置");
             }
 
             await InitializeDefaultMinecraftPathAsync();
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 加载游戏目录列表失败: {ex.Message}");
+                Log.Warning(ex, "[Settings] 加载 Minecraft 路径列表失败");
         }
     }
 
