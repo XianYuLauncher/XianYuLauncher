@@ -964,47 +964,104 @@ Continue downloading?</value>
   <data name="ModLoaderSelectionPage_CancelButtonText" xml:space="preserve">
     <value>Cancel</value>
   </data>
-  <data name="ModDownloadDetailPage_DownloadDialog_PrimaryButtonText.Content" xml:space="preserve">
+  <data name="ModDownloadDetailPage_DownloadDialog_Title" xml:space="preserve">
+    <value>Select Download Method</value>
+  </data>
+  <data name="ModDownloadDetailPage_DownloadDialog_PrimaryButtonText" xml:space="preserve">
     <value>Select Version</value>
   </data>
-  <data name="ModDownloadDetailPage_DownloadDialog_SecondaryButtonText.Content" xml:space="preserve">
+  <data name="ModDownloadDetailPage_DownloadDialog_SecondaryButtonText" xml:space="preserve">
     <value>Custom Location</value>
   </data>
-  <data name="ModDownloadDetailPage_DownloadDialog_CloseButtonText.Content" xml:space="preserve">
+  <data name="ModDownloadDetailPage_DownloadDialog_CloseButtonText" xml:space="preserve">
     <value>Cancel</value>
   </data>
-  <data name="ModDownloadDetailPage_DownloadDialog_InstructionText.Text" xml:space="preserve">
+  <data name="ModDownloadDetailPage_DownloadDialog_InstructionText" xml:space="preserve">
     <value>Please select download method:</value>
   </data>
-  <data name="ModDownloadDetailPage_VersionSelectionDialog_Title.Title" xml:space="preserve">
+  <data name="ModDownloadDetailPage_VersionSelectionDialog_Title" xml:space="preserve">
     <value>Select Game Version</value>
   </data>
-  <data name="ModDownloadDetailPage_VersionSelectionDialog_PrimaryButtonText.Content" xml:space="preserve">
+  <data name="ModDownloadDetailPage_VersionSelectionDialog_PrimaryButtonText" xml:space="preserve">
     <value>Confirm</value>
   </data>
-  <data name="ModDownloadDetailPage_VersionSelectionDialog_CloseButtonText.Content" xml:space="preserve">
+  <data name="ModDownloadDetailPage_VersionSelectionDialog_CloseButtonText" xml:space="preserve">
     <value>Cancel</value>
   </data>
-  <data name="ModDownloadDetailPage_VersionSelectionDialog_InstructionText.Text" xml:space="preserve">
+  <data name="ModDownloadDetailPage_VersionSelectionDialog_InstructionText" xml:space="preserve">
     <value>Please select the game version to install:</value>
   </data>
-  <data name="ModDownloadDetailPage_SaveSelectionDialog_Title.Title" xml:space="preserve">
+  <data name="ModDownloadDetailPage_SaveSelectionDialog_Title" xml:space="preserve">
     <value>Select Save</value>
   </data>
-  <data name="ModDownloadDetailPage_SaveSelectionDialog_PrimaryButtonText.Content" xml:space="preserve">
+  <data name="ModDownloadDetailPage_SaveSelectionDialog_PrimaryButtonText" xml:space="preserve">
     <value>Confirm</value>
   </data>
-  <data name="ModDownloadDetailPage_SaveSelectionDialog_CloseButtonText.Content" xml:space="preserve">
+  <data name="ModDownloadDetailPage_SaveSelectionDialog_CloseButtonText" xml:space="preserve">
     <value>Cancel</value>
   </data>
-  <data name="ModDownloadDetailPage_SaveSelectionDialog_InstructionText.Text" xml:space="preserve">
+  <data name="ModDownloadDetailPage_SaveSelectionDialog_InstructionText" xml:space="preserve">
     <value>Please select the save to install the datapack:</value>
   </data>
-  <data name="ModDownloadDetailPage_ModpackInstallDialog_Title.Title" xml:space="preserve">
+  <data name="ModDownloadDetailPage_ModpackInstallDialog_Title" xml:space="preserve">
     <value>Modpack Installing</value>
   </data>
-  <data name="ModDownloadDetailPage_ModpackInstallDialog_CloseButtonText.Content" xml:space="preserve">
+  <data name="ModDownloadDetailPage_ModpackInstallDialog_CloseButtonText" xml:space="preserve">
     <value>Cancel</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Title" xml:space="preserve">
+    <value>Modpack Name</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_InstructionText" xml:space="preserve">
+    <value>Please enter the modpack name:</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_PlaceholderText" xml:space="preserve">
+    <value>Enter modpack name</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_PrimaryButtonText" xml:space="preserve">
+    <value>Install</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_CloseButtonText" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_Empty" xml:space="preserve">
+    <value>Instance name cannot be empty</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_InvalidChars" xml:space="preserve">
+    <value>Instance name contains invalid characters</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_ReservedDeviceName" xml:space="preserve">
+    <value>Instance name cannot use reserved Windows device names</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_TrailingSpaceOrDot" xml:space="preserve">
+    <value>Instance name cannot end with a period or space</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_TooLong" xml:space="preserve">
+    <value>Instance name is too long. Please keep it within {0} characters</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_Exists" xml:space="preserve">
+    <value>Instance '{0}' already exists, please use a different name</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_NoVersionSelected" xml:space="preserve">
+    <value>No modpack version was selected for installation</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Tip_Latest" xml:space="preserve">
+    <value>The latest modpack version will be installed</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_NotFound" xml:space="preserve">
+    <value>No installable modpack version was found.</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstall_DownloadUrlEmpty" xml:space="preserve">
+    <value>Download URL is empty; cannot download the modpack</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstall_Success" xml:space="preserve">
+    <value>Modpack '{0}' was installed successfully!</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstall_Failed" xml:space="preserve">
+    <value>Modpack installation failed: {0}</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstall_UnknownError" xml:space="preserve">
+    <value>Unknown error</value>
   </data>
   <data name="ModDownloadDetailPage_DownloadProgressDialog_Title.Title" xml:space="preserve">
     <value>Downloading</value>
@@ -1090,17 +1147,41 @@ Continue downloading?</value>
   <data name="ModDownloadDetailPage_McmodButton.Text" xml:space="preserve">
     <value>MCMOD</value>
   </data>
-  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_Title.Title" xml:space="preserve">
+  <data name="ModDownloadDetailPage_QuickInstall_HasActiveTask" xml:space="preserve">
+    <value>A download or installation task is already running. Please wait for it to finish or cancel it before trying again.</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstall_NoInstalledGameVersion" xml:space="preserve">
+    <value>No installed game versions were found. Please install a game version first.</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_Title" xml:space="preserve">
     <value>Select Game Version</value>
   </data>
-  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_InstructionText.Text" xml:space="preserve">
+  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_InstructionText" xml:space="preserve">
     <value>Please select the game version to install the mod:</value>
   </data>
-  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_Tip.Text" xml:space="preserve">
+  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_Tip" xml:space="preserve">
     <value>Gray versions are not supported by this mod</value>
   </data>
-  <data name="ModDownloadDetailPage_QuickInstallModVersionDialog_Title.Title" xml:space="preserve">
+  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_PrimaryButtonText" xml:space="preserve">
+    <value>Next</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_CloseButtonText" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallModVersionDialog_Title" xml:space="preserve">
     <value>Select Mod Version</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallModVersionDialog_InstructionText" xml:space="preserve">
+    <value>Please select the mod version to install to {0}:</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallModVersionDialog_NotFound" xml:space="preserve">
+    <value>No mod version supports {0}.</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallModVersionDialog_PrimaryButtonText" xml:space="preserve">
+    <value>Install</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallModVersionDialog_CloseButtonText" xml:space="preserve">
+    <value>Cancel</value>
   </data>
   <data name="LaunchPage_AddedProfilesText" xml:space="preserve">
     <value>Added Profiles</value>
@@ -2526,6 +2607,18 @@ Continue downloading?</value>
   </data>
   <data name="ModLoaderSelector_VersionNameError_Empty" xml:space="preserve">
     <value>Version name cannot be empty</value>
+  </data>
+  <data name="ModLoaderSelector_VersionNameError_InvalidChars" xml:space="preserve">
+    <value>Version name contains invalid characters</value>
+  </data>
+  <data name="ModLoaderSelector_VersionNameError_ReservedDeviceName" xml:space="preserve">
+    <value>Version name cannot use reserved Windows device names</value>
+  </data>
+  <data name="ModLoaderSelector_VersionNameError_TrailingSpaceOrDot" xml:space="preserve">
+    <value>Version name cannot end with a period or space</value>
+  </data>
+  <data name="ModLoaderSelector_VersionNameError_TooLong" xml:space="preserve">
+    <value>Version name is too long. Please keep it within {0} characters</value>
   </data>
   <data name="ModLoaderSelector_VersionNameError_Exists" xml:space="preserve">
     <value>Version '{0}' already exists, please use a different name</value>

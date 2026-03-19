@@ -964,47 +964,104 @@
   <data name="ModLoaderSelectionPage_CancelButtonText" xml:space="preserve">
     <value>取消</value>
   </data>
-  <data name="ModDownloadDetailPage_DownloadDialog_PrimaryButtonText.Content" xml:space="preserve">
+  <data name="ModDownloadDetailPage_DownloadDialog_Title" xml:space="preserve">
+    <value>选择下载方式</value>
+  </data>
+  <data name="ModDownloadDetailPage_DownloadDialog_PrimaryButtonText" xml:space="preserve">
     <value>选择版本</value>
   </data>
-  <data name="ModDownloadDetailPage_DownloadDialog_SecondaryButtonText.Content" xml:space="preserve">
+  <data name="ModDownloadDetailPage_DownloadDialog_SecondaryButtonText" xml:space="preserve">
     <value>自定义位置</value>
   </data>
-  <data name="ModDownloadDetailPage_DownloadDialog_CloseButtonText.Content" xml:space="preserve">
+  <data name="ModDownloadDetailPage_DownloadDialog_CloseButtonText" xml:space="preserve">
     <value>取消</value>
   </data>
-  <data name="ModDownloadDetailPage_DownloadDialog_InstructionText.Text" xml:space="preserve">
+  <data name="ModDownloadDetailPage_DownloadDialog_InstructionText" xml:space="preserve">
     <value>请选择下载方式：</value>
   </data>
-  <data name="ModDownloadDetailPage_VersionSelectionDialog_Title.Title" xml:space="preserve">
+  <data name="ModDownloadDetailPage_VersionSelectionDialog_Title" xml:space="preserve">
     <value>选择游戏版本</value>
   </data>
-  <data name="ModDownloadDetailPage_VersionSelectionDialog_PrimaryButtonText.Content" xml:space="preserve">
+  <data name="ModDownloadDetailPage_VersionSelectionDialog_PrimaryButtonText" xml:space="preserve">
     <value>确认</value>
   </data>
-  <data name="ModDownloadDetailPage_VersionSelectionDialog_CloseButtonText.Content" xml:space="preserve">
+  <data name="ModDownloadDetailPage_VersionSelectionDialog_CloseButtonText" xml:space="preserve">
     <value>取消</value>
   </data>
-  <data name="ModDownloadDetailPage_VersionSelectionDialog_InstructionText.Text" xml:space="preserve">
+  <data name="ModDownloadDetailPage_VersionSelectionDialog_InstructionText" xml:space="preserve">
     <value>请选择要安装的游戏版本：</value>
   </data>
-  <data name="ModDownloadDetailPage_SaveSelectionDialog_Title.Title" xml:space="preserve">
+  <data name="ModDownloadDetailPage_SaveSelectionDialog_Title" xml:space="preserve">
     <value>选择存档</value>
   </data>
-  <data name="ModDownloadDetailPage_SaveSelectionDialog_PrimaryButtonText.Content" xml:space="preserve">
+  <data name="ModDownloadDetailPage_SaveSelectionDialog_PrimaryButtonText" xml:space="preserve">
     <value>确认</value>
   </data>
-  <data name="ModDownloadDetailPage_SaveSelectionDialog_CloseButtonText.Content" xml:space="preserve">
+  <data name="ModDownloadDetailPage_SaveSelectionDialog_CloseButtonText" xml:space="preserve">
     <value>取消</value>
   </data>
-  <data name="ModDownloadDetailPage_SaveSelectionDialog_InstructionText.Text" xml:space="preserve">
+  <data name="ModDownloadDetailPage_SaveSelectionDialog_InstructionText" xml:space="preserve">
     <value>请选择要安装数据包的存档：</value>
   </data>
-  <data name="ModDownloadDetailPage_ModpackInstallDialog_Title.Title" xml:space="preserve">
+  <data name="ModDownloadDetailPage_ModpackInstallDialog_Title" xml:space="preserve">
     <value>整合包安装中</value>
   </data>
-  <data name="ModDownloadDetailPage_ModpackInstallDialog_CloseButtonText.Content" xml:space="preserve">
+  <data name="ModDownloadDetailPage_ModpackInstallDialog_CloseButtonText" xml:space="preserve">
     <value>取消</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Title" xml:space="preserve">
+    <value>输入整合包名称</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_InstructionText" xml:space="preserve">
+    <value>请输入整合包名称</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_PlaceholderText" xml:space="preserve">
+    <value>输入整合包名称</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_PrimaryButtonText" xml:space="preserve">
+    <value>安装</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_CloseButtonText" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_Empty" xml:space="preserve">
+    <value>实例名称不能为空</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_InvalidChars" xml:space="preserve">
+    <value>实例名称包含非法字符</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_ReservedDeviceName" xml:space="preserve">
+    <value>实例名称不能使用 Windows 保留名称</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_TrailingSpaceOrDot" xml:space="preserve">
+    <value>实例名称不能以句点或空格结尾</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_TooLong" xml:space="preserve">
+    <value>实例名称过长，请控制在 {0} 个字符以内</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_Exists" xml:space="preserve">
+    <value>实例 '{0}' 已存在，请使用其他名称</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_NoVersionSelected" xml:space="preserve">
+    <value>未选择要安装的整合包版本</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Tip_Latest" xml:space="preserve">
+    <value>将安装最新版本整合包</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_NotFound" xml:space="preserve">
+    <value>未找到可安装的整合包版本。</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstall_DownloadUrlEmpty" xml:space="preserve">
+    <value>下载链接为空，无法下载整合包</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstall_Success" xml:space="preserve">
+    <value>整合包 '{0}' 安装成功！</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstall_Failed" xml:space="preserve">
+    <value>整合包安装失败: {0}</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstall_UnknownError" xml:space="preserve">
+    <value>未知错误</value>
   </data>
   <data name="ModDownloadDetailPage_DownloadProgressDialog_Title.Title" xml:space="preserve">
     <value>下载中</value>
@@ -1090,17 +1147,41 @@
   <data name="ModDownloadDetailPage_McmodButton.Text" xml:space="preserve">
     <value>MC百科</value>
   </data>
-  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_Title.Title" xml:space="preserve">
+  <data name="ModDownloadDetailPage_QuickInstall_HasActiveTask" xml:space="preserve">
+    <value>当前有下载或安装任务正在进行，请等待完成或取消后再试。</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstall_NoInstalledGameVersion" xml:space="preserve">
+    <value>未找到已安装的游戏版本，请先安装游戏版本。</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_Title" xml:space="preserve">
     <value>选择游戏版本</value>
   </data>
-  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_InstructionText.Text" xml:space="preserve">
+  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_InstructionText" xml:space="preserve">
     <value>请选择要安装 Mod 的游戏版本：</value>
   </data>
-  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_Tip.Text" xml:space="preserve">
+  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_Tip" xml:space="preserve">
     <value>灰色版本表示当前 Mod 不支持该版本</value>
   </data>
-  <data name="ModDownloadDetailPage_QuickInstallModVersionDialog_Title.Title" xml:space="preserve">
+  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_PrimaryButtonText" xml:space="preserve">
+    <value>下一步</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_CloseButtonText" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallModVersionDialog_Title" xml:space="preserve">
     <value>选择 Mod 版本</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallModVersionDialog_InstructionText" xml:space="preserve">
+    <value>请选择要安装到 {0} 的 Mod 版本：</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallModVersionDialog_NotFound" xml:space="preserve">
+    <value>未找到支持 {0} 的 Mod 版本。</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallModVersionDialog_PrimaryButtonText" xml:space="preserve">
+    <value>安装</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstallModVersionDialog_CloseButtonText" xml:space="preserve">
+    <value>取消</value>
   </data>
   <data name="LaunchPage_AddedProfilesText" xml:space="preserve">
     <value>已添加角色</value>
@@ -2523,6 +2604,18 @@
   </data>
   <data name="ModLoaderSelector_VersionNameError_Empty" xml:space="preserve">
     <value>版本名称不能为空</value>
+  </data>
+  <data name="ModLoaderSelector_VersionNameError_InvalidChars" xml:space="preserve">
+    <value>版本名称包含非法字符</value>
+  </data>
+  <data name="ModLoaderSelector_VersionNameError_ReservedDeviceName" xml:space="preserve">
+    <value>版本名称不能使用 Windows 保留名称</value>
+  </data>
+  <data name="ModLoaderSelector_VersionNameError_TrailingSpaceOrDot" xml:space="preserve">
+    <value>版本名称不能以句点或空格结尾</value>
+  </data>
+  <data name="ModLoaderSelector_VersionNameError_TooLong" xml:space="preserve">
+    <value>版本名称过长，请控制在 {0} 个字符以内</value>
   </data>
   <data name="ModLoaderSelector_VersionNameError_Exists" xml:space="preserve">
     <value>版本 '{0}' 已存在，请使用其他名称</value>

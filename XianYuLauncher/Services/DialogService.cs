@@ -152,6 +152,14 @@ public class DialogService : IDialogService
                 : Windows.UI.Color.FromArgb(0x72, 0x00, 0x00, 0x00));
     }
 
+    private Microsoft.UI.Xaml.Media.Brush GetDialogCriticalTextBrush()
+    {
+        return new Microsoft.UI.Xaml.Media.SolidColorBrush(
+            GetEffectiveDialogTheme() == ElementTheme.Dark
+                ? Windows.UI.Color.FromArgb(255, 0xFF, 0x99, 0x99)
+                : Windows.UI.Color.FromArgb(255, 0xC4, 0x2B, 0x1C));
+    }
+
     /// <summary>
     /// 弹窗内卡片背景，跟随弹窗主题（避免 ContentDialog reparent 后 ThemeResource 错误解析）。
     /// Dark #333333，Light #FFFFFF（浅色模式卡片与弹窗背景一致，仅靠边框区分）。
@@ -473,6 +481,97 @@ public class DialogService : IDialogService
         }
 
         return null;
+    }
+
+    public async Task<string?> ShowModpackInstallNameDialogAsync(
+        string defaultName,
+        string? tip = null,
+        Func<string, (bool IsValid, string ErrorMessage)>? validateInput = null)
+    {
+        var primaryTextBrush = GetDialogPrimaryTextBrush();
+        var secondaryTextBrush = GetDialogSecondaryTextBrush();
+        var criticalTextBrush = GetDialogCriticalTextBrush();
+
+        var inputBox = new TextBox
+        {
+            Text = defaultName?.Trim() ?? string.Empty,
+            PlaceholderText = "ModDownloadDetailPage_ModpackInstallNameDialog_PlaceholderText".GetLocalized(),
+            MinWidth = 380,
+            Width = 380
+        };
+
+        var instructionText = new TextBlock
+        {
+            Text = "ModDownloadDetailPage_ModpackInstallNameDialog_InstructionText".GetLocalized(),
+            FontSize = 14,
+            Foreground = primaryTextBrush,
+            TextWrapping = TextWrapping.Wrap
+        };
+
+        var errorText = new TextBlock
+        {
+            FontSize = 12,
+            Foreground = criticalTextBrush,
+            TextWrapping = TextWrapping.Wrap,
+            Visibility = Visibility.Collapsed
+        };
+
+        var content = new StackPanel { Spacing = 8 };
+        content.Children.Add(instructionText);
+        content.Children.Add(inputBox);
+        content.Children.Add(errorText);
+
+        if (!string.IsNullOrWhiteSpace(tip))
+        {
+            content.Children.Add(new TextBlock
+            {
+                Text = tip,
+                FontSize = 12,
+                Foreground = secondaryTextBrush,
+                TextWrapping = TextWrapping.Wrap
+            });
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = "ModDownloadDetailPage_ModpackInstallNameDialog_Title".GetLocalized(),
+            Content = content,
+            PrimaryButtonText = "ModDownloadDetailPage_ModpackInstallNameDialog_PrimaryButtonText".GetLocalized(),
+            CloseButtonText = "ModDownloadDetailPage_ModpackInstallNameDialog_CloseButtonText".GetLocalized(),
+            DefaultButton = ContentDialogButton.Primary,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
+        void UpdateValidationState()
+        {
+            var value = inputBox.Text ?? string.Empty;
+            var validationResult = validateInput?.Invoke(value)
+                ?? (!string.IsNullOrWhiteSpace(value), !string.IsNullOrWhiteSpace(value)
+                    ? string.Empty
+                    : "ModDownloadDetailPage_ModpackInstallNameDialog_Error_Empty".GetLocalized());
+
+            dialog.IsPrimaryButtonEnabled = validationResult.IsValid;
+            errorText.Text = validationResult.IsValid ? string.Empty : validationResult.ErrorMessage;
+            errorText.Visibility = string.IsNullOrWhiteSpace(errorText.Text) ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        inputBox.TextChanged += (_, _) => UpdateValidationState();
+        dialog.Opened += (_, _) =>
+        {
+            inputBox.Focus(FocusState.Programmatic);
+            inputBox.SelectionStart = inputBox.Text.Length;
+            UpdateValidationState();
+        };
+
+        UpdateValidationState();
+
+        var result = await ShowSafeAsync(dialog);
+        if (result != ContentDialogResult.Primary)
+        {
+            return null;
+        }
+
+        return inputBox.Text?.Trim();
     }
 
     public async Task ShowProgressDialogAsync(string title, string message, Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback)
@@ -830,9 +929,9 @@ public class DialogService : IDialogService
         {
             Title = title,
             Content = panel,
-            PrimaryButtonText = "选择版本",
-            SecondaryButtonText = "自定义位置",
-            CloseButtonText = "取消",
+            PrimaryButtonText = "ModDownloadDetailPage_DownloadDialog_PrimaryButtonText".GetLocalized(),
+            SecondaryButtonText = "ModDownloadDetailPage_DownloadDialog_SecondaryButtonText".GetLocalized(),
+            CloseButtonText = "ModDownloadDetailPage_DownloadDialog_CloseButtonText".GetLocalized(),
             DefaultButton = ContentDialogButton.None,
             Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
         };

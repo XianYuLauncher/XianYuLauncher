@@ -139,8 +139,7 @@
                               HorizontalAlignment="Right"
                               Margin="0,0,16,0"
                               Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
-                            <Button Command="{x:Bind ViewModel.QuickInstallCommand}"
-                                    Visibility="{x:Bind ViewModel.IsQuickInstallButtonVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                                        <Button Command="{x:Bind ViewModel.QuickInstallCommand}"
                                     CornerRadius="8"
                                     Height="44"
                                     Padding="16,10"
