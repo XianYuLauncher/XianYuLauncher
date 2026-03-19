@@ -122,7 +122,10 @@ public class NavigationService : INavigationService
     {
         if (sender is Frame frame)
         {
-            var clearNavigation = (bool)frame.Tag;
+            // 每次导航（含 GoBack）后同步 _lastParameterUsed，否则返回后再点同一依赖项会因参数相同被误判为“已在目标页”而不导航
+            _lastParameterUsed = e.Parameter;
+
+            var clearNavigation = frame.Tag is bool b && b;
             if (clearNavigation)
             {
                 frame.BackStack.Clear();

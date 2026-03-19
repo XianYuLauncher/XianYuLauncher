@@ -826,6 +826,17 @@ public class DialogService : IDialogService
         var panel = new StackPanel { Spacing = 16 };
         panel.Children.Add(new TextBlock { Text = instruction, FontSize = 14, Foreground = primaryTextBrush });
 
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            Content = panel,
+            PrimaryButtonText = "选择版本",
+            SecondaryButtonText = "自定义位置",
+            CloseButtonText = "取消",
+            DefaultButton = ContentDialogButton.None,
+            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
+        };
+
         // 前置 Mod 列表
         var deps = dependencyProjects?.ToList();
         if (deps != null && deps.Count > 0)
@@ -881,24 +892,21 @@ public class DialogService : IDialogService
                         Width = 380,
                         HorizontalAlignment = HorizontalAlignment.Left
                     };
+                    // 覆盖默认 Hover/Pressed 样式，避免从卡片灰闪到白再恢复的 UX 问题
+                    var subtleFill = GetDialogSubtleFillBrush();
+                    btn.Resources["ButtonBackgroundPointerOver"] = subtleFill;
+                    btn.Resources["ButtonBackgroundPressed"] = subtleFill;
                     var capturedId = projectId;
-                    btn.Click += (s, e) => onDependencyClick?.Invoke(capturedId);
+                    btn.Click += (s, e) =>
+                    {
+                        dialog.Hide();
+                        onDependencyClick?.Invoke(capturedId);
+                    };
                     depsPanel.Children.Add(btn);
                 }
                 panel.Children.Add(depsPanel);
             }
         }
-
-        var dialog = new ContentDialog
-        {
-            Title = title,
-            Content = panel,
-            PrimaryButtonText = "选择版本",
-            SecondaryButtonText = "自定义位置",
-            CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.None,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
 
         return await ShowSafeAsync(dialog);
     }
