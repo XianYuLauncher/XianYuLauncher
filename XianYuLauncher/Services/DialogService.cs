@@ -544,8 +544,11 @@ public class DialogService : IDialogService
 
         void UpdateValidationState()
         {
-            var value = inputBox.Text?.Trim() ?? string.Empty;
-            var validationResult = validateInput?.Invoke(value) ?? (!string.IsNullOrWhiteSpace(value), string.Empty);
+            var value = inputBox.Text ?? string.Empty;
+            var validationResult = validateInput?.Invoke(value)
+                ?? (!string.IsNullOrWhiteSpace(value), !string.IsNullOrWhiteSpace(value)
+                    ? string.Empty
+                    : "ModDownloadDetailPage_ModpackInstallNameDialog_Error_Empty".GetLocalized());
 
             dialog.IsPrimaryButtonEnabled = validationResult.IsValid;
             errorText.Text = validationResult.IsValid ? string.Empty : validationResult.ErrorMessage;

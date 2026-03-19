@@ -52,27 +52,29 @@ public class ModLoaderVersionNameService : IModLoaderVersionNameService
 
     public (bool IsValid, string ErrorMessage) ValidateVersionName(string versionName)
     {
-        if (string.IsNullOrWhiteSpace(versionName))
-        {
-            return (false, "ModLoaderSelector_VersionNameError_Empty".GetLocalized());
-        }
-
-        // 检查版本目录是否已存在
         try
         {
             string minecraftDirectory = _fileService.GetMinecraftDataPath();
+            var validationResult = VersionNameValidationHelper.ValidateVersionName(versionName, minecraftDirectory);
+            if (!validationResult.IsValid)
+            {
+                return (false, validationResult.Error switch
+                {
+                    VersionNameValidationError.Empty => "ModLoaderSelector_VersionNameError_Empty".GetLocalized(),
+                    VersionNameValidationError.InvalidChars => "ModLoaderSelector_VersionNameError_InvalidChars".GetLocalized(),
+                    VersionNameValidationError.ReservedDeviceName => "ModLoaderSelector_VersionNameError_ReservedDeviceName".GetLocalized(),
+                    VersionNameValidationError.TrailingSpaceOrDot => "ModLoaderSelector_VersionNameError_TrailingSpaceOrDot".GetLocalized(),
+                    VersionNameValidationError.TooLong => "ModLoaderSelector_VersionNameError_TooLong".GetLocalized(validationResult.MaxSafeLength),
+                    _ => "ModLoaderSelector_VersionNameError_Empty".GetLocalized(),
+                });
+            }
+
             string versionsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions);
-            string versionDirectory = Path.Combine(versionsDirectory, versionName);
+            string versionDirectory = Path.Combine(versionsDirectory, validationResult.NormalizedName);
 
             if (Directory.Exists(versionDirectory))
             {
-                return (false, string.Format("ModLoaderSelector_VersionNameError_Exists".GetLocalized(), versionName));
-            }
-            
-            // 还可以增加文件名非法字符检测
-            if (versionName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-            {
-                 return (false, "版本名称包含非法字符");
+                return (false, string.Format("ModLoaderSelector_VersionNameError_Exists".GetLocalized(), validationResult.NormalizedName));
             }
         }
         catch

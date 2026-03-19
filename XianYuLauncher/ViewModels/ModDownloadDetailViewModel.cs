@@ -34,7 +34,6 @@ namespace XianYuLauncher.ViewModels
         private readonly IModpackInstallationService _modpackInstallationService;
         private readonly IModResourceDownloadOrchestrator _modResourceDownloadOrchestrator;
         private readonly IModDetailLoadOrchestrator _modDetailLoadOrchestrator;
-        private readonly IModLoaderVersionNameService _modLoaderVersionNameService;
         private readonly IVersionInfoService _versionInfoService;
         private readonly IUiDispatcher _uiDispatcher;
         private readonly ShellViewModel _shellViewModel;
@@ -335,14 +334,7 @@ namespace XianYuLauncher.ViewModels
                     break;
             }
             
-            // 通知安装按钮可见性属性更新
-            OnPropertyChanged(nameof(IsQuickInstallButtonVisible));
         }
-        
-        /// <summary>
-        /// 判断是否显示一键安装按钮。
-        /// </summary>
-        public bool IsQuickInstallButtonVisible => true;
         
         private CancellationTokenSource? _downloadCancellationTokenSource;
         
@@ -411,7 +403,6 @@ namespace XianYuLauncher.ViewModels
             IModpackInstallationService modpackInstallationService,
             IModResourceDownloadOrchestrator modResourceDownloadOrchestrator,
             IModDetailLoadOrchestrator modDetailLoadOrchestrator,
-            IModLoaderVersionNameService modLoaderVersionNameService,
             IVersionInfoService versionInfoService,
             IUiDispatcher uiDispatcher,
             ShellViewModel shellViewModel,
@@ -428,7 +419,6 @@ namespace XianYuLauncher.ViewModels
             _modpackInstallationService = modpackInstallationService;
             _modResourceDownloadOrchestrator = modResourceDownloadOrchestrator;
             _modDetailLoadOrchestrator = modDetailLoadOrchestrator;
-            _modLoaderVersionNameService = modLoaderVersionNameService;
             _versionInfoService = versionInfoService;
             _uiDispatcher = uiDispatcher;
             _shellViewModel = shellViewModel;
@@ -1796,14 +1786,14 @@ namespace XianYuLauncher.ViewModels
         {
             if (modVersion == null)
             {
-                await ShowMessageAsync("未选择要安装的整合包版本");
+                await ShowMessageAsync("ModDownloadDetailPage_ModpackInstallNameDialog_NoVersionSelected".GetLocalized());
                 return;
             }
 
             var targetVersionName = await _dialogService.ShowModpackInstallNameDialogAsync(
                 ModName,
                 tip,
-                value => _modLoaderVersionNameService.ValidateVersionName(value));
+                value => ValidateModpackInstallName(value));
 
             if (string.IsNullOrWhiteSpace(targetVersionName))
             {
@@ -1811,6 +1801,43 @@ namespace XianYuLauncher.ViewModels
             }
 
             await InstallModpackCoreAsync(modVersion, targetVersionName);
+        }
+
+        private (bool IsValid, string ErrorMessage) ValidateModpackInstallName(string versionName)
+        {
+            string minecraftDirectory = _fileService.GetMinecraftDataPath();
+            var validationResult = VersionNameValidationHelper.ValidateVersionName(versionName, minecraftDirectory);
+            if (!validationResult.IsValid)
+            {
+                return (false, validationResult.Error switch
+                {
+                    VersionNameValidationError.Empty => "ModDownloadDetailPage_ModpackInstallNameDialog_Error_Empty".GetLocalized(),
+                    VersionNameValidationError.InvalidChars => "ModDownloadDetailPage_ModpackInstallNameDialog_Error_InvalidChars".GetLocalized(),
+                    VersionNameValidationError.ReservedDeviceName => "ModDownloadDetailPage_ModpackInstallNameDialog_Error_ReservedDeviceName".GetLocalized(),
+                    VersionNameValidationError.TrailingSpaceOrDot => "ModDownloadDetailPage_ModpackInstallNameDialog_Error_TrailingSpaceOrDot".GetLocalized(),
+                    VersionNameValidationError.TooLong => "ModDownloadDetailPage_ModpackInstallNameDialog_Error_TooLong".GetLocalized(validationResult.MaxSafeLength),
+                    _ => "ModDownloadDetailPage_ModpackInstallNameDialog_Error_Empty".GetLocalized(),
+                });
+            }
+
+            try
+            {
+                string versionsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions);
+                string versionDirectory = Path.Combine(versionsDirectory, validationResult.NormalizedName);
+
+                if (Directory.Exists(versionDirectory))
+                {
+                    return (false, string.Format(
+                        "ModDownloadDetailPage_ModpackInstallNameDialog_Error_Exists".GetLocalized(),
+                        validationResult.NormalizedName));
+                }
+            }
+            catch
+            {
+                // 忽略路径检查异常，后续安装阶段仍会做最终校验。
+            }
+
+            return (true, string.Empty);
         }
 
         private static string GetModpackVersionIdentity(ModVersionViewModel modVersion)
@@ -1915,7 +1942,7 @@ namespace XianYuLauncher.ViewModels
             {
                 var resolvedDownloadUrl = ResolveModpackDownloadUrl(modVersion);
                 if (string.IsNullOrWhiteSpace(resolvedDownloadUrl))
-                    throw new Exception("下载链接为空，无法下载整合包");
+                    throw new Exception("ModDownloadDetailPage_ModpackInstall_DownloadUrlEmpty".GetLocalized());
 
                 string minecraftPath = _fileService.GetMinecraftDataPath();
 
@@ -1948,7 +1975,9 @@ namespace XianYuLauncher.ViewModels
                 {
                     await Task.Delay(500);
                     dialogCloseTcs.TrySetResult(true);
-                    await ShowMessageAsync($"整合包 '{result.ModpackName}' 安装成功！");
+                    await ShowMessageAsync(string.Format(
+                        "ModDownloadDetailPage_ModpackInstall_Success".GetLocalized(),
+                        result.ModpackName));
                 }
                 else
                 {
@@ -1957,7 +1986,9 @@ namespace XianYuLauncher.ViewModels
                     {
                         ErrorMessage = result.ErrorMessage ?? string.Empty;
                         InstallStatus = "安装失败！";
-                        await ShowMessageAsync($"整合包安装失败: {result.ErrorMessage ?? "未知错误"}");
+                        await ShowMessageAsync(string.Format(
+                            "ModDownloadDetailPage_ModpackInstall_Failed".GetLocalized(),
+                            result.ErrorMessage ?? "ModDownloadDetailPage_ModpackInstall_UnknownError".GetLocalized()));
                     }
                     else
                     {
@@ -1975,7 +2006,9 @@ namespace XianYuLauncher.ViewModels
                 ErrorMessage = ex.Message;
                 InstallStatus = "安装失败！";
                 dialogCloseTcs.TrySetResult(true);
-                await ShowMessageAsync($"整合包安装失败: {ex.Message}");
+                await ShowMessageAsync(string.Format(
+                    "ModDownloadDetailPage_ModpackInstall_Failed".GetLocalized(),
+                    ex.Message));
             }
             finally
             {
@@ -2166,7 +2199,7 @@ namespace XianYuLauncher.ViewModels
             // 如果正在下载或安装，不允许再次开始
             if (IsDownloading || IsInstalling)
             {
-                await ShowMessageAsync("当前有下载或安装任务正在进行，请等待完成或取消后再试。");
+                await ShowMessageAsync("ModDownloadDetailPage_QuickInstall_HasActiveTask".GetLocalized());
                 return;
             }
             
@@ -2193,7 +2226,7 @@ namespace XianYuLauncher.ViewModels
                 
                 if (QuickInstallGameVersions.Count == 0)
                 {
-                    await ShowMessageAsync("未找到已安装的游戏版本，请先安装游戏版本。");
+                    await ShowMessageAsync("ModDownloadDetailPage_QuickInstall_NoInstalledGameVersion".GetLocalized());
                     return;
                 }
                 

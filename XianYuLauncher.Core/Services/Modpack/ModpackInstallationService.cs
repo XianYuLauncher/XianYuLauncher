@@ -55,7 +55,7 @@ public class ModpackInstallationService : IModpackInstallationService
 
         try
         {
-            var validatedTargetVersionName = ValidateTargetVersionName(targetVersionName);
+            var validatedTargetVersionName = ValidateTargetVersionName(targetVersionName, minecraftPath);
             var targetVersionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, validatedTargetVersionName);
             if (Directory.Exists(targetVersionDir))
             {
@@ -304,7 +304,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string minecraftVersion = indexData["dependencies"]?["minecraft"]?.ToString()
             ?? throw new Exception("整合包中缺少Minecraft版本依赖信息");
 
-        var (modLoaderType, modLoaderName, modLoaderVersion) = ParseModrinthDependencies(indexData);
+        var (modLoaderType, _, modLoaderVersion) = ParseModrinthDependencies(indexData);
 
         Report(progress, 50, "50%", $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...");
 
@@ -566,20 +566,23 @@ public class ModpackInstallationService : IModpackInstallationService
         return ModpackInstallResult.Succeeded(targetVersionName, targetVersionName);
     }
 
-    private static string ValidateTargetVersionName(string targetVersionName)
+    private static string ValidateTargetVersionName(string targetVersionName, string minecraftPath)
     {
-        if (string.IsNullOrWhiteSpace(targetVersionName))
+        var validationResult = VersionNameValidationHelper.ValidateVersionName(targetVersionName, minecraftPath);
+        if (validationResult.IsValid)
         {
-            throw new Exception("目标实例不能为空");
+            return validationResult.NormalizedName;
         }
 
-        var trimmedName = targetVersionName.Trim();
-        if (trimmedName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        throw validationResult.Error switch
         {
-            throw new Exception("实例名称包含非法字符");
-        }
-
-        return trimmedName;
+            VersionNameValidationError.Empty => new Exception("目标实例不能为空"),
+            VersionNameValidationError.InvalidChars => new Exception("实例名称包含非法字符"),
+            VersionNameValidationError.ReservedDeviceName => new Exception("实例名称不能使用 Windows 保留名称"),
+            VersionNameValidationError.TrailingSpaceOrDot => new Exception("实例名称不能以句点或空格结尾"),
+            VersionNameValidationError.TooLong => new Exception($"实例名称过长，请控制在 {validationResult.MaxSafeLength} 个字符以内"),
+            _ => new Exception("实例名称无效"),
+        };
     }
 
     private async Task SaveModpackMetadataAsync(

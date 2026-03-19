@@ -1024,11 +1024,44 @@
   <data name="ModDownloadDetailPage_ModpackInstallNameDialog_CloseButtonText" xml:space="preserve">
     <value>取消</value>
   </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_Empty" xml:space="preserve">
+    <value>实例名称不能为空</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_InvalidChars" xml:space="preserve">
+    <value>实例名称包含非法字符</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_ReservedDeviceName" xml:space="preserve">
+    <value>实例名称不能使用 Windows 保留名称</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_TrailingSpaceOrDot" xml:space="preserve">
+    <value>实例名称不能以句点或空格结尾</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_TooLong" xml:space="preserve">
+    <value>实例名称过长，请控制在 {0} 个字符以内</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Error_Exists" xml:space="preserve">
+    <value>实例 '{0}' 已存在，请使用其他名称</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstallNameDialog_NoVersionSelected" xml:space="preserve">
+    <value>未选择要安装的整合包版本</value>
+  </data>
   <data name="ModDownloadDetailPage_ModpackInstallNameDialog_Tip_Latest" xml:space="preserve">
     <value>将安装最新版本整合包</value>
   </data>
   <data name="ModDownloadDetailPage_ModpackInstallNameDialog_NotFound" xml:space="preserve">
     <value>未找到可安装的整合包版本。</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstall_DownloadUrlEmpty" xml:space="preserve">
+    <value>下载链接为空，无法下载整合包</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstall_Success" xml:space="preserve">
+    <value>整合包 '{0}' 安装成功！</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstall_Failed" xml:space="preserve">
+    <value>整合包安装失败: {0}</value>
+  </data>
+  <data name="ModDownloadDetailPage_ModpackInstall_UnknownError" xml:space="preserve">
+    <value>未知错误</value>
   </data>
   <data name="ModDownloadDetailPage_DownloadProgressDialog_Title.Title" xml:space="preserve">
     <value>下载中</value>
@@ -1113,6 +1146,12 @@
   </data>
   <data name="ModDownloadDetailPage_McmodButton.Text" xml:space="preserve">
     <value>MC百科</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstall_HasActiveTask" xml:space="preserve">
+    <value>当前有下载或安装任务正在进行，请等待完成或取消后再试。</value>
+  </data>
+  <data name="ModDownloadDetailPage_QuickInstall_NoInstalledGameVersion" xml:space="preserve">
+    <value>未找到已安装的游戏版本，请先安装游戏版本。</value>
   </data>
   <data name="ModDownloadDetailPage_QuickInstallGameVersionDialog_Title" xml:space="preserve">
     <value>选择游戏版本</value>
@@ -2565,6 +2604,18 @@
   </data>
   <data name="ModLoaderSelector_VersionNameError_Empty" xml:space="preserve">
     <value>版本名称不能为空</value>
+  </data>
+  <data name="ModLoaderSelector_VersionNameError_InvalidChars" xml:space="preserve">
+    <value>版本名称包含非法字符</value>
+  </data>
+  <data name="ModLoaderSelector_VersionNameError_ReservedDeviceName" xml:space="preserve">
+    <value>版本名称不能使用 Windows 保留名称</value>
+  </data>
+  <data name="ModLoaderSelector_VersionNameError_TrailingSpaceOrDot" xml:space="preserve">
+    <value>版本名称不能以句点或空格结尾</value>
+  </data>
+  <data name="ModLoaderSelector_VersionNameError_TooLong" xml:space="preserve">
+    <value>版本名称过长，请控制在 {0} 个字符以内</value>
   </data>
   <data name="ModLoaderSelector_VersionNameError_Exists" xml:space="preserve">
     <value>版本 '{0}' 已存在，请使用其他名称</value>
