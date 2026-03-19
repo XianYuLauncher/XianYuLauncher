@@ -36,7 +36,6 @@ namespace XianYuLauncher.ViewModels
         private readonly IModDetailLoadOrchestrator _modDetailLoadOrchestrator;
         private readonly IVersionInfoService _versionInfoService;
         private readonly IUiDispatcher _uiDispatcher;
-        private readonly ShellViewModel _shellViewModel;
         private readonly IGameDirResolver _gameDirResolver;
         private readonly IHttpImageSourceService _httpImageSourceService;
         private readonly ILogger<ModDownloadDetailViewModel> _logger;
@@ -386,11 +385,7 @@ namespace XianYuLauncher.ViewModels
             // TODO(mod-download): 后续更稳的做法是把“下载会话 UI 初始化”从主资源下载启动中彻底拆开，
             // 由依赖下载和主资源下载共用同一个开始入口，避免 TeachingTip 显示时机再次因时序调整而回归。
             _downloadTaskManager.IsTeachingTipEnabled = true;
-
-            _shellViewModel.DownloadTaskName = ModName;
-            _shellViewModel.DownloadStatusMessage = "正在解析前置依赖...";
-            _shellViewModel.DownloadProgress = 0;
-            _shellViewModel.IsDownloadTeachingTipOpen = true;
+            _downloadTaskManager.NotifyProgress(ModName, 0, "正在解析前置依赖...");
         }
 
         public ModDownloadDetailViewModel(
@@ -405,7 +400,6 @@ namespace XianYuLauncher.ViewModels
             IModDetailLoadOrchestrator modDetailLoadOrchestrator,
             IVersionInfoService versionInfoService,
             IUiDispatcher uiDispatcher,
-            ShellViewModel shellViewModel,
             IGameDirResolver gameDirResolver,
             IHttpImageSourceService httpImageSourceService,
             ILogger<ModDownloadDetailViewModel> logger)
@@ -421,7 +415,6 @@ namespace XianYuLauncher.ViewModels
             _modDetailLoadOrchestrator = modDetailLoadOrchestrator;
             _versionInfoService = versionInfoService;
             _uiDispatcher = uiDispatcher;
-            _shellViewModel = shellViewModel;
             _gameDirResolver = gameDirResolver;
             _httpImageSourceService = httpImageSourceService;
             _logger = logger;

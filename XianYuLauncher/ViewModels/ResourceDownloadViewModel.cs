@@ -1091,11 +1091,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 string.IsNullOrEmpty(FavoritesDownloadStatus) ? "正在后台下载..." : FavoritesDownloadStatus);
         }
 
-        var shellViewModel = App.GetService<ShellViewModel>();
-        if (shellViewModel != null)
-        {
-            shellViewModel.IsDownloadTeachingTipOpen = true;
-        }
     }
 
     private async Task<(bool Success, string? SkippedReason)> DownloadFavoriteAsync(ModrinthProject project, InstalledGameVersionViewModel gameVersion)

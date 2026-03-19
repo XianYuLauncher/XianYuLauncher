@@ -764,14 +764,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             
             // 启用 TeachingTip 显示
             _downloadTaskManager.IsTeachingTipEnabled = true;
-            
-            // 通知 ShellViewModel 打开 TeachingTip
-            var shellViewModel = App.GetService<ShellViewModel>();
-            if (shellViewModel != null)
-            {
-                shellViewModel.IsDownloadTeachingTipOpen = true;
-            }
-            
+
             // 下载逻辑 - 使用 DownloadTaskManager
             if (string.IsNullOrEmpty(SelectedModLoader) && !IsOptifineSelected && !IsLiteLoaderSelected)
             {
