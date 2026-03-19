@@ -25,9 +25,9 @@ public interface IJavaRuntimeService
     /// <summary>
     /// 验证 Java 路径是否有效
     /// </summary>
-    /// <param name="javaPath">Java 可执行文件路径</param>
+    /// <param name="javaPath">Java 可执行文件路径；为 null 或空时视为无效</param>
     /// <returns>如果路径有效则返回 true，否则返回 false</returns>
-    Task<bool> ValidateJavaPathAsync(string javaPath);
+    Task<bool> ValidateJavaPathAsync(string? javaPath);
 
     /// <summary>
     /// 获取指定路径的 Java 版本信息
@@ -39,8 +39,8 @@ public interface IJavaRuntimeService
     /// <summary>
     /// 解析 Java 版本号
     /// </summary>
-    /// <param name="versionString">版本字符串（如 "1.8.0_301" 或 "17.0.1"）</param>
+    /// <param name="versionString">版本字符串（如 "1.8.0_301" 或 "17.0.1"）；为 null 或空时解析失败</param>
     /// <param name="majorVersion">解析出的主版本号</param>
     /// <returns>如果解析成功则返回 true，否则返回 false</returns>
-    bool TryParseJavaVersion(string versionString, out int majorVersion);
+    bool TryParseJavaVersion(string? versionString, out int majorVersion);
 }

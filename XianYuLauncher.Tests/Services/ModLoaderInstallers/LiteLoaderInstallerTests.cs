@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -71,12 +70,12 @@ public class LiteLoaderInstallerTests
             argument => Assert.Equal("--tweakClass", argument),
             argument => Assert.Equal("com.mumfrey.liteloader.launch.LiteLoaderTweaker", argument));
 
-        var liteLoaderJar = Assert.Single(resolved.Libraries!.Where(library => library.Name == "com.mumfrey:liteloader:1.8.9"));
+        var liteLoaderJar = Assert.Single(resolved.Libraries!, library => library.Name == "com.mumfrey:liteloader:1.8.9");
         Assert.Equal(
             "https://libraries.minecraft.net/com/mumfrey/liteloader/1.8.9/liteloader-1.8.9.jar",
             liteLoaderJar.Downloads!.Artifact!.Url);
 
-        var helperLibrary = Assert.Single(resolved.Libraries.Where(library => library.Name == "com.example:helper:1.0.0"));
+        var helperLibrary = Assert.Single(resolved.Libraries!, library => library.Name == "com.example:helper:1.0.0");
         Assert.Equal(
             "https://repo.example.com/releases/com/example/helper/1.0.0/helper-1.0.0.jar",
             helperLibrary.Downloads!.Artifact!.Url);
