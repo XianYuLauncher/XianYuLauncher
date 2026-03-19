@@ -3,12 +3,13 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using XianYuLauncher.Contracts.Services;
@@ -37,6 +38,7 @@ namespace XianYuLauncher.ViewModels
         private readonly IUiDispatcher _uiDispatcher;
         private readonly ShellViewModel _shellViewModel;
         private readonly IGameDirResolver _gameDirResolver;
+        private readonly IHttpImageSourceService _httpImageSourceService;
         private readonly ILogger<ModDownloadDetailViewModel> _logger;
 
         [ObservableProperty]
@@ -155,6 +157,12 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private string _modIconUrl = "ms-appx:///Assets/Placeholder.png";
 
+        /// <summary>
+        /// 详情页头部图标（预取并解码后再结束骨架屏，避免 Image 绑定远程 URI 时长时间空白）。
+        /// </summary>
+        [ObservableProperty]
+        private ImageSource? _modHeaderIcon;
+
         [ObservableProperty]
         private long _modDownloads = 0;
 
@@ -268,6 +276,9 @@ namespace XianYuLauncher.ViewModels
         
         // CurseForge文件加载取消令牌源
         private CancellationTokenSource? _curseForgeLoadCancellationTokenSource;
+
+        // 图标预取取消令牌源（每次加载时重建，支持快速切换 Mod 时取消旧请求）
+        private CancellationTokenSource? _iconLoadCancellationTokenSource;
         
         // 项目类型：mod 或 resourcepack
         [ObservableProperty]
@@ -403,6 +414,7 @@ namespace XianYuLauncher.ViewModels
             IUiDispatcher uiDispatcher,
             ShellViewModel shellViewModel,
             IGameDirResolver gameDirResolver,
+            IHttpImageSourceService httpImageSourceService,
             ILogger<ModDownloadDetailViewModel> logger)
         {
             _curseForgeService = curseForgeService;
@@ -418,6 +430,7 @@ namespace XianYuLauncher.ViewModels
             _uiDispatcher = uiDispatcher;
             _shellViewModel = shellViewModel;
             _gameDirResolver = gameDirResolver;
+            _httpImageSourceService = httpImageSourceService;
             _logger = logger;
         }
         
@@ -442,7 +455,15 @@ namespace XianYuLauncher.ViewModels
                 _sourceType = null;
             }
 
+            // 取消上一次图标预取，避免快速切换 Mod 时堆积无效请求
+            _iconLoadCancellationTokenSource?.Cancel();
+            _iconLoadCancellationTokenSource?.Dispose();
+            var iconCts = new CancellationTokenSource();
+            _iconLoadCancellationTokenSource = iconCts;
+            var iconCt = iconCts.Token;
+
             ModId = modId;
+            await _uiDispatcher.RunOnUiThreadAsync(() => ModHeaderIcon = null);
             IsLoading = true;
             ErrorMessage = string.Empty;
             
@@ -454,11 +475,11 @@ namespace XianYuLauncher.ViewModels
                 // 判断是否为CurseForge的Mod（ProjectId以"curseforge-"开头）
                 if (modId.StartsWith("curseforge-"))
                 {
-                    await LoadCurseForgeModDetailsAsync(modId);
+                    await LoadCurseForgeModDetailsAsync(modId, iconCt);
                 }
                 else
                 {
-                    await LoadModrinthModDetailsAsync(modId);
+                    await LoadModrinthModDetailsAsync(modId, iconCt);
                 }
             }
             catch (Exception ex)
@@ -468,7 +489,22 @@ namespace XianYuLauncher.ViewModels
             }
             finally
             {
-                IsLoading = false;
+                // PrefetchModHeaderIconAsync 已 await 完成；若字段仍为本次 CTS，则安全释放
+                if (ReferenceEquals(_iconLoadCancellationTokenSource, iconCts))
+                {
+                    iconCts.Dispose();
+                    _iconLoadCancellationTokenSource = null;
+                }
+
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
+                {
+                    if (ModHeaderIcon == null)
+                    {
+                        ModHeaderIcon = new BitmapImage(new Uri("ms-appx:///Assets/Placeholder.png"));
+                    }
+
+                    IsLoading = false;
+                });
             }
         }
 
@@ -529,12 +565,13 @@ namespace XianYuLauncher.ViewModels
             }
         }
         
-        private async Task LoadModrinthModDetailsAsync(string modId)
+        private async Task LoadModrinthModDetailsAsync(string modId, CancellationToken iconCt)
         {
             try
             {
                 var result = await _modDetailLoadOrchestrator.LoadModrinthModDetailsAsync(modId, _passedModInfo, _sourceType);
                 ApplyModDetailResult(result);
+                await PrefetchModHeaderIconAsync(iconCt);
                 PublisherList.Clear();
                 _modTeamId = result.TeamId;
                 StartLoadPublishersInBackground();
@@ -550,10 +587,11 @@ namespace XianYuLauncher.ViewModels
         /// <summary>
         /// 加载CurseForge Mod详情
         /// </summary>
-        private async Task LoadCurseForgeModDetailsAsync(string modId)
+        private async Task LoadCurseForgeModDetailsAsync(string modId, CancellationToken iconCt)
         {
             var result = await _modDetailLoadOrchestrator.LoadCurseForgeModDetailsAsync(modId, _passedModInfo, _sourceType);
             ApplyModDetailResult(result);
+            await PrefetchModHeaderIconAsync(iconCt);
 
             PublisherList.Clear();
             _modTeamId = null;
@@ -666,6 +704,65 @@ namespace XianYuLauncher.ViewModels
             foreach (var loader in result.SupportedLoaders)
             {
                 SupportedLoaders.Add(loader);
+            }
+        }
+
+        private Task SetModHeaderPlaceholderAsync()
+        {
+            return _uiDispatcher.RunOnUiThreadAsync(() =>
+            {
+                ModHeaderIcon = new BitmapImage(new Uri("ms-appx:///Assets/Placeholder.png"));
+            });
+        }
+
+        /// <summary>
+        /// 在结束骨架屏之前拉取并解码头部图标，避免 Image 直接绑定 https 时长时间空白。
+        /// </summary>
+        private async Task PrefetchModHeaderIconAsync(CancellationToken ct)
+        {
+            var expectedModId = ModId;
+            var url = ModIconUrl;
+            try
+            {
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    await SetModHeaderPlaceholderAsync();
+                    return;
+                }
+
+                if (url.StartsWith("ms-appx:", StringComparison.OrdinalIgnoreCase))
+                {
+                    await _uiDispatcher.RunOnUiThreadAsync(() =>
+                    {
+                        if (ModId != expectedModId)
+                        {
+                            return;
+                        }
+
+                        ModHeaderIcon = new BitmapImage(new Uri(url));
+                    });
+                    return;
+                }
+
+                var imageSource = await _httpImageSourceService.LoadFromUrlAsync(url, ct).ConfigureAwait(false);
+
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
+                {
+                    if (ModId != expectedModId)
+                    {
+                        return;
+                    }
+
+                    ModHeaderIcon = imageSource ?? new BitmapImage(new Uri("ms-appx:///Assets/Placeholder.png"));
+                });
+            }
+            catch (Exception ex)
+            {
+                WriteDebugLog($"[ModDetail] 图标预取失败: {ex.Message}");
+                if (ModId == expectedModId)
+                {
+                    await SetModHeaderPlaceholderAsync();
+                }
             }
         }
 
@@ -1873,6 +1970,14 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         public void OnNavigatedFrom()
         {
+            // 取消图标预取任务
+            if (_iconLoadCancellationTokenSource != null)
+            {
+                _iconLoadCancellationTokenSource.Cancel();
+                _iconLoadCancellationTokenSource.Dispose();
+                _iconLoadCancellationTokenSource = null;
+            }
+
             // 取消CurseForge后台加载任务
             if (_curseForgeLoadCancellationTokenSource != null)
             {
