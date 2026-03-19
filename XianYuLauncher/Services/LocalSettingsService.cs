@@ -250,6 +250,7 @@ public class LocalSettingsService : ILocalSettingsService
     private static bool TryReadDirectValue<T>(object obj, out T? value)
     {
         var targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+        var isNullableTarget = Nullable.GetUnderlyingType(typeof(T)) is not null;
 
         if (targetType == typeof(string) && obj is string stringObject)
         {
@@ -269,25 +270,46 @@ public class LocalSettingsService : ILocalSettingsService
             return true;
         }
 
+        if (targetType == typeof(bool) && obj is bool directBoolValue)
+        {
+            object boxed = isNullableTarget ? (bool?)directBoolValue : directBoolValue;
+            value = (T?)boxed;
+            return true;
+        }
+
+        if (targetType == typeof(int) && obj is int directIntValue)
+        {
+            object boxed = isNullableTarget ? (int?)directIntValue : directIntValue;
+            value = (T?)boxed;
+            return true;
+        }
+
+        if (targetType == typeof(double) && obj is double directDoubleValue)
+        {
+            object boxed = isNullableTarget ? (double?)directDoubleValue : directDoubleValue;
+            value = (T?)boxed;
+            return true;
+        }
+
         if (obj is string stringValue)
         {
             if (targetType == typeof(bool) && TryParseStoredBool(stringValue, out var boolValue))
             {
-                object boxed = Nullable.GetUnderlyingType(typeof(T)) is not null ? (bool?)boolValue : boolValue;
+                object boxed = isNullableTarget ? (bool?)boolValue : boolValue;
                 value = (T?)boxed;
                 return true;
             }
 
             if (targetType == typeof(int) && TryParseStoredInt(stringValue, out var intValue))
             {
-                object boxed = Nullable.GetUnderlyingType(typeof(T)) is not null ? (int?)intValue : intValue;
+                object boxed = isNullableTarget ? (int?)intValue : intValue;
                 value = (T?)boxed;
                 return true;
             }
 
             if (targetType == typeof(double) && TryParseStoredDouble(stringValue, out var doubleValue))
             {
-                object boxed = Nullable.GetUnderlyingType(typeof(T)) is not null ? (double?)doubleValue : doubleValue;
+                object boxed = isNullableTarget ? (double?)doubleValue : doubleValue;
                 value = (T?)boxed;
                 return true;
             }

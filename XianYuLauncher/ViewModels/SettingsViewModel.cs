@@ -2634,14 +2634,14 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
                     return;
                 }
 
-                    Log.Warning("[Settings] Minecraft 路径列表格式无效，已回退到默认目录并重建配置");
+                Log.Warning("[Settings] Minecraft 路径列表格式无效，已回退到默认目录并重建配置");
             }
 
             await InitializeDefaultMinecraftPathAsync();
         }
         catch (Exception ex)
         {
-                Log.Warning(ex, "[Settings] 加载 Minecraft 路径列表失败");
+            Log.Warning(ex, "[Settings] 加载 Minecraft 路径列表失败");
         }
     }
 
