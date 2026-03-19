@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.Generic;
+using System;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.ViewModels
@@ -39,6 +40,9 @@ namespace XianYuLauncher.ViewModels
         // 资源类型标签（用于非Mod资源，如 IRIS、OPTIFINE、MINECRAFT、DATAPACK）
         [ObservableProperty]
         private string? _resourceTypeTag;
+
+        [ObservableProperty]
+        private DateTimeOffset _publishedAt = DateTimeOffset.MinValue;
 
         // Modrinth原始版本信息，用于获取依赖项
         public ModrinthVersion? OriginalVersion { get; set; }

@@ -90,6 +90,18 @@ public interface IDialogService
         bool acceptsReturn = false);
 
     /// <summary>
+    /// 显示整合包安装命名弹窗。
+    /// </summary>
+    /// <param name="defaultName">默认实例名称。</param>
+    /// <param name="tip">输入框下方的灰色提示文案。</param>
+    /// <param name="validateInput">可选输入校验委托。</param>
+    /// <returns>用户输入的实例名称；取消返回 null。</returns>
+    Task<string?> ShowModpackInstallNameDialogAsync(
+        string defaultName,
+        string? tip = null,
+        Func<string, (bool IsValid, string ErrorMessage)>? validateInput = null);
+
+    /// <summary>
     /// 显示带进度的操作弹窗
     /// </summary>
     /// <param name="title">标题</param>

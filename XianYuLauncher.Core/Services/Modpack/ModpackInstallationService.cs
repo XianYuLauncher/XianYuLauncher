@@ -42,6 +42,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string downloadUrl,
         string fileName,
         string modpackDisplayName,
+        string targetVersionName,
         string minecraftPath,
         bool isFromCurseForge,
         IProgress<ModpackInstallProgress> progress,
@@ -54,6 +55,13 @@ public class ModpackInstallationService : IModpackInstallationService
 
         try
         {
+            var validatedTargetVersionName = ValidateTargetVersionName(targetVersionName);
+            var targetVersionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, validatedTargetVersionName);
+            if (Directory.Exists(targetVersionDir))
+            {
+                return ModpackInstallResult.Failed($"实例已存在: {validatedTargetVersionName}");
+            }
+
             // 1. 下载整合包文件
             tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
             string mrpackPath = Path.Combine(tempDir, fileName);
@@ -89,14 +97,14 @@ public class ModpackInstallationService : IModpackInstallationService
             {
                 Debug.WriteLine("[整合包安装] 检测到CurseForge整合包格式");
                 return await InstallCurseForgeModpackCoreAsync(
-                    extractDir, curseForgeManifestPath, modpackDisplayName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, cancellationToken);
+                    extractDir, curseForgeManifestPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, cancellationToken);
             }
 
             if (File.Exists(modrinthIndexPath))
             {
                 Debug.WriteLine("[整合包安装] 检测到Modrinth整合包格式");
                 return await InstallModrinthModpackCoreAsync(
-                    extractDir, modrinthIndexPath, modpackDisplayName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, cancellationToken);
+                    extractDir, modrinthIndexPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, cancellationToken);
             }
 
             return ModpackInstallResult.Failed($"整合包格式不支持：未找到{MinecraftFileConsts.ManifestJson}（CurseForge）或{MinecraftFileConsts.ModrinthIndexJson}（Modrinth）");
@@ -281,6 +289,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string extractDir,
         string indexPath,
         string modpackDisplayName,
+        string targetVersionName,
         string minecraftPath,
         IProgress<ModpackInstallProgress> progress,
         string? versionIconPath,
@@ -299,10 +308,6 @@ public class ModpackInstallationService : IModpackInstallationService
 
         Report(progress, 50, "50%", $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...");
 
-        // 构建版本名称
-        string sanitizedName = modpackDisplayName.Replace(" ", "-");
-        string modpackVersionId = $"{sanitizedName}-{minecraftVersion}-{modLoaderName}";
-
         // 下载 MC + Mod Loader
         await _minecraftVersionService.DownloadModLoaderVersionAsync(
             minecraftVersion, modLoaderType, modLoaderVersion, minecraftPath,
@@ -311,11 +316,11 @@ public class ModpackInstallationService : IModpackInstallationService
                 double p = 50 + (status.Percent / 100) * 30;
                 Report(progress, p, $"{p:F1}%", $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...", status.SpeedText);
             },
-            cancellationToken, modpackVersionId, versionIconPath);
+            cancellationToken, targetVersionName, versionIconPath);
 
         Report(progress, 80, "80%", "版本下载完成，正在部署整合包文件...");
 
-        string modpackVersionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, modpackVersionId);
+        string modpackVersionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, targetVersionName);
 
         // 复制 overrides
         string overridesDir = Path.Combine(extractDir, "overrides");
@@ -334,10 +339,10 @@ public class ModpackInstallationService : IModpackInstallationService
         var modpackManifestVersionId = NormalizeModpackVersionId(indexData["versionId"]?.ToString())
             ?? NormalizeModpackVersionId(sourceVersionId);
         var normalizedProjectId = NormalizeExternalProjectId("modrinth", sourceProjectId);
-        await SaveModpackMetadataAsync(modpackVersionId, minecraftPath, "modrinth", normalizedProjectId, modpackManifestVersionId);
+        await SaveModpackMetadataAsync(targetVersionName, minecraftPath, "modrinth", normalizedProjectId, modpackManifestVersionId);
 
         Report(progress, 100, "100%", "整合包安装完成！");
-        return ModpackInstallResult.Succeeded(modpackDisplayName, modpackVersionId);
+        return ModpackInstallResult.Succeeded(targetVersionName, targetVersionName);
     }
 
     private static (string Type, string Name, string Version) ParseModrinthDependencies(JObject indexData)
@@ -499,6 +504,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string extractDir,
         string manifestPath,
         string modpackDisplayName,
+        string targetVersionName,
         string minecraftPath,
         IProgress<ModpackInstallProgress> progress,
         string? versionIconPath,
@@ -516,10 +522,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string minecraftVersion = manifest.Minecraft?.Version
             ?? throw new Exception("整合包中缺少Minecraft版本信息");
 
-        var (modLoaderType, modLoaderName, modLoaderVersion) = ParseCurseForgeDependencies(manifest);
-
-        string sanitizedName = (manifest.Name ?? modpackDisplayName).Replace(" ", "-");
-        string modpackVersionId = $"{sanitizedName}-{minecraftVersion}-{modLoaderName}";
+        var (modLoaderType, _, modLoaderVersion) = ParseCurseForgeDependencies(manifest);
 
         Report(progress, 45, "45%", $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...");
 
@@ -531,11 +534,11 @@ public class ModpackInstallationService : IModpackInstallationService
                 double p = 45 + (status.Percent / 100) * 15;
                 Report(progress, p, $"{p:F1}%", $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...", status.SpeedText);
             },
-            cancellationToken, modpackVersionId, versionIconPath);
+            cancellationToken, targetVersionName, versionIconPath);
 
         Report(progress, 60, "60%", "版本下载完成，正在部署整合包文件...");
 
-        string modpackVersionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, modpackVersionId);
+        string modpackVersionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, targetVersionName);
 
         // 复制 overrides
         string overridesFolderName = manifest.Overrides ?? "overrides";
@@ -557,10 +560,26 @@ public class ModpackInstallationService : IModpackInstallationService
         var modpackManifestVersionId = NormalizeModpackVersionId(manifest.Version)
             ?? NormalizeModpackVersionId(sourceVersionId);
         var normalizedProjectId = NormalizeExternalProjectId("curseforge", sourceProjectId);
-        await SaveModpackMetadataAsync(modpackVersionId, minecraftPath, "curseforge", normalizedProjectId, modpackManifestVersionId);
+        await SaveModpackMetadataAsync(targetVersionName, minecraftPath, "curseforge", normalizedProjectId, modpackManifestVersionId);
 
         Report(progress, 100, "100%", "整合包安装完成！");
-        return ModpackInstallResult.Succeeded(manifest.Name ?? modpackDisplayName, modpackVersionId);
+        return ModpackInstallResult.Succeeded(targetVersionName, targetVersionName);
+    }
+
+    private static string ValidateTargetVersionName(string targetVersionName)
+    {
+        if (string.IsNullOrWhiteSpace(targetVersionName))
+        {
+            throw new Exception("目标实例不能为空");
+        }
+
+        var trimmedName = targetVersionName.Trim();
+        if (trimmedName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            throw new Exception("实例名称包含非法字符");
+        }
+
+        return trimmedName;
     }
 
     private async Task SaveModpackMetadataAsync(

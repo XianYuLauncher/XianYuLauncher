@@ -22,6 +22,7 @@ public interface IModpackInstallationService
         string downloadUrl,
         string fileName,
         string modpackDisplayName,
+        string targetVersionName,
         string minecraftPath,
         bool isFromCurseForge,
         IProgress<ModpackInstallProgress> progress,

@@ -34,6 +34,7 @@ namespace XianYuLauncher.ViewModels
         private readonly IModpackInstallationService _modpackInstallationService;
         private readonly IModResourceDownloadOrchestrator _modResourceDownloadOrchestrator;
         private readonly IModDetailLoadOrchestrator _modDetailLoadOrchestrator;
+        private readonly IModLoaderVersionNameService _modLoaderVersionNameService;
         private readonly IVersionInfoService _versionInfoService;
         private readonly IUiDispatcher _uiDispatcher;
         private readonly ShellViewModel _shellViewModel;
@@ -339,9 +340,9 @@ namespace XianYuLauncher.ViewModels
         }
         
         /// <summary>
-        /// 判断是否显示一键安装按钮（整合包不显示）
+        /// 判断是否显示一键安装按钮。
         /// </summary>
-        public bool IsQuickInstallButtonVisible => ProjectType != "modpack";
+        public bool IsQuickInstallButtonVisible => true;
         
         private CancellationTokenSource? _downloadCancellationTokenSource;
         
@@ -410,6 +411,7 @@ namespace XianYuLauncher.ViewModels
             IModpackInstallationService modpackInstallationService,
             IModResourceDownloadOrchestrator modResourceDownloadOrchestrator,
             IModDetailLoadOrchestrator modDetailLoadOrchestrator,
+            IModLoaderVersionNameService modLoaderVersionNameService,
             IVersionInfoService versionInfoService,
             IUiDispatcher uiDispatcher,
             ShellViewModel shellViewModel,
@@ -426,6 +428,7 @@ namespace XianYuLauncher.ViewModels
             _modpackInstallationService = modpackInstallationService;
             _modResourceDownloadOrchestrator = modResourceDownloadOrchestrator;
             _modDetailLoadOrchestrator = modDetailLoadOrchestrator;
+            _modLoaderVersionNameService = modLoaderVersionNameService;
             _versionInfoService = versionInfoService;
             _uiDispatcher = uiDispatcher;
             _shellViewModel = shellViewModel;
@@ -951,9 +954,28 @@ namespace XianYuLauncher.ViewModels
                 VersionType = versionItem.VersionType,
                 GameVersion = gameVersion,
                 IconUrl = ModIconUrl,
+                PublishedAt = ResolvePublishedAt(versionItem),
                 OriginalVersion = versionItem.OriginalModrinthVersion,
                 OriginalCurseForgeFile = versionItem.OriginalCurseForgeFile
             };
+        }
+
+        private static DateTimeOffset ResolvePublishedAt(ModDetailVersionItem versionItem)
+        {
+            if (versionItem.OriginalModrinthVersion != null
+                && DateTimeOffset.TryParse(versionItem.OriginalModrinthVersion.DatePublished, out var modrinthPublishedAt))
+            {
+                return modrinthPublishedAt;
+            }
+
+            if (versionItem.OriginalCurseForgeFile != null)
+            {
+                return versionItem.OriginalCurseForgeFile.FileDate;
+            }
+
+            return DateTimeOffset.TryParse(versionItem.ReleaseDate, out var parsed)
+                ? parsed
+                : DateTimeOffset.MinValue;
         }
         
         // 下载弹窗相关属性
@@ -961,7 +983,7 @@ namespace XianYuLauncher.ViewModels
         private ModVersionViewModel? _selectedModVersion;
 
         [ObservableProperty]
-        private string _downloadDialogTitle = "选择下载方式";
+        private string _downloadDialogTitle = "ModDownloadDetailPage_DownloadDialog_Title".GetLocalized();
 
         [ObservableProperty]
         private string _downloadDirectory = string.Empty;
@@ -1027,7 +1049,7 @@ namespace XianYuLauncher.ViewModels
                 // 通过 DialogService 显示下载方式选择弹窗
                 var result = await _dialogService.ShowDownloadMethodDialogAsync(
                     DownloadDialogTitle,
-                    "请选择下载方式：",
+                    "ModDownloadDetailPage_DownloadDialog_InstructionText".GetLocalized(),
                     DependencyProjects.Count > 0 ? DependencyProjects.Cast<object>() : null,
                     IsLoadingDependencies,
                     projectId => NavigateToDependency(projectId));
@@ -1155,13 +1177,13 @@ namespace XianYuLauncher.ViewModels
                 
                 // 通过 DialogService 显示存档选择弹窗
                 var selected = await _dialogService.ShowListSelectionDialogAsync(
-                    "选择存档",
-                    "请选择要安装数据包的存档：",
+                    "ModDownloadDetailPage_SaveSelectionDialog_Title".GetLocalized(),
+                    "ModDownloadDetailPage_SaveSelectionDialog_InstructionText".GetLocalized(),
                     saveNamesList,
                     s => s,
                     tip: SaveSelectionTip,
-                    primaryButtonText: "确认",
-                    closeButtonText: "取消");
+                    primaryButtonText: "ModDownloadDetailPage_SaveSelectionDialog_PrimaryButtonText".GetLocalized(),
+                    closeButtonText: "ModDownloadDetailPage_SaveSelectionDialog_CloseButtonText".GetLocalized());
                 
                 if (selected != null)
                 {
@@ -1537,14 +1559,14 @@ namespace XianYuLauncher.ViewModels
             
             // 通过 DialogService 显示版本选择弹窗
             var selected = await _dialogService.ShowListSelectionDialogAsync(
-                "选择游戏版本",
-                "请选择要安装的游戏版本：",
+                "ModDownloadDetailPage_VersionSelectionDialog_Title".GetLocalized(),
+                "ModDownloadDetailPage_VersionSelectionDialog_InstructionText".GetLocalized(),
                 InstalledGameVersions,
                 v => v.DisplayName,
                 v => v.IsCompatible ? 1.0 : 0.5,
                 VersionSelectionTip,
-                "确认",
-                "取消");
+                "ModDownloadDetailPage_VersionSelectionDialog_PrimaryButtonText".GetLocalized(),
+                "ModDownloadDetailPage_VersionSelectionDialog_CloseButtonText".GetLocalized());
             
             if (selected != null)
             {
@@ -1768,6 +1790,98 @@ namespace XianYuLauncher.ViewModels
 
         // 整合包安装方法
         public async Task InstallModpackAsync(ModVersionViewModel modVersion)
+            => await PromptAndInstallModpackAsync(modVersion);
+
+        private async Task PromptAndInstallModpackAsync(ModVersionViewModel? modVersion, string? tip = null)
+        {
+            if (modVersion == null)
+            {
+                await ShowMessageAsync("未选择要安装的整合包版本");
+                return;
+            }
+
+            var targetVersionName = await _dialogService.ShowModpackInstallNameDialogAsync(
+                ModName,
+                tip,
+                value => _modLoaderVersionNameService.ValidateVersionName(value));
+
+            if (string.IsNullOrWhiteSpace(targetVersionName))
+            {
+                return;
+            }
+
+            await InstallModpackCoreAsync(modVersion, targetVersionName);
+        }
+
+        private static string GetModpackVersionIdentity(ModVersionViewModel modVersion)
+        {
+            if (!string.IsNullOrWhiteSpace(modVersion.OriginalVersion?.Id))
+            {
+                return $"modrinth:{modVersion.OriginalVersion.Id}";
+            }
+
+            if (modVersion.OriginalCurseForgeFile != null)
+            {
+                return $"curseforge:{modVersion.OriginalCurseForgeFile.Id}";
+            }
+
+            return $"{modVersion.VersionNumber}|{modVersion.GameVersion}|{modVersion.FileName}";
+        }
+
+        private ModVersionViewModel? GetLatestModpackVersion()
+        {
+            return SupportedGameVersions
+                .SelectMany(gameVersion => gameVersion.Loaders)
+                .SelectMany(loader => loader.ModVersions)
+                .Where(version => CanResolveModpackDownloadUrl(version))
+                .DistinctBy(GetModpackVersionIdentity)
+                .OrderByDescending(version => version.PublishedAt)
+                .FirstOrDefault();
+        }
+
+        private bool CanResolveModpackDownloadUrl(ModVersionViewModel modVersion)
+        {
+            if (!string.IsNullOrWhiteSpace(modVersion.DownloadUrl))
+            {
+                return true;
+            }
+
+            return modVersion.IsCurseForge && modVersion.OriginalCurseForgeFile != null;
+        }
+
+        private string ResolveModpackDownloadUrl(ModVersionViewModel modVersion)
+        {
+            if (!string.IsNullOrWhiteSpace(modVersion.DownloadUrl))
+            {
+                return modVersion.DownloadUrl;
+            }
+
+            if (modVersion.IsCurseForge && modVersion.OriginalCurseForgeFile != null)
+            {
+                modVersion.DownloadUrl = _curseForgeService.ConstructDownloadUrl(
+                    modVersion.OriginalCurseForgeFile.Id,
+                    modVersion.OriginalCurseForgeFile.FileName ?? modVersion.FileName);
+            }
+
+            return modVersion.DownloadUrl;
+        }
+
+        private string ResolveSourceVersionId(ModVersionViewModel modVersion)
+        {
+            if (!string.IsNullOrWhiteSpace(modVersion.OriginalVersion?.Id))
+            {
+                return modVersion.OriginalVersion.Id;
+            }
+
+            if (modVersion.OriginalCurseForgeFile != null)
+            {
+                return modVersion.OriginalCurseForgeFile.Id.ToString();
+            }
+
+            return modVersion.VersionNumber;
+        }
+
+        private async Task InstallModpackCoreAsync(ModVersionViewModel modVersion, string targetVersionName)
         {
             IsInstalling = true;
             InstallStatus = "正在准备整合包安装...";
@@ -1779,13 +1893,13 @@ namespace XianYuLauncher.ViewModels
             var dialogCloseTcs = new TaskCompletionSource<bool>();
 
             var dialogTask = _dialogService.ShowObservableProgressDialogAsync(
-                "整合包安装中",
+                "ModDownloadDetailPage_ModpackInstallDialog_Title".GetLocalized(),
                 () => InstallStatus,
                 () => InstallProgress,
                 () => InstallProgressText,
                 this,
                 primaryButtonText: null,
-                closeButtonText: "取消",
+                closeButtonText: "ModDownloadDetailPage_ModpackInstallDialog_CloseButtonText".GetLocalized(),
                 autoCloseWhen: dialogCloseTcs.Task,
                 getSpeed: () => InstallSpeed);
             
@@ -1799,10 +1913,8 @@ namespace XianYuLauncher.ViewModels
 
             try
             {
-                if (modVersion == null)
-                    throw new Exception("未选择要安装的整合包版本");
-
-                if (string.IsNullOrEmpty(modVersion.DownloadUrl))
+                var resolvedDownloadUrl = ResolveModpackDownloadUrl(modVersion);
+                if (string.IsNullOrWhiteSpace(resolvedDownloadUrl))
                     throw new Exception("下载链接为空，无法下载整合包");
 
                 string minecraftPath = _fileService.GetMinecraftDataPath();
@@ -1820,15 +1932,16 @@ namespace XianYuLauncher.ViewModels
                 });
 
                 var result = await _modpackInstallationService.InstallModpackAsync(
-                    modVersion.DownloadUrl,
+                    resolvedDownloadUrl,
                     modVersion.FileName,
                     ModName,
+                    targetVersionName,
                     minecraftPath,
                     modVersion.IsCurseForge,
                     progress,
                     ModIconUrl,
                     ModId,
-                    modVersion.VersionNumber,
+                    ResolveSourceVersionId(modVersion),
                     installCancellationTokenSource.Token);
 
                 if (result.Success)
@@ -2050,15 +2163,31 @@ namespace XianYuLauncher.ViewModels
         [RelayCommand]
         private async Task QuickInstallAsync()
         {
-            // 如果正在下载，不允许再次安装
-            if (IsDownloading)
+            // 如果正在下载或安装，不允许再次开始
+            if (IsDownloading || IsInstalling)
             {
-                await ShowMessageAsync("当前有下载任务正在进行，请等待完成或取消后再试。");
+                await ShowMessageAsync("当前有下载或安装任务正在进行，请等待完成或取消后再试。");
                 return;
             }
             
             try
             {
+                if (ProjectType == "modpack")
+                {
+                    var latestModpackVersion = GetLatestModpackVersion();
+                    if (latestModpackVersion == null)
+                    {
+                        await ShowMessageAsync("ModDownloadDetailPage_ModpackInstallNameDialog_NotFound".GetLocalized());
+                        return;
+                    }
+
+                    SelectedModVersion = latestModpackVersion;
+                    await PromptAndInstallModpackAsync(
+                        latestModpackVersion,
+                        "ModDownloadDetailPage_ModpackInstallNameDialog_Tip_Latest".GetLocalized());
+                    return;
+                }
+
                 // 加载已安装的游戏版本
                 await LoadQuickInstallGameVersionsAsync();
                 
@@ -2070,14 +2199,14 @@ namespace XianYuLauncher.ViewModels
                 
                 // 通过 DialogService 显示游戏版本选择弹窗
                 var selected = await _dialogService.ShowListSelectionDialogAsync(
-                    "选择游戏版本",
-                    "请选择要安装Mod的游戏版本：",
+                    "ModDownloadDetailPage_QuickInstallGameVersionDialog_Title".GetLocalized(),
+                    "ModDownloadDetailPage_QuickInstallGameVersionDialog_InstructionText".GetLocalized(),
                     QuickInstallGameVersions,
                     v => v.DisplayName,
                     v => v.IsCompatible ? 1.0 : 0.5,
-                    "灰色版本表示当前Mod不支持该版本",
-                    "下一步",
-                    "取消");
+                    "ModDownloadDetailPage_QuickInstallGameVersionDialog_Tip".GetLocalized(),
+                    "ModDownloadDetailPage_QuickInstallGameVersionDialog_PrimaryButtonText".GetLocalized(),
+                    "ModDownloadDetailPage_QuickInstallGameVersionDialog_CloseButtonText".GetLocalized());
                 
                 if (selected == null)
                 {
@@ -2314,22 +2443,26 @@ namespace XianYuLauncher.ViewModels
                 
                 if (QuickInstallModVersions.Count == 0)
                 {
-                    await ShowMessageAsync($"未找到支持 {selectedQuickInstallVersion.DisplayName} 的Mod版本。");
+                    await ShowMessageAsync(string.Format(
+                        "ModDownloadDetailPage_QuickInstallModVersionDialog_NotFound".GetLocalized(),
+                        selectedQuickInstallVersion.DisplayName));
                     return;
                 }
                 
                 // 通过 DialogService 显示 Mod 版本选择弹窗
                 var selected = await _dialogService.ShowModVersionSelectionDialogAsync(
-                    "选择Mod版本",
-                    $"请选择要安装到 {selectedQuickInstallVersion.DisplayName} 的Mod版本：",
+                    "ModDownloadDetailPage_QuickInstallModVersionDialog_Title".GetLocalized(),
+                    string.Format(
+                        "ModDownloadDetailPage_QuickInstallModVersionDialog_InstructionText".GetLocalized(),
+                        selectedQuickInstallVersion.DisplayName),
                     QuickInstallModVersions,
                     v => v.VersionNumber,
                     v => string.IsNullOrEmpty(v.VersionType) ? v.VersionType : char.ToUpper(v.VersionType[0]) + v.VersionType[1..],
                     v => v.ReleaseDate,
                     v => v.FileName,
                     v => v.ResourceTypeTag,
-                    "安装",
-                    "取消");
+                    "ModDownloadDetailPage_QuickInstallModVersionDialog_PrimaryButtonText".GetLocalized(),
+                    "ModDownloadDetailPage_QuickInstallModVersionDialog_CloseButtonText".GetLocalized());
                 
                 if (selected != null)
                 {
