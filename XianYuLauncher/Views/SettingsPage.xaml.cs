@@ -2,7 +2,6 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
-using System.Diagnostics;
 using Serilog;
 using XianYuLauncher.Core.Helpers;
 
@@ -104,7 +103,7 @@ public sealed partial class SettingsPage : Page
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[SettingsPage] 处理自动测速完成事件失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[SettingsPage] 处理自动测速完成事件失败: {ex.Message}");
         }
     }
 
@@ -193,7 +192,7 @@ public sealed partial class SettingsPage : Page
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[彩蛋模式] 切换失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[彩蛋模式] 切换失败: {ex.Message}");
             }
             finally
             {
