@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
+using System.Diagnostics;
 using Serilog;
 using XianYuLauncher.Core.Helpers;
 
@@ -59,41 +60,49 @@ public sealed partial class SettingsPage : Page
 
     private async void SettingsPage_Loaded(object sender, RoutedEventArgs e)
     {
-        System.Diagnostics.Debug.WriteLine("[SettingsPage] 页面加载，开始刷新自定义源列表");
+        var pageLoadWatch = Stopwatch.StartNew();
+        Debug.WriteLine("[SettingsPage.Load] 进入 Loaded 事件");
         TryApplyPendingSectionNavigation();
+        Debug.WriteLine($"[SettingsPage.Load] 已触发分区导航检查，累计={pageLoadWatch.ElapsedMilliseconds}ms");
 
         try
         {
             // 加载测速缓存，显示上次的测速结果（启动时已自动测速）
             if (ViewModel != null)
             {
-                System.Diagnostics.Debug.WriteLine("[SettingsPage] 开始加载测速缓存");
+                var speedCacheWatch = Stopwatch.StartNew();
+                Debug.WriteLine("[SettingsPage.Load] 开始加载测速缓存");
                 await ViewModel.LoadSpeedTestCacheAsync();
-                System.Diagnostics.Debug.WriteLine("[SettingsPage] 测速缓存加载完成");
+                Debug.WriteLine($"[SettingsPage.Load] 测速缓存加载完成，步骤耗时={speedCacheWatch.ElapsedMilliseconds}ms，总耗时={pageLoadWatch.ElapsedMilliseconds}ms");
 
                 _autoSpeedTestService.SpeedTestCompleted -= AutoSpeedTestService_SpeedTestCompleted;
                 _autoSpeedTestService.SpeedTestCompleted += AutoSpeedTestService_SpeedTestCompleted;
-                System.Diagnostics.Debug.WriteLine("[SettingsPage] 已订阅自动测速完成事件");
+                Debug.WriteLine($"[SettingsPage.Load] 已订阅自动测速完成事件，累计={pageLoadWatch.ElapsedMilliseconds}ms");
             }
 
-            System.Diagnostics.Debug.WriteLine($"[SettingsPage] ViewModel 是否为 null: {ViewModel == null}");
-            System.Diagnostics.Debug.WriteLine($"[SettingsPage] RefreshCustomSourcesCommand 是否为 null: {ViewModel?.RefreshCustomSourcesCommand == null}");
+            Debug.WriteLine($"[SettingsPage.Load] ViewModel 是否为 null: {ViewModel == null}，累计={pageLoadWatch.ElapsedMilliseconds}ms");
+            Debug.WriteLine($"[SettingsPage.Load] RefreshCustomSourcesCommand 是否为 null: {ViewModel?.RefreshCustomSourcesCommand == null}，累计={pageLoadWatch.ElapsedMilliseconds}ms");
 
             if (ViewModel?.RefreshCustomSourcesCommand != null)
             {
-                System.Diagnostics.Debug.WriteLine("[SettingsPage] 开始执行 RefreshCustomSourcesCommand");
+                var refreshCustomSourcesWatch = Stopwatch.StartNew();
+                Debug.WriteLine("[SettingsPage.Load] 开始执行 RefreshCustomSourcesCommand");
                 await ViewModel.RefreshCustomSourcesCommand.ExecuteAsync(null);
-                System.Diagnostics.Debug.WriteLine("[SettingsPage] RefreshCustomSourcesCommand 执行完成");
+                Debug.WriteLine($"[SettingsPage.Load] RefreshCustomSourcesCommand 执行完成，步骤耗时={refreshCustomSourcesWatch.ElapsedMilliseconds}ms，总耗时={pageLoadWatch.ElapsedMilliseconds}ms");
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("[SettingsPage] ViewModel 或 Command 为 null，无法刷新");
+                Debug.WriteLine("[SettingsPage.Load] ViewModel 或 Command 为 null，无法刷新");
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SettingsPage] 刷新自定义源列表失败: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"[SettingsPage] 堆栈跟踪: {ex.StackTrace}");
+            Debug.WriteLine($"[SettingsPage.Load] 刷新自定义源列表失败: {ex.Message}");
+            Debug.WriteLine($"[SettingsPage.Load] 堆栈跟踪: {ex.StackTrace}");
+        }
+        finally
+        {
+            Debug.WriteLine($"[SettingsPage.Load] Loaded 结束，总耗时={pageLoadWatch.ElapsedMilliseconds}ms");
         }
     }
 
@@ -101,7 +110,7 @@ public sealed partial class SettingsPage : Page
     {
         _autoSpeedTestService.SpeedTestCompleted -= AutoSpeedTestService_SpeedTestCompleted;
         ViewModel?.Dispose();
-        System.Diagnostics.Debug.WriteLine("[SettingsPage] 页面卸载，已取消自动测速事件订阅");
+        Debug.WriteLine("[SettingsPage] 页面卸载，已取消自动测速事件订阅");
     }
 
     private void AutoSpeedTestService_SpeedTestCompleted(object? sender, EventArgs e)

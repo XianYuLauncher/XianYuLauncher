@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using System.Diagnostics;
 using Serilog;
 
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
@@ -591,12 +592,22 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         return Windows.UI.Color.FromArgb(0, 0, 0, 0); 
     }
 
-    partial void OnMotionSpeedChanged(double value) => QueueSettingWrite("MotionSettings", SaveMotionSettingsAsync, 300);
-    partial void OnMotionColor1Changed(Windows.UI.Color value) => QueueSettingWrite("MotionSettings", SaveMotionSettingsAsync, 300);
-    partial void OnMotionColor2Changed(Windows.UI.Color value) => QueueSettingWrite("MotionSettings", SaveMotionSettingsAsync, 300);
-    partial void OnMotionColor3Changed(Windows.UI.Color value) => QueueSettingWrite("MotionSettings", SaveMotionSettingsAsync, 300);
-    partial void OnMotionColor4Changed(Windows.UI.Color value) => QueueSettingWrite("MotionSettings", SaveMotionSettingsAsync, 300);
-    partial void OnMotionColor5Changed(Windows.UI.Color value) => QueueSettingWrite("MotionSettings", SaveMotionSettingsAsync, 300);
+    partial void OnMotionSpeedChanged(double value) => QueueMotionSettingsSaveIfNeeded();
+    partial void OnMotionColor1Changed(Windows.UI.Color value) => QueueMotionSettingsSaveIfNeeded();
+    partial void OnMotionColor2Changed(Windows.UI.Color value) => QueueMotionSettingsSaveIfNeeded();
+    partial void OnMotionColor3Changed(Windows.UI.Color value) => QueueMotionSettingsSaveIfNeeded();
+    partial void OnMotionColor4Changed(Windows.UI.Color value) => QueueMotionSettingsSaveIfNeeded();
+    partial void OnMotionColor5Changed(Windows.UI.Color value) => QueueMotionSettingsSaveIfNeeded();
+
+    private void QueueMotionSettingsSaveIfNeeded()
+    {
+        if (_isInitializingMotionSettings)
+        {
+            return;
+        }
+
+        QueueSettingWrite("MotionSettings", SaveMotionSettingsAsync, 300);
+    }
 
     /* Removed SaveMotionSetting(string key, object value) */
     
@@ -708,6 +719,9 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     
     // 标志位：是否是初始化加载材质设置
     private bool _isInitializingMaterial = true;
+
+    // 标志位：是否是初始化加载动态光效设置
+    private bool _isInitializingMotionSettings = true;
     
     // 标志位：是否是初始化加载背景图片路径
     private bool _isInitializingBackgroundPath = true;
@@ -998,6 +1012,9 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     private async Task LoadAfdianSponsorsAsync()
     {
+        var watch = Stopwatch.StartNew();
+        Debug.WriteLine("[SettingsViewModel][LoadAfdianSponsors] 开始");
+
         try
         {
             IsLoadingSponsors = true;
@@ -1028,6 +1045,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         finally
         {
             IsLoadingSponsors = false;
+            Debug.WriteLine($"[SettingsViewModel][LoadAfdianSponsors] 结束，耗时={watch.ElapsedMilliseconds}ms，当前数量={AcknowledgmentPersons.Count}");
         }
     }
 
@@ -1177,31 +1195,73 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
 
     private async Task InitializeAsync()
     {
-        await LoadAfdianSponsorsAsync();
-        await LoadJavaPathAsync();
-        await LoadJavaVersionsAsync();
-        await LoadGameIsolationSettingsAsync();
-        await LoadJavaSelectionModeAsync();
-        await LoadMinecraftPathsAsync();
-        await LoadAISettingsAsync();
-        await LoadMaterialTypeAsync();
-        await LoadBackgroundImagePathAsync();
-        await LoadDownloadDependenciesAsync();
-        await LoadEnableTelemetryAsync();
-        await LoadHideSnapshotVersionsAsync();
-        await LoadDownloadThreadCountAsync();
-        await LoadEnableRealTimeLogsAsync();
-        await LoadNavigationStyleAsync();
-        RefreshCacheSizeInfo();
-        await LoadAutoUpdateCheckModeAsync();
-        await LoadGlobalLaunchSettingsAsync();
+        var initWatch = Stopwatch.StartNew();
+        Debug.WriteLine("[SettingsViewModel][Init] 开始");
 
-        Log.Information("[Settings] 开始加载下载源设置");
-        await LoadDownloadSourcesAsync(_downloadSourcesLoadCts.Token);
-        Log.Information("[Settings] 下载源设置加载完成");
+        async Task MeasureStepAsync(string stepName, Func<Task> action)
+        {
+            var stepWatch = Stopwatch.StartNew();
+            Debug.WriteLine($"[SettingsViewModel][Init.Step] {stepName} 开始");
+            await action();
+            Debug.WriteLine($"[SettingsViewModel][Init.Step] {stepName} 完成，耗时={stepWatch.ElapsedMilliseconds}ms，总耗时={initWatch.ElapsedMilliseconds}ms");
+        }
 
-        // 初始化完成后按当前 AutoSelectFastestSource 状态同步测速展示，避免首次进入显示残留 "-"。
-        await LoadSpeedTestCacheAsync();
+        try
+        {
+            var baseWatch = Stopwatch.StartNew();
+            Debug.WriteLine("[SettingsViewModel][Init] 开始加载基础设置");
+
+            await MeasureStepAsync("LoadJavaPath", LoadJavaPathAsync);
+            await MeasureStepAsync("LoadGameIsolationSettings", LoadGameIsolationSettingsAsync);
+            await MeasureStepAsync("LoadJavaSelectionMode", LoadJavaSelectionModeAsync);
+            await MeasureStepAsync("LoadMinecraftPaths", LoadMinecraftPathsAsync);
+            await MeasureStepAsync("LoadAISettings", LoadAISettingsAsync);
+            await MeasureStepAsync("LoadMaterialSettings", LoadMaterialSettingsAsync);
+            await MeasureStepAsync("LoadDownloadDependencies", LoadDownloadDependenciesAsync);
+            await MeasureStepAsync("LoadEnableTelemetry", LoadEnableTelemetryAsync);
+            await MeasureStepAsync("LoadHideSnapshotVersions", LoadHideSnapshotVersionsAsync);
+            await MeasureStepAsync("LoadDownloadThreadCount", LoadDownloadThreadCountAsync);
+            await MeasureStepAsync("LoadEnableRealTimeLogs", LoadEnableRealTimeLogsAsync);
+            await MeasureStepAsync("LoadNavigationStyle", LoadNavigationStyleAsync);
+            await MeasureStepAsync("LoadAutoUpdateCheckMode", LoadAutoUpdateCheckModeAsync);
+            await MeasureStepAsync("LoadGlobalLaunchSettings", LoadGlobalLaunchSettingsAsync);
+
+            Debug.WriteLine("[SettingsViewModel][Init] 缓存统计刷新已排队");
+            if (!_uiDispatcher.TryEnqueue(DispatcherQueuePriority.Low, () =>
+            {
+                var cacheWatch = Stopwatch.StartNew();
+                RefreshCacheSizeInfo();
+                Debug.WriteLine($"[SettingsViewModel][Init] 缓存统计刷新完成，耗时={cacheWatch.ElapsedMilliseconds}ms");
+            }))
+            {
+                Debug.WriteLine("[SettingsViewModel][Init] 缓存统计刷新排队失败");
+            }
+
+            Debug.WriteLine($"[SettingsViewModel][Init] 基础设置加载完成，步骤耗时={baseWatch.ElapsedMilliseconds}ms，总耗时={initWatch.ElapsedMilliseconds}ms");
+
+            var stepWatch = Stopwatch.StartNew();
+            Debug.WriteLine("[SettingsViewModel][Init] 开始加载已保存的 Java 版本");
+            await LoadJavaVersionsAsync();
+            Debug.WriteLine($"[SettingsViewModel][Init] 已保存的 Java 版本加载完成，步骤耗时={stepWatch.ElapsedMilliseconds}ms，总耗时={initWatch.ElapsedMilliseconds}ms");
+
+            stepWatch.Restart();
+            Debug.WriteLine("[SettingsViewModel][Init] 开始加载下载源设置");
+            await LoadDownloadSourcesAsync(_downloadSourcesLoadCts.Token);
+            Debug.WriteLine($"[SettingsViewModel][Init] 下载源设置加载完成，步骤耗时={stepWatch.ElapsedMilliseconds}ms，总耗时={initWatch.ElapsedMilliseconds}ms");
+
+            // 初始化完成后按当前 AutoSelectFastestSource 状态同步测速展示，避免首次进入显示残留 "-"。
+            stepWatch.Restart();
+            Debug.WriteLine("[SettingsViewModel][Init] 开始加载测速缓存");
+            await LoadSpeedTestCacheAsync();
+            Debug.WriteLine($"[SettingsViewModel][Init] 测速缓存加载完成，步骤耗时={stepWatch.ElapsedMilliseconds}ms，总耗时={initWatch.ElapsedMilliseconds}ms");
+
+            Debug.WriteLine("[SettingsViewModel][Init] 爱发电赞助者加载已排队");
+            RunFireAndForget(LoadAfdianSponsorsAsync(), "加载爱发电赞助者");
+        }
+        finally
+        {
+            Debug.WriteLine($"[SettingsViewModel][Init] 结束，总耗时={initWatch.ElapsedMilliseconds}ms");
+        }
     }
 
     private void QueueSettingWrite(string key, Func<Task> writeAction, int debounceMilliseconds = 250)
@@ -1643,9 +1703,9 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     #endregion
     
     /// <summary>
-    /// 加载材质类型设置
+    /// 加载材质与背景设置
     /// </summary>
-    private async Task LoadMaterialTypeAsync()
+    private async Task LoadMaterialSettingsAsync()
     {
         var state = await _personalizationSettingsDomainService.LoadMaterialStateAsync();
         MaterialType = state.MaterialType;
@@ -1662,16 +1722,9 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
 
         // 移除设置页打开时的材质刷新，避免窗口闪烁
         // 材质在应用启动时已经由MainWindow.ApplyMaterialSettings()应用
-    }
-    
-    /// <summary>
-    /// 加载背景图片路径
-    /// </summary>
-    private async Task LoadBackgroundImagePathAsync()
-    {
-        var state = await _personalizationSettingsDomainService.LoadMaterialStateAsync();
         BackgroundImagePath = state.BackgroundImagePath;
         BackgroundBlurAmount = state.BackgroundBlurAmount;
+        _isInitializingMotionSettings = false;
     }
     
     /// <summary>
@@ -1681,8 +1734,12 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     {
         try
         {
-            // 保存设置（异步调用，不等待完成，避免阻塞UI）
-            QueueSettingWrite("MaterialType", () => _personalizationSettingsDomainService.SaveMaterialTypeAsync(value));
+            var isInitializing = _isInitializingMaterial;
+            if (!isInitializing)
+            {
+                // 保存设置（异步调用，不等待完成，避免阻塞UI）
+                QueueSettingWrite("MaterialType", () => _personalizationSettingsDomainService.SaveMaterialTypeAsync(value));
+            }
             
             // 通知 IsCustomBackground 属性变化
             OnPropertyChanged(nameof(IsCustomBackground));
@@ -1690,7 +1747,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
             
             // 只有当不是初始化加载材质时，才应用材质到主窗口
             // 避免设置页打开时窗口闪烁
-            if (!_isInitializingMaterial)
+            if (!isInitializing)
             {
                 // 应用材质到主窗口
                 var window = App.MainWindow;
@@ -2238,6 +2295,8 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     private async Task LoadJavaVersionsAsync()
         {
+            var watch = Stopwatch.StartNew();
+            Debug.WriteLine("[SettingsViewModel][LoadJavaVersions] 开始");
             IsLoadingJavaVersions = true;
             try
             {
@@ -2305,6 +2364,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
             finally
             {
                 IsLoadingJavaVersions = false;
+                Debug.WriteLine($"[SettingsViewModel][LoadJavaVersions] 结束，耗时={watch.ElapsedMilliseconds}ms，当前数量={JavaVersions.Count}");
             }
         }
 
@@ -2345,6 +2405,12 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     private void JavaVersions_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
+        if (IsLoadingJavaVersions)
+        {
+            Debug.WriteLine("[SettingsViewModel][JavaVersions] 跳过自动保存：正在批量加载/刷新");
+            return;
+        }
+
         QueueSettingWrite("JavaVersions", SaveJavaVersionsAsync, 500);
     }
     
@@ -2399,6 +2465,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         if (!string.IsNullOrWhiteSpace(selectedPath))
         {
             IsLoadingJavaVersions = true;
+            bool shouldSave = false;
             try
             {
                 Console.WriteLine($"正在解析Java可执行文件: {selectedPath}");
@@ -2421,6 +2488,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
                             IsJDK = javaVersion.IsJDK
                         };
                         JavaVersions.Add(newVersion);
+                        shouldSave = true;
                         Console.WriteLine("已添加到Java版本列表");
                         
                         // 自动选择刚添加的版本
@@ -2441,6 +2509,11 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
             finally
             {
                 IsLoadingJavaVersions = false;
+
+                if (shouldSave)
+                {
+                    await SaveJavaVersionsAsync();
+                }
             }
         }
     }
@@ -2594,7 +2667,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
             var pathsJson = await _gameSettingsDomainService.LoadMinecraftPathsJsonAsync();
             if (!string.IsNullOrEmpty(pathsJson))
             {
-                var paths = System.Text.Json.JsonSerializer.Deserialize<List<MinecraftPathItem>>(pathsJson);
+                var paths = TryDeserializeMinecraftPaths(pathsJson);
                 if (paths != null && paths.Count > 0)
                 {
                     MinecraftPaths.Clear();
@@ -2611,26 +2684,59 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
                     }
                     return;
                 }
+
+                System.Diagnostics.Debug.WriteLine("[SettingsViewModel] Minecraft 路径列表格式无效，已回退到默认目录并重建配置");
             }
-            
-            // 如果没有保存的列表，使用当前路径创建默认项
-            var currentPath = await _gameSettingsDomainService.ResolveCurrentMinecraftPathAsync();
-            
-            MinecraftPaths.Clear();
-            MinecraftPaths.Add(new MinecraftPathItem
-            {
-                Name = "Settings_DefaultGameDirectory".GetLocalized(),
-                Path = currentPath,
-                IsActive = true
-            });
-            MinecraftPath = currentPath;
-            
-            await SaveMinecraftPathsAsync();
+
+            await InitializeDefaultMinecraftPathAsync();
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[SettingsViewModel] 加载游戏目录列表失败: {ex.Message}");
         }
+    }
+
+    private static List<MinecraftPathItem>? TryDeserializeMinecraftPaths(string pathsJson)
+    {
+        try
+        {
+            using var jsonDocument = System.Text.Json.JsonDocument.Parse(pathsJson);
+            if (jsonDocument.RootElement.ValueKind == System.Text.Json.JsonValueKind.Array)
+            {
+                return System.Text.Json.JsonSerializer.Deserialize<List<MinecraftPathItem>>(pathsJson);
+            }
+
+            if (jsonDocument.RootElement.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                var nestedJson = jsonDocument.RootElement.GetString();
+                if (!string.IsNullOrWhiteSpace(nestedJson))
+                {
+                    return System.Text.Json.JsonSerializer.Deserialize<List<MinecraftPathItem>>(nestedJson);
+                }
+            }
+
+            return null;
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
+    }
+
+    private async Task InitializeDefaultMinecraftPathAsync()
+    {
+        var currentPath = await _gameSettingsDomainService.ResolveCurrentMinecraftPathAsync();
+
+        MinecraftPaths.Clear();
+        MinecraftPaths.Add(new MinecraftPathItem
+        {
+            Name = "Settings_DefaultGameDirectory".GetLocalized(),
+            Path = currentPath,
+            IsActive = true
+        });
+        MinecraftPath = currentPath;
+
+        await SaveMinecraftPathsAsync();
     }
     
     /// <summary>
@@ -2774,8 +2880,18 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     private async Task LoadDownloadSourcesAsync(CancellationToken cancellationToken = default)
     {
-        var state = await _downloadSourceSettingsService.LoadAsync(cancellationToken);
-        ApplyDownloadSourceState(state);
+        var watch = Stopwatch.StartNew();
+        Debug.WriteLine("[SettingsViewModel][LoadDownloadSources] 开始");
+
+        try
+        {
+            var state = await _downloadSourceSettingsService.LoadAsync(cancellationToken);
+            ApplyDownloadSourceState(state);
+        }
+        finally
+        {
+            Debug.WriteLine($"[SettingsViewModel][LoadDownloadSources] 结束，耗时={watch.ElapsedMilliseconds}ms");
+        }
     }
 
     private void ApplyDownloadSourceState(DownloadSourceSettingsState state)
@@ -3287,7 +3403,13 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     public async Task LoadSpeedTestCacheAsync()
     {
-        if (_speedTestService == null) return;
+        if (_speedTestService == null)
+        {
+            Debug.WriteLine("[SettingsViewModel][LoadSpeedTestCache] 跳过：_speedTestService 为空");
+            return;
+        }
+
+        var watch = Stopwatch.StartNew();
 
         try
         {
@@ -3297,6 +3419,10 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         catch (Exception ex)
         {
             Serilog.Log.Warning(ex, "[Settings] 加载测速缓存失败");
+        }
+        finally
+        {
+            Debug.WriteLine($"[SettingsViewModel][LoadSpeedTestCache] 结束，耗时={watch.ElapsedMilliseconds}ms");
         }
     }
 
@@ -3469,6 +3595,9 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     private async Task LoadCustomSourcesAsync()
     {
+        var watch = Stopwatch.StartNew();
+        Debug.WriteLine("[SettingsViewModel][LoadCustomSources] 开始");
+
         try
         {
             Log.Information("[Settings] 开始加载自定义下载源列表...");
@@ -3498,6 +3627,10 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         catch (Exception ex)
         {
             Log.Error(ex, "[Settings] 加载自定义下载源列表失败");
+        }
+        finally
+        {
+            Debug.WriteLine($"[SettingsViewModel][LoadCustomSources] 结束，耗时={watch.ElapsedMilliseconds}ms，当前数量={CustomSources.Count}");
         }
     }
     
@@ -3804,22 +3937,25 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
                 new[] { ".json" },
                 PickerLocationId.DocumentsLibrary);
 
-            if (!string.IsNullOrWhiteSpace(selectedPath))
+            if (string.IsNullOrWhiteSpace(selectedPath))
             {
-                var importResult = await _customSourceManager.ImportSourceAsync(selectedPath);
-                
-                if (importResult.Success)
-                {
-                    // 刷新列表
-                    await LoadDownloadSourcesAsync();
-                    await _dialogService.ShowMessageDialogAsync("导入成功", $"已成功导入自定义源: {importResult.Data?.Name}");
-                    Log.Information($"[Settings] 成功导入配置: {selectedPath}");
-                }
-                else
-                {
-                    await _dialogService.ShowMessageDialogAsync("导入失败", importResult.ErrorMessage ?? "未知错误");
-                }
+                return;
             }
+
+            var importResult = await _customSourceManager.ImportSourceAsync(selectedPath);
+            if (!importResult.Success)
+            {
+                await _dialogService.ShowMessageDialogAsync("导入失败", importResult.ErrorMessage ?? "未知错误");
+                return;
+            }
+
+            await LoadDownloadSourcesAsync();
+            await LoadCustomSourcesAsync();
+
+            await _dialogService.ShowMessageDialogAsync(
+                "导入成功",
+                $"已成功导入配置: {importResult.Data?.Name ?? Path.GetFileNameWithoutExtension(selectedPath)}");
+            Log.Information("[Settings] 成功导入配置: {Path}", selectedPath);
         }
         catch (Exception ex)
         {

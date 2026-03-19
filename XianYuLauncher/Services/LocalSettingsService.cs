@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
+using System.Globalization;
 
 using Windows.ApplicationModel;
 using Windows.Storage;
@@ -54,6 +55,11 @@ public class LocalSettingsService : ILocalSettingsService
         {
             if (ApplicationData.Current.LocalSettings.Values.TryGetValue(key, out var obj))
             {
+                if (TryReadDirectValue(obj, out T? directValue))
+                {
+                    return directValue;
+                }
+
                 // 特殊处理：自动修复 JavaSelectionMode 的错误格式
                 if (key == "JavaSelectionMode" && obj is string strValue)
                 {
@@ -87,7 +93,10 @@ public class LocalSettingsService : ILocalSettingsService
                     }
                 }
                 
-                return await Json.ToObjectAsync<T>((string)obj);
+                if (obj is string jsonString)
+                {
+                    return await Json.ToObjectAsync<T>(jsonString);
+                }
             }
         }
         else
@@ -96,6 +105,11 @@ public class LocalSettingsService : ILocalSettingsService
 
             if (_settings != null && _settings.TryGetValue(key, out var obj))
             {
+                if (TryReadDirectValue(obj, out T? directValue))
+                {
+                    return directValue;
+                }
+
                 // 特殊处理：自动修复 JavaSelectionMode 的错误格式（非 MSIX 模式）
                 if (key == "JavaSelectionMode" && obj is string strValue)
                 {
@@ -197,6 +211,12 @@ public class LocalSettingsService : ILocalSettingsService
     {
         if (RuntimeHelper.IsMSIX)
         {
+            if (TryCreateDirectStorageValue(value, out var directStorageValue))
+            {
+                ApplicationData.Current.LocalSettings.Values[key] = directStorageValue;
+                return;
+            }
+
             ApplicationData.Current.LocalSettings.Values[key] = await Json.StringifyAsync(value!);
         }
         else
@@ -225,5 +245,105 @@ public class LocalSettingsService : ILocalSettingsService
 
             await Task.Run(() => _fileService.Save(_applicationDataFolder, _localsettingsFile, _settings));
         }
+    }
+
+    private static bool TryReadDirectValue<T>(object obj, out T? value)
+    {
+        if (obj is T typedValue)
+        {
+            value = typedValue;
+            return true;
+        }
+
+        var targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+
+        if (obj is string stringValue)
+        {
+            if (targetType == typeof(string))
+            {
+                value = (T?)(object?)UnwrapStoredString(stringValue);
+                return true;
+            }
+
+            if (targetType == typeof(bool) && TryParseStoredBool(stringValue, out var boolValue))
+            {
+                object boxed = Nullable.GetUnderlyingType(typeof(T)) is not null ? (bool?)boolValue : boolValue;
+                value = (T?)boxed;
+                return true;
+            }
+
+            if (targetType == typeof(int) && TryParseStoredInt(stringValue, out var intValue))
+            {
+                object boxed = Nullable.GetUnderlyingType(typeof(T)) is not null ? (int?)intValue : intValue;
+                value = (T?)boxed;
+                return true;
+            }
+
+            if (targetType == typeof(double) && TryParseStoredDouble(stringValue, out var doubleValue))
+            {
+                object boxed = Nullable.GetUnderlyingType(typeof(T)) is not null ? (double?)doubleValue : doubleValue;
+                value = (T?)boxed;
+                return true;
+            }
+        }
+
+        value = default;
+        return false;
+    }
+
+    private static bool TryCreateDirectStorageValue<T>(T value, out object directStorageValue)
+    {
+        switch (value)
+        {
+            case null:
+                directStorageValue = string.Empty;
+                return true;
+            case string stringValue:
+                directStorageValue = stringValue;
+                return true;
+            case bool boolValue:
+                directStorageValue = boolValue;
+                return true;
+            case int intValue:
+                directStorageValue = intValue;
+                return true;
+            case double doubleValue:
+                directStorageValue = doubleValue;
+                return true;
+            default:
+                directStorageValue = null!;
+                return false;
+        }
+    }
+
+    private static string UnwrapStoredString(string rawValue)
+    {
+        if (rawValue.Length < 2 || rawValue[0] != '"' || rawValue[^1] != '"')
+        {
+            return rawValue;
+        }
+
+        return rawValue[1..^1]
+            .Replace("\\\"", "\"")
+            .Replace("\\\\", "\\")
+            .Replace("\\n", "\n")
+            .Replace("\\r", "\r")
+            .Replace("\\t", "\t")
+            .Replace("\\/", "/");
+    }
+
+    private static bool TryParseStoredBool(string rawValue, out bool value)
+    {
+        return bool.TryParse(UnwrapStoredString(rawValue), out value);
+    }
+
+    private static bool TryParseStoredInt(string rawValue, out int value)
+    {
+        return int.TryParse(UnwrapStoredString(rawValue), NumberStyles.Integer, CultureInfo.InvariantCulture, out value);
+    }
+
+    private static bool TryParseStoredDouble(string rawValue, out double value)
+    {
+        return double.TryParse(UnwrapStoredString(rawValue), NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.InvariantCulture, out value);
     }
 }
