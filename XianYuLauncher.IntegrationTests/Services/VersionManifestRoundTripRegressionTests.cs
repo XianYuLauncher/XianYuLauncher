@@ -1,12 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Newtonsoft.Json.Linq;
-using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
@@ -14,8 +8,9 @@ using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Core.Services.ModLoaderInstallers;
 
-namespace XianYuLauncher.Tests.Services;
+namespace XianYuLauncher.IntegrationTests.Services;
 
+[Trait("Category", "Integration")]
 public class VersionManifestRoundTripRegressionTests : IDisposable
 {
     private readonly VersionInfoManager _versionInfoManager;
@@ -84,11 +79,10 @@ public class VersionManifestRoundTripRegressionTests : IDisposable
         Assert.Equal("net.fabricmc.loader.impl.launch.knot.KnotClient", runtimeManifest.MainClass);
         Assert.Equal("1.8", runtimeManifest.Assets);
         Assert.Equal(
-            new[]
-            {
+            [
                 "net.legacyfabric:intermediary:1.8.9",
                 "com.mojang:brigadier:1.0.18"
-            },
+            ],
             runtimeManifest.Libraries!.Select(library => library.Name).ToArray());
     }
 
@@ -130,7 +124,7 @@ public class VersionManifestRoundTripRegressionTests : IDisposable
         var resolvedManifest = installer.ResolveVersionInfo(
             original,
             neoforge,
-            new List<Library> { new() { Name = "com.google.guava:guava:32.1.2-jre" } });
+            [new Library { Name = "com.google.guava:guava:32.1.2-jre" }]);
 
         await SaveVersionManifestAsync("neoforge-1.20.4-20.4.200", resolvedManifest);
 
@@ -141,12 +135,11 @@ public class VersionManifestRoundTripRegressionTests : IDisposable
         Assert.Equal("1.20", runtimeManifest.Assets);
         Assert.Equal(17, runtimeManifest.JavaVersion!.MajorVersion);
         Assert.Equal(
-            new[]
-            {
+            [
                 "net.neoforged:neoforge:20.4.200",
                 "com.google.guava:guava:21.0",
                 "com.mojang:brigadier:1.0.18"
-            },
+            ],
             runtimeManifest.Libraries!.Select(library => library.Name).ToArray());
     }
 
@@ -185,7 +178,7 @@ public class VersionManifestRoundTripRegressionTests : IDisposable
             }
         };
 
-        var resolvedManifest = installer.ResolveVersionInfo(original, cleanroom, new List<Library>());
+        var resolvedManifest = installer.ResolveVersionInfo(original, cleanroom, []);
 
         await SaveVersionManifestAsync("cleanroom-0.4.2-alpha", resolvedManifest);
 
@@ -196,12 +189,11 @@ public class VersionManifestRoundTripRegressionTests : IDisposable
         Assert.Equal("1.12", runtimeManifest.Assets);
         Assert.Equal(21, runtimeManifest.JavaVersion!.MajorVersion);
         Assert.Equal(
-            new[]
-            {
+            [
                 "com.cleanroommc:cleanroom:0.4.2-alpha",
                 "org.lwjgl:lwjgl:3.3.3",
                 "com.mojang:brigadier:1.0.18"
-            },
+            ],
             runtimeManifest.Libraries!.Select(library => library.Name).ToArray());
     }
 
