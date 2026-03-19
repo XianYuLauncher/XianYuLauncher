@@ -59,7 +59,6 @@ public sealed partial class SettingsPage : Page
 
     private async void SettingsPage_Loaded(object sender, RoutedEventArgs e)
     {
-        System.Diagnostics.Debug.WriteLine("[SettingsPage] 页面加载，开始刷新自定义源列表");
         TryApplyPendingSectionNavigation();
 
         try
@@ -67,33 +66,20 @@ public sealed partial class SettingsPage : Page
             // 加载测速缓存，显示上次的测速结果（启动时已自动测速）
             if (ViewModel != null)
             {
-                System.Diagnostics.Debug.WriteLine("[SettingsPage] 开始加载测速缓存");
                 await ViewModel.LoadSpeedTestCacheAsync();
-                System.Diagnostics.Debug.WriteLine("[SettingsPage] 测速缓存加载完成");
 
                 _autoSpeedTestService.SpeedTestCompleted -= AutoSpeedTestService_SpeedTestCompleted;
                 _autoSpeedTestService.SpeedTestCompleted += AutoSpeedTestService_SpeedTestCompleted;
-                System.Diagnostics.Debug.WriteLine("[SettingsPage] 已订阅自动测速完成事件");
             }
-
-            System.Diagnostics.Debug.WriteLine($"[SettingsPage] ViewModel 是否为 null: {ViewModel == null}");
-            System.Diagnostics.Debug.WriteLine($"[SettingsPage] RefreshCustomSourcesCommand 是否为 null: {ViewModel?.RefreshCustomSourcesCommand == null}");
 
             if (ViewModel?.RefreshCustomSourcesCommand != null)
             {
-                System.Diagnostics.Debug.WriteLine("[SettingsPage] 开始执行 RefreshCustomSourcesCommand");
                 await ViewModel.RefreshCustomSourcesCommand.ExecuteAsync(null);
-                System.Diagnostics.Debug.WriteLine("[SettingsPage] RefreshCustomSourcesCommand 执行完成");
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine("[SettingsPage] ViewModel 或 Command 为 null，无法刷新");
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[SettingsPage] 刷新自定义源列表失败: {ex.Message}");
-            System.Diagnostics.Debug.WriteLine($"[SettingsPage] 堆栈跟踪: {ex.StackTrace}");
+            Log.Error(ex, "[SettingsPage] 刷新设置页初始化数据失败");
         }
     }
 
@@ -101,7 +87,6 @@ public sealed partial class SettingsPage : Page
     {
         _autoSpeedTestService.SpeedTestCompleted -= AutoSpeedTestService_SpeedTestCompleted;
         ViewModel?.Dispose();
-        System.Diagnostics.Debug.WriteLine("[SettingsPage] 页面卸载，已取消自动测速事件订阅");
     }
 
     private void AutoSpeedTestService_SpeedTestCompleted(object? sender, EventArgs e)
