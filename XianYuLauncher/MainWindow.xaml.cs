@@ -19,6 +19,9 @@ public sealed partial class MainWindow : WindowEx
     {
         InitializeComponent();
 
+        Width = 900;
+        Height = 1240;
+
         AppWindow.SetIcon(Path.Combine(AppContext.BaseDirectory, "Assets/WindowIcon.ico"));
         Content = null;
         Title = "XianYu Launcher";
