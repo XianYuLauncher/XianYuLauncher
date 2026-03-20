@@ -45,17 +45,10 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
-    public void CurrentTask_Initially_ShouldBeNull()
+    public void TasksSnapshot_Initially_ShouldBeEmpty()
     {
         // Assert
-        _downloadTaskManager.CurrentTask.Should().BeNull();
-    }
-
-    [Fact]
-    public void HasActiveDownload_Initially_ShouldBeFalse()
-    {
-        // Assert
-        _downloadTaskManager.HasActiveDownload.Should().BeFalse();
+        _downloadTaskManager.TasksSnapshot.Should().BeEmpty();
     }
 
     [Fact]
@@ -124,6 +117,30 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
+    public async Task StartVanillaDownloadAsync_WhenShowInTeachingTipRequested_ShouldMarkTask()
+    {
+        // Arrange
+        _minecraftVersionServiceMock
+            .Setup(m => m.DownloadVersionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
+            .Returns(async () => await Task.Delay(5000));
+
+        // Act
+        await _downloadTaskManager.StartVanillaDownloadAsync("1.20.1", "MyVersion", showInTeachingTip: true);
+        await Task.Delay(100);
+
+        // Assert
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskName == "MyVersion"
+            && task.ShowInTeachingTip
+            && task.IsQueueManaged);
+    }
+
+    [Fact]
     public async Task StartVanillaDownloadAsync_WhenConcurrencyLimitReached_ShouldQueueSecondTask()
     {
         // Arrange
@@ -131,6 +148,43 @@ public class DownloadTaskManagerTests
         localSettingsServiceMock
             .Setup(service => service.ReadSettingAsync<int?>(It.IsAny<string>()))
             .ReturnsAsync(1);
+
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            _downloadManagerMock.Object,
+            localSettingsServiceMock.Object);
+
+        _minecraftVersionServiceMock
+            .Setup(m => m.DownloadVersionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
+            .Returns(async () => await Task.Delay(5000));
+
+        await downloadTaskManager.StartVanillaDownloadAsync("1.20.1", "Version1");
+        await Task.Delay(100);
+
+        // Act
+        await downloadTaskManager.StartVanillaDownloadAsync("1.20.2", "Version2");
+        await Task.Delay(100);
+
+        // Assert
+        downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskName == "Version2" && task.State == DownloadTaskState.Queued);
+    }
+
+    [Fact]
+    public async Task StartVanillaDownloadAsync_WhenConcurrencySettingBelowRange_ShouldClampToOne()
+    {
+        // Arrange
+        var localSettingsServiceMock = new Mock<ILocalSettingsService>();
+        localSettingsServiceMock
+            .Setup(service => service.ReadSettingAsync<int?>(It.IsAny<string>()))
+            .ReturnsAsync(0);
 
         var downloadTaskManager = new DownloadTaskManager(
             _minecraftVersionServiceMock.Object,
@@ -269,6 +323,31 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
+    public void ExternalTaskLifecycle_ShouldRaiseEventsAndRemoveCompletedTask()
+    {
+        // Arrange
+        var stateChanges = new List<DownloadTaskInfo>();
+        var progressChanges = new List<DownloadTaskInfo>();
+        var snapshotChangedCount = 0;
+
+        _downloadTaskManager.TaskStateChanged += (_, task) => stateChanges.Add(task);
+        _downloadTaskManager.TaskProgressChanged += (_, task) => progressChanges.Add(task);
+        _downloadTaskManager.TasksSnapshotChanged += (_, _) => snapshotChangedCount++;
+
+        // Act
+        var taskId = _downloadTaskManager.CreateExternalTask("收藏夹导入", "favorite-import", showInTeachingTip: true);
+        _downloadTaskManager.UpdateExternalTask(taskId, 42, "正在下载收藏夹...");
+        _downloadTaskManager.CompleteExternalTask(taskId, "下载完成");
+
+        // Assert
+        stateChanges.Should().Contain(task => task.TaskId == taskId && task.State == DownloadTaskState.Downloading && task.ShowInTeachingTip);
+        stateChanges.Should().Contain(task => task.TaskId == taskId && task.State == DownloadTaskState.Completed);
+        progressChanges.Should().Contain(task => task.TaskId == taskId && task.Progress == 42);
+        _downloadTaskManager.TasksSnapshot.Should().NotContain(task => task.TaskId == taskId);
+        snapshotChangedCount.Should().BeGreaterThanOrEqualTo(4);
+    }
+
+    [Fact]
     public async Task StartVanillaDownloadAsync_OnFailure_ShouldSetFailedState()
     {
         // Arrange
@@ -297,7 +376,7 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
-    public async Task CancelCurrentDownload_ShouldSetCancelledState()
+    public async Task CancelTask_WhenTaskIsRunning_ShouldSetCancelledState()
     {
         // Arrange
         DownloadTaskInfo? finalTask = null;
@@ -313,9 +392,12 @@ public class DownloadTaskManagerTests
             .Returns(async () => await Task.Delay(5000));
 
         await _downloadTaskManager.StartVanillaDownloadAsync("1.20.1", "MyVersion");
+        await Task.Delay(100);
+
+        var runningTask = _downloadTaskManager.TasksSnapshot.First(task => task.TaskName == "MyVersion");
 
         // Act
-        _downloadTaskManager.CancelCurrentDownload();
+        _downloadTaskManager.CancelTask(runningTask.TaskId);
 
         // Assert
         finalTask.Should().NotBeNull();
@@ -323,10 +405,10 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
-    public void CancelCurrentDownload_WhenNoActiveDownload_ShouldNotThrow()
+    public void CancelTask_WhenTaskDoesNotExist_ShouldNotThrow()
     {
         // Act & Assert
-        var act = () => _downloadTaskManager.CancelCurrentDownload();
+        var act = () => _downloadTaskManager.CancelTask("missing-task-id");
         act.Should().NotThrow();
     }
 

@@ -680,6 +680,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private readonly ConcurrentDictionary<string, double> _favoritesItemProgress = new(StringComparer.OrdinalIgnoreCase);
     private int _favoritesTotalItems;
     private int _favoritesCompletedItems;
+    private string? _favoritesBackgroundTaskId;
 
     [ObservableProperty]
     private string _shareCodeInput = string.Empty;
@@ -957,11 +958,11 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         FavoritesDownloadStatus = "下载完成";
         FavoritesDownloadProgress = 100;
         FavoritesDownloadProgressText = "100%";
-        App.GetService<IDownloadTaskManager>()?.NotifyProgress(
-            "收藏夹导入",
-            100,
-            "下载完成",
-            DownloadTaskState.Completed);
+        if (!string.IsNullOrEmpty(_favoritesBackgroundTaskId))
+        {
+            _downloadTaskManager.CompleteExternalTask(_favoritesBackgroundTaskId, "下载完成");
+            _favoritesBackgroundTaskId = null;
+        }
 
         return unsupported.ToList();
     }
@@ -1072,25 +1073,21 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             FavoritesDownloadProgressText = $"{overall:F1}%";
         });
 
-        var downloadTaskManager = App.GetService<IDownloadTaskManager>();
-        downloadTaskManager?.NotifyProgress(
-            "收藏夹导入",
-            overall,
-            FavoritesDownloadStatus);
+        if (!string.IsNullOrEmpty(_favoritesBackgroundTaskId))
+        {
+            _downloadTaskManager.UpdateExternalTask(_favoritesBackgroundTaskId, overall, FavoritesDownloadStatus);
+        }
     }
 
     public void StartFavoritesBackgroundDownload()
     {
-        var downloadTaskManager = App.GetService<IDownloadTaskManager>();
-        if (downloadTaskManager != null)
+        var statusMessage = string.IsNullOrEmpty(FavoritesDownloadStatus) ? "正在后台下载..." : FavoritesDownloadStatus;
+        if (string.IsNullOrEmpty(_favoritesBackgroundTaskId))
         {
-            downloadTaskManager.IsTeachingTipEnabled = true;
-            downloadTaskManager.NotifyProgress(
-                "收藏夹导入",
-                FavoritesDownloadProgress,
-                string.IsNullOrEmpty(FavoritesDownloadStatus) ? "正在后台下载..." : FavoritesDownloadStatus);
+            _favoritesBackgroundTaskId = _downloadTaskManager.CreateExternalTask("收藏夹导入", "favorite-import", showInTeachingTip: true);
         }
 
+        _downloadTaskManager.UpdateExternalTask(_favoritesBackgroundTaskId, FavoritesDownloadProgress, statusMessage);
     }
 
     private async Task<(bool Success, string? SkippedReason)> DownloadFavoriteAsync(ModrinthProject project, InstalledGameVersionViewModel gameVersion)
@@ -2728,8 +2725,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             var file = await savePicker.PickSaveFileAsync();
             if (file == null) return;
 
-            _downloadTaskManager.IsTeachingTipEnabled = true;
-            await _downloadTaskManager.StartFileDownloadAsync(mappedClientUrl, file.Path, $"客户端 {versionId}");
+            await _downloadTaskManager.StartFileDownloadAsync(mappedClientUrl, file.Path, $"客户端 {versionId}", showInTeachingTip: true);
         }
         catch (Exception ex)
         {
@@ -2781,8 +2777,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (file == null) return;
 
             // 3. 启动后台下载
-            _downloadTaskManager.IsTeachingTipEnabled = true;
-            await _downloadTaskManager.StartFileDownloadAsync(mappedServerUrl, file.Path, $"服务端 {versionId}");
+            await _downloadTaskManager.StartFileDownloadAsync(mappedServerUrl, file.Path, $"服务端 {versionId}", showInTeachingTip: true);
         }
         catch (Exception ex)
         {

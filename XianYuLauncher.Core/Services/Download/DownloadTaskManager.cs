@@ -29,9 +29,7 @@ public class DownloadTaskManager : IDownloadTaskManager
     private readonly Lock _lock = new();
     private readonly List<ManagedDownloadTask> _tasks = new();
     private readonly Dictionary<string, DownloadTaskInfo> _externalTasks = new(StringComparer.Ordinal);
-    private readonly HashSet<string> _teachingTipTrackedKeys = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _schedulerGate = new(1, 1);
-    private bool _isTeachingTipEnabled;
 
     private sealed class ManagedDownloadTask
     {
@@ -80,29 +78,6 @@ public class DownloadTaskManager : IDownloadTaskManager
         _localSettingsService = localSettingsService;
     }
 
-    public DownloadTaskInfo? CurrentTask
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _tasks.FirstOrDefault(task => task.Info.State == DownloadTaskState.Downloading)?.Info.Clone()
-                    ?? _tasks.FirstOrDefault(task => task.Info.State == DownloadTaskState.Queued)?.Info.Clone();
-            }
-        }
-    }
-
-    public bool HasActiveDownload
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _tasks.Any(task => task.Info.State == DownloadTaskState.Downloading);
-            }
-        }
-    }
-
     public IReadOnlyList<DownloadTaskInfo> TasksSnapshot
     {
         get
@@ -115,33 +90,6 @@ public class DownloadTaskManager : IDownloadTaskManager
         }
     }
 
-    /// <summary>
-    /// 是否启用 TeachingTip 显示（用于控制后台下载时是否显示 TeachingTip）
-    /// 当用户点击"后台下载"按钮时设置为 true，新的前台下载任务会被标记为可展示；
-    /// 当这一批标记任务全部结束后会自动重置为 false
-    /// </summary>
-    public bool IsTeachingTipEnabled
-    {
-        get
-        {
-            lock (_lock)
-            {
-                return _isTeachingTipEnabled;
-            }
-        }
-        set
-        {
-            lock (_lock)
-            {
-                _isTeachingTipEnabled = value;
-                if (!value)
-                {
-                    _teachingTipTrackedKeys.Clear();
-                }
-            }
-        }
-    }
-
     public event EventHandler<DownloadTaskInfo>? TaskStateChanged;
     public event EventHandler<DownloadTaskInfo>? TaskProgressChanged;
     public event EventHandler? TasksSnapshotChanged;
@@ -149,13 +97,14 @@ public class DownloadTaskManager : IDownloadTaskManager
     /// <summary>
     /// 启动原版 Minecraft 下载
     /// </summary>
-    public Task StartVanillaDownloadAsync(string versionId, string customVersionName, string? versionIconPath = null)
+    public Task StartVanillaDownloadAsync(string versionId, string customVersionName, string? versionIconPath = null, bool showInTeachingTip = false)
     {
         var taskName = string.IsNullOrEmpty(customVersionName) ? versionId : customVersionName;
         return EnqueueManagedTaskAsync(
             taskName,
             customVersionName,
-            (task, cancellationToken) => ExecuteVanillaDownloadAsync(versionId, customVersionName, task, cancellationToken, versionIconPath));
+            (task, cancellationToken) => ExecuteVanillaDownloadAsync(versionId, customVersionName, task, cancellationToken, versionIconPath),
+            showInTeachingTip);
     }
 
     /// <summary>
@@ -166,7 +115,8 @@ public class DownloadTaskManager : IDownloadTaskManager
         string modLoaderType,
         string modLoaderVersion,
         string customVersionName,
-        string? versionIconPath = null)
+        string? versionIconPath = null,
+        bool showInTeachingTip = false)
     {
         var taskName = string.IsNullOrEmpty(customVersionName)
             ? $"{modLoaderType} {minecraftVersion}-{modLoaderVersion}"
@@ -182,7 +132,8 @@ public class DownloadTaskManager : IDownloadTaskManager
                 customVersionName,
                 task,
                 cancellationToken,
-                versionIconPath));
+                versionIconPath),
+            showInTeachingTip);
     }
 
     /// <summary>
@@ -192,7 +143,8 @@ public class DownloadTaskManager : IDownloadTaskManager
         string minecraftVersion,
         IEnumerable<ModLoaderSelection> modLoaderSelections,
         string customVersionName,
-        string? versionIconPath = null)
+        string? versionIconPath = null,
+        bool showInTeachingTip = false)
     {
         var selections = modLoaderSelections.ToList();
         var taskName = string.IsNullOrEmpty(customVersionName)
@@ -208,17 +160,19 @@ public class DownloadTaskManager : IDownloadTaskManager
                 customVersionName,
                 task,
                 cancellationToken,
-                versionIconPath));
+                versionIconPath),
+            showInTeachingTip);
     }
 
     /// <inheritdoc/>
-    public Task StartFileDownloadAsync(string url, string targetPath, string description)
+    public Task StartFileDownloadAsync(string url, string targetPath, string description, bool showInTeachingTip = false)
     {
         var fileName = Path.GetFileName(targetPath);
         return EnqueueManagedTaskAsync(
             description,
             fileName,
-            (task, cancellationToken) => ExecuteFileDownloadAsync(url, targetPath, description, task, cancellationToken));
+            (task, cancellationToken) => ExecuteFileDownloadAsync(url, targetPath, description, task, cancellationToken),
+            showInTeachingTip);
     }
 
     /// <summary>
@@ -258,18 +212,6 @@ public class DownloadTaskManager : IDownloadTaskManager
     /// <summary>
     /// 取消当前下载
     /// </summary>
-    public void CancelCurrentDownload()
-    {
-        var currentTask = CurrentTask;
-        if (currentTask == null)
-        {
-            _logger.LogWarning("没有活动下载任务可以取消");
-            return;
-        }
-
-        CancelTask(currentTask.TaskId);
-    }
-
     public void CancelTask(string taskId)
     {
         ManagedDownloadTask? managedTask;
@@ -295,7 +237,6 @@ public class DownloadTaskManager : IDownloadTaskManager
             managedTask.Info.State = DownloadTaskState.Cancelled;
             managedTask.Info.StatusMessage = "下载已取消";
             managedTask.Info.SpeedText = string.Empty;
-            ReleaseTeachingTipTrackingLocked(GetTeachingTipTrackingKey(managedTask.Info));
             UpdateQueuePositionsLocked();
 
             if (managedTask.IsRunning)
@@ -332,8 +273,6 @@ public class DownloadTaskManager : IDownloadTaskManager
             managedTask.Info.ErrorMessage = null;
             managedTask.Info.StatusMessage = "等待下载...";
             managedTask.Info.SpeedText = string.Empty;
-            managedTask.Info.ShowInTeachingTip = true;
-            RegisterTeachingTipTrackingLocked(GetTeachingTipTrackingKey(managedTask.Info));
 
             _tasks.Remove(managedTask);
             _tasks.Add(managedTask);
@@ -342,6 +281,138 @@ public class DownloadTaskManager : IDownloadTaskManager
 
         OnTaskStateChanged(managedTask.Info);
         await ProcessQueueAsync().ConfigureAwait(false);
+    }
+
+    public string CreateExternalTask(string taskName, string versionName = "", bool showInTeachingTip = false)
+    {
+        var taskInfo = new DownloadTaskInfo
+        {
+            TaskName = taskName,
+            VersionName = versionName,
+            State = DownloadTaskState.Downloading,
+            Progress = 0,
+            StatusMessage = string.Empty,
+            IsQueueManaged = false,
+            ShowInTeachingTip = showInTeachingTip
+        };
+
+        lock (_lock)
+        {
+            _externalTasks[taskInfo.TaskId] = taskInfo;
+            UpdateQueuePositionsLocked();
+        }
+
+        NotifyTasksSnapshotChanged();
+        return taskInfo.TaskId;
+    }
+
+    public void UpdateExternalTask(string taskId, double progress, string statusMessage)
+    {
+        DownloadTaskInfo? taskInfo;
+
+        lock (_lock)
+        {
+            if (!_externalTasks.TryGetValue(taskId, out taskInfo))
+            {
+                _logger.LogWarning("未找到要更新的外部下载任务: {TaskId}", taskId);
+                return;
+            }
+
+            taskInfo.Progress = Math.Clamp(progress, 0, 100);
+            taskInfo.StatusMessage = statusMessage;
+            taskInfo.State = DownloadTaskState.Downloading;
+            taskInfo.QueuePosition = null;
+        }
+
+        OnTaskStateChanged(taskInfo);
+        OnTaskProgressChanged(taskInfo);
+    }
+
+    public void CompleteExternalTask(string taskId, string statusMessage = "下载完成")
+    {
+        DownloadTaskInfo? taskInfo;
+
+        lock (_lock)
+        {
+            if (!_externalTasks.TryGetValue(taskId, out taskInfo))
+            {
+                _logger.LogWarning("未找到要完成的外部下载任务: {TaskId}", taskId);
+                return;
+            }
+
+            taskInfo.Progress = 100;
+            taskInfo.StatusMessage = statusMessage;
+            taskInfo.ErrorMessage = null;
+            taskInfo.SpeedText = string.Empty;
+            taskInfo.State = DownloadTaskState.Completed;
+        }
+
+        OnTaskStateChanged(taskInfo);
+
+        lock (_lock)
+        {
+            _externalTasks.Remove(taskId);
+            UpdateQueuePositionsLocked();
+        }
+
+        NotifyTasksSnapshotChanged();
+    }
+
+    public void FailExternalTask(string taskId, string errorMessage, string? statusMessage = null)
+    {
+        DownloadTaskInfo? taskInfo;
+
+        lock (_lock)
+        {
+            if (!_externalTasks.TryGetValue(taskId, out taskInfo))
+            {
+                _logger.LogWarning("未找到要标记失败的外部下载任务: {TaskId}", taskId);
+                return;
+            }
+
+            taskInfo.ErrorMessage = errorMessage;
+            taskInfo.StatusMessage = statusMessage ?? $"下载失败: {errorMessage}";
+            taskInfo.SpeedText = string.Empty;
+            taskInfo.State = DownloadTaskState.Failed;
+        }
+
+        OnTaskStateChanged(taskInfo);
+
+        lock (_lock)
+        {
+            _externalTasks.Remove(taskId);
+            UpdateQueuePositionsLocked();
+        }
+
+        NotifyTasksSnapshotChanged();
+    }
+
+    public void CancelExternalTask(string taskId, string statusMessage = "下载已取消")
+    {
+        DownloadTaskInfo? taskInfo;
+
+        lock (_lock)
+        {
+            if (!_externalTasks.TryGetValue(taskId, out taskInfo))
+            {
+                _logger.LogWarning("未找到要取消的外部下载任务: {TaskId}", taskId);
+                return;
+            }
+
+            taskInfo.StatusMessage = statusMessage;
+            taskInfo.SpeedText = string.Empty;
+            taskInfo.State = DownloadTaskState.Cancelled;
+        }
+
+        OnTaskStateChanged(taskInfo);
+
+        lock (_lock)
+        {
+            _externalTasks.Remove(taskId);
+            UpdateQueuePositionsLocked();
+        }
+
+        NotifyTasksSnapshotChanged();
     }
 
     /// <summary>
@@ -353,7 +424,8 @@ public class DownloadTaskManager : IDownloadTaskManager
         string downloadUrl,
         string savePath,
         string? iconUrl = null,
-        IEnumerable<ResourceDependency>? dependencies = null)
+        IEnumerable<ResourceDependency>? dependencies = null,
+        bool showInTeachingTip = false)
     {
         var dependencyList = dependencies?.ToList();
         return EnqueueManagedTaskAsync(
@@ -366,7 +438,8 @@ public class DownloadTaskManager : IDownloadTaskManager
                 savePath,
                 dependencyList,
                 task,
-                cancellationToken));
+                cancellationToken),
+            showInTeachingTip);
     }
 
     /// <summary>
@@ -377,78 +450,21 @@ public class DownloadTaskManager : IDownloadTaskManager
         string downloadUrl,
         string savesDirectory,
         string fileName,
-        string? iconUrl = null)
+        string? iconUrl = null,
+        bool showInTeachingTip = false)
     {
         return EnqueueManagedTaskAsync(
             worldName,
             "world",
-            (task, cancellationToken) => ExecuteWorldDownloadAsync(worldName, downloadUrl, savesDirectory, fileName, task, cancellationToken));
-    }
-
-    /// <summary>
-    /// 通知进度更新（用于非 DownloadTaskManager 管理的下载，如依赖下载）
-    /// 这会触发 TaskStateChanged 和 TaskProgressChanged 事件
-    /// </summary>
-    public void NotifyProgress(string taskName, double progress, string statusMessage, DownloadTaskState state = DownloadTaskState.Downloading)
-    {
-        DownloadTaskInfo taskInfo;
-        var isTerminal = state == DownloadTaskState.Completed
-            || state == DownloadTaskState.Failed
-            || state == DownloadTaskState.Cancelled;
-
-        lock (_lock)
-        {
-            if (!_externalTasks.TryGetValue(taskName, out taskInfo!))
-            {
-                taskInfo = new DownloadTaskInfo
-                {
-                    TaskName = taskName,
-                    IsQueueManaged = false,
-                    ShowInTeachingTip = _isTeachingTipEnabled
-                };
-                _externalTasks[taskName] = taskInfo;
-            }
-
-            taskInfo.Progress = Math.Clamp(progress, 0, 100);
-            taskInfo.StatusMessage = statusMessage;
-            taskInfo.State = state;
-            taskInfo.QueuePosition = null;
-
-            if (taskInfo.ShowInTeachingTip)
-            {
-                if (isTerminal)
-                {
-                    ReleaseTeachingTipTrackingLocked(GetTeachingTipTrackingKey(taskInfo));
-                }
-                else
-                {
-                    RegisterTeachingTipTrackingLocked(GetTeachingTipTrackingKey(taskInfo));
-                }
-            }
-        }
-
-        if (state == DownloadTaskState.Queued || state == DownloadTaskState.Downloading)
-        {
-            OnTaskStateChanged(taskInfo);
-        }
-
-        OnTaskProgressChanged(taskInfo);
-
-        if (isTerminal)
-        {
-            OnTaskStateChanged(taskInfo);
-            lock (_lock)
-            {
-                _externalTasks.Remove(taskName);
-            }
-            NotifyTasksSnapshotChanged();
-        }
+            (task, cancellationToken) => ExecuteWorldDownloadAsync(worldName, downloadUrl, savesDirectory, fileName, task, cancellationToken),
+            showInTeachingTip);
     }
 
     private async Task EnqueueManagedTaskAsync(
         string taskName,
         string versionName,
-        Func<DownloadTaskInfo, CancellationToken, Task> executor)
+        Func<DownloadTaskInfo, CancellationToken, Task> executor,
+        bool showInTeachingTip)
     {
         var task = new DownloadTaskInfo
         {
@@ -457,18 +473,13 @@ public class DownloadTaskManager : IDownloadTaskManager
             State = DownloadTaskState.Queued,
             Progress = 0,
             StatusMessage = "等待下载...",
-            ShowInTeachingTip = IsTeachingTipEnabled,
+            ShowInTeachingTip = showInTeachingTip,
             IsQueueManaged = true
         };
 
         lock (_lock)
         {
             _tasks.Add(new ManagedDownloadTask(task, executor));
-            if (task.ShowInTeachingTip)
-            {
-                RegisterTeachingTipTrackingLocked(GetTeachingTipTrackingKey(task));
-            }
-
             UpdateQueuePositionsLocked();
         }
 
@@ -994,7 +1005,6 @@ public class DownloadTaskManager : IDownloadTaskManager
             task.Progress = 100;
             task.StatusMessage = "下载完成";
             task.SpeedText = string.Empty;
-            ReleaseTeachingTipTrackingLocked(GetTeachingTipTrackingKey(task));
             UpdateQueuePositionsLocked();
             shouldNotify = true;
         }
@@ -1020,7 +1030,6 @@ public class DownloadTaskManager : IDownloadTaskManager
             task.ErrorMessage = errorMessage;
             task.StatusMessage = $"下载失败: {errorMessage}";
             task.SpeedText = string.Empty;
-            ReleaseTeachingTipTrackingLocked(GetTeachingTipTrackingKey(task));
             UpdateQueuePositionsLocked();
             shouldNotify = true;
         }
@@ -1050,7 +1059,6 @@ public class DownloadTaskManager : IDownloadTaskManager
             task.State = DownloadTaskState.Cancelled;
             task.StatusMessage = "下载已取消";
             task.SpeedText = string.Empty;
-            ReleaseTeachingTipTrackingLocked(GetTeachingTipTrackingKey(task));
             UpdateQueuePositionsLocked();
             shouldNotify = true;
         }
@@ -1076,26 +1084,6 @@ public class DownloadTaskManager : IDownloadTaskManager
     private void NotifyTasksSnapshotChanged()
     {
         TasksSnapshotChanged?.Invoke(this, EventArgs.Empty);
-    }
-
-    private string GetTeachingTipTrackingKey(DownloadTaskInfo task)
-    {
-        return task.IsQueueManaged ? task.TaskId : $"external:{task.TaskName}";
-    }
-
-    private void RegisterTeachingTipTrackingLocked(string key)
-    {
-        _isTeachingTipEnabled = true;
-        _teachingTipTrackedKeys.Add(key);
-    }
-
-    private void ReleaseTeachingTipTrackingLocked(string key)
-    {
-        _teachingTipTrackedKeys.Remove(key);
-        if (_teachingTipTrackedKeys.Count == 0)
-        {
-            _isTeachingTipEnabled = false;
-        }
     }
 
     private void UpdateQueuePositionsLocked()

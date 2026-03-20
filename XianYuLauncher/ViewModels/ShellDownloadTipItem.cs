@@ -12,7 +12,7 @@ public partial class ShellDownloadTipItem : ObservableObject
     private string _taskId = string.Empty;
 
     /// <summary>
-    /// 用于在 <see cref="XianYuLauncher.Core.Services.DownloadTaskManager.NotifyProgress"/> 等场景下合并同一条逻辑任务（每次事件可能携带新 TaskId）。
+    /// 用于在外部准备任务与后续真实下载任务之间平滑接力，避免 TeachingTip 因 TaskId 切换而闪断。
     /// </summary>
     [ObservableProperty]
     private string _mergeKey = string.Empty;
