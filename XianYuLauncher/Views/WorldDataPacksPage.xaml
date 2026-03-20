@@ -17,24 +17,6 @@
     </Page.Resources>
 
     <Grid>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-        </Grid.RowDefinitions>
-
-        <StackPanel Grid.Row="0"
-                    Orientation="Horizontal"
-                    Spacing="8"
-                    Margin="0,0,0,12"
-                    Visibility="{Binding IsLoadingDataPacks, Converter={StaticResource BoolToVisibilityConverter}}">
-            <ProgressRing Width="16" Height="16" IsActive="True"/>
-            <TextBlock Text="正在加载数据包详情"
-                       FontSize="13"
-                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                       VerticalAlignment="Center"/>
-        </StackPanel>
-
-        <Grid Grid.Row="1">
             <ListView
                 x:Name="DataPackListView"
                 ItemsSource="{Binding DataPacks}"
@@ -174,6 +156,5 @@
                     </StackPanel>
                 </Button>
             </StackPanel>
-        </Grid>
     </Grid>
 </Page>
