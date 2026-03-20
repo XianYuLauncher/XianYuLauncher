@@ -4,21 +4,28 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:viewModels="using:XianYuLauncher.ViewModels"
+    xmlns:helpers="using:XianYuLauncher.Helpers"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     mc:Ignorable="d">
 
-    <Grid x:Name="ContentArea" Padding="20">
+    <Page.Resources>
+        <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </Page.Resources>
+
+    <Grid x:Name="ContentArea">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" HorizontalAlignment="Stretch">
+        <!-- 标题区域 -->
+        <Grid Grid.Row="0" HorizontalAlignment="Stretch" Padding="20,20,20,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="100*" MaxWidth="1064" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-
             <StackPanel Grid.Column="1" HorizontalAlignment="Stretch" Margin="0,0,0,20">
                 <TextBlock
                     x:Uid="DownloadQueuePage_Title"
@@ -32,5 +39,157 @@
                     Opacity="0.7" />
             </StackPanel>
         </Grid>
+
+        <!-- 主内容区 -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="20,0,20,20">
+            <Grid HorizontalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="100*" MaxWidth="1064" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                
+                <StackPanel Grid.Column="1" Spacing="24" HorizontalAlignment="Stretch">
+
+                    <!-- 顶部摘要 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        
+                        <Border Grid.Column="0" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="4" Padding="16" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Text="运行中" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="{x:Bind ViewModel.RunningCount, Mode=OneWay}" Style="{ThemeResource TitleTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="4" Padding="16" Margin="4,0,4,0">
+                            <StackPanel>
+                                <TextBlock Text="排队中" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="{x:Bind ViewModel.QueuedCount, Mode=OneWay}" Style="{ThemeResource TitleTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="4" Padding="16" Margin="4,0,4,0">
+                            <StackPanel>
+                                <TextBlock Text="总速度" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="{x:Bind ViewModel.TotalSpeed, Mode=OneWay}" Style="{ThemeResource SubtitleTextBlockStyle}" FontWeight="SemiBold" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="3" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="4" Padding="16" Margin="8,0,0,0">
+                            <StackPanel>
+                                <TextBlock Text="失败任务" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="{x:Bind ViewModel.FailedCount, Mode=OneWay}" Style="{ThemeResource TitleTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- 运行中任务 -->
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="运行中" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.RunningTasks, Mode=OneWay}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="viewModels:MockDownloadTaskInfo">
+                                    <controls:SettingsCard Margin="0,0,0,8" IsClickEnabled="False">
+                                        <controls:SettingsCard.HeaderIcon>
+                                            <FontIcon Glyph="{x:Bind IconGlyph}" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+                                        </controls:SettingsCard.HeaderIcon>
+                                        
+                                        <controls:SettingsCard.Header>
+                                            <StackPanel Spacing="4" Margin="0,4,0,4">
+                                                <TextBlock Text="{x:Bind DisplayName}" Style="{ThemeResource BodyTextBlockStyle}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{x:Bind StatusMessage}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                                                <ProgressBar Value="{x:Bind Progress}" Maximum="100" Height="4" CornerRadius="2" Margin="0,4,0,0" Width="200" HorizontalAlignment="Left" />
+                                            </StackPanel>
+                                        </controls:SettingsCard.Header>
+                                        
+                                        <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                                            <!-- 任务信息 -->
+                                            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                                <TextBlock Text="{x:Bind TaskType}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                                                <TextBlock Text="{x:Bind SpeedText}" Style="{ThemeResource CaptionTextBlockStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                            
+                                            <!-- 取消按钮 -->
+                                            <Button Style="{ThemeResource SubtleButtonStyle}" 
+                                                    Command="{x:Bind CancelCommand}"
+                                                    Visibility="{x:Bind CanCancel, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                    ToolTipService.ToolTip="取消任务"
+                                                    Padding="8">
+                                                <FontIcon Glyph="&#xE711;" FontSize="14" />
+                                            </Button>
+                                        </StackPanel>
+                                    </controls:SettingsCard>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- 排队中任务 -->
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="排队中" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.QueuedTasks, Mode=OneWay}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="viewModels:MockDownloadTaskInfo">
+                                    <controls:SettingsCard Header="{x:Bind DisplayName}" Description="{x:Bind StatusMessage}" Margin="0,0,0,8" IsClickEnabled="False">
+                                        <controls:SettingsCard.HeaderIcon>
+                                            <FontIcon Glyph="{x:Bind IconGlyph}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </controls:SettingsCard.HeaderIcon>
+                                        
+                                        <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                                            <TextBlock Text="{x:Bind TaskType}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                                            
+                                            <!-- 取消按钮 -->
+                                            <Button Style="{ThemeResource SubtleButtonStyle}" 
+                                                    Command="{x:Bind CancelCommand}"
+                                                    Visibility="{x:Bind CanCancel, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                    ToolTipService.ToolTip="取消任务"
+                                                    Padding="8">
+                                                <FontIcon Glyph="&#xE711;" FontSize="14" />
+                                            </Button>
+                                        </StackPanel>
+                                    </controls:SettingsCard>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+
+                    <!-- 最近任务 -->
+                    <StackPanel Spacing="12">
+                        <TextBlock Text="近期任务" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                        <ItemsControl ItemsSource="{x:Bind ViewModel.RecentTasks, Mode=OneWay}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="viewModels:MockDownloadTaskInfo">
+                                    <controls:SettingsCard Header="{x:Bind DisplayName}" Description="{x:Bind StatusMessage}" Margin="0,0,0,8" IsClickEnabled="False">
+                                        <controls:SettingsCard.HeaderIcon>
+                                            <FontIcon Glyph="{x:Bind IconGlyph}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                        </controls:SettingsCard.HeaderIcon>
+                                        
+                                        <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                                            <TextBlock Text="{x:Bind TaskType}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                                            
+                                            <!-- 重试按钮 -->
+                                            <Button Style="{ThemeResource SubtleButtonStyle}" 
+                                                    Command="{x:Bind RetryCommand}"
+                                                    Visibility="{x:Bind CanRetry, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                    ToolTipService.ToolTip="重试任务"
+                                                    Padding="8">
+                                                <FontIcon Glyph="&#xE72C;" FontSize="14" />
+                                            </Button>
+                                        </StackPanel>
+                                    </controls:SettingsCard>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                    
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
     </Grid>
 </Page>
