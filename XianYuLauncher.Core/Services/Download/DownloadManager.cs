@@ -101,6 +101,16 @@ public class DownloadManager : IDownloadManager
         int retryCount = 0;
         Exception? lastException = null;
         int maxAttempts = Math.Max(1, DefaultMaxRetries);
+        var lastProgressStatus = default(DownloadProgressStatus);
+        bool hasProgressStatus = false;
+        Action<DownloadProgressStatus>? trackedProgressCallback = progressCallback == null
+            ? null
+            : status =>
+            {
+                lastProgressStatus = status;
+                hasProgressStatus = true;
+                progressCallback(status);
+            };
         
         // 确定并发线程数。
         // 如果外部强制指定了maxConcurrency(例如批量下载时指定为1)，则优先使用
@@ -116,7 +126,9 @@ public class DownloadManager : IDownloadManager
             {
                 if (attempt > 1)
                 {
-                    int delayMs = DefaultRetryBaseDelayMs * (int)Math.Pow(2, attempt - 2);
+                    int delayMs = GetRetryDelayMs(attempt);
+                    _logger.LogDebug("开始第 {Attempt}/{MaxAttempts} 次下载尝试: {Url}, DelayMs={DelayMs}", attempt, maxAttempts, url, delayMs);
+                    Debug.WriteLine($"[DownloadManager] 开始第 {attempt}/{maxAttempts} 次下载尝试: {url}, DelayMs={delayMs}");
                     await Task.Delay(delayMs, cancellationToken);
                 }
 
@@ -133,11 +145,11 @@ public class DownloadManager : IDownloadManager
                 
                 if (useShardedDownload && contentLength is long resolvedContentLength)
                 {
-                    await DownloadFileShardedAsync(url, targetPath, resolvedContentLength, threadCount, progressCallback, cancellationToken);
+                    await DownloadFileShardedAsync(url, targetPath, resolvedContentLength, threadCount, trackedProgressCallback, cancellationToken);
                 }
                 else
                 {
-                    await DownloadFileDirectAsync(url, targetPath, contentLength, progressCallback, cancellationToken);
+                    await DownloadFileDirectAsync(url, targetPath, contentLength, trackedProgressCallback, cancellationToken);
                 }
                 
                 if (!string.IsNullOrEmpty(expectedSha1))
@@ -151,9 +163,15 @@ public class DownloadManager : IDownloadManager
                         MarkHostRangeSupport(url, false, "分片下载后 SHA1 校验失败");
                         _logger.LogWarning(ex, "分片下载结果校验失败，回退为直连重试: {Url}", url);
 
-                        await DownloadFileDirectAsync(url, targetPath, contentLength, progressCallback, cancellationToken);
+                        await DownloadFileDirectAsync(url, targetPath, contentLength, trackedProgressCallback, cancellationToken);
                         await ValidateFileAsync(targetPath, expectedSha1, cancellationToken);
                     }
+                }
+
+                if (attempt > 1)
+                {
+                    _logger.LogInformation("下载重试成功: {Url}, Attempt={Attempt}/{MaxAttempts}", url, attempt, maxAttempts);
+                    Debug.WriteLine($"[DownloadManager] 下载重试成功: {url}, Attempt={attempt}/{maxAttempts}");
                 }
 
                 _logger.LogInformation($"文件下载成功: {targetPath}");
@@ -167,6 +185,8 @@ public class DownloadManager : IDownloadManager
                 if (attempt < maxAttempts)
                 {
                     retryCount++;
+                    EmitRetryBackoffProgress(trackedProgressCallback, hasProgressStatus, lastProgressStatus);
+                    LogRetryBackoff(url, attempt, maxAttempts, ex, hasProgressStatus ? lastProgressStatus : null);
                     _logger.LogWarning(ex, $"下载失败 ({attempt}/{maxAttempts}): {url}");
                     continue;
                 }
@@ -192,6 +212,8 @@ public class DownloadManager : IDownloadManager
                 if (attempt < maxAttempts)
                 {
                     retryCount++;
+                    EmitRetryBackoffProgress(trackedProgressCallback, hasProgressStatus, lastProgressStatus);
+                    LogRetryBackoff(url, attempt, maxAttempts, ex, hasProgressStatus ? lastProgressStatus : null);
                     _logger.LogWarning(ex, $"下载失败 ({attempt}/{maxAttempts}): {url}");
                     continue;
                 }
@@ -202,6 +224,63 @@ public class DownloadManager : IDownloadManager
         }
 
         return DownloadResult.Failed(url, $"下载失败: {lastException?.Message}", lastException, retryCount);
+    }
+
+    private static int GetRetryDelayMs(int attempt)
+    {
+        return attempt <= 1 ? 0 : DefaultRetryBaseDelayMs * (int)Math.Pow(2, attempt - 2);
+    }
+
+    private static void EmitRetryBackoffProgress(
+        Action<DownloadProgressStatus>? progressCallback,
+        bool hasProgressStatus,
+        DownloadProgressStatus lastProgressStatus)
+    {
+        if (!hasProgressStatus || progressCallback == null)
+        {
+            return;
+        }
+
+        progressCallback(new DownloadProgressStatus(
+            lastProgressStatus.DownloadedBytes,
+            lastProgressStatus.TotalBytes,
+            lastProgressStatus.Percent,
+            0));
+    }
+
+    private void LogRetryBackoff(
+        string url,
+        int attempt,
+        int maxAttempts,
+        Exception exception,
+        DownloadProgressStatus? progressStatus)
+    {
+        int delayMs = GetRetryDelayMs(attempt + 1);
+        if (progressStatus is DownloadProgressStatus status)
+        {
+            _logger.LogDebug(
+                exception,
+                "下载进入重试等待: {Url}, Attempt={Attempt}/{MaxAttempts}, NextDelayMs={DelayMs}, Percent={Percent:F1}, BytesPerSecond={BytesPerSecond:F0}",
+                url,
+                attempt,
+                maxAttempts,
+                delayMs,
+                status.Percent,
+                status.BytesPerSecond);
+            Debug.WriteLine(
+                $"[DownloadManager] 下载进入重试等待: {url}, Attempt={attempt}/{maxAttempts}, NextDelayMs={delayMs}, Percent={status.Percent:F1}, BytesPerSecond={status.BytesPerSecond:F0}, Exception={exception.GetType().Name}: {exception.Message}");
+            return;
+        }
+
+        _logger.LogDebug(
+            exception,
+            "下载进入重试等待: {Url}, Attempt={Attempt}/{MaxAttempts}, NextDelayMs={DelayMs}, 尚无进度快照",
+            url,
+            attempt,
+            maxAttempts,
+            delayMs);
+        Debug.WriteLine(
+            $"[DownloadManager] 下载进入重试等待: {url}, Attempt={attempt}/{maxAttempts}, NextDelayMs={delayMs}, 尚无进度快照, Exception={exception.GetType().Name}: {exception.Message}");
     }
 
     private static bool IsNonRetriableHttpStatus(HttpStatusCode? statusCode)
@@ -299,17 +378,43 @@ public class DownloadManager : IDownloadManager
     /// <inheritdoc/>
     public async Task<byte[]> DownloadBytesAsync(string url, CancellationToken cancellationToken = default)
     {
-        using var response = await _httpClient.GetAsync(url, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        try
+        {
+            using var response = await _httpClient.GetAsync(url, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "下载字节内容失败: {Url}", url);
+            Debug.WriteLine($"[DownloadManager] 下载字节内容失败: {url}, Exception={ex.GetType().Name}: {ex.Message}");
+            throw;
+        }
     }
 
     /// <inheritdoc/>
     public async Task<string> DownloadStringAsync(string url, CancellationToken cancellationToken = default)
     {
-        using var response = await _httpClient.GetAsync(url, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        return await response.Content.ReadAsStringAsync(cancellationToken);
+        try
+        {
+            using var response = await _httpClient.GetAsync(url, cancellationToken);
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadAsStringAsync(cancellationToken);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "下载字符串内容失败: {Url}", url);
+            Debug.WriteLine($"[DownloadManager] 下载字符串内容失败: {url}, Exception={ex.GetType().Name}: {ex.Message}");
+            throw;
+        }
     }
 
     // Helpers

@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -238,5 +240,124 @@ public class DownloadManagerIntegrationTests : IDisposable
 
         Assert.True(result.Success);
         Assert.True(File.Exists(nestedPath));
+    }
+
+    [Fact]
+    public async Task DownloadFileAsync_RetryableReadFailure_ReportsZeroSpeedDuringBackoff()
+    {
+        var loggerMock = new Mock<ILogger<DownloadManager>>();
+        var localSettingsServiceMock = new Mock<ILocalSettingsService>();
+        localSettingsServiceMock
+            .Setup(service => service.ReadSettingAsync<int?>(It.IsAny<string>()))
+            .ReturnsAsync((int?)1);
+
+        using var handler = new RetryOnceHttpMessageHandler();
+        var downloadManager = new DownloadManager(loggerMock.Object, localSettingsServiceMock.Object, handler);
+        var targetPath = Path.Combine(_testDirectory, "retry_backoff_zero_speed.bin");
+        var progressSnapshots = new System.Collections.Generic.List<DownloadProgressStatus>();
+
+        var result = await downloadManager.DownloadFileAsync(
+            "https://example.test/retry.bin",
+            targetPath,
+            progressCallback: status => progressSnapshots.Add(status));
+
+        Assert.True(result.Success);
+        Assert.True(File.Exists(targetPath));
+        Assert.Contains(progressSnapshots, snapshot => snapshot.BytesPerSecond > 0 && snapshot.Percent > 0 && snapshot.Percent < 100);
+        Assert.Contains(progressSnapshots, snapshot => snapshot.BytesPerSecond == 0 && snapshot.Percent > 0 && snapshot.Percent < 100);
+    }
+
+    private sealed class RetryOnceHttpMessageHandler : HttpMessageHandler
+    {
+        private int _requestCount;
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            var requestNumber = Interlocked.Increment(ref _requestCount);
+            var contentBytes = Enumerable.Range(0, 16).Select(index => (byte)index).ToArray();
+
+            HttpContent content = requestNumber == 1
+                ? new StreamContent(new RetryOnceFailingStream(contentBytes))
+                : new ByteArrayContent(contentBytes);
+
+            content.Headers.ContentLength = contentBytes.Length;
+
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = content,
+                RequestMessage = request
+            });
+        }
+    }
+
+    private sealed class RetryOnceFailingStream : Stream
+    {
+        private readonly byte[] _content;
+        private bool _hasReturnedFirstChunk;
+
+        public RetryOnceFailingStream(byte[] content)
+        {
+            _content = content;
+        }
+
+        public override bool CanRead => true;
+        public override bool CanSeek => false;
+        public override bool CanWrite => false;
+        public override long Length => _content.Length;
+        public override long Position
+        {
+            get => 0;
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush()
+        {
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override async Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            if (!_hasReturnedFirstChunk)
+            {
+                _hasReturnedFirstChunk = true;
+                await Task.Delay(150, cancellationToken);
+                var bytesToCopy = Math.Min(count, _content.Length / 2);
+                Array.Copy(_content, 0, buffer, offset, bytesToCopy);
+                return bytesToCopy;
+            }
+
+            throw new HttpRequestException("Simulated transient network failure during stream read.");
+        }
+
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            var array = new byte[buffer.Length];
+            var bytesRead = await ReadAsync(array, 0, array.Length, cancellationToken);
+            if (bytesRead > 0)
+            {
+                array.AsMemory(0, bytesRead).CopyTo(buffer);
+            }
+
+            return bytesRead;
+        }
+
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void SetLength(long value)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

@@ -1,13 +1,35 @@
+using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
+using System.Linq;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.ViewModels;
 
-public partial class MockDownloadTaskInfo : ObservableObject
+public partial class DownloadQueueTaskItemViewModel : ObservableObject
 {
-    [ObservableProperty]
-    private string _taskId = string.Empty;
+    private const string DefaultIconGlyph = "\xE896";
+    private readonly Action<string> _cancelTask;
+    private readonly Func<string, Task> _retryTaskAsync;
+
+    public DownloadQueueTaskItemViewModel(
+        DownloadTaskInfo taskInfo,
+        Action<string> cancelTask,
+        Func<string, Task> retryTaskAsync)
+    {
+        _cancelTask = cancelTask;
+        _retryTaskAsync = retryTaskAsync;
+        TaskId = taskInfo.TaskId;
+        UpdateFrom(taskInfo);
+    }
+
+    public string TaskId { get; }
 
     [ObservableProperty]
     private string _displayName = string.Empty;
@@ -25,7 +47,7 @@ public partial class MockDownloadTaskInfo : ObservableObject
     private string _state = string.Empty;
 
     [ObservableProperty]
-    private string _iconGlyph = "\xE896";
+    private string _iconGlyph = DefaultIconGlyph;
 
     [ObservableProperty]
     private string _taskType = string.Empty;
@@ -36,98 +58,358 @@ public partial class MockDownloadTaskInfo : ObservableObject
     [ObservableProperty]
     private bool _canRetry;
 
-    [RelayCommand]
-    private void Cancel() { }
+    public void UpdateFrom(DownloadTaskInfo taskInfo)
+    {
+        DisplayName = ResolveDisplayName(taskInfo);
+        StatusMessage = ResolveStatusMessage(taskInfo);
+        Progress = taskInfo.Progress;
+        SpeedText = taskInfo.SpeedText;
+        State = taskInfo.State.ToString();
+        TaskType = ResolveTaskType(taskInfo);
+        IconGlyph = ResolveIconGlyph(TaskType);
+        CanCancel = taskInfo.CanCancel;
+        CanRetry = taskInfo.CanRetry;
+    }
 
     [RelayCommand]
-    private void Retry() { }
+    private void Cancel()
+    {
+        if (!CanCancel || string.IsNullOrWhiteSpace(TaskId))
+        {
+            return;
+        }
+
+        _cancelTask(TaskId);
+    }
+
+    [RelayCommand]
+    private Task Retry()
+    {
+        if (!CanRetry || string.IsNullOrWhiteSpace(TaskId))
+        {
+            return Task.CompletedTask;
+        }
+
+        return _retryTaskAsync(TaskId);
+    }
+
+    private static string ResolveDisplayName(DownloadTaskInfo taskInfo)
+    {
+        return string.IsNullOrWhiteSpace(taskInfo.TaskName) ? taskInfo.VersionName : taskInfo.TaskName;
+    }
+
+    private static string ResolveStatusMessage(DownloadTaskInfo taskInfo)
+    {
+        if (taskInfo.State == DownloadTaskState.Queued && taskInfo.QueuePosition is int queuePosition)
+        {
+            return $"排队中 · 第 {queuePosition} 位";
+        }
+
+        if (!string.IsNullOrWhiteSpace(taskInfo.StatusMessage))
+        {
+            return taskInfo.StatusMessage;
+        }
+
+        return taskInfo.State switch
+        {
+            DownloadTaskState.Queued => "等待下载...",
+            DownloadTaskState.Downloading => "正在下载...",
+            DownloadTaskState.Completed => "下载完成",
+            DownloadTaskState.Failed => "下载失败",
+            DownloadTaskState.Cancelled => "下载已取消",
+            _ => "下载任务"
+        };
+    }
+
+    private static string ResolveTaskType(DownloadTaskInfo taskInfo)
+    {
+        var normalizedVersionName = taskInfo.VersionName.Trim().ToLowerInvariant();
+        return normalizedVersionName switch
+        {
+            "mod" => "Mod 下载",
+            "resourcepack" => "资源包下载",
+            "shader" => "光影下载",
+            "datapack" => "数据包下载",
+            "world" => "世界下载",
+            "modpack" => "整合包下载",
+            _ => ResolveFallbackTaskType(taskInfo)
+        };
+    }
+
+    private static string ResolveFallbackTaskType(DownloadTaskInfo taskInfo)
+    {
+        var searchableText = $"{taskInfo.TaskName} {taskInfo.StatusMessage}".ToLowerInvariant();
+
+        if (searchableText.Contains("forge")
+            || searchableText.Contains("fabric")
+            || searchableText.Contains("neoforge")
+            || searchableText.Contains("quilt")
+            || searchableText.Contains("optifine"))
+        {
+            return "加载器安装";
+        }
+
+        if (searchableText.Contains("minecraft"))
+        {
+            return "游戏安装";
+        }
+
+        if (normalizedLooksLikeFileName(taskInfo.VersionName))
+        {
+            return "文件下载";
+        }
+
+        return "下载任务";
+    }
+
+    private static bool normalizedLooksLikeFileName(string value)
+    {
+        return value.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)
+            || value.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)
+            || value.EndsWith(".json", StringComparison.OrdinalIgnoreCase)
+            || value.EndsWith(".exe", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string ResolveIconGlyph(string taskType)
+    {
+        return taskType switch
+        {
+            "游戏安装" => "\xE7FC",
+            "加载器安装" => "\xE74C",
+            _ => DefaultIconGlyph
+        };
+    }
 }
 
-public partial class DownloadQueueViewModel : ObservableRecipient
+public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
 {
-    [ObservableProperty]
-    private int _runningCount = 2;
+    private const double SpeedEmaAlpha = 0.3;
+    private readonly IDownloadTaskManager _downloadTaskManager;
+    private readonly IUiDispatcher _uiDispatcher;
+    private readonly Dictionary<string, DownloadQueueTaskItemViewModel> _taskItems = new(StringComparer.Ordinal);
+    private bool _disposed;
+    private double _emaTotalBytesPerSecond;
 
     [ObservableProperty]
-    private int _queuedCount = 1;
+    private int _runningCount;
 
     [ObservableProperty]
-    private string _totalSpeed = "12.5 MB/s";
+    private int _queuedCount;
 
     [ObservableProperty]
-    private int _failedCount = 1;
+    private string _totalSpeed = "0 B/s";
 
-    public ObservableCollection<MockDownloadTaskInfo> RunningTasks { get; } = new();
-    public ObservableCollection<MockDownloadTaskInfo> QueuedTasks { get; } = new();
-    public ObservableCollection<MockDownloadTaskInfo> RecentTasks { get; } = new();
+    [ObservableProperty]
+    private int _failedCount;
 
-    public DownloadQueueViewModel()
+    public ObservableCollection<DownloadQueueTaskItemViewModel> RunningTasks { get; } = new();
+    public ObservableCollection<DownloadQueueTaskItemViewModel> QueuedTasks { get; } = new();
+    public ObservableCollection<DownloadQueueTaskItemViewModel> RecentTasks { get; } = new();
+
+    public DownloadQueueViewModel(IDownloadTaskManager downloadTaskManager, IUiDispatcher uiDispatcher)
     {
-        RunningTasks.Add(new MockDownloadTaskInfo
-        {
-            TaskId = "1",
-            DisplayName = "Minecraft 1.20.1",
-            StatusMessage = "正在下载核心文件 client.jar",
-            Progress = 45.5,
-            SpeedText = "8.2 MB/s",
-            State = "Running",
-            IconGlyph = "\xE7FC", // Game
-            TaskType = "游戏安装",
-            CanCancel = true
-        });
+        _downloadTaskManager = downloadTaskManager;
+        _uiDispatcher = uiDispatcher;
+        _downloadTaskManager.TasksSnapshotChanged += DownloadTaskManager_TasksSnapshotChanged;
+        RefreshFromSnapshot();
+    }
 
-        RunningTasks.Add(new MockDownloadTaskInfo
+    public void Dispose()
+    {
+        if (_disposed)
         {
-            TaskId = "2",
-            DisplayName = "Fabric Loader 0.15.7",
-            StatusMessage = "正在下载依赖库...",
-            Progress = 12.0,
-            SpeedText = "4.3 MB/s",
-            State = "Running",
-            IconGlyph = "\xE74C", // Addon
-            TaskType = "加载器安装",
-            CanCancel = true
-        });
+            return;
+        }
 
-        QueuedTasks.Add(new MockDownloadTaskInfo
-        {
-            TaskId = "3",
-            DisplayName = "Sodium 1.20.1",
-            StatusMessage = "等待中",
-            Progress = 0,
-            SpeedText = "",
-            State = "Queued",
-            IconGlyph = "\xE753", // Mod
-            TaskType = "Mod 下载",
-            CanCancel = true
-        });
+        _disposed = true;
+        _downloadTaskManager.TasksSnapshotChanged -= DownloadTaskManager_TasksSnapshotChanged;
+    }
 
-        RecentTasks.Add(new MockDownloadTaskInfo
+    private void DownloadTaskManager_TasksSnapshotChanged(object? sender, EventArgs e)
+    {
+        if (_disposed)
         {
-            TaskId = "4",
-            DisplayName = "OptiFine 1.19.4",
-            StatusMessage = "下载完成",
-            Progress = 100,
-            SpeedText = "",
-            State = "Completed",
-            IconGlyph = "\xE73E", // Check
-            TaskType = "Mod 下载",
-            CanCancel = false,
-            CanRetry = false
-        });
+            return;
+        }
 
-        RecentTasks.Add(new MockDownloadTaskInfo
+        if (_uiDispatcher.HasThreadAccess)
         {
-            TaskId = "5",
-            DisplayName = "Forge 47.1.0",
-            StatusMessage = "下载失败：连接超时",
-            Progress = 34,
-            SpeedText = "",
-            State = "Failed",
-            IconGlyph = "\xE7BA", // Warning
-            TaskType = "加载器安装",
-            CanCancel = false,
-            CanRetry = true
-        });
+            RefreshFromSnapshot();
+            return;
+        }
+
+        _ = _uiDispatcher.RunOnUiThreadAsync(RefreshFromSnapshot);
+    }
+
+    private void RefreshFromSnapshot()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        var snapshot = _downloadTaskManager.TasksSnapshot;
+        var runningTasks = snapshot
+            .Where(task => task.State == DownloadTaskState.Downloading)
+            .Select(GetOrCreateTaskItem)
+            .ToList();
+        var queuedTasks = snapshot
+            .Where(task => task.State == DownloadTaskState.Queued)
+            .OrderBy(task => task.QueuePosition ?? int.MaxValue)
+            .Select(GetOrCreateTaskItem)
+            .ToList();
+        var recentTasks = snapshot
+            .Where(task => task.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled)
+            .Reverse()
+            .Select(GetOrCreateTaskItem)
+            .ToList();
+
+        SyncCollection(RunningTasks, runningTasks);
+        SyncCollection(QueuedTasks, queuedTasks);
+        SyncCollection(RecentTasks, recentTasks);
+        RemoveStaleTaskItems(snapshot);
+
+        RunningCount = runningTasks.Count;
+        QueuedCount = queuedTasks.Count;
+        FailedCount = snapshot.Count(task => task.State == DownloadTaskState.Failed);
+
+        var rawTotalBytesPerSecond = snapshot
+            .Where(task => task.State == DownloadTaskState.Downloading)
+            .Sum(task => ParseBytesPerSecond(task.SpeedText));
+
+        TotalSpeed = FormatSpeedText(UpdateTotalSpeedEma(rawTotalBytesPerSecond, runningTasks.Count));
+    }
+
+    private DownloadQueueTaskItemViewModel GetOrCreateTaskItem(DownloadTaskInfo taskInfo)
+    {
+        if (_taskItems.TryGetValue(taskInfo.TaskId, out var existingItem))
+        {
+            existingItem.UpdateFrom(taskInfo);
+            return existingItem;
+        }
+
+        var newItem = new DownloadQueueTaskItemViewModel(taskInfo, CancelTask, RetryTaskAsync);
+        _taskItems[taskInfo.TaskId] = newItem;
+        return newItem;
+    }
+
+    private void CancelTask(string taskId)
+    {
+        _downloadTaskManager.CancelTask(taskId);
+    }
+
+    private Task RetryTaskAsync(string taskId)
+    {
+        return _downloadTaskManager.RetryTaskAsync(taskId);
+    }
+
+    private void RemoveStaleTaskItems(IReadOnlyList<DownloadTaskInfo> snapshot)
+    {
+        var activeTaskIds = snapshot.Select(task => task.TaskId).ToHashSet(StringComparer.Ordinal);
+        var staleTaskIds = _taskItems.Keys.Where(taskId => !activeTaskIds.Contains(taskId)).ToList();
+
+        foreach (var staleTaskId in staleTaskIds)
+        {
+            _taskItems.Remove(staleTaskId);
+        }
+    }
+
+    private double UpdateTotalSpeedEma(double rawTotalBytesPerSecond, int runningTaskCount)
+    {
+        if (runningTaskCount <= 0 || rawTotalBytesPerSecond <= 0)
+        {
+            _emaTotalBytesPerSecond = 0;
+            return 0;
+        }
+
+        _emaTotalBytesPerSecond = _emaTotalBytesPerSecond <= 0
+            ? rawTotalBytesPerSecond
+            : SpeedEmaAlpha * rawTotalBytesPerSecond + (1 - SpeedEmaAlpha) * _emaTotalBytesPerSecond;
+
+        return _emaTotalBytesPerSecond;
+    }
+
+    private static void SyncCollection<T>(ObservableCollection<T> collection, IReadOnlyList<T> items)
+        where T : class
+    {
+        for (var index = collection.Count - 1; index >= 0; index--)
+        {
+            if (!items.Contains(collection[index]))
+            {
+                collection.RemoveAt(index);
+            }
+        }
+
+        for (var index = 0; index < items.Count; index++)
+        {
+            var item = items[index];
+            if (index < collection.Count && ReferenceEquals(collection[index], item))
+            {
+                continue;
+            }
+
+            var existingIndex = collection.IndexOf(item);
+            if (existingIndex >= 0)
+            {
+                collection.Move(existingIndex, index);
+                continue;
+            }
+
+            if (index <= collection.Count)
+            {
+                collection.Insert(index, item);
+            }
+        }
+    }
+
+    private static double ParseBytesPerSecond(string speedText)
+    {
+        if (string.IsNullOrWhiteSpace(speedText))
+        {
+            return 0;
+        }
+
+        var parts = speedText.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length != 2)
+        {
+            return 0;
+        }
+
+        if (!double.TryParse(parts[0], NumberStyles.Float, CultureInfo.CurrentCulture, out var value)
+            && !double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out value))
+        {
+            return 0;
+        }
+
+        return parts[1].ToUpperInvariant() switch
+        {
+            "GB/S" => value * 1024 * 1024 * 1024,
+            "MB/S" => value * 1024 * 1024,
+            "KB/S" => value * 1024,
+            "B/S" => value,
+            _ => 0
+        };
+    }
+
+    private static string FormatSpeedText(double bytesPerSecond)
+    {
+        if (bytesPerSecond <= 0)
+        {
+            return "0 B/s";
+        }
+
+        var megaBytesPerSecond = bytesPerSecond / (1024 * 1024);
+        if (megaBytesPerSecond >= 1)
+        {
+            return $"{megaBytesPerSecond:F2} MB/s";
+        }
+
+        var kiloBytesPerSecond = bytesPerSecond / 1024;
+        if (kiloBytesPerSecond >= 1)
+        {
+            return $"{kiloBytesPerSecond:F2} KB/s";
+        }
+
+        return $"{bytesPerSecond:F0} B/s";
     }
 }

@@ -1,3 +1,4 @@
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.ViewModels;
 
@@ -11,5 +12,11 @@ public sealed partial class DownloadQueuePage : Page
     {
         ViewModel = App.GetService<DownloadQueueViewModel>();
         InitializeComponent();
+        Unloaded += DownloadQueuePage_Unloaded;
+    }
+
+    private void DownloadQueuePage_Unloaded(object sender, RoutedEventArgs e)
+    {
+        ViewModel.Dispose();
     }
 }
