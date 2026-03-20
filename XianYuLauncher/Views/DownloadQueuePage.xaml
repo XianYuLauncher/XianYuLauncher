@@ -1,0 +1,36 @@
+<Page
+    x:Class="XianYuLauncher.Views.DownloadQueuePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid x:Name="ContentArea" Padding="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Column="1" HorizontalAlignment="Stretch" Margin="0,0,0,20">
+                <TextBlock
+                    x:Uid="DownloadQueuePage_Title"
+                    Text="下载队列"
+                    Style="{ThemeResource TitleTextBlockStyle}" />
+                <TextBlock
+                    x:Uid="DownloadQueuePage_Subtitle"
+                    Text="当前下载任务和排队任务将在这里显示"
+                    Style="{ThemeResource BodyTextBlockStyle}"
+                    Margin="0,8,0,0"
+                    Opacity="0.7" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</Page>

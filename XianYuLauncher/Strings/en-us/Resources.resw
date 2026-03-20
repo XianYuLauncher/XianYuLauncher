@@ -141,8 +141,17 @@
   <data name="Shell_联机.Content" xml:space="preserve">
     <value>Multiplayer</value>
   </data>
+  <data name="Shell_下载队列.Content" xml:space="preserve">
+    <value>Download Queue</value>
+  </data>
   <data name="Shell_Settings" xml:space="preserve">
     <value>Settings</value>
+  </data>
+  <data name="DownloadQueuePage_Title.Text" xml:space="preserve">
+    <value>Download Queue</value>
+  </data>
+  <data name="DownloadQueuePage_Subtitle.Text" xml:space="preserve">
+    <value>Current downloads and queued tasks will appear here.</value>
   </data>
   <data name="SettingsPage_Title.Text" xml:space="preserve">
     <value>Settings</value>

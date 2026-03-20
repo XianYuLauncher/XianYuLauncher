@@ -111,6 +111,13 @@
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem x:Uid="Shell_下载队列" helpers:NavigationHelper.NavigateTo="XianYuLauncher.ViewModels.DownloadQueueViewModel">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE118;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.FooterMenuItems>
             <NavigationView.HeaderTemplate>
                 <DataTemplate>
                     <Grid>

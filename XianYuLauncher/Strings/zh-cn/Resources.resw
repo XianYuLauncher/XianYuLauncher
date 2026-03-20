@@ -141,8 +141,17 @@
   <data name="Shell_联机.Content" xml:space="preserve">
     <value>联机</value>
   </data>
+  <data name="Shell_下载队列.Content" xml:space="preserve">
+    <value>下载队列</value>
+  </data>
   <data name="Shell_Settings" xml:space="preserve">
     <value>设置</value>
+  </data>
+  <data name="DownloadQueuePage_Title.Text" xml:space="preserve">
+    <value>下载队列</value>
+  </data>
+  <data name="DownloadQueuePage_Subtitle.Text" xml:space="preserve">
+    <value>当前下载任务和排队任务将在这里显示</value>
   </data>
   <data name="SettingsPage_Title.Text" xml:space="preserve">
     <value>设置</value>

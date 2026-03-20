@@ -11,6 +11,9 @@ internal static class ViewModelServiceExtensions
 {
     public static IServiceCollection AddViewModelServices(this IServiceCollection services)
     {
+        services.AddTransient<DownloadQueueViewModel>();
+        services.AddTransient<DownloadQueuePage>();
+
         services.AddTransient<SettingsViewModel>();
         services.AddTransient<SettingsPage>();
 
