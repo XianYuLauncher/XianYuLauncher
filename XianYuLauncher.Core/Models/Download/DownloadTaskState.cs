@@ -6,6 +6,11 @@ namespace XianYuLauncher.Core.Models;
 public enum DownloadTaskState
 {
     /// <summary>
+    /// 已进入队列，等待调度
+    /// </summary>
+    Queued,
+
+    /// <summary>
     /// 正在下载
     /// </summary>
     Downloading,

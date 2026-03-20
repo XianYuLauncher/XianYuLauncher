@@ -2829,6 +2829,12 @@
   <data name="Settings_HideSnapshotVersions.Description" xml:space="preserve">
     <value>隐藏 Mod 下载页快照、预发布版和候选版本</value>
   </data>
+  <data name="Settings_DownloadQueueMaxConcurrentTasks.Header" xml:space="preserve">
+    <value>下载任务并发数</value>
+  </data>
+  <data name="Settings_DownloadQueueMaxConcurrentTasks.Description" xml:space="preserve">
+    <value>同时执行的下载任务数量，默认 2</value>
+  </data>
   <data name="Settings_DownloadThreadCount.Header" xml:space="preserve">
     <value>下载线程数</value>
   </data>

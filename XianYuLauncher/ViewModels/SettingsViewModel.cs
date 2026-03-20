@@ -868,6 +868,17 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     private const string HideSnapshotVersionsKey = "HideSnapshotVersions";
     
     /// <summary>
+    /// 下载任务并发数设置
+    /// </summary>
+    [ObservableProperty]
+    private int _downloadQueueMaxConcurrentTasks = 2;
+
+    /// <summary>
+    /// 下载任务并发数设置键
+    /// </summary>
+    private const string DownloadQueueMaxConcurrentTasksKey = "DownloadQueueMaxConcurrentTasks";
+
+    /// <summary>
     /// 下载线程数设置
     /// </summary>
     [ObservableProperty]
@@ -1336,6 +1347,9 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     private async Task LoadDownloadThreadCountAsync()
     {
+        var queueValue = await _settingsRepository.ReadAsync<int?>(DownloadQueueMaxConcurrentTasksKey);
+        DownloadQueueMaxConcurrentTasks = queueValue ?? 2;
+
         // 读取下载线程数设置，如果不存在则使用默认值32
         var value = await _settingsRepository.ReadAsync<int?>(DownloadThreadCountKey);
         DownloadThreadCount = value ?? 32;
@@ -1343,6 +1357,16 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
          // 读取下载分片数设置，如果不存在则使用默认值4
         var shardValue = await _settingsRepository.ReadAsync<int?>(DownloadShardCountKey);
         DownloadShardCount = shardValue ?? 4;
+    }
+
+    /// <summary>
+    /// 当下载任务并发数设置变化时保存
+    /// </summary>
+    partial void OnDownloadQueueMaxConcurrentTasksChanged(int value)
+    {
+        if (value < 1) value = 1;
+        if (value > 8) value = 8;
+        QueueSettingWrite(DownloadQueueMaxConcurrentTasksKey, () => _settingsRepository.SaveAsync(DownloadQueueMaxConcurrentTasksKey, value));
     }
     
     /// <summary>

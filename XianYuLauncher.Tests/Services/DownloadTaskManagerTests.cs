@@ -15,6 +15,7 @@ public class DownloadTaskManagerTests
 {
     private readonly Mock<IMinecraftVersionService> _minecraftVersionServiceMock;
     private readonly Mock<IFileService> _fileServiceMock;
+    private readonly Mock<ILocalSettingsService> _localSettingsServiceMock;
     private readonly Mock<ILogger<DownloadTaskManager>> _loggerMock;
     private readonly Mock<IDownloadManager> _downloadManagerMock;
     private readonly DownloadTaskManager _downloadTaskManager;
@@ -23,9 +24,14 @@ public class DownloadTaskManagerTests
     {
         _minecraftVersionServiceMock = new Mock<IMinecraftVersionService>();
         _fileServiceMock = new Mock<IFileService>();
+        _localSettingsServiceMock = new Mock<ILocalSettingsService>();
         _loggerMock = new Mock<ILogger<DownloadTaskManager>>();
         _downloadManagerMock = new Mock<IDownloadManager>();
         _downloadManagerMock = new Mock<IDownloadManager>();
+
+        _localSettingsServiceMock
+            .Setup(service => service.ReadSettingAsync<int?>(It.IsAny<string>()))
+            .ReturnsAsync((int?)null);
 
         _fileServiceMock.Setup(f => f.GetMinecraftDataPath())
             .Returns(Path.Combine(Path.GetTempPath(), "minecraft_test"));
@@ -34,7 +40,8 @@ public class DownloadTaskManagerTests
             _minecraftVersionServiceMock.Object,
             _fileServiceMock.Object,
             _loggerMock.Object,
-            _downloadManagerMock.Object);
+            _downloadManagerMock.Object,
+            _localSettingsServiceMock.Object);
     }
 
     [Fact]
@@ -82,7 +89,7 @@ public class DownloadTaskManagerTests
         stateChanges.Should().NotBeEmpty();
         var firstState = stateChanges.First();
         firstState.TaskName.Should().Be("MyVersion");
-        firstState.State.Should().Be(DownloadTaskState.Downloading);
+        firstState.State.Should().Be(DownloadTaskState.Queued);
     }
 
     [Fact]
@@ -117,9 +124,21 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
-    public async Task StartVanillaDownloadAsync_WhenDownloadActive_ShouldThrow()
+    public async Task StartVanillaDownloadAsync_WhenConcurrencyLimitReached_ShouldQueueSecondTask()
     {
         // Arrange
+        var localSettingsServiceMock = new Mock<ILocalSettingsService>();
+        localSettingsServiceMock
+            .Setup(service => service.ReadSettingAsync<int?>(It.IsAny<string>()))
+            .ReturnsAsync(1);
+
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            _downloadManagerMock.Object,
+            localSettingsServiceMock.Object);
+
         _minecraftVersionServiceMock
             .Setup(m => m.DownloadVersionAsync(
                 It.IsAny<string>(),
@@ -127,14 +146,18 @@ public class DownloadTaskManagerTests
                 It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<string>(),
                 It.IsAny<string?>()))
-            .Returns(async () => await Task.Delay(5000)); // 模拟长时间下载
+            .Returns(async () => await Task.Delay(5000));
 
-        await _downloadTaskManager.StartVanillaDownloadAsync("1.20.1", "Version1");
+        await downloadTaskManager.StartVanillaDownloadAsync("1.20.1", "Version1");
+        await Task.Delay(100);
 
-        // Act & Assert
-        var act = async () => await _downloadTaskManager.StartVanillaDownloadAsync("1.20.2", "Version2");
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*已有下载任务正在进行中*");
+        // Act
+        await downloadTaskManager.StartVanillaDownloadAsync("1.20.2", "Version2");
+        await Task.Delay(100);
+
+        // Assert
+        downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskName == "Version2" && task.State == DownloadTaskState.Queued);
     }
 
     [Fact]
@@ -161,6 +184,87 @@ public class DownloadTaskManagerTests
 
         // Assert
         stateChanges.Should().Contain(DownloadTaskState.Downloading);
+        stateChanges.Should().Contain(DownloadTaskState.Completed);
+    }
+
+    [Fact]
+    public async Task CancelTask_WhenTaskIsQueued_ShouldSetCancelledState()
+    {
+        // Arrange
+        var localSettingsServiceMock = new Mock<ILocalSettingsService>();
+        localSettingsServiceMock
+            .Setup(service => service.ReadSettingAsync<int?>(It.IsAny<string>()))
+            .ReturnsAsync(1);
+
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            _downloadManagerMock.Object,
+            localSettingsServiceMock.Object);
+
+        _minecraftVersionServiceMock
+            .Setup(m => m.DownloadVersionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
+            .Returns(async () => await Task.Delay(5000));
+
+        await downloadTaskManager.StartVanillaDownloadAsync("1.20.1", "Version1");
+        await Task.Delay(100);
+        await downloadTaskManager.StartVanillaDownloadAsync("1.20.2", "Version2");
+        await Task.Delay(100);
+
+        var queuedTask = downloadTaskManager.TasksSnapshot.First(task => task.TaskName == "Version2");
+
+        // Act
+        downloadTaskManager.CancelTask(queuedTask.TaskId);
+
+        // Assert
+        downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == queuedTask.TaskId && task.State == DownloadTaskState.Cancelled);
+    }
+
+    [Fact]
+    public async Task RetryTaskAsync_WhenTaskFailed_ShouldQueueAndCompleteAgain()
+    {
+        // Arrange
+        var invocationCount = 0;
+        var stateChanges = new List<DownloadTaskState>();
+        _downloadTaskManager.TaskStateChanged += (_, task) => stateChanges.Add(task.State);
+
+        _minecraftVersionServiceMock
+            .Setup(m => m.DownloadVersionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
+            .Returns(() =>
+            {
+                invocationCount++;
+                if (invocationCount == 1)
+                {
+                    throw new Exception("首次下载失败");
+                }
+
+                return Task.CompletedTask;
+            });
+
+        await _downloadTaskManager.StartVanillaDownloadAsync("1.20.1", "RetryVersion");
+        await Task.Delay(100);
+
+        var failedTask = _downloadTaskManager.TasksSnapshot.First(task => task.TaskName == "RetryVersion");
+
+        // Act
+        await _downloadTaskManager.RetryTaskAsync(failedTask.TaskId);
+        await Task.Delay(100);
+
+        // Assert
+        stateChanges.Should().Contain(DownloadTaskState.Failed);
+        stateChanges.Should().Contain(DownloadTaskState.Queued);
         stateChanges.Should().Contain(DownloadTaskState.Completed);
     }
 
@@ -296,7 +400,7 @@ public class DownloadTaskManagerTests
         stateChanges.Should().NotBeEmpty();
         var firstState = stateChanges.First();
         firstState.TaskName.Should().Be("MyFabricVersion");
-        firstState.State.Should().Be(DownloadTaskState.Downloading);
+        firstState.State.Should().Be(DownloadTaskState.Queued);
     }
 
     [Fact]
@@ -410,6 +514,16 @@ public class DownloadTaskManagerResourceDownloadTests
     {
         // Arrange
         var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>((url, path, sha1, progress, ct) =>
+                Task.FromResult(DownloadResult.Succeeded(path, url)));
+
         var downloadTaskManager = new DownloadTaskManager(
             _minecraftVersionServiceMock.Object, 
             _fileServiceMock.Object, 
@@ -443,7 +557,7 @@ public class DownloadTaskManagerResourceDownloadTests
         var firstState = stateChanges.First();
         firstState.TaskName.Should().Be("Test Mod");
         firstState.VersionName.Should().Be("mod");
-        firstState.State.Should().Be(DownloadTaskState.Downloading);
+        firstState.State.Should().Be(DownloadTaskState.Queued);
         firstState.Progress.Should().Be(0);
     }
 
@@ -457,6 +571,16 @@ public class DownloadTaskManagerResourceDownloadTests
     {
         // Arrange
         var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>((url, path, sha1, progress, ct) =>
+                Task.FromResult(DownloadResult.Succeeded(path, url)));
+
         var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
 
         var stateChanges = new List<DownloadTaskState>();
@@ -524,11 +648,15 @@ public class DownloadTaskManagerResourceDownloadTests
     /// Validates: Requirements 1.2
     /// </summary>
     [Fact]
-    public async Task StartResourceDownloadAsync_WhenDownloadActive_ShouldThrow()
+    public async Task StartResourceDownloadAsync_WhenConcurrencyLimitReached_ShouldQueueSecondTask()
     {
         // Arrange
+        var localSettingsServiceMock = new Mock<ILocalSettingsService>();
+        localSettingsServiceMock
+            .Setup(service => service.ReadSettingAsync<int?>(It.IsAny<string>()))
+            .ReturnsAsync(1);
+
         var downloadManagerMock = new Mock<IDownloadManager>();
-        // 设置延迟返回，模拟下载正在进行中
         downloadManagerMock
             .Setup(m => m.DownloadFileAsync(
                 It.IsAny<string>(),
@@ -539,11 +667,16 @@ public class DownloadTaskManagerResourceDownloadTests
             .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>(
                 async (url, path, sha1, progress, ct) =>
                 {
-                    await Task.Delay(1000, ct); // 模拟下载需要时间
+                    await Task.Delay(1000, ct);
                     return DownloadResult.Succeeded(path, url);
                 });
 
-        var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            downloadManagerMock.Object,
+            localSettingsServiceMock.Object);
 
         var savePath1 = Path.Combine(_tempDirectory, "test_mod1.jar");
         var savePath2 = Path.Combine(_tempDirectory, "test_mod2.jar");
@@ -554,18 +687,19 @@ public class DownloadTaskManagerResourceDownloadTests
             "https://example.com/test1.jar",
             savePath1);
 
-        // 等待一小段时间确保下载已开始但尚未完成
         await Task.Delay(100);
 
-        // Act & Assert
-        var act = async () => await downloadTaskManager.StartResourceDownloadAsync(
+        // Act
+        await downloadTaskManager.StartResourceDownloadAsync(
             "Test Mod 2",
             "mod",
             "https://example.com/test2.jar",
             savePath2);
+        await Task.Delay(100);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*已有下载任务正在进行中*");
+        // Assert
+        downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskName == "Test Mod 2" && task.State == DownloadTaskState.Queued);
     }
 
     /// <summary>
@@ -576,16 +710,22 @@ public class DownloadTaskManagerResourceDownloadTests
     public async Task StartResourceDownloadAsync_ShouldRaiseProgressEvents()
     {
         // Arrange
-        var content = new byte[1000];
-        var mockHandler = new MockHttpMessageHandler(new HttpResponseMessage
-        {
-            StatusCode = System.Net.HttpStatusCode.OK,
-            Content = new ByteArrayContent(content)
-            {
-                Headers = { ContentLength = content.Length }
-            }
-        });
         var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>((url, path, sha1, progress, ct) =>
+            {
+                progress?.Invoke(new DownloadProgressStatus(250, 1000, 25));
+                progress?.Invoke(new DownloadProgressStatus(750, 1000, 75));
+                progress?.Invoke(new DownloadProgressStatus(1000, 1000, 100));
+                return Task.FromResult(DownloadResult.Succeeded(path, url));
+            });
+
         var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
 
         var progressValues = new List<double>();
@@ -765,7 +905,7 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
         var firstState = stateChanges.First();
         firstState.TaskName.Should().Be("Test World");
         firstState.VersionName.Should().Be("world");
-        firstState.State.Should().Be(DownloadTaskState.Downloading);
+        firstState.State.Should().Be(DownloadTaskState.Queued);
     }
 
     /// <summary>
@@ -860,11 +1000,15 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
     /// 测试已有下载时启动世界下载应抛出异常
     /// </summary>
     [Fact]
-    public async Task StartWorldDownloadAsync_WhenDownloadActive_ShouldThrow()
+    public async Task StartWorldDownloadAsync_WhenConcurrencyLimitReached_ShouldQueueSecondTask()
     {
         // Arrange
+        var localSettingsServiceMock = new Mock<ILocalSettingsService>();
+        localSettingsServiceMock
+            .Setup(service => service.ReadSettingAsync<int?>(It.IsAny<string>()))
+            .ReturnsAsync(1);
+
         var downloadManagerMock = new Mock<IDownloadManager>();
-        // 设置延迟返回，模拟下载正在进行中
         downloadManagerMock
             .Setup(m => m.DownloadFileAsync(
                 It.IsAny<string>(),
@@ -875,11 +1019,16 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
             .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>(
                 async (url, path, sha1, progress, ct) =>
                 {
-                    await Task.Delay(1000, ct); // 模拟下载需要时间
+                    await Task.Delay(1000, ct);
                     return DownloadResult.Succeeded(path, url);
                 });
 
-        var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            downloadManagerMock.Object,
+            localSettingsServiceMock.Object);
 
         var savesDir = Path.Combine(_tempDirectory, "saves");
 
@@ -889,18 +1038,19 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
             savesDir,
             "TestWorld1.zip");
 
-        // 等待一小段时间确保下载已开始但尚未完成
         await Task.Delay(100);
 
-        // Act & Assert
-        var act = async () => await downloadTaskManager.StartWorldDownloadAsync(
+        // Act
+        await downloadTaskManager.StartWorldDownloadAsync(
             "Test World 2",
             "https://example.com/world2.zip",
             savesDir,
             "TestWorld2.zip");
+        await Task.Delay(100);
 
-        await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*已有下载任务正在进行中*");
+        // Assert
+        downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskName == "Test World 2" && task.State == DownloadTaskState.Queued);
     }
 
     /// <summary>
@@ -911,15 +1061,30 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
     {
         // Arrange
         var zipContent = CreateTestZipContent();
-        var mockHandler = new MockHttpMessageHandler(new HttpResponseMessage
-        {
-            StatusCode = System.Net.HttpStatusCode.OK,
-            Content = new ByteArrayContent(zipContent)
-            {
-                Headers = { ContentLength = zipContent.Length }
-            }
-        });
         var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>(
+                async (url, path, sha1, progress, ct) =>
+                {
+                    progress?.Invoke(new DownloadProgressStatus(zipContent.Length / 2, zipContent.Length, 50));
+                    progress?.Invoke(new DownloadProgressStatus(zipContent.Length, zipContent.Length, 100));
+
+                    var dir = Path.GetDirectoryName(path);
+                    if (!string.IsNullOrEmpty(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                    }
+
+                    await File.WriteAllBytesAsync(path, zipContent, ct);
+                    return DownloadResult.Succeeded(path, url);
+                });
+
         var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
 
         var progressValues = new List<double>();

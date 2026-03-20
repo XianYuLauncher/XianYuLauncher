@@ -2832,6 +2832,12 @@ Continue downloading?</value>
   <data name="Settings_HideSnapshotVersions.Description" xml:space="preserve">
     <value>Hide snapshots, pre-releases and release candidates</value>
   </data>
+  <data name="Settings_DownloadQueueMaxConcurrentTasks.Header" xml:space="preserve">
+    <value>Queue Concurrency</value>
+  </data>
+  <data name="Settings_DownloadQueueMaxConcurrentTasks.Description" xml:space="preserve">
+    <value>Number of download tasks that can run at the same time, default is 2</value>
+  </data>
   <data name="Settings_DownloadThreadCount.Header" xml:space="preserve">
     <value>Download Threads</value>
   </data>

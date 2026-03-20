@@ -125,8 +125,9 @@ public partial class ShellViewModel : ObservableRecipient
         {
             switch (taskInfo.State)
             {
+                case DownloadTaskState.Queued:
                 case DownloadTaskState.Downloading:
-                    var tip = FindOrCreateTip(taskInfo, createIfMissing: _downloadTaskManager.IsTeachingTipEnabled);
+                    var tip = FindOrCreateTip(taskInfo, createIfMissing: taskInfo.ShowInTeachingTip);
                     if (tip == null)
                     {
                         break;
@@ -135,7 +136,7 @@ public partial class ShellViewModel : ObservableRecipient
                     tip.Title = taskInfo.TaskName;
                     tip.StatusMessage = taskInfo.StatusMessage;
                     tip.Progress = taskInfo.Progress;
-                    if (_downloadTaskManager.IsTeachingTipEnabled)
+                    if (taskInfo.ShowInTeachingTip)
                     {
                         tip.IsOpen = true;
                     }
@@ -167,7 +168,7 @@ public partial class ShellViewModel : ObservableRecipient
     {
         _dispatcherQueue.TryEnqueue(() =>
         {
-            var tip = FindOrCreateTip(taskInfo, createIfMissing: _downloadTaskManager.IsTeachingTipEnabled);
+            var tip = FindOrCreateTip(taskInfo, createIfMissing: taskInfo.ShowInTeachingTip);
             if (tip == null)
             {
                 return;
@@ -224,10 +225,7 @@ public partial class ShellViewModel : ObservableRecipient
             return;
         }
 
-        if (_downloadTaskManager.CurrentTask?.TaskId == taskId)
-        {
-            _downloadTaskManager.CancelCurrentDownload();
-        }
+        _downloadTaskManager.CancelTask(taskId);
 
         var tip = DownloadTeachingTips.FirstOrDefault(t => t.TaskId == taskId);
         if (tip != null)

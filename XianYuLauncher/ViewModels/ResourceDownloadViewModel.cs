@@ -2728,17 +2728,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             var file = await savePicker.PickSaveFileAsync();
             if (file == null) return;
 
-            try 
-            {
-                await _downloadTaskManager.StartFileDownloadAsync(mappedClientUrl, file.Path, $"客户端 {versionId}");
-                
-                // 启用 TeachingTip 提示用户查看下载进度
-                _downloadTaskManager.IsTeachingTipEnabled = true;
-            }
-            catch (InvalidOperationException)
-            {
-                await _dialogService.ShowMessageDialogAsync("提示", "当前已有下载任务正在进行，请等待其完成后再试。");
-            }
+            _downloadTaskManager.IsTeachingTipEnabled = true;
+            await _downloadTaskManager.StartFileDownloadAsync(mappedClientUrl, file.Path, $"客户端 {versionId}");
         }
         catch (Exception ex)
         {
@@ -2790,19 +2781,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (file == null) return;
 
             // 3. 启动后台下载
-            try 
-            {
-                await _downloadTaskManager.StartFileDownloadAsync(mappedServerUrl, file.Path, $"服务端 {versionId}");
-                
-                // 启用 TeachingTip 提示用户查看下载进度
-                _downloadTaskManager.IsTeachingTipEnabled = true;
-                
-                // 不再显示阻塞式弹窗，由全局下载管理器接管
-            }
-            catch (InvalidOperationException)
-            {
-                await _dialogService.ShowMessageDialogAsync("提示", "当前已有下载任务正在进行，请等待其完成后再试。");
-            }
+            _downloadTaskManager.IsTeachingTipEnabled = true;
+            await _downloadTaskManager.StartFileDownloadAsync(mappedServerUrl, file.Path, $"服务端 {versionId}");
         }
         catch (Exception ex)
         {

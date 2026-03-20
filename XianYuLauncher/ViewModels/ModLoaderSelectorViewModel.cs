@@ -755,13 +755,6 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     {
         try
         {
-            // 检查是否已有下载任务在进行
-            if (_downloadTaskManager.HasActiveDownload)
-            {
-                await ShowMessageAsync("ModLoaderSelectionPage_DownloadInProgressText".GetLocalized());
-                return;
-            }
-            
             // 启用 TeachingTip 显示
             _downloadTaskManager.IsTeachingTipEnabled = true;
 

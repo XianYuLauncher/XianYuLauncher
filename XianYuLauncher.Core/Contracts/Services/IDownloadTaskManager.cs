@@ -8,14 +8,19 @@ namespace XianYuLauncher.Core.Contracts.Services;
 public interface IDownloadTaskManager
 {
     /// <summary>
-    /// 当前下载任务（null 表示没有活动下载）
+    /// 当前最靠前的活动任务（优先返回运行中任务，其次返回排队中的任务）
     /// </summary>
     DownloadTaskInfo? CurrentTask { get; }
 
     /// <summary>
-    /// 是否有活动下载
+    /// 是否有正在执行的下载任务
     /// </summary>
     bool HasActiveDownload { get; }
+
+    /// <summary>
+    /// 当前下载队列快照（包含排队中、执行中与历史任务）
+    /// </summary>
+    IReadOnlyList<DownloadTaskInfo> TasksSnapshot { get; }
 
     /// <summary>
     /// 任务状态变化事件
@@ -26,6 +31,11 @@ public interface IDownloadTaskManager
     /// 任务进度变化事件
     /// </summary>
     event EventHandler<DownloadTaskInfo>? TaskProgressChanged;
+
+    /// <summary>
+    /// 队列快照发生变化时触发
+    /// </summary>
+    event EventHandler? TasksSnapshotChanged;
 
     /// <summary>
     /// 启动原版 Minecraft 下载
@@ -85,9 +95,19 @@ public interface IDownloadTaskManager
     Task StartFileDownloadAsync(string url, string targetPath, string description);
 
     /// <summary>
-    /// 取消当前下载
+    /// 取消当前最靠前的活动任务
     /// </summary>
     void CancelCurrentDownload();
+
+    /// <summary>
+    /// 按任务 ID 取消排队中或执行中的任务
+    /// </summary>
+    void CancelTask(string taskId);
+
+    /// <summary>
+    /// 重试失败任务
+    /// </summary>
+    Task RetryTaskAsync(string taskId);
 
     /// <summary>
     /// 启动社区资源下载（Mod、资源包、光影、数据包、世界）
@@ -133,7 +153,8 @@ public interface IDownloadTaskManager
 
     /// <summary>
     /// 是否启用 TeachingTip 显示（用于控制后台下载时是否显示 TeachingTip）
-    /// 当用户点击"后台下载"按钮时设置为 true，下载完成/取消/失败后自动重置为 false
+    /// 当用户点击"后台下载"按钮时设置为 true，新的前台下载任务会被标记为可展示；
+    /// 当这一批标记任务全部结束后会自动重置为 false
     /// </summary>
     bool IsTeachingTipEnabled { get; set; }
 }
