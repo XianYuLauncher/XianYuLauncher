@@ -1190,6 +1190,112 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
         progressValues.Should().Contain(p => p >= 70 && p <= 100); // 解压阶段
     }
 
+    [Fact]
+    public async Task StartFileDownloadAsync_OnProgress_ShouldExposeNumericSpeed()
+    {
+        // Arrange
+        const double expectedSpeedBytesPerSecond = 5.87 * 1024 * 1024;
+        var progressObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>(
+                async (url, path, sha1, progress, ct) =>
+                {
+                    progress?.Invoke(new DownloadProgressStatus(512, 1024, 50, expectedSpeedBytesPerSecond));
+                    await Task.Delay(50, ct);
+                    return DownloadResult.Succeeded(path, url);
+                });
+
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            downloadManagerMock.Object);
+
+        downloadTaskManager.TaskProgressChanged += (_, task) =>
+        {
+            if (task.SpeedBytesPerSecond > 0)
+            {
+                progressObserved.TrySetResult(task);
+            }
+        };
+
+        var savePath = Path.Combine(_tempDirectory, "numeric_speed_test.jar");
+
+        // Act
+        await downloadTaskManager.StartFileDownloadAsync(
+            "https://example.com/test.jar",
+            savePath,
+            "测试文件下载");
+
+        var completedTask = await Task.WhenAny(progressObserved.Task, Task.Delay(1000));
+
+        // Assert
+        completedTask.Should().Be(progressObserved.Task);
+        var progressTask = await progressObserved.Task;
+        progressTask.SpeedBytesPerSecond.Should().BeApproximately(expectedSpeedBytesPerSecond, 1);
+        progressTask.SpeedText.Should().Be("5.87 MB/s");
+    }
+
+    [Fact]
+    public async Task StartFileDownloadAsync_OnComplete_ShouldClearNumericSpeed()
+    {
+        // Arrange
+        var completedObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>(
+                (url, path, sha1, progress, ct) =>
+                {
+                    progress?.Invoke(new DownloadProgressStatus(1024, 2048, 50, 4.2 * 1024 * 1024));
+                    return Task.FromResult(DownloadResult.Succeeded(path, url));
+                });
+
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            downloadManagerMock.Object);
+
+        downloadTaskManager.TaskStateChanged += (_, task) =>
+        {
+            if (task.State == DownloadTaskState.Completed)
+            {
+                completedObserved.TrySetResult(task);
+            }
+        };
+
+        var savePath = Path.Combine(_tempDirectory, "completed_speed_reset_test.jar");
+
+        // Act
+        await downloadTaskManager.StartFileDownloadAsync(
+            "https://example.com/test.jar",
+            savePath,
+            "测试文件下载");
+
+        var completedTask = await Task.WhenAny(completedObserved.Task, Task.Delay(1000));
+
+        // Assert
+        completedTask.Should().Be(completedObserved.Task);
+        var completedInfo = await completedObserved.Task;
+        completedInfo.SpeedBytesPerSecond.Should().Be(0);
+        completedInfo.SpeedText.Should().BeEmpty();
+    }
+
     /// <summary>
     /// Mock HTTP 消息处理器
     /// </summary>

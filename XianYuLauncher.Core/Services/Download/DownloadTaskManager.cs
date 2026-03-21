@@ -236,7 +236,7 @@ public class DownloadTaskManager : IDownloadTaskManager
             _logger.LogInformation("正在取消下载任务: {TaskName}", managedTask.Info.TaskName);
             managedTask.Info.State = DownloadTaskState.Cancelled;
             managedTask.Info.StatusMessage = "下载已取消";
-            managedTask.Info.SpeedText = string.Empty;
+            ResetTaskSpeed(managedTask.Info);
             UpdateQueuePositionsLocked();
 
             if (managedTask.IsRunning)
@@ -272,7 +272,7 @@ public class DownloadTaskManager : IDownloadTaskManager
             managedTask.Info.Progress = 0;
             managedTask.Info.ErrorMessage = null;
             managedTask.Info.StatusMessage = "等待下载...";
-            managedTask.Info.SpeedText = string.Empty;
+            ResetTaskSpeed(managedTask.Info);
 
             _tasks.Remove(managedTask);
             _tasks.Add(managedTask);
@@ -343,7 +343,7 @@ public class DownloadTaskManager : IDownloadTaskManager
             taskInfo.Progress = 100;
             taskInfo.StatusMessage = statusMessage;
             taskInfo.ErrorMessage = null;
-            taskInfo.SpeedText = string.Empty;
+            ResetTaskSpeed(taskInfo);
             taskInfo.State = DownloadTaskState.Completed;
         }
 
@@ -372,7 +372,7 @@ public class DownloadTaskManager : IDownloadTaskManager
 
             taskInfo.ErrorMessage = errorMessage;
             taskInfo.StatusMessage = statusMessage ?? $"下载失败: {errorMessage}";
-            taskInfo.SpeedText = string.Empty;
+            ResetTaskSpeed(taskInfo);
             taskInfo.State = DownloadTaskState.Failed;
         }
 
@@ -400,7 +400,7 @@ public class DownloadTaskManager : IDownloadTaskManager
             }
 
             taskInfo.StatusMessage = statusMessage;
-            taskInfo.SpeedText = string.Empty;
+            ResetTaskSpeed(taskInfo);
             taskInfo.State = DownloadTaskState.Cancelled;
         }
 
@@ -599,22 +599,23 @@ public class DownloadTaskManager : IDownloadTaskManager
         DownloadTaskInfo task,
         CancellationToken cancellationToken)
     {
+        ResetTaskSpeed(task);
         task.StatusMessage = $"正在下载 {description}...";
         OnTaskProgressChanged(task);
 
         await DownloadFileAsync(
             url,
             targetPath,
-            (progress, speedText) =>
+            status =>
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
                     return;
                 }
 
-                task.Progress = Math.Clamp(progress, 0, 100);
-                task.StatusMessage = $"{description} - {progress:F1}%";
-                task.SpeedText = speedText;
+                task.Progress = Math.Clamp(status.Percent, 0, 100);
+                task.StatusMessage = $"{description} - {status.Percent:F1}%";
+                UpdateTaskSpeed(task, status);
                 OnTaskProgressChanged(task);
             },
             cancellationToken).ConfigureAwait(false);
@@ -634,6 +635,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         var finalVersionName = string.IsNullOrEmpty(customVersionName) ? versionId : customVersionName;
         var targetDirectory = Path.Combine(versionsDirectory, finalVersionName);
 
+        ResetTaskSpeed(task);
         task.StatusMessage = $"正在下载 Minecraft {versionId}...";
         OnTaskProgressChanged(task);
 
@@ -649,7 +651,7 @@ public class DownloadTaskManager : IDownloadTaskManager
 
                 task.Progress = Math.Clamp(status.Percent, 0, 100);
                 task.StatusMessage = $"正在下载 Minecraft {versionId}... {status.Percent:F0}%";
-                task.SpeedText = status.SpeedText;
+                UpdateTaskSpeed(task, status);
                 OnTaskProgressChanged(task);
             },
             customVersionName,
@@ -669,6 +671,7 @@ public class DownloadTaskManager : IDownloadTaskManager
     {
         var minecraftDirectory = _fileService.GetMinecraftDataPath();
 
+        ResetTaskSpeed(task);
         task.StatusMessage = $"正在下载 {modLoaderType} {modLoaderVersion}...";
         OnTaskProgressChanged(task);
 
@@ -686,7 +689,7 @@ public class DownloadTaskManager : IDownloadTaskManager
 
                 task.Progress = Math.Clamp(status.Percent, 0, 100);
                 task.StatusMessage = $"正在下载 {modLoaderType} {modLoaderVersion}... {status.Percent:F0}%";
-                task.SpeedText = status.SpeedText;
+                UpdateTaskSpeed(task, status);
                 OnTaskProgressChanged(task);
             },
             cancellationToken,
@@ -707,6 +710,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         var minecraftDirectory = _fileService.GetMinecraftDataPath();
         var modLoaderNames = string.Join(" + ", modLoaderSelections.Select(selection => selection.Type));
 
+        ResetTaskSpeed(task);
         task.StatusMessage = $"正在下载 {modLoaderNames}...";
         OnTaskProgressChanged(task);
 
@@ -723,7 +727,7 @@ public class DownloadTaskManager : IDownloadTaskManager
 
                 task.Progress = Math.Clamp(status.Percent, 0, 100);
                 task.StatusMessage = $"正在下载 {modLoaderNames}... {status.Percent:F0}%";
-                task.SpeedText = status.SpeedText;
+                UpdateTaskSpeed(task, status);
                 OnTaskProgressChanged(task);
             },
             cancellationToken,
@@ -756,23 +760,24 @@ public class DownloadTaskManager : IDownloadTaskManager
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
+                ResetTaskSpeed(task);
                 task.StatusMessage = $"正在下载前置: {dependency.Name}...";
                 OnTaskProgressChanged(task);
 
                 await DownloadFileAsync(
                     dependency.DownloadUrl,
                     dependency.SavePath,
-                    (progress, speedText) =>
+                    status =>
                     {
                         if (cancellationToken.IsCancellationRequested)
                         {
                             return;
                         }
 
-                        var overallProgress = (completedItems * 100.0 + progress) / totalItems;
+                        var overallProgress = (completedItems * 100.0 + status.Percent) / totalItems;
                         task.Progress = Math.Clamp(overallProgress, 0, 100);
-                        task.StatusMessage = $"正在下载前置: {dependency.Name}... {progress:F0}%";
-                        task.SpeedText = speedText;
+                        task.StatusMessage = $"正在下载前置: {dependency.Name}... {status.Percent:F0}%";
+                        UpdateTaskSpeed(task, status);
                         OnTaskProgressChanged(task);
                     },
                     cancellationToken).ConfigureAwait(false);
@@ -784,23 +789,24 @@ public class DownloadTaskManager : IDownloadTaskManager
 
         cancellationToken.ThrowIfCancellationRequested();
 
+        ResetTaskSpeed(task);
         task.StatusMessage = $"正在下载 {resourceName}...";
         OnTaskProgressChanged(task);
 
         await DownloadFileAsync(
             downloadUrl,
             savePath,
-            (progress, speedText) =>
+            status =>
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
                     return;
                 }
 
-                var overallProgress = (completedItems * 100.0 + progress) / totalItems;
+                var overallProgress = (completedItems * 100.0 + status.Percent) / totalItems;
                 task.Progress = Math.Clamp(overallProgress, 0, 100);
-                task.StatusMessage = $"正在下载 {resourceName}... {progress:F0}%";
-                task.SpeedText = speedText;
+                task.StatusMessage = $"正在下载 {resourceName}... {status.Percent:F0}%";
+                UpdateTaskSpeed(task, status);
                 OnTaskProgressChanged(task);
             },
             cancellationToken).ConfigureAwait(false);
@@ -814,7 +820,7 @@ public class DownloadTaskManager : IDownloadTaskManager
     private async Task DownloadFileAsync(
         string url,
         string savePath,
-        Action<double, string> progressCallback,
+        Action<DownloadProgressStatus> progressCallback,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrEmpty(url))
@@ -832,7 +838,7 @@ public class DownloadTaskManager : IDownloadTaskManager
             url,
             savePath,
             null,
-            status => progressCallback(status.Percent, status.SpeedText),
+            progressCallback,
             cancellationToken).ConfigureAwait(false);
 
         cancellationToken.ThrowIfCancellationRequested();
@@ -866,28 +872,30 @@ public class DownloadTaskManager : IDownloadTaskManager
         {
             Directory.CreateDirectory(tempDir);
 
+            ResetTaskSpeed(task);
             task.StatusMessage = $"正在下载 {worldName}...";
             OnTaskProgressChanged(task);
 
             await DownloadFileAsync(
                 downloadUrl,
                 zipPath,
-                (progress, speedText) =>
+                status =>
                 {
                     if (cancellationToken.IsCancellationRequested)
                     {
                         return;
                     }
 
-                    task.Progress = Math.Clamp(progress * 0.7, 0, 70);
-                    task.StatusMessage = $"正在下载 {worldName}... {progress:F0}%";
-                    task.SpeedText = speedText;
+                    task.Progress = Math.Clamp(status.Percent * 0.7, 0, 70);
+                    task.StatusMessage = $"正在下载 {worldName}... {status.Percent:F0}%";
+                    UpdateTaskSpeed(task, status);
                     OnTaskProgressChanged(task);
                 },
                 cancellationToken).ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();
 
+            ResetTaskSpeed(task);
             task.StatusMessage = "正在解压世界存档...";
             task.Progress = 70;
             OnTaskProgressChanged(task);
@@ -900,6 +908,7 @@ public class DownloadTaskManager : IDownloadTaskManager
             var worldBaseName = Path.GetFileNameWithoutExtension(fileName);
             var worldDir = GetUniqueDirectoryPath(savesDirectory, worldBaseName);
 
+            ResetTaskSpeed(task);
             task.StatusMessage = $"正在解压到: {Path.GetFileName(worldDir)}";
             task.Progress = 80;
             OnTaskProgressChanged(task);
@@ -1004,7 +1013,7 @@ public class DownloadTaskManager : IDownloadTaskManager
             task.State = DownloadTaskState.Completed;
             task.Progress = 100;
             task.StatusMessage = "下载完成";
-            task.SpeedText = string.Empty;
+            ResetTaskSpeed(task);
             UpdateQueuePositionsLocked();
             shouldNotify = true;
         }
@@ -1029,7 +1038,7 @@ public class DownloadTaskManager : IDownloadTaskManager
             task.State = DownloadTaskState.Failed;
             task.ErrorMessage = errorMessage;
             task.StatusMessage = $"下载失败: {errorMessage}";
-            task.SpeedText = string.Empty;
+            ResetTaskSpeed(task);
             UpdateQueuePositionsLocked();
             shouldNotify = true;
         }
@@ -1058,7 +1067,7 @@ public class DownloadTaskManager : IDownloadTaskManager
 
             task.State = DownloadTaskState.Cancelled;
             task.StatusMessage = "下载已取消";
-            task.SpeedText = string.Empty;
+            ResetTaskSpeed(task);
             UpdateQueuePositionsLocked();
             shouldNotify = true;
         }
@@ -1079,6 +1088,18 @@ public class DownloadTaskManager : IDownloadTaskManager
     {
         TaskProgressChanged?.Invoke(this, task.Clone());
         NotifyTasksSnapshotChanged();
+    }
+
+    private static void UpdateTaskSpeed(DownloadTaskInfo task, DownloadProgressStatus status)
+    {
+        task.SpeedBytesPerSecond = Math.Max(0, status.BytesPerSecond);
+        task.SpeedText = status.SpeedText;
+    }
+
+    private static void ResetTaskSpeed(DownloadTaskInfo task)
+    {
+        task.SpeedBytesPerSecond = 0;
+        task.SpeedText = string.Empty;
     }
 
     private void NotifyTasksSnapshotChanged()

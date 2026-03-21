@@ -46,6 +46,11 @@ public class DownloadTaskInfo
     public string SpeedText { get; set; } = string.Empty;
 
     /// <summary>
+    /// 下载速度（字节/秒）
+    /// </summary>
+    public double SpeedBytesPerSecond { get; set; }
+
+    /// <summary>
     /// 是否由下载队列直接管理
     /// </summary>
     public bool IsQueueManaged { get; set; } = true;
@@ -76,6 +81,7 @@ public class DownloadTaskInfo
             ErrorMessage = ErrorMessage,
             VersionName = VersionName,
             SpeedText = SpeedText,
+            SpeedBytesPerSecond = SpeedBytesPerSecond,
             IsQueueManaged = IsQueueManaged,
             ShowInTeachingTip = ShowInTeachingTip,
             QueuePosition = QueuePosition

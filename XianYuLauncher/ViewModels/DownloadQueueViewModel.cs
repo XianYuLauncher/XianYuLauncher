@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -183,12 +182,10 @@ public partial class DownloadQueueTaskItemViewModel : ObservableObject
 
 public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
 {
-    private const double SpeedEmaAlpha = 0.3;
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly Dictionary<string, DownloadQueueTaskItemViewModel> _taskItems = new(StringComparer.Ordinal);
     private bool _disposed;
-    private double _emaTotalBytesPerSecond;
 
     [ObservableProperty]
     private int _runningCount;
@@ -289,11 +286,11 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
         HasRecentTasks = recentTasks.Count > 0;
         IsEmptyStateVisible = runningTasks.Count == 0 && queuedTasks.Count == 0 && recentTasks.Count == 0;
 
-        var rawTotalBytesPerSecond = snapshot
+        var totalBytesPerSecond = snapshot
             .Where(task => task.State == DownloadTaskState.Downloading)
-            .Sum(task => ParseBytesPerSecond(task.SpeedText));
+            .Sum(task => Math.Max(0, task.SpeedBytesPerSecond));
 
-        TotalSpeed = FormatSpeedText(UpdateTotalSpeedEma(rawTotalBytesPerSecond, runningTasks.Count));
+        TotalSpeed = FormatSpeedText(totalBytesPerSecond);
     }
 
     private DownloadQueueTaskItemViewModel GetOrCreateTaskItem(DownloadTaskInfo taskInfo)
@@ -330,21 +327,6 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
         }
     }
 
-    private double UpdateTotalSpeedEma(double rawTotalBytesPerSecond, int runningTaskCount)
-    {
-        if (runningTaskCount <= 0 || rawTotalBytesPerSecond <= 0)
-        {
-            _emaTotalBytesPerSecond = 0;
-            return 0;
-        }
-
-        _emaTotalBytesPerSecond = _emaTotalBytesPerSecond <= 0
-            ? rawTotalBytesPerSecond
-            : SpeedEmaAlpha * rawTotalBytesPerSecond + (1 - SpeedEmaAlpha) * _emaTotalBytesPerSecond;
-
-        return _emaTotalBytesPerSecond;
-    }
-
     private static void SyncCollection<T>(ObservableCollection<T> collection, IReadOnlyList<T> items)
         where T : class
     {
@@ -376,35 +358,6 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
                 collection.Insert(index, item);
             }
         }
-    }
-
-    private static double ParseBytesPerSecond(string speedText)
-    {
-        if (string.IsNullOrWhiteSpace(speedText))
-        {
-            return 0;
-        }
-
-        var parts = speedText.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length != 2)
-        {
-            return 0;
-        }
-
-        if (!double.TryParse(parts[0], NumberStyles.Float, CultureInfo.CurrentCulture, out var value)
-            && !double.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out value))
-        {
-            return 0;
-        }
-
-        return parts[1].ToUpperInvariant() switch
-        {
-            "GB/S" => value * 1024 * 1024 * 1024,
-            "MB/S" => value * 1024 * 1024,
-            "KB/S" => value * 1024,
-            "B/S" => value,
-            _ => 0
-        };
     }
 
     private static string FormatSpeedText(double bytesPerSecond)
