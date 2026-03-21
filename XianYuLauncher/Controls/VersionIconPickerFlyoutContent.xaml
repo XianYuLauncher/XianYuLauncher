@@ -45,7 +45,7 @@
 
         <Border BorderThickness="0,1,0,0" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="-16,4" />
 
-        <Button Click="CustomIconButton_Click" HorizontalAlignment="Stretch" Padding="12,8" Background="Transparent" BorderThickness="0">
+        <Button Click="CustomIconButton_Click" Style="{StaticResource SubtleButtonStyle}" HorizontalAlignment="Stretch" Padding="12,8">
             <StackPanel Orientation="Horizontal" Spacing="12">
                 <FontIcon Glyph="&#xE8E5;" FontSize="16" />
                 <TextBlock x:Uid="VersionIconPickerFlyoutContent_BrowseCustomIconTextBlock" />
