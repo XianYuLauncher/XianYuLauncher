@@ -307,8 +307,24 @@ public class DownloadTaskManagerTests
         // Arrange
         var progressChanges = new List<DownloadTaskInfo>();
         var stateChanges = new List<DownloadTaskInfo>();
-        _downloadTaskManager.TaskProgressChanged += (_, task) => progressChanges.Add(task);
-        _downloadTaskManager.TaskStateChanged += (_, task) => stateChanges.Add(task);
+        var progressObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completedObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _downloadTaskManager.TaskProgressChanged += (_, task) =>
+        {
+            progressChanges.Add(task);
+            if (task.Progress > 0)
+            {
+                progressObserved.TrySetResult(task);
+            }
+        };
+        _downloadTaskManager.TaskStateChanged += (_, task) =>
+        {
+            stateChanges.Add(task);
+            if (task.State == DownloadTaskState.Completed)
+            {
+                completedObserved.TrySetResult(task);
+            }
+        };
 
         _minecraftVersionServiceMock
             .Setup(m => m.DownloadVersionAsync(
@@ -325,7 +341,8 @@ public class DownloadTaskManagerTests
 
         // Act
         await _downloadTaskManager.StartVanillaDownloadAsync("1.20.1", "MyVersion");
-        await Task.Delay(100);
+        await progressObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await completedObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         // Assert
         progressChanges.Should().Contain(task =>
@@ -536,6 +553,7 @@ public class DownloadTaskManagerTests
     {
         // Arrange
         var tempDirectory = Path.Combine(Path.GetTempPath(), "download_task_manager_tests");
+        var completedObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
         var downloadManagerMock = new Mock<IDownloadManager>();
         downloadManagerMock
             .Setup(m => m.DownloadFileAsync(
@@ -551,6 +569,13 @@ public class DownloadTaskManagerTests
             _fileServiceMock.Object,
             _loggerMock.Object,
             downloadManagerMock.Object);
+        downloadTaskManager.TaskStateChanged += (_, task) =>
+        {
+            if (task.State == DownloadTaskState.Completed)
+            {
+                completedObserved.TrySetResult(task);
+            }
+        };
 
         // Act
         await downloadTaskManager.StartFileDownloadAsync(
@@ -560,7 +585,7 @@ public class DownloadTaskManagerTests
             showInTeachingTip: true,
             displayNameResourceKey: "DownloadQueue_DisplayName_Client",
             displayNameResourceArguments: new[] { "1.20.1" });
-        await Task.Delay(100);
+        await completedObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         // Assert
         downloadTaskManager.TasksSnapshot.Should().Contain(task =>
@@ -1223,6 +1248,7 @@ public class DownloadTaskManagerResourceDownloadTests
         sourceFactory.SetModrinthSource("official");
 
         string? capturedUrl = null;
+        var downloadTriggered = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         var downloadManagerMock = new Mock<IDownloadManager>();
         downloadManagerMock
             .Setup(m => m.DownloadFileAsync(
@@ -1234,6 +1260,7 @@ public class DownloadTaskManagerResourceDownloadTests
             .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>((url, path, sha1, progress, ct) =>
             {
                 capturedUrl = url;
+                downloadTriggered.TrySetResult(url);
                 return Task.FromResult(DownloadResult.Succeeded(path, url));
             });
 
@@ -1255,7 +1282,7 @@ public class DownloadTaskManagerResourceDownloadTests
             mirroredUrl,
             savePath,
             communityResourceProvider: CommunityResourceProvider.Modrinth);
-        await Task.Delay(100);
+        await downloadTriggered.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         // Assert
         capturedUrl.Should().Be(expectedOfficialUrl);
