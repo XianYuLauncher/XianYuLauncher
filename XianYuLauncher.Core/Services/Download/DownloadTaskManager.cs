@@ -103,6 +103,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         return EnqueueManagedTaskAsync(
             taskName,
             customVersionName,
+            DownloadTaskCategory.GameInstall,
             (task, cancellationToken) => ExecuteVanillaDownloadAsync(versionId, customVersionName, task, cancellationToken, versionIconPath),
             showInTeachingTip);
     }
@@ -125,6 +126,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         return EnqueueManagedTaskAsync(
             taskName,
             customVersionName,
+            DownloadTaskCategory.GameInstall,
             (task, cancellationToken) => ExecuteModLoaderDownloadAsync(
                 minecraftVersion,
                 modLoaderType,
@@ -154,6 +156,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         return EnqueueManagedTaskAsync(
             taskName,
             customVersionName,
+            DownloadTaskCategory.GameInstall,
             (task, cancellationToken) => ExecuteMultiModLoaderDownloadAsync(
                 minecraftVersion,
                 selections,
@@ -171,6 +174,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         return EnqueueManagedTaskAsync(
             description,
             fileName,
+            DownloadTaskCategory.FileDownload,
             (task, cancellationToken) => ExecuteFileDownloadAsync(url, targetPath, description, task, cancellationToken),
             showInTeachingTip);
     }
@@ -431,6 +435,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         return EnqueueManagedTaskAsync(
             resourceName,
             resourceType,
+            ResolveResourceTaskCategory(resourceType),
             (task, cancellationToken) => ExecuteResourceDownloadAsync(
                 resourceName,
                 resourceType,
@@ -456,6 +461,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         return EnqueueManagedTaskAsync(
             worldName,
             "world",
+            DownloadTaskCategory.WorldDownload,
             (task, cancellationToken) => ExecuteWorldDownloadAsync(worldName, downloadUrl, savesDirectory, fileName, task, cancellationToken),
             showInTeachingTip);
     }
@@ -463,6 +469,7 @@ public class DownloadTaskManager : IDownloadTaskManager
     private async Task EnqueueManagedTaskAsync(
         string taskName,
         string versionName,
+        DownloadTaskCategory taskCategory,
         Func<DownloadTaskInfo, CancellationToken, Task> executor,
         bool showInTeachingTip)
     {
@@ -470,6 +477,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         {
             TaskName = taskName,
             VersionName = versionName,
+            TaskCategory = taskCategory,
             State = DownloadTaskState.Queued,
             Progress = 0,
             StatusMessage = "等待下载...",
@@ -486,6 +494,20 @@ public class DownloadTaskManager : IDownloadTaskManager
         _logger.LogInformation("下载任务已入队: {TaskName}", taskName);
         OnTaskStateChanged(task);
         await ProcessQueueAsync().ConfigureAwait(false);
+    }
+
+    private static DownloadTaskCategory ResolveResourceTaskCategory(string resourceType)
+    {
+        return resourceType.Trim().ToLowerInvariant() switch
+        {
+            "mod" => DownloadTaskCategory.ModDownload,
+            "resourcepack" => DownloadTaskCategory.ResourcePackDownload,
+            "shader" => DownloadTaskCategory.ShaderDownload,
+            "datapack" => DownloadTaskCategory.DataPackDownload,
+            "world" => DownloadTaskCategory.WorldDownload,
+            "modpack" => DownloadTaskCategory.ModpackDownload,
+            _ => DownloadTaskCategory.Unknown
+        };
     }
 
     private async Task ProcessQueueAsync()

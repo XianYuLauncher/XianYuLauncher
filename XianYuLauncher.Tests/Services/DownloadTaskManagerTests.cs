@@ -242,6 +242,30 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
+    public async Task StartVanillaDownloadAsync_OnComplete_ShouldKeepGameInstallCategory()
+    {
+        // Arrange
+        _minecraftVersionServiceMock
+            .Setup(m => m.DownloadVersionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _downloadTaskManager.StartVanillaDownloadAsync("1.20.1", "MyCustomVersion");
+        await Task.Delay(100);
+
+        // Assert
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskName == "MyCustomVersion"
+            && task.State == DownloadTaskState.Completed
+            && task.TaskCategory == DownloadTaskCategory.GameInstall);
+    }
+
+    [Fact]
     public async Task CancelTask_WhenTaskIsQueued_ShouldSetCancelledState()
     {
         // Arrange
@@ -483,6 +507,32 @@ public class DownloadTaskManagerTests
         var firstState = stateChanges.First();
         firstState.TaskName.Should().Be("MyFabricVersion");
         firstState.State.Should().Be(DownloadTaskState.Queued);
+    }
+
+    [Fact]
+    public async Task StartModLoaderDownloadAsync_ShouldUseGameInstallCategory()
+    {
+        // Arrange
+        _minecraftVersionServiceMock
+            .Setup(m => m.DownloadModLoaderVersionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _downloadTaskManager.StartModLoaderDownloadAsync("1.20.1", "Fabric", "0.15.0", "MyFabricVersion");
+        await Task.Delay(100);
+
+        // Assert
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskName == "MyFabricVersion"
+            && task.TaskCategory == DownloadTaskCategory.GameInstall);
     }
 
     [Fact]

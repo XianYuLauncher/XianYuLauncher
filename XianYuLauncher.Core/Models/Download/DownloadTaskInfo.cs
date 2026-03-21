@@ -41,6 +41,11 @@ public class DownloadTaskInfo
     public string VersionName { get; set; } = string.Empty;
 
     /// <summary>
+    /// 下载任务的稳定语义分类
+    /// </summary>
+    public DownloadTaskCategory TaskCategory { get; set; }
+
+    /// <summary>
     /// 下载速度文本（如 "5.2 MB/s"）
     /// </summary>
     public string SpeedText { get; set; } = string.Empty;
@@ -80,6 +85,7 @@ public class DownloadTaskInfo
             StatusMessage = StatusMessage,
             ErrorMessage = ErrorMessage,
             VersionName = VersionName,
+            TaskCategory = TaskCategory,
             SpeedText = SpeedText,
             SpeedBytesPerSecond = SpeedBytesPerSecond,
             IsQueueManaged = IsQueueManaged,

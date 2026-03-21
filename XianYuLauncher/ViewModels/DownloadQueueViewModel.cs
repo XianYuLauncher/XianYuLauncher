@@ -122,6 +122,22 @@ public partial class DownloadQueueTaskItemViewModel : ObservableObject
 
     private static string ResolveTaskType(DownloadTaskInfo taskInfo)
     {
+        if (taskInfo.TaskCategory != DownloadTaskCategory.Unknown)
+        {
+            return taskInfo.TaskCategory switch
+            {
+                DownloadTaskCategory.GameInstall => "游戏安装",
+                DownloadTaskCategory.ModDownload => "Mod 下载",
+                DownloadTaskCategory.ResourcePackDownload => "资源包下载",
+                DownloadTaskCategory.ShaderDownload => "光影下载",
+                DownloadTaskCategory.DataPackDownload => "数据包下载",
+                DownloadTaskCategory.WorldDownload => "世界下载",
+                DownloadTaskCategory.ModpackDownload => "整合包下载",
+                DownloadTaskCategory.FileDownload => "文件下载",
+                _ => ResolveFallbackTaskType(taskInfo)
+            };
+        }
+
         var normalizedVersionName = taskInfo.VersionName.Trim().ToLowerInvariant();
         return normalizedVersionName switch
         {
@@ -145,7 +161,7 @@ public partial class DownloadQueueTaskItemViewModel : ObservableObject
             || searchableText.Contains("quilt")
             || searchableText.Contains("optifine"))
         {
-            return "加载器安装";
+            return "游戏安装";
         }
 
         if (searchableText.Contains("minecraft"))
@@ -174,7 +190,7 @@ public partial class DownloadQueueTaskItemViewModel : ObservableObject
         return taskType switch
         {
             "游戏安装" => "\xE7FC",
-            "加载器安装" => "\xE74C",
+            "加载器安装" => "\xE7FC",
             _ => DefaultIconGlyph
         };
     }
