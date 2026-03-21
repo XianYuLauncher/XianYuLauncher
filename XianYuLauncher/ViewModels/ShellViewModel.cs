@@ -10,7 +10,6 @@ using Microsoft.UI.Xaml.Navigation;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
-using XianYuLauncher.Helpers;
 using XianYuLauncher.Views;
 
 namespace XianYuLauncher.ViewModels;
@@ -21,6 +20,7 @@ public partial class ShellViewModel : ObservableRecipient
     private const double TipStackVerticalGap = 118;
 
     private readonly IDownloadTaskManager _downloadTaskManager;
+    private readonly IDownloadTaskPresentationService _downloadTaskPresentationService;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly Dictionary<ShellDownloadTipItem, CancellationTokenSource> _pendingTipCloseOperations = new();
 
@@ -48,12 +48,14 @@ public partial class ShellViewModel : ObservableRecipient
     public ShellViewModel(
         INavigationService navigationService,
         INavigationViewService navigationViewService,
-        IDownloadTaskManager downloadTaskManager)
+        IDownloadTaskManager downloadTaskManager,
+        IDownloadTaskPresentationService downloadTaskPresentationService)
     {
         NavigationService = navigationService;
         NavigationService.Navigated += OnNavigated;
         NavigationViewService = navigationViewService;
         _downloadTaskManager = downloadTaskManager;
+        _downloadTaskPresentationService = downloadTaskPresentationService;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
         DownloadTeachingTips.CollectionChanged += OnDownloadTeachingTipsCollectionChanged;
@@ -124,13 +126,14 @@ public partial class ShellViewModel : ObservableRecipient
             return null;
         }
 
+        var presentation = _downloadTaskPresentationService.Resolve(info);
         var item = new ShellDownloadTipItem
         {
             TaskId = info.TaskId,
             PresentationKey = presentationKey,
-            Title = DownloadTaskTextHelper.GetLocalizedDisplayName(info),
+            Title = presentation.DisplayName,
             Progress = info.Progress,
-            StatusMessage = DownloadTaskTextHelper.GetLocalizedStatusMessage(info)
+            StatusMessage = presentation.StatusMessage
         };
         DownloadTeachingTips.Add(item);
         return item;
@@ -139,10 +142,11 @@ public partial class ShellViewModel : ObservableRecipient
     private void RefreshTipFromActiveTask(ShellDownloadTipItem tip, DownloadTaskInfo taskInfo)
     {
         CancelScheduledTipRemoval(tip);
+        var presentation = _downloadTaskPresentationService.Resolve(taskInfo);
         tip.TaskId = taskInfo.TaskId;
         tip.PresentationKey = GetPresentationKey(taskInfo);
-        tip.Title = DownloadTaskTextHelper.GetLocalizedDisplayName(taskInfo);
-        tip.StatusMessage = DownloadTaskTextHelper.GetLocalizedStatusMessage(taskInfo);
+        tip.Title = presentation.DisplayName;
+        tip.StatusMessage = presentation.StatusMessage;
         tip.Progress = taskInfo.Progress;
         if (taskInfo.ShowInTeachingTip)
         {

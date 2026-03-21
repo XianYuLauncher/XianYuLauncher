@@ -21,6 +21,7 @@ internal static class UiServiceExtensions
         services.AddSingleton<IPageService, PageService>();
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IDialogService, DialogService>();
+        services.AddSingleton<IDownloadTaskPresentationService, DownloadTaskPresentationService>();
         services.AddSingleton<ISettingsRepository, LocalSettingsRepository>();
         services.AddSingleton<IFilePickerService, FilePickerService>();
         services.AddSingleton<IApplicationLifecycleService, ApplicationLifecycleService>();

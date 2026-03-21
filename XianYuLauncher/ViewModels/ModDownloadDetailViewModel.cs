@@ -391,7 +391,8 @@ namespace XianYuLauncher.ViewModels
                 ModName,
                 ProjectType,
                 showInTeachingTip: true,
-                teachingTipGroupKey: _downloadTeachingTipGroupKey);
+                teachingTipGroupKey: _downloadTeachingTipGroupKey,
+                taskCategory: ResolveDownloadTaskCategory(ProjectType));
             _downloadTaskManager.UpdateExternalTask(
                 _downloadPreparationTaskId,
                 0,
@@ -467,6 +468,20 @@ namespace XianYuLauncher.ViewModels
             {
                 _downloadTeachingTipGroupKey = null;
             }
+        }
+
+        private static DownloadTaskCategory ResolveDownloadTaskCategory(string? projectType)
+        {
+            return projectType?.Trim().ToLowerInvariant() switch
+            {
+                "mod" => DownloadTaskCategory.ModDownload,
+                "resourcepack" => DownloadTaskCategory.ResourcePackDownload,
+                "shader" => DownloadTaskCategory.ShaderDownload,
+                "datapack" => DownloadTaskCategory.DataPackDownload,
+                "world" => DownloadTaskCategory.WorldDownload,
+                "modpack" => DownloadTaskCategory.ModpackDownload,
+                _ => DownloadTaskCategory.Unknown
+            };
         }
 
         public ModDownloadDetailViewModel(

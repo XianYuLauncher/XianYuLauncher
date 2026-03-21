@@ -434,12 +434,22 @@ public class DownloadTaskManagerTests
         _downloadTaskManager.TasksSnapshotChanged += (_, _) => snapshotChangedCount++;
 
         // Act
-        var taskId = _downloadTaskManager.CreateExternalTask("收藏夹导入", "favorite-import", showInTeachingTip: true);
+        var taskId = _downloadTaskManager.CreateExternalTask(
+            "收藏夹导入",
+            "favorite-import",
+            showInTeachingTip: true,
+            displayNameResourceKey: "DownloadQueue_DisplayName_FavoriteImport",
+            taskTypeResourceKey: "DownloadQueue_TaskType_Generic");
         _downloadTaskManager.UpdateExternalTask(taskId, 42, "正在解析前置依赖...", statusResourceKey: "DownloadQueue_Status_PreparingDependencies");
         _downloadTaskManager.CompleteExternalTask(taskId, "下载完成", statusResourceKey: "DownloadQueue_Status_Completed");
 
         // Assert
-        stateChanges.Should().Contain(task => task.TaskId == taskId && task.State == DownloadTaskState.Downloading && task.ShowInTeachingTip);
+        stateChanges.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.State == DownloadTaskState.Downloading
+            && task.ShowInTeachingTip
+            && task.DisplayNameResourceKey == "DownloadQueue_DisplayName_FavoriteImport"
+            && task.TaskTypeResourceKey == "DownloadQueue_TaskType_Generic");
         stateChanges.Should().Contain(task => task.TaskId == taskId && task.State == DownloadTaskState.Completed && task.StatusResourceKey == "DownloadQueue_Status_Completed");
         progressChanges.Should().Contain(task =>
             task.TaskId == taskId
@@ -448,6 +458,45 @@ public class DownloadTaskManagerTests
             && task.CreatedAtUtc <= task.LastUpdatedAtUtc);
         _downloadTaskManager.TasksSnapshot.Should().NotContain(task => task.TaskId == taskId);
         snapshotChangedCount.Should().BeGreaterThanOrEqualTo(4);
+    }
+
+    [Fact]
+    public async Task StartFileDownloadAsync_WhenDisplayMetadataProvided_ShouldPreservePresentationMetadata()
+    {
+        // Arrange
+        var tempDirectory = Path.Combine(Path.GetTempPath(), "download_task_manager_tests");
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DownloadResult.Succeeded(Path.Combine(tempDirectory, "client.jar"), "https://example.com/client.jar"));
+
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            downloadManagerMock.Object);
+
+        // Act
+        await downloadTaskManager.StartFileDownloadAsync(
+            "https://example.com/client.jar",
+            Path.Combine(tempDirectory, "client.jar"),
+            "客户端 1.20.1",
+            showInTeachingTip: true,
+            displayNameResourceKey: "DownloadQueue_DisplayName_Client",
+            displayNameResourceArguments: new[] { "1.20.1" });
+        await Task.Delay(100);
+
+        // Assert
+        downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskName == "客户端 1.20.1"
+            && task.DisplayNameResourceKey == "DownloadQueue_DisplayName_Client"
+            && task.DisplayNameResourceArguments.SequenceEqual(new[] { "1.20.1" })
+            && task.TaskCategory == DownloadTaskCategory.FileDownload);
     }
 
     [Fact]

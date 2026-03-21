@@ -172,7 +172,14 @@ public class DownloadTaskManager : IDownloadTaskManager
     }
 
     /// <inheritdoc/>
-    public Task StartFileDownloadAsync(string url, string targetPath, string description, bool showInTeachingTip = false)
+    public Task StartFileDownloadAsync(
+        string url,
+        string targetPath,
+        string description,
+        bool showInTeachingTip = false,
+        string? displayNameResourceKey = null,
+        IReadOnlyList<string>? displayNameResourceArguments = null,
+        string? taskTypeResourceKey = null)
     {
         var fileName = Path.GetFileName(targetPath);
         return EnqueueManagedTaskAsync(
@@ -180,7 +187,10 @@ public class DownloadTaskManager : IDownloadTaskManager
             fileName,
             DownloadTaskCategory.FileDownload,
             (task, cancellationToken) => ExecuteFileDownloadAsync(url, targetPath, description, task, cancellationToken),
-            showInTeachingTip);
+            showInTeachingTip,
+            displayNameResourceKey: displayNameResourceKey,
+            displayNameResourceArguments: displayNameResourceArguments,
+            taskTypeResourceKey: taskTypeResourceKey);
     }
 
     /// <summary>
@@ -291,13 +301,27 @@ public class DownloadTaskManager : IDownloadTaskManager
         await ProcessQueueAsync().ConfigureAwait(false);
     }
 
-    public string CreateExternalTask(string taskName, string versionName = "", bool showInTeachingTip = false, string? teachingTipGroupKey = null)
+    public string CreateExternalTask(
+        string taskName,
+        string versionName = "",
+        bool showInTeachingTip = false,
+        string? teachingTipGroupKey = null,
+        DownloadTaskCategory taskCategory = DownloadTaskCategory.Unknown,
+        string? displayNameResourceKey = null,
+        IReadOnlyList<string>? displayNameResourceArguments = null,
+        string? taskTypeResourceKey = null)
     {
         var createdAtUtc = DateTimeOffset.UtcNow;
         var taskInfo = new DownloadTaskInfo
         {
             TaskName = taskName,
             VersionName = versionName,
+            TaskCategory = taskCategory,
+            TaskTypeResourceKey = taskTypeResourceKey,
+            DisplayNameResourceKey = displayNameResourceKey,
+            DisplayNameResourceArguments = displayNameResourceArguments is { Count: > 0 }
+                ? [.. displayNameResourceArguments]
+                : [],
             State = DownloadTaskState.Downloading,
             Progress = 0,
             StatusMessage = "正在下载...",
@@ -511,7 +535,10 @@ public class DownloadTaskManager : IDownloadTaskManager
         Func<DownloadTaskInfo, CancellationToken, Task> executor,
         bool showInTeachingTip,
         string? iconSource = null,
-        string? teachingTipGroupKey = null)
+        string? teachingTipGroupKey = null,
+        string? displayNameResourceKey = null,
+        IReadOnlyList<string>? displayNameResourceArguments = null,
+        string? taskTypeResourceKey = null)
     {
         var createdAtUtc = DateTimeOffset.UtcNow;
         var task = new DownloadTaskInfo
@@ -519,6 +546,11 @@ public class DownloadTaskManager : IDownloadTaskManager
             TaskName = taskName,
             VersionName = versionName,
             TaskCategory = taskCategory,
+            TaskTypeResourceKey = taskTypeResourceKey,
+            DisplayNameResourceKey = displayNameResourceKey,
+            DisplayNameResourceArguments = displayNameResourceArguments is { Count: > 0 }
+                ? [.. displayNameResourceArguments]
+                : [],
             IconSource = NormalizeTaskIconSource(iconSource),
             State = DownloadTaskState.Queued,
             Progress = 0,

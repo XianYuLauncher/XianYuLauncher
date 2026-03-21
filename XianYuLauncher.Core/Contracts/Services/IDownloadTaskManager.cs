@@ -84,7 +84,14 @@ public interface IDownloadTaskManager
     /// <param name="url">下载URL</param>
     /// <param name="targetPath">保存路径</param>
     /// <param name="description">任务描述（如：下载服务端 server.jar）</param>
-    Task StartFileDownloadAsync(string url, string targetPath, string description, bool showInTeachingTip = false);
+    Task StartFileDownloadAsync(
+        string url,
+        string targetPath,
+        string description,
+        bool showInTeachingTip = false,
+        string? displayNameResourceKey = null,
+        IReadOnlyList<string>? displayNameResourceArguments = null,
+        string? taskTypeResourceKey = null);
 
     /// <summary>
     /// 按任务 ID 取消排队中或执行中的任务
@@ -99,7 +106,15 @@ public interface IDownloadTaskManager
     /// <summary>
     /// 创建一个由业务层主动驱动的外部任务（如依赖解析、收藏夹批量导入）。
     /// </summary>
-    string CreateExternalTask(string taskName, string versionName = "", bool showInTeachingTip = false, string? teachingTipGroupKey = null);
+    string CreateExternalTask(
+        string taskName,
+        string versionName = "",
+        bool showInTeachingTip = false,
+        string? teachingTipGroupKey = null,
+        DownloadTaskCategory taskCategory = DownloadTaskCategory.Unknown,
+        string? displayNameResourceKey = null,
+        IReadOnlyList<string>? displayNameResourceArguments = null,
+        string? taskTypeResourceKey = null);
 
     /// <summary>
     /// 更新外部任务的进度与状态文案。

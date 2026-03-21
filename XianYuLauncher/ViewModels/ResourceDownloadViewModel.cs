@@ -1093,7 +1093,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         var statusMessage = string.IsNullOrEmpty(FavoritesDownloadStatus) ? "正在后台下载..." : FavoritesDownloadStatus;
         if (string.IsNullOrEmpty(_favoritesBackgroundTaskId))
         {
-            _favoritesBackgroundTaskId = _downloadTaskManager.CreateExternalTask("收藏夹导入", "favorite-import", showInTeachingTip: true);
+            _favoritesBackgroundTaskId = _downloadTaskManager.CreateExternalTask(
+                "收藏夹导入",
+                "favorite-import",
+                showInTeachingTip: true,
+                displayNameResourceKey: "DownloadQueue_DisplayName_FavoriteImport",
+                taskTypeResourceKey: "DownloadQueue_TaskType_Generic");
         }
 
         _downloadTaskManager.UpdateExternalTask(
@@ -2756,7 +2761,13 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             var file = await savePicker.PickSaveFileAsync();
             if (file == null) return;
 
-            await _downloadTaskManager.StartFileDownloadAsync(mappedClientUrl, file.Path, $"客户端 {versionId}", showInTeachingTip: true);
+            await _downloadTaskManager.StartFileDownloadAsync(
+                mappedClientUrl,
+                file.Path,
+                $"客户端 {versionId}",
+                showInTeachingTip: true,
+                displayNameResourceKey: "DownloadQueue_DisplayName_Client",
+                displayNameResourceArguments: new[] { versionId });
         }
         catch (Exception ex)
         {
@@ -2808,7 +2819,13 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             if (file == null) return;
 
             // 3. 启动后台下载
-            await _downloadTaskManager.StartFileDownloadAsync(mappedServerUrl, file.Path, $"服务端 {versionId}", showInTeachingTip: true);
+            await _downloadTaskManager.StartFileDownloadAsync(
+                mappedServerUrl,
+                file.Path,
+                $"服务端 {versionId}",
+                showInTeachingTip: true,
+                displayNameResourceKey: "DownloadQueue_DisplayName_Server",
+                displayNameResourceArguments: new[] { versionId });
         }
         catch (Exception ex)
         {

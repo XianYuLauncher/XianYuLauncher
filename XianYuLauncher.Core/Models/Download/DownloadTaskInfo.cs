@@ -11,7 +11,7 @@ public class DownloadTaskInfo
     public string TaskId { get; set; } = Guid.NewGuid().ToString();
 
     /// <summary>
-    /// 任务名称（显示用）
+    /// 任务名称（原始显示名/回退文本）
     /// </summary>
     public string TaskName { get; set; } = string.Empty;
 
@@ -26,7 +26,7 @@ public class DownloadTaskInfo
     public double Progress { get; set; }
 
     /// <summary>
-    /// 状态消息
+    /// 状态消息（原始文本/回退文本）
     /// </summary>
     public string StatusMessage { get; set; } = string.Empty;
 
@@ -39,6 +39,16 @@ public class DownloadTaskInfo
     /// 状态消息资源参数（用于结构化本地化）
     /// </summary>
     public string[] StatusResourceArguments { get; set; } = [];
+
+    /// <summary>
+    /// 标题对应的资源键（用于结构化本地化）
+    /// </summary>
+    public string? DisplayNameResourceKey { get; set; }
+
+    /// <summary>
+    /// 标题资源参数（用于结构化本地化）
+    /// </summary>
+    public string[] DisplayNameResourceArguments { get; set; } = [];
 
     /// <summary>
     /// 错误消息（失败时）
@@ -54,6 +64,11 @@ public class DownloadTaskInfo
     /// 下载任务的稳定语义分类
     /// </summary>
     public DownloadTaskCategory TaskCategory { get; set; }
+
+    /// <summary>
+    /// 任务类型对应的资源键（用于展示层覆盖默认分类文案）
+    /// </summary>
+    public string? TaskTypeResourceKey { get; set; }
 
     /// <summary>
     /// 创建时间（UTC）
@@ -115,9 +130,12 @@ public class DownloadTaskInfo
             StatusMessage = StatusMessage,
             StatusResourceKey = StatusResourceKey,
             StatusResourceArguments = [.. StatusResourceArguments],
+            DisplayNameResourceKey = DisplayNameResourceKey,
+            DisplayNameResourceArguments = [.. DisplayNameResourceArguments],
             ErrorMessage = ErrorMessage,
             VersionName = VersionName,
             TaskCategory = TaskCategory,
+            TaskTypeResourceKey = TaskTypeResourceKey,
             CreatedAtUtc = CreatedAtUtc,
             LastUpdatedAtUtc = LastUpdatedAtUtc,
             IconSource = IconSource,
