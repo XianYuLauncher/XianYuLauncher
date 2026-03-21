@@ -7,6 +7,7 @@
     xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:behaviors="using:XianYuLauncher.Behaviors"
     xmlns:controls="using:XianYuLauncher.Controls"
+    xmlns:viewModels="using:XianYuLauncher.ViewModels"
     xmlns:i="using:Microsoft.Xaml.Interactivity"
     xmlns:media="using:CommunityToolkit.WinUI.Media"
     Loaded="OnLoaded">
@@ -110,6 +111,13 @@
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
             </NavigationView.MenuItems>
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem x:Uid="Shell_下载队列" helpers:NavigationHelper.NavigateTo="XianYuLauncher.ViewModels.DownloadQueueViewModel">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE118;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.FooterMenuItems>
             <NavigationView.HeaderTemplate>
                 <DataTemplate>
                     <Grid>
@@ -138,24 +146,54 @@
             </Grid>
         </NavigationView>
         
-        <!-- 下载进度 TeachingTip -->
-        <TeachingTip x:Name="DownloadTeachingTip"
-                     Title="{x:Bind ViewModel.DownloadTaskName, Mode=OneWay}"
-                     IsOpen="{x:Bind ViewModel.IsDownloadTeachingTipOpen, Mode=OneWay}"
-                     PreferredPlacement="BottomRight"
-                     PlacementMargin="16"
-                     IsLightDismissEnabled="False"
-                     CloseButtonClick="DownloadTeachingTip_CloseButtonClick">
-            <TeachingTip.Content>
-                <StackPanel Spacing="8" MinWidth="280" Margin="0,0,24,0">
-                    <ProgressBar Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"
-                                 Maximum="100"
-                                 Height="8" />
-                    <TextBlock Text="{x:Bind ViewModel.DownloadStatusMessage, Mode=OneWay}"
-                               TextWrapping="Wrap"
-                               Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                </StackPanel>
-            </TeachingTip.Content>
-        </TeachingTip>
+        <!-- 下载 TeachingTip：TopRight 时右缘与锚点右对齐，底缘在锚点上方，故「窗缘→气泡底」≈ Padding.Bottom+锚点+PlacementMargin.Top，「窗缘→气泡右」≈ Padding.Right。右略加大使与底观感对齐。 -->
+        <Border HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"
+                IsHitTestVisible="False"
+                Background="Transparent"
+                Padding="0,0,56,20"
+                Canvas.ZIndex="2">
+            <Grid>
+                <Button x:Name="ShellDownloadTipAnchor"
+                        Width="1"
+                        Height="1"
+                        Opacity="0"
+                        IsHitTestVisible="False"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Bottom"
+                        Margin="0" />
+                <ItemsControl ItemsSource="{x:Bind ViewModel.DownloadTeachingTips, Mode=OneWay}"
+                              IsHitTestVisible="False">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Vertical" />
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="viewModels:ShellDownloadTipItem">
+                            <TeachingTip Title="{x:Bind Title, Mode=OneWay}"
+                                         IsOpen="{x:Bind IsOpen, Mode=OneWay}"
+                                         PreferredPlacement="TopRight"
+                                         Padding="12,10,12,12"
+                                         TailVisibility="Collapsed"
+                                         IsLightDismissEnabled="False"
+                                         Loaded="DownloadTeachingTip_Loaded"
+                                         CloseButtonClick="DownloadTeachingTip_CloseButtonClick">
+                                <TeachingTip.Content>
+                                    <StackPanel Spacing="8" MinWidth="280">
+                                        <ProgressBar Value="{x:Bind Progress, Mode=OneWay}"
+                                                     Maximum="100"
+                                                     Height="8" />
+                                        <TextBlock Text="{x:Bind StatusMessage, Mode=OneWay}"
+                                                   TextWrapping="Wrap"
+                                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                    </StackPanel>
+                                </TeachingTip.Content>
+                            </TeachingTip>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
+        </Border>
     </Grid>
 </Page>

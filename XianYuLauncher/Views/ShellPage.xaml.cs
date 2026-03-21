@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Navigation;
 using Windows.System;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
+using System.ComponentModel;
 using System.Linq;
 using Serilog;
 
@@ -506,11 +507,96 @@ public sealed partial class ShellPage : Page
     }
 
     /// <summary>
-    /// 下载 TeachingTip 关闭按钮点击事件，取消下载
+    /// ItemsControl 的 DataTemplate 根上，部分版本/时机下 TeachingTip.DataContext 未就绪；ContentPresenter.Content 仍为真实项。
+    /// </summary>
+    private static ShellDownloadTipItem? TryGetShellDownloadTipModel(TeachingTip tip)
+    {
+        if (tip.DataContext is ShellDownloadTipItem fromDc)
+        {
+            return fromDc;
+        }
+
+        return tip.Parent is ContentPresenter { Content: ShellDownloadTipItem fromPresenter }
+            ? fromPresenter
+            : null;
+    }
+
+    private void DownloadTeachingTip_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not TeachingTip tip || TryGetShellDownloadTipModel(tip) is not { } model)
+        {
+            return;
+        }
+
+        tip.Target = ShellDownloadTipAnchor;
+        tip.TailVisibility = TeachingTipTailVisibility.Collapsed;
+        // 必须为 true：false 时 TeachingTip 可画出 XamlRoot 客户区（整卡飞出窗口）。
+        // 右/下留白靠外层 Border.Padding + TopRight 锚点内缩；与 PlacementMargin 叠加即可。
+        tip.ShouldConstrainToRootBounds = true;
+
+        // TeachingTip 会挂到浮层，ItemsControl DataTemplate 里对 PlacementMargin 的 x:Bind 在打开时经常不生效（等效为 0 → 贴死窗口角）。
+        // 这里在 Loaded / IsOpen / VM 更新时强制写回 PlacementMargin。
+        void SyncPlacementMargin()
+        {
+            tip.PlacementMargin = model.PlacementMargin;
+        }
+
+        PropertyChangedEventHandler onModelChanged = (_, args) =>
+        {
+            if (args.PropertyName is null or nameof(ShellDownloadTipItem.PlacementMargin))
+            {
+                Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread()?.TryEnqueue(SyncPlacementMargin);
+            }
+        };
+
+        model.PropertyChanged += onModelChanged;
+        SyncPlacementMargin();
+
+        void OnDownloadTeachingTipClosed(TeachingTip s, TeachingTipClosedEventArgs _)
+        {
+            if (TryGetShellDownloadTipModel(s) is { } model)
+            {
+                ViewModel.RemoveDownloadTeachingTipAfterClose(model);
+            }
+        }
+
+        tip.Closed += OnDownloadTeachingTipClosed;
+
+        var openToken = tip.RegisterPropertyChangedCallback(TeachingTip.IsOpenProperty, (_, _) =>
+        {
+            if (!tip.IsOpen)
+            {
+                return;
+            }
+
+            var dq = Microsoft.UI.Dispatching.DispatcherQueue.GetForCurrentThread();
+            if (dq == null)
+            {
+                return;
+            }
+
+            dq.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, SyncPlacementMargin);
+            dq.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, SyncPlacementMargin);
+        });
+
+        tip.Unloaded += (_, _) =>
+        {
+            tip.Closed -= OnDownloadTeachingTipClosed;
+            model.PropertyChanged -= onModelChanged;
+            tip.UnregisterPropertyChangedCallback(TeachingTip.IsOpenProperty, openToken);
+        };
+    }
+
+    /// <summary>
+    /// 下载 TeachingTip 关闭：取消对应任务（与当前 DownloadTaskManager 任务匹配时）。
     /// </summary>
     private void DownloadTeachingTip_CloseButtonClick(TeachingTip sender, object args)
     {
-        ViewModel.CancelDownloadCommand.Execute(null);
+        var item = sender is null ? null : TryGetShellDownloadTipModel(sender);
+        if (item != null && !string.IsNullOrEmpty(item.TaskId))
+        {
+            ViewModel.CancelShellDownloadTipCommand.Execute(item.TaskId);
+        }
     }
     
     /// <summary>

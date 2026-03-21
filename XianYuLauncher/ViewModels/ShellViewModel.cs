@@ -1,7 +1,10 @@
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
 using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Navigation;
 
 using XianYuLauncher.Contracts.Services;
@@ -13,8 +16,12 @@ namespace XianYuLauncher.ViewModels;
 
 public partial class ShellViewModel : ObservableRecipient
 {
+    /// <summary>多条 TeachingTip 纵向错开量（PlacementMargin.Top 递增量）。略小于单卡高度时更紧凑；过小可能叠影。</summary>
+    private const double TipStackVerticalGap = 118;
+
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly DispatcherQueue _dispatcherQueue;
+    private readonly Dictionary<ShellDownloadTipItem, CancellationTokenSource> _pendingTipCloseOperations = new();
 
     [ObservableProperty]
     private bool isBackEnabled;
@@ -22,18 +29,10 @@ public partial class ShellViewModel : ObservableRecipient
     [ObservableProperty]
     private object? selected;
 
-    // 下载进度相关属性
-    [ObservableProperty]
-    private bool _isDownloadTeachingTipOpen;
-
-    [ObservableProperty]
-    private string _downloadTaskName = string.Empty;
-
-    [ObservableProperty]
-    private double _downloadProgress;
-
-    [ObservableProperty]
-    private string _downloadStatusMessage = string.Empty;
+    /// <summary>
+    /// 右下角下载 TeachingTip 列表（可多任务同时展示）。
+    /// </summary>
+    public ObservableCollection<ShellDownloadTipItem> DownloadTeachingTips { get; } = new();
 
     public INavigationService NavigationService
     {
@@ -46,7 +45,7 @@ public partial class ShellViewModel : ObservableRecipient
     }
 
     public ShellViewModel(
-        INavigationService navigationService, 
+        INavigationService navigationService,
         INavigationViewService navigationViewService,
         IDownloadTaskManager downloadTaskManager)
     {
@@ -56,9 +55,98 @@ public partial class ShellViewModel : ObservableRecipient
         _downloadTaskManager = downloadTaskManager;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
-        // 订阅下载任务事件
+        DownloadTeachingTips.CollectionChanged += OnDownloadTeachingTipsCollectionChanged;
+
         _downloadTaskManager.TaskStateChanged += OnTaskStateChanged;
         _downloadTaskManager.TaskProgressChanged += OnTaskProgressChanged;
+    }
+
+    private void OnDownloadTeachingTipsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.OldItems != null)
+        {
+            foreach (var oldItem in e.OldItems.OfType<ShellDownloadTipItem>())
+            {
+                CancelScheduledTipRemoval(oldItem);
+            }
+        }
+
+        RecalculateTipStackMargins();
+    }
+
+    private void RecalculateTipStackMargins()
+    {
+        var i = 0;
+        foreach (var tip in DownloadTeachingTips)
+        {
+            // 窗缘：ShellPage Border 右/下 Padding（右略大于下，抵消 TopRight 几何）；此处为锚点↔气泡间距及纵向堆叠（Top 累加）。
+            tip.PlacementMargin = new Thickness(16, 12 + i * TipStackVerticalGap, 16, 16);
+            i++;
+        }
+    }
+
+    private static string GetTipMergeKey(DownloadTaskInfo info) =>
+        string.IsNullOrEmpty(info.TaskName) ? info.TaskId : info.TaskName;
+
+    private ShellDownloadTipItem? FindTipByTaskId(string taskId)
+    {
+        return string.IsNullOrEmpty(taskId)
+            ? null
+            : DownloadTeachingTips.FirstOrDefault(t => t.TaskId == taskId);
+    }
+
+    private ShellDownloadTipItem? FindExistingTip(DownloadTaskInfo info)
+    {
+        var mergeKey = GetTipMergeKey(info);
+        var match = FindTipByTaskId(info.TaskId)
+            ?? DownloadTeachingTips.FirstOrDefault(t => t.MergeKey == mergeKey);
+        if (match != null)
+        {
+            match.TaskId = info.TaskId;
+            match.MergeKey = mergeKey;
+        }
+
+        return match;
+    }
+
+    private ShellDownloadTipItem? FindOrCreateTip(DownloadTaskInfo info, bool createIfMissing)
+    {
+        var existing = FindExistingTip(info);
+        if (existing != null)
+        {
+            return existing;
+        }
+
+        if (!createIfMissing)
+        {
+            return null;
+        }
+
+        var mergeKey = GetTipMergeKey(info);
+        var item = new ShellDownloadTipItem
+        {
+            TaskId = info.TaskId,
+            MergeKey = mergeKey,
+            Title = info.TaskName,
+            Progress = info.Progress,
+            StatusMessage = info.StatusMessage
+        };
+        DownloadTeachingTips.Add(item);
+        return item;
+    }
+
+    private void RefreshTipFromActiveTask(ShellDownloadTipItem tip, DownloadTaskInfo taskInfo)
+    {
+        CancelScheduledTipRemoval(tip);
+        tip.TaskId = taskInfo.TaskId;
+        tip.MergeKey = GetTipMergeKey(taskInfo);
+        tip.Title = taskInfo.TaskName;
+        tip.StatusMessage = taskInfo.StatusMessage;
+        tip.Progress = taskInfo.Progress;
+        if (taskInfo.ShowInTeachingTip)
+        {
+            tip.IsOpen = true;
+        }
     }
 
     private void OnTaskStateChanged(object? sender, DownloadTaskInfo taskInfo)
@@ -67,42 +155,33 @@ public partial class ShellViewModel : ObservableRecipient
         {
             switch (taskInfo.State)
             {
+                case DownloadTaskState.Queued:
                 case DownloadTaskState.Downloading:
-                    // 始终更新任务信息，但只有 IsTeachingTipEnabled 为 true 时才打开 TeachingTip
-                    DownloadTaskName = taskInfo.TaskName;
-                    DownloadStatusMessage = taskInfo.StatusMessage;
-                    DownloadProgress = taskInfo.Progress;
-                    
-                    // 只有当 IsTeachingTipEnabled 为 true 时才打开 TeachingTip
-                    // 这样可以避免在下载弹窗打开时同时打开 TeachingTip
-                    // 用户点击"后台下载"按钮时会设置 IsTeachingTipEnabled = true
-                    if (_downloadTaskManager.IsTeachingTipEnabled)
+                    var tip = FindOrCreateTip(taskInfo, createIfMissing: taskInfo.ShowInTeachingTip);
+                    if (tip == null)
                     {
-                        IsDownloadTeachingTipOpen = true;
+                        break;
                     }
+
+                    RefreshTipFromActiveTask(tip, taskInfo);
                     break;
                 case DownloadTaskState.Completed:
                 case DownloadTaskState.Failed:
                 case DownloadTaskState.Cancelled:
-                    // 只有 TeachingTip 打开时才处理
-                    if (IsDownloadTeachingTipOpen)
+                    var terminal = FindTipByTaskId(taskInfo.TaskId);
+                    if (terminal == null || !terminal.IsOpen)
                     {
-                        DownloadStatusMessage = taskInfo.State == DownloadTaskState.Completed 
-                            ? "下载完成" 
-                            : taskInfo.State == DownloadTaskState.Cancelled 
-                                ? "下载已取消" 
-                                : $"下载失败: {taskInfo.ErrorMessage}";
-                        DownloadProgress = taskInfo.State == DownloadTaskState.Completed ? 100 : taskInfo.Progress;
-                        
-                        // 2秒后关闭
-                        _ = Task.Delay(2000).ContinueWith(_ =>
-                        {
-                            _dispatcherQueue.TryEnqueue(() =>
-                            {
-                                IsDownloadTeachingTipOpen = false;
-                            });
-                        });
+                        break;
                     }
+
+                    terminal.StatusMessage = taskInfo.State == DownloadTaskState.Completed
+                        ? "下载完成"
+                        : taskInfo.State == DownloadTaskState.Cancelled
+                            ? "下载已取消"
+                            : $"下载失败: {taskInfo.ErrorMessage}";
+                    terminal.Progress = taskInfo.State == DownloadTaskState.Completed ? 100 : taskInfo.Progress;
+
+                    ScheduleTipRemoval(terminal, taskInfo.TaskId);
                     break;
             }
         });
@@ -112,15 +191,101 @@ public partial class ShellViewModel : ObservableRecipient
     {
         _dispatcherQueue.TryEnqueue(() =>
         {
-            DownloadProgress = taskInfo.Progress;
-            DownloadStatusMessage = taskInfo.StatusMessage;
+            var tip = FindOrCreateTip(taskInfo, createIfMissing: taskInfo.ShowInTeachingTip);
+            if (tip == null)
+            {
+                return;
+            }
+
+            RefreshTipFromActiveTask(tip, taskInfo);
+        });
+    }
+
+    private void ScheduleTipRemoval(ShellDownloadTipItem item, string taskId)
+    {
+        CancelScheduledTipRemoval(item);
+
+        var closeCts = new CancellationTokenSource();
+        _pendingTipCloseOperations[item] = closeCts;
+
+        _ = Task.Delay(2000, closeCts.Token).ContinueWith(delayTask =>
+        {
+            if (delayTask.IsCanceled)
+            {
+                return;
+            }
+
+            _dispatcherQueue.TryEnqueue(() =>
+            {
+                if (closeCts.IsCancellationRequested || !DownloadTeachingTips.Contains(item))
+                {
+                    return;
+                }
+
+                if (!string.Equals(item.TaskId, taskId, StringComparison.Ordinal))
+                {
+                    return;
+                }
+
+                // 仅关 IsOpen；立即 Remove 会从树卸载 TeachingTip，原生关闭动画不会播放。条目在 ShellPage TeachingTip.Closed 里再 Remove。
+                item.IsOpen = false;
+                if (_pendingTipCloseOperations.TryGetValue(item, out var trackedCts)
+                    && ReferenceEquals(trackedCts, closeCts))
+                {
+                    _pendingTipCloseOperations.Remove(item);
+                }
+
+                closeCts.Dispose();
+            });
+        }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+    }
+
+    private void CancelScheduledTipRemoval(ShellDownloadTipItem item)
+    {
+        if (!_pendingTipCloseOperations.Remove(item, out var closeCts))
+        {
+            return;
+        }
+
+        closeCts.Cancel();
+        closeCts.Dispose();
+    }
+
+    /// <summary>
+    /// TeachingTip 关闭动画结束后再从列表移除；勿与 <see cref="CancelShellDownloadTip"/> 里同步 Remove。
+    /// </summary>
+    public void RemoveDownloadTeachingTipAfterClose(ShellDownloadTipItem? tipItem)
+    {
+        if (tipItem == null)
+        {
+            return;
+        }
+
+        _dispatcherQueue.TryEnqueue(() =>
+        {
+            CancelScheduledTipRemoval(tipItem);
+            if (DownloadTeachingTips.Contains(tipItem))
+            {
+                DownloadTeachingTips.Remove(tipItem);
+            }
         });
     }
 
     [RelayCommand]
-    private void CancelDownload()
+    private void CancelShellDownloadTip(string? taskId)
     {
-        _downloadTaskManager.CancelCurrentDownload();
+        if (string.IsNullOrEmpty(taskId))
+        {
+            return;
+        }
+
+        _downloadTaskManager.CancelTask(taskId);
+
+        var tip = DownloadTeachingTips.FirstOrDefault(t => t.TaskId == taskId);
+        if (tip != null)
+        {
+            tip.IsOpen = false;
+        }
     }
 
     private void OnNavigated(object sender, NavigationEventArgs e)

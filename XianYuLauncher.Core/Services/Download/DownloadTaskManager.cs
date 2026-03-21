@@ -1,4 +1,10 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.IO.Compression;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
@@ -11,57 +17,97 @@ namespace XianYuLauncher.Core.Services;
 /// </summary>
 public class DownloadTaskManager : IDownloadTaskManager
 {
+    private const string DownloadQueueMaxConcurrentTasksKey = "DownloadQueueMaxConcurrentTasks";
+    private const string PlaceholderIconSource = "ms-appx:///Assets/Placeholder.png";
+    private const int DefaultMaxConcurrentTasks = 2;
+    private const int MaxConcurrentTasksUpperBound = 8;
+
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IFileService _fileService;
     private readonly ILogger<DownloadTaskManager> _logger;
     private readonly IDownloadManager _downloadManager;
-
-    private DownloadTaskInfo? _currentTask;
-    private CancellationTokenSource? _currentCts;
+    private readonly ILocalSettingsService? _localSettingsService;
     private readonly Lock _lock = new();
+    private readonly List<ManagedDownloadTask> _tasks = new();
+    private readonly Dictionary<string, DownloadTaskInfo> _externalTasks = new(StringComparer.Ordinal);
+    private readonly SemaphoreSlim _schedulerGate = new(1, 1);
 
-    public DownloadTaskInfo? CurrentTask => _currentTask;
-    public bool HasActiveDownload => _currentTask?.State == DownloadTaskState.Downloading;
+    private sealed class ManagedDownloadTask
+    {
+        public ManagedDownloadTask(DownloadTaskInfo info, Func<DownloadTaskInfo, CancellationToken, Task> executor)
+        {
+            Info = info;
+            Executor = executor;
+        }
 
-    /// <summary>
-    /// 是否启用 TeachingTip 显示（用于控制后台下载时是否显示 TeachingTip）
-    /// 当用户点击"后台下载"按钮时设置为 true，下载完成/取消/失败后自动重置为 false
-    /// </summary>
-    public bool IsTeachingTipEnabled { get; set; } = false;
+        public DownloadTaskInfo Info { get; }
 
-    public event EventHandler<DownloadTaskInfo>? TaskStateChanged;
-    public event EventHandler<DownloadTaskInfo>? TaskProgressChanged;
+        public Func<DownloadTaskInfo, CancellationToken, Task> Executor { get; }
+
+        public CancellationTokenSource CancellationTokenSource { get; private set; } = new();
+
+        public bool IsRunning { get; set; }
+
+        public void ResetForRetry()
+        {
+            CancellationTokenSource.Dispose();
+            CancellationTokenSource = new CancellationTokenSource();
+            IsRunning = false;
+        }
+    }
 
     public DownloadTaskManager(
         IMinecraftVersionService minecraftVersionService,
         IFileService fileService,
         ILogger<DownloadTaskManager> logger,
         IDownloadManager downloadManager)
+        : this(minecraftVersionService, fileService, logger, downloadManager, null)
+    {
+    }
+
+    public DownloadTaskManager(
+        IMinecraftVersionService minecraftVersionService,
+        IFileService fileService,
+        ILogger<DownloadTaskManager> logger,
+        IDownloadManager downloadManager,
+        ILocalSettingsService? localSettingsService)
     {
         _minecraftVersionService = minecraftVersionService;
         _fileService = fileService;
         _logger = logger;
         _downloadManager = downloadManager;
+        _localSettingsService = localSettingsService;
     }
+
+    public IReadOnlyList<DownloadTaskInfo> TasksSnapshot
+    {
+        get
+        {
+            lock (_lock)
+            {
+                UpdateQueuePositionsLocked();
+                return CreateSnapshotLocked();
+            }
+        }
+    }
+
+    public event EventHandler<DownloadTaskInfo>? TaskStateChanged;
+    public event EventHandler<DownloadTaskInfo>? TaskProgressChanged;
+    public event EventHandler? TasksSnapshotChanged;
 
     /// <summary>
     /// 启动原版 Minecraft 下载
     /// </summary>
-    public Task StartVanillaDownloadAsync(string versionId, string customVersionName, string? versionIconPath = null)
+    public Task StartVanillaDownloadAsync(string versionId, string customVersionName, string? versionIconPath = null, bool showInTeachingTip = false)
     {
-        if (HasActiveDownload)
-        {
-            _logger.LogWarning("已有下载任务正在进行中，无法启动新的下载");
-            throw new InvalidOperationException("已有下载任务正在进行中");
-        }
-
         var taskName = string.IsNullOrEmpty(customVersionName) ? versionId : customVersionName;
-        var task = CreateTask(taskName, customVersionName);
-
-        // 在后台执行下载，方法立即返回
-        _ = ExecuteVanillaDownloadAsync(versionId, customVersionName, task, versionIconPath);
-
-        return Task.CompletedTask;
+        return EnqueueManagedTaskAsync(
+            taskName,
+            customVersionName,
+            DownloadTaskCategory.GameInstall,
+            (task, cancellationToken) => ExecuteVanillaDownloadAsync(versionId, customVersionName, task, cancellationToken, versionIconPath),
+            showInTeachingTip,
+            versionIconPath);
     }
 
     /// <summary>
@@ -72,23 +118,27 @@ public class DownloadTaskManager : IDownloadTaskManager
         string modLoaderType,
         string modLoaderVersion,
         string customVersionName,
-        string? versionIconPath = null)
+        string? versionIconPath = null,
+        bool showInTeachingTip = false)
     {
-        if (HasActiveDownload)
-        {
-            _logger.LogWarning("已有下载任务正在进行中，无法启动新的下载");
-            throw new InvalidOperationException("已有下载任务正在进行中");
-        }
-
-        var taskName = string.IsNullOrEmpty(customVersionName) 
-            ? $"{modLoaderType} {minecraftVersion}-{modLoaderVersion}" 
+        var taskName = string.IsNullOrEmpty(customVersionName)
+            ? $"{modLoaderType} {minecraftVersion}-{modLoaderVersion}"
             : customVersionName;
-        var task = CreateTask(taskName, customVersionName);
 
-        // 在后台执行下载，方法立即返回
-        _ = ExecuteModLoaderDownloadAsync(minecraftVersion, modLoaderType, modLoaderVersion, customVersionName, task, versionIconPath);
-
-        return Task.CompletedTask;
+        return EnqueueManagedTaskAsync(
+            taskName,
+            customVersionName,
+            DownloadTaskCategory.GameInstall,
+            (task, cancellationToken) => ExecuteModLoaderDownloadAsync(
+                minecraftVersion,
+                modLoaderType,
+                modLoaderVersion,
+                customVersionName,
+                task,
+                cancellationToken,
+                versionIconPath),
+            showInTeachingTip,
+            versionIconPath);
     }
 
     /// <summary>
@@ -98,41 +148,39 @@ public class DownloadTaskManager : IDownloadTaskManager
         string minecraftVersion,
         IEnumerable<ModLoaderSelection> modLoaderSelections,
         string customVersionName,
-        string? versionIconPath = null)
+        string? versionIconPath = null,
+        bool showInTeachingTip = false)
     {
-        if (HasActiveDownload)
-        {
-            _logger.LogWarning("已有下载任务正在进行中，无法启动新的下载");
-            throw new InvalidOperationException("已有下载任务正在进行中");
-        }
-
         var selections = modLoaderSelections.ToList();
         var taskName = string.IsNullOrEmpty(customVersionName)
-            ? string.Join(" + ", selections.Select(s => s.Type))
+            ? string.Join(" + ", selections.Select(selection => selection.Type))
             : customVersionName;
-        var task = CreateTask(taskName, customVersionName);
 
-        // 在后台执行下载，方法立即返回
-        _ = ExecuteMultiModLoaderDownloadAsync(minecraftVersion, selections, customVersionName, task, versionIconPath);
-
-        return Task.CompletedTask;
+        return EnqueueManagedTaskAsync(
+            taskName,
+            customVersionName,
+            DownloadTaskCategory.GameInstall,
+            (task, cancellationToken) => ExecuteMultiModLoaderDownloadAsync(
+                minecraftVersion,
+                selections,
+                customVersionName,
+                task,
+                cancellationToken,
+                versionIconPath),
+            showInTeachingTip,
+            versionIconPath);
     }
 
     /// <inheritdoc/>
-    public Task StartFileDownloadAsync(string url, string targetPath, string description)
+    public Task StartFileDownloadAsync(string url, string targetPath, string description, bool showInTeachingTip = false)
     {
-        if (HasActiveDownload)
-        {
-            _logger.LogWarning("已有下载任务正在进行中，无法启动新的下载");
-            throw new InvalidOperationException("已有下载任务正在进行中");
-        }
-
         var fileName = Path.GetFileName(targetPath);
-        var task = CreateTask(description, fileName);
-
-        _ = ExecuteFileDownloadAsync(url, targetPath, description, task);
-        
-        return Task.CompletedTask;
+        return EnqueueManagedTaskAsync(
+            description,
+            fileName,
+            DownloadTaskCategory.FileDownload,
+            (task, cancellationToken) => ExecuteFileDownloadAsync(url, targetPath, description, task, cancellationToken),
+            showInTeachingTip);
     }
 
     /// <summary>
@@ -148,7 +196,6 @@ public class DownloadTaskManager : IDownloadTaskManager
     {
         _logger.LogInformation("调用旧版 StartOptifineForgeDownloadAsync，将转发到新方法");
 
-        // 构建多加载器选择列表
         var selections = new List<ModLoaderSelection>
         {
             new ModLoaderSelection
@@ -167,283 +214,213 @@ public class DownloadTaskManager : IDownloadTaskManager
             }
         };
 
-        // 调用新方法
         return StartMultiModLoaderDownloadAsync(minecraftVersion, selections, customVersionName);
     }
 
     /// <summary>
     /// 取消当前下载
     /// </summary>
-    public void CancelCurrentDownload()
+    public void CancelTask(string taskId)
     {
+        ManagedDownloadTask? managedTask;
+
         lock (_lock)
         {
-            if (_currentTask == null || _currentTask.State != DownloadTaskState.Downloading)
+            managedTask = _tasks.FirstOrDefault(task => task.Info.TaskId == taskId);
+            if (managedTask == null)
             {
-                _logger.LogWarning("没有正在进行的下载任务可以取消");
+                _logger.LogWarning("未找到要取消的下载任务: {TaskId}", taskId);
                 return;
             }
 
-            _logger.LogInformation("正在取消下载任务: {TaskName}", _currentTask.TaskName);
-            _currentCts?.Cancel();
-
-            _currentTask.State = DownloadTaskState.Cancelled;
-            _currentTask.StatusMessage = "下载已取消";
-            OnTaskStateChanged(_currentTask);
-            
-            // 下载取消后重置 TeachingTip 启用状态
-            IsTeachingTipEnabled = false;
-        }
-    }
-
-    private DownloadTaskInfo CreateTask(string taskName, string versionName)
-    {
-        lock (_lock)
-        {
-            _currentCts?.Dispose();
-            _currentCts = new CancellationTokenSource();
-
-            _currentTask = new DownloadTaskInfo
+            if (managedTask.Info.State == DownloadTaskState.Completed
+                || managedTask.Info.State == DownloadTaskState.Failed
+                || managedTask.Info.State == DownloadTaskState.Cancelled)
             {
-                TaskName = taskName,
-                VersionName = versionName,
-                State = DownloadTaskState.Downloading,
-                Progress = 0,
-                StatusMessage = "正在准备下载..."
-            };
-
-            _logger.LogInformation("创建下载任务: {TaskName}", taskName);
-            OnTaskStateChanged(_currentTask);
-
-            return _currentTask;
-        }
-    }
-
-    private async Task ExecuteFileDownloadAsync(string url, string targetPath, string description, DownloadTaskInfo task)
-    {
-        try 
-        {
-            task.StatusMessage = $"正在下载 {description}...";
-            OnTaskProgressChanged(task);
-            
-            var result = await _downloadManager.DownloadFileAsync(
-                url,
-                targetPath,
-                expectedSha1: null,
-                progressCallback: (status) => 
-                {
-                    if (_currentCts?.IsCancellationRequested == true) return;
-                    
-                    task.Progress = Math.Clamp(status.Percent, 0, 100);
-                    task.StatusMessage = $"{description} - {status.Percent:F1}% {FormatSize(status.DownloadedBytes)}/{FormatSize(status.TotalBytes)}";
-                    task.SpeedText = status.SpeedText;
-                    OnTaskProgressChanged(task);
-                },
-                cancellationToken: _currentCts?.Token ?? CancellationToken.None);
-
-            if (_currentCts?.IsCancellationRequested == true)
-            {
-               return;     
-            }
-            
-            if (result.Success)
-            {
-               CompleteTask(task, true);
-            }
-            else 
-            {
-               FailTask(task, result.ErrorMessage ?? "未知错误");
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("下载任务已取消: {TaskName}", task.TaskName);
-        }
-         catch (Exception ex)
-        {
-            _logger.LogError(ex, "下载任务失败: {TaskName}", task.TaskName);
-            FailTask(task, ex.Message);
-        }
-    }
-
-    private static string FormatSize(long bytes)
-    {
-        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
-        double len = bytes;
-        int order = 0;
-        while (len >= 1024 && order < sizes.Length - 1)
-        {
-            order++;
-            len /= 1024;
-        }
-        return $"{len:0.##} {sizes[order]}";
-    }
-
-    private async Task ExecuteVanillaDownloadAsync(string versionId, string customVersionName, DownloadTaskInfo task, string? versionIconPath)
-    {
-        try
-        {
-            var minecraftDirectory = _fileService.GetMinecraftDataPath();
-            var versionsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions);
-            var finalVersionName = string.IsNullOrEmpty(customVersionName) ? versionId : customVersionName;
-            var targetDirectory = Path.Combine(versionsDirectory, finalVersionName);
-
-            task.StatusMessage = $"正在下载 Minecraft {versionId}...";
-            OnTaskProgressChanged(task);
-
-            await _minecraftVersionService.DownloadVersionAsync(
-                versionId,
-                targetDirectory,
-                status =>
-                {
-                    if (_currentCts?.IsCancellationRequested == true) return;
-                    
-                    task.Progress = Math.Clamp(status.Percent, 0, 100);
-                    task.StatusMessage = $"正在下载 Minecraft {versionId}... {status.Percent:F0}%";
-                    task.SpeedText = status.SpeedText;
-                    OnTaskProgressChanged(task);
-                },
-                customVersionName,
-                versionIconPath);
-
-            if (_currentCts?.IsCancellationRequested == true)
-            {
+                _logger.LogWarning("下载任务已结束，忽略取消请求: {TaskName}", managedTask.Info.TaskName);
                 return;
             }
 
-            CompleteTask(task, true);
+            _logger.LogInformation("正在取消下载任务: {TaskName}", managedTask.Info.TaskName);
+            managedTask.Info.State = DownloadTaskState.Cancelled;
+            managedTask.Info.StatusMessage = "下载已取消";
+            ResetTaskSpeed(managedTask.Info);
+            UpdateQueuePositionsLocked();
+
+            if (managedTask.IsRunning)
+            {
+                managedTask.CancellationTokenSource.Cancel();
+            }
         }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("下载任务已取消: {TaskName}", task.TaskName);
-            // 取消状态已在 CancelCurrentDownload 中设置
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "下载任务失败: {TaskName}", task.TaskName);
-            FailTask(task, ex.Message);
-        }
+
+        OnTaskStateChanged(managedTask.Info);
     }
 
-    private async Task ExecuteModLoaderDownloadAsync(
-        string minecraftVersion,
-        string modLoaderType,
-        string modLoaderVersion,
-        string customVersionName,
-        DownloadTaskInfo task,
-        string? versionIconPath)
+    public async Task RetryTaskAsync(string taskId)
     {
-        try
+        ManagedDownloadTask? managedTask;
+
+        lock (_lock)
         {
-            var minecraftDirectory = _fileService.GetMinecraftDataPath();
-
-            task.StatusMessage = $"正在下载 {modLoaderType} {modLoaderVersion}...";
-            OnTaskProgressChanged(task);
-
-            await _minecraftVersionService.DownloadModLoaderVersionAsync(
-                minecraftVersion,
-                modLoaderType,
-                modLoaderVersion,
-                minecraftDirectory,
-                status =>
-                {
-                    if (_currentCts?.IsCancellationRequested == true) return;
-                    
-                    task.Progress = Math.Clamp(status.Percent, 0, 100);
-                    task.StatusMessage = $"正在下载 {modLoaderType} {modLoaderVersion}... {status.Percent:F0}%";
-                    task.SpeedText = status.SpeedText;
-                    OnTaskProgressChanged(task);
-                },
-                _currentCts?.Token ?? CancellationToken.None,
-                customVersionName,
-                versionIconPath);
-
-            if (_currentCts?.IsCancellationRequested == true)
+            managedTask = _tasks.FirstOrDefault(task => task.Info.TaskId == taskId);
+            if (managedTask == null)
             {
+                _logger.LogWarning("未找到要重试的下载任务: {TaskId}", taskId);
                 return;
             }
 
-            CompleteTask(task, true);
+            if (managedTask.Info.State != DownloadTaskState.Failed)
+            {
+                _logger.LogWarning("仅失败任务支持重试: {TaskName}", managedTask.Info.TaskName);
+                return;
+            }
+
+            managedTask.ResetForRetry();
+            managedTask.Info.State = DownloadTaskState.Queued;
+            managedTask.Info.Progress = 0;
+            managedTask.Info.ErrorMessage = null;
+            managedTask.Info.StatusMessage = "等待下载...";
+            ResetTaskSpeed(managedTask.Info);
+
+            _tasks.Remove(managedTask);
+            _tasks.Add(managedTask);
+            UpdateQueuePositionsLocked();
         }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("下载任务已取消: {TaskName}", task.TaskName);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "下载任务失败: {TaskName}", task.TaskName);
-            FailTask(task, ex.Message);
-        }
+
+        OnTaskStateChanged(managedTask.Info);
+        await ProcessQueueAsync().ConfigureAwait(false);
     }
 
-    private void CompleteTask(DownloadTaskInfo task, bool success)
-    {
-        lock (_lock)
-        {
-            task.State = DownloadTaskState.Completed;
-            task.Progress = 100;
-            task.StatusMessage = "下载完成";
-            _logger.LogInformation("下载任务完成: {TaskName}", task.TaskName);
-            OnTaskStateChanged(task);
-            
-            // 下载完成后重置 TeachingTip 启用状态
-            IsTeachingTipEnabled = false;
-        }
-    }
-
-    private void FailTask(DownloadTaskInfo task, string errorMessage)
-    {
-        lock (_lock)
-        {
-            task.State = DownloadTaskState.Failed;
-            task.ErrorMessage = errorMessage;
-            task.StatusMessage = $"下载失败: {errorMessage}";
-            _logger.LogError("下载任务失败: {TaskName}, 错误: {ErrorMessage}", task.TaskName, errorMessage);
-            OnTaskStateChanged(task);
-            
-            // 下载失败后重置 TeachingTip 启用状态
-            IsTeachingTipEnabled = false;
-        }
-    }
-
-    private void OnTaskStateChanged(DownloadTaskInfo task)
-    {
-        TaskStateChanged?.Invoke(this, task);
-    }
-
-    private void OnTaskProgressChanged(DownloadTaskInfo task)
-    {
-        TaskProgressChanged?.Invoke(this, task);
-    }
-
-    /// <summary>
-    /// 通知进度更新（用于非 DownloadTaskManager 管理的下载，如依赖下载）
-    /// 这会触发 TaskStateChanged 和 TaskProgressChanged 事件
-    /// </summary>
-    public void NotifyProgress(string taskName, double progress, string statusMessage, DownloadTaskState state = DownloadTaskState.Downloading)
+    public string CreateExternalTask(string taskName, string versionName = "", bool showInTeachingTip = false)
     {
         var taskInfo = new DownloadTaskInfo
         {
             TaskName = taskName,
-            Progress = Math.Clamp(progress, 0, 100),
-            StatusMessage = statusMessage,
-            State = state
+            VersionName = versionName,
+            State = DownloadTaskState.Downloading,
+            Progress = 0,
+            StatusMessage = string.Empty,
+            IsQueueManaged = false,
+            ShowInTeachingTip = showInTeachingTip
         };
 
-        // 触发状态变化事件（用于打开/关闭 TeachingTip）
-        if (state == DownloadTaskState.Downloading)
+        lock (_lock)
         {
-            OnTaskStateChanged(taskInfo);
+            _externalTasks[taskInfo.TaskId] = taskInfo;
+            UpdateQueuePositionsLocked();
         }
-        
-        // 触发进度变化事件
-        OnTaskProgressChanged(taskInfo);
 
-        // 如果是完成/失败/取消状态，也触发状态变化
-        if (state != DownloadTaskState.Downloading)
+        NotifyTasksSnapshotChanged();
+        return taskInfo.TaskId;
+    }
+
+    public void UpdateExternalTask(string taskId, double progress, string statusMessage)
+    {
+        DownloadTaskInfo? taskInfo;
+
+        lock (_lock)
         {
-            OnTaskStateChanged(taskInfo);
+            if (!_externalTasks.TryGetValue(taskId, out taskInfo))
+            {
+                _logger.LogWarning("未找到要更新的外部下载任务: {TaskId}", taskId);
+                return;
+            }
+
+            taskInfo.Progress = Math.Clamp(progress, 0, 100);
+            taskInfo.StatusMessage = statusMessage;
+            taskInfo.State = DownloadTaskState.Downloading;
+            taskInfo.QueuePosition = null;
         }
+
+        OnTaskStateChanged(taskInfo);
+        OnTaskProgressChanged(taskInfo);
+    }
+
+    public void CompleteExternalTask(string taskId, string statusMessage = "下载完成")
+    {
+        DownloadTaskInfo? taskInfo;
+
+        lock (_lock)
+        {
+            if (!_externalTasks.TryGetValue(taskId, out taskInfo))
+            {
+                _logger.LogWarning("未找到要完成的外部下载任务: {TaskId}", taskId);
+                return;
+            }
+
+            taskInfo.Progress = 100;
+            taskInfo.StatusMessage = statusMessage;
+            taskInfo.ErrorMessage = null;
+            ResetTaskSpeed(taskInfo);
+            taskInfo.State = DownloadTaskState.Completed;
+        }
+
+        OnTaskStateChanged(taskInfo);
+
+        lock (_lock)
+        {
+            _externalTasks.Remove(taskId);
+            UpdateQueuePositionsLocked();
+        }
+
+        NotifyTasksSnapshotChanged();
+    }
+
+    public void FailExternalTask(string taskId, string errorMessage, string? statusMessage = null)
+    {
+        DownloadTaskInfo? taskInfo;
+
+        lock (_lock)
+        {
+            if (!_externalTasks.TryGetValue(taskId, out taskInfo))
+            {
+                _logger.LogWarning("未找到要标记失败的外部下载任务: {TaskId}", taskId);
+                return;
+            }
+
+            taskInfo.ErrorMessage = errorMessage;
+            taskInfo.StatusMessage = statusMessage ?? $"下载失败: {errorMessage}";
+            ResetTaskSpeed(taskInfo);
+            taskInfo.State = DownloadTaskState.Failed;
+        }
+
+        OnTaskStateChanged(taskInfo);
+
+        lock (_lock)
+        {
+            _externalTasks.Remove(taskId);
+            UpdateQueuePositionsLocked();
+        }
+
+        NotifyTasksSnapshotChanged();
+    }
+
+    public void CancelExternalTask(string taskId, string statusMessage = "下载已取消")
+    {
+        DownloadTaskInfo? taskInfo;
+
+        lock (_lock)
+        {
+            if (!_externalTasks.TryGetValue(taskId, out taskInfo))
+            {
+                _logger.LogWarning("未找到要取消的外部下载任务: {TaskId}", taskId);
+                return;
+            }
+
+            taskInfo.StatusMessage = statusMessage;
+            ResetTaskSpeed(taskInfo);
+            taskInfo.State = DownloadTaskState.Cancelled;
+        }
+
+        OnTaskStateChanged(taskInfo);
+
+        lock (_lock)
+        {
+            _externalTasks.Remove(taskId);
+            UpdateQueuePositionsLocked();
+        }
+
+        NotifyTasksSnapshotChanged();
     }
 
     /// <summary>
@@ -455,20 +432,339 @@ public class DownloadTaskManager : IDownloadTaskManager
         string downloadUrl,
         string savePath,
         string? iconUrl = null,
-        IEnumerable<ResourceDependency>? dependencies = null)
+        IEnumerable<ResourceDependency>? dependencies = null,
+        bool showInTeachingTip = false)
     {
-        if (HasActiveDownload)
+        var dependencyList = dependencies?.ToList();
+        return EnqueueManagedTaskAsync(
+            resourceName,
+            resourceType,
+            ResolveResourceTaskCategory(resourceType),
+            (task, cancellationToken) => ExecuteResourceDownloadAsync(
+                resourceName,
+                resourceType,
+                downloadUrl,
+                savePath,
+                dependencyList,
+                task,
+                cancellationToken),
+            showInTeachingTip,
+            iconUrl);
+    }
+
+    /// <summary>
+    /// 启动世界下载（下载zip并解压到saves目录）
+    /// </summary>
+    public Task StartWorldDownloadAsync(
+        string worldName,
+        string downloadUrl,
+        string savesDirectory,
+        string fileName,
+        string? iconUrl = null,
+        bool showInTeachingTip = false)
+    {
+        return EnqueueManagedTaskAsync(
+            worldName,
+            "world",
+            DownloadTaskCategory.WorldDownload,
+            (task, cancellationToken) => ExecuteWorldDownloadAsync(worldName, downloadUrl, savesDirectory, fileName, task, cancellationToken),
+            showInTeachingTip,
+            iconUrl);
+    }
+
+    private async Task EnqueueManagedTaskAsync(
+        string taskName,
+        string versionName,
+        DownloadTaskCategory taskCategory,
+        Func<DownloadTaskInfo, CancellationToken, Task> executor,
+        bool showInTeachingTip,
+        string? iconSource = null)
+    {
+        var task = new DownloadTaskInfo
         {
-            _logger.LogWarning("已有下载任务正在进行中，无法启动新的下载");
-            throw new InvalidOperationException("已有下载任务正在进行中");
+            TaskName = taskName,
+            VersionName = versionName,
+            TaskCategory = taskCategory,
+            IconSource = NormalizeTaskIconSource(iconSource),
+            State = DownloadTaskState.Queued,
+            Progress = 0,
+            StatusMessage = "等待下载...",
+            ShowInTeachingTip = showInTeachingTip,
+            IsQueueManaged = true
+        };
+
+        lock (_lock)
+        {
+            _tasks.Add(new ManagedDownloadTask(task, executor));
+            UpdateQueuePositionsLocked();
         }
 
-        var task = CreateTask(resourceName, resourceType);
+        _logger.LogInformation("下载任务已入队: {TaskName}", taskName);
+        OnTaskStateChanged(task);
+        await ProcessQueueAsync().ConfigureAwait(false);
+    }
 
-        // 在后台执行下载，方法立即返回
-        _ = ExecuteResourceDownloadAsync(resourceName, resourceType, downloadUrl, savePath, dependencies?.ToList(), task);
+    private static DownloadTaskCategory ResolveResourceTaskCategory(string resourceType)
+    {
+        return resourceType.Trim().ToLowerInvariant() switch
+        {
+            "mod" => DownloadTaskCategory.ModDownload,
+            "resourcepack" => DownloadTaskCategory.ResourcePackDownload,
+            "shader" => DownloadTaskCategory.ShaderDownload,
+            "datapack" => DownloadTaskCategory.DataPackDownload,
+            "world" => DownloadTaskCategory.WorldDownload,
+            "modpack" => DownloadTaskCategory.ModpackDownload,
+            _ => DownloadTaskCategory.Unknown
+        };
+    }
 
-        return Task.CompletedTask;
+    private async Task ProcessQueueAsync()
+    {
+        await _schedulerGate.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            while (true)
+            {
+                var maxConcurrentTasks = await GetMaxConcurrentTasksAsync().ConfigureAwait(false);
+                List<ManagedDownloadTask> tasksToStart;
+
+                lock (_lock)
+                {
+                    var runningCount = _tasks.Count(task => task.IsRunning);
+                    var availableSlots = Math.Max(0, maxConcurrentTasks - runningCount);
+                    if (availableSlots == 0)
+                    {
+                        UpdateQueuePositionsLocked();
+                        return;
+                    }
+
+                    tasksToStart = _tasks
+                        .Where(task => !task.IsRunning && task.Info.State == DownloadTaskState.Queued)
+                        .Take(availableSlots)
+                        .ToList();
+
+                    if (tasksToStart.Count == 0)
+                    {
+                        UpdateQueuePositionsLocked();
+                        return;
+                    }
+
+                    foreach (var task in tasksToStart)
+                    {
+                        task.IsRunning = true;
+                        task.Info.State = DownloadTaskState.Downloading;
+                        task.Info.QueuePosition = null;
+                        if (string.IsNullOrWhiteSpace(task.Info.StatusMessage) || task.Info.StatusMessage == "等待下载...")
+                        {
+                            task.Info.StatusMessage = "正在准备下载...";
+                        }
+                    }
+
+                    UpdateQueuePositionsLocked();
+                }
+
+                foreach (var task in tasksToStart)
+                {
+                    OnTaskStateChanged(task.Info);
+                    _ = RunManagedTaskAsync(task);
+                }
+            }
+        }
+        finally
+        {
+            _schedulerGate.Release();
+        }
+    }
+
+    private async Task<int> GetMaxConcurrentTasksAsync()
+    {
+        try
+        {
+            var configured = await (_localSettingsService?.ReadSettingAsync<int?>(DownloadQueueMaxConcurrentTasksKey)
+                ?? Task.FromResult<int?>(null)).ConfigureAwait(false);
+            return Math.Clamp(configured ?? DefaultMaxConcurrentTasks, 1, MaxConcurrentTasksUpperBound);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "读取下载队列并发配置失败，使用默认值 {DefaultMaxConcurrentTasks}", DefaultMaxConcurrentTasks);
+            return DefaultMaxConcurrentTasks;
+        }
+    }
+
+    private async Task RunManagedTaskAsync(ManagedDownloadTask managedTask)
+    {
+        try
+        {
+            await managedTask.Executor(managedTask.Info, managedTask.CancellationTokenSource.Token).ConfigureAwait(false);
+            managedTask.CancellationTokenSource.Token.ThrowIfCancellationRequested();
+            CompleteTask(managedTask.Info);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("下载任务已取消: {TaskName}", managedTask.Info.TaskName);
+            MarkTaskCancelled(managedTask.Info);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "下载任务失败: {TaskName}", managedTask.Info.TaskName);
+            FailTask(managedTask.Info, ex.Message);
+        }
+        finally
+        {
+            lock (_lock)
+            {
+                managedTask.IsRunning = false;
+                UpdateQueuePositionsLocked();
+            }
+
+            NotifyTasksSnapshotChanged();
+            await ProcessQueueAsync().ConfigureAwait(false);
+        }
+    }
+
+    private async Task ExecuteFileDownloadAsync(
+        string url,
+        string targetPath,
+        string description,
+        DownloadTaskInfo task,
+        CancellationToken cancellationToken)
+    {
+        ResetTaskSpeed(task);
+        task.StatusMessage = $"正在下载 {description}...";
+        OnTaskProgressChanged(task);
+
+        await DownloadFileAsync(
+            url,
+            targetPath,
+            status =>
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                task.Progress = Math.Clamp(status.Percent, 0, 100);
+                task.StatusMessage = $"{description} - {status.Percent:F1}%";
+                UpdateTaskSpeed(task, status);
+                OnTaskProgressChanged(task);
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    private async Task ExecuteVanillaDownloadAsync(
+        string versionId,
+        string customVersionName,
+        DownloadTaskInfo task,
+        CancellationToken cancellationToken,
+        string? versionIconPath)
+    {
+        var minecraftDirectory = _fileService.GetMinecraftDataPath();
+        var versionsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions);
+        var finalVersionName = string.IsNullOrEmpty(customVersionName) ? versionId : customVersionName;
+        var targetDirectory = Path.Combine(versionsDirectory, finalVersionName);
+
+        ResetTaskSpeed(task);
+        task.StatusMessage = $"正在下载 Minecraft {versionId}...";
+        OnTaskProgressChanged(task);
+
+        await _minecraftVersionService.DownloadVersionAsync(
+            versionId,
+            targetDirectory,
+            status =>
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                task.Progress = Math.Clamp(status.Percent, 0, 100);
+                task.StatusMessage = $"正在下载 Minecraft {versionId}... {status.Percent:F0}%";
+                UpdateTaskSpeed(task, status);
+                OnTaskProgressChanged(task);
+            },
+            customVersionName,
+            versionIconPath).ConfigureAwait(false);
+
+        cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    private async Task ExecuteModLoaderDownloadAsync(
+        string minecraftVersion,
+        string modLoaderType,
+        string modLoaderVersion,
+        string customVersionName,
+        DownloadTaskInfo task,
+        CancellationToken cancellationToken,
+        string? versionIconPath)
+    {
+        var minecraftDirectory = _fileService.GetMinecraftDataPath();
+
+        ResetTaskSpeed(task);
+        task.StatusMessage = $"正在下载 {modLoaderType} {modLoaderVersion}...";
+        OnTaskProgressChanged(task);
+
+        await _minecraftVersionService.DownloadModLoaderVersionAsync(
+            minecraftVersion,
+            modLoaderType,
+            modLoaderVersion,
+            minecraftDirectory,
+            status =>
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                task.Progress = Math.Clamp(status.Percent, 0, 100);
+                task.StatusMessage = $"正在下载 {modLoaderType} {modLoaderVersion}... {status.Percent:F0}%";
+                UpdateTaskSpeed(task, status);
+                OnTaskProgressChanged(task);
+            },
+            cancellationToken,
+            customVersionName,
+            versionIconPath).ConfigureAwait(false);
+
+        cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    private async Task ExecuteMultiModLoaderDownloadAsync(
+        string minecraftVersion,
+        List<ModLoaderSelection> modLoaderSelections,
+        string customVersionName,
+        DownloadTaskInfo task,
+        CancellationToken cancellationToken,
+        string? versionIconPath)
+    {
+        var minecraftDirectory = _fileService.GetMinecraftDataPath();
+        var modLoaderNames = string.Join(" + ", modLoaderSelections.Select(selection => selection.Type));
+
+        ResetTaskSpeed(task);
+        task.StatusMessage = $"正在下载 {modLoaderNames}...";
+        OnTaskProgressChanged(task);
+
+        await _minecraftVersionService.DownloadMultiModLoaderVersionAsync(
+            minecraftVersion,
+            modLoaderSelections,
+            minecraftDirectory,
+            status =>
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                task.Progress = Math.Clamp(status.Percent, 0, 100);
+                task.StatusMessage = $"正在下载 {modLoaderNames}... {status.Percent:F0}%";
+                UpdateTaskSpeed(task, status);
+                OnTaskProgressChanged(task);
+            },
+            cancellationToken,
+            customVersionName,
+            versionIconPath).ConfigureAwait(false);
+
+        cancellationToken.ThrowIfCancellationRequested();
     }
 
     /// <summary>
@@ -480,99 +776,72 @@ public class DownloadTaskManager : IDownloadTaskManager
         string downloadUrl,
         string savePath,
         List<ResourceDependency>? dependencies,
-        DownloadTaskInfo task)
+        DownloadTaskInfo task,
+        CancellationToken cancellationToken)
     {
-        try
+        var totalItems = 1 + (dependencies?.Count ?? 0);
+        var completedItems = 0;
+
+        if (dependencies != null && dependencies.Count > 0)
         {
-            var cancellationToken = _currentCts?.Token ?? CancellationToken.None;
-            var totalItems = 1 + (dependencies?.Count ?? 0);
-            var completedItems = 0;
+            _logger.LogInformation("开始下载 {Count} 个依赖", dependencies.Count);
 
-            // 先下载所有依赖
-            if (dependencies != null && dependencies.Count > 0)
+            foreach (var dependency in dependencies)
             {
-                _logger.LogInformation("开始下载 {Count} 个依赖", dependencies.Count);
+                cancellationToken.ThrowIfCancellationRequested();
 
-                foreach (var dependency in dependencies)
+                ResetTaskSpeed(task);
+                task.StatusMessage = $"正在下载前置: {dependency.Name}...";
+                OnTaskProgressChanged(task);
+
+                await DownloadFileAsync(
+                    dependency.DownloadUrl,
+                    dependency.SavePath,
+                    status =>
+                    {
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            return;
+                        }
+
+                        var overallProgress = (completedItems * 100.0 + status.Percent) / totalItems;
+                        task.Progress = Math.Clamp(overallProgress, 0, 100);
+                        task.StatusMessage = $"正在下载前置: {dependency.Name}... {status.Percent:F0}%";
+                        UpdateTaskSpeed(task, status);
+                        OnTaskProgressChanged(task);
+                    },
+                    cancellationToken).ConfigureAwait(false);
+
+                completedItems++;
+                _logger.LogInformation("依赖下载完成: {DependencyName}", dependency.Name);
+            }
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        ResetTaskSpeed(task);
+        task.StatusMessage = $"正在下载 {resourceName}...";
+        OnTaskProgressChanged(task);
+
+        await DownloadFileAsync(
+            downloadUrl,
+            savePath,
+            status =>
+            {
+                if (cancellationToken.IsCancellationRequested)
                 {
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        return;
-                    }
-
-                    task.StatusMessage = $"正在下载前置: {dependency.Name}...";
-                    OnTaskProgressChanged(task);
-
-                    try
-                    {
-                        await DownloadFileAsync(
-                            dependency.DownloadUrl,
-                            dependency.SavePath,
-                            (progress, speedText) =>
-                            {
-                                if (cancellationToken.IsCancellationRequested) return;
-                                
-                                // 计算总进度：已完成项 + 当前项进度
-                                var overallProgress = (completedItems * 100.0 + progress) / totalItems;
-                                task.Progress = Math.Clamp(overallProgress, 0, 100);
-                                task.StatusMessage = $"正在下载前置: {dependency.Name}... {progress:F0}%";
-                                task.SpeedText = speedText;
-                                OnTaskProgressChanged(task);
-                            },
-                            cancellationToken);
-
-                        completedItems++;
-                        _logger.LogInformation("依赖下载完成: {DependencyName}", dependency.Name);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "依赖下载失败: {DependencyName}", dependency.Name);
-                        FailTask(task, $"前置 {dependency.Name} 下载失败: {ex.Message}");
-                        return;
-                    }
+                    return;
                 }
-            }
 
-            // 下载主资源
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
+                var overallProgress = (completedItems * 100.0 + status.Percent) / totalItems;
+                task.Progress = Math.Clamp(overallProgress, 0, 100);
+                task.StatusMessage = $"正在下载 {resourceName}... {status.Percent:F0}%";
+                UpdateTaskSpeed(task, status);
+                OnTaskProgressChanged(task);
+            },
+            cancellationToken).ConfigureAwait(false);
 
-            task.StatusMessage = $"正在下载 {resourceName}...";
-            OnTaskProgressChanged(task);
-
-            await DownloadFileAsync(
-                downloadUrl,
-                savePath,
-                (progress, speedText) =>
-                {
-                    if (cancellationToken.IsCancellationRequested) return;
-                    
-                    var overallProgress = (completedItems * 100.0 + progress) / totalItems;
-                    task.Progress = Math.Clamp(overallProgress, 0, 100);
-                    task.StatusMessage = $"正在下载 {resourceName}... {progress:F0}%";
-                    task.SpeedText = speedText;
-                    OnTaskProgressChanged(task);
-                },
-                cancellationToken);
-
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
-
-            CompleteTask(task, true);
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("资源下载任务已取消: {ResourceName}", resourceName);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "资源下载任务失败: {ResourceName}", resourceName);
-            FailTask(task, ex.Message);
-        }
+        cancellationToken.ThrowIfCancellationRequested();
     }
 
     /// <summary>
@@ -581,52 +850,38 @@ public class DownloadTaskManager : IDownloadTaskManager
     private async Task DownloadFileAsync(
         string url,
         string savePath,
-        Action<double, string> progressCallback,
+        Action<DownloadProgressStatus> progressCallback,
         CancellationToken cancellationToken)
     {
-        // 验证 URL
         if (string.IsNullOrEmpty(url))
         {
             throw new ArgumentNullException(nameof(url), "下载 URL 不能为空");
         }
 
-        if (!Uri.TryCreate(url, UriKind.Absolute, out var uriResult))
+        if (!Uri.TryCreate(url, UriKind.Absolute, out _))
         {
-             // 尝试打印出问题的 URL 信息
-             _logger.LogError("无效的下载 URL: '{Url}'", url);
-             throw new ArgumentException($"无效的下载 URL (必须是绝对路径): '{url}'", nameof(url));
+            _logger.LogError("无效的下载 URL: '{Url}'", url);
+            throw new ArgumentException($"无效的下载 URL (必须是绝对路径): '{url}'", nameof(url));
         }
 
-        await _downloadManager.DownloadFileAsync(
+        var result = await _downloadManager.DownloadFileAsync(
             url,
             savePath,
             null,
-            status => progressCallback(status.Percent, status.SpeedText),
-            cancellationToken);
-    }
+            progressCallback,
+            cancellationToken).ConfigureAwait(false);
 
-    /// <summary>
-    /// 启动世界下载（下载zip并解压到saves目录）
-    /// </summary>
-    public Task StartWorldDownloadAsync(
-        string worldName,
-        string downloadUrl,
-        string savesDirectory,
-        string fileName,
-        string? iconUrl = null)
-    {
-        if (HasActiveDownload)
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (result == null)
         {
-            _logger.LogWarning("已有下载任务正在进行中，无法启动新的下载");
-            throw new InvalidOperationException("已有下载任务正在进行中");
+            throw new InvalidOperationException("下载服务返回了空结果");
         }
 
-        var task = CreateTask(worldName, "world");
-
-        // 在后台执行下载，方法立即返回
-        _ = ExecuteWorldDownloadAsync(worldName, downloadUrl, savesDirectory, fileName, task);
-
-        return Task.CompletedTask;
+        if (!result.Success)
+        {
+            throw result.Exception ?? new InvalidOperationException(result.ErrorMessage ?? "下载失败");
+        }
     }
 
     /// <summary>
@@ -637,147 +892,128 @@ public class DownloadTaskManager : IDownloadTaskManager
         string downloadUrl,
         string savesDirectory,
         string fileName,
-        DownloadTaskInfo task)
+        DownloadTaskInfo task,
+        CancellationToken cancellationToken)
     {
         var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         var zipPath = Path.Combine(tempDir, fileName);
 
         try
         {
-            var cancellationToken = _currentCts?.Token ?? CancellationToken.None;
-
-            // 确保临时目录存在
             Directory.CreateDirectory(tempDir);
 
-            // 1. 下载zip文件（0-70%）
+            ResetTaskSpeed(task);
             task.StatusMessage = $"正在下载 {worldName}...";
             OnTaskProgressChanged(task);
 
             await DownloadFileAsync(
                 downloadUrl,
                 zipPath,
-                (progress, speedText) =>
+                status =>
                 {
-                    if (cancellationToken.IsCancellationRequested) return;
-                    
-                    // 下载进度占0-70%
-                    task.Progress = Math.Clamp(progress * 0.7, 0, 70);
-                    task.StatusMessage = $"正在下载 {worldName}... {progress:F0}%";
-                    task.SpeedText = speedText;
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    task.Progress = Math.Clamp(status.Percent * 0.7, 0, 70);
+                    task.StatusMessage = $"正在下载 {worldName}... {status.Percent:F0}%";
+                    UpdateTaskSpeed(task, status);
                     OnTaskProgressChanged(task);
                 },
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
 
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
+            cancellationToken.ThrowIfCancellationRequested();
 
-            // 2. 解压到saves目录（70-100%）
+            ResetTaskSpeed(task);
             task.StatusMessage = "正在解压世界存档...";
             task.Progress = 70;
             OnTaskProgressChanged(task);
 
-            // 确保saves目录存在
             if (!Directory.Exists(savesDirectory))
             {
                 Directory.CreateDirectory(savesDirectory);
             }
 
-            // 生成唯一的世界目录名称
             var worldBaseName = Path.GetFileNameWithoutExtension(fileName);
             var worldDir = GetUniqueDirectoryPath(savesDirectory, worldBaseName);
 
+            ResetTaskSpeed(task);
             task.StatusMessage = $"正在解压到: {Path.GetFileName(worldDir)}";
             task.Progress = 80;
             OnTaskProgressChanged(task);
 
-            // 创建世界目录并解压
             Directory.CreateDirectory(worldDir);
 
             await Task.Run(() =>
             {
                 using var archive = ZipFile.OpenRead(zipPath);
-                
-                // 检查压缩包结构：是否有根目录
+
                 var entries = archive.Entries.ToList();
                 var hasRootFolder = false;
                 string? rootFolderName = null;
 
-                // 检查是否所有文件都在同一个根目录下
                 if (entries.Count > 0)
                 {
-                    var firstEntry = entries.FirstOrDefault(e => !string.IsNullOrEmpty(e.FullName));
+                    var firstEntry = entries.FirstOrDefault(entry => !string.IsNullOrEmpty(entry.FullName));
                     if (firstEntry != null)
                     {
                         var parts = firstEntry.FullName.Split('/');
                         if (parts.Length > 1)
                         {
                             rootFolderName = parts[0];
-                            hasRootFolder = entries.All(e =>
-                                string.IsNullOrEmpty(e.FullName) ||
-                                e.FullName.StartsWith(rootFolderName + "/") ||
-                                e.FullName == rootFolderName);
+                            hasRootFolder = entries.All(entry =>
+                                string.IsNullOrEmpty(entry.FullName)
+                                || entry.FullName.StartsWith(rootFolderName + "/", StringComparison.Ordinal)
+                                || entry.FullName == rootFolderName);
                         }
                     }
                 }
 
                 if (hasRootFolder && !string.IsNullOrEmpty(rootFolderName))
                 {
-                    // 压缩包有根目录，解压时去掉根目录
                     foreach (var entry in entries)
                     {
                         if (string.IsNullOrEmpty(entry.FullName) || entry.FullName == rootFolderName + "/")
+                        {
                             continue;
+                        }
 
                         var relativePath = entry.FullName.Substring(rootFolderName.Length + 1);
                         if (string.IsNullOrEmpty(relativePath))
-                            continue;
-
-                        var destPath = Path.Combine(worldDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
-
-                        if (entry.FullName.EndsWith("/"))
                         {
-                            Directory.CreateDirectory(destPath);
+                            continue;
+                        }
+
+                        var destinationPath = Path.Combine(worldDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
+
+                        if (entry.FullName.EndsWith("/", StringComparison.Ordinal))
+                        {
+                            Directory.CreateDirectory(destinationPath);
                         }
                         else
                         {
-                            var destDir = Path.GetDirectoryName(destPath);
-                            if (!string.IsNullOrEmpty(destDir))
+                            var destinationDirectory = Path.GetDirectoryName(destinationPath);
+                            if (!string.IsNullOrEmpty(destinationDirectory))
                             {
-                                Directory.CreateDirectory(destDir);
+                                Directory.CreateDirectory(destinationDirectory);
                             }
-                            entry.ExtractToFile(destPath, true);
+
+                            entry.ExtractToFile(destinationPath, true);
                         }
                     }
                 }
                 else
                 {
-                    // 压缩包没有根目录，直接解压到目标目录
                     archive.ExtractToDirectory(worldDir);
                 }
-            }, cancellationToken);
+            }, cancellationToken).ConfigureAwait(false);
 
-            if (cancellationToken.IsCancellationRequested)
-            {
-                return;
-            }
-
-            CompleteTask(task, true);
+            cancellationToken.ThrowIfCancellationRequested();
             _logger.LogInformation("世界存档下载完成: {WorldName} -> {WorldDir}", worldName, worldDir);
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("世界下载任务已取消: {WorldName}", worldName);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "世界下载任务失败: {WorldName}", worldName);
-            FailTask(task, ex.Message);
         }
         finally
         {
-            // 清理临时文件
             try
             {
                 if (Directory.Exists(tempDir))
@@ -790,6 +1026,167 @@ public class DownloadTaskManager : IDownloadTaskManager
                 _logger.LogWarning(ex, "清理临时文件失败: {TempDir}", tempDir);
             }
         }
+    }
+
+    private void CompleteTask(DownloadTaskInfo task)
+    {
+        var shouldNotify = false;
+        lock (_lock)
+        {
+            if (task.State == DownloadTaskState.Completed
+                || task.State == DownloadTaskState.Failed
+                || task.State == DownloadTaskState.Cancelled)
+            {
+                return;
+            }
+
+            task.State = DownloadTaskState.Completed;
+            task.Progress = 100;
+            task.StatusMessage = "下载完成";
+            ResetTaskSpeed(task);
+            UpdateQueuePositionsLocked();
+            shouldNotify = true;
+        }
+
+        if (shouldNotify)
+        {
+            _logger.LogInformation("下载任务完成: {TaskName}", task.TaskName);
+            OnTaskStateChanged(task);
+        }
+    }
+
+    private void FailTask(DownloadTaskInfo task, string errorMessage)
+    {
+        var shouldNotify = false;
+        lock (_lock)
+        {
+            if (task.State == DownloadTaskState.Completed || task.State == DownloadTaskState.Cancelled)
+            {
+                return;
+            }
+
+            task.State = DownloadTaskState.Failed;
+            task.ErrorMessage = errorMessage;
+            task.StatusMessage = $"下载失败: {errorMessage}";
+            ResetTaskSpeed(task);
+            UpdateQueuePositionsLocked();
+            shouldNotify = true;
+        }
+
+        if (shouldNotify)
+        {
+            _logger.LogError("下载任务失败: {TaskName}, 错误: {ErrorMessage}", task.TaskName, errorMessage);
+            OnTaskStateChanged(task);
+        }
+    }
+
+    private void MarkTaskCancelled(DownloadTaskInfo task)
+    {
+        var shouldNotify = false;
+        lock (_lock)
+        {
+            if (task.State == DownloadTaskState.Cancelled)
+            {
+                return;
+            }
+
+            if (task.State == DownloadTaskState.Completed || task.State == DownloadTaskState.Failed)
+            {
+                return;
+            }
+
+            task.State = DownloadTaskState.Cancelled;
+            task.StatusMessage = "下载已取消";
+            ResetTaskSpeed(task);
+            UpdateQueuePositionsLocked();
+            shouldNotify = true;
+        }
+
+        if (shouldNotify)
+        {
+            OnTaskStateChanged(task);
+        }
+    }
+
+    private void OnTaskStateChanged(DownloadTaskInfo task)
+    {
+        TaskStateChanged?.Invoke(this, task.Clone());
+        NotifyTasksSnapshotChanged();
+    }
+
+    private void OnTaskProgressChanged(DownloadTaskInfo task)
+    {
+        TaskProgressChanged?.Invoke(this, task.Clone());
+        NotifyTasksSnapshotChanged();
+    }
+
+    private static void UpdateTaskSpeed(DownloadTaskInfo task, DownloadProgressStatus status)
+    {
+        task.SpeedBytesPerSecond = Math.Max(0, status.BytesPerSecond);
+        task.SpeedText = status.SpeedText;
+    }
+
+    private static void ResetTaskSpeed(DownloadTaskInfo task)
+    {
+        task.SpeedBytesPerSecond = 0;
+        task.SpeedText = string.Empty;
+    }
+
+    private static string? NormalizeTaskIconSource(string? iconSource)
+    {
+        if (string.IsNullOrWhiteSpace(iconSource))
+        {
+            return null;
+        }
+
+        var normalizedIconSource = iconSource.Trim();
+        if (string.Equals(normalizedIconSource, PlaceholderIconSource, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        if (Path.IsPathRooted(normalizedIconSource))
+        {
+            return File.Exists(normalizedIconSource) ? normalizedIconSource : null;
+        }
+
+        if (!Uri.TryCreate(normalizedIconSource, UriKind.Absolute, out var iconUri))
+        {
+            return null;
+        }
+
+        if (iconUri.IsFile)
+        {
+            return File.Exists(iconUri.LocalPath) ? normalizedIconSource : null;
+        }
+
+        return normalizedIconSource;
+    }
+
+    private void NotifyTasksSnapshotChanged()
+    {
+        TasksSnapshotChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void UpdateQueuePositionsLocked()
+    {
+        var queuePosition = 1;
+        foreach (var task in _tasks)
+        {
+            task.Info.QueuePosition = task.Info.State == DownloadTaskState.Queued ? queuePosition++ : (int?)null;
+        }
+
+        foreach (var task in _externalTasks.Values)
+        {
+            task.QueuePosition = null;
+        }
+    }
+
+    private List<DownloadTaskInfo> CreateSnapshotLocked()
+    {
+        var snapshot = _tasks.Select(task => task.Info.Clone()).ToList();
+        snapshot.AddRange(_externalTasks.Values.Select(task => task.Clone()));
+        return snapshot;
     }
 
     /// <summary>
@@ -810,54 +1207,5 @@ public class DownloadTaskManager : IDownloadTaskManager
         }
 
         return Path.Combine(parentDir, $"{baseName}_{counter}");
-    }
-
-    private async Task ExecuteMultiModLoaderDownloadAsync(
-        string minecraftVersion,
-        List<ModLoaderSelection> modLoaderSelections,
-        string customVersionName,
-        DownloadTaskInfo task,
-        string? versionIconPath)
-    {
-        try
-        {
-            var minecraftDirectory = _fileService.GetMinecraftDataPath();
-
-            task.StatusMessage = $"正在下载 {string.Join(" + ", modLoaderSelections.Select(s => s.Type))}...";
-            OnTaskProgressChanged(task);
-
-            await _minecraftVersionService.DownloadMultiModLoaderVersionAsync(
-                minecraftVersion,
-                modLoaderSelections,
-                minecraftDirectory,
-                status =>
-                {
-                    if (_currentCts?.IsCancellationRequested == true) return;
-                    
-                    task.Progress = Math.Clamp(status.Percent, 0, 100);
-                    task.StatusMessage = $"正在下载 {string.Join(" + ", modLoaderSelections.Select(s => s.Type))}... {status.Percent:F0}%";
-                    task.SpeedText = status.SpeedText;
-                    OnTaskProgressChanged(task);
-                },
-                _currentCts?.Token ?? CancellationToken.None,
-                customVersionName,
-                versionIconPath);
-
-            if (_currentCts?.IsCancellationRequested == true)
-            {
-                return;
-            }
-
-            CompleteTask(task, true);
-        }
-        catch (OperationCanceledException)
-        {
-            _logger.LogInformation("下载任务已取消: {TaskName}", task.TaskName);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "下载任务失败: {TaskName}", task.TaskName);
-            FailTask(task, ex.Message);
-        }
     }
 }

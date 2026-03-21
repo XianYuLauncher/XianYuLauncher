@@ -36,10 +36,10 @@ namespace XianYuLauncher.ViewModels
         private readonly IModDetailLoadOrchestrator _modDetailLoadOrchestrator;
         private readonly IVersionInfoService _versionInfoService;
         private readonly IUiDispatcher _uiDispatcher;
-        private readonly ShellViewModel _shellViewModel;
         private readonly IGameDirResolver _gameDirResolver;
         private readonly IHttpImageSourceService _httpImageSourceService;
         private readonly ILogger<ModDownloadDetailViewModel> _logger;
+        private string? _downloadPreparationTaskId;
 
         [ObservableProperty]
         private string _modId = string.Empty;
@@ -385,12 +385,51 @@ namespace XianYuLauncher.ViewModels
         {
             // TODO(mod-download): 后续更稳的做法是把“下载会话 UI 初始化”从主资源下载启动中彻底拆开，
             // 由依赖下载和主资源下载共用同一个开始入口，避免 TeachingTip 显示时机再次因时序调整而回归。
-            _downloadTaskManager.IsTeachingTipEnabled = true;
+            _downloadPreparationTaskId ??= _downloadTaskManager.CreateExternalTask(ModName, ProjectType, showInTeachingTip: true);
+            _downloadTaskManager.UpdateExternalTask(_downloadPreparationTaskId, 0, "正在解析前置依赖...");
+        }
 
-            _shellViewModel.DownloadTaskName = ModName;
-            _shellViewModel.DownloadStatusMessage = "正在解析前置依赖...";
-            _shellViewModel.DownloadProgress = 0;
-            _shellViewModel.IsDownloadTeachingTipOpen = true;
+        private void UpdateDownloadTeachingTip(double progress, string statusMessage)
+        {
+            if (string.IsNullOrEmpty(_downloadPreparationTaskId))
+            {
+                return;
+            }
+
+            _downloadTaskManager.UpdateExternalTask(_downloadPreparationTaskId, progress, statusMessage);
+        }
+
+        private void CompleteDownloadTeachingTip(string statusMessage = "前置依赖已就绪，正在加入下载队列...")
+        {
+            if (string.IsNullOrEmpty(_downloadPreparationTaskId))
+            {
+                return;
+            }
+
+            _downloadTaskManager.CompleteExternalTask(_downloadPreparationTaskId, statusMessage);
+            _downloadPreparationTaskId = null;
+        }
+
+        private void CancelDownloadTeachingTip(string statusMessage = "下载已取消")
+        {
+            if (string.IsNullOrEmpty(_downloadPreparationTaskId))
+            {
+                return;
+            }
+
+            _downloadTaskManager.CancelExternalTask(_downloadPreparationTaskId, statusMessage);
+            _downloadPreparationTaskId = null;
+        }
+
+        private void FailDownloadTeachingTip(string errorMessage)
+        {
+            if (string.IsNullOrEmpty(_downloadPreparationTaskId))
+            {
+                return;
+            }
+
+            _downloadTaskManager.FailExternalTask(_downloadPreparationTaskId, errorMessage, $"准备阶段失败: {errorMessage}");
+            _downloadPreparationTaskId = null;
         }
 
         public ModDownloadDetailViewModel(
@@ -405,7 +444,6 @@ namespace XianYuLauncher.ViewModels
             IModDetailLoadOrchestrator modDetailLoadOrchestrator,
             IVersionInfoService versionInfoService,
             IUiDispatcher uiDispatcher,
-            ShellViewModel shellViewModel,
             IGameDirResolver gameDirResolver,
             IHttpImageSourceService httpImageSourceService,
             ILogger<ModDownloadDetailViewModel> logger)
@@ -421,7 +459,6 @@ namespace XianYuLauncher.ViewModels
             _modDetailLoadOrchestrator = modDetailLoadOrchestrator;
             _versionInfoService = versionInfoService;
             _uiDispatcher = uiDispatcher;
-            _shellViewModel = shellViewModel;
             _gameDirResolver = gameDirResolver;
             _httpImageSourceService = httpImageSourceService;
             _logger = logger;
@@ -1261,12 +1298,15 @@ namespace XianYuLauncher.ViewModels
                     throw new Exception("无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
                 }
 
+                CompleteDownloadTeachingTip();
+
                 await _modResourceDownloadOrchestrator.StartResourceDownloadAsync(
                     ModName,
                     ProjectType,
                     ModIconUrl,
                     resolvedDownloadUrl,
-                    savePath);
+                    savePath,
+                    showInTeachingTip: true);
 
                 DownloadStatus = "下载已开始，请查看下载提示。";
                 
@@ -1275,6 +1315,7 @@ namespace XianYuLauncher.ViewModels
             }
             catch (Exception ex)
             {
+                FailDownloadTeachingTip(ex.Message);
                 IsDownloading = false;
                 DownloadStatus = $"下载失败: {ex.Message}";
                 await ShowMessageAsync($"下载失败: {ex.Message}");
@@ -1304,6 +1345,7 @@ namespace XianYuLauncher.ViewModels
                     DownloadStatus = statusMessage;
                     DownloadProgress = progress;
                     DownloadProgressText = $"{progress:F1}%";
+                    UpdateDownloadTeachingTip(progress, statusMessage);
                 });
         }
 
@@ -1758,17 +1800,21 @@ namespace XianYuLauncher.ViewModels
                     throw new Exception("无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
                 }
 
+                CompleteDownloadTeachingTip();
+
                 await _modResourceDownloadOrchestrator.StartResourceDownloadAsync(
                     ModName,
                     ProjectType,
                     ModIconUrl,
                     resolvedDownloadUrl,
-                    savePath);
+                    savePath,
+                    showInTeachingTip: true);
 
                 DownloadStatus = "下载已开始，请查看下载提示。";
             }
             catch (Exception ex)
             {
+                FailDownloadTeachingTip(ex.Message);
                 ErrorMessage = ex.Message;
                 DownloadStatus = "下载失败！";
             }
@@ -2082,21 +2128,26 @@ namespace XianYuLauncher.ViewModels
                     await ProcessDependenciesForResourceAsync(modVersion, worldDependencyDir, targetWorldVersion);
                 }
 
+                CompleteDownloadTeachingTip();
+
                 await _downloadTaskManager.StartWorldDownloadAsync(
                     ModName,
                     resolvedDownloadUrl,
                     savesDir,
                     modVersion.FileName,
-                    ModIconUrl);
+                    ModIconUrl,
+                    showInTeachingTip: true);
 
                 DownloadStatus = "世界下载已开始，请查看下载提示。";
             }
             catch (TaskCanceledException)
             {
+                CancelDownloadTeachingTip();
                 DownloadStatus = "下载已取消";
             }
             catch (Exception ex)
             {
+                FailDownloadTeachingTip(ex.Message);
                 ErrorMessage = ex.Message;
                 DownloadStatus = "下载失败！";
                 await ShowMessageAsync($"世界存档安装失败: {ex.Message}");
@@ -2674,13 +2725,15 @@ namespace XianYuLauncher.ViewModels
                 // 注意：这里仍然是同步等待依赖下载完成，如果依赖较多可能会导致短暂无响应
                 // 理想情况下应该将依赖下载也纳入 DownloadTaskManager 管理
                 await ProcessDependenciesForResourceAsync(modVersion, targetDir, gameVersion);
+                CompleteDownloadTeachingTip();
 
                 await _modResourceDownloadOrchestrator.StartResourceDownloadAsync(
                     ModName,
                     ProjectType,
                     ModIconUrl,
                     resolvedQuickInstallDownloadUrl,
-                    savePath);
+                    savePath,
+                    showInTeachingTip: true);
 
                 DownloadStatus = "下载已开始，请查看下载提示。";
                 IsDownloading = false;
@@ -2688,11 +2741,13 @@ namespace XianYuLauncher.ViewModels
             }
             catch (TaskCanceledException)
             {
+                CancelDownloadTeachingTip();
                 IsDownloading = false;
                 await ShowMessageAsync("下载已取消。");
             }
             catch (Exception ex)
             {
+                FailDownloadTeachingTip(ex.Message);
                 WriteErrorLog(ex, "一键安装执行失败");
                 IsDownloading = false;
                 await ShowMessageAsync($"安装失败: {ex.Message}");

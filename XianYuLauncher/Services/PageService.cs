@@ -17,6 +17,7 @@ public class PageService : IPageService
                     Configure<LaunchViewModel, LaunchPage>();
                     // Configure<下载ViewModel, 下载Page>();
                     // Configure<ModViewModel, ModPage>();
+                    Configure<DownloadQueueViewModel, DownloadQueuePage>();
                     Configure<ModDownloadDetailViewModel, ModDownloadDetailPage>();
                     Configure<SettingsViewModel, SettingsPage>();
                     Configure<ModLoaderSelectorViewModel, ModLoaderSelectorPage>();

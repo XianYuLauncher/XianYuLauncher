@@ -755,28 +755,11 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     {
         try
         {
-            // 检查是否已有下载任务在进行
-            if (_downloadTaskManager.HasActiveDownload)
-            {
-                await ShowMessageAsync("ModLoaderSelectionPage_DownloadInProgressText".GetLocalized());
-                return;
-            }
-            
-            // 启用 TeachingTip 显示
-            _downloadTaskManager.IsTeachingTipEnabled = true;
-            
-            // 通知 ShellViewModel 打开 TeachingTip
-            var shellViewModel = App.GetService<ShellViewModel>();
-            if (shellViewModel != null)
-            {
-                shellViewModel.IsDownloadTeachingTipOpen = true;
-            }
-            
             // 下载逻辑 - 使用 DownloadTaskManager
             if (string.IsNullOrEmpty(SelectedModLoader) && !IsOptifineSelected && !IsLiteLoaderSelected)
             {
                 // 下载原版Minecraft（没有选择任何加载器）
-                await _downloadTaskManager.StartVanillaDownloadAsync(SelectedMinecraftVersion, VersionName, SelectedIconPath);
+                await _downloadTaskManager.StartVanillaDownloadAsync(SelectedMinecraftVersion, VersionName, SelectedIconPath, showInTeachingTip: true);
             }
             else
             {
@@ -910,7 +893,8 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                         SelectedMinecraftVersion,
                         modLoaderSelections,
                         VersionName,
-                        SelectedIconPath);
+                        SelectedIconPath,
+                        showInTeachingTip: true);
                 }
                 else
                 {

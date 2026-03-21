@@ -868,6 +868,21 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     private const string HideSnapshotVersionsKey = "HideSnapshotVersions";
     
     /// <summary>
+    /// 下载任务并发数设置
+    /// </summary>
+    [ObservableProperty]
+    private int _downloadQueueMaxConcurrentTasks = 2;
+
+    private const int DownloadQueueMinConcurrentTasks = 1;
+    private const int DownloadQueueMaxConcurrentTasksUpperBound = 8;
+    private bool _isApplyingDownloadQueueMaxConcurrentTasks;
+
+    /// <summary>
+    /// 下载任务并发数设置键
+    /// </summary>
+    private const string DownloadQueueMaxConcurrentTasksKey = "DownloadQueueMaxConcurrentTasks";
+
+    /// <summary>
     /// 下载线程数设置
     /// </summary>
     [ObservableProperty]
@@ -1336,6 +1351,20 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     private async Task LoadDownloadThreadCountAsync()
     {
+        var queueValue = await _settingsRepository.ReadAsync<int?>(DownloadQueueMaxConcurrentTasksKey);
+        var normalizedQueueValue = queueValue ?? 2;
+        if (normalizedQueueValue < DownloadQueueMinConcurrentTasks)
+        {
+            normalizedQueueValue = DownloadQueueMinConcurrentTasks;
+        }
+
+        if (normalizedQueueValue > DownloadQueueMaxConcurrentTasksUpperBound)
+        {
+            normalizedQueueValue = DownloadQueueMaxConcurrentTasksUpperBound;
+        }
+
+        DownloadQueueMaxConcurrentTasks = normalizedQueueValue;
+
         // 读取下载线程数设置，如果不存在则使用默认值32
         var value = await _settingsRepository.ReadAsync<int?>(DownloadThreadCountKey);
         DownloadThreadCount = value ?? 32;
@@ -1343,6 +1372,37 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
          // 读取下载分片数设置，如果不存在则使用默认值4
         var shardValue = await _settingsRepository.ReadAsync<int?>(DownloadShardCountKey);
         DownloadShardCount = shardValue ?? 4;
+    }
+
+    /// <summary>
+    /// 当下载任务并发数设置变化时保存
+    /// </summary>
+    partial void OnDownloadQueueMaxConcurrentTasksChanged(int value)
+    {
+        if (_isApplyingDownloadQueueMaxConcurrentTasks)
+        {
+            return;
+        }
+
+        var normalizedValue = value;
+        if (normalizedValue < DownloadQueueMinConcurrentTasks)
+        {
+            normalizedValue = DownloadQueueMinConcurrentTasks;
+        }
+
+        if (normalizedValue > DownloadQueueMaxConcurrentTasksUpperBound)
+        {
+            normalizedValue = DownloadQueueMaxConcurrentTasksUpperBound;
+        }
+
+        if (normalizedValue != value)
+        {
+            _isApplyingDownloadQueueMaxConcurrentTasks = true;
+            DownloadQueueMaxConcurrentTasks = normalizedValue;
+            _isApplyingDownloadQueueMaxConcurrentTasks = false;
+        }
+
+        QueueSettingWrite(DownloadQueueMaxConcurrentTasksKey, () => _settingsRepository.SaveAsync(DownloadQueueMaxConcurrentTasksKey, normalizedValue));
     }
     
     /// <summary>

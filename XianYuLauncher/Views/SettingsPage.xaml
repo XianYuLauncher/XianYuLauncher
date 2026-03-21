@@ -823,6 +823,14 @@
                     <ToggleSwitch IsOn="{x:Bind ViewModel.HideSnapshotVersions, Mode=TwoWay}" />
                 </controls:SettingsCard>
 
+                <!-- 下载任务并发数 -->
+                <controls:SettingsCard x:Uid="Settings_DownloadQueueMaxConcurrentTasks" Header="下载任务并发数" Description="同时执行的下载任务数量，默认 2">
+                    <controls:SettingsCard.HeaderIcon>
+                        <FontIcon Glyph="&#xE945;" />
+                    </controls:SettingsCard.HeaderIcon>
+                    <NumberBox Value="{x:Bind ViewModel.DownloadQueueMaxConcurrentTasks, Mode=TwoWay}" Minimum="1" Maximum="8" SpinButtonPlacementMode="Compact" SmallChange="1" LargeChange="1" Width="120" />
+                </controls:SettingsCard>
+
                 <!-- 下载线程数 -->
                 <controls:SettingsCard x:Uid="Settings_DownloadThreadCount" Header="下载线程数" Description="同时下载资源文件的数量，数值越大下载越快">
                     <controls:SettingsCard.HeaderIcon>

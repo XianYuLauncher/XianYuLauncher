@@ -129,7 +129,6 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
                 {
                     string statusMessage = $"正在下载前置资源: {fileName}";
                     onProgress?.Invoke(fileName, progress, statusMessage);
-                    _downloadTaskManager.NotifyProgress($"前置: {fileName}", progress, statusMessage);
                 },
                 resolveDestinationPathAsync: resolveModrinthDependencyTargetAsync);
 
@@ -158,7 +157,6 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
             {
                 string statusMessage = $"正在下载前置资源: {fileName}";
                 onProgress?.Invoke(fileName, progress, statusMessage);
-                _downloadTaskManager.NotifyProgress($"前置: {fileName}", progress, statusMessage);
             },
             resolveDestinationPathAsync: resolveCurseForgeDependencyTargetAsync);
     }
@@ -169,10 +167,14 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
         string modIconUrl,
         string downloadUrl,
         string savePath,
-        Action? initializeTeachingTip = null)
+        bool showInTeachingTip = false)
     {
-        _downloadTaskManager.IsTeachingTipEnabled = true;
-        initializeTeachingTip?.Invoke();
-        await _downloadTaskManager.StartResourceDownloadAsync(modName, projectType, downloadUrl, savePath, modIconUrl);
+        await _downloadTaskManager.StartResourceDownloadAsync(
+            modName,
+            projectType,
+            downloadUrl,
+            savePath,
+            modIconUrl,
+            showInTeachingTip: showInTeachingTip);
     }
 }

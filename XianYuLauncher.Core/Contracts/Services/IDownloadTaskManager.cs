@@ -8,14 +8,9 @@ namespace XianYuLauncher.Core.Contracts.Services;
 public interface IDownloadTaskManager
 {
     /// <summary>
-    /// 当前下载任务（null 表示没有活动下载）
+    /// 当前下载队列快照（包含排队中、执行中与历史任务）
     /// </summary>
-    DownloadTaskInfo? CurrentTask { get; }
-
-    /// <summary>
-    /// 是否有活动下载
-    /// </summary>
-    bool HasActiveDownload { get; }
+    IReadOnlyList<DownloadTaskInfo> TasksSnapshot { get; }
 
     /// <summary>
     /// 任务状态变化事件
@@ -28,11 +23,16 @@ public interface IDownloadTaskManager
     event EventHandler<DownloadTaskInfo>? TaskProgressChanged;
 
     /// <summary>
+    /// 队列快照发生变化时触发
+    /// </summary>
+    event EventHandler? TasksSnapshotChanged;
+
+    /// <summary>
     /// 启动原版 Minecraft 下载
     /// </summary>
     /// <param name="versionId">版本ID</param>
     /// <param name="customVersionName">自定义版本名称</param>
-    Task StartVanillaDownloadAsync(string versionId, string customVersionName, string? versionIconPath = null);
+    Task StartVanillaDownloadAsync(string versionId, string customVersionName, string? versionIconPath = null, bool showInTeachingTip = false);
 
     /// <summary>
     /// 启动 ModLoader 版本下载
@@ -46,7 +46,8 @@ public interface IDownloadTaskManager
         string modLoaderType,
         string modLoaderVersion,
         string customVersionName,
-        string? versionIconPath = null);
+        string? versionIconPath = null,
+        bool showInTeachingTip = false);
 
     /// <summary>
     /// 启动多加载器组合版本下载（新）
@@ -58,7 +59,8 @@ public interface IDownloadTaskManager
         string minecraftVersion,
         IEnumerable<ModLoaderSelection> modLoaderSelections,
         string customVersionName,
-        string? versionIconPath = null);
+        string? versionIconPath = null,
+        bool showInTeachingTip = false);
 
     /// <summary>
     /// 启动 Optifine+Forge 版本下载（已废弃，保留用于向后兼容）
@@ -82,12 +84,42 @@ public interface IDownloadTaskManager
     /// <param name="url">下载URL</param>
     /// <param name="targetPath">保存路径</param>
     /// <param name="description">任务描述（如：下载服务端 server.jar）</param>
-    Task StartFileDownloadAsync(string url, string targetPath, string description);
+    Task StartFileDownloadAsync(string url, string targetPath, string description, bool showInTeachingTip = false);
 
     /// <summary>
-    /// 取消当前下载
+    /// 按任务 ID 取消排队中或执行中的任务
     /// </summary>
-    void CancelCurrentDownload();
+    void CancelTask(string taskId);
+
+    /// <summary>
+    /// 重试失败任务
+    /// </summary>
+    Task RetryTaskAsync(string taskId);
+
+    /// <summary>
+    /// 创建一个由业务层主动驱动的外部任务（如依赖解析、收藏夹批量导入）。
+    /// </summary>
+    string CreateExternalTask(string taskName, string versionName = "", bool showInTeachingTip = false);
+
+    /// <summary>
+    /// 更新外部任务的进度与状态文案。
+    /// </summary>
+    void UpdateExternalTask(string taskId, double progress, string statusMessage);
+
+    /// <summary>
+    /// 将外部任务标记为完成。
+    /// </summary>
+    void CompleteExternalTask(string taskId, string statusMessage = "下载完成");
+
+    /// <summary>
+    /// 将外部任务标记为失败。
+    /// </summary>
+    void FailExternalTask(string taskId, string errorMessage, string? statusMessage = null);
+
+    /// <summary>
+    /// 将外部任务标记为取消。
+    /// </summary>
+    void CancelExternalTask(string taskId, string statusMessage = "下载已取消");
 
     /// <summary>
     /// 启动社区资源下载（Mod、资源包、光影、数据包、世界）
@@ -104,7 +136,8 @@ public interface IDownloadTaskManager
         string downloadUrl,
         string savePath,
         string? iconUrl = null,
-        IEnumerable<ResourceDependency>? dependencies = null);
+        IEnumerable<ResourceDependency>? dependencies = null,
+        bool showInTeachingTip = false);
 
     /// <summary>
     /// 启动世界下载（下载zip并解压到saves目录）
@@ -119,21 +152,6 @@ public interface IDownloadTaskManager
         string downloadUrl,
         string savesDirectory,
         string fileName,
-        string? iconUrl = null);
-
-    /// <summary>
-    /// 通知进度更新（用于非 DownloadTaskManager 管理的下载，如依赖下载）
-    /// 这会触发 TaskStateChanged 和 TaskProgressChanged 事件
-    /// </summary>
-    /// <param name="taskName">任务名称</param>
-    /// <param name="progress">进度（0-100）</param>
-    /// <param name="statusMessage">状态消息</param>
-    /// <param name="state">任务状态</param>
-    void NotifyProgress(string taskName, double progress, string statusMessage, DownloadTaskState state = DownloadTaskState.Downloading);
-
-    /// <summary>
-    /// 是否启用 TeachingTip 显示（用于控制后台下载时是否显示 TeachingTip）
-    /// 当用户点击"后台下载"按钮时设置为 true，下载完成/取消/失败后自动重置为 false
-    /// </summary>
-    bool IsTeachingTipEnabled { get; set; }
+        string? iconUrl = null,
+        bool showInTeachingTip = false);
 }

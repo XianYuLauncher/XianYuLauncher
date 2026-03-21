@@ -367,6 +367,8 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "获取 Minecraft 版本 {VersionId} 的 JSON 失败", versionId);
+            System.Diagnostics.Debug.WriteLine($"[MinecraftVersionService] 获取版本 JSON 失败: versionId={versionId}, ex={ex.GetType().Name}: {ex.Message}");
             throw new Exception($"Failed to get version info JSON for {versionId}", ex);
         }
     }
@@ -1771,8 +1773,11 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 移动临时文件到目标位置
             File.Move(tempPath, savePath);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogDebug(ex, "[Assets] 单文件下载异常: Url={Url}, SavePath={SavePath}, TimeoutSeconds={TimeoutSeconds}", url, savePath, timeoutSeconds);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 单文件下载异常: url={url}, savePath={savePath}, timeout={timeoutSeconds}s, ex={ex.GetType().Name}: {ex.Message}");
+
             // 清理临时文件
             if (File.Exists(tempPath))
             {
