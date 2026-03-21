@@ -89,103 +89,138 @@
                         </Border>
                     </Grid>
 
-                    <!-- 运行中任务 -->
-                    <StackPanel Spacing="12">
-                        <TextBlock Text="运行中" Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                        <ItemsControl ItemsSource="{x:Bind ViewModel.RunningTasks, Mode=OneWay}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="viewModels:DownloadQueueTaskItemViewModel">
-                                    <controls:SettingsCard Margin="0,0,0,8" IsClickEnabled="False">
-                                        <controls:SettingsCard.HeaderIcon>
-                                            <FontIcon Glyph="{x:Bind IconGlyph, Mode=OneWay}" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
-                                        </controls:SettingsCard.HeaderIcon>
-                                        
-                                        <controls:SettingsCard.Header>
-                                            <StackPanel Spacing="4" Margin="0,4,0,4">
-                                                <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}" Style="{ThemeResource BodyTextBlockStyle}" TextTrimming="CharacterEllipsis" />
-                                                <TextBlock Text="{x:Bind StatusMessage, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
-                                                <ProgressBar Value="{x:Bind Progress, Mode=OneWay}" Maximum="100" Height="4" CornerRadius="2" Margin="0,4,0,0" Width="200" HorizontalAlignment="Left" />
+                    <StackPanel Visibility="{x:Bind ViewModel.IsEmptyStateVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Spacing="20"
+                                HorizontalAlignment="Center"
+                                Margin="0,80,0,0"
+                                Padding="40,20,40,20">
+                            <FontIcon Glyph="&#xE896;"
+                                      FontSize="80"
+                                      Opacity="0.2"
+                                      Margin="0,0,0,8"
+                                      HorizontalAlignment="Center" />
+                            <TextBlock Text="下载队列还是空的"
+                                       FontSize="20"
+                                       FontWeight="SemiBold"
+                                       Opacity="0.7"
+                                       TextAlignment="Center"
+                                       Margin="0,0,0,4"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock Text="新的下载任务、排队任务和最近记录会在这里出现。你可以从版本安装、资源下载或 Mod 下载页发起任务。"
+                                       FontSize="15"
+                                       Opacity="0.6"
+                                       TextAlignment="Center"
+                                       TextWrapping="WrapWholeWords"
+                                       LineHeight="22"
+                                       MaxWidth="420"
+                                       HorizontalAlignment="Center" />
+                            <Button Click="NavigateToDownloadPage_Click"
+                                    HorizontalAlignment="Center"
+                                    Margin="0,8,0,0"
+                                    Padding="16,10">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE896;" FontSize="16" />
+                                    <TextBlock Text="前往下载" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                    <StackPanel Spacing="24"
+                                Visibility="{x:Bind ViewModel.IsEmptyStateVisible, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                        <!-- 运行中任务 -->
+                        <StackPanel Spacing="12"
+                                    Visibility="{x:Bind ViewModel.HasRunningTasks, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Text="运行中" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.RunningTasks, Mode=OneWay}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:DownloadQueueTaskItemViewModel">
+                                        <controls:SettingsCard Margin="0,0,0,8" IsClickEnabled="False">
+                                            <controls:SettingsCard.HeaderIcon>
+                                                <FontIcon Glyph="{x:Bind IconGlyph, Mode=OneWay}" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+                                            </controls:SettingsCard.HeaderIcon>
+                                            
+                                            <controls:SettingsCard.Header>
+                                                <StackPanel Spacing="4" Margin="0,4,0,4">
+                                                    <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}" Style="{ThemeResource BodyTextBlockStyle}" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{x:Bind StatusMessage, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                                                    <ProgressBar Value="{x:Bind Progress, Mode=OneWay}" Maximum="100" Height="4" CornerRadius="2" Margin="0,4,0,0" Width="200" HorizontalAlignment="Left" />
+                                                </StackPanel>
+                                            </controls:SettingsCard.Header>
+                                            
+                                            <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                                                <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                                    <TextBlock Text="{x:Bind TaskType, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                                                    <TextBlock Text="{x:Bind SpeedText, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                </StackPanel>
+                                                <Button Style="{ThemeResource SubtleButtonStyle}" 
+                                                        Command="{x:Bind CancelCommand}"
+                                                        Visibility="{x:Bind CanCancel, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                        ToolTipService.ToolTip="取消任务"
+                                                        Padding="8">
+                                                    <FontIcon Glyph="&#xE711;" FontSize="14" />
+                                                </Button>
                                             </StackPanel>
-                                        </controls:SettingsCard.Header>
-                                        
-                                        <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                                            <!-- 任务信息 -->
-                                            <StackPanel Orientation="Horizontal" Spacing="12" VerticalAlignment="Center">
+                                        </controls:SettingsCard>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <!-- 排队中任务 -->
+                        <StackPanel Spacing="12"
+                                    Visibility="{x:Bind ViewModel.HasQueuedTasks, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Text="排队中" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.QueuedTasks, Mode=OneWay}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:DownloadQueueTaskItemViewModel">
+                                        <controls:SettingsCard Header="{x:Bind DisplayName, Mode=OneWay}" Description="{x:Bind StatusMessage, Mode=OneWay}" Margin="0,0,0,8" IsClickEnabled="False">
+                                            <controls:SettingsCard.HeaderIcon>
+                                                <FontIcon Glyph="{x:Bind IconGlyph, Mode=OneWay}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            </controls:SettingsCard.HeaderIcon>
+                                            
+                                            <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
                                                 <TextBlock Text="{x:Bind TaskType, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
-                                                <TextBlock Text="{x:Bind SpeedText, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                <Button Style="{ThemeResource SubtleButtonStyle}" 
+                                                        Command="{x:Bind CancelCommand}"
+                                                        Visibility="{x:Bind CanCancel, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                        ToolTipService.ToolTip="取消任务"
+                                                        Padding="8">
+                                                    <FontIcon Glyph="&#xE711;" FontSize="14" />
+                                                </Button>
                                             </StackPanel>
-                                            
-                                            <!-- 取消按钮 -->
-                                            <Button Style="{ThemeResource SubtleButtonStyle}" 
-                                                    Command="{x:Bind CancelCommand}"
-                                                    Visibility="{x:Bind CanCancel, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                    ToolTipService.ToolTip="取消任务"
-                                                    Padding="8">
-                                                <FontIcon Glyph="&#xE711;" FontSize="14" />
-                                            </Button>
-                                        </StackPanel>
-                                    </controls:SettingsCard>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
+                                        </controls:SettingsCard>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
 
-                    <!-- 排队中任务 -->
-                    <StackPanel Spacing="12">
-                        <TextBlock Text="排队中" Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                        <ItemsControl ItemsSource="{x:Bind ViewModel.QueuedTasks, Mode=OneWay}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="viewModels:DownloadQueueTaskItemViewModel">
-                                    <controls:SettingsCard Header="{x:Bind DisplayName, Mode=OneWay}" Description="{x:Bind StatusMessage, Mode=OneWay}" Margin="0,0,0,8" IsClickEnabled="False">
-                                        <controls:SettingsCard.HeaderIcon>
-                                            <FontIcon Glyph="{x:Bind IconGlyph, Mode=OneWay}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                        </controls:SettingsCard.HeaderIcon>
-                                        
-                                        <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                                            <TextBlock Text="{x:Bind TaskType, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                        <!-- 最近任务 -->
+                        <StackPanel Spacing="12"
+                                    Visibility="{x:Bind ViewModel.HasRecentTasks, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock Text="近期任务" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.RecentTasks, Mode=OneWay}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="viewModels:DownloadQueueTaskItemViewModel">
+                                        <controls:SettingsCard Header="{x:Bind DisplayName, Mode=OneWay}" Description="{x:Bind StatusMessage, Mode=OneWay}" Margin="0,0,0,8" IsClickEnabled="False">
+                                            <controls:SettingsCard.HeaderIcon>
+                                                <FontIcon Glyph="{x:Bind IconGlyph, Mode=OneWay}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            </controls:SettingsCard.HeaderIcon>
                                             
-                                            <!-- 取消按钮 -->
-                                            <Button Style="{ThemeResource SubtleButtonStyle}" 
-                                                    Command="{x:Bind CancelCommand}"
-                                                    Visibility="{x:Bind CanCancel, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                    ToolTipService.ToolTip="取消任务"
-                                                    Padding="8">
-                                                <FontIcon Glyph="&#xE711;" FontSize="14" />
-                                            </Button>
-                                        </StackPanel>
-                                    </controls:SettingsCard>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-
-                    <!-- 最近任务 -->
-                    <StackPanel Spacing="12">
-                        <TextBlock Text="近期任务" Style="{ThemeResource BodyStrongTextBlockStyle}" />
-                        <ItemsControl ItemsSource="{x:Bind ViewModel.RecentTasks, Mode=OneWay}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="viewModels:DownloadQueueTaskItemViewModel">
-                                    <controls:SettingsCard Header="{x:Bind DisplayName, Mode=OneWay}" Description="{x:Bind StatusMessage, Mode=OneWay}" Margin="0,0,0,8" IsClickEnabled="False">
-                                        <controls:SettingsCard.HeaderIcon>
-                                            <FontIcon Glyph="{x:Bind IconGlyph, Mode=OneWay}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                        </controls:SettingsCard.HeaderIcon>
-                                        
-                                        <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
-                                            <TextBlock Text="{x:Bind TaskType, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
-                                            
-                                            <!-- 重试按钮 -->
-                                            <Button Style="{ThemeResource SubtleButtonStyle}" 
-                                                    Command="{x:Bind RetryCommand}"
-                                                    Visibility="{x:Bind CanRetry, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                    ToolTipService.ToolTip="重试任务"
-                                                    Padding="8">
-                                                <FontIcon Glyph="&#xE72C;" FontSize="14" />
-                                            </Button>
-                                        </StackPanel>
-                                    </controls:SettingsCard>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                                            <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                                                <TextBlock Text="{x:Bind TaskType, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                                                <Button Style="{ThemeResource SubtleButtonStyle}" 
+                                                        Command="{x:Bind RetryCommand}"
+                                                        Visibility="{x:Bind CanRetry, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                        ToolTipService.ToolTip="重试任务"
+                                                        Padding="8">
+                                                    <FontIcon Glyph="&#xE72C;" FontSize="14" />
+                                                </Button>
+                                            </StackPanel>
+                                        </controls:SettingsCard>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
                     </StackPanel>
                     
                 </StackPanel>

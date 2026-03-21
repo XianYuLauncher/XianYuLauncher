@@ -202,6 +202,18 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
     [ObservableProperty]
     private int _failedCount;
 
+    [ObservableProperty]
+    private bool _isEmptyStateVisible = true;
+
+    [ObservableProperty]
+    private bool _hasRunningTasks;
+
+    [ObservableProperty]
+    private bool _hasQueuedTasks;
+
+    [ObservableProperty]
+    private bool _hasRecentTasks;
+
     public ObservableCollection<DownloadQueueTaskItemViewModel> RunningTasks { get; } = new();
     public ObservableCollection<DownloadQueueTaskItemViewModel> QueuedTasks { get; } = new();
     public ObservableCollection<DownloadQueueTaskItemViewModel> RecentTasks { get; } = new();
@@ -272,6 +284,10 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
         RunningCount = runningTasks.Count;
         QueuedCount = queuedTasks.Count;
         FailedCount = snapshot.Count(task => task.State == DownloadTaskState.Failed);
+        HasRunningTasks = runningTasks.Count > 0;
+        HasQueuedTasks = queuedTasks.Count > 0;
+        HasRecentTasks = recentTasks.Count > 0;
+        IsEmptyStateVisible = runningTasks.Count == 0 && queuedTasks.Count == 0 && recentTasks.Count == 0;
 
         var rawTotalBytesPerSecond = snapshot
             .Where(task => task.State == DownloadTaskState.Downloading)

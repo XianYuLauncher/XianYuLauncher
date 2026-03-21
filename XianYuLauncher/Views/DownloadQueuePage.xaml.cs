@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Views;
@@ -18,5 +19,11 @@ public sealed partial class DownloadQueuePage : Page
     private void DownloadQueuePage_Unloaded(object sender, RoutedEventArgs e)
     {
         ViewModel.Dispose();
+    }
+
+    private void NavigateToDownloadPage_Click(object sender, RoutedEventArgs e)
+    {
+        ResourceDownloadPage.TargetTabIndex = 0;
+        App.GetService<INavigationService>().NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
     }
 }
