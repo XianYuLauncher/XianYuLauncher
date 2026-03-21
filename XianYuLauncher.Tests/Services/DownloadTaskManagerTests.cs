@@ -422,7 +422,7 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
-    public void ExternalTaskLifecycle_ShouldRaiseEventsAndRemoveCompletedTask()
+    public void ExternalTaskLifecycle_ShouldRaiseEventsAndKeepCompletedTaskInSnapshot()
     {
         // Arrange
         var stateChanges = new List<DownloadTaskInfo>();
@@ -456,8 +456,30 @@ public class DownloadTaskManagerTests
             && task.Progress == 42
             && task.StatusResourceKey == "DownloadQueue_Status_PreparingDependencies"
             && task.CreatedAtUtc <= task.LastUpdatedAtUtc);
-        _downloadTaskManager.TasksSnapshot.Should().NotContain(task => task.TaskId == taskId);
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.State == DownloadTaskState.Completed
+            && task.StatusResourceKey == "DownloadQueue_Status_Completed"
+            && task.ShowInTeachingTip);
         snapshotChangedCount.Should().BeGreaterThanOrEqualTo(4);
+    }
+
+    [Fact]
+    public void UpdateExternalTask_WhenTaskAlreadyCompleted_ShouldIgnoreFurtherUpdates()
+    {
+        // Arrange
+        var taskId = _downloadTaskManager.CreateExternalTask("收藏夹导入", "favorite-import");
+        _downloadTaskManager.CompleteExternalTask(taskId, "下载完成", statusResourceKey: "DownloadQueue_Status_Completed");
+
+        // Act
+        _downloadTaskManager.UpdateExternalTask(taskId, 50, "正在后台下载...", statusResourceKey: "DownloadQueue_Status_BackgroundDownloading");
+
+        // Assert
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.State == DownloadTaskState.Completed
+            && task.Progress == 100
+            && task.StatusResourceKey == "DownloadQueue_Status_Completed");
     }
 
     [Fact]

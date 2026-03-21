@@ -361,6 +361,12 @@ public class DownloadTaskManager : IDownloadTaskManager
                 return;
             }
 
+            if (taskInfo.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled)
+            {
+                _logger.LogWarning("外部下载任务已结束，忽略更新请求: {TaskId}", taskId);
+                return;
+            }
+
             taskInfo.Progress = Math.Clamp(progress, 0, 100);
             UpdateTaskStatus(taskInfo, statusMessage, statusResourceKey, statusResourceArguments);
             taskInfo.State = DownloadTaskState.Downloading;
@@ -387,22 +393,21 @@ public class DownloadTaskManager : IDownloadTaskManager
                 return;
             }
 
+            if (taskInfo.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled)
+            {
+                _logger.LogWarning("外部下载任务已结束，忽略完成请求: {TaskId}", taskId);
+                return;
+            }
+
             taskInfo.Progress = 100;
             UpdateTaskStatus(taskInfo, statusMessage, statusResourceKey ?? "DownloadQueue_Status_Completed", statusResourceArguments);
             taskInfo.ErrorMessage = null;
             ResetTaskSpeed(taskInfo);
             taskInfo.State = DownloadTaskState.Completed;
+            taskInfo.QueuePosition = null;
         }
 
         OnTaskStateChanged(taskInfo);
-
-        lock (_lock)
-        {
-            _externalTasks.Remove(taskId);
-            UpdateQueuePositionsLocked();
-        }
-
-        NotifyTasksSnapshotChanged();
     }
 
     public void FailExternalTask(
@@ -422,6 +427,12 @@ public class DownloadTaskManager : IDownloadTaskManager
                 return;
             }
 
+            if (taskInfo.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled)
+            {
+                _logger.LogWarning("外部下载任务已结束，忽略失败请求: {TaskId}", taskId);
+                return;
+            }
+
             taskInfo.ErrorMessage = errorMessage;
             UpdateTaskStatus(
                 taskInfo,
@@ -430,17 +441,10 @@ public class DownloadTaskManager : IDownloadTaskManager
                 statusResourceArguments ?? [errorMessage]);
             ResetTaskSpeed(taskInfo);
             taskInfo.State = DownloadTaskState.Failed;
+            taskInfo.QueuePosition = null;
         }
 
         OnTaskStateChanged(taskInfo);
-
-        lock (_lock)
-        {
-            _externalTasks.Remove(taskId);
-            UpdateQueuePositionsLocked();
-        }
-
-        NotifyTasksSnapshotChanged();
     }
 
     public void CancelExternalTask(
@@ -459,20 +463,19 @@ public class DownloadTaskManager : IDownloadTaskManager
                 return;
             }
 
+            if (taskInfo.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled)
+            {
+                _logger.LogWarning("外部下载任务已结束，忽略取消请求: {TaskId}", taskId);
+                return;
+            }
+
             UpdateTaskStatus(taskInfo, statusMessage, statusResourceKey ?? "DownloadQueue_Status_Cancelled", statusResourceArguments);
             ResetTaskSpeed(taskInfo);
             taskInfo.State = DownloadTaskState.Cancelled;
+            taskInfo.QueuePosition = null;
         }
 
         OnTaskStateChanged(taskInfo);
-
-        lock (_lock)
-        {
-            _externalTasks.Remove(taskId);
-            UpdateQueuePositionsLocked();
-        }
-
-        NotifyTasksSnapshotChanged();
     }
 
     /// <summary>
