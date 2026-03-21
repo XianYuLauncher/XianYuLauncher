@@ -554,9 +554,9 @@ public sealed partial class ShellPage : Page
 
         void OnDownloadTeachingTipClosed(TeachingTip s, TeachingTipClosedEventArgs _)
         {
-            if (TryGetShellDownloadTipModel(s) is { TaskId: var id } && !string.IsNullOrEmpty(id))
+            if (TryGetShellDownloadTipModel(s) is { } model)
             {
-                ViewModel.RemoveDownloadTeachingTipAfterClose(id);
+                ViewModel.RemoveDownloadTeachingTipAfterClose(model);
             }
         }
 

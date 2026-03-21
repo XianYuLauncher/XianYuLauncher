@@ -21,6 +21,7 @@ public partial class ShellViewModel : ObservableRecipient
 
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly DispatcherQueue _dispatcherQueue;
+    private readonly Dictionary<ShellDownloadTipItem, CancellationTokenSource> _pendingTipCloseOperations = new();
 
     [ObservableProperty]
     private bool isBackEnabled;
@@ -62,6 +63,14 @@ public partial class ShellViewModel : ObservableRecipient
 
     private void OnDownloadTeachingTipsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        if (e.OldItems != null)
+        {
+            foreach (var oldItem in e.OldItems.OfType<ShellDownloadTipItem>())
+            {
+                CancelScheduledTipRemoval(oldItem);
+            }
+        }
+
         RecalculateTipStackMargins();
     }
 
@@ -79,10 +88,17 @@ public partial class ShellViewModel : ObservableRecipient
     private static string GetTipMergeKey(DownloadTaskInfo info) =>
         string.IsNullOrEmpty(info.TaskName) ? info.TaskId : info.TaskName;
 
+    private ShellDownloadTipItem? FindTipByTaskId(string taskId)
+    {
+        return string.IsNullOrEmpty(taskId)
+            ? null
+            : DownloadTeachingTips.FirstOrDefault(t => t.TaskId == taskId);
+    }
+
     private ShellDownloadTipItem? FindExistingTip(DownloadTaskInfo info)
     {
         var mergeKey = GetTipMergeKey(info);
-        var match = DownloadTeachingTips.FirstOrDefault(t => t.TaskId == info.TaskId)
+        var match = FindTipByTaskId(info.TaskId)
             ?? DownloadTeachingTips.FirstOrDefault(t => t.MergeKey == mergeKey);
         if (match != null)
         {
@@ -119,6 +135,20 @@ public partial class ShellViewModel : ObservableRecipient
         return item;
     }
 
+    private void RefreshTipFromActiveTask(ShellDownloadTipItem tip, DownloadTaskInfo taskInfo)
+    {
+        CancelScheduledTipRemoval(tip);
+        tip.TaskId = taskInfo.TaskId;
+        tip.MergeKey = GetTipMergeKey(taskInfo);
+        tip.Title = taskInfo.TaskName;
+        tip.StatusMessage = taskInfo.StatusMessage;
+        tip.Progress = taskInfo.Progress;
+        if (taskInfo.ShowInTeachingTip)
+        {
+            tip.IsOpen = true;
+        }
+    }
+
     private void OnTaskStateChanged(object? sender, DownloadTaskInfo taskInfo)
     {
         _dispatcherQueue.TryEnqueue(() =>
@@ -133,19 +163,12 @@ public partial class ShellViewModel : ObservableRecipient
                         break;
                     }
 
-                    tip.Title = taskInfo.TaskName;
-                    tip.StatusMessage = taskInfo.StatusMessage;
-                    tip.Progress = taskInfo.Progress;
-                    if (taskInfo.ShowInTeachingTip)
-                    {
-                        tip.IsOpen = true;
-                    }
-
+                    RefreshTipFromActiveTask(tip, taskInfo);
                     break;
                 case DownloadTaskState.Completed:
                 case DownloadTaskState.Failed:
                 case DownloadTaskState.Cancelled:
-                    var terminal = FindExistingTip(taskInfo);
+                    var terminal = FindTipByTaskId(taskInfo.TaskId);
                     if (terminal == null || !terminal.IsOpen)
                     {
                         break;
@@ -158,7 +181,7 @@ public partial class ShellViewModel : ObservableRecipient
                             : $"下载失败: {taskInfo.ErrorMessage}";
                     terminal.Progress = taskInfo.State == DownloadTaskState.Completed ? 100 : taskInfo.Progress;
 
-                    ScheduleTipRemoval(terminal);
+                    ScheduleTipRemoval(terminal, taskInfo.TaskId);
                     break;
             }
         });
@@ -174,45 +197,70 @@ public partial class ShellViewModel : ObservableRecipient
                 return;
             }
 
-            tip.Title = taskInfo.TaskName;
-            tip.Progress = taskInfo.Progress;
-            tip.StatusMessage = taskInfo.StatusMessage;
+            RefreshTipFromActiveTask(tip, taskInfo);
         });
     }
 
-    private void ScheduleTipRemoval(ShellDownloadTipItem item)
+    private void ScheduleTipRemoval(ShellDownloadTipItem item, string taskId)
     {
-        _ = Task.Delay(2000).ContinueWith(_ =>
+        CancelScheduledTipRemoval(item);
+
+        var closeCts = new CancellationTokenSource();
+        _pendingTipCloseOperations[item] = closeCts;
+
+        _ = Task.Delay(2000, closeCts.Token).ContinueWith(delayTask =>
         {
+            if (delayTask.IsCanceled)
+            {
+                return;
+            }
+
             _dispatcherQueue.TryEnqueue(() =>
             {
-                if (!DownloadTeachingTips.Contains(item))
+                if (closeCts.IsCancellationRequested || !DownloadTeachingTips.Contains(item))
+                {
+                    return;
+                }
+
+                if (!string.Equals(item.TaskId, taskId, StringComparison.Ordinal))
                 {
                     return;
                 }
 
                 // 仅关 IsOpen；立即 Remove 会从树卸载 TeachingTip，原生关闭动画不会播放。条目在 ShellPage TeachingTip.Closed 里再 Remove。
                 item.IsOpen = false;
+                _pendingTipCloseOperations.Remove(item);
             });
-        });
+        }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
+    }
+
+    private void CancelScheduledTipRemoval(ShellDownloadTipItem item)
+    {
+        if (!_pendingTipCloseOperations.Remove(item, out var closeCts))
+        {
+            return;
+        }
+
+        closeCts.Cancel();
+        closeCts.Dispose();
     }
 
     /// <summary>
     /// TeachingTip 关闭动画结束后再从列表移除；勿与 <see cref="CancelShellDownloadTip"/> 里同步 Remove。
     /// </summary>
-    public void RemoveDownloadTeachingTipAfterClose(string? taskId)
+    public void RemoveDownloadTeachingTipAfterClose(ShellDownloadTipItem? tipItem)
     {
-        if (string.IsNullOrEmpty(taskId))
+        if (tipItem == null)
         {
             return;
         }
 
         _dispatcherQueue.TryEnqueue(() =>
         {
-            var tip = DownloadTeachingTips.FirstOrDefault(t => t.TaskId == taskId);
-            if (tip != null)
+            CancelScheduledTipRemoval(tipItem);
+            if (DownloadTeachingTips.Contains(tipItem))
             {
-                DownloadTeachingTips.Remove(tip);
+                DownloadTeachingTips.Remove(tipItem);
             }
         });
     }
