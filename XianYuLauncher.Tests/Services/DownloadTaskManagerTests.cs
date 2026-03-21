@@ -5,6 +5,7 @@ using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Tests.Services;
 
@@ -301,6 +302,63 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
+    public async Task StartVanillaDownloadAsync_ShouldPopulateStructuredStatusMetadataAndTimestamps()
+    {
+        // Arrange
+        var progressChanges = new List<DownloadTaskInfo>();
+        var stateChanges = new List<DownloadTaskInfo>();
+        var progressObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completedObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _downloadTaskManager.TaskProgressChanged += (_, task) =>
+        {
+            progressChanges.Add(task);
+            if (task.Progress > 0)
+            {
+                progressObserved.TrySetResult(task);
+            }
+        };
+        _downloadTaskManager.TaskStateChanged += (_, task) =>
+        {
+            stateChanges.Add(task);
+            if (task.State == DownloadTaskState.Completed)
+            {
+                completedObserved.TrySetResult(task);
+            }
+        };
+
+        _minecraftVersionServiceMock
+            .Setup(m => m.DownloadVersionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
+            .Callback<string, string, Action<DownloadProgressStatus>, string, string?>((_, _, callback, _, _) =>
+            {
+                callback.Invoke(new DownloadProgressStatus(0, 0, 35));
+            })
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _downloadTaskManager.StartVanillaDownloadAsync("1.20.1", "MyVersion");
+        await progressObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await completedObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Assert
+        progressChanges.Should().Contain(task =>
+            task.StatusResourceKey == "DownloadQueue_Status_DownloadingNamedWithProgress"
+            && task.StatusResourceArguments.SequenceEqual(new[] { "Minecraft 1.20.1", "35%" }));
+
+        stateChanges.Should().Contain(task =>
+            task.State == DownloadTaskState.Completed
+            && task.StatusResourceKey == "DownloadQueue_Status_Completed");
+
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskName == "MyVersion"
+            && task.CreatedAtUtc <= task.LastUpdatedAtUtc);
+    }
+
+    [Fact]
     public async Task CancelTask_WhenTaskIsQueued_ShouldSetCancelledState()
     {
         // Arrange
@@ -382,7 +440,7 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
-    public void ExternalTaskLifecycle_ShouldRaiseEventsAndRemoveCompletedTask()
+    public void ExternalTaskLifecycle_ShouldRaiseEventsAndKeepCompletedTaskInSnapshot()
     {
         // Arrange
         var stateChanges = new List<DownloadTaskInfo>();
@@ -394,16 +452,147 @@ public class DownloadTaskManagerTests
         _downloadTaskManager.TasksSnapshotChanged += (_, _) => snapshotChangedCount++;
 
         // Act
-        var taskId = _downloadTaskManager.CreateExternalTask("收藏夹导入", "favorite-import", showInTeachingTip: true);
-        _downloadTaskManager.UpdateExternalTask(taskId, 42, "正在下载收藏夹...");
-        _downloadTaskManager.CompleteExternalTask(taskId, "下载完成");
+        var taskId = _downloadTaskManager.CreateExternalTask(
+            "收藏夹导入",
+            "favorite-import",
+            showInTeachingTip: true,
+            displayNameResourceKey: "DownloadQueue_DisplayName_FavoriteImport",
+            taskTypeResourceKey: "DownloadQueue_TaskType_Generic");
+        _downloadTaskManager.UpdateExternalTask(taskId, 42, "正在解析前置依赖...", statusResourceKey: "DownloadQueue_Status_PreparingDependencies");
+        _downloadTaskManager.CompleteExternalTask(taskId, "下载完成", statusResourceKey: "DownloadQueue_Status_Completed");
 
         // Assert
-        stateChanges.Should().Contain(task => task.TaskId == taskId && task.State == DownloadTaskState.Downloading && task.ShowInTeachingTip);
-        stateChanges.Should().Contain(task => task.TaskId == taskId && task.State == DownloadTaskState.Completed);
-        progressChanges.Should().Contain(task => task.TaskId == taskId && task.Progress == 42);
-        _downloadTaskManager.TasksSnapshot.Should().NotContain(task => task.TaskId == taskId);
+        stateChanges.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.State == DownloadTaskState.Downloading
+            && task.ShowInTeachingTip
+            && task.DisplayNameResourceKey == "DownloadQueue_DisplayName_FavoriteImport"
+            && task.TaskTypeResourceKey == "DownloadQueue_TaskType_Generic");
+        stateChanges.Should().Contain(task => task.TaskId == taskId && task.State == DownloadTaskState.Completed && task.StatusResourceKey == "DownloadQueue_Status_Completed");
+        progressChanges.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.Progress == 42
+            && task.StatusResourceKey == "DownloadQueue_Status_PreparingDependencies"
+            && task.CreatedAtUtc <= task.LastUpdatedAtUtc);
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.State == DownloadTaskState.Completed
+            && task.StatusResourceKey == "DownloadQueue_Status_Completed"
+            && task.ShowInTeachingTip);
         snapshotChangedCount.Should().BeGreaterThanOrEqualTo(4);
+    }
+
+    [Fact]
+    public void UpdateExternalTask_WhenTaskAlreadyCompleted_ShouldIgnoreFurtherUpdates()
+    {
+        // Arrange
+        var taskId = _downloadTaskManager.CreateExternalTask("收藏夹导入", "favorite-import");
+        _downloadTaskManager.CompleteExternalTask(taskId, "下载完成", statusResourceKey: "DownloadQueue_Status_Completed");
+
+        // Act
+        _downloadTaskManager.UpdateExternalTask(taskId, 50, "正在后台下载...", statusResourceKey: "DownloadQueue_Status_BackgroundDownloading");
+
+        // Assert
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.State == DownloadTaskState.Completed
+            && task.Progress == 100
+            && task.StatusResourceKey == "DownloadQueue_Status_Completed");
+    }
+
+    [Fact]
+    public void CompleteExternalTask_WhenConfiguredNotToRetain_ShouldRemoveTaskFromSnapshot()
+    {
+        // Arrange
+        var taskId = _downloadTaskManager.CreateExternalTask(
+            "前置准备",
+            "preparing",
+            retainInRecentWhenFinished: false);
+
+        // Act
+        _downloadTaskManager.CompleteExternalTask(taskId, "准备完成", statusResourceKey: "DownloadQueue_Status_Completed");
+
+        // Assert
+        _downloadTaskManager.TasksSnapshot.Should().NotContain(task => task.TaskId == taskId);
+    }
+
+    [Fact]
+    public void FailExternalTask_WhenConfiguredNotToRetain_ShouldRemoveTaskFromSnapshot()
+    {
+        // Arrange
+        var taskId = _downloadTaskManager.CreateExternalTask(
+            "前置准备",
+            "preparing",
+            retainInRecentWhenFinished: false);
+
+        // Act
+        _downloadTaskManager.FailExternalTask(taskId, "网络错误");
+
+        // Assert
+        _downloadTaskManager.TasksSnapshot.Should().NotContain(task => task.TaskId == taskId);
+    }
+
+    [Fact]
+    public void CancelExternalTask_WhenConfiguredNotToRetain_ShouldRemoveTaskFromSnapshot()
+    {
+        // Arrange
+        var taskId = _downloadTaskManager.CreateExternalTask(
+            "前置准备",
+            "preparing",
+            retainInRecentWhenFinished: false);
+
+        // Act
+        _downloadTaskManager.CancelExternalTask(taskId);
+
+        // Assert
+        _downloadTaskManager.TasksSnapshot.Should().NotContain(task => task.TaskId == taskId);
+    }
+
+    [Fact]
+    public async Task StartFileDownloadAsync_WhenDisplayMetadataProvided_ShouldPreservePresentationMetadata()
+    {
+        // Arrange
+        var tempDirectory = Path.Combine(Path.GetTempPath(), "download_task_manager_tests");
+        var completedObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(DownloadResult.Succeeded(Path.Combine(tempDirectory, "client.jar"), "https://example.com/client.jar"));
+
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            downloadManagerMock.Object);
+        downloadTaskManager.TaskStateChanged += (_, task) =>
+        {
+            if (task.State == DownloadTaskState.Completed)
+            {
+                completedObserved.TrySetResult(task);
+            }
+        };
+
+        // Act
+        await downloadTaskManager.StartFileDownloadAsync(
+            "https://example.com/client.jar",
+            Path.Combine(tempDirectory, "client.jar"),
+            "客户端 1.20.1",
+            showInTeachingTip: true,
+            displayNameResourceKey: "DownloadQueue_DisplayName_Client",
+            displayNameResourceArguments: new[] { "1.20.1" });
+        await completedObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Assert
+        downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskName == "客户端 1.20.1"
+            && task.DisplayNameResourceKey == "DownloadQueue_DisplayName_Client"
+            && task.DisplayNameResourceArguments.SequenceEqual(new[] { "1.20.1" })
+            && task.TaskCategory == DownloadTaskCategory.FileDownload);
     }
 
     [Fact]
@@ -982,6 +1171,121 @@ public class DownloadTaskManagerResourceDownloadTests
         // Assert
         progressValues.Should().NotBeEmpty();
         progressValues.Should().Contain(p => p >= 0 && p <= 100);
+    }
+
+    [Fact]
+    public async Task StartResourceDownloadAsync_WhenCommunityProviderSpecified_ShouldUseFallbackDownloadManager()
+    {
+        // Arrange
+        const string originalUrl = "https://cdn.modrinth.com/data/abc123/versions/ver1/test.jar";
+        const string expectedMirroredUrl = "https://mod.mcimirror.top/data/abc123/versions/ver1/test.jar";
+        const double expectedSpeedBytesPerSecond = 1.5 * 1024 * 1024;
+
+        var sourceFactory = new DownloadSourceFactory();
+        sourceFactory.SetModrinthSource("mcim");
+
+        string? capturedUrl = null;
+        var progressObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>((url, path, sha1, progress, ct) =>
+            {
+                capturedUrl = url;
+                progress?.Invoke(new DownloadProgressStatus(512, 1024, 50, expectedSpeedBytesPerSecond));
+                return Task.FromResult(DownloadResult.Succeeded(path, url));
+            });
+
+        var fallbackDownloadManager = new FallbackDownloadManager(downloadManagerMock.Object, sourceFactory, new HttpClient());
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            downloadManagerMock.Object,
+            fallbackDownloadManager,
+            null);
+
+        downloadTaskManager.TaskProgressChanged += (_, task) =>
+        {
+            if (task.SpeedBytesPerSecond > 0)
+            {
+                progressObserved.TrySetResult(task);
+            }
+        };
+
+        var savePath = Path.Combine(_tempDirectory, "test_mod_fallback.jar");
+
+        // Act
+        await downloadTaskManager.StartResourceDownloadAsync(
+            "Test Mod",
+            "mod",
+            originalUrl,
+            savePath,
+            communityResourceProvider: CommunityResourceProvider.Modrinth);
+
+        var completedTask = await Task.WhenAny(progressObserved.Task, Task.Delay(1000));
+
+        // Assert
+        completedTask.Should().Be(progressObserved.Task);
+        capturedUrl.Should().Be(expectedMirroredUrl);
+        var progressTask = await progressObserved.Task;
+        progressTask.SpeedBytesPerSecond.Should().BeApproximately(expectedSpeedBytesPerSecond, 1);
+    }
+
+    [Fact]
+    public async Task StartResourceDownloadAsync_WhenCommunityUrlIsMirrored_ShouldNormalizeBackToOfficialBeforeFallback()
+    {
+        // Arrange
+        const string mirroredUrl = "https://mod.mcimirror.top/data/abc123/versions/ver1/test.jar";
+        const string expectedOfficialUrl = "https://cdn.modrinth.com/data/abc123/versions/ver1/test.jar";
+
+        var sourceFactory = new DownloadSourceFactory();
+        sourceFactory.SetModrinthSource("official");
+
+        string? capturedUrl = null;
+        var downloadTriggered = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>((url, path, sha1, progress, ct) =>
+            {
+                capturedUrl = url;
+                downloadTriggered.TrySetResult(url);
+                return Task.FromResult(DownloadResult.Succeeded(path, url));
+            });
+
+        var fallbackDownloadManager = new FallbackDownloadManager(downloadManagerMock.Object, sourceFactory, new HttpClient());
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            downloadManagerMock.Object,
+            fallbackDownloadManager,
+            null);
+
+        var savePath = Path.Combine(_tempDirectory, "test_mod_normalized.jar");
+
+        // Act
+        await downloadTaskManager.StartResourceDownloadAsync(
+            "Test Mod",
+            "mod",
+            mirroredUrl,
+            savePath,
+            communityResourceProvider: CommunityResourceProvider.Modrinth);
+        await downloadTriggered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Assert
+        capturedUrl.Should().Be(expectedOfficialUrl);
     }
 
     /// <summary>

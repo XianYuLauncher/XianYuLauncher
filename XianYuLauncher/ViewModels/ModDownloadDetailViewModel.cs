@@ -40,6 +40,7 @@ namespace XianYuLauncher.ViewModels
         private readonly IHttpImageSourceService _httpImageSourceService;
         private readonly ILogger<ModDownloadDetailViewModel> _logger;
         private string? _downloadPreparationTaskId;
+        private string? _downloadTeachingTipGroupKey;
 
         [ObservableProperty]
         private string _modId = string.Empty;
@@ -383,53 +384,125 @@ namespace XianYuLauncher.ViewModels
 
         private void InitializeDownloadTeachingTip()
         {
-            // TODO(mod-download): 后续更稳的做法是把“下载会话 UI 初始化”从主资源下载启动中彻底拆开，
-            // 由依赖下载和主资源下载共用同一个开始入口，避免 TeachingTip 显示时机再次因时序调整而回归。
-            _downloadPreparationTaskId ??= _downloadTaskManager.CreateExternalTask(ModName, ProjectType, showInTeachingTip: true);
-            _downloadTaskManager.UpdateExternalTask(_downloadPreparationTaskId, 0, "正在解析前置依赖...");
+            DownloadProgress = 0;
+            DownloadProgressText = "0.0%";
+            DownloadStatus = "正在准备下载...";
+
+            _downloadTeachingTipGroupKey ??= Guid.NewGuid().ToString("N");
+            _downloadPreparationTaskId ??= _downloadTaskManager.CreateExternalTask(
+                ModName,
+                ProjectType,
+                showInTeachingTip: true,
+                teachingTipGroupKey: _downloadTeachingTipGroupKey,
+                taskCategory: ResolveDownloadTaskCategory(ProjectType),
+                retainInRecentWhenFinished: false);
+            _downloadTaskManager.UpdateExternalTask(
+                _downloadPreparationTaskId,
+                0,
+                "正在解析前置依赖...",
+                statusResourceKey: "DownloadQueue_Status_PreparingDependencies");
         }
 
-        private void UpdateDownloadTeachingTip(double progress, string statusMessage)
+        private void UpdateDownloadTeachingTip(string fileName, double progress, string statusMessage)
         {
+            DownloadStatus = statusMessage;
+            DownloadProgress = progress;
+            DownloadProgressText = $"{progress:F1}%";
+
             if (string.IsNullOrEmpty(_downloadPreparationTaskId))
             {
                 return;
             }
 
-            _downloadTaskManager.UpdateExternalTask(_downloadPreparationTaskId, progress, statusMessage);
+            _downloadTaskManager.UpdateExternalTask(
+                _downloadPreparationTaskId,
+                progress,
+                statusMessage,
+                statusResourceKey: "DownloadQueue_Status_DownloadingDependencyResource",
+                statusResourceArguments: [fileName]);
         }
 
         private void CompleteDownloadTeachingTip(string statusMessage = "前置依赖已就绪，正在加入下载队列...")
         {
+            DownloadStatus = statusMessage;
+
             if (string.IsNullOrEmpty(_downloadPreparationTaskId))
             {
                 return;
             }
 
-            _downloadTaskManager.CompleteExternalTask(_downloadPreparationTaskId, statusMessage);
-            _downloadPreparationTaskId = null;
+            _downloadTaskManager.CompleteExternalTask(
+                _downloadPreparationTaskId,
+                statusMessage,
+                statusResourceKey: "DownloadQueue_Status_DependenciesReady");
+            ResetDownloadTeachingTipSession(clearGroupKey: false);
         }
 
         private void CancelDownloadTeachingTip(string statusMessage = "下载已取消")
         {
+            DownloadStatus = statusMessage;
+
             if (string.IsNullOrEmpty(_downloadPreparationTaskId))
             {
+                ResetDownloadTeachingTipSession();
                 return;
             }
 
-            _downloadTaskManager.CancelExternalTask(_downloadPreparationTaskId, statusMessage);
-            _downloadPreparationTaskId = null;
+            _downloadTaskManager.CancelExternalTask(
+                _downloadPreparationTaskId,
+                statusMessage,
+                statusResourceKey: "DownloadQueue_Status_Cancelled");
+            ResetDownloadTeachingTipSession();
         }
 
         private void FailDownloadTeachingTip(string errorMessage)
         {
+            DownloadStatus = $"下载失败: {errorMessage}";
+
             if (string.IsNullOrEmpty(_downloadPreparationTaskId))
             {
+                ResetDownloadTeachingTipSession();
                 return;
             }
 
-            _downloadTaskManager.FailExternalTask(_downloadPreparationTaskId, errorMessage, $"准备阶段失败: {errorMessage}");
+            _downloadTaskManager.FailExternalTask(
+                _downloadPreparationTaskId,
+                errorMessage,
+                $"准备阶段失败: {errorMessage}",
+                statusResourceKey: "DownloadQueue_Status_PreparationFailed",
+                statusResourceArguments: [errorMessage]);
+            ResetDownloadTeachingTipSession();
+        }
+
+        private void ResetDownloadTeachingTipSession(bool clearGroupKey = true)
+        {
             _downloadPreparationTaskId = null;
+            if (clearGroupKey)
+            {
+                _downloadTeachingTipGroupKey = null;
+            }
+        }
+
+        private static DownloadTaskCategory ResolveDownloadTaskCategory(string? projectType)
+        {
+            return projectType?.Trim().ToLowerInvariant() switch
+            {
+                "mod" => DownloadTaskCategory.ModDownload,
+                "resourcepack" => DownloadTaskCategory.ResourcePackDownload,
+                "shader" => DownloadTaskCategory.ShaderDownload,
+                "datapack" => DownloadTaskCategory.DataPackDownload,
+                "world" => DownloadTaskCategory.WorldDownload,
+                "modpack" => DownloadTaskCategory.ModpackDownload,
+                _ => DownloadTaskCategory.Unknown
+            };
+        }
+
+        private static CommunityResourceProvider ResolveCommunityResourceProvider(ModVersionViewModel modVersion)
+        {
+            ArgumentNullException.ThrowIfNull(modVersion);
+            return modVersion.IsCurseForge
+                ? CommunityResourceProvider.CurseForge
+                : CommunityResourceProvider.Modrinth;
         }
 
         public ModDownloadDetailViewModel(
@@ -1306,7 +1379,11 @@ namespace XianYuLauncher.ViewModels
                     ModIconUrl,
                     resolvedDownloadUrl,
                     savePath,
-                    showInTeachingTip: true);
+                    showInTeachingTip: true,
+                    teachingTipGroupKey: _downloadTeachingTipGroupKey,
+                    communityResourceProvider: ResolveCommunityResourceProvider(currentDownloadingModVersion));
+
+                ResetDownloadTeachingTipSession();
 
                 DownloadStatus = "下载已开始，请查看下载提示。";
                 
@@ -1332,6 +1409,8 @@ namespace XianYuLauncher.ViewModels
             string targetDir,
             InstalledGameVersionViewModel? gameVersion)
         {
+            _downloadTeachingTipGroupKey ??= Guid.NewGuid().ToString("N");
+
             string gameDir = await _gameDirResolver.GetGameDirForVersionAsync(
                 gameVersion?.OriginalVersionName ?? string.Empty);
             await _modResourceDownloadOrchestrator.ProcessDependenciesForResourceAsync(
@@ -1340,13 +1419,7 @@ namespace XianYuLauncher.ViewModels
                 modVersion,
                 targetDir,
                 gameVersion,
-                (fileName, progress, statusMessage) =>
-                {
-                    DownloadStatus = statusMessage;
-                    DownloadProgress = progress;
-                    DownloadProgressText = $"{progress:F1}%";
-                    UpdateDownloadTeachingTip(progress, statusMessage);
-                });
+                (fileName, progress, statusMessage) => UpdateDownloadTeachingTip(fileName, progress, statusMessage));
         }
 
         // 加载已安装游戏版本
@@ -1808,7 +1881,11 @@ namespace XianYuLauncher.ViewModels
                     ModIconUrl,
                     resolvedDownloadUrl,
                     savePath,
-                    showInTeachingTip: true);
+                    showInTeachingTip: true,
+                    teachingTipGroupKey: _downloadTeachingTipGroupKey,
+                    communityResourceProvider: ResolveCommunityResourceProvider(modVersion));
+
+                ResetDownloadTeachingTipSession();
 
                 DownloadStatus = "下载已开始，请查看下载提示。";
             }
@@ -2136,7 +2213,11 @@ namespace XianYuLauncher.ViewModels
                     savesDir,
                     modVersion.FileName,
                     ModIconUrl,
-                    showInTeachingTip: true);
+                    showInTeachingTip: true,
+                    teachingTipGroupKey: _downloadTeachingTipGroupKey,
+                    communityResourceProvider: ResolveCommunityResourceProvider(modVersion));
+
+                ResetDownloadTeachingTipSession();
 
                 DownloadStatus = "世界下载已开始，请查看下载提示。";
             }
@@ -2733,7 +2814,11 @@ namespace XianYuLauncher.ViewModels
                     ModIconUrl,
                     resolvedQuickInstallDownloadUrl,
                     savePath,
-                    showInTeachingTip: true);
+                    showInTeachingTip: true,
+                    teachingTipGroupKey: _downloadTeachingTipGroupKey,
+                    communityResourceProvider: ResolveCommunityResourceProvider(modVersion));
+
+                ResetDownloadTeachingTipSession();
 
                 DownloadStatus = "下载已开始，请查看下载提示。";
                 IsDownloading = false;

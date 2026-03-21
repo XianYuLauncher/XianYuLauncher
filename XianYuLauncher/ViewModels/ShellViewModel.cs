@@ -20,6 +20,7 @@ public partial class ShellViewModel : ObservableRecipient
     private const double TipStackVerticalGap = 118;
 
     private readonly IDownloadTaskManager _downloadTaskManager;
+    private readonly IDownloadTaskPresentationService _downloadTaskPresentationService;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly Dictionary<ShellDownloadTipItem, CancellationTokenSource> _pendingTipCloseOperations = new();
 
@@ -47,12 +48,14 @@ public partial class ShellViewModel : ObservableRecipient
     public ShellViewModel(
         INavigationService navigationService,
         INavigationViewService navigationViewService,
-        IDownloadTaskManager downloadTaskManager)
+        IDownloadTaskManager downloadTaskManager,
+        IDownloadTaskPresentationService downloadTaskPresentationService)
     {
         NavigationService = navigationService;
         NavigationService.Navigated += OnNavigated;
         NavigationViewService = navigationViewService;
         _downloadTaskManager = downloadTaskManager;
+        _downloadTaskPresentationService = downloadTaskPresentationService;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
         DownloadTeachingTips.CollectionChanged += OnDownloadTeachingTipsCollectionChanged;
@@ -85,9 +88,6 @@ public partial class ShellViewModel : ObservableRecipient
         }
     }
 
-    private static string GetTipMergeKey(DownloadTaskInfo info) =>
-        string.IsNullOrEmpty(info.TaskName) ? info.TaskId : info.TaskName;
-
     private ShellDownloadTipItem? FindTipByTaskId(string taskId)
     {
         return string.IsNullOrEmpty(taskId)
@@ -95,25 +95,29 @@ public partial class ShellViewModel : ObservableRecipient
             : DownloadTeachingTips.FirstOrDefault(t => t.TaskId == taskId);
     }
 
-    private ShellDownloadTipItem? FindExistingTip(DownloadTaskInfo info)
+    private static string GetPresentationKey(DownloadTaskInfo info)
     {
-        var mergeKey = GetTipMergeKey(info);
-        var match = FindTipByTaskId(info.TaskId)
-            ?? DownloadTeachingTips.FirstOrDefault(t => t.MergeKey == mergeKey);
-        if (match != null)
-        {
-            match.TaskId = info.TaskId;
-            match.MergeKey = mergeKey;
-        }
+        return string.IsNullOrWhiteSpace(info.TeachingTipGroupKey)
+            ? info.TaskId
+            : info.TeachingTipGroupKey;
+    }
 
-        return match;
+    private ShellDownloadTipItem? FindTipByPresentationKey(string presentationKey)
+    {
+        return string.IsNullOrEmpty(presentationKey)
+            ? null
+            : DownloadTeachingTips.FirstOrDefault(t => t.PresentationKey == presentationKey);
     }
 
     private ShellDownloadTipItem? FindOrCreateTip(DownloadTaskInfo info, bool createIfMissing)
     {
-        var existing = FindExistingTip(info);
+        var presentationKey = GetPresentationKey(info);
+        var existing = FindTipByTaskId(info.TaskId)
+            ?? FindTipByPresentationKey(presentationKey);
         if (existing != null)
         {
+            existing.TaskId = info.TaskId;
+            existing.PresentationKey = presentationKey;
             return existing;
         }
 
@@ -122,14 +126,14 @@ public partial class ShellViewModel : ObservableRecipient
             return null;
         }
 
-        var mergeKey = GetTipMergeKey(info);
+        var presentation = _downloadTaskPresentationService.Resolve(info);
         var item = new ShellDownloadTipItem
         {
             TaskId = info.TaskId,
-            MergeKey = mergeKey,
-            Title = info.TaskName,
+            PresentationKey = presentationKey,
+            Title = presentation.DisplayName,
             Progress = info.Progress,
-            StatusMessage = info.StatusMessage
+            StatusMessage = presentation.StatusMessage
         };
         DownloadTeachingTips.Add(item);
         return item;
@@ -138,10 +142,11 @@ public partial class ShellViewModel : ObservableRecipient
     private void RefreshTipFromActiveTask(ShellDownloadTipItem tip, DownloadTaskInfo taskInfo)
     {
         CancelScheduledTipRemoval(tip);
+        var presentation = _downloadTaskPresentationService.Resolve(taskInfo);
         tip.TaskId = taskInfo.TaskId;
-        tip.MergeKey = GetTipMergeKey(taskInfo);
-        tip.Title = taskInfo.TaskName;
-        tip.StatusMessage = taskInfo.StatusMessage;
+        tip.PresentationKey = GetPresentationKey(taskInfo);
+        tip.Title = presentation.DisplayName;
+        tip.StatusMessage = presentation.StatusMessage;
         tip.Progress = taskInfo.Progress;
         if (taskInfo.ShowInTeachingTip)
         {
@@ -174,12 +179,7 @@ public partial class ShellViewModel : ObservableRecipient
                         break;
                     }
 
-                    terminal.StatusMessage = taskInfo.State == DownloadTaskState.Completed
-                        ? "下载完成"
-                        : taskInfo.State == DownloadTaskState.Cancelled
-                            ? "下载已取消"
-                            : $"下载失败: {taskInfo.ErrorMessage}";
-                    terminal.Progress = taskInfo.State == DownloadTaskState.Completed ? 100 : taskInfo.Progress;
+                    RefreshTipFromActiveTask(terminal, taskInfo);
 
                     ScheduleTipRemoval(terminal, taskInfo.TaskId);
                     break;

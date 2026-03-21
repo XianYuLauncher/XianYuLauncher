@@ -105,7 +105,11 @@ public class FallbackDownloadManager
 
             // 尝试下载（带重试）
             var result = await TryDownloadWithRetryAsync(
-                transformedUrl, targetPath, expectedSha1, progressCallback, cancellationToken);
+                transformedUrl,
+                targetPath,
+                expectedSha1,
+                progressCallback == null ? null : status => progressCallback(status.Percent),
+                cancellationToken);
 
             if (result.Success)
             {
@@ -501,6 +505,24 @@ public class FallbackDownloadManager
         Action<double>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
+        return await DownloadFileForCommunityWithStatusAsync(
+            originalUrl,
+            targetPath,
+            resourceType,
+            progressCallback == null ? null : status => progressCallback(status.Percent),
+            cancellationToken);
+    }
+
+    /// <summary>
+    /// 社区资源文件下载（保留完整进度状态）
+    /// </summary>
+    public async Task<FallbackDownloadResult> DownloadFileForCommunityWithStatusAsync(
+        string originalUrl,
+        string targetPath,
+        string resourceType,
+        Action<DownloadProgressStatus>? progressCallback = null,
+        CancellationToken cancellationToken = default)
+    {
         var attemptedSources = new List<string>();
         var errors = new List<string>();
         var sourcesToTry = GetCommunitySourceOrder(resourceType);
@@ -808,7 +830,7 @@ public class FallbackDownloadManager
         string url,
         string targetPath,
         string? expectedSha1,
-        Action<double>? progressCallback,
+        Action<DownloadProgressStatus>? progressCallback,
         CancellationToken cancellationToken)
     {
         DownloadResult? lastResult = null;
@@ -826,7 +848,11 @@ public class FallbackDownloadManager
             }
 
             lastResult = await _innerManager.DownloadFileAsync(
-                url, targetPath, expectedSha1, progressCallback == null ? null : status => progressCallback(status.Percent), cancellationToken);
+                url,
+                targetPath,
+                expectedSha1,
+                progressCallback,
+                cancellationToken);
 
             if (lastResult.Success)
             {
