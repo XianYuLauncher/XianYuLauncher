@@ -27,7 +27,6 @@ public class DownloadTaskManagerTests
         _localSettingsServiceMock = new Mock<ILocalSettingsService>();
         _loggerMock = new Mock<ILogger<DownloadTaskManager>>();
         _downloadManagerMock = new Mock<IDownloadManager>();
-        _downloadManagerMock = new Mock<IDownloadManager>();
 
         _localSettingsServiceMock
             .Setup(service => service.ReadSettingAsync<int?>(It.IsAny<string>()))

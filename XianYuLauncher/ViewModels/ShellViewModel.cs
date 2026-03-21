@@ -229,7 +229,13 @@ public partial class ShellViewModel : ObservableRecipient
 
                 // 仅关 IsOpen；立即 Remove 会从树卸载 TeachingTip，原生关闭动画不会播放。条目在 ShellPage TeachingTip.Closed 里再 Remove。
                 item.IsOpen = false;
-                _pendingTipCloseOperations.Remove(item);
+                if (_pendingTipCloseOperations.TryGetValue(item, out var trackedCts)
+                    && ReferenceEquals(trackedCts, closeCts))
+                {
+                    _pendingTipCloseOperations.Remove(item);
+                }
+
+                closeCts.Dispose();
             });
         }, CancellationToken.None, TaskContinuationOptions.ExecuteSynchronously, TaskScheduler.Default);
     }

@@ -176,7 +176,7 @@ public partial class DownloadQueueTaskItemViewModel : ObservableObject
             return "游戏安装";
         }
 
-        if (normalizedLooksLikeFileName(taskInfo.VersionName))
+        if (LooksLikeFileName(taskInfo.VersionName))
         {
             return "文件下载";
         }
@@ -184,7 +184,7 @@ public partial class DownloadQueueTaskItemViewModel : ObservableObject
         return "下载任务";
     }
 
-    private static bool normalizedLooksLikeFileName(string value)
+    private static bool LooksLikeFileName(string value)
     {
         return value.EndsWith(".jar", StringComparison.OrdinalIgnoreCase)
             || value.EndsWith(".zip", StringComparison.OrdinalIgnoreCase)

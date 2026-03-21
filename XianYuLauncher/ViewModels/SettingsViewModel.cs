@@ -873,6 +873,10 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     [ObservableProperty]
     private int _downloadQueueMaxConcurrentTasks = 2;
 
+    private const int DownloadQueueMinConcurrentTasks = 1;
+    private const int DownloadQueueMaxConcurrentTasksUpperBound = 8;
+    private bool _isApplyingDownloadQueueMaxConcurrentTasks;
+
     /// <summary>
     /// 下载任务并发数设置键
     /// </summary>
@@ -1348,7 +1352,18 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     private async Task LoadDownloadThreadCountAsync()
     {
         var queueValue = await _settingsRepository.ReadAsync<int?>(DownloadQueueMaxConcurrentTasksKey);
-        DownloadQueueMaxConcurrentTasks = queueValue ?? 2;
+        var normalizedQueueValue = queueValue ?? 2;
+        if (normalizedQueueValue < DownloadQueueMinConcurrentTasks)
+        {
+            normalizedQueueValue = DownloadQueueMinConcurrentTasks;
+        }
+
+        if (normalizedQueueValue > DownloadQueueMaxConcurrentTasksUpperBound)
+        {
+            normalizedQueueValue = DownloadQueueMaxConcurrentTasksUpperBound;
+        }
+
+        DownloadQueueMaxConcurrentTasks = normalizedQueueValue;
 
         // 读取下载线程数设置，如果不存在则使用默认值32
         var value = await _settingsRepository.ReadAsync<int?>(DownloadThreadCountKey);
@@ -1364,9 +1379,30 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     partial void OnDownloadQueueMaxConcurrentTasksChanged(int value)
     {
-        if (value < 1) value = 1;
-        if (value > 8) value = 8;
-        QueueSettingWrite(DownloadQueueMaxConcurrentTasksKey, () => _settingsRepository.SaveAsync(DownloadQueueMaxConcurrentTasksKey, value));
+        if (_isApplyingDownloadQueueMaxConcurrentTasks)
+        {
+            return;
+        }
+
+        var normalizedValue = value;
+        if (normalizedValue < DownloadQueueMinConcurrentTasks)
+        {
+            normalizedValue = DownloadQueueMinConcurrentTasks;
+        }
+
+        if (normalizedValue > DownloadQueueMaxConcurrentTasksUpperBound)
+        {
+            normalizedValue = DownloadQueueMaxConcurrentTasksUpperBound;
+        }
+
+        if (normalizedValue != value)
+        {
+            _isApplyingDownloadQueueMaxConcurrentTasks = true;
+            DownloadQueueMaxConcurrentTasks = normalizedValue;
+            _isApplyingDownloadQueueMaxConcurrentTasks = false;
+        }
+
+        QueueSettingWrite(DownloadQueueMaxConcurrentTasksKey, () => _settingsRepository.SaveAsync(DownloadQueueMaxConcurrentTasksKey, normalizedValue));
     }
     
     /// <summary>
