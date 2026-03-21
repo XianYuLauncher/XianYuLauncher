@@ -412,11 +412,19 @@ public sealed partial class VersionListPage : Page
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
             headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+            var toggleIcon = new FontIcon
+            {
+                Glyph = "\uE76C",
+                FontSize = 12,
+                HorizontalAlignment = HorizontalAlignment.Center,
+                VerticalAlignment = VerticalAlignment.Center
+            };
             
             // 展开/折叠按钮
             var toggleButton = new Button
             {
-                Content = "▶",
+                Content = toggleIcon,
                 Width = 24,
                 Height = 24,
                 Padding = new Thickness(0),
@@ -453,7 +461,7 @@ public sealed partial class VersionListPage : Page
             {
                 isExpanded = !isExpanded;
                 treeView.Visibility = isExpanded ? Visibility.Visible : Visibility.Collapsed;
-                toggleButton.Content = isExpanded ? "▼" : "▶";
+                toggleIcon.Glyph = isExpanded ? "\uE70D" : "\uE76C";
             };
             
             // 总复选框事件

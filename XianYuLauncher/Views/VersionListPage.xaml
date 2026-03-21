@@ -21,8 +21,6 @@
         
         <!-- 将IsDirectory属性转换为对应的FontIcon Glyph的转换器 -->
         <helpers:IsDirectoryToGlyphConverter x:Key="IsDirectoryToGlyphConverter" />
-        <!-- 将布尔值转换为对应的展开/折叠图标的转换器（使用 Helpers 版本，无 ConverterParameter 避免 InvalidProgramException） -->
-        <helpers:BoolToGlyphConverter x:Key="BoolToGlyphConverter" />
         <!-- 布尔值到可见性的转换器 -->
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <!-- 布尔值取反转换器 -->
@@ -42,7 +40,6 @@
                     <!-- 展开/折叠按钮 -->
                     <Button 
                         Grid.Column="0" 
-                        Content="{Binding IsExpanded, Converter={StaticResource BoolToGlyphConverter}}" 
                         Width="24" 
                         Height="24" 
                         Padding="0" 
@@ -51,7 +48,24 @@
                         Visibility="{Binding IsDirectory, Converter={StaticResource BoolToVisibilityConverter}}" 
                         VerticalContentAlignment="Center" 
                         HorizontalContentAlignment="Center" 
-                        Margin="0,0,8,0" /> 
+                        Margin="0,0,8,0">
+                        <Grid Width="12" Height="12">
+                            <FontIcon
+                                FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                Glyph="&#xE76C;"
+                                FontSize="12"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Visibility="{Binding IsExpanded, Converter={StaticResource BoolNegationConverter}}" />
+                            <FontIcon
+                                FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                Glyph="&#xE70D;"
+                                FontSize="12"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        </Grid>
+                    </Button>
                     <!-- 空白占位符（用于非目录项） -->
                     <TextBlock 
                         Grid.Column="0" 
