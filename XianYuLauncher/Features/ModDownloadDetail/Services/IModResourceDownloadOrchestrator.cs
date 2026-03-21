@@ -22,5 +22,6 @@ public interface IModResourceDownloadOrchestrator
         string downloadUrl,
         string savePath,
         bool showInTeachingTip = false,
-        string? teachingTipGroupKey = null);
+        string? teachingTipGroupKey = null,
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown);
 }

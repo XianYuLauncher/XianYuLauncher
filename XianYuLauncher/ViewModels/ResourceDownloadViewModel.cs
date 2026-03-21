@@ -1097,6 +1097,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 "收藏夹导入",
                 "favorite-import",
                 showInTeachingTip: true,
+                retainInRecentWhenFinished: true,
                 displayNameResourceKey: "DownloadQueue_DisplayName_FavoriteImport",
                 taskTypeResourceKey: "DownloadQueue_TaskType_Generic");
         }

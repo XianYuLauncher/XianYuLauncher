@@ -5,6 +5,7 @@ using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Core.Services.DownloadSource;
 
 namespace XianYuLauncher.Tests.Services;
 
@@ -480,6 +481,54 @@ public class DownloadTaskManagerTests
             && task.State == DownloadTaskState.Completed
             && task.Progress == 100
             && task.StatusResourceKey == "DownloadQueue_Status_Completed");
+    }
+
+    [Fact]
+    public void CompleteExternalTask_WhenConfiguredNotToRetain_ShouldRemoveTaskFromSnapshot()
+    {
+        // Arrange
+        var taskId = _downloadTaskManager.CreateExternalTask(
+            "前置准备",
+            "preparing",
+            retainInRecentWhenFinished: false);
+
+        // Act
+        _downloadTaskManager.CompleteExternalTask(taskId, "准备完成", statusResourceKey: "DownloadQueue_Status_Completed");
+
+        // Assert
+        _downloadTaskManager.TasksSnapshot.Should().NotContain(task => task.TaskId == taskId);
+    }
+
+    [Fact]
+    public void FailExternalTask_WhenConfiguredNotToRetain_ShouldRemoveTaskFromSnapshot()
+    {
+        // Arrange
+        var taskId = _downloadTaskManager.CreateExternalTask(
+            "前置准备",
+            "preparing",
+            retainInRecentWhenFinished: false);
+
+        // Act
+        _downloadTaskManager.FailExternalTask(taskId, "网络错误");
+
+        // Assert
+        _downloadTaskManager.TasksSnapshot.Should().NotContain(task => task.TaskId == taskId);
+    }
+
+    [Fact]
+    public void CancelExternalTask_WhenConfiguredNotToRetain_ShouldRemoveTaskFromSnapshot()
+    {
+        // Arrange
+        var taskId = _downloadTaskManager.CreateExternalTask(
+            "前置准备",
+            "preparing",
+            retainInRecentWhenFinished: false);
+
+        // Act
+        _downloadTaskManager.CancelExternalTask(taskId);
+
+        // Assert
+        _downloadTaskManager.TasksSnapshot.Should().NotContain(task => task.TaskId == taskId);
     }
 
     [Fact]
@@ -1097,6 +1146,119 @@ public class DownloadTaskManagerResourceDownloadTests
         // Assert
         progressValues.Should().NotBeEmpty();
         progressValues.Should().Contain(p => p >= 0 && p <= 100);
+    }
+
+    [Fact]
+    public async Task StartResourceDownloadAsync_WhenCommunityProviderSpecified_ShouldUseFallbackDownloadManager()
+    {
+        // Arrange
+        const string originalUrl = "https://cdn.modrinth.com/data/abc123/versions/ver1/test.jar";
+        const string expectedMirroredUrl = "https://mod.mcimirror.top/data/abc123/versions/ver1/test.jar";
+        const double expectedSpeedBytesPerSecond = 1.5 * 1024 * 1024;
+
+        var sourceFactory = new DownloadSourceFactory();
+        sourceFactory.SetModrinthSource("mcim");
+
+        string? capturedUrl = null;
+        var progressObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>((url, path, sha1, progress, ct) =>
+            {
+                capturedUrl = url;
+                progress?.Invoke(new DownloadProgressStatus(512, 1024, 50, expectedSpeedBytesPerSecond));
+                return Task.FromResult(DownloadResult.Succeeded(path, url));
+            });
+
+        var fallbackDownloadManager = new FallbackDownloadManager(downloadManagerMock.Object, sourceFactory, new HttpClient());
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            downloadManagerMock.Object,
+            fallbackDownloadManager,
+            null);
+
+        downloadTaskManager.TaskProgressChanged += (_, task) =>
+        {
+            if (task.SpeedBytesPerSecond > 0)
+            {
+                progressObserved.TrySetResult(task);
+            }
+        };
+
+        var savePath = Path.Combine(_tempDirectory, "test_mod_fallback.jar");
+
+        // Act
+        await downloadTaskManager.StartResourceDownloadAsync(
+            "Test Mod",
+            "mod",
+            originalUrl,
+            savePath,
+            communityResourceProvider: CommunityResourceProvider.Modrinth);
+
+        var completedTask = await Task.WhenAny(progressObserved.Task, Task.Delay(1000));
+
+        // Assert
+        completedTask.Should().Be(progressObserved.Task);
+        capturedUrl.Should().Be(expectedMirroredUrl);
+        var progressTask = await progressObserved.Task;
+        progressTask.SpeedBytesPerSecond.Should().BeApproximately(expectedSpeedBytesPerSecond, 1);
+    }
+
+    [Fact]
+    public async Task StartResourceDownloadAsync_WhenCommunityUrlIsMirrored_ShouldNormalizeBackToOfficialBeforeFallback()
+    {
+        // Arrange
+        const string mirroredUrl = "https://mod.mcimirror.top/data/abc123/versions/ver1/test.jar";
+        const string expectedOfficialUrl = "https://cdn.modrinth.com/data/abc123/versions/ver1/test.jar";
+
+        var sourceFactory = new DownloadSourceFactory();
+        sourceFactory.SetModrinthSource("official");
+
+        string? capturedUrl = null;
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>((url, path, sha1, progress, ct) =>
+            {
+                capturedUrl = url;
+                return Task.FromResult(DownloadResult.Succeeded(path, url));
+            });
+
+        var fallbackDownloadManager = new FallbackDownloadManager(downloadManagerMock.Object, sourceFactory, new HttpClient());
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            downloadManagerMock.Object,
+            fallbackDownloadManager,
+            null);
+
+        var savePath = Path.Combine(_tempDirectory, "test_mod_normalized.jar");
+
+        // Act
+        await downloadTaskManager.StartResourceDownloadAsync(
+            "Test Mod",
+            "mod",
+            mirroredUrl,
+            savePath,
+            communityResourceProvider: CommunityResourceProvider.Modrinth);
+        await Task.Delay(100);
+
+        // Assert
+        capturedUrl.Should().Be(expectedOfficialUrl);
     }
 
     /// <summary>

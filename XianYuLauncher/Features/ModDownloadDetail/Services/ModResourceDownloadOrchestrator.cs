@@ -168,7 +168,8 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
         string downloadUrl,
         string savePath,
         bool showInTeachingTip = false,
-        string? teachingTipGroupKey = null)
+        string? teachingTipGroupKey = null,
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown)
     {
         await _downloadTaskManager.StartResourceDownloadAsync(
             modName,
@@ -177,6 +178,7 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
             savePath,
             modIconUrl,
             showInTeachingTip: showInTeachingTip,
-            teachingTipGroupKey: teachingTipGroupKey);
+            teachingTipGroupKey: teachingTipGroupKey,
+            communityResourceProvider: communityResourceProvider);
     }
 }

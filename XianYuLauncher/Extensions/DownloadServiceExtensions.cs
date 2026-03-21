@@ -52,8 +52,9 @@ internal static class DownloadServiceExtensions
             var fileService = sp.GetRequiredService<IFileService>();
             var logger = sp.GetRequiredService<ILogger<DownloadTaskManager>>();
             var downloadManager = sp.GetRequiredService<IDownloadManager>();
+            var fallbackDownloadManager = sp.GetRequiredService<FallbackDownloadManager>();
             var localSettingsService = sp.GetRequiredService<ILocalSettingsService>();
-            return new DownloadTaskManager(minecraftVersionService, fileService, logger, downloadManager, localSettingsService);
+            return new DownloadTaskManager(minecraftVersionService, fileService, logger, downloadManager, fallbackDownloadManager, localSettingsService);
         });
         services.AddSingleton<IOperationQueueService, OperationQueueService>();
 

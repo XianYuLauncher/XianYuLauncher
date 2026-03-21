@@ -384,15 +384,18 @@ namespace XianYuLauncher.ViewModels
 
         private void InitializeDownloadTeachingTip()
         {
-            // TODO(mod-download): 后续更稳的做法是把“下载会话 UI 初始化”从主资源下载启动中彻底拆开，
-            // 由依赖下载和主资源下载共用同一个开始入口，避免 TeachingTip 显示时机再次因时序调整而回归。
+            DownloadProgress = 0;
+            DownloadProgressText = "0.0%";
+            DownloadStatus = "正在准备下载...";
+
             _downloadTeachingTipGroupKey ??= Guid.NewGuid().ToString("N");
             _downloadPreparationTaskId ??= _downloadTaskManager.CreateExternalTask(
                 ModName,
                 ProjectType,
                 showInTeachingTip: true,
                 teachingTipGroupKey: _downloadTeachingTipGroupKey,
-                taskCategory: ResolveDownloadTaskCategory(ProjectType));
+                taskCategory: ResolveDownloadTaskCategory(ProjectType),
+                retainInRecentWhenFinished: false);
             _downloadTaskManager.UpdateExternalTask(
                 _downloadPreparationTaskId,
                 0,
@@ -402,6 +405,10 @@ namespace XianYuLauncher.ViewModels
 
         private void UpdateDownloadTeachingTip(string fileName, double progress, string statusMessage)
         {
+            DownloadStatus = statusMessage;
+            DownloadProgress = progress;
+            DownloadProgressText = $"{progress:F1}%";
+
             if (string.IsNullOrEmpty(_downloadPreparationTaskId))
             {
                 return;
@@ -412,11 +419,13 @@ namespace XianYuLauncher.ViewModels
                 progress,
                 statusMessage,
                 statusResourceKey: "DownloadQueue_Status_DownloadingDependencyResource",
-                statusResourceArguments: new[] { fileName });
+                statusResourceArguments: [fileName]);
         }
 
         private void CompleteDownloadTeachingTip(string statusMessage = "前置依赖已就绪，正在加入下载队列...")
         {
+            DownloadStatus = statusMessage;
+
             if (string.IsNullOrEmpty(_downloadPreparationTaskId))
             {
                 return;
@@ -431,6 +440,8 @@ namespace XianYuLauncher.ViewModels
 
         private void CancelDownloadTeachingTip(string statusMessage = "下载已取消")
         {
+            DownloadStatus = statusMessage;
+
             if (string.IsNullOrEmpty(_downloadPreparationTaskId))
             {
                 ResetDownloadTeachingTipSession();
@@ -446,6 +457,8 @@ namespace XianYuLauncher.ViewModels
 
         private void FailDownloadTeachingTip(string errorMessage)
         {
+            DownloadStatus = $"下载失败: {errorMessage}";
+
             if (string.IsNullOrEmpty(_downloadPreparationTaskId))
             {
                 ResetDownloadTeachingTipSession();
@@ -457,7 +470,7 @@ namespace XianYuLauncher.ViewModels
                 errorMessage,
                 $"准备阶段失败: {errorMessage}",
                 statusResourceKey: "DownloadQueue_Status_PreparationFailed",
-                statusResourceArguments: new[] { errorMessage });
+                statusResourceArguments: [errorMessage]);
             ResetDownloadTeachingTipSession();
         }
 
@@ -482,6 +495,14 @@ namespace XianYuLauncher.ViewModels
                 "modpack" => DownloadTaskCategory.ModpackDownload,
                 _ => DownloadTaskCategory.Unknown
             };
+        }
+
+        private static CommunityResourceProvider ResolveCommunityResourceProvider(ModVersionViewModel modVersion)
+        {
+            ArgumentNullException.ThrowIfNull(modVersion);
+            return modVersion.IsCurseForge
+                ? CommunityResourceProvider.CurseForge
+                : CommunityResourceProvider.Modrinth;
         }
 
         public ModDownloadDetailViewModel(
@@ -1359,7 +1380,8 @@ namespace XianYuLauncher.ViewModels
                     resolvedDownloadUrl,
                     savePath,
                     showInTeachingTip: true,
-                    teachingTipGroupKey: _downloadTeachingTipGroupKey);
+                    teachingTipGroupKey: _downloadTeachingTipGroupKey,
+                    communityResourceProvider: ResolveCommunityResourceProvider(currentDownloadingModVersion));
 
                 ResetDownloadTeachingTipSession();
 
@@ -1387,6 +1409,8 @@ namespace XianYuLauncher.ViewModels
             string targetDir,
             InstalledGameVersionViewModel? gameVersion)
         {
+            _downloadTeachingTipGroupKey ??= Guid.NewGuid().ToString("N");
+
             string gameDir = await _gameDirResolver.GetGameDirForVersionAsync(
                 gameVersion?.OriginalVersionName ?? string.Empty);
             await _modResourceDownloadOrchestrator.ProcessDependenciesForResourceAsync(
@@ -1395,13 +1419,7 @@ namespace XianYuLauncher.ViewModels
                 modVersion,
                 targetDir,
                 gameVersion,
-                (fileName, progress, statusMessage) =>
-                {
-                    DownloadStatus = statusMessage;
-                    DownloadProgress = progress;
-                    DownloadProgressText = $"{progress:F1}%";
-                    UpdateDownloadTeachingTip(fileName, progress, statusMessage);
-                });
+                (fileName, progress, statusMessage) => UpdateDownloadTeachingTip(fileName, progress, statusMessage));
         }
 
         // 加载已安装游戏版本
@@ -1864,7 +1882,8 @@ namespace XianYuLauncher.ViewModels
                     resolvedDownloadUrl,
                     savePath,
                     showInTeachingTip: true,
-                    teachingTipGroupKey: _downloadTeachingTipGroupKey);
+                    teachingTipGroupKey: _downloadTeachingTipGroupKey,
+                    communityResourceProvider: ResolveCommunityResourceProvider(modVersion));
 
                 ResetDownloadTeachingTipSession();
 
@@ -2195,7 +2214,8 @@ namespace XianYuLauncher.ViewModels
                     modVersion.FileName,
                     ModIconUrl,
                     showInTeachingTip: true,
-                    teachingTipGroupKey: _downloadTeachingTipGroupKey);
+                    teachingTipGroupKey: _downloadTeachingTipGroupKey,
+                    communityResourceProvider: ResolveCommunityResourceProvider(modVersion));
 
                 ResetDownloadTeachingTipSession();
 
@@ -2795,7 +2815,8 @@ namespace XianYuLauncher.ViewModels
                     resolvedQuickInstallDownloadUrl,
                     savePath,
                     showInTeachingTip: true,
-                    teachingTipGroupKey: _downloadTeachingTipGroupKey);
+                    teachingTipGroupKey: _downloadTeachingTipGroupKey,
+                    communityResourceProvider: ResolveCommunityResourceProvider(modVersion));
 
                 ResetDownloadTeachingTipSession();
 

@@ -112,6 +112,7 @@ public interface IDownloadTaskManager
         bool showInTeachingTip = false,
         string? teachingTipGroupKey = null,
         DownloadTaskCategory taskCategory = DownloadTaskCategory.Unknown,
+        bool retainInRecentWhenFinished = true,
         string? displayNameResourceKey = null,
         IReadOnlyList<string>? displayNameResourceArguments = null,
         string? taskTypeResourceKey = null);
@@ -171,7 +172,8 @@ public interface IDownloadTaskManager
         string? iconUrl = null,
         IEnumerable<ResourceDependency>? dependencies = null,
         bool showInTeachingTip = false,
-        string? teachingTipGroupKey = null);
+        string? teachingTipGroupKey = null,
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown);
 
     /// <summary>
     /// 启动世界下载（下载zip并解压到saves目录）
@@ -188,5 +190,6 @@ public interface IDownloadTaskManager
         string fileName,
         string? iconUrl = null,
         bool showInTeachingTip = false,
-        string? teachingTipGroupKey = null);
+        string? teachingTipGroupKey = null,
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown);
 }

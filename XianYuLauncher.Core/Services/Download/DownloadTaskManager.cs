@@ -26,10 +26,11 @@ public class DownloadTaskManager : IDownloadTaskManager
     private readonly IFileService _fileService;
     private readonly ILogger<DownloadTaskManager> _logger;
     private readonly IDownloadManager _downloadManager;
+    private readonly FallbackDownloadManager? _fallbackDownloadManager;
     private readonly ILocalSettingsService? _localSettingsService;
     private readonly Lock _lock = new();
     private readonly List<ManagedDownloadTask> _tasks = new();
-    private readonly Dictionary<string, DownloadTaskInfo> _externalTasks = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, ExternalDownloadTask> _externalTasks = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _schedulerGate = new(1, 1);
 
     private sealed class ManagedDownloadTask
@@ -42,7 +43,7 @@ public class DownloadTaskManager : IDownloadTaskManager
 
         public DownloadTaskInfo Info { get; }
 
-        public Func<DownloadTaskInfo, CancellationToken, Task> Executor { get; }
+        public Func<DownloadTaskInfo, CancellationToken, Task> Executor { get; set; }
 
         public CancellationTokenSource CancellationTokenSource { get; private set; } = new();
 
@@ -61,8 +62,21 @@ public class DownloadTaskManager : IDownloadTaskManager
         IFileService fileService,
         ILogger<DownloadTaskManager> logger,
         IDownloadManager downloadManager)
-        : this(minecraftVersionService, fileService, logger, downloadManager, null)
+        : this(minecraftVersionService, fileService, logger, downloadManager, null, null)
     {
+    }
+
+    private sealed class ExternalDownloadTask
+    {
+        public ExternalDownloadTask(DownloadTaskInfo info, bool retainInRecentWhenFinished)
+        {
+            Info = info;
+            RetainInRecentWhenFinished = retainInRecentWhenFinished;
+        }
+
+        public DownloadTaskInfo Info { get; }
+
+        public bool RetainInRecentWhenFinished { get; }
     }
 
     public DownloadTaskManager(
@@ -71,11 +85,23 @@ public class DownloadTaskManager : IDownloadTaskManager
         ILogger<DownloadTaskManager> logger,
         IDownloadManager downloadManager,
         ILocalSettingsService? localSettingsService)
+        : this(minecraftVersionService, fileService, logger, downloadManager, null, localSettingsService)
+    {
+    }
+
+    public DownloadTaskManager(
+        IMinecraftVersionService minecraftVersionService,
+        IFileService fileService,
+        ILogger<DownloadTaskManager> logger,
+        IDownloadManager downloadManager,
+        FallbackDownloadManager? fallbackDownloadManager,
+        ILocalSettingsService? localSettingsService)
     {
         _minecraftVersionService = minecraftVersionService;
         _fileService = fileService;
         _logger = logger;
         _downloadManager = downloadManager;
+        _fallbackDownloadManager = fallbackDownloadManager;
         _localSettingsService = localSettingsService;
     }
 
@@ -307,6 +333,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         bool showInTeachingTip = false,
         string? teachingTipGroupKey = null,
         DownloadTaskCategory taskCategory = DownloadTaskCategory.Unknown,
+        bool retainInRecentWhenFinished = true,
         string? displayNameResourceKey = null,
         IReadOnlyList<string>? displayNameResourceArguments = null,
         string? taskTypeResourceKey = null)
@@ -336,7 +363,7 @@ public class DownloadTaskManager : IDownloadTaskManager
 
         lock (_lock)
         {
-            _externalTasks[taskInfo.TaskId] = taskInfo;
+            _externalTasks[taskInfo.TaskId] = new ExternalDownloadTask(taskInfo, retainInRecentWhenFinished);
             UpdateQueuePositionsLocked();
         }
 
@@ -355,11 +382,13 @@ public class DownloadTaskManager : IDownloadTaskManager
 
         lock (_lock)
         {
-            if (!_externalTasks.TryGetValue(taskId, out taskInfo))
+            if (!_externalTasks.TryGetValue(taskId, out var externalTask))
             {
                 _logger.LogWarning("未找到要更新的外部下载任务: {TaskId}", taskId);
                 return;
             }
+
+            taskInfo = externalTask.Info;
 
             if (taskInfo.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled)
             {
@@ -387,11 +416,13 @@ public class DownloadTaskManager : IDownloadTaskManager
 
         lock (_lock)
         {
-            if (!_externalTasks.TryGetValue(taskId, out taskInfo))
+            if (!_externalTasks.TryGetValue(taskId, out var externalTask))
             {
                 _logger.LogWarning("未找到要完成的外部下载任务: {TaskId}", taskId);
                 return;
             }
+
+            taskInfo = externalTask.Info;
 
             if (taskInfo.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled)
             {
@@ -405,6 +436,11 @@ public class DownloadTaskManager : IDownloadTaskManager
             ResetTaskSpeed(taskInfo);
             taskInfo.State = DownloadTaskState.Completed;
             taskInfo.QueuePosition = null;
+
+            if (!externalTask.RetainInRecentWhenFinished)
+            {
+                _externalTasks.Remove(taskId);
+            }
         }
 
         OnTaskStateChanged(taskInfo);
@@ -421,11 +457,13 @@ public class DownloadTaskManager : IDownloadTaskManager
 
         lock (_lock)
         {
-            if (!_externalTasks.TryGetValue(taskId, out taskInfo))
+            if (!_externalTasks.TryGetValue(taskId, out var externalTask))
             {
                 _logger.LogWarning("未找到要标记失败的外部下载任务: {TaskId}", taskId);
                 return;
             }
+
+            taskInfo = externalTask.Info;
 
             if (taskInfo.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled)
             {
@@ -442,6 +480,11 @@ public class DownloadTaskManager : IDownloadTaskManager
             ResetTaskSpeed(taskInfo);
             taskInfo.State = DownloadTaskState.Failed;
             taskInfo.QueuePosition = null;
+
+            if (!externalTask.RetainInRecentWhenFinished)
+            {
+                _externalTasks.Remove(taskId);
+            }
         }
 
         OnTaskStateChanged(taskInfo);
@@ -457,11 +500,13 @@ public class DownloadTaskManager : IDownloadTaskManager
 
         lock (_lock)
         {
-            if (!_externalTasks.TryGetValue(taskId, out taskInfo))
+            if (!_externalTasks.TryGetValue(taskId, out var externalTask))
             {
                 _logger.LogWarning("未找到要取消的外部下载任务: {TaskId}", taskId);
                 return;
             }
+
+            taskInfo = externalTask.Info;
 
             if (taskInfo.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled)
             {
@@ -473,6 +518,11 @@ public class DownloadTaskManager : IDownloadTaskManager
             ResetTaskSpeed(taskInfo);
             taskInfo.State = DownloadTaskState.Cancelled;
             taskInfo.QueuePosition = null;
+
+            if (!externalTask.RetainInRecentWhenFinished)
+            {
+                _externalTasks.Remove(taskId);
+            }
         }
 
         OnTaskStateChanged(taskInfo);
@@ -489,9 +539,11 @@ public class DownloadTaskManager : IDownloadTaskManager
         string? iconUrl = null,
         IEnumerable<ResourceDependency>? dependencies = null,
         bool showInTeachingTip = false,
-        string? teachingTipGroupKey = null)
+        string? teachingTipGroupKey = null,
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown)
     {
         var dependencyList = dependencies?.ToList();
+
         return EnqueueManagedTaskAsync(
             resourceName,
             resourceType,
@@ -502,6 +554,7 @@ public class DownloadTaskManager : IDownloadTaskManager
                 downloadUrl,
                 savePath,
                 dependencyList,
+                communityResourceProvider,
                 task,
                 cancellationToken),
             showInTeachingTip,
@@ -519,13 +572,14 @@ public class DownloadTaskManager : IDownloadTaskManager
         string fileName,
         string? iconUrl = null,
         bool showInTeachingTip = false,
-        string? teachingTipGroupKey = null)
+        string? teachingTipGroupKey = null,
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown)
     {
         return EnqueueManagedTaskAsync(
             worldName,
             "world",
             DownloadTaskCategory.WorldDownload,
-            (task, cancellationToken) => ExecuteWorldDownloadAsync(worldName, downloadUrl, savesDirectory, fileName, task, cancellationToken),
+            (task, cancellationToken) => ExecuteWorldDownloadAsync(worldName, downloadUrl, savesDirectory, fileName, communityResourceProvider, task, cancellationToken),
             showInTeachingTip,
             iconUrl,
             teachingTipGroupKey);
@@ -852,6 +906,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         string downloadUrl,
         string savePath,
         List<ResourceDependency>? dependencies,
+        CommunityResourceProvider communityResourceProvider,
         DownloadTaskInfo task,
         CancellationToken cancellationToken)
     {
@@ -886,7 +941,8 @@ public class DownloadTaskManager : IDownloadTaskManager
                         UpdateTaskSpeed(task, status);
                         OnTaskProgressChanged(task);
                     },
-                    cancellationToken).ConfigureAwait(false);
+                    cancellationToken,
+                    communityResourceProvider).ConfigureAwait(false);
 
                 completedItems++;
                 _logger.LogInformation("依赖下载完成: {DependencyName}", dependency.Name);
@@ -915,7 +971,8 @@ public class DownloadTaskManager : IDownloadTaskManager
                 UpdateTaskSpeed(task, status);
                 OnTaskProgressChanged(task);
             },
-            cancellationToken).ConfigureAwait(false);
+            cancellationToken,
+            communityResourceProvider).ConfigureAwait(false);
 
         cancellationToken.ThrowIfCancellationRequested();
     }
@@ -927,7 +984,8 @@ public class DownloadTaskManager : IDownloadTaskManager
         string url,
         string savePath,
         Action<DownloadProgressStatus> progressCallback,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown)
     {
         if (string.IsNullOrEmpty(url))
         {
@@ -938,6 +996,25 @@ public class DownloadTaskManager : IDownloadTaskManager
         {
             _logger.LogError("无效的下载 URL: '{Url}'", url);
             throw new ArgumentException($"无效的下载 URL (必须是绝对路径): '{url}'", nameof(url));
+        }
+
+        if (communityResourceProvider != CommunityResourceProvider.Unknown && _fallbackDownloadManager != null)
+        {
+            var fallbackResult = await _fallbackDownloadManager.DownloadFileForCommunityWithStatusAsync(
+                NormalizeCommunityDownloadUrl(url, communityResourceProvider),
+                savePath,
+                GetCommunityFallbackResourceType(communityResourceProvider),
+                progressCallback,
+                cancellationToken).ConfigureAwait(false);
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (!fallbackResult.Success)
+            {
+                throw new InvalidOperationException(fallbackResult.ErrorMessage ?? "社区资源下载失败");
+            }
+
+            return;
         }
 
         var result = await _downloadManager.DownloadFileAsync(
@@ -960,6 +1037,33 @@ public class DownloadTaskManager : IDownloadTaskManager
         }
     }
 
+    private static string GetCommunityFallbackResourceType(CommunityResourceProvider communityResourceProvider)
+    {
+        return communityResourceProvider switch
+        {
+            CommunityResourceProvider.Modrinth => "modrinth_cdn",
+            CommunityResourceProvider.CurseForge => "curseforge_cdn",
+            _ => throw new ArgumentOutOfRangeException(nameof(communityResourceProvider), communityResourceProvider, "未知的社区资源提供方")
+        };
+    }
+
+    private static string NormalizeCommunityDownloadUrl(string url, CommunityResourceProvider communityResourceProvider)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return url;
+        }
+
+        return communityResourceProvider switch
+        {
+            CommunityResourceProvider.Modrinth when url.Contains("https://mod.mcimirror.top", StringComparison.OrdinalIgnoreCase)
+                => url.Replace("https://mod.mcimirror.top", "https://cdn.modrinth.com", StringComparison.OrdinalIgnoreCase),
+            CommunityResourceProvider.CurseForge when url.Contains("https://mod.mcimirror.top", StringComparison.OrdinalIgnoreCase)
+                => url.Replace("https://mod.mcimirror.top", "https://edge.forgecdn.net", StringComparison.OrdinalIgnoreCase),
+            _ => url
+        };
+    }
+
     /// <summary>
     /// 执行世界下载（下载zip并解压）
     /// </summary>
@@ -968,6 +1072,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         string downloadUrl,
         string savesDirectory,
         string fileName,
+        CommunityResourceProvider communityResourceProvider,
         DownloadTaskInfo task,
         CancellationToken cancellationToken)
     {
@@ -997,7 +1102,8 @@ public class DownloadTaskManager : IDownloadTaskManager
                     UpdateTaskSpeed(task, status);
                     OnTaskProgressChanged(task);
                 },
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken,
+                communityResourceProvider).ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -1268,14 +1374,14 @@ public class DownloadTaskManager : IDownloadTaskManager
 
         foreach (var task in _externalTasks.Values)
         {
-            task.QueuePosition = null;
+            task.Info.QueuePosition = null;
         }
     }
 
     private List<DownloadTaskInfo> CreateSnapshotLocked()
     {
         var snapshot = _tasks.Select(task => task.Info.Clone()).ToList();
-        snapshot.AddRange(_externalTasks.Values.Select(task => task.Clone()));
+        snapshot.AddRange(_externalTasks.Values.Select(task => task.Info.Clone()));
         return snapshot;
     }
 
