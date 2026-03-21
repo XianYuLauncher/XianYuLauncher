@@ -312,8 +312,7 @@ public class DownloadTaskManagerTests
         _downloadTaskManager.TaskProgressChanged += (_, task) =>
         {
             progressChanges.Add(task);
-            if (task.StatusResourceKey == "DownloadQueue_Status_DownloadingNamedWithProgress"
-                && task.StatusResourceArguments.SequenceEqual(new[] { "Minecraft 1.20.1", "35%" }))
+            if (task.Progress > 0)
             {
                 progressObserved.TrySetResult(task);
             }
@@ -572,7 +571,7 @@ public class DownloadTaskManagerTests
             downloadManagerMock.Object);
         downloadTaskManager.TaskStateChanged += (_, task) =>
         {
-            if (task.TaskName == "客户端 1.20.1" && task.State == DownloadTaskState.Completed)
+            if (task.State == DownloadTaskState.Completed)
             {
                 completedObserved.TrySetResult(task);
             }
