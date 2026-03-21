@@ -21,5 +21,6 @@ public interface IModResourceDownloadOrchestrator
         string modIconUrl,
         string downloadUrl,
         string savePath,
-        bool showInTeachingTip = false);
+        bool showInTeachingTip = false,
+        string? teachingTipGroupKey = null);
 }

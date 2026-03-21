@@ -11,11 +11,8 @@ public partial class ShellDownloadTipItem : ObservableObject
     [ObservableProperty]
     private string _taskId = string.Empty;
 
-    /// <summary>
-    /// 用于在外部准备任务与后续真实下载任务之间平滑接力，避免 TeachingTip 因 TaskId 切换而闪断。
-    /// </summary>
     [ObservableProperty]
-    private string _mergeKey = string.Empty;
+    private string _presentationKey = string.Empty;
 
     [ObservableProperty]
     private string _title = string.Empty;

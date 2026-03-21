@@ -99,27 +99,45 @@ public interface IDownloadTaskManager
     /// <summary>
     /// 创建一个由业务层主动驱动的外部任务（如依赖解析、收藏夹批量导入）。
     /// </summary>
-    string CreateExternalTask(string taskName, string versionName = "", bool showInTeachingTip = false);
+    string CreateExternalTask(string taskName, string versionName = "", bool showInTeachingTip = false, string? teachingTipGroupKey = null);
 
     /// <summary>
     /// 更新外部任务的进度与状态文案。
     /// </summary>
-    void UpdateExternalTask(string taskId, double progress, string statusMessage);
+    void UpdateExternalTask(
+        string taskId,
+        double progress,
+        string statusMessage,
+        string? statusResourceKey = null,
+        IReadOnlyList<string>? statusResourceArguments = null);
 
     /// <summary>
     /// 将外部任务标记为完成。
     /// </summary>
-    void CompleteExternalTask(string taskId, string statusMessage = "下载完成");
+    void CompleteExternalTask(
+        string taskId,
+        string statusMessage = "下载完成",
+        string? statusResourceKey = null,
+        IReadOnlyList<string>? statusResourceArguments = null);
 
     /// <summary>
     /// 将外部任务标记为失败。
     /// </summary>
-    void FailExternalTask(string taskId, string errorMessage, string? statusMessage = null);
+    void FailExternalTask(
+        string taskId,
+        string errorMessage,
+        string? statusMessage = null,
+        string? statusResourceKey = null,
+        IReadOnlyList<string>? statusResourceArguments = null);
 
     /// <summary>
     /// 将外部任务标记为取消。
     /// </summary>
-    void CancelExternalTask(string taskId, string statusMessage = "下载已取消");
+    void CancelExternalTask(
+        string taskId,
+        string statusMessage = "下载已取消",
+        string? statusResourceKey = null,
+        IReadOnlyList<string>? statusResourceArguments = null);
 
     /// <summary>
     /// 启动社区资源下载（Mod、资源包、光影、数据包、世界）
@@ -137,7 +155,8 @@ public interface IDownloadTaskManager
         string savePath,
         string? iconUrl = null,
         IEnumerable<ResourceDependency>? dependencies = null,
-        bool showInTeachingTip = false);
+        bool showInTeachingTip = false,
+        string? teachingTipGroupKey = null);
 
     /// <summary>
     /// 启动世界下载（下载zip并解压到saves目录）
@@ -153,5 +172,6 @@ public interface IDownloadTaskManager
         string savesDirectory,
         string fileName,
         string? iconUrl = null,
-        bool showInTeachingTip = false);
+        bool showInTeachingTip = false,
+        string? teachingTipGroupKey = null);
 }

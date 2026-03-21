@@ -960,7 +960,10 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         FavoritesDownloadProgressText = "100%";
         if (!string.IsNullOrEmpty(_favoritesBackgroundTaskId))
         {
-            _downloadTaskManager.CompleteExternalTask(_favoritesBackgroundTaskId, "下载完成");
+            _downloadTaskManager.CompleteExternalTask(
+                _favoritesBackgroundTaskId,
+                "下载完成",
+                statusResourceKey: "DownloadQueue_Status_Completed");
             _favoritesBackgroundTaskId = null;
         }
 
@@ -1075,7 +1078,13 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         if (!string.IsNullOrEmpty(_favoritesBackgroundTaskId))
         {
-            _downloadTaskManager.UpdateExternalTask(_favoritesBackgroundTaskId, overall, FavoritesDownloadStatus);
+            var (statusMessage, statusResourceKey, statusArguments) = CreateFavoritesBackgroundStatusSnapshot();
+            _downloadTaskManager.UpdateExternalTask(
+                _favoritesBackgroundTaskId,
+                overall,
+                statusMessage,
+                statusResourceKey,
+                statusArguments);
         }
     }
 
@@ -1087,7 +1096,29 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             _favoritesBackgroundTaskId = _downloadTaskManager.CreateExternalTask("收藏夹导入", "favorite-import", showInTeachingTip: true);
         }
 
-        _downloadTaskManager.UpdateExternalTask(_favoritesBackgroundTaskId, FavoritesDownloadProgress, statusMessage);
+        _downloadTaskManager.UpdateExternalTask(
+            _favoritesBackgroundTaskId,
+            FavoritesDownloadProgress,
+            statusMessage,
+            statusResourceKey: "DownloadQueue_Status_BackgroundDownloading");
+    }
+
+    private (string StatusMessage, string StatusResourceKey, IReadOnlyList<string> StatusArguments) CreateFavoritesBackgroundStatusSnapshot()
+    {
+        var total = Math.Max(_favoritesTotalItems, 0);
+        var completed = Math.Clamp(_favoritesCompletedItems, 0, total);
+
+        if (total == 0)
+        {
+            return ("正在后台下载...", "DownloadQueue_Status_BackgroundDownloading", Array.Empty<string>());
+        }
+
+        if (completed >= total)
+        {
+            return ($"已完成 {completed}/{total}", "DownloadQueue_Status_CompletedCount", new[] { completed.ToString(), total.ToString() });
+        }
+
+        return ($"正在下载 ({completed}/{total})...", "DownloadQueue_Status_DownloadingCount", new[] { completed.ToString(), total.ToString() });
     }
 
     private async Task<(bool Success, string? SkippedReason)> DownloadFavoriteAsync(ModrinthProject project, InstalledGameVersionViewModel gameVersion)

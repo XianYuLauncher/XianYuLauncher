@@ -31,6 +31,16 @@ public class DownloadTaskInfo
     public string StatusMessage { get; set; } = string.Empty;
 
     /// <summary>
+    /// 状态消息对应的资源键（用于结构化本地化）
+    /// </summary>
+    public string? StatusResourceKey { get; set; }
+
+    /// <summary>
+    /// 状态消息资源参数（用于结构化本地化）
+    /// </summary>
+    public string[] StatusResourceArguments { get; set; } = [];
+
+    /// <summary>
     /// 错误消息（失败时）
     /// </summary>
     public string? ErrorMessage { get; set; }
@@ -44,6 +54,16 @@ public class DownloadTaskInfo
     /// 下载任务的稳定语义分类
     /// </summary>
     public DownloadTaskCategory TaskCategory { get; set; }
+
+    /// <summary>
+    /// 创建时间（UTC）
+    /// </summary>
+    public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>
+    /// 最后更新时间（UTC）
+    /// </summary>
+    public DateTimeOffset LastUpdatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 
     /// <summary>
     /// 任务图标来源（本地路径或 URI）
@@ -71,6 +91,11 @@ public class DownloadTaskInfo
     public bool ShowInTeachingTip { get; set; }
 
     /// <summary>
+    /// TeachingTip 展示会话键。用于显式衔接准备任务与真实下载任务，避免错误按任务名合并。
+    /// </summary>
+    public string TeachingTipGroupKey { get; set; } = string.Empty;
+
+    /// <summary>
     /// 排队位置（仅排队状态下有值）
     /// </summary>
     public int? QueuePosition { get; set; }
@@ -88,14 +113,19 @@ public class DownloadTaskInfo
             State = State,
             Progress = Progress,
             StatusMessage = StatusMessage,
+            StatusResourceKey = StatusResourceKey,
+            StatusResourceArguments = [.. StatusResourceArguments],
             ErrorMessage = ErrorMessage,
             VersionName = VersionName,
             TaskCategory = TaskCategory,
+            CreatedAtUtc = CreatedAtUtc,
+            LastUpdatedAtUtc = LastUpdatedAtUtc,
             IconSource = IconSource,
             SpeedText = SpeedText,
             SpeedBytesPerSecond = SpeedBytesPerSecond,
             IsQueueManaged = IsQueueManaged,
             ShowInTeachingTip = ShowInTeachingTip,
+            TeachingTipGroupKey = TeachingTipGroupKey,
             QueuePosition = QueuePosition
         };
     }

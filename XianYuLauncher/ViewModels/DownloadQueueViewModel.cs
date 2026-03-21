@@ -104,31 +104,12 @@ public partial class DownloadQueueTaskItemViewModel : ObservableObject
 
     private static string ResolveDisplayName(DownloadTaskInfo taskInfo)
     {
-        var displayName = string.IsNullOrWhiteSpace(taskInfo.TaskName) ? taskInfo.VersionName : taskInfo.TaskName;
-        return LocalizeDisplayName(displayName);
+        return DownloadTaskTextHelper.GetLocalizedDisplayName(taskInfo);
     }
 
     private static string ResolveStatusMessage(DownloadTaskInfo taskInfo)
     {
-        if (taskInfo.State == DownloadTaskState.Queued && taskInfo.QueuePosition is int queuePosition)
-        {
-            return "DownloadQueue_Status_QueuedWithPosition".GetLocalized(queuePosition);
-        }
-
-        if (!string.IsNullOrWhiteSpace(taskInfo.StatusMessage))
-        {
-            return LocalizeStatusMessage(taskInfo.StatusMessage);
-        }
-
-        return taskInfo.State switch
-        {
-            DownloadTaskState.Queued => "DownloadQueue_Status_Waiting".GetLocalized(),
-            DownloadTaskState.Downloading => "DownloadQueue_Status_Downloading".GetLocalized(),
-            DownloadTaskState.Completed => "DownloadQueue_Status_Completed".GetLocalized(),
-            DownloadTaskState.Failed => "DownloadQueue_Status_Failed".GetLocalized(),
-            DownloadTaskState.Cancelled => "DownloadQueue_Status_Cancelled".GetLocalized(),
-            _ => "DownloadQueue_Status_Generic".GetLocalized()
-        };
+        return DownloadTaskTextHelper.GetLocalizedStatusMessage(taskInfo);
     }
 
     private static string ResolveTaskTypeResourceKey(DownloadTaskInfo taskInfo)
@@ -571,7 +552,7 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
             .ToList();
         var recentTasks = snapshot
             .Where(task => task.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled)
-            .Reverse()
+            .OrderByDescending(task => task.LastUpdatedAtUtc)
             .Select(GetOrCreateTaskItem)
             .ToList();
 

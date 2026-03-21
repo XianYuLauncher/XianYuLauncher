@@ -301,6 +301,46 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
+    public async Task StartVanillaDownloadAsync_ShouldPopulateStructuredStatusMetadataAndTimestamps()
+    {
+        // Arrange
+        var progressChanges = new List<DownloadTaskInfo>();
+        var stateChanges = new List<DownloadTaskInfo>();
+        _downloadTaskManager.TaskProgressChanged += (_, task) => progressChanges.Add(task);
+        _downloadTaskManager.TaskStateChanged += (_, task) => stateChanges.Add(task);
+
+        _minecraftVersionServiceMock
+            .Setup(m => m.DownloadVersionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
+            .Callback<string, string, Action<DownloadProgressStatus>, string, string?>((_, _, callback, _, _) =>
+            {
+                callback.Invoke(new DownloadProgressStatus(0, 0, 35));
+            })
+            .Returns(Task.CompletedTask);
+
+        // Act
+        await _downloadTaskManager.StartVanillaDownloadAsync("1.20.1", "MyVersion");
+        await Task.Delay(100);
+
+        // Assert
+        progressChanges.Should().Contain(task =>
+            task.StatusResourceKey == "DownloadQueue_Status_DownloadingNamedWithProgress"
+            && task.StatusResourceArguments.SequenceEqual(new[] { "Minecraft 1.20.1", "35%" }));
+
+        stateChanges.Should().Contain(task =>
+            task.State == DownloadTaskState.Completed
+            && task.StatusResourceKey == "DownloadQueue_Status_Completed");
+
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskName == "MyVersion"
+            && task.CreatedAtUtc <= task.LastUpdatedAtUtc);
+    }
+
+    [Fact]
     public async Task CancelTask_WhenTaskIsQueued_ShouldSetCancelledState()
     {
         // Arrange
@@ -395,13 +435,17 @@ public class DownloadTaskManagerTests
 
         // Act
         var taskId = _downloadTaskManager.CreateExternalTask("收藏夹导入", "favorite-import", showInTeachingTip: true);
-        _downloadTaskManager.UpdateExternalTask(taskId, 42, "正在下载收藏夹...");
-        _downloadTaskManager.CompleteExternalTask(taskId, "下载完成");
+        _downloadTaskManager.UpdateExternalTask(taskId, 42, "正在解析前置依赖...", statusResourceKey: "DownloadQueue_Status_PreparingDependencies");
+        _downloadTaskManager.CompleteExternalTask(taskId, "下载完成", statusResourceKey: "DownloadQueue_Status_Completed");
 
         // Assert
         stateChanges.Should().Contain(task => task.TaskId == taskId && task.State == DownloadTaskState.Downloading && task.ShowInTeachingTip);
-        stateChanges.Should().Contain(task => task.TaskId == taskId && task.State == DownloadTaskState.Completed);
-        progressChanges.Should().Contain(task => task.TaskId == taskId && task.Progress == 42);
+        stateChanges.Should().Contain(task => task.TaskId == taskId && task.State == DownloadTaskState.Completed && task.StatusResourceKey == "DownloadQueue_Status_Completed");
+        progressChanges.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.Progress == 42
+            && task.StatusResourceKey == "DownloadQueue_Status_PreparingDependencies"
+            && task.CreatedAtUtc <= task.LastUpdatedAtUtc);
         _downloadTaskManager.TasksSnapshot.Should().NotContain(task => task.TaskId == taskId);
         snapshotChangedCount.Should().BeGreaterThanOrEqualTo(4);
     }

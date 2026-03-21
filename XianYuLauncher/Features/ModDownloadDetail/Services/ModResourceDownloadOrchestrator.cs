@@ -167,7 +167,8 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
         string modIconUrl,
         string downloadUrl,
         string savePath,
-        bool showInTeachingTip = false)
+        bool showInTeachingTip = false,
+        string? teachingTipGroupKey = null)
     {
         await _downloadTaskManager.StartResourceDownloadAsync(
             modName,
@@ -175,6 +176,7 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
             downloadUrl,
             savePath,
             modIconUrl,
-            showInTeachingTip: showInTeachingTip);
+            showInTeachingTip: showInTeachingTip,
+            teachingTipGroupKey: teachingTipGroupKey);
     }
 }
