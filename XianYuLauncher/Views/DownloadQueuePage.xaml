@@ -11,6 +11,7 @@
 
     <Page.Resources>
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <helpers:PathToImageSourceConverter x:Key="PathToImageSourceConverter" />
     </Page.Resources>
 
     <Grid x:Name="ContentArea">
@@ -135,15 +136,23 @@
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="viewModels:DownloadQueueTaskItemViewModel">
                                         <controls:SettingsCard Margin="0,0,0,8" IsClickEnabled="False">
-                                            <controls:SettingsCard.HeaderIcon>
-                                                <FontIcon Glyph="{x:Bind IconGlyph, Mode=OneWay}" Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
-                                            </controls:SettingsCard.HeaderIcon>
-                                            
                                             <controls:SettingsCard.Header>
-                                                <StackPanel Spacing="4" Margin="0,4,0,4">
-                                                    <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}" Style="{ThemeResource BodyTextBlockStyle}" TextTrimming="CharacterEllipsis" />
-                                                    <TextBlock Text="{x:Bind StatusMessage, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
-                                                    <ProgressBar Value="{x:Bind Progress, Mode=OneWay}" Maximum="100" Height="4" CornerRadius="2" Margin="0,4,0,0" Width="200" HorizontalAlignment="Left" />
+                                                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,4" VerticalAlignment="Center">
+                                                    <Grid Width="24" Height="24" VerticalAlignment="Center">
+                                                        <Image Source="{x:Bind IconSource, Mode=OneWay, Converter={StaticResource PathToImageSourceConverter}}"
+                                                               Stretch="UniformToFill"
+                                                               Visibility="{x:Bind HasCustomIcon, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                        <FontIcon Glyph="{x:Bind IconGlyph, Mode=OneWay}"
+                                                                  Foreground="{ThemeResource AccentFillColorDefaultBrush}"
+                                                                  HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"
+                                                                  Visibility="{x:Bind HasCustomIcon, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                                                    </Grid>
+                                                    <StackPanel Spacing="4">
+                                                        <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}" Style="{ThemeResource BodyTextBlockStyle}" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{x:Bind StatusMessage, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                                                        <ProgressBar Value="{x:Bind Progress, Mode=OneWay}" Maximum="100" Height="4" CornerRadius="2" Margin="0,4,0,0" Width="200" HorizontalAlignment="Left" />
+                                                    </StackPanel>
                                                 </StackPanel>
                                             </controls:SettingsCard.Header>
                                             
@@ -173,11 +182,26 @@
                             <ItemsControl ItemsSource="{x:Bind ViewModel.QueuedTasks, Mode=OneWay}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="viewModels:DownloadQueueTaskItemViewModel">
-                                        <controls:SettingsCard Header="{x:Bind DisplayName, Mode=OneWay}" Description="{x:Bind StatusMessage, Mode=OneWay}" Margin="0,0,0,8" IsClickEnabled="False">
-                                            <controls:SettingsCard.HeaderIcon>
-                                                <FontIcon Glyph="{x:Bind IconGlyph, Mode=OneWay}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                            </controls:SettingsCard.HeaderIcon>
-                                            
+                                        <controls:SettingsCard Margin="0,0,0,8" IsClickEnabled="False">
+                                            <controls:SettingsCard.Header>
+                                                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,4" VerticalAlignment="Center">
+                                                    <Grid Width="24" Height="24" VerticalAlignment="Center">
+                                                        <Image Source="{x:Bind IconSource, Mode=OneWay, Converter={StaticResource PathToImageSourceConverter}}"
+                                                               Stretch="UniformToFill"
+                                                               Visibility="{x:Bind HasCustomIcon, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                        <FontIcon Glyph="{x:Bind IconGlyph, Mode=OneWay}"
+                                                                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                                  HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"
+                                                                  Visibility="{x:Bind HasCustomIcon, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                                                    </Grid>
+                                                    <StackPanel Spacing="4">
+                                                        <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}" Style="{ThemeResource BodyTextBlockStyle}" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{x:Bind StatusMessage, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </controls:SettingsCard.Header>
+
                                             <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
                                                 <TextBlock Text="{x:Bind TaskType, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
                                                 <Button Style="{ThemeResource SubtleButtonStyle}" 
@@ -201,11 +225,26 @@
                             <ItemsControl ItemsSource="{x:Bind ViewModel.RecentTasks, Mode=OneWay}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="viewModels:DownloadQueueTaskItemViewModel">
-                                        <controls:SettingsCard Header="{x:Bind DisplayName, Mode=OneWay}" Description="{x:Bind StatusMessage, Mode=OneWay}" Margin="0,0,0,8" IsClickEnabled="False">
-                                            <controls:SettingsCard.HeaderIcon>
-                                                <FontIcon Glyph="{x:Bind IconGlyph, Mode=OneWay}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                            </controls:SettingsCard.HeaderIcon>
-                                            
+                                        <controls:SettingsCard Margin="0,0,0,8" IsClickEnabled="False">
+                                            <controls:SettingsCard.Header>
+                                                <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,4" VerticalAlignment="Center">
+                                                    <Grid Width="24" Height="24" VerticalAlignment="Center">
+                                                        <Image Source="{x:Bind IconSource, Mode=OneWay, Converter={StaticResource PathToImageSourceConverter}}"
+                                                               Stretch="UniformToFill"
+                                                               Visibility="{x:Bind HasCustomIcon, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                                        <FontIcon Glyph="{x:Bind IconGlyph, Mode=OneWay}"
+                                                                  Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                                  HorizontalAlignment="Center"
+                                                                  VerticalAlignment="Center"
+                                                                  Visibility="{x:Bind HasCustomIcon, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                                                    </Grid>
+                                                    <StackPanel Spacing="4">
+                                                        <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}" Style="{ThemeResource BodyTextBlockStyle}" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{x:Bind StatusMessage, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </controls:SettingsCard.Header>
+
                                             <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
                                                 <TextBlock Text="{x:Bind TaskType, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
                                                 <Button Style="{ThemeResource SubtleButtonStyle}" 

@@ -49,6 +49,10 @@ public partial class DownloadQueueTaskItemViewModel : ObservableObject
     private string _iconGlyph = DefaultIconGlyph;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasCustomIcon))]
+    private string? _iconSource;
+
+    [ObservableProperty]
     private string _taskType = string.Empty;
 
     [ObservableProperty]
@@ -56,6 +60,8 @@ public partial class DownloadQueueTaskItemViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _canRetry;
+
+    public bool HasCustomIcon => !string.IsNullOrWhiteSpace(IconSource);
 
     public void UpdateFrom(DownloadTaskInfo taskInfo)
     {
@@ -66,6 +72,7 @@ public partial class DownloadQueueTaskItemViewModel : ObservableObject
         State = taskInfo.State.ToString();
         TaskType = ResolveTaskType(taskInfo);
         IconGlyph = ResolveIconGlyph(TaskType);
+        IconSource = taskInfo.IconSource;
         CanCancel = taskInfo.CanCancel;
         CanRetry = taskInfo.CanRetry;
     }

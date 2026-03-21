@@ -46,6 +46,11 @@ public class DownloadTaskInfo
     public DownloadTaskCategory TaskCategory { get; set; }
 
     /// <summary>
+    /// 任务图标来源（本地路径或 URI）
+    /// </summary>
+    public string? IconSource { get; set; }
+
+    /// <summary>
     /// 下载速度文本（如 "5.2 MB/s"）
     /// </summary>
     public string SpeedText { get; set; } = string.Empty;
@@ -86,6 +91,7 @@ public class DownloadTaskInfo
             ErrorMessage = ErrorMessage,
             VersionName = VersionName,
             TaskCategory = TaskCategory,
+            IconSource = IconSource,
             SpeedText = SpeedText,
             SpeedBytesPerSecond = SpeedBytesPerSecond,
             IsQueueManaged = IsQueueManaged,

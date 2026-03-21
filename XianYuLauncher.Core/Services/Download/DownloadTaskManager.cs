@@ -18,6 +18,7 @@ namespace XianYuLauncher.Core.Services;
 public class DownloadTaskManager : IDownloadTaskManager
 {
     private const string DownloadQueueMaxConcurrentTasksKey = "DownloadQueueMaxConcurrentTasks";
+    private const string PlaceholderIconSource = "ms-appx:///Assets/Placeholder.png";
     private const int DefaultMaxConcurrentTasks = 2;
     private const int MaxConcurrentTasksUpperBound = 8;
 
@@ -105,7 +106,8 @@ public class DownloadTaskManager : IDownloadTaskManager
             customVersionName,
             DownloadTaskCategory.GameInstall,
             (task, cancellationToken) => ExecuteVanillaDownloadAsync(versionId, customVersionName, task, cancellationToken, versionIconPath),
-            showInTeachingTip);
+            showInTeachingTip,
+            versionIconPath);
     }
 
     /// <summary>
@@ -135,7 +137,8 @@ public class DownloadTaskManager : IDownloadTaskManager
                 task,
                 cancellationToken,
                 versionIconPath),
-            showInTeachingTip);
+            showInTeachingTip,
+            versionIconPath);
     }
 
     /// <summary>
@@ -164,7 +167,8 @@ public class DownloadTaskManager : IDownloadTaskManager
                 task,
                 cancellationToken,
                 versionIconPath),
-            showInTeachingTip);
+            showInTeachingTip,
+            versionIconPath);
     }
 
     /// <inheritdoc/>
@@ -444,7 +448,8 @@ public class DownloadTaskManager : IDownloadTaskManager
                 dependencyList,
                 task,
                 cancellationToken),
-            showInTeachingTip);
+            showInTeachingTip,
+            iconUrl);
     }
 
     /// <summary>
@@ -463,7 +468,8 @@ public class DownloadTaskManager : IDownloadTaskManager
             "world",
             DownloadTaskCategory.WorldDownload,
             (task, cancellationToken) => ExecuteWorldDownloadAsync(worldName, downloadUrl, savesDirectory, fileName, task, cancellationToken),
-            showInTeachingTip);
+            showInTeachingTip,
+            iconUrl);
     }
 
     private async Task EnqueueManagedTaskAsync(
@@ -471,13 +477,15 @@ public class DownloadTaskManager : IDownloadTaskManager
         string versionName,
         DownloadTaskCategory taskCategory,
         Func<DownloadTaskInfo, CancellationToken, Task> executor,
-        bool showInTeachingTip)
+        bool showInTeachingTip,
+        string? iconSource = null)
     {
         var task = new DownloadTaskInfo
         {
             TaskName = taskName,
             VersionName = versionName,
             TaskCategory = taskCategory,
+            IconSource = NormalizeTaskIconSource(iconSource),
             State = DownloadTaskState.Queued,
             Progress = 0,
             StatusMessage = "等待下载...",
@@ -1122,6 +1130,37 @@ public class DownloadTaskManager : IDownloadTaskManager
     {
         task.SpeedBytesPerSecond = 0;
         task.SpeedText = string.Empty;
+    }
+
+    private static string? NormalizeTaskIconSource(string? iconSource)
+    {
+        if (string.IsNullOrWhiteSpace(iconSource))
+        {
+            return null;
+        }
+
+        var normalizedIconSource = iconSource.Trim();
+        if (string.Equals(normalizedIconSource, PlaceholderIconSource, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        if (Path.IsPathRooted(normalizedIconSource))
+        {
+            return File.Exists(normalizedIconSource) ? normalizedIconSource : null;
+        }
+
+        if (!Uri.TryCreate(normalizedIconSource, UriKind.Absolute, out var iconUri))
+        {
+            return null;
+        }
+
+        if (iconUri.IsFile)
+        {
+            return File.Exists(iconUri.LocalPath) ? normalizedIconSource : null;
+        }
+
+        return normalizedIconSource;
     }
 
     private void NotifyTasksSnapshotChanged()
