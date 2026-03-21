@@ -153,6 +153,150 @@
   <data name="DownloadQueuePage_Subtitle.Text" xml:space="preserve">
     <value>Current downloads and queued tasks will appear here.</value>
   </data>
+  <data name="DownloadQueuePage_SummaryRunning.Text" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="DownloadQueuePage_SummaryQueued.Text" xml:space="preserve">
+    <value>Queued</value>
+  </data>
+  <data name="DownloadQueuePage_SummaryTotalSpeed.Text" xml:space="preserve">
+    <value>Total Speed</value>
+  </data>
+  <data name="DownloadQueuePage_SummaryFailed.Text" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="DownloadQueuePage_EmptyTitle.Text" xml:space="preserve">
+    <value>Your download queue is empty</value>
+  </data>
+  <data name="DownloadQueuePage_EmptyDescription.Text" xml:space="preserve">
+    <value>New downloads, queued tasks, and recent records will appear here. You can start tasks from version installation, resource downloads, or the mod download page.</value>
+  </data>
+  <data name="DownloadQueuePage_EmptyActionText.Text" xml:space="preserve">
+    <value>Go to Downloads</value>
+  </data>
+  <data name="DownloadQueuePage_RunningSection.Text" xml:space="preserve">
+    <value>Active</value>
+  </data>
+  <data name="DownloadQueuePage_QueuedSection.Text" xml:space="preserve">
+    <value>Queued</value>
+  </data>
+  <data name="DownloadQueuePage_RecentSection.Text" xml:space="preserve">
+    <value>Recent Tasks</value>
+  </data>
+  <data name="DownloadQueuePage_RunningCancelButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Cancel task</value>
+  </data>
+  <data name="DownloadQueuePage_QueuedCancelButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Cancel task</value>
+  </data>
+  <data name="DownloadQueuePage_RecentRetryButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Retry task</value>
+  </data>
+  <data name="DownloadQueue_Status_QueuedWithPosition" xml:space="preserve">
+    <value>Queued · #{0}</value>
+  </data>
+  <data name="DownloadQueue_Status_Waiting" xml:space="preserve">
+    <value>Waiting to download...</value>
+  </data>
+  <data name="DownloadQueue_Status_Preparing" xml:space="preserve">
+    <value>Preparing download...</value>
+  </data>
+  <data name="DownloadQueue_Status_Downloading" xml:space="preserve">
+    <value>Downloading...</value>
+  </data>
+  <data name="DownloadQueue_Status_DownloadingNamed" xml:space="preserve">
+    <value>Downloading {0}...</value>
+  </data>
+  <data name="DownloadQueue_Status_DownloadingNamedWithProgress" xml:space="preserve">
+    <value>Downloading {0}... {1}</value>
+  </data>
+  <data name="DownloadQueue_Status_NameWithProgress" xml:space="preserve">
+    <value>{0} - {1}</value>
+  </data>
+  <data name="DownloadQueue_Status_Completed" xml:space="preserve">
+    <value>Download complete</value>
+  </data>
+  <data name="DownloadQueue_Status_Failed" xml:space="preserve">
+    <value>Download failed</value>
+  </data>
+  <data name="DownloadQueue_Status_FailedWithError" xml:space="preserve">
+    <value>Download failed: {0}</value>
+  </data>
+  <data name="DownloadQueue_Status_Cancelled" xml:space="preserve">
+    <value>Download cancelled</value>
+  </data>
+  <data name="DownloadQueue_Status_Generic" xml:space="preserve">
+    <value>Download task</value>
+  </data>
+  <data name="DownloadQueue_Status_DownloadingDependency" xml:space="preserve">
+    <value>Downloading dependency: {0}...</value>
+  </data>
+  <data name="DownloadQueue_Status_DownloadingDependencyWithProgress" xml:space="preserve">
+    <value>Downloading dependency: {0}... {1}</value>
+  </data>
+  <data name="DownloadQueue_Status_DownloadingDependencyResource" xml:space="preserve">
+    <value>Downloading dependency resource: {0}</value>
+  </data>
+  <data name="DownloadQueue_Status_ExtractingWorldArchive" xml:space="preserve">
+    <value>Extracting world archive...</value>
+  </data>
+  <data name="DownloadQueue_Status_ExtractingTo" xml:space="preserve">
+    <value>Extracting to: {0}</value>
+  </data>
+  <data name="DownloadQueue_Status_PreparingDependencies" xml:space="preserve">
+    <value>Resolving dependencies...</value>
+  </data>
+  <data name="DownloadQueue_Status_DependenciesReady" xml:space="preserve">
+    <value>Dependencies ready, adding to the download queue...</value>
+  </data>
+  <data name="DownloadQueue_Status_PreparationFailed" xml:space="preserve">
+    <value>Preparation failed: {0}</value>
+  </data>
+  <data name="DownloadQueue_Status_DownloadingCount" xml:space="preserve">
+    <value>Downloading ({0}/{1})...</value>
+  </data>
+  <data name="DownloadQueue_Status_CompletedCount" xml:space="preserve">
+    <value>Completed {0}/{1}</value>
+  </data>
+  <data name="DownloadQueue_Status_BackgroundDownloading" xml:space="preserve">
+    <value>Downloading in background...</value>
+  </data>
+  <data name="DownloadQueue_TaskType_GameInstall" xml:space="preserve">
+    <value>Game Install</value>
+  </data>
+  <data name="DownloadQueue_TaskType_ModDownload" xml:space="preserve">
+    <value>Mod Download</value>
+  </data>
+  <data name="DownloadQueue_TaskType_ResourcePackDownload" xml:space="preserve">
+    <value>Resource Pack Download</value>
+  </data>
+  <data name="DownloadQueue_TaskType_ShaderDownload" xml:space="preserve">
+    <value>Shader Download</value>
+  </data>
+  <data name="DownloadQueue_TaskType_DataPackDownload" xml:space="preserve">
+    <value>Data Pack Download</value>
+  </data>
+  <data name="DownloadQueue_TaskType_WorldDownload" xml:space="preserve">
+    <value>World Download</value>
+  </data>
+  <data name="DownloadQueue_TaskType_ModpackDownload" xml:space="preserve">
+    <value>Modpack Download</value>
+  </data>
+  <data name="DownloadQueue_TaskType_FileDownload" xml:space="preserve">
+    <value>File Download</value>
+  </data>
+  <data name="DownloadQueue_TaskType_Generic" xml:space="preserve">
+    <value>Download Task</value>
+  </data>
+  <data name="DownloadQueue_DisplayName_FavoriteImport" xml:space="preserve">
+    <value>Favorites Import</value>
+  </data>
+  <data name="DownloadQueue_DisplayName_Client" xml:space="preserve">
+    <value>Client {0}</value>
+  </data>
+  <data name="DownloadQueue_DisplayName_Server" xml:space="preserve">
+    <value>Server {0}</value>
+  </data>
   <data name="SettingsPage_Title.Text" xml:space="preserve">
     <value>Settings</value>
   </data>

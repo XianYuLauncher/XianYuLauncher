@@ -153,6 +153,150 @@
   <data name="DownloadQueuePage_Subtitle.Text" xml:space="preserve">
     <value>当前下载任务和排队任务将在这里显示</value>
   </data>
+  <data name="DownloadQueuePage_SummaryRunning.Text" xml:space="preserve">
+    <value>运行中</value>
+  </data>
+  <data name="DownloadQueuePage_SummaryQueued.Text" xml:space="preserve">
+    <value>排队中</value>
+  </data>
+  <data name="DownloadQueuePage_SummaryTotalSpeed.Text" xml:space="preserve">
+    <value>总速度</value>
+  </data>
+  <data name="DownloadQueuePage_SummaryFailed.Text" xml:space="preserve">
+    <value>失败任务</value>
+  </data>
+  <data name="DownloadQueuePage_EmptyTitle.Text" xml:space="preserve">
+    <value>下载队列还是空的</value>
+  </data>
+  <data name="DownloadQueuePage_EmptyDescription.Text" xml:space="preserve">
+    <value>新的下载任务、排队任务和最近记录会在这里出现。你可以从版本安装、资源下载或 Mod 下载页发起任务。</value>
+  </data>
+  <data name="DownloadQueuePage_EmptyActionText.Text" xml:space="preserve">
+    <value>前往下载</value>
+  </data>
+  <data name="DownloadQueuePage_RunningSection.Text" xml:space="preserve">
+    <value>运行中</value>
+  </data>
+  <data name="DownloadQueuePage_QueuedSection.Text" xml:space="preserve">
+    <value>排队中</value>
+  </data>
+  <data name="DownloadQueuePage_RecentSection.Text" xml:space="preserve">
+    <value>近期任务</value>
+  </data>
+  <data name="DownloadQueuePage_RunningCancelButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>取消任务</value>
+  </data>
+  <data name="DownloadQueuePage_QueuedCancelButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>取消任务</value>
+  </data>
+  <data name="DownloadQueuePage_RecentRetryButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>重试任务</value>
+  </data>
+  <data name="DownloadQueue_Status_QueuedWithPosition" xml:space="preserve">
+    <value>排队中 · 第 {0} 位</value>
+  </data>
+  <data name="DownloadQueue_Status_Waiting" xml:space="preserve">
+    <value>等待下载...</value>
+  </data>
+  <data name="DownloadQueue_Status_Preparing" xml:space="preserve">
+    <value>正在准备下载...</value>
+  </data>
+  <data name="DownloadQueue_Status_Downloading" xml:space="preserve">
+    <value>正在下载...</value>
+  </data>
+  <data name="DownloadQueue_Status_DownloadingNamed" xml:space="preserve">
+    <value>正在下载 {0}...</value>
+  </data>
+  <data name="DownloadQueue_Status_DownloadingNamedWithProgress" xml:space="preserve">
+    <value>正在下载 {0}... {1}</value>
+  </data>
+  <data name="DownloadQueue_Status_NameWithProgress" xml:space="preserve">
+    <value>{0} - {1}</value>
+  </data>
+  <data name="DownloadQueue_Status_Completed" xml:space="preserve">
+    <value>下载完成</value>
+  </data>
+  <data name="DownloadQueue_Status_Failed" xml:space="preserve">
+    <value>下载失败</value>
+  </data>
+  <data name="DownloadQueue_Status_FailedWithError" xml:space="preserve">
+    <value>下载失败: {0}</value>
+  </data>
+  <data name="DownloadQueue_Status_Cancelled" xml:space="preserve">
+    <value>下载已取消</value>
+  </data>
+  <data name="DownloadQueue_Status_Generic" xml:space="preserve">
+    <value>下载任务</value>
+  </data>
+  <data name="DownloadQueue_Status_DownloadingDependency" xml:space="preserve">
+    <value>正在下载前置: {0}...</value>
+  </data>
+  <data name="DownloadQueue_Status_DownloadingDependencyWithProgress" xml:space="preserve">
+    <value>正在下载前置: {0}... {1}</value>
+  </data>
+  <data name="DownloadQueue_Status_DownloadingDependencyResource" xml:space="preserve">
+    <value>正在下载前置资源: {0}</value>
+  </data>
+  <data name="DownloadQueue_Status_ExtractingWorldArchive" xml:space="preserve">
+    <value>正在解压世界存档...</value>
+  </data>
+  <data name="DownloadQueue_Status_ExtractingTo" xml:space="preserve">
+    <value>正在解压到: {0}</value>
+  </data>
+  <data name="DownloadQueue_Status_PreparingDependencies" xml:space="preserve">
+    <value>正在解析前置依赖...</value>
+  </data>
+  <data name="DownloadQueue_Status_DependenciesReady" xml:space="preserve">
+    <value>前置依赖已就绪，正在加入下载队列...</value>
+  </data>
+  <data name="DownloadQueue_Status_PreparationFailed" xml:space="preserve">
+    <value>准备阶段失败: {0}</value>
+  </data>
+  <data name="DownloadQueue_Status_DownloadingCount" xml:space="preserve">
+    <value>正在下载 ({0}/{1})...</value>
+  </data>
+  <data name="DownloadQueue_Status_CompletedCount" xml:space="preserve">
+    <value>已完成 {0}/{1}</value>
+  </data>
+  <data name="DownloadQueue_Status_BackgroundDownloading" xml:space="preserve">
+    <value>正在后台下载...</value>
+  </data>
+  <data name="DownloadQueue_TaskType_GameInstall" xml:space="preserve">
+    <value>游戏安装</value>
+  </data>
+  <data name="DownloadQueue_TaskType_ModDownload" xml:space="preserve">
+    <value>Mod 下载</value>
+  </data>
+  <data name="DownloadQueue_TaskType_ResourcePackDownload" xml:space="preserve">
+    <value>资源包下载</value>
+  </data>
+  <data name="DownloadQueue_TaskType_ShaderDownload" xml:space="preserve">
+    <value>光影下载</value>
+  </data>
+  <data name="DownloadQueue_TaskType_DataPackDownload" xml:space="preserve">
+    <value>数据包下载</value>
+  </data>
+  <data name="DownloadQueue_TaskType_WorldDownload" xml:space="preserve">
+    <value>世界下载</value>
+  </data>
+  <data name="DownloadQueue_TaskType_ModpackDownload" xml:space="preserve">
+    <value>整合包下载</value>
+  </data>
+  <data name="DownloadQueue_TaskType_FileDownload" xml:space="preserve">
+    <value>文件下载</value>
+  </data>
+  <data name="DownloadQueue_TaskType_Generic" xml:space="preserve">
+    <value>下载任务</value>
+  </data>
+  <data name="DownloadQueue_DisplayName_FavoriteImport" xml:space="preserve">
+    <value>收藏夹导入</value>
+  </data>
+  <data name="DownloadQueue_DisplayName_Client" xml:space="preserve">
+    <value>客户端 {0}</value>
+  </data>
+  <data name="DownloadQueue_DisplayName_Server" xml:space="preserve">
+    <value>服务端 {0}</value>
+  </data>
   <data name="SettingsPage_Title.Text" xml:space="preserve">
     <value>设置</value>
   </data>
