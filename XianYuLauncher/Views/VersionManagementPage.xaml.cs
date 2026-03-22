@@ -9,6 +9,7 @@ using XianYuLauncher.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models.VersionManagement;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.Graphics.Canvas;
 using System.IO.Compression;
@@ -19,7 +20,9 @@ namespace XianYuLauncher.Views;
 public sealed partial class VersionManagementPage : Page
 {
     public VersionManagementViewModel ViewModel { get; }
-    private readonly IDialogService _dialogService;
+    private readonly ICommonDialogService _dialogService;
+    private readonly IProgressDialogService _progressDialogService;
+    private readonly IResourceDialogService _resourceDialogService;
     
     // 标记页面是否正在卸载
     private bool _isUnloading = false;
@@ -29,7 +32,9 @@ public sealed partial class VersionManagementPage : Page
     public VersionManagementPage()
     {
         ViewModel = App.GetService<VersionManagementViewModel>();
-        _dialogService = App.GetService<IDialogService>();
+        _dialogService = App.GetService<ICommonDialogService>();
+        _progressDialogService = App.GetService<IProgressDialogService>();
+        _resourceDialogService = App.GetService<IResourceDialogService>();
         this.DataContext = ViewModel;
         InitializeComponent();
         
@@ -138,7 +143,7 @@ public sealed partial class VersionManagementPage : Page
                     _downloadDialogCloseSignal?.TrySetResult(null);
                     _extensionInstallDialogCloseSignal?.TrySetResult(null);
 
-                    var selectedTarget = await _dialogService.ShowListSelectionDialogAsync(
+                    var selectedTarget = await _resourceDialogService.ShowListSelectionDialogAsync(
                         title: "VersionManagerPage_MoveModsDialog_Title".GetLocalized(),
                         instruction: "VersionManagerPage_MoveModsDialog_InstructionContent".GetLocalized(),
                         items: ViewModel.TargetVersions,
@@ -159,7 +164,7 @@ public sealed partial class VersionManagementPage : Page
                     _downloadDialogCloseSignal?.TrySetResult(null);
                     _extensionInstallDialogCloseSignal?.TrySetResult(null);
 
-                    await _dialogService.ShowMoveResultDialogAsync(
+                    await _resourceDialogService.ShowMoveResultDialogAsync(
                         ViewModel.MoveResults,
                         title: "VersionManagerPage_MoveResultDialog_Title".GetLocalized(),
                         instruction: "VersionManagerPage_MoveResultDialog_InstructionContent".GetLocalized());
@@ -183,7 +188,7 @@ public sealed partial class VersionManagementPage : Page
     {
         try
         {
-            await _dialogService.ShowObservableProgressDialogAsync(
+            await _progressDialogService.ShowObservableProgressDialogAsync(
                 title: ViewModel.DownloadProgressDialogTitle,
                 getStatus: () => ViewModel.CurrentDownloadItem,
                 getProgress: () => ViewModel.DownloadProgress,
@@ -203,7 +208,7 @@ public sealed partial class VersionManagementPage : Page
     {
         try
         {
-            await _dialogService.ShowObservableProgressDialogAsync(
+            await _progressDialogService.ShowObservableProgressDialogAsync(
                 title: string.IsNullOrWhiteSpace(ViewModel.ExtensionInstallDialogTitle)
                     ? "VersionManagerPage_SaveConfigDialog_Title".GetLocalized()
                     : ViewModel.ExtensionInstallDialogTitle,

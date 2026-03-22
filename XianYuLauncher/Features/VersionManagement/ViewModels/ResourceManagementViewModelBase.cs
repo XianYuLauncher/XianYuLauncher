@@ -9,6 +9,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
@@ -35,7 +36,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
 
     protected readonly IVersionManagementResourceContext _context;
     protected readonly INavigationService _navigationService;
-    protected readonly IDialogService _dialogService;
+    protected readonly ICommonDialogService _dialogService;
     protected readonly IUiDispatcher _uiDispatcher;
     protected readonly ModrinthService _modrinthService;
     protected readonly CurseForgeService _curseForgeService;
@@ -53,7 +54,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
     protected ResourceManagementViewModelBase(
         IVersionManagementResourceContext context,
         INavigationService navigationService,
-        IDialogService dialogService,
+        ICommonDialogService dialogService,
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
         ModInfoService modInfoService,

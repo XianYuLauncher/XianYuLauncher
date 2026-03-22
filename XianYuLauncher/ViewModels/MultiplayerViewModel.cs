@@ -14,6 +14,7 @@ using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 using Newtonsoft.Json;
 using Serilog;
@@ -57,14 +58,21 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
     
     // FileService用于获取文件路径
     private readonly IFileService _fileService;
-    private readonly IDialogService _dialogService;
+    private readonly ICommonDialogService _dialogService;
+    private readonly IProgressDialogService _progressDialogService;
 
-    public MultiplayerViewModel(INavigationService navigationService, IFileService fileService, TerracottaService terracottaService, IDialogService dialogService)
+    public MultiplayerViewModel(
+        INavigationService navigationService,
+        IFileService fileService,
+        TerracottaService terracottaService,
+        ICommonDialogService dialogService,
+        IProgressDialogService progressDialogService)
     {
         _navigationService = navigationService;
         _fileService = fileService;
         _terracottaService = terracottaService;
         _dialogService = dialogService;
+        _progressDialogService = progressDialogService;
     }
     
     /// <summary>
@@ -118,7 +126,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
         
         try
         {
-            terracottaPath = await _dialogService.ShowProgressCallbackDialogAsync(
+            terracottaPath = await _progressDialogService.ShowProgressCallbackDialogAsync(
                 "联机Page_DownloadingTerracottaTitle".GetLocalized(),
                 "联机Page_DownloadingTerracottaMessage".GetLocalized(),
                 async (progress) => await _terracottaService.EnsureTerracottaAsync(p => progress.Report(p)));
@@ -633,7 +641,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             
             try
             {
-                terracottaPath = await _dialogService.ShowProgressCallbackDialogAsync(
+                terracottaPath = await _progressDialogService.ShowProgressCallbackDialogAsync(
                     "联机Page_DownloadingTerracottaTitle".GetLocalized(),
                     "联机Page_DownloadingTerracottaMessage".GetLocalized(),
                     async (progress) => await _terracottaService.EnsureTerracottaAsync(p => progress.Report(p)));

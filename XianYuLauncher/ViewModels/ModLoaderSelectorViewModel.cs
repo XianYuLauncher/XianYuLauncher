@@ -3,6 +3,7 @@ using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Contracts.Services;
@@ -16,7 +17,7 @@ namespace XianYuLauncher.ViewModels;
 public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigationAware
 {
     private readonly INavigationService _navigationService;
-    private readonly IDialogService _dialogService;
+    private readonly ICommonDialogService _dialogService;
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly IModLoaderVersionLoaderService _versionLoaderService;
@@ -205,7 +206,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     public ModLoaderSelectorViewModel()
     {
         _navigationService = App.GetService<INavigationService>();
-        _dialogService = App.GetService<IDialogService>();
+        _dialogService = App.GetService<ICommonDialogService>();
         _downloadTaskManager = App.GetService<IDownloadTaskManager>();
         _versionLoaderService = App.GetService<IModLoaderVersionLoaderService>();
         _versionNameService = App.GetService<IModLoaderVersionNameService>();

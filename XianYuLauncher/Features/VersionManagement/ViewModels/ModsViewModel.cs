@@ -11,6 +11,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
@@ -28,7 +29,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
     public ModsViewModel(
         IVersionManagementResourceContext context,
         INavigationService navigationService,
-        IDialogService dialogService,
+        ICommonDialogService dialogService,
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
         ModInfoService modInfoService,

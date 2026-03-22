@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
 using Windows.ApplicationModel.DataTransfer;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
@@ -26,7 +27,7 @@ namespace XianYuLauncher.ViewModels
         private readonly ILogSanitizerService _logSanitizerService;
         private readonly IAIAnalysisService _aiAnalysisService; // New Service
         private readonly ILocalSettingsService _localSettingsService; // To read settings
-        private readonly IDialogService _dialogService;
+        private readonly ICommonDialogService _dialogService;
         private readonly IUiDispatcher _uiDispatcher;
         private readonly ResourceManager _resourceManager;
         private ResourceContext _resourceContext;
@@ -61,7 +62,7 @@ namespace XianYuLauncher.ViewModels
             ILogSanitizerService logSanitizerService,
             IAIAnalysisService aiAnalysisService,
             ILocalSettingsService localSettingsService,
-            IDialogService dialogService,
+            ICommonDialogService dialogService,
             IUiDispatcher uiDispatcher)
         {
             _languageSelectorService = languageSelectorService;

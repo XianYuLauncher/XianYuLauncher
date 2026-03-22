@@ -27,6 +27,7 @@ using XianYuLauncher.Services;
 using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Views;
 using XianYuLauncher.Models;
+using XianYuLauncher.Features.Dialogs.Contracts;
 
 namespace XianYuLauncher.ViewModels;
 
@@ -104,7 +105,10 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         private readonly ModInfoService _modInfoService;
         private readonly IJavaRuntimeService _javaRuntimeService;
         private readonly IJavaDownloadService _javaDownloadService;
-        private readonly IDialogService _dialogService;
+        private readonly ICommonDialogService _dialogService;
+        private readonly IProgressDialogService _progressDialogService;
+        private readonly IResourceDialogService _resourceDialogService;
+        private readonly ISelectionDialogService _selectionDialogService;
         private readonly ISettingsRepository _settingsRepository;
         private readonly IFilePickerService _filePickerService;
         private readonly IApplicationLifecycleService _applicationLifecycleService;
@@ -1086,7 +1090,10 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         ModInfoService modInfoService,
         IJavaRuntimeService javaRuntimeService,
         IJavaDownloadService javaDownloadService,
-        IDialogService dialogService,
+        ICommonDialogService dialogService,
+        IProgressDialogService progressDialogService,
+        IResourceDialogService resourceDialogService,
+        ISelectionDialogService selectionDialogService,
         ISettingsRepository settingsRepository,
         IFilePickerService filePickerService,
         IApplicationLifecycleService applicationLifecycleService,
@@ -1110,6 +1117,9 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         _javaRuntimeService = javaRuntimeService;
         _javaDownloadService = javaDownloadService;
         _dialogService = dialogService;
+        _progressDialogService = progressDialogService;
+        _resourceDialogService = resourceDialogService;
+        _selectionDialogService = selectionDialogService;
         _settingsRepository = settingsRepository;
         _filePickerService = filePickerService;
         _applicationLifecycleService = applicationLifecycleService;
@@ -2243,7 +2253,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
             }
 
             // 2. 显示选择对话框并处理结果
-            var selectedOption = await _dialogService.ShowListSelectionDialogAsync(
+            var selectedOption = await _resourceDialogService.ShowListSelectionDialogAsync(
                 title: "下载 Java 运行时",
                 instruction: "请选择要安装的 Java 版本:",
                 items: availableVersions,
@@ -2267,7 +2277,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     {
         try
         {
-            await _dialogService.ShowProgressDialogAsync("正在安装 Java", $"正在下载并配置 {option.DisplayName}...", async (progress, status, token) => 
+            await _progressDialogService.ShowProgressDialogAsync("正在安装 Java", $"正在下载并配置 {option.DisplayName}...", async (progress, status, token) => 
             {
                 try
                 {
@@ -3533,7 +3543,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
                 return; // 用户取消
             }
 
-            var dialogResult = await _dialogService.ShowSettingsCustomSourceDialogAsync(new SettingsCustomSourceDialogRequest
+            var dialogResult = await _selectionDialogService.ShowSettingsCustomSourceDialogAsync(new SettingsCustomSourceDialogRequest
             {
                 Title = $"添加自定义{(template == DownloadSourceTemplateType.Official ? "游戏资源" : "社区资源")}源",
                 PrimaryButtonText = "保存",
@@ -3617,7 +3627,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     {
         try
         {
-            var dialogResult = await _dialogService.ShowSettingsCustomSourceDialogAsync(new SettingsCustomSourceDialogRequest
+            var dialogResult = await _selectionDialogService.ShowSettingsCustomSourceDialogAsync(new SettingsCustomSourceDialogRequest
             {
                 Title = "添加自定义下载源",
                 PrimaryButtonText = "保存",
@@ -3674,7 +3684,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         
         try
         {
-            var dialogResult = await _dialogService.ShowSettingsCustomSourceDialogAsync(new SettingsCustomSourceDialogRequest
+            var dialogResult = await _selectionDialogService.ShowSettingsCustomSourceDialogAsync(new SettingsCustomSourceDialogRequest
             {
                 Title = "编辑自定义下载源",
                 PrimaryButtonText = "保存",

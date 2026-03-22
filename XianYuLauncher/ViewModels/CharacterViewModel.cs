@@ -11,6 +11,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.ViewModels
@@ -23,7 +24,8 @@ namespace XianYuLauncher.ViewModels
         private readonly MicrosoftAuthService _microsoftAuthService;
         private readonly IFileService _fileService;
         private readonly IProfileManager _profileManager;
-        private readonly IDialogService _dialogService;
+        private readonly ICommonDialogService _dialogService;
+        private readonly IProfileDialogService _profileDialogService;
 
         /// <summary>
         /// 角色列表
@@ -99,12 +101,14 @@ namespace XianYuLauncher.ViewModels
             MicrosoftAuthService microsoftAuthService,
             IFileService fileService,
             IProfileManager profileManager,
-            IDialogService dialogService)
+            ICommonDialogService dialogService,
+            IProfileDialogService profileDialogService)
         {
             _microsoftAuthService = microsoftAuthService;
             _fileService = fileService;
             _profileManager = profileManager;
             _dialogService = dialogService;
+            _profileDialogService = profileDialogService;
             
             // 手动注册CollectionChanged事件
             Profiles.CollectionChanged += Profiles_CollectionChanged;
@@ -348,7 +352,7 @@ namespace XianYuLauncher.ViewModels
             try
             {
                 // 1. 询问用户选择登录方式（此时不显示加载环）
-                var selectionResult = await _dialogService.ShowLoginMethodSelectionDialogAsync();
+                var selectionResult = await _profileDialogService.ShowLoginMethodSelectionDialogAsync();
 
                 if (selectionResult == LoginMethodSelectionResult.Cancel)
                 {

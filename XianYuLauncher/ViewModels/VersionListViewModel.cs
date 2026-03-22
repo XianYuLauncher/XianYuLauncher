@@ -15,6 +15,7 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.ViewModels;
@@ -24,7 +25,7 @@ public partial class VersionListViewModel : ObservableRecipient
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IFileService _fileService;
     private readonly Core.Services.ModrinthService _modrinthService;
-    private readonly IDialogService _dialogService;
+    private readonly ICommonDialogService _dialogService;
     private readonly IUiDispatcher _uiDispatcher;
 
     /// <summary>
@@ -174,7 +175,7 @@ public partial class VersionListViewModel : ObservableRecipient
         IFileService fileService,
         Core.Services.ModrinthService modrinthService,
         IVersionInfoService versionInfoService,
-        IDialogService dialogService,
+        ICommonDialogService dialogService,
         IUiDispatcher uiDispatcher)
     {
         _minecraftVersionService = minecraftVersionService;
@@ -692,7 +693,7 @@ public partial class VersionListViewModel : ObservableRecipient
             {
                 try
                 {
-                    var dialogService = App.GetService<IDialogService>();
+                    var dialogService = App.GetService<ICommonDialogService>();
                     if (dialogService != null)
                     {
                         var result = await dialogService.ShowConfirmationDialogAsync("快捷方式已存在", 
@@ -733,7 +734,7 @@ public partial class VersionListViewModel : ObservableRecipient
             
             try 
             {
-                var dialogService = App.GetService<IDialogService>();
+                var dialogService = App.GetService<ICommonDialogService>();
                 if (dialogService != null)
                 {
                     await dialogService.ShowMessageDialogAsync("快捷方式已创建", 
@@ -751,7 +752,7 @@ public partial class VersionListViewModel : ObservableRecipient
             System.Diagnostics.Debug.WriteLine($"创建快捷方式失败: {ex}");
             try 
             {
-                var dialogService = App.GetService<IDialogService>();
+                var dialogService = App.GetService<ICommonDialogService>();
                 if (dialogService != null)
                 {
                     await dialogService.ShowMessageDialogAsync("创建失败", "创建快捷方式时发生错误，请稍后重试。");

@@ -6,6 +6,7 @@ using Serilog;
 using XianYuLauncher.Core.Helpers;
 
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Helpers;
@@ -24,7 +25,7 @@ public sealed partial class SettingsPage : Page
 
     // 自动测速服务（用于事件驱动刷新缓存）
     private readonly IAutoSpeedTestService _autoSpeedTestService;
-    private readonly IDialogService _dialogService;
+    private readonly ICommonDialogService _dialogService;
     private readonly IUiDispatcher _uiDispatcher;
     private string? _pendingProtocolSection;
 
@@ -32,7 +33,7 @@ public sealed partial class SettingsPage : Page
     {
         ViewModel = App.GetService<SettingsViewModel>();
         _autoSpeedTestService = App.GetService<IAutoSpeedTestService>();
-        _dialogService = App.GetService<IDialogService>();
+        _dialogService = App.GetService<ICommonDialogService>();
         _uiDispatcher = App.GetService<IUiDispatcher>();
         InitializeComponent();
         

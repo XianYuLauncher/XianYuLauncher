@@ -4,6 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Models;
 using XianYuLauncher.Models.VersionManagement;
 using XianYuLauncher.ViewModels;
@@ -17,7 +18,7 @@ public partial class MapsViewModel : ObservableObject
 {
     private readonly IVersionManagementContext _context;
     private readonly INavigationService _navigationService;
-    private readonly IDialogService _dialogService;
+    private readonly ICommonDialogService _dialogService;
     private readonly IUiDispatcher _uiDispatcher;
 
     // 源列表
@@ -26,7 +27,7 @@ public partial class MapsViewModel : ObservableObject
     public MapsViewModel(
         IVersionManagementContext context,
         INavigationService navigationService,
-        IDialogService dialogService,
+        ICommonDialogService dialogService,
         IUiDispatcher uiDispatcher)
     {
         _context = context;

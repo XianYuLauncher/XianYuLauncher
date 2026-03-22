@@ -13,6 +13,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.ViewModels
@@ -27,7 +28,10 @@ namespace XianYuLauncher.ViewModels
         private readonly IJavaRuntimeService _javaRuntimeService;
         private readonly IProfileManager _profileManager;
         private readonly AuthlibInjectorService _authlibInjectorService;
-        private readonly IDialogService _dialogService;
+        private readonly ICommonDialogService _dialogService;
+        private readonly IProgressDialogService _progressDialogService;
+        private readonly IResourceDialogService _resourceDialogService;
+        private readonly IProfileDialogService _profileDialogService;
         private readonly IJavaDownloadService _javaDownloadService;
         private readonly IThemeSelectorService _themeSelectorService;
         private readonly ILanguageSelectorService _languageSelectorService;
@@ -593,7 +597,7 @@ namespace XianYuLauncher.ViewModels
                 }
 
                 // 2. 显示并处理结果
-                var selectedOption = await _dialogService.ShowListSelectionDialogAsync(
+                var selectedOption = await _resourceDialogService.ShowListSelectionDialogAsync(
                     title: "下载 Java 运行时",
                     instruction: "请选择要安装的 Java 版本:",
                     items: availableVersions,
@@ -615,7 +619,7 @@ namespace XianYuLauncher.ViewModels
 
         private async Task InstallJavaAsync(JavaVersionDownloadOption option)
         {
-            await _dialogService.ShowProgressDialogAsync("正在安装 Java", $"正在下载并配置 {option.DisplayName}...", async (progress, status, token) => 
+            await _progressDialogService.ShowProgressDialogAsync("正在安装 Java", $"正在下载并配置 {option.DisplayName}...", async (progress, status, token) => 
             {
                 try
                 {
@@ -751,7 +755,7 @@ namespace XianYuLauncher.ViewModels
                         else
                         {
                             // 多个角色，弹出选择对话框
-                            selectedProfile = await _dialogService.ShowProfileSelectionDialogAsync(result.AvailableProfiles, ExternalAuthServer);
+                            selectedProfile = await _profileDialogService.ShowProfileSelectionDialogAsync(result.AvailableProfiles, ExternalAuthServer);
                         }
                     }
 
@@ -827,7 +831,7 @@ namespace XianYuLauncher.ViewModels
                 IsLoggingIn = true;
                 
                 // 1. 询问用户选择登录方式
-                var selectionResult = await _dialogService.ShowLoginMethodSelectionDialogAsync();
+                var selectionResult = await _profileDialogService.ShowLoginMethodSelectionDialogAsync();
 
                 if (selectionResult == LoginMethodSelectionResult.Cancel)
                 {
@@ -1081,7 +1085,10 @@ namespace XianYuLauncher.ViewModels
             IJavaRuntimeService javaRuntimeService,
             IProfileManager profileManager,
             AuthlibInjectorService authlibInjectorService,
-            IDialogService dialogService,
+            ICommonDialogService dialogService,
+            IProgressDialogService progressDialogService,
+            IResourceDialogService resourceDialogService,
+            IProfileDialogService profileDialogService,
             IJavaDownloadService javaDownloadService,
             IThemeSelectorService themeSelectorService,
             ILanguageSelectorService languageSelectorService,
@@ -1097,6 +1104,9 @@ namespace XianYuLauncher.ViewModels
             _profileManager = profileManager;
             _authlibInjectorService = authlibInjectorService;
             _dialogService = dialogService;
+            _progressDialogService = progressDialogService;
+            _resourceDialogService = resourceDialogService;
+            _profileDialogService = profileDialogService;
             _javaDownloadService = javaDownloadService;
             _themeSelectorService = themeSelectorService;
             _languageSelectorService = languageSelectorService;

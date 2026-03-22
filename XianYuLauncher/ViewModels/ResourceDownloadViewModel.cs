@@ -15,6 +15,7 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Features.Dialogs.Contracts;
 
 namespace XianYuLauncher.ViewModels;
 
@@ -31,7 +32,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private readonly ModrinthCacheService _modrinthCacheService;
     private readonly CurseForgeCacheService _curseForgeCacheService;
     private readonly ITranslationService _translationService;
-    private readonly IDialogService _dialogService;
+    private readonly ICommonDialogService _dialogService;
+    private readonly IProgressDialogService _progressDialogService;
+    private readonly IResourceDialogService _resourceDialogService;
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly IGameDirResolver _gameDirResolver;
@@ -743,7 +746,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             return;
         }
 
-        var selected = await _dialogService.ShowListSelectionDialogAsync(
+        var selected = await _resourceDialogService.ShowListSelectionDialogAsync(
             "选择游戏版本",
             "请选择要导入的游戏版本：",
             FavoritesInstallVersions,
@@ -875,7 +878,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         FavoritesDownloadStatus = $"正在下载 (0/{targets.Count})...";
 
         var downloadTask = ExecuteFavoritesDownloadCoreAsync(targets);
-        var result = await _dialogService.ShowObservableProgressDialogAsync(
+        var result = await _progressDialogService.ShowObservableProgressDialogAsync(
             "收藏夹下载中",
             () => FavoritesDownloadStatus,
             () => FavoritesDownloadProgress,
@@ -895,7 +898,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         if (unsupported.Count > 0)
         {
-            await _dialogService.ShowFavoritesImportResultDialogAsync(
+            await _resourceDialogService.ShowFavoritesImportResultDialogAsync(
                 unsupported.Select(name => new XianYuLauncher.Models.FavoritesImportResultItem(name, "不支持此版本", IsGrayedOut: true)));
         }
     }
@@ -1780,7 +1783,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
     private async Task ShowMessageAsync(string message)
     {
-        var dialogService = App.GetService<IDialogService>();
+        var dialogService = App.GetService<ICommonDialogService>();
         if (dialogService != null)
         {
             await dialogService.ShowMessageDialogAsync("提示", message);
@@ -1800,7 +1803,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         ModrinthCacheService modrinthCacheService,
         CurseForgeCacheService curseForgeCacheService,
         ITranslationService translationService,
-        IDialogService dialogService,
+        ICommonDialogService dialogService,
+        IProgressDialogService progressDialogService,
+        IResourceDialogService resourceDialogService,
         IDownloadTaskManager downloadTaskManager,
         IUiDispatcher uiDispatcher,
         IGameDirResolver gameDirResolver)
@@ -1817,6 +1822,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         _curseForgeCacheService = curseForgeCacheService;
         _translationService = translationService;
         _dialogService = dialogService;
+        _progressDialogService = progressDialogService;
+        _resourceDialogService = resourceDialogService;
         _downloadTaskManager = downloadTaskManager;
         _uiDispatcher = uiDispatcher;
         _gameDirResolver = gameDirResolver;

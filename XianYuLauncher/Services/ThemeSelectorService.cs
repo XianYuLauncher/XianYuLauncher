@@ -1,3 +1,4 @@
+using System;
 using Microsoft.UI.Xaml;
 
 using XianYuLauncher.Contracts.Services;
@@ -10,7 +11,9 @@ public class ThemeSelectorService : IThemeSelectorService
 {
     private const string SettingsKey = "AppBackgroundRequestedTheme";
 
-    public ElementTheme Theme { get; set; } = ElementTheme.Default;
+    public event EventHandler? ThemeChanged;
+
+    public ElementTheme Theme { get; private set; } = ElementTheme.Default;
 
     private readonly ILocalSettingsService _localSettingsService;
 
@@ -22,15 +25,22 @@ public class ThemeSelectorService : IThemeSelectorService
     public async Task InitializeAsync()
     {
         Theme = await LoadThemeFromSettingsAsync();
+        ThemeChanged?.Invoke(this, EventArgs.Empty);
         await Task.CompletedTask;
     }
 
     public async Task SetThemeAsync(ElementTheme theme)
     {
+        if (Theme == theme)
+        {
+            return;
+        }
+
         Theme = theme;
 
         await SetRequestedThemeAsync();
         await SaveThemeInSettingsAsync(Theme);
+        ThemeChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public async Task SetRequestedThemeAsync()

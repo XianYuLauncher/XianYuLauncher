@@ -9,6 +9,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Threading.Tasks;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.ViewModels;
@@ -18,7 +19,8 @@ namespace XianYuLauncher.Views;
 public sealed partial class VersionListPage : Page
 {
     private readonly INavigationService _navigationService;
-    private readonly IDialogService _dialogService;
+    private readonly ICommonDialogService _dialogService;
+    private readonly IProgressDialogService _progressDialogService;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly Dictionary<string, BitmapImage?> _versionIconImageCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, Task<BitmapImage?>> _versionIconProcessingTasks = new(StringComparer.OrdinalIgnoreCase);
@@ -95,7 +97,8 @@ public sealed partial class VersionListPage : Page
     {
         this.DataContext = App.GetService<VersionListViewModel>();
         _navigationService = App.GetService<INavigationService>();
-        _dialogService = App.GetService<IDialogService>();
+        _dialogService = App.GetService<ICommonDialogService>();
+        _progressDialogService = App.GetService<IProgressDialogService>();
         _uiDispatcher = App.GetService<IUiDispatcher>();
         InitializeComponent();
         
@@ -308,7 +311,7 @@ public sealed partial class VersionListPage : Page
 
         _completeVersionDialogState.Set($"版本 {e.Name}\n正在检查依赖...", 0, "0.0%");
 
-        var dialogTask = _dialogService.ShowObservableProgressDialogAsync(
+        var dialogTask = _progressDialogService.ShowObservableProgressDialogAsync(
             "版本补全",
             () => _completeVersionDialogState.Status,
             () => _completeVersionDialogState.Progress,
@@ -1255,7 +1258,7 @@ public sealed partial class VersionListPage : Page
         _loadingDialogState.Set("正在获取Modrinth资源...", 0.0, "0.0%");
         _loadingDialogCloseSignal = new TaskCompletionSource<bool>();
 
-        var dialogTask = _dialogService.ShowObservableProgressDialogAsync(
+        var dialogTask = _progressDialogService.ShowObservableProgressDialogAsync(
             "正在导出整合包",
             () => _loadingDialogState.Status,
             () => _loadingDialogState.Progress,

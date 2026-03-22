@@ -53,11 +53,6 @@ internal static class ViewModelServiceExtensions
         services.AddTransient<ShellPage>();
         services.AddSingleton<ShellViewModel>();
 
-        services.AddTransient<UpdateDialogViewModel>();
-        services.AddTransient<UpdateDialog>();
-        services.AddTransient<AnnouncementDialogViewModel>();
-        services.AddTransient<AnnouncementDialog>();
-
         return services;
     }
 }

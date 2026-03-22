@@ -15,6 +15,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 
 using System.Collections.ObjectModel;
@@ -81,7 +82,7 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         private async Task ShowMessageAsync(string title, string content)
         {
-             var dialog = App.GetService<IDialogService>();
+             var dialog = App.GetService<ICommonDialogService>();
              if (dialog != null)
              {
                  await dialog.ShowMessageDialogAsync(title, content);

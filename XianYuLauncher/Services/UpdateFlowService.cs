@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using Windows.ApplicationModel;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Contracts.Services;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.Dialogs.Contracts;
 
 namespace XianYuLauncher.Services;
 
@@ -12,19 +12,19 @@ public class UpdateFlowService : IUpdateFlowService
 {
     private readonly ILogger<UpdateFlowService> _logger;
     private readonly UpdateService _updateService;
-    private readonly IDialogService _dialogService;
-    private readonly ILogger<UpdateDialogViewModel> _updateDialogLogger;
+    private readonly ICommonDialogService _dialogService;
+    private readonly IUpdateDialogFlowService _updateDialogFlowService;
 
     public UpdateFlowService(
         ILogger<UpdateFlowService> logger,
         UpdateService updateService,
-        IDialogService dialogService,
-        ILogger<UpdateDialogViewModel> updateDialogLogger)
+        ICommonDialogService dialogService,
+        IUpdateDialogFlowService updateDialogFlowService)
     {
         _logger = logger;
         _updateService = updateService;
         _dialogService = dialogService;
-        _updateDialogLogger = updateDialogLogger;
+        _updateDialogFlowService = updateDialogFlowService;
     }
 
     public async Task<UpdateFlowResult> CheckForUpdatesAsync(bool isDevChannel, CancellationToken cancellationToken = default)
@@ -112,7 +112,6 @@ public class UpdateFlowService : IUpdateFlowService
 
     private async Task<bool> ShowUpdateInstallFlowAsync(UpdateInfo updateInfo, string primaryButtonText, string title)
     {
-        var updateDialogViewModel = new UpdateDialogViewModel(_updateDialogLogger, _updateService, updateInfo);
-        return await _dialogService.ShowUpdateInstallFlowDialogAsync(updateDialogViewModel, title, primaryButtonText, "取消");
+        return await _updateDialogFlowService.ShowUpdateInstallFlowAsync(updateInfo, title, primaryButtonText, "取消");
     }
 }

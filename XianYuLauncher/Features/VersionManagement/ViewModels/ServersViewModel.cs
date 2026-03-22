@@ -3,6 +3,7 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Models;
 using XianYuLauncher.Models.VersionManagement;
 using XianYuLauncher.ViewModels;
@@ -16,7 +17,8 @@ public partial class ServersViewModel : ObservableObject
 {
     private readonly IVersionManagementContext _context;
     private readonly INavigationService _navigationService;
-    private readonly IDialogService _dialogService;
+    private readonly ICommonDialogService _dialogService;
+    private readonly ISelectionDialogService _selectionDialogService;
     private readonly IUiDispatcher _uiDispatcher;
 
     private List<ServerItem> _allServers = new();
@@ -24,12 +26,14 @@ public partial class ServersViewModel : ObservableObject
     public ServersViewModel(
         IVersionManagementContext context,
         INavigationService navigationService,
-        IDialogService dialogService,
+        ICommonDialogService dialogService,
+        ISelectionDialogService selectionDialogService,
         IUiDispatcher uiDispatcher)
     {
         _context = context;
         _navigationService = navigationService;
         _dialogService = dialogService;
+        _selectionDialogService = selectionDialogService;
         _uiDispatcher = uiDispatcher;
     }
 
@@ -151,7 +155,7 @@ public partial class ServersViewModel : ObservableObject
     [RelayCommand]
     private async Task AddServerAsync()
     {
-        var input = await _dialogService.ShowAddServerDialogAsync();
+        var input = await _selectionDialogService.ShowAddServerDialogAsync();
         if (input == null) return;
 
         var name = input.Name;
