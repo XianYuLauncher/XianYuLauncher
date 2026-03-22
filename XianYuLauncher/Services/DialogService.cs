@@ -5,7 +5,6 @@ using System.Threading.Tasks; // Explicitly import missing namespace
 using System.Threading;
 using System.Net.Http;
 using Windows.Storage;
-using Windows.UI.ViewManagement;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -27,156 +26,56 @@ namespace XianYuLauncher.Services;
 public class DialogService : IDialogService
 {
     private readonly HttpClient _httpClient = new HttpClient();
+    private readonly ICommonDialogService _commonDialogService;
     private readonly IContentDialogHostService _dialogHost;
-    private readonly IThemeSelectorService _themeSelectorService;
+    private readonly IDialogThemePaletteService _dialogThemePaletteService;
+    private readonly IProgressDialogService _progressDialogService;
     private readonly IUiDispatcher _uiDispatcher;
-    private readonly UISettings _uiSettings = new();
 
-    public DialogService(IContentDialogHostService dialogHost, IThemeSelectorService themeSelectorService, IUiDispatcher uiDispatcher)
+    public DialogService(
+        ICommonDialogService commonDialogService,
+        IContentDialogHostService dialogHost,
+        IDialogThemePaletteService dialogThemePaletteService,
+        IProgressDialogService progressDialogService,
+        IUiDispatcher uiDispatcher)
     {
+        _commonDialogService = commonDialogService ?? throw new ArgumentNullException(nameof(commonDialogService));
         _dialogHost = dialogHost ?? throw new ArgumentNullException(nameof(dialogHost));
-        _themeSelectorService = themeSelectorService ?? throw new ArgumentNullException(nameof(themeSelectorService));
+        _dialogThemePaletteService = dialogThemePaletteService ?? throw new ArgumentNullException(nameof(dialogThemePaletteService));
+        _progressDialogService = progressDialogService ?? throw new ArgumentNullException(nameof(progressDialogService));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
         _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
     }
 
     private Task<ContentDialogResult> ShowSafeAsync(ContentDialog dialog) => _dialogHost.ShowAsync(dialog);
 
-    /// <summary>
-    /// 获取弹窗应使用的主题。当用户选择「跟随系统」时，解析为实际系统主题。
-    /// </summary>
-    private ElementTheme GetEffectiveDialogTheme()
-    {
-        var theme = _themeSelectorService.Theme;
-        if (theme != ElementTheme.Default)
-            return theme;
+    private Microsoft.UI.Xaml.Media.Brush GetDialogSecondaryTextBrush() => _dialogThemePaletteService.GetSecondaryTextBrush();
 
-        var background = _uiSettings.GetColorValue(UIColorType.Background);
-        // 浅色背景 (R=255,G=255,B=255) 表示系统为浅色主题
-        return background.R == 255 && background.G == 255 && background.B == 255 ? ElementTheme.Light : ElementTheme.Dark;
-    }
+    private Microsoft.UI.Xaml.Media.Brush GetDialogTertiaryTextBrush() => _dialogThemePaletteService.GetTertiaryTextBrush();
 
-    private Microsoft.UI.Xaml.Media.Brush GetDialogSecondaryTextBrush()
-    {
-        return new Microsoft.UI.Xaml.Media.SolidColorBrush(
-            GetEffectiveDialogTheme() == ElementTheme.Dark
-                ? Windows.UI.Color.FromArgb(0xC5, 0xFF, 0xFF, 0xFF)
-                : Windows.UI.Color.FromArgb(0x9E, 0x00, 0x00, 0x00));
-    }
+    private Microsoft.UI.Xaml.Media.Brush GetDialogCriticalTextBrush() => _dialogThemePaletteService.GetCriticalTextBrush();
 
-    private Microsoft.UI.Xaml.Media.Brush GetDialogTertiaryTextBrush()
-    {
-        return new Microsoft.UI.Xaml.Media.SolidColorBrush(
-            GetEffectiveDialogTheme() == ElementTheme.Dark
-                ? Windows.UI.Color.FromArgb(0x8B, 0xFF, 0xFF, 0xFF)
-                : Windows.UI.Color.FromArgb(0x72, 0x00, 0x00, 0x00));
-    }
+    private Microsoft.UI.Xaml.Media.Brush GetDialogCardBackgroundBrush() => _dialogThemePaletteService.GetCardBackgroundBrush();
 
-    private Microsoft.UI.Xaml.Media.Brush GetDialogCriticalTextBrush()
-    {
-        return new Microsoft.UI.Xaml.Media.SolidColorBrush(
-            GetEffectiveDialogTheme() == ElementTheme.Dark
-                ? Windows.UI.Color.FromArgb(255, 0xFF, 0x99, 0x99)
-                : Windows.UI.Color.FromArgb(255, 0xC4, 0x2B, 0x1C));
-    }
+    private Microsoft.UI.Xaml.Media.Brush GetDialogCardStrokeBrush() => _dialogThemePaletteService.GetCardStrokeBrush();
 
-    /// <summary>
-    /// 弹窗内卡片背景，跟随弹窗主题（避免 ContentDialog reparent 后 ThemeResource 错误解析）。
-    /// Dark #333333，Light #FFFFFF（浅色模式卡片与弹窗背景一致，仅靠边框区分）。
-    /// </summary>
-    private Microsoft.UI.Xaml.Media.Brush GetDialogCardBackgroundBrush()
-    {
-        return new Microsoft.UI.Xaml.Media.SolidColorBrush(
-            GetEffectiveDialogTheme() == ElementTheme.Dark
-                ? Windows.UI.Color.FromArgb(255, 0x33, 0x33, 0x33)
-                : Windows.UI.Color.FromArgb(255, 0xFF, 0xFF, 0xFF));
-    }
+    private Microsoft.UI.Xaml.Media.Brush GetDialogSubtleFillBrush() => _dialogThemePaletteService.GetSubtleFillBrush();
 
-    /// <summary>
-    /// 弹窗内卡片边框，跟随弹窗主题。
-    /// Dark #454545，Light #E5E5E5。
-    /// </summary>
-    private Microsoft.UI.Xaml.Media.Brush GetDialogCardStrokeBrush()
-    {
-        return new Microsoft.UI.Xaml.Media.SolidColorBrush(
-            GetEffectiveDialogTheme() == ElementTheme.Dark
-                ? Windows.UI.Color.FromArgb(255, 0x45, 0x45, 0x45)
-                : Windows.UI.Color.FromArgb(255, 0xE5, 0xE5, 0xE5));
-    }
+    private Microsoft.UI.Xaml.Media.Brush GetDialogPrimaryTextBrush() => _dialogThemePaletteService.GetPrimaryTextBrush();
 
-    /// <summary>
-    /// 弹窗内 SubtleFill 背景（如类型标签），跟随弹窗主题。
-    /// Dark #454545，Light #E8E8E8（浅色模式保持柔和）。
-    /// </summary>
-    private Microsoft.UI.Xaml.Media.Brush GetDialogSubtleFillBrush()
-    {
-        return new Microsoft.UI.Xaml.Media.SolidColorBrush(
-            GetEffectiveDialogTheme() == ElementTheme.Dark
-                ? Windows.UI.Color.FromArgb(255, 0x45, 0x45, 0x45)
-                : Windows.UI.Color.FromArgb(255, 0xE8, 0xE8, 0xE8));
-    }
+    private Microsoft.UI.Xaml.Media.Brush GetDialogAccentFillBrush() => _dialogThemePaletteService.GetAccentFillBrush();
 
-    /// <summary>
-    /// 弹窗内主标题文字颜色，跟随弹窗主题。
-    /// </summary>
-    private Microsoft.UI.Xaml.Media.Brush GetDialogPrimaryTextBrush()
-    {
-        return new Microsoft.UI.Xaml.Media.SolidColorBrush(
-            GetEffectiveDialogTheme() == ElementTheme.Dark
-                ? Windows.UI.Color.FromArgb(255, 0xFF, 0xFF, 0xFF)
-                : Windows.UI.Color.FromArgb(255, 0x00, 0x00, 0x00));
-    }
+    private Microsoft.UI.Xaml.Media.Brush GetDialogTextOnAccentBrush() => _dialogThemePaletteService.GetTextOnAccentBrush();
 
-    /// <summary>
-    /// 弹窗内 Accent 背景（如资源类型标签），避免 ThemeResource 错误跟随系统主题。
-    /// </summary>
-    private Microsoft.UI.Xaml.Media.Brush GetDialogAccentFillBrush()
-    {
-        return new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0x00, 0x78, 0xD4));
-    }
+    public Task ShowMessageDialogAsync(string title, string message, string closeButtonText = "确定") => _commonDialogService.ShowMessageDialogAsync(title, message, closeButtonText);
 
-    /// <summary>
-    /// 弹窗内 Accent 上的文字颜色（白色）。
-    /// </summary>
-    private Microsoft.UI.Xaml.Media.Brush GetDialogTextOnAccentBrush()
-    {
-        return new Microsoft.UI.Xaml.Media.SolidColorBrush(Windows.UI.Color.FromArgb(255, 0xFF, 0xFF, 0xFF));
-    }
-
-    public async Task ShowMessageDialogAsync(string title, string message, string closeButtonText = "确定")
-    {
-        var dialog = new ContentDialog
-        {
-            Title = title,
-            Content = message,
-            CloseButtonText = closeButtonText,
-            DefaultButton = ContentDialogButton.Close,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
-
-        await ShowSafeAsync(dialog);
-    }
-
-    public async Task<bool> ShowConfirmationDialogAsync(
+    public Task<bool> ShowConfirmationDialogAsync(
         string title,
         string message,
         string primaryButtonText = "是",
         string closeButtonText = "否",
-        ContentDialogButton defaultButton = ContentDialogButton.Primary)
-    {
-        var dialog = new ContentDialog
-        {
-            Title = title,
-            Content = message,
-            PrimaryButtonText = primaryButtonText,
-            CloseButtonText = closeButtonText,
-            DefaultButton = defaultButton,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
-
-        var result = await ShowSafeAsync(dialog);
-        return result == ContentDialogResult.Primary;
-    }
+        ContentDialogButton defaultButton = ContentDialogButton.Primary) =>
+        _commonDialogService.ShowConfirmationDialogAsync(title, message, primaryButtonText, closeButtonText, defaultButton);
 
     public async Task ShowJavaNotFoundDialogAsync(string requiredVersion, Action onManualDownload, Action onAutoDownload)
     {
@@ -270,12 +169,9 @@ public class DialogService : IDialogService
         return result == ContentDialogResult.Primary;
     }
 
-    public async Task<ContentDialogResult> ShowDialogAsync(ContentDialog dialog)
-    {
-        return await ShowSafeAsync(dialog);
-    }
+    public Task<ContentDialogResult> ShowDialogAsync(ContentDialog dialog) => _commonDialogService.ShowDialogAsync(dialog);
 
-    public async Task<ContentDialogResult> ShowCustomDialogAsync(
+    public Task<ContentDialogResult> ShowCustomDialogAsync(
         string title,
         object content,
         string? primaryButtonText = null,
@@ -285,45 +181,18 @@ public class DialogService : IDialogService
         bool isPrimaryButtonEnabled = true,
         bool isSecondaryButtonEnabled = true,
         Windows.Foundation.TypedEventHandler<ContentDialog, ContentDialogButtonClickEventArgs>? onPrimaryButtonClick = null,
-        Windows.Foundation.TypedEventHandler<ContentDialog, ContentDialogButtonClickEventArgs>? onSecondaryButtonClick = null)
-    {
-        var dialog = new ContentDialog
-        {
-            Title = title,
-            Content = content,
-            DefaultButton = defaultButton,
-            IsPrimaryButtonEnabled = isPrimaryButtonEnabled,
-            IsSecondaryButtonEnabled = isSecondaryButtonEnabled,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
-
-        if (!string.IsNullOrEmpty(primaryButtonText))
-        {
-            dialog.PrimaryButtonText = primaryButtonText;
-        }
-
-        if (!string.IsNullOrEmpty(secondaryButtonText))
-        {
-            dialog.SecondaryButtonText = secondaryButtonText;
-        }
-
-        if (!string.IsNullOrEmpty(closeButtonText))
-        {
-            dialog.CloseButtonText = closeButtonText;
-        }
-
-        if (onPrimaryButtonClick != null)
-        {
-            dialog.PrimaryButtonClick += onPrimaryButtonClick;
-        }
-
-        if (onSecondaryButtonClick != null)
-        {
-            dialog.SecondaryButtonClick += onSecondaryButtonClick;
-        }
-
-        return await ShowSafeAsync(dialog);
-    }
+        Windows.Foundation.TypedEventHandler<ContentDialog, ContentDialogButtonClickEventArgs>? onSecondaryButtonClick = null) =>
+        _commonDialogService.ShowCustomDialogAsync(
+            title,
+            content,
+            primaryButtonText,
+            secondaryButtonText,
+            closeButtonText,
+            defaultButton,
+            isPrimaryButtonEnabled,
+            isSecondaryButtonEnabled,
+            onPrimaryButtonClick,
+            onSecondaryButtonClick);
 
     public async Task ShowFavoritesImportResultDialogAsync(IEnumerable<XianYuLauncher.Models.FavoritesImportResultItem> results)
     {
@@ -367,41 +236,13 @@ public class DialogService : IDialogService
         await ShowCustomDialogAsync("部分资源不支持此版本", panel, primaryButtonText: "确定", closeButtonText: null);
     }
 
-    public async Task<string?> ShowTextInputDialogAsync(
+    public Task<string?> ShowTextInputDialogAsync(
         string title,
         string placeholder = "",
         string primaryButtonText = "确认",
         string closeButtonText = "取消",
-        bool acceptsReturn = false)
-    {
-        var textBox = new TextBox
-        {
-            PlaceholderText = placeholder,
-            MinWidth = 380,
-            Width = 380,
-            Margin = new Microsoft.UI.Xaml.Thickness(0, 10, 0, 0),
-            AcceptsReturn = acceptsReturn,
-            TextWrapping = acceptsReturn ? TextWrapping.Wrap : TextWrapping.NoWrap
-        };
-        if (acceptsReturn)
-        {
-            textBox.MinHeight = 120;
-        }
-
-        var result = await ShowCustomDialogAsync(
-            title,
-            textBox,
-            primaryButtonText,
-            closeButtonText: closeButtonText,
-            defaultButton: ContentDialogButton.Primary);
-
-        if (result == ContentDialogResult.Primary && !string.IsNullOrWhiteSpace(textBox.Text))
-        {
-            return textBox.Text.Trim();
-        }
-
-        return null;
-    }
+        bool acceptsReturn = false) =>
+        _commonDialogService.ShowTextInputDialogAsync(title, placeholder, primaryButtonText, closeButtonText, acceptsReturn);
 
     public async Task<string?> ShowModpackInstallNameDialogAsync(
         string defaultName,
@@ -494,142 +335,11 @@ public class DialogService : IDialogService
         return inputBox.Text?.Trim();
     }
 
-    public async Task ShowProgressDialogAsync(string title, string message, Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback)
-    {
-        var progressBar = new ProgressBar { Maximum = 100, Value = 0, MinHeight = 4, Margin = new Microsoft.UI.Xaml.Thickness(0, 10, 0, 10), IsIndeterminate = true };
-        var statusText = new TextBlock { Text = message, TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap };
-        
-        var contentPanel = new StackPanel();
-        contentPanel.Children.Add(statusText);
-        contentPanel.Children.Add(progressBar);
-        
-        var dialog = new ContentDialog
-        {
-            Title = title,
-            Content = contentPanel,
-            CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.None,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
+    public Task ShowProgressDialogAsync(string title, string message, Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback) =>
+        _progressDialogService.ShowProgressDialogAsync(title, message, workCallback);
 
-        var cts = new CancellationTokenSource();
-        Task? backgroundWork = null;
-        
-        dialog.CloseButtonClick += (s, e) => 
-        {
-            if (!cts.IsCancellationRequested)
-                cts.Cancel();
-        };
-
-        var progress = new Progress<double>(p => 
-        {
-            progressBar.IsIndeterminate = false;
-            progressBar.Value = p;
-        });
-        
-        IProgress<string> statusProgress = new Progress<string>(s => statusText.Text = s);
-
-        dialog.Opened += (s, e) =>
-        {
-            backgroundWork = Task.Run(async () =>
-            {
-                try
-                {
-                    await workCallback(progress, statusProgress, cts.Token);
-                }
-                catch (OperationCanceledException) { }
-                catch (Exception ex)
-                {
-                    statusProgress.Report($"操作失败: {ex.Message}");
-                    await Task.Delay(2000);
-                }
-                finally
-                {
-                    // 确保在 UI 线程上关闭
-                    dialog.DispatcherQueue.TryEnqueue(() => 
-                    {
-                        try { dialog.Hide(); } catch { }
-                    });
-                }
-            });
-        };
-
-        await ShowSafeAsync(dialog);
-        
-        // dialog 关闭后，等待后台任务真正完成，确保所有异常都被观察到
-        if (backgroundWork != null)
-        {
-            try
-            {
-                await backgroundWork;
-            }
-            catch
-            {
-                // 所有异常已在 Task.Run 内部处理过，这里兜底防止未观察异常
-            }
-        }
-    }
-
-    public async Task<T> ShowProgressCallbackDialogAsync<T>(string title, string message, Func<IProgress<double>, Task<T>> workCallback)
-    {
-        var progressBar = new ProgressBar { Maximum = 100, Value = 0, MinHeight = 4, Margin = new Microsoft.UI.Xaml.Thickness(0, 10, 0, 10), Width = 300 };
-        var statusText = new TextBlock { Text = message, TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap };
-        var contentPanel = new StackPanel();
-        contentPanel.Children.Add(statusText);
-        contentPanel.Children.Add(progressBar);
-
-        var dialog = new ContentDialog
-        {
-            Title = title,
-            Content = contentPanel,
-            DefaultButton = ContentDialogButton.None,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
-
-        var progress = new Progress<double>(p =>
-        {
-            dialog.DispatcherQueue?.TryEnqueue(() =>
-            {
-                progressBar.IsIndeterminate = false;
-                progressBar.Value = p;
-            });
-        });
-
-        Task<T>? backgroundWork = null;
-        dialog.Opened += (s, e) =>
-        {
-            backgroundWork = Task.Run(async () =>
-            {
-                try
-                {
-                    return await workCallback(progress);
-                }
-                finally
-                {
-                    dialog.DispatcherQueue?.TryEnqueue(() =>
-                    {
-                        try
-                        {
-                            dialog.Hide();
-                        }
-                        catch (Exception ex)
-                        {
-                            Debug.WriteLine($"Failed to hide dialog in ShowProgressCallbackDialogAsync: {ex}");
-                        }
-                    });
-                }
-            });
-        };
-
-        await ShowSafeAsync(dialog);
-
-        // 等待后台任务完成，异常由调用方通过 await 观察
-        if (backgroundWork != null)
-            return await backgroundWork;
-
-        // Opened 事件未触发（极少数情况），对话框可能立即被关闭
-        throw new InvalidOperationException("ShowProgressCallbackDialogAsync: dialog was closed before Opened event fired.");
-    }
+    public Task<T> ShowProgressCallbackDialogAsync<T>(string title, string message, Func<IProgress<double>, Task<T>> workCallback) =>
+        _progressDialogService.ShowProgressCallbackDialogAsync(title, message, workCallback);
 
     public async Task<XianYuLauncher.Core.Services.ExternalProfile?> ShowProfileSelectionDialogAsync(List<XianYuLauncher.Core.Services.ExternalProfile> profiles, string authServer)
     {
@@ -1129,7 +839,7 @@ public class DialogService : IDialogService
         return null;
     }
 
-    public async Task<ContentDialogResult> ShowObservableProgressDialogAsync(
+    public Task<ContentDialogResult> ShowObservableProgressDialogAsync(
         string title,
         Func<string> getStatus,
         Func<double> getProgress,
@@ -1138,91 +848,17 @@ public class DialogService : IDialogService
         string? primaryButtonText = null,
         string? closeButtonText = "取消",
         Task? autoCloseWhen = null,
-        Func<string>? getSpeed = null)
-    {
-        var secondaryTextBrush = GetDialogSecondaryTextBrush();
-        var statusText = new TextBlock { Text = getStatus(), FontSize = 16, TextWrapping = TextWrapping.WrapWholeWords };
-        var progressBar = new ProgressBar { Value = getProgress(), Minimum = 0, Maximum = 100, Height = 8, CornerRadius = new CornerRadius(4) };
-        
-        // 进度文本和速度文本放在同一行
-        var progressInfoPanel = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center, Spacing = 12 };
-        var progressText = new TextBlock
-        {
-            Text = getProgressText(),
-            FontSize = 14,
-            Foreground = secondaryTextBrush
-        };
-        progressInfoPanel.Children.Add(progressText);
-        
-        TextBlock? speedText = null;
-        if (getSpeed != null)
-        {
-            speedText = new TextBlock
-            {
-                Text = getSpeed(),
-                FontSize = 14,
-                Foreground = (Microsoft.UI.Xaml.Media.Brush)Application.Current.Resources["AccentTextFillColorPrimaryBrush"]
-            };
-            progressInfoPanel.Children.Add(speedText);
-        }
-
-        var panel = new StackPanel { Spacing = 16, Width = 400 };
-        panel.Children.Add(statusText);
-        panel.Children.Add(progressBar);
-        panel.Children.Add(progressInfoPanel);
-
-        var dialog = new ContentDialog
-        {
-            Title = title,
-            Content = panel,
-            DefaultButton = ContentDialogButton.None,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
-
-        if (!string.IsNullOrEmpty(primaryButtonText))
-            dialog.PrimaryButtonText = primaryButtonText;
-        if (!string.IsNullOrEmpty(closeButtonText))
-            dialog.CloseButtonText = closeButtonText;
-
-        // 监听属性变更，更新 UI
-        void OnPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-        {
-            dialog.DispatcherQueue?.TryEnqueue(() =>
-            {
-                statusText.Text = getStatus();
-                progressBar.Value = getProgress();
-                progressText.Text = getProgressText();
-                if (speedText != null && getSpeed != null)
-                {
-                    speedText.Text = getSpeed();
-                }
-            });
-        }
-
-        propertyChanged.PropertyChanged += OnPropertyChanged;
-
-        // 当 autoCloseWhen 完成时自动关闭弹窗
-        if (autoCloseWhen != null)
-        {
-            _ = autoCloseWhen.ContinueWith(_ =>
-            {
-                dialog.DispatcherQueue?.TryEnqueue(() =>
-                {
-                    try { dialog.Hide(); }
-                    catch { /* 弹窗可能已关闭 */ }
-                });
-            }, TaskScheduler.Default);
-        }
-
-        try
-        {
-            return await ShowSafeAsync(dialog);
-        }
-        finally
-        {
-            propertyChanged.PropertyChanged -= OnPropertyChanged;
-        }
-    }
+        Func<string>? getSpeed = null) =>
+        _progressDialogService.ShowObservableProgressDialogAsync(
+            title,
+            getStatus,
+            getProgress,
+            getProgressText,
+            propertyChanged,
+            primaryButtonText,
+            closeButtonText,
+            autoCloseWhen,
+            getSpeed);
 
     public async Task<System.Collections.Generic.List<XianYuLauncher.Models.UpdatableResourceItem>?> ShowUpdatableResourcesSelectionDialogAsync(System.Collections.Generic.IEnumerable<XianYuLauncher.Models.UpdatableResourceItem> availableUpdates)
     {
@@ -1381,40 +1017,12 @@ public class DialogService : IDialogService
         };
     }
 
-    public async Task<string?> ShowRenameDialogAsync(
+    public Task<string?> ShowRenameDialogAsync(
         string title,
         string currentName,
         string placeholder = "输入新名称",
-        string instruction = "请输入新的名称：")
-    {
-        var inputBox = new TextBox
-        {
-            Text = currentName ?? string.Empty,
-            PlaceholderText = placeholder
-        };
-
-        var content = new StackPanel { Spacing = 12 };
-        content.Children.Add(new TextBlock { Text = instruction, FontSize = 14 });
-        content.Children.Add(inputBox);
-
-        var dialog = new ContentDialog
-        {
-            Title = title,
-            Content = content,
-            PrimaryButtonText = "确定",
-            CloseButtonText = "取消",
-            DefaultButton = ContentDialogButton.Primary,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
-
-        var result = await ShowSafeAsync(dialog);
-        if (result != ContentDialogResult.Primary)
-        {
-            return null;
-        }
-
-        return inputBox.Text?.Trim();
-    }
+        string instruction = "请输入新的名称：") =>
+        _commonDialogService.ShowRenameDialogAsync(title, currentName, placeholder, instruction);
 
     public async Task<AddServerDialogResult?> ShowAddServerDialogAsync(string defaultName = "Minecraft Server")
     {

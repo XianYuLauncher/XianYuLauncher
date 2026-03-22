@@ -12,13 +12,13 @@ public class UpdateFlowService : IUpdateFlowService
 {
     private readonly ILogger<UpdateFlowService> _logger;
     private readonly UpdateService _updateService;
-    private readonly IDialogService _dialogService;
+    private readonly ICommonDialogService _dialogService;
     private readonly IUpdateDialogFlowService _updateDialogFlowService;
 
     public UpdateFlowService(
         ILogger<UpdateFlowService> logger,
         UpdateService updateService,
-        IDialogService dialogService,
+        ICommonDialogService dialogService,
         IUpdateDialogFlowService updateDialogFlowService)
     {
         _logger = logger;

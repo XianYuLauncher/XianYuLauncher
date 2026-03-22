@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Navigation;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Services;
@@ -14,7 +15,7 @@ namespace XianYuLauncher.Services;
 public class NavigationService : INavigationService
 {
     private readonly IPageService _pageService;
-    private readonly IDialogService _dialogService;
+    private readonly ICommonDialogService _dialogService;
     private object? _lastParameterUsed;
     private Frame? _frame;
 
@@ -44,7 +45,7 @@ public class NavigationService : INavigationService
     [MemberNotNullWhen(true, nameof(Frame), nameof(_frame))]
     public bool CanGoBack => Frame != null && Frame.CanGoBack;
 
-    public NavigationService(IPageService pageService, IDialogService dialogService)
+    public NavigationService(IPageService pageService, ICommonDialogService dialogService)
     {
         _pageService = pageService;
         _dialogService = dialogService;

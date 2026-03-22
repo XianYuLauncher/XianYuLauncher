@@ -1,27 +1,11 @@
 using Microsoft.UI.Xaml.Controls;
-using Windows.Foundation;
 using XianYuLauncher.Core.Services.DownloadSource;
+using XianYuLauncher.Features.Dialogs.Contracts;
 
 namespace XianYuLauncher.Contracts.Services;
 
-public interface IDialogService
+public interface IDialogService : ICommonDialogService, IProgressDialogService
 {
-    /// <summary>
-    /// 显示简单的消息弹窗
-    /// </summary>
-    Task ShowMessageDialogAsync(string title, string message, string closeButtonText = "确定");
-
-    /// <summary>
-    /// 显示确认弹窗
-    /// </summary>
-    /// <returns>如果是主要按钮（确认）返回 true，否则返回 false</returns>
-    Task<bool> ShowConfirmationDialogAsync(
-        string title,
-        string message,
-        string primaryButtonText = "是",
-        string closeButtonText = "否",
-        ContentDialogButton defaultButton = ContentDialogButton.Primary);
-
     /// <summary>
     /// 显示 Java 未找到的弹窗，并提供下载选项
     /// </summary>
@@ -48,41 +32,9 @@ public interface IDialogService
     Task<bool> ShowRegionRestrictedDialogAsync(string errorMessage);
 
     /// <summary>
-    /// 显示自定义内容的弹窗
-    /// </summary>
-    Task<ContentDialogResult> ShowDialogAsync(ContentDialog dialog);
-
-    /// <summary>
-    /// 显示由服务内部创建的自定义弹窗。
-    /// </summary>
-    Task<ContentDialogResult> ShowCustomDialogAsync(
-        string title,
-        object content,
-        string? primaryButtonText = null,
-        string? secondaryButtonText = null,
-        string? closeButtonText = null,
-        ContentDialogButton defaultButton = ContentDialogButton.None,
-        bool isPrimaryButtonEnabled = true,
-        bool isSecondaryButtonEnabled = true,
-        TypedEventHandler<ContentDialog, ContentDialogButtonClickEventArgs>? onPrimaryButtonClick = null,
-        TypedEventHandler<ContentDialog, ContentDialogButtonClickEventArgs>? onSecondaryButtonClick = null);
-
-    /// <summary>
     /// 显示收藏夹导入结果弹窗（不支持版本列表）。
     /// </summary>
     Task ShowFavoritesImportResultDialogAsync(System.Collections.Generic.IEnumerable<XianYuLauncher.Models.FavoritesImportResultItem> results);
-
-    /// <summary>
-    /// 显示文本输入弹窗。
-    /// </summary>
-    /// <param name="acceptsReturn">是否支持多行输入（Enter 换行）</param>
-    /// <returns>用户点击主按钮时返回输入的文本，取消返回 null。</returns>
-    Task<string?> ShowTextInputDialogAsync(
-        string title,
-        string placeholder = "",
-        string primaryButtonText = "确认",
-        string closeButtonText = "取消",
-        bool acceptsReturn = false);
 
     /// <summary>
     /// 显示整合包安装命名弹窗。
@@ -95,23 +47,6 @@ public interface IDialogService
         string defaultName,
         string? tip = null,
         Func<string, (bool IsValid, string ErrorMessage)>? validateInput = null);
-
-    /// <summary>
-    /// 显示带进度的操作弹窗
-    /// </summary>
-    /// <param name="title">标题</param>
-    /// <param name="message">提示信息</param>
-    /// <param name="workCallback">执行的异步任务，参数为(progress, status, token)</param>
-    Task ShowProgressDialogAsync(string title, string message, Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback);
-
-    /// <summary>
-    /// 显示带进度回调的弹窗，执行异步任务并返回结果。
-    /// </summary>
-    /// <param name="title">标题</param>
-    /// <param name="message">提示信息</param>
-    /// <param name="workCallback">执行的异步任务，参数为 IProgress&lt;double&gt; 用于报告进度</param>
-    /// <returns>任务完成后的返回值</returns>
-    Task<T> ShowProgressCallbackDialogAsync<T>(string title, string message, Func<IProgress<double>, Task<T>> workCallback);
 
     /// <summary>
     /// 显示外置登录角色选择弹窗
@@ -188,30 +123,6 @@ public interface IDialogService
         string closeButtonText = "取消") where T : class;
 
     /// <summary>
-    /// 显示可观察的进度弹窗（绑定外部进度属性，支持后台下载）
-    /// </summary>
-    /// <param name="title">弹窗标题</param>
-    /// <param name="getStatus">获取当前状态文本</param>
-    /// <param name="getProgress">获取当前进度值 (0-100)</param>
-    /// <param name="getProgressText">获取进度百分比文本</param>
-    /// <param name="propertyChanged">属性变更事件源</param>
-    /// <param name="primaryButtonText">主按钮文本（如"后台下载"，null 则不显示）</param>
-    /// <param name="closeButtonText">关闭按钮文本（如"取消"，null 则不显示）</param>
-    /// <param name="autoCloseWhen">当此 Task 完成/失败/取消时自动关闭弹窗（可选）</param>
-    /// <param name="getSpeed">获取下载速度文本（可选）</param>
-    /// <returns>Primary=后台下载, Secondary=无, None=取消/关闭</returns>
-    Task<ContentDialogResult> ShowObservableProgressDialogAsync(
-        string title,
-        Func<string> getStatus,
-        Func<double> getProgress,
-        Func<string> getProgressText,
-        System.ComponentModel.INotifyPropertyChanged propertyChanged,
-        string? primaryButtonText = null,
-        string? closeButtonText = "取消",
-        Task? autoCloseWhen = null,
-        Func<string>? getSpeed = null);
-
-    /// <summary>
     /// 显示一个带有独立复选框的多类型资源更新选择弹窗
     /// </summary>
     Task<System.Collections.Generic.List<XianYuLauncher.Models.UpdatableResourceItem>?> ShowUpdatableResourcesSelectionDialogAsync(System.Collections.Generic.IEnumerable<XianYuLauncher.Models.UpdatableResourceItem> availableUpdates);
@@ -229,16 +140,6 @@ public interface IDialogService
     /// </summary>
     /// <returns>返回填写结果；取消返回 null。</returns>
     Task<SettingsCustomSourceDialogResult?> ShowSettingsCustomSourceDialogAsync(SettingsCustomSourceDialogRequest request);
-
-    /// <summary>
-    /// 显示通用重命名弹窗。
-    /// </summary>
-    /// <returns>用户输入的新名称；取消返回 null。</returns>
-    Task<string?> ShowRenameDialogAsync(
-        string title,
-        string currentName,
-        string placeholder = "输入新名称",
-        string instruction = "请输入新的名称：");
 
     /// <summary>
     /// 显示添加服务器弹窗。
