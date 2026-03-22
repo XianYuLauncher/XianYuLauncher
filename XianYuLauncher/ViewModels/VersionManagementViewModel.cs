@@ -24,6 +24,7 @@ using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Models;
 using XianYuLauncher.Models.VersionManagement;
 using Microsoft.UI.Xaml;
@@ -781,7 +782,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly IVersionInfoManager _versionInfoManager;
     private readonly IDownloadManager _downloadManager;
     private readonly IGameHistoryService _gameHistoryService;
-    private readonly IDialogService _dialogService;
+    private readonly ICommonDialogService _commonDialogService;
+    private readonly IResourceDialogService _resourceDialogService;
+    private readonly ISelectionDialogService _selectionDialogService;
     private readonly IIconMetadataPipelineService _iconMetadataPipelineService;
     private readonly IVersionSettingsOrchestrator _versionSettingsOrchestrator;
     private readonly IOverviewDataService _overviewDataService;
@@ -860,7 +863,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         IDownloadManager downloadManager,
         ModInfoService modInfoService,
         IGameHistoryService gameHistoryService,
-        IDialogService dialogService,
+        ICommonDialogService commonDialogService,
+        IResourceDialogService resourceDialogService,
+        ISelectionDialogService selectionDialogService,
         IIconMetadataPipelineService iconMetadataPipelineService,
         IVersionSettingsOrchestrator versionSettingsOrchestrator,
         IOverviewDataService overviewDataService,
@@ -888,7 +893,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _versionInfoManager = versionInfoManager;
         _downloadManager = downloadManager;
         _gameHistoryService = gameHistoryService;
-        _dialogService = dialogService;
+        _commonDialogService = commonDialogService;
+        _resourceDialogService = resourceDialogService;
+        _selectionDialogService = selectionDialogService;
         _iconMetadataPipelineService = iconMetadataPipelineService;
         _versionSettingsOrchestrator = versionSettingsOrchestrator;
         _overviewDataService = overviewDataService;
@@ -913,11 +920,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
         
         // 初始化子 ViewModels
-        MapsModule = new MapsViewModel(this, navigationService, dialogService, uiDispatcher);
-        ServersModule = new ServersViewModel(this, navigationService, dialogService, uiDispatcher);
-        ShadersModule = new ShadersViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher);
-        ResourcePacksModule = new ResourcePacksViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher);
-        ModsModule = new ModsViewModel(this, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher);
+        MapsModule = new MapsViewModel(this, navigationService, commonDialogService, uiDispatcher);
+        ServersModule = new ServersViewModel(this, navigationService, commonDialogService, selectionDialogService, uiDispatcher);
+        ShadersModule = new ShadersViewModel(this, navigationService, commonDialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher);
+        ResourcePacksModule = new ResourcePacksViewModel(this, navigationService, commonDialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher);
+        ModsModule = new ModsViewModel(this, navigationService, commonDialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher);
 
         InitializeVersionIcons();
 
@@ -3246,7 +3253,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             return;
         }
 
-        var selectedItems = await _dialogService.ShowUpdatableResourcesSelectionDialogAsync(updatableItems);
+        var selectedItems = await _resourceDialogService.ShowUpdatableResourcesSelectionDialogAsync(updatableItems);
 
         if (selectedItems == null || selectedItems.Count == 0)
         {

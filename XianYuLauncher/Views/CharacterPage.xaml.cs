@@ -1,4 +1,4 @@
-using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Input; using Microsoft.UI.Xaml.Navigation; using Microsoft.UI.Xaml.Media; using XianYuLauncher.Contracts.Services; using XianYuLauncher.ViewModels; using Microsoft.UI.Xaml.Media.Imaging; using System; using System.Linq; using System.IO; using System.Net.Http; using System.Net.Http.Headers; using System.Threading.Tasks; using Windows.ApplicationModel.DataTransfer; using Windows.Storage; using Windows.Storage.Streams; using Microsoft.Graphics.Canvas; using Microsoft.Graphics.Canvas.Geometry; using Microsoft.Graphics.Canvas.UI.Xaml; using System.Diagnostics; using XianYuLauncher.Helpers; using Serilog; using Newtonsoft.Json.Linq;
+using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Input; using Microsoft.UI.Xaml.Navigation; using Microsoft.UI.Xaml.Media; using XianYuLauncher.Contracts.Services; using XianYuLauncher.Features.Dialogs.Contracts; using XianYuLauncher.ViewModels; using Microsoft.UI.Xaml.Media.Imaging; using System; using System.Linq; using System.IO; using System.Net.Http; using System.Net.Http.Headers; using System.Threading.Tasks; using Windows.ApplicationModel.DataTransfer; using Windows.Storage; using Windows.Storage.Streams; using Microsoft.Graphics.Canvas; using Microsoft.Graphics.Canvas.Geometry; using Microsoft.Graphics.Canvas.UI.Xaml; using System.Diagnostics; using XianYuLauncher.Helpers; using Serilog; using Newtonsoft.Json.Linq;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
@@ -15,7 +15,9 @@ namespace XianYuLauncher.Views
         }
 
         private readonly INavigationService _navigationService;
-        private readonly IDialogService _dialogService;
+        private readonly ICommonDialogService _dialogService;
+        private readonly IProgressDialogService _progressDialogService;
+        private readonly IProfileDialogService _profileDialogService;
         private readonly IUiDispatcher _uiDispatcher;
         private readonly HttpClient _httpClient = new HttpClient();
         private const string AvatarCacheFolder = AppDataFileConsts.AvatarCacheFolder;
@@ -25,7 +27,9 @@ namespace XianYuLauncher.Views
         {
             ViewModel = App.GetService<CharacterViewModel>();
             _navigationService = App.GetService<INavigationService>();
-            _dialogService = App.GetService<IDialogService>();
+            _dialogService = App.GetService<ICommonDialogService>();
+            _progressDialogService = App.GetService<IProgressDialogService>();
+            _profileDialogService = App.GetService<IProfileDialogService>();
             _uiDispatcher = App.GetService<IUiDispatcher>();
             InitializeComponent();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
@@ -986,7 +990,7 @@ namespace XianYuLauncher.Views
                 // 获取 TokenRefreshService
                 var tokenRefreshService = App.GetService<XianYuLauncher.Core.Contracts.Services.ITokenRefreshService>();
 
-                await _dialogService.ShowProgressDialogAsync(
+                await _progressDialogService.ShowProgressDialogAsync(
                     "续签令牌",
                     "正在验证令牌...",
                     async (_, status, _) =>
@@ -1450,7 +1454,7 @@ namespace XianYuLauncher.Views
                 }
 
                 // 4. 多个角色，显示选择对话框
-                var dialogService = App.GetService<IDialogService>();
+                var dialogService = App.GetService<IProfileDialogService>();
                 var coreProfiles = new System.Collections.Generic.List<XianYuLauncher.Core.Services.ExternalProfile>();
                 foreach (var p in availableProfiles)
                 {

@@ -24,6 +24,7 @@ using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using XianYuLauncher.Services;
@@ -102,7 +103,7 @@ public partial class LaunchViewModel : ObservableRecipient
             System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] 读取版本 JSON 失败，使用默认 Java 组件。Error: {ex.Message}");
         }
 
-        await _dialogService.ShowProgressDialogAsync("自动配置 Java 环境", $"正在获取 Java 组件: {component}...", async (progress, status, token) => 
+        await _progressDialogService.ShowProgressDialogAsync("自动配置 Java 环境", $"正在获取 Java 组件: {component}...", async (progress, status, token) => 
         {
             try
             {
@@ -155,7 +156,7 @@ public partial class LaunchViewModel : ObservableRecipient
         var fullLog = string.Join(Environment.NewLine, allLogs);
         var isEasterEggMode = await _localSettingsService.ReadSettingAsync<bool?>("EasterEggMode") ?? false;
 
-        var action = await _dialogService.ShowCrashReportDialogAsync(errorTitle, errorAnalysis, fullLog, isEasterEggMode);
+        var action = await _crashReportDialogService.ShowCrashReportDialogAsync(errorTitle, errorAnalysis, fullLog, isEasterEggMode);
         if (action == CrashReportDialogAction.Close)
         {
             return;
@@ -214,7 +215,10 @@ public partial class LaunchViewModel : ObservableRecipient
     private readonly AuthlibInjectorService _authlibInjectorService;
     private readonly IJavaRuntimeService _javaRuntimeService;
     private readonly IJavaDownloadService _javaDownloadService;
-    private readonly IDialogService _dialogService;
+    private readonly IApplicationDialogService _dialogService;
+    private readonly ICommonDialogService _commonDialogService;
+    private readonly IProgressDialogService _progressDialogService;
+    private readonly ICrashReportDialogService _crashReportDialogService;
     private readonly IUiDispatcher _uiDispatcher;
     
     // 新增：Phase 5 重构服务
@@ -510,7 +514,10 @@ public partial class LaunchViewModel : ObservableRecipient
         _launchNewsCardService = App.GetService<LaunchNewsCardService>();
         _javaRuntimeService = App.GetService<IJavaRuntimeService>();
         _javaDownloadService = App.GetService<IJavaDownloadService>();
-        _dialogService = App.GetService<IDialogService>();
+        _dialogService = App.GetService<IApplicationDialogService>();
+        _commonDialogService = App.GetService<ICommonDialogService>();
+        _progressDialogService = App.GetService<IProgressDialogService>();
+        _crashReportDialogService = App.GetService<ICrashReportDialogService>();
         _uiDispatcher = App.GetService<IUiDispatcher>();
         
         // 新增：Phase 5 重构服务
@@ -1812,7 +1819,7 @@ public partial class LaunchViewModel : ObservableRecipient
     /// <param name="title">对话框标题</param>
     private async Task ShowMessageAsync(string message, string title = "提示")
     {
-        await _dialogService.ShowMessageDialogAsync(title, message);
+        await _commonDialogService.ShowMessageDialogAsync(title, message);
     }
     
     /// <summary>

@@ -17,6 +17,7 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.ModDownloadDetail.Models;
 using XianYuLauncher.Features.ModDownloadDetail.Services;
 using XianYuLauncher.Helpers;
@@ -29,7 +30,9 @@ namespace XianYuLauncher.ViewModels
         private readonly IMinecraftVersionService _minecraftVersionService;
         private readonly IFileService _fileService;
         private readonly IDownloadTaskManager _downloadTaskManager;
-        private readonly IDialogService _dialogService;
+        private readonly IResourceDialogService _dialogService;
+        private readonly ICommonDialogService _commonDialogService;
+        private readonly IProgressDialogService _progressDialogService;
         private readonly INavigationService _navigationService;
         private readonly IModpackInstallationService _modpackInstallationService;
         private readonly IModResourceDownloadOrchestrator _modResourceDownloadOrchestrator;
@@ -374,7 +377,7 @@ namespace XianYuLauncher.ViewModels
             try
             {
                 IsInstalling = false; // 确保安装状态已重置
-                await _dialogService.ShowMessageDialogAsync("提示", message);
+                await _commonDialogService.ShowMessageDialogAsync("提示", message);
             }
             catch (Exception ex)
             {
@@ -510,7 +513,9 @@ namespace XianYuLauncher.ViewModels
             IMinecraftVersionService minecraftVersionService,
             IFileService fileService,
             IDownloadTaskManager downloadTaskManager,
-            IDialogService dialogService,
+            IResourceDialogService dialogService,
+            ICommonDialogService commonDialogService,
+            IProgressDialogService progressDialogService,
             INavigationService navigationService,
             IModpackInstallationService modpackInstallationService,
             IModResourceDownloadOrchestrator modResourceDownloadOrchestrator,
@@ -526,6 +531,8 @@ namespace XianYuLauncher.ViewModels
             _fileService = fileService;
             _downloadTaskManager = downloadTaskManager;
             _dialogService = dialogService;
+            _commonDialogService = commonDialogService;
+            _progressDialogService = progressDialogService;
             _navigationService = navigationService;
             _modpackInstallationService = modpackInstallationService;
             _modResourceDownloadOrchestrator = modResourceDownloadOrchestrator;
@@ -2042,7 +2049,7 @@ namespace XianYuLauncher.ViewModels
 
             var dialogCloseTcs = new TaskCompletionSource<bool>();
 
-            var dialogTask = _dialogService.ShowObservableProgressDialogAsync(
+            var dialogTask = _progressDialogService.ShowObservableProgressDialogAsync(
                 "ModDownloadDetailPage_ModpackInstallDialog_Title".GetLocalized(),
                 () => InstallStatus,
                 () => InstallProgress,
@@ -2791,7 +2798,7 @@ namespace XianYuLauncher.ViewModels
                 if (string.IsNullOrEmpty(resolvedQuickInstallDownloadUrl))
                 {
                     IsDownloading = false;
-                    await _dialogService.ShowMessageDialogAsync("下载失败", "无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
+                    await _commonDialogService.ShowMessageDialogAsync("下载失败", "无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
                     return;
                 }
                 

@@ -1,4 +1,5 @@
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Models.VersionManagement;
 
 namespace XianYuLauncher.Features.VersionManagement.Services;
@@ -6,11 +7,11 @@ namespace XianYuLauncher.Features.VersionManagement.Services;
 public sealed class ScreenshotInteractionService : IScreenshotInteractionService
 {
     private readonly IOverviewDataService _overviewDataService;
-    private readonly IDialogService _dialogService;
+    private readonly ICommonDialogService _dialogService;
 
     public ScreenshotInteractionService(
         IOverviewDataService overviewDataService,
-        IDialogService dialogService)
+        ICommonDialogService dialogService)
     {
         _overviewDataService = overviewDataService;
         _dialogService = dialogService;

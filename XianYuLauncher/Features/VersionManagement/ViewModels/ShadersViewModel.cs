@@ -11,6 +11,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Models.VersionManagement;
@@ -26,7 +27,7 @@ public partial class ShadersViewModel : ResourceManagementViewModelBase<ShaderIn
     public ShadersViewModel(
         IVersionManagementResourceContext context,
         INavigationService navigationService,
-        IDialogService dialogService,
+        ICommonDialogService dialogService,
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
         ModInfoService modInfoService,

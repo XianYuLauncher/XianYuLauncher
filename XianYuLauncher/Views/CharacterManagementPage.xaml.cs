@@ -17,6 +17,7 @@ using Windows.Storage.Streams;
 using WinRT.Interop;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Helpers;
 using Microsoft.Graphics.Canvas;
@@ -41,7 +42,8 @@ namespace XianYuLauncher.Views
         }
         
         private readonly HttpClient _httpClient = new HttpClient();
-        private readonly IDialogService _dialogService;
+        private readonly ICommonDialogService _dialogService;
+        private readonly IProfileDialogService _profileDialogService;
         private const string AvatarCacheFolder = AppDataFileConsts.AvatarCacheFolder;
 
         /// <summary>
@@ -50,7 +52,8 @@ namespace XianYuLauncher.Views
         public CharacterManagementPage()
         {
             ViewModel = App.GetService<CharacterManagementViewModel>();
-            _dialogService = App.GetService<IDialogService>();
+            _dialogService = App.GetService<ICommonDialogService>();
+            _profileDialogService = App.GetService<IProfileDialogService>();
             InitializeComponent();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
             
@@ -999,7 +1002,7 @@ namespace XianYuLauncher.Views
                 }
 
                 // 3. 让用户选择皮肤模型
-                var result = await _dialogService.ShowSkinModelSelectionDialogAsync();
+                var result = await _profileDialogService.ShowSkinModelSelectionDialogAsync();
                 string? model = result switch
                 {
                     SkinModelSelectionResult.Steve => "",

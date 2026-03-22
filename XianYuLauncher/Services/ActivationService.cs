@@ -28,7 +28,7 @@ public class ActivationService : IActivationService
     private readonly XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory _downloadSourceFactory;
     private readonly XianYuLauncher.Core.Services.IAutoSpeedTestService? _autoSpeedTestService;
     private readonly INetworkSettingsDomainService? _networkSettingsDomainService;
-    private readonly IDialogService _dialogService;
+    private readonly IApplicationDialogService _dialogService;
     private readonly IAnnouncementDialogService _announcementDialogService;
     private readonly IProtocolActivationService _protocolActivationService;
     private readonly IUpdateDialogFlowService _updateDialogFlowService;
@@ -40,7 +40,7 @@ public class ActivationService : IActivationService
         IThemeSelectorService themeSelectorService,
         ILanguageSelectorService languageSelectorService,
         ILocalSettingsService localSettingsService,
-        IDialogService dialogService,
+        IApplicationDialogService dialogService,
         IAnnouncementDialogService announcementDialogService,
         IProtocolActivationService protocolActivationService,
         IUpdateDialogFlowService updateDialogFlowService,
