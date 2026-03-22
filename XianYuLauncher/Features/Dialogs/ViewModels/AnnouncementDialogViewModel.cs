@@ -1,10 +1,10 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using Microsoft.UI.Xaml;
 using Microsoft.Extensions.Logging;
+using Microsoft.UI.Xaml;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.Dialogs.ViewModels;
 
 /// <summary>
 /// 云控公告弹窗 ViewModel
@@ -13,20 +13,20 @@ public partial class AnnouncementDialogViewModel : ObservableObject
 {
     private readonly ILogger<AnnouncementDialogViewModel> _logger;
     private readonly IAnnouncementService _announcementService;
-    
+
     [ObservableProperty]
     private AnnouncementInfo _announcement;
-    
+
     [ObservableProperty]
     private bool _hasCustomXaml;
 
     public bool HasButtons => Announcement.buttons != null && Announcement.buttons.Count > 0;
-    
+
     /// <summary>
     /// 关闭对话框事件
     /// </summary>
     public event EventHandler? CloseDialog;
-    
+
     public AnnouncementDialogViewModel(
         ILogger<AnnouncementDialogViewModel> logger,
         IAnnouncementService announcementService,
@@ -37,7 +37,7 @@ public partial class AnnouncementDialogViewModel : ObservableObject
         _announcement = announcement;
         _hasCustomXaml = !string.IsNullOrEmpty(announcement.custom_xaml);
     }
-    
+
     /// <summary>
     /// 关闭对话框并标记为已读
     /// </summary>

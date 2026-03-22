@@ -7,11 +7,6 @@ namespace XianYuLauncher.Contracts.Services;
 public interface IDialogService
 {
     /// <summary>
-    /// 设置 XamlRoot，通常在主窗口初始化时调用
-    /// </summary>
-    void SetXamlRoot(Microsoft.UI.Xaml.XamlRoot xamlRoot);
-
-    /// <summary>
     /// 显示简单的消息弹窗
     /// </summary>
     Task ShowMessageDialogAsync(string title, string message, string closeButtonText = "确定");
@@ -283,15 +278,6 @@ public interface IDialogService
         bool isEasterEggMode);
 
     /// <summary>
-    /// 显示更新安装流程弹窗（更新说明 + 下载进度）。
-    /// </summary>
-    Task<bool> ShowUpdateInstallFlowDialogAsync(
-        object updateDialogViewModel,
-        string title,
-        string primaryButtonText,
-        string? closeButtonText = "取消");
-
-    /// <summary>
     /// 显示皮肤模型选择弹窗。
     /// </summary>
     Task<SkinModelSelectionResult> ShowSkinModelSelectionDialogAsync(
@@ -300,15 +286,6 @@ public interface IDialogService
         string steveButtonText = "Steve",
         string alexButtonText = "Alex",
         string cancelButtonText = "取消");
-
-    /// <summary>
-    /// 显示云控公告弹窗。
-    /// </summary>
-    Task ShowAnnouncementDialogAsync(
-        string title,
-        object viewModel,
-        bool hasCustomButtons,
-        string closeButtonText = "知道了");
 
     /// <summary>
     /// 显示用户协议弹窗。

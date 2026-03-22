@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
+using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Features.Dialogs.Services;
 using XianYuLauncher.Services;
 using XianYuLauncher.Services.Settings;
 
@@ -20,7 +22,10 @@ internal static class UiServiceExtensions
 
         services.AddSingleton<IPageService, PageService>();
         services.AddSingleton<INavigationService, NavigationService>();
+        services.AddSingleton<IContentDialogHostService, ContentDialogHostService>();
         services.AddSingleton<IDialogService, DialogService>();
+        services.AddSingleton<IUpdateDialogFlowService, UpdateDialogFlowService>();
+        services.AddSingleton<IAnnouncementDialogService, AnnouncementDialogService>();
         services.AddSingleton<IDownloadTaskPresentationService, DownloadTaskPresentationService>();
         services.AddSingleton<ISettingsRepository, LocalSettingsRepository>();
         services.AddSingleton<IFilePickerService, FilePickerService>();

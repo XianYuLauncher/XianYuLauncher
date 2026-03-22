@@ -10,6 +10,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.Protocol;
 using XianYuLauncher.Models;
 using XianYuLauncher.ViewModels;
@@ -28,7 +29,9 @@ public class ActivationService : IActivationService
     private readonly XianYuLauncher.Core.Services.IAutoSpeedTestService? _autoSpeedTestService;
     private readonly INetworkSettingsDomainService? _networkSettingsDomainService;
     private readonly IDialogService _dialogService;
+    private readonly IAnnouncementDialogService _announcementDialogService;
     private readonly IProtocolActivationService _protocolActivationService;
+    private readonly IUpdateDialogFlowService _updateDialogFlowService;
     private UIElement? _shell = null;
 
     public ActivationService(
@@ -38,7 +41,9 @@ public class ActivationService : IActivationService
         ILanguageSelectorService languageSelectorService,
         ILocalSettingsService localSettingsService,
         IDialogService dialogService,
+        IAnnouncementDialogService announcementDialogService,
         IProtocolActivationService protocolActivationService,
+        IUpdateDialogFlowService updateDialogFlowService,
         XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory downloadSourceFactory,
         XianYuLauncher.Core.Services.IAutoSpeedTestService? autoSpeedTestService = null,
         INetworkSettingsDomainService? networkSettingsDomainService = null)
@@ -49,7 +54,9 @@ public class ActivationService : IActivationService
         _languageSelectorService = languageSelectorService;
         _localSettingsService = localSettingsService;
         _dialogService = dialogService;
+        _announcementDialogService = announcementDialogService;
         _protocolActivationService = protocolActivationService;
+        _updateDialogFlowService = updateDialogFlowService;
         _downloadSourceFactory = downloadSourceFactory;
         _autoSpeedTestService = autoSpeedTestService;
         _networkSettingsDomainService = networkSettingsDomainService;
@@ -407,15 +414,8 @@ public class ActivationService : IActivationService
                 
                 Serilog.Log.Information("发现新版本，显示更新弹窗");
                 
-                // 创建更新弹窗ViewModel
-                var logger = App.GetService<ILogger<UpdateDialogViewModel>>();
-                var localUpdateService = App.GetService<UpdateService>();
-                
-                // 直接实例化ViewModel，传入所需参数
-                var updateDialogViewModel = new UpdateDialogViewModel(logger, localUpdateService, updateInfo);
-
-                var installStarted = await _dialogService.ShowUpdateInstallFlowDialogAsync(
-                    updateDialogViewModel,
+                var installStarted = await _updateDialogFlowService.ShowUpdateInstallFlowAsync(
+                    updateInfo,
                     string.Format("Version {0} 更新", updateInfo.version),
                     "更新",
                     !updateInfo.important_update ? "取消" : null);
@@ -473,15 +473,7 @@ public class ActivationService : IActivationService
             {
                 Serilog.Log.Information("发现新公告，准备显示: {Title}", announcement.title);
                 
-                // 创建 ViewModel
-                var logger = App.GetService<ILogger<AnnouncementDialogViewModel>>();
-                var viewModel = new AnnouncementDialogViewModel(logger, announcementService, announcement);
-                
-                await _dialogService.ShowAnnouncementDialogAsync(
-                    announcement.title,
-                    viewModel,
-                    announcement.buttons != null && announcement.buttons.Count > 0,
-                    "知道了");
+                await _announcementDialogService.ShowAnnouncementAsync(announcement, "知道了");
                 
                 // 标记为已读交由按钮处理（例如“同意/关闭”）
                 Serilog.Log.Information("公告已显示，等待用户操作");

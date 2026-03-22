@@ -4,7 +4,6 @@ using System.IO;
 using System.Threading.Tasks; // Explicitly import missing namespace
 using System.Threading;
 using System.Net.Http;
-using Microsoft.UI.Dispatching;
 using Windows.Storage;
 using Windows.UI.ViewManagement;
 using Microsoft.UI.Xaml;
@@ -15,6 +14,7 @@ using Microsoft.Graphics.Canvas.UI.Xaml;
 using Windows.Storage.Streams;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
+using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 using Serilog;
 using Newtonsoft.Json.Linq;
@@ -26,101 +26,21 @@ namespace XianYuLauncher.Services;
 /// </summary>
 public class DialogService : IDialogService
 {
-    private XamlRoot? _xamlRoot;
-    // 使用信号量确保同一时间只有一个弹窗显示，防止 WinUI 崩溃 (COM 0x80000019)
-    private readonly SemaphoreSlim _dialogSemaphore = new(1, 1);
     private readonly HttpClient _httpClient = new HttpClient();
+    private readonly IContentDialogHostService _dialogHost;
     private readonly IThemeSelectorService _themeSelectorService;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly UISettings _uiSettings = new();
-    private ContentDialog? _activeDialog;
 
-    public DialogService(IThemeSelectorService themeSelectorService, IUiDispatcher uiDispatcher)
+    public DialogService(IContentDialogHostService dialogHost, IThemeSelectorService themeSelectorService, IUiDispatcher uiDispatcher)
     {
+        _dialogHost = dialogHost ?? throw new ArgumentNullException(nameof(dialogHost));
         _themeSelectorService = themeSelectorService ?? throw new ArgumentNullException(nameof(themeSelectorService));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
         _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
-        _uiSettings.ColorValuesChanged += OnSystemColorValuesChanged;
     }
 
-    /// <summary>
-    /// 系统主题变化时（弹窗打开期间用户去系统设置改主题），动态更新弹窗主题。
-    /// 仅当启动器主题为「跟随系统」时生效。
-    /// </summary>
-    private void OnSystemColorValuesChanged(UISettings sender, object args)
-    {
-        _uiDispatcher.TryEnqueue(DispatcherQueuePriority.Normal, () =>
-        {
-            if (_activeDialog != null && _themeSelectorService.Theme == ElementTheme.Default)
-            {
-                _activeDialog.RequestedTheme = GetEffectiveDialogTheme();
-            }
-        });
-    }
-
-    public void SetXamlRoot(XamlRoot xamlRoot)
-    {
-        _xamlRoot = xamlRoot;
-    }
-    
-    /// <summary>
-    /// 安全显示弹窗，自动处理队列。弹窗主题跟随启动器内主题。
-    /// </summary>
-    private async Task<ContentDialogResult> ShowSafeAsync(ContentDialog dialog)
-    {
-        await _dialogSemaphore.WaitAsync();
-        try
-        {
-            if (dialog.XamlRoot == null)
-            {
-                var root = GetXamlRoot();
-                if (root == null) return ContentDialogResult.None;
-                dialog.XamlRoot = root;
-            }
-
-            // ContentDialog 被 reparent 到 popup 层，不继承根元素主题，需显式设置以跟随启动器主题
-            dialog.RequestedTheme = GetEffectiveDialogTheme();
-            _activeDialog = dialog;
-
-            try
-            {
-                return await dialog.ShowAsync();
-            }
-            catch (System.Runtime.InteropServices.COMException ex) when ((uint)ex.HResult == 0x80000019)
-            {
-                // WinUI 偶发弹窗冲突，短暂等待后重试一次以降低“误取消”概率。
-                await Task.Delay(300);
-                return await dialog.ShowAsync();
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[DialogService] 弹窗显示异常: {ex.Message}");
-            return ContentDialogResult.None;
-        }
-        finally
-        {
-            _activeDialog = null;
-            _dialogSemaphore.Release();
-        }
-    }
-
-    private XamlRoot? GetXamlRoot()
-    {
-        // 如果显式设置了 XamlRoot，优先使用
-        if (_xamlRoot != null)
-        {
-            return _xamlRoot;
-        }
-
-        // 尝试从主窗口获取 (对于 WinUI 3 来说，ContentDialog 必须设置 XamlRoot)
-        if (App.MainWindow?.Content?.XamlRoot is XamlRoot root)
-        {
-            return root;
-        }
-
-        return null;
-    }
+    private Task<ContentDialogResult> ShowSafeAsync(ContentDialog dialog) => _dialogHost.ShowAsync(dialog);
 
     /// <summary>
     /// 获取弹窗应使用的主题。当用户选择「跟随系统」时，解析为实际系统主题。
@@ -1971,79 +1891,6 @@ public class DialogService : IDialogService
             ContentDialogResult.Secondary => SkinModelSelectionResult.Alex,
             _ => SkinModelSelectionResult.Cancel
         };
-    }
-
-    public async Task<bool> ShowUpdateInstallFlowDialogAsync(
-        object updateDialogViewModel,
-        string title,
-        string primaryButtonText,
-        string? closeButtonText = "取消")
-    {
-        if (updateDialogViewModel is not XianYuLauncher.ViewModels.UpdateDialogViewModel typedViewModel)
-        {
-            throw new ArgumentException("updateDialogViewModel must be UpdateDialogViewModel", nameof(updateDialogViewModel));
-        }
-
-        var updateDialog = new ContentDialog
-        {
-            Title = title,
-            Content = new Views.UpdateDialog(typedViewModel),
-            PrimaryButtonText = primaryButtonText,
-            CloseButtonText = closeButtonText,
-            DefaultButton = ContentDialogButton.Primary,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
-
-        var result = await ShowSafeAsync(updateDialog);
-        if (result != ContentDialogResult.Primary)
-        {
-            return false;
-        }
-
-        var downloadDialog = new ContentDialog
-        {
-            Title = title,
-            Content = new Views.DownloadProgressDialog(typedViewModel),
-            IsPrimaryButtonEnabled = false,
-            CloseButtonText = closeButtonText ?? "取消",
-            DefaultButton = ContentDialogButton.None,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
-
-        downloadDialog.CloseButtonClick += (_, _) => typedViewModel.CancelCommand.Execute(null);
-        typedViewModel.CloseDialog += (_, _) => downloadDialog.Hide();
-
-        _ = typedViewModel.UpdateCommand.ExecuteAsync(null);
-        await ShowSafeAsync(downloadDialog);
-        return true;
-    }
-
-    public async Task ShowAnnouncementDialogAsync(
-        string title,
-        object viewModel,
-        bool hasCustomButtons,
-        string closeButtonText = "知道了")
-    {
-        if (viewModel is not XianYuLauncher.ViewModels.AnnouncementDialogViewModel typedViewModel)
-        {
-            throw new ArgumentException("viewModel must be AnnouncementDialogViewModel", nameof(viewModel));
-        }
-
-        var dialog = new ContentDialog
-        {
-            Title = title,
-            Content = new Views.AnnouncementDialog(typedViewModel),
-            DefaultButton = ContentDialogButton.None,
-            Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style
-        };
-
-        if (!hasCustomButtons)
-        {
-            dialog.CloseButtonText = closeButtonText;
-        }
-
-        typedViewModel.CloseDialog += (sender, args) => dialog.Hide();
-        await ShowSafeAsync(dialog);
     }
 
     public async Task<ContentDialogResult> ShowPrivacyAgreementDialogAsync(
