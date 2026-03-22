@@ -21,6 +21,7 @@ public sealed class ContentDialogHostService : Contracts.IContentDialogHostServi
     {
         _themeSelectorService = themeSelectorService ?? throw new ArgumentNullException(nameof(themeSelectorService));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
+        _themeSelectorService.ThemeChanged += OnThemeChanged;
         _uiSettings.ColorValuesChanged += OnSystemColorValuesChanged;
     }
 
@@ -75,9 +76,24 @@ public sealed class ContentDialogHostService : Contracts.IContentDialogHostServi
 
     private void OnSystemColorValuesChanged(UISettings sender, object args)
     {
+        if (_themeSelectorService.Theme != ElementTheme.Default)
+        {
+            return;
+        }
+
+        RefreshActiveDialogTheme();
+    }
+
+    private void OnThemeChanged(object? sender, EventArgs e)
+    {
+        RefreshActiveDialogTheme();
+    }
+
+    private void RefreshActiveDialogTheme()
+    {
         _uiDispatcher.TryEnqueue(DispatcherQueuePriority.Normal, () =>
         {
-            if (_activeDialog != null && _themeSelectorService.Theme == ElementTheme.Default)
+            if (_activeDialog != null)
             {
                 _activeDialog.RequestedTheme = GetEffectiveDialogTheme();
             }
