@@ -26,6 +26,11 @@ internal static class UiServiceExtensions
         services.AddSingleton<IDialogThemePaletteService, DialogThemePaletteService>();
         services.AddSingleton<ICommonDialogService, CommonDialogService>();
         services.AddSingleton<IProgressDialogService, ProgressDialogService>();
+        services.AddSingleton<IApplicationDialogService, ApplicationDialogService>();
+        services.AddSingleton<IProfileDialogService, ProfileDialogService>();
+        services.AddSingleton<IResourceDialogService, ResourceDialogService>();
+        services.AddSingleton<ISelectionDialogService, SelectionDialogService>();
+        services.AddSingleton<ICrashReportDialogService, CrashReportDialogService>();
         services.AddSingleton<IDialogService, DialogService>();
         services.AddSingleton<IUpdateDialogFlowService, UpdateDialogFlowService>();
         services.AddSingleton<IAnnouncementDialogService, AnnouncementDialogService>();
