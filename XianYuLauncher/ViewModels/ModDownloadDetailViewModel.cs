@@ -30,7 +30,7 @@ namespace XianYuLauncher.ViewModels
         private readonly IMinecraftVersionService _minecraftVersionService;
         private readonly IFileService _fileService;
         private readonly IDownloadTaskManager _downloadTaskManager;
-        private readonly IResourceDialogService _dialogService;
+        private readonly IResourceDialogService _resourceDialogService;
         private readonly ICommonDialogService _commonDialogService;
         private readonly IProgressDialogService _progressDialogService;
         private readonly INavigationService _navigationService;
@@ -129,7 +129,7 @@ namespace XianYuLauncher.ViewModels
                 AvatarUrl = p.AvatarUrl
             });
 
-            await _dialogService.ShowPublishersListDialogAsync(publisherItems, IsLoading, "所有发布者", "关闭");
+            await _resourceDialogService.ShowPublishersListDialogAsync(publisherItems, IsLoading, "所有发布者", "关闭");
         }
 
         [RelayCommand]
@@ -513,7 +513,7 @@ namespace XianYuLauncher.ViewModels
             IMinecraftVersionService minecraftVersionService,
             IFileService fileService,
             IDownloadTaskManager downloadTaskManager,
-            IResourceDialogService dialogService,
+            IResourceDialogService resourceDialogService,
             ICommonDialogService commonDialogService,
             IProgressDialogService progressDialogService,
             INavigationService navigationService,
@@ -530,7 +530,7 @@ namespace XianYuLauncher.ViewModels
             _minecraftVersionService = minecraftVersionService;
             _fileService = fileService;
             _downloadTaskManager = downloadTaskManager;
-            _dialogService = dialogService;
+            _resourceDialogService = resourceDialogService;
             _commonDialogService = commonDialogService;
             _progressDialogService = progressDialogService;
             _navigationService = navigationService;
@@ -1154,7 +1154,7 @@ namespace XianYuLauncher.ViewModels
                 }
                 
                 // 通过 DialogService 显示下载方式选择弹窗
-                var result = await _dialogService.ShowDownloadMethodDialogAsync(
+                var result = await _resourceDialogService.ShowDownloadMethodDialogAsync(
                     DownloadDialogTitle,
                     "ModDownloadDetailPage_DownloadDialog_InstructionText".GetLocalized(),
                     DependencyProjects.Count > 0 ? DependencyProjects.Cast<object>() : null,
@@ -1283,7 +1283,7 @@ namespace XianYuLauncher.ViewModels
                 }
                 
                 // 通过 DialogService 显示存档选择弹窗
-                var selected = await _dialogService.ShowListSelectionDialogAsync(
+                var selected = await _resourceDialogService.ShowListSelectionDialogAsync(
                     "ModDownloadDetailPage_SaveSelectionDialog_Title".GetLocalized(),
                     "ModDownloadDetailPage_SaveSelectionDialog_InstructionText".GetLocalized(),
                     saveNamesList,
@@ -1670,7 +1670,7 @@ namespace XianYuLauncher.ViewModels
             await LoadInstalledGameVersions(selectedModVersion);
             
             // 通过 DialogService 显示版本选择弹窗
-            var selected = await _dialogService.ShowListSelectionDialogAsync(
+            var selected = await _resourceDialogService.ShowListSelectionDialogAsync(
                 "ModDownloadDetailPage_VersionSelectionDialog_Title".GetLocalized(),
                 "ModDownloadDetailPage_VersionSelectionDialog_InstructionText".GetLocalized(),
                 InstalledGameVersions,
@@ -1920,7 +1920,7 @@ namespace XianYuLauncher.ViewModels
                 return;
             }
 
-            var targetVersionName = await _dialogService.ShowModpackInstallNameDialogAsync(
+            var targetVersionName = await _resourceDialogService.ShowModpackInstallNameDialogAsync(
                 ModName,
                 tip,
                 value => ValidateModpackInstallName(value));
@@ -2370,7 +2370,7 @@ namespace XianYuLauncher.ViewModels
                 }
                 
                 // 通过 DialogService 显示游戏版本选择弹窗
-                var selected = await _dialogService.ShowListSelectionDialogAsync(
+                var selected = await _resourceDialogService.ShowListSelectionDialogAsync(
                     "ModDownloadDetailPage_QuickInstallGameVersionDialog_Title".GetLocalized(),
                     "ModDownloadDetailPage_QuickInstallGameVersionDialog_InstructionText".GetLocalized(),
                     QuickInstallGameVersions,
@@ -2622,7 +2622,7 @@ namespace XianYuLauncher.ViewModels
                 }
                 
                 // 通过 DialogService 显示 Mod 版本选择弹窗
-                var selected = await _dialogService.ShowModVersionSelectionDialogAsync(
+                var selected = await _resourceDialogService.ShowModVersionSelectionDialogAsync(
                     "ModDownloadDetailPage_QuickInstallModVersionDialog_Title".GetLocalized(),
                     string.Format(
                         "ModDownloadDetailPage_QuickInstallModVersionDialog_InstructionText".GetLocalized(),

@@ -6,10 +6,11 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Windows.UI.ViewManagement;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Dialogs.Contracts;
 
 namespace XianYuLauncher.Features.Dialogs.Services;
 
-public sealed class ContentDialogHostService : Contracts.IContentDialogHostService
+public sealed class ContentDialogHostService : IContentDialogHostService
 {
     private readonly SemaphoreSlim _dialogSemaphore = new(1, 1);
     private readonly IThemeSelectorService _themeSelectorService;

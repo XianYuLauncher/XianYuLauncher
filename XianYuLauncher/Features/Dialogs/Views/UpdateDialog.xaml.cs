@@ -13,6 +13,7 @@ public sealed partial class UpdateDialog : UserControl
         ViewModel = updateDialogViewModel;
         DataContext = ViewModel;
         ViewModel.CloseDialog += ViewModel_CloseDialog;
+        Unloaded += UpdateDialog_Unloaded;
     }
 
     public event EventHandler<bool>? CloseDialog;
@@ -20,5 +21,11 @@ public sealed partial class UpdateDialog : UserControl
     private void ViewModel_CloseDialog(object? sender, bool result)
     {
         CloseDialog?.Invoke(this, result);
+    }
+
+    private void UpdateDialog_Unloaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        ViewModel.CloseDialog -= ViewModel_CloseDialog;
+        Unloaded -= UpdateDialog_Unloaded;
     }
 }
