@@ -9,46 +9,46 @@ namespace XianYuLauncher.Contracts.Services.Settings;
 /// </summary>
 public sealed class PersonalizationMaterialState
 {
-	public MaterialType MaterialType { get; init; } = MaterialType.Mica;
+    public MaterialType MaterialType { get; init; } = MaterialType.Mica;
 
-	public double MotionSpeed { get; init; } = 1.0;
+    public double MotionSpeed { get; init; } = 1.0;
 
-	public string[] MotionColors { get; init; } = [];
+    public string[] MotionColors { get; init; } = [];
 
-	public string BackgroundImagePath { get; init; } = string.Empty;
+    public string BackgroundImagePath { get; init; } = string.Empty;
 
-	public double BackgroundBlurAmount { get; init; } = 30.0;
+    public double BackgroundBlurAmount { get; init; } = 30.0;
 }
 
 public interface IPersonalizationSettingsDomainService
 {
-	ElementTheme GetCurrentTheme();
+    ElementTheme GetCurrentTheme();
 
-	Task SetThemeAsync(ElementTheme theme);
+    Task SetThemeAsync(ElementTheme theme);
 
-	string GetCurrentLanguage();
+    string GetCurrentLanguage();
 
-	Task SetLanguageAsync(string language);
+    Task SetLanguageAsync(string language);
 
-	Task<string?> LoadNavigationStyleAsync();
+    Task<string?> LoadNavigationStyleAsync();
 
-	Task SaveNavigationStyleAsync(string value);
+    Task SaveNavigationStyleAsync(string value);
 
-	Task<string?> LoadFontFamilyAsync();
+    Task<string?> LoadFontFamilyAsync();
 
-	Task SaveFontFamilyAsync(string value);
+    Task SaveFontFamilyAsync(string value);
 
-	Task<PersonalizationMaterialState> LoadMaterialStateAsync();
+    Task<PersonalizationMaterialState> LoadMaterialStateAsync();
 
-	Task SaveMaterialTypeAsync(MaterialType materialType);
+    Task SaveMaterialTypeAsync(MaterialType materialType);
 
-	Task SaveMotionSettingsAsync(double motionSpeed, string[] motionColors);
+    Task SaveMotionSettingsAsync(double motionSpeed, string[] motionColors);
 
-	Task SaveBackgroundImagePathAsync(string path);
+    Task SaveBackgroundImagePathAsync(string path);
 
-	Task SaveBackgroundBlurAmountAsync(double amount);
+    Task SaveBackgroundBlurAmountAsync(double amount);
 
-	void ApplyMaterialToWindow(object window, MaterialType materialType);
+    void ApplyMaterialToWindow(object window, MaterialType materialType);
 
-	void NotifyBackgroundChanged(MaterialType materialType, string? backgroundPath);
+    void NotifyBackgroundChanged(MaterialType materialType, string? backgroundPath);
 }
