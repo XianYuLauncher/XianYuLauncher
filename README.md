@@ -79,7 +79,7 @@ A modern, feature-rich Minecraft Java Edition launcher with a polished user inte
 
 This project is released under a **MIT License** as open source.
 
-For third-party libraries and data sources, please refer to [NOTICE.md](NOTICE.md).
+For third-party libraries and data sources, please refer to [NOTICE/NOTICE.md](NOTICE/NOTICE.md).
 
 ### Open Source Statement
 - The project is open-sourced under the MIT License.

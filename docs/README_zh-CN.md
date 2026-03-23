@@ -81,7 +81,7 @@
 
 本项目作为开源软件在 **MIT License** 下发布。
 
-关于第三方库和数据来源的说明，请参阅 [NOTICE.md](NOTICE.md)。
+关于第三方库和数据来源的说明，请参阅 [NOTICE/NOTICE.md](../NOTICE/NOTICE.md)。
 
 ### 开源声明
 - 本项目在 MIT License 下开源。

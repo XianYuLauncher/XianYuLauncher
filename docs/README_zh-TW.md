@@ -80,7 +80,7 @@
 
 本專案作為開源軟體在 **MIT License** 下發布。
 
-關於第三方庫和資料來源的說明，請參閱 [NOTICE.md](NOTICE.md)。
+關於第三方庫和資料來源的說明，請參閱 [NOTICE/NOTICE.md](../NOTICE/NOTICE.md)。
 
 ### 開源聲明
 - 本專案在 MIT License 下開源。
