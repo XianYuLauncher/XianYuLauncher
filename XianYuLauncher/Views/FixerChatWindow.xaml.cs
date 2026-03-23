@@ -4,7 +4,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using WinUIEx;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Services;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.ErrorAnalysis.Services;
 
 namespace XianYuLauncher.Views;
 
@@ -13,7 +13,7 @@ namespace XianYuLauncher.Views;
 /// </summary>
 public sealed partial class FixerChatWindow : WindowEx
 {
-    private readonly ErrorAnalysisViewModel _viewModel;
+    private readonly ErrorAnalysisSessionState _sessionState;
     private readonly MaterialService _materialService;
     private readonly IThemeSelectorService _themeSelectorService;
     private readonly IUiDispatcher _uiDispatcher;
@@ -30,8 +30,8 @@ public sealed partial class FixerChatWindow : WindowEx
         AppWindow.TitleBar.PreferredHeightOption = Microsoft.UI.Windowing.TitleBarHeightOption.Tall;
 
         // 标记独立窗口已打开
-        _viewModel = App.GetService<ErrorAnalysisViewModel>();
-        _viewModel.IsFixerWindowOpen = true;
+        _sessionState = App.GetService<ErrorAnalysisSessionState>();
+        _sessionState.IsFixerWindowOpen = true;
         this.Closed += OnWindowClosed;
 
         _uiDispatcher = App.GetService<IUiDispatcher>();
@@ -64,7 +64,7 @@ public sealed partial class FixerChatWindow : WindowEx
 
     private void OnWindowClosed(object sender, WindowEventArgs args)
     {
-        _viewModel.IsFixerWindowOpen = false;
+        _sessionState.IsFixerWindowOpen = false;
         _materialService.BackgroundChanged -= OnBackgroundChanged;
         _materialService.MotionSettingsChanged -= OnMotionSettingsChanged;
     }

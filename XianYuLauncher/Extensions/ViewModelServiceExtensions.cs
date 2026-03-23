@@ -39,7 +39,7 @@ internal static class ViewModelServiceExtensions
         services.AddTransient<CharacterManagementViewModel>();
         services.AddTransient<CharacterManagementPage>();
 
-        services.AddSingleton<ErrorAnalysisViewModel>();
+        services.AddTransient<ErrorAnalysisViewModel>();
         services.AddTransient<ErrorAnalysisPage>();
 
         services.AddTransient<TutorialPageViewModel>();

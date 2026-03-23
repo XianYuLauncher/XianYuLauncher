@@ -6,46 +6,51 @@ using Microsoft.Windows.ApplicationModel.Resources;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
-using System.IO.Compression;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
-using Newtonsoft.Json.Linq;
 using Windows.ApplicationModel.DataTransfer;
 using XianYuLauncher.Contracts.Services;
-using XianYuLauncher.Features.Dialogs.Contracts;
-using XianYuLauncher.Core.Contracts.Services;
-using XianYuLauncher.Core.Helpers;
-using XianYuLauncher.Core.Models;
+using XianYuLauncher.Features.ErrorAnalysis.Models;
+using XianYuLauncher.Features.ErrorAnalysis.Services;
 
 namespace XianYuLauncher.ViewModels
 {
-    public partial class ErrorAnalysisViewModel : ObservableObject
+    public partial class ErrorAnalysisViewModel : ObservableObject, IDisposable
     {
         private readonly ILanguageSelectorService _languageSelectorService;
-        private readonly ILogSanitizerService _logSanitizerService;
-        private readonly IAIAnalysisService _aiAnalysisService; // New Service
-        private readonly ILocalSettingsService _localSettingsService; // To read settings
-        private readonly ICommonDialogService _dialogService;
+        private readonly IErrorAnalysisLogService _logService;
+        private readonly IErrorAnalysisAiOrchestrator _aiOrchestrator;
+        private readonly IAgentActionExecutor _actionExecutor;
+        private readonly IErrorAnalysisSessionCoordinator _sessionCoordinator;
+        private readonly IErrorAnalysisExportService _exportService;
         private readonly IUiDispatcher _uiDispatcher;
+        private readonly ErrorAnalysisSessionState _sessionState;
         private readonly ResourceManager _resourceManager;
         private ResourceContext _resourceContext;
 
-        [ObservableProperty]
-        private string _fullLog = string.Empty;
+        public string FullLog
+        {
+            get => _sessionState.FullLog;
+            set => _sessionState.FullLog = value;
+        }
 
-        [ObservableProperty]
-        private string _crashReason = string.Empty;
-        
-        // 新增：用于 ListView 的日志行集合
-        [ObservableProperty]
-        private ObservableCollection<string> _logLines = new();
+        public string CrashReason
+        {
+            get => _sessionState.CrashReason;
+            set => _sessionState.CrashReason = value;
+        }
+
+        public ObservableCollection<string> LogLines => _sessionState.LogLines;
 
         /// <summary>
         /// 独立 Fixer 聊天窗口是否打开（打开时离开分析页不清空聊天）
         /// </summary>
-        public bool IsFixerWindowOpen { get; set; }
+        public bool IsFixerWindowOpen
+        {
+            get => _sessionState.IsFixerWindowOpen;
+            set => _sessionState.IsFixerWindowOpen = value;
+        }
 
         /// <summary>
         /// 加入QQ群进行反馈
@@ -59,23 +64,58 @@ namespace XianYuLauncher.ViewModels
         // 构造函数
         public ErrorAnalysisViewModel(
             ILanguageSelectorService languageSelectorService, 
-            ILogSanitizerService logSanitizerService,
-            IAIAnalysisService aiAnalysisService,
-            ILocalSettingsService localSettingsService,
-            ICommonDialogService dialogService,
-            IUiDispatcher uiDispatcher)
+            IErrorAnalysisLogService logService,
+            IErrorAnalysisAiOrchestrator aiOrchestrator,
+            IAgentActionExecutor actionExecutor,
+            IErrorAnalysisSessionCoordinator sessionCoordinator,
+            IErrorAnalysisExportService exportService,
+            IUiDispatcher uiDispatcher,
+            ErrorAnalysisSessionState sessionState)
         {
             _languageSelectorService = languageSelectorService;
-            _logSanitizerService = logSanitizerService;
-            _aiAnalysisService = aiAnalysisService;
-            _localSettingsService = localSettingsService;
-            _dialogService = dialogService;
+            _logService = logService;
+            _aiOrchestrator = aiOrchestrator;
+            _actionExecutor = actionExecutor;
+            _sessionCoordinator = sessionCoordinator;
+            _exportService = exportService;
             _uiDispatcher = uiDispatcher;
+            _sessionState = sessionState;
             _resourceManager = new ResourceManager();
             _resourceContext = _resourceManager.CreateResourceContext();
-            
-            // 监听聊天消息变化，自动更新空状态提示
-            ChatMessages.CollectionChanged += (_, _) => HasChatMessages = ChatMessages.Count > 0;
+
+            _sessionState.PropertyChanged += SessionState_PropertyChanged;
+        }
+
+        private void SessionState_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(e.PropertyName))
+            {
+                return;
+            }
+
+            void Notify()
+            {
+                OnPropertyChanged(e.PropertyName);
+
+                if (e.PropertyName == nameof(ErrorAnalysisSessionState.IsAiAnalyzing) ||
+                    e.PropertyName == nameof(ErrorAnalysisSessionState.IsAiAnalysisAvailable))
+                {
+                    OnPropertyChanged(nameof(IsAnalyzeButtonEnabled));
+                    OnPropertyChanged(nameof(AnalyzeButtonVisibility));
+                    OnPropertyChanged(nameof(CancelButtonVisibility));
+                }
+            }
+
+            if (_uiDispatcher.HasThreadAccess)
+            {
+                Notify();
+                return;
+            }
+
+            if (!_uiDispatcher.TryEnqueue(Notify))
+            {
+                Notify();
+            }
         }
 
         /// <summary>
@@ -85,6 +125,8 @@ namespace XianYuLauncher.ViewModels
         {
             await AnalyzeWithAiAsync();
         }
+
+        public string NoErrorInfoText => GetLocalizedString("ErrorAnalysis_NoErrorInfo.Text");
 
 
         /// <summary>
@@ -124,27 +166,15 @@ namespace XianYuLauncher.ViewModels
             }
         }
 
-        // 崩溃分析相关属性
-        private string _aiAnalysisResult = string.Empty;
         public string AiAnalysisResult
         {
-            get => _aiAnalysisResult;
-            set
-            {
-                if (_aiAnalysisResult != value)
-                {
-                    _aiAnalysisResult = value;
-                    OnPropertyChanged(nameof(AiAnalysisResult));
-                }
-            }
+            get => _sessionState.AiAnalysisResult;
+            set => _sessionState.AiAnalysisResult = value;
         }
 
         public async Task ClearChatStateAsync()
         {
-            if (_aiAnalysisCts != null && !_aiAnalysisCts.IsCancellationRequested)
-            {
-                _aiAnalysisCts.Cancel();
-            }
+            CancelActiveAiAnalysis();
 
             await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
@@ -154,43 +184,70 @@ namespace XianYuLauncher.ViewModels
                 ResetFixActionState();
             });
 
-            _aiAnalysisCts?.Dispose();
-            _aiAnalysisCts = null;
+            DisposeAiAnalysisToken();
         }
 
         // Chat Properties
-        [ObservableProperty]
-        private ObservableCollection<UiChatMessage> _chatMessages = new();
+        public ObservableCollection<UiChatMessage> ChatMessages => _sessionState.ChatMessages;
 
         /// <summary>
         /// 是否有聊天消息（用于控制空状态占位提示的显示）
         /// </summary>
-        [ObservableProperty]
-        private bool _hasChatMessages;
+        public bool HasChatMessages
+        {
+            get => _sessionState.HasChatMessages;
+            set => _sessionState.HasChatMessages = value;
+        }
 
-        [ObservableProperty]
-        private string _chatInput = string.Empty;
+        public string ChatInput
+        {
+            get => _sessionState.ChatInput;
+            set => _sessionState.ChatInput = value;
+        }
 
-        [ObservableProperty]
-        private bool _isChatEnabled = false;
+        public bool IsChatEnabled
+        {
+            get => _sessionState.IsChatEnabled;
+            set => _sessionState.IsChatEnabled = value;
+        }
 
         // 新增：智能修复相关属性
-        [ObservableProperty]
-        private bool _hasFixAction;
+        public bool HasFixAction
+        {
+            get => _sessionState.HasFixAction;
+            set => _sessionState.HasFixAction = value;
+        }
 
-        [ObservableProperty]
-        private string _fixButtonText = string.Empty;
+        public string FixButtonText
+        {
+            get => _sessionState.FixButtonText;
+            set => _sessionState.FixButtonText = value;
+        }
 
-        [ObservableProperty]
-        private bool _hasSecondaryFixAction;
+        public bool HasSecondaryFixAction
+        {
+            get => _sessionState.HasSecondaryFixAction;
+            set => _sessionState.HasSecondaryFixAction = value;
+        }
 
-        [ObservableProperty]
-        private string _secondaryFixButtonText = string.Empty;
+        public string SecondaryFixButtonText
+        {
+            get => _sessionState.SecondaryFixButtonText;
+            set => _sessionState.SecondaryFixButtonText = value;
+        }
 
-        private CrashFixAction? _currentFixAction;
-        private CrashFixAction? _secondaryFixAction;
+        private AgentActionProposal? _currentFixAction
+        {
+            get => _sessionState.CurrentFixAction;
+            set => _sessionState.CurrentFixAction = value;
+        }
 
-        // 占位命令，后续实现逻辑
+        private AgentActionProposal? _secondaryFixAction
+        {
+            get => _sessionState.SecondaryFixAction;
+            set => _sessionState.SecondaryFixAction = value;
+        }
+
         [RelayCommand]
         private async Task FixError()
         {
@@ -199,44 +256,7 @@ namespace XianYuLauncher.ViewModels
                 return;
             }
 
-            try
-            {
-                var currentLoader = await GetCurrentLoaderType();
-                if (!string.IsNullOrWhiteSpace(currentLoader) && !string.Equals(currentLoader, "vanilla", StringComparison.OrdinalIgnoreCase))
-                {
-                    _currentFixAction.Parameters["loader"] = currentLoader;
-                }
-                else if (_currentFixAction.Parameters.TryGetValue("loader", out var loaderValue) &&
-                         string.Equals(loaderValue, "auto", StringComparison.OrdinalIgnoreCase))
-                {
-                    _currentFixAction.Parameters["loader"] = string.Empty;
-                }
-
-                switch (_currentFixAction.Type?.Trim().ToLowerInvariant())
-                {
-                    case "searchmodrinthproject":
-                        await ExecuteSearchModrinthProjectAsync(_currentFixAction.Parameters);
-                        break;
-                    case "switchjavaforversion":
-                        await ExecuteSwitchJavaForVersionAsync();
-                        break;
-                    case "deletemod":
-                        await ExecuteDeleteModAsync(_currentFixAction.Parameters);
-                        break;
-                    case "togglemod":
-                        await ExecuteToggleModAsync(_currentFixAction.Parameters);
-                        break;
-                    default:
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                    AiAnalysisResult += $"\n\n{string.Format(GetLocalizedString("ErrorAnalysis_RequestFailed.Text"), ex.Message)}";
-                });
-            }
+            await ExecuteActionProposalAsync(_currentFixAction);
         }
 
         [RelayCommand]
@@ -247,30 +267,7 @@ namespace XianYuLauncher.ViewModels
                 return;
             }
 
-            try
-            {
-                switch (_secondaryFixAction.Type?.Trim().ToLowerInvariant())
-                {
-                    case "searchmodrinthproject":
-                        await ExecuteSearchModrinthProjectAsync(_secondaryFixAction.Parameters);
-                        break;
-                    case "switchjavaforversion":
-                        await ExecuteSwitchJavaForVersionAsync();
-                        break;
-                    case "deletemod":
-                        await ExecuteDeleteModAsync(_secondaryFixAction.Parameters);
-                        break;
-                    default:
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                    AiAnalysisResult += $"\n\n{string.Format(GetLocalizedString("ErrorAnalysis_RequestFailed.Text"), ex.Message)}";
-                });
-            }
+            await ExecuteActionProposalAsync(_secondaryFixAction);
         }
 
         [RelayCommand]
@@ -292,388 +289,38 @@ namespace XianYuLauncher.ViewModels
             });
         }
 
-        private async Task ExecuteSearchModrinthProjectAsync(Dictionary<string, string> parameters)
+        private async Task ExecuteActionProposalAsync(AgentActionProposal proposal)
         {
-            if (!parameters.TryGetValue("query", out var query) || string.IsNullOrWhiteSpace(query))
-            {
-                return;
-            }
-
-            var projectType = parameters.TryGetValue("projectType", out var projectTypeValue)
-                ? projectTypeValue
-                : "mod";
-
-            var loader = parameters.TryGetValue("loader", out var loaderValue)
-                ? loaderValue
-                : string.Empty;
-
-            var modrinthService = App.GetService<XianYuLauncher.Core.Services.ModrinthService>();
-            List<List<string>>? facets = null;
-            if (!string.IsNullOrWhiteSpace(loader))
-            {
-                facets = new List<List<string>>
-                {
-                    new List<string> { $"categories:{loader}" }
-                };
-            }
-
-            var result = await modrinthService.SearchModsAsync(query, facets, "relevance", 0, 5, projectType);
-            if (result?.Hits == null || result.Hits.Count == 0)
-            {
-                var cfFound = await TrySearchCurseForgeAsync(query, loader);
-                if (!cfFound)
-                {
-                    await ShowNotFoundDialogAsync(query);
-                }
-                return;
-            }
-
-            var normalizedQuery = NormalizeSlug(query);
-            var bestMatch = result.Hits.FirstOrDefault(h => NormalizeSlug(h.Slug) == normalizedQuery)
-                            ?? result.Hits.FirstOrDefault(h => NormalizeSlug(h.Title) == normalizedQuery)
-                            ?? result.Hits.First();
-
-            var navigationService = App.GetService<INavigationService>();
-            navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, new Tuple<ModrinthProject, string>(bestMatch, "Modrinth"));
-        }
-
-        private async Task ExecuteSwitchJavaForVersionAsync()
-        {
-            if (string.IsNullOrWhiteSpace(_versionId) || string.IsNullOrWhiteSpace(_minecraftPath))
-            {
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                    AiAnalysisResult += "\n\n未找到当前版本信息，无法自动切换 Java。";
-                });
-                return;
-            }
-
-            var versionInfoManager = App.GetService<IVersionInfoManager>();
-            VersionInfo? versionInfo = null;
             try
             {
-                versionInfo = await versionInfoManager.GetVersionInfoAsync(_versionId, _minecraftPath, allowNetwork: false);
-            }
-            catch
-            {
-                try
-                {
-                    versionInfo = await versionInfoManager.GetVersionInfoAsync(_versionId, _minecraftPath, allowNetwork: true);
-                }
-                catch (Exception ex)
-                {
-                    await _uiDispatcher.RunOnUiThreadAsync(() =>
-                    {
-                        AiAnalysisResult += $"\n\n读取版本信息失败：{ex.Message}";
-                    });
-                    return;
-                }
-            }
-
-            int requiredMajorVersion = versionInfo?.JavaVersion?.MajorVersion ?? 8;
-
-            var javaRuntimeService = App.GetService<IJavaRuntimeService>();
-            var javaVersions = await javaRuntimeService.DetectJavaVersionsAsync(true);
-            var bestJava = SelectBestJava(javaVersions, requiredMajorVersion);
-
-            if (bestJava == null || string.IsNullOrWhiteSpace(bestJava.Path))
-            {
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                    AiAnalysisResult += $"\n\n未找到可用的 Java {requiredMajorVersion} 版本，请先安装对应版本后再重试。";
-                });
-                return;
-            }
-
-            await _uiDispatcher.RunOnUiThreadAsync(() =>
-            {
-                var launchViewModel = App.GetService<LaunchViewModel>();
-                if (!string.Equals(launchViewModel.SelectedVersion, _versionId, StringComparison.OrdinalIgnoreCase))
-                {
-                    launchViewModel.SelectedVersion = _versionId;
-                }
-
-                launchViewModel.SetTemporaryJavaOverride(bestJava.Path);
-
-                var navigationService = App.GetService<INavigationService>();
-                navigationService.NavigateTo(typeof(LaunchViewModel).FullName!);
-
-                launchViewModel.LaunchGameCommand.Execute(null);
-            });
-        }
-
-        private async Task ExecuteDeleteModAsync(Dictionary<string, string> parameters)
-        {
-            if (!parameters.TryGetValue("modId", out var modId) || string.IsNullOrWhiteSpace(modId))
-            {
-                if (!parameters.TryGetValue("modFile", out modId) || string.IsNullOrWhiteSpace(modId))
-                {
-                    if (!parameters.TryGetValue("fileName", out modId) || string.IsNullOrWhiteSpace(modId))
-                    {
-                        return;
-                    }
-                }
-            }
-
-            // 规范化为文件名（避免直接用路径执行删除）
-            modId = Path.GetFileName(modId);
-            System.Diagnostics.Debug.WriteLine($"[AI] 删除Mod参数: {modId}");
-
-            var modFilePath = await FindModFileByIdAsync(modId);
-            if (string.IsNullOrWhiteSpace(modFilePath))
-            {
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                    AiAnalysisResult += $"\n\n未找到 Mod 文件：{modId}";
-                });
-                return;
-            }
-
-            bool shouldDelete = false;
-            await _uiDispatcher.RunOnUiThreadAsync(async () =>
-            {
-                shouldDelete = await _dialogService.ShowConfirmationDialogAsync(
-                    "删除 Mod",
-                    $"确定要删除该 Mod 吗？\n\n文件名：{Path.GetFileName(modFilePath)}\n路径：{modFilePath}\n\n注意：如果这是依赖库，可能会影响其它 Mod。",
-                    "删除",
-                    "取消");
-            });
-
-            if (!shouldDelete)
-            {
-                return;
-            }
-
-            try
-            {
-                File.Delete(modFilePath);
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                    AiAnalysisResult += $"\n\n已删除 Mod：{Path.GetFileName(modFilePath)}";
-                });
+                using var cancellationTokenSource = new System.Threading.CancellationTokenSource();
+                await _actionExecutor.ExecuteAsync(proposal, cancellationTokenSource.Token);
             }
             catch (Exception ex)
             {
                 await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
-                    AiAnalysisResult += $"\n\n删除 Mod 失败：{ex.Message}";
+                    AiAnalysisResult += $"\n\n{string.Format(GetLocalizedString("ErrorAnalysis_RequestFailed.Text"), ex.Message)}";
                 });
-            }
-        }
-
-        private async Task<string?> FindModFileByIdAsync(string modId)
-        {
-            if (string.IsNullOrWhiteSpace(_minecraftPath))
-            {
-                return null;
-            }
-
-            var candidateFiles = new List<string>();
-            var globalModsPath = Path.Combine(_minecraftPath, MinecraftPathConsts.Mods);
-            if (Directory.Exists(globalModsPath))
-            {
-                candidateFiles.AddRange(Directory.GetFiles(globalModsPath, "*.jar*"));
-            }
-
-            if (!string.IsNullOrWhiteSpace(_versionId))
-            {
-                var versionModsPath = Path.Combine(_minecraftPath, MinecraftPathConsts.Versions, _versionId, MinecraftPathConsts.Mods);
-                if (Directory.Exists(versionModsPath))
-                {
-                    candidateFiles.AddRange(Directory.GetFiles(versionModsPath, "*.jar*"));
-                }
-            }
-
-            var normalizedModId = modId.Trim();
-            foreach (var file in candidateFiles)
-            {
-                var fileName = Path.GetFileName(file);
-                if (!string.IsNullOrWhiteSpace(fileName) &&
-                    fileName.Contains(normalizedModId, StringComparison.OrdinalIgnoreCase))
-                {
-                    return file;
-                }
-
-                var fabricId = await TryGetFabricModIdAsync(file);
-                if (!string.IsNullOrWhiteSpace(fabricId) &&
-                    string.Equals(fabricId, normalizedModId, StringComparison.OrdinalIgnoreCase))
-                {
-                    return file;
-                }
-            }
-
-            return null;
-        }
-
-        private static async Task<string?> TryGetFabricModIdAsync(string jarPath)
-        {
-            try
-            {
-                using var archive = ZipFile.OpenRead(jarPath);
-                var entry = archive.GetEntry("fabric.mod.json");
-                if (entry == null)
-                {
-                    return null;
-                }
-
-                using var stream = entry.Open();
-                using var reader = new StreamReader(stream);
-                var json = await reader.ReadToEndAsync();
-                var obj = JObject.Parse(json);
-                var idToken = obj["id"];
-                return idToken?.ToString();
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
-        private static JavaVersion? SelectBestJava(IReadOnlyCollection<JavaVersion> javaVersions, int requiredMajorVersion)
-        {
-            if (javaVersions == null || javaVersions.Count == 0)
-            {
-                return null;
-            }
-
-            return javaVersions
-                .Where(j => !string.IsNullOrWhiteSpace(j.Path) && File.Exists(j.Path) && j.MajorVersion > 0)
-                .OrderByDescending(j => j.MajorVersion == requiredMajorVersion)
-                .ThenByDescending(j => j.IsJDK)
-                .ThenBy(j => Math.Abs(j.MajorVersion - requiredMajorVersion))
-                .FirstOrDefault();
-        }
-
-        private async Task<bool> TrySearchCurseForgeAsync(string query, string loader)
-        {
-            try
-            {
-                var curseForgeService = App.GetService<XianYuLauncher.Core.Services.CurseForgeService>();
-                int? modLoaderType = loader?.Trim().ToLowerInvariant() switch
-                {
-                    "forge" => 1,
-                    "fabric" => 4,
-                    "quilt" => 5,
-                    "neoforge" => 6,
-                    _ => null
-                };
-
-                var cfResult = await curseForgeService.SearchModsAsync(query, null, modLoaderType, null, 0, 5);
-                if (cfResult?.Data == null || cfResult.Data.Count == 0)
-                {
-                    return false;
-                }
-
-                var normalizedQuery = NormalizeSlug(query);
-                var best = cfResult.Data.FirstOrDefault(h => NormalizeSlug(h.Slug) == normalizedQuery)
-                           ?? cfResult.Data.FirstOrDefault(h => NormalizeSlug(h.Name) == normalizedQuery)
-                           ?? cfResult.Data.First();
-
-                var navigationService = App.GetService<INavigationService>();
-                navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, $"curseforge-{best.Id}");
-                return true;
-            }
-            catch (Exception ex)
-            {
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                    AiAnalysisResult += $"\n\nCurseForge 搜索失败: {ex.Message}";
-                });
-                return false;
-            }
-        }
-
-        private async Task ShowNotFoundDialogAsync(string query)
-        {
-            await _uiDispatcher.RunOnUiThreadAsync(async () =>
-            {
-                await _dialogService.ShowMessageDialogAsync(
-                    "未找到",
-                    $"未在 Modrinth 或 CurseForge 找到与 '{query}' 对应的项目。",
-                    "确定");
-            });
-        }
-
-        private static string NormalizeSlug(string? value)
-        {
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                return string.Empty;
-            }
-
-            var normalized = new string(value.Where(char.IsLetterOrDigit).ToArray());
-            return normalized.ToLowerInvariant();
-        }
-
-        private async Task<string> GetCurrentLoaderType()
-        {
-            if (string.IsNullOrWhiteSpace(_versionId) || string.IsNullOrWhiteSpace(_minecraftPath))
-            {
-                return string.Empty;
-            }
-
-            try
-            {
-                var versionDirectory = Path.Combine(_minecraftPath, MinecraftPathConsts.Versions, _versionId);
-                var versionInfoService = App.GetService<XianYuLauncher.Core.Services.IVersionInfoService>();
-                var config = await versionInfoService.GetFullVersionInfoAsync(_versionId, versionDirectory);
-                return config?.ModLoaderType?.Trim().ToLowerInvariant() ?? string.Empty;
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"获取版本加载器失败: {ex.Message}");
-                return string.Empty;
             }
         }
         
-        private bool _isAiAnalyzing = false;
         public bool IsAiAnalyzing
         {
-            get => _isAiAnalyzing;
+            get => _sessionState.IsAiAnalyzing;
             set
             {
-                if (_isAiAnalyzing != value)
+                if (_sessionState.IsAiAnalyzing != value)
                 {
-                    _isAiAnalyzing = value;
-                    // 确保在 UI 线程上触发 PropertyChanged 事件
-                    if (!_uiDispatcher.TryEnqueue(() =>
-                    {
-                        OnPropertyChanged(nameof(IsAiAnalyzing));
-                        OnPropertyChanged(nameof(IsAnalyzeButtonEnabled));
-                        OnPropertyChanged(nameof(CancelButtonVisibility));
-                    }))
-                    {
-                        OnPropertyChanged(nameof(IsAiAnalyzing));
-                        OnPropertyChanged(nameof(IsAnalyzeButtonEnabled));
-                        OnPropertyChanged(nameof(CancelButtonVisibility));
-                    }
+                    _sessionState.IsAiAnalyzing = value;
                 }
             }
         }
-        
-        private bool _isAiAnalysisAvailable = false;
+
         public bool IsAiAnalysisAvailable
         {
-            get => _isAiAnalysisAvailable;
-            set
-            {
-                if (_isAiAnalysisAvailable != value)
-                {
-                    _isAiAnalysisAvailable = value;
-                    // 确保在 UI 线程上触发 PropertyChanged 事件
-                    if (!_uiDispatcher.TryEnqueue(() =>
-                    {
-                        OnPropertyChanged(nameof(IsAiAnalysisAvailable));
-                        OnPropertyChanged(nameof(IsAnalyzeButtonEnabled));
-                        OnPropertyChanged(nameof(AnalyzeButtonVisibility));
-                    }))
-                    {
-                        OnPropertyChanged(nameof(IsAiAnalysisAvailable));
-                        OnPropertyChanged(nameof(IsAnalyzeButtonEnabled));
-                        OnPropertyChanged(nameof(AnalyzeButtonVisibility));
-                    }
-                }
-            }
+            get => _sessionState.IsAiAnalysisAvailable;
+            set => _sessionState.IsAiAnalysisAvailable = value;
         }
         
         // 计算属性，用于控制分析按钮的可见性
@@ -688,66 +335,69 @@ namespace XianYuLauncher.ViewModels
     // 手动实现了属性，不再需要自动生成的 partial 方法
         
         // 原始日志数据
-        private string _originalLog = string.Empty;
-        private string _launchCommand = string.Empty;
-        private List<string> _gameOutput = new();
-        private List<string> _gameError = new();
-        private bool _isGameCrashed = false;
-        private string _versionId = string.Empty; // 当前启动的版本 ID
-        private string _minecraftPath = string.Empty; // Minecraft 路径
-        
-        // 节流机制相关字段
-        private DateTime _lastLogUpdateTime = DateTime.MinValue;
-        private const int LogUpdateIntervalMs = 100; // 日志更新间隔，单位毫秒
-        private bool _isUpdateScheduled = false;
+        private string _originalLog
+        {
+            get => _sessionState.Context.OriginalLog;
+            set => _sessionState.Context.OriginalLog = value;
+        }
+
+        private string _launchCommand
+        {
+            get => _sessionState.Context.LaunchCommand;
+            set => _sessionState.Context.LaunchCommand = value;
+        }
+
+        private List<string> _gameOutput
+        {
+            get => _sessionState.Context.GameOutput;
+            set => _sessionState.ReplaceGameOutput(value);
+        }
+
+        private List<string> _gameError
+        {
+            get => _sessionState.Context.GameError;
+            set => _sessionState.ReplaceGameError(value);
+        }
+
+        private bool _isGameCrashed
+        {
+            get => _sessionState.Context.IsGameCrashed;
+            set => _sessionState.Context.IsGameCrashed = value;
+        }
+
+        private string _versionId
+        {
+            get => _sessionState.Context.VersionId;
+            set => _sessionState.Context.VersionId = value;
+        }
+
+        private string _minecraftPath
+        {
+            get => _sessionState.Context.MinecraftPath;
+            set => _sessionState.Context.MinecraftPath = value;
+        }
         
         // 用于存储当前崩溃分析的取消令牌
-        private System.Threading.CancellationTokenSource? _aiAnalysisCts;
+        private System.Threading.CancellationToken BeginAiAnalysisToken()
+        {
+            return _sessionState.BeginAiAnalysisToken();
+        }
+
+        private void CancelActiveAiAnalysis()
+        {
+            _sessionState.CancelAiAnalysis();
+        }
+
+        private void DisposeAiAnalysisToken()
+        {
+            _sessionState.DisposeAiAnalysisToken();
+        }
 
         // 设置日志数据
     public void SetLogData(string launchCommand, List<string> gameOutput, List<string> gameError)
     {
         System.Diagnostics.Debug.WriteLine($"崩溃分析: 设置日志数据，输出日志行数: {gameOutput.Count}，错误日志行数: {gameError.Count}");
-        
-        // 重置崩溃分析结果
-        IsAiAnalyzing = false;
-        IsAiAnalysisAvailable = false;
-        HasFixAction = false;
-        FixButtonText = string.Empty;
-        _currentFixAction = null;
-        
-        // 设置默认文字
-        AiAnalysisResult = GetLocalizedString("ErrorAnalysis_NoErrorInfo.Text");
-        
-        _launchCommand = launchCommand;
-        _gameOutput = new List<string>(gameOutput);
-        _gameError = new List<string>(gameError);
-        
-        // 清空并重新填充 UI 集合
-        LogLines.Clear();
-        
-        // 添加头部信息
-        LogLines.Add("=== 实时游戏日志 ===");
-        LogLines.Add($"日志开始时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-        LogLines.Add("");
-        
-        // 添加输出日志
-        LogLines.Add("=== 游戏输出日志 ===");
-        foreach (var line in gameOutput)
-        {
-            LogLines.Add(line);
-        }
-        LogLines.Add("");
-        
-        // 添加错误日志
-        LogLines.Add("=== 游戏错误日志 ===");
-        foreach (var line in gameError)
-        {
-            LogLines.Add(line);
-        }
-        
-        // 生成完整日志（用于导出）
-        GenerateFullLog();
+        _sessionCoordinator.SetLogData(launchCommand, gameOutput, gameError);
     }
     
     /// <summary>
@@ -757,8 +407,7 @@ namespace XianYuLauncher.ViewModels
     public void SetGameCrashStatus(bool isCrashed)
     {
         System.Diagnostics.Debug.WriteLine($"崩溃分析: 设置游戏崩溃状态: {isCrashed}");
-        _isGameCrashed = isCrashed;
-        IsAiAnalysisAvailable = isCrashed;
+        _sessionCoordinator.SetGameCrashStatus(isCrashed);
         
         // 如果游戏崩溃，自动触发崩溃分析
         if (isCrashed)
@@ -781,838 +430,36 @@ namespace XianYuLauncher.ViewModels
         var userMsg = ChatInput.Trim();
         ChatInput = string.Empty;
 
-        IsAiAnalyzing = true;
-        IsChatEnabled = false;
-
-        await _uiDispatcher.RunOnUiThreadAsync(() =>
-        {
-            ResetFixActionState();
-            ChatMessages.Add(new UiChatMessage("user", userMsg));
-            ChatMessages.Add(new UiChatMessage("assistant", "..."));
-        });
-        
-        // 短暂等待 UI 渲染新消息
-        await Task.Delay(50);
-
-        try {
-            var isAiEnabled = await _localSettingsService.ReadSettingAsync<bool?>("EnableAIAnalysis") ?? false;
-            if (!isAiEnabled)
-            {
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                    if (ChatMessages.Any())
-                    {
-                        ChatMessages.Last().Content = "当前为知识库模式，无法进行 AI 对话。请在设置中开启 AI 分析。";
-                    }
-                });
-                return;
-            }
-
-            var endpoint = await _localSettingsService.ReadSettingAsync<string>("AIApiEndpoint") ?? string.Empty;
-            var storedKey = await _localSettingsService.ReadSettingAsync<string>("AIApiKey") ?? string.Empty;
-            var key = TokenEncryption.IsEncrypted(storedKey) ? TokenEncryption.Decrypt(storedKey) : storedKey;
-            var model = await _localSettingsService.ReadSettingAsync<string>("AIModel") ?? string.Empty;
-
-            if (!string.IsNullOrEmpty(key)) {
-                await Task.Run(() => StreamResponseToLastMessage(key, endpoint, model));
-            } else {
-                 if (ChatMessages.Any()) await _uiDispatcher.RunOnUiThreadAsync(() => ChatMessages.Last().Content = "API Key Missing.");
-            }
-        }
-        finally {
-             await _uiDispatcher.RunOnUiThreadAsync(() => {
-                IsAiAnalyzing = false;
-                IsChatEnabled = true;
-             });
-        }
-    }
-
-    /// <summary>
-    /// 工具调用循环的最大轮次，防止 AI 无限调用工具
-    /// </summary>
-    private const int MaxToolCallRounds = 8;
-
-    private async Task StreamResponseToLastMessage(string key, string endpoint, string model)
-    {
-        // 构建消息历史
-        var apiMessages = new List<ChatMessage>();
-
-        var langCode = _languageSelectorService.Language;
-        var languageForAi = (langCode == "zh-CN") ? "Simplified Chinese" : "English";
-        var sysPrompt = BuildFunctionCallingSystemPrompt(languageForAi);
-        apiMessages.Add(new ChatMessage("system", sysPrompt));
-
-        // 添加历史消息（跳过最后一条 assistant 占位符）
-        foreach (var msg in ChatMessages.Take(ChatMessages.Count - 1))
-        {
-            if (msg.Role == "system") continue;
-            apiMessages.Add(new ChatMessage(msg.Role, msg.Content));
-        }
-
-        // 获取工具定义
-        var tools = XianYuLauncher.Core.Services.FixerToolRegistry.GetAllTools();
-
-        // 工具调用循环
-        for (int round = 0; round < MaxToolCallRounds; round++)
-        {
-            if (_aiAnalysisCts?.Token.IsCancellationRequested == true) break;
-
-            bool isFirstChunk = true;
-            var contentBuilder = new StringBuilder();
-            var updateBuffer = new StringBuilder();
-            var lastUpdate = DateTime.UtcNow;
-            var uiUpdateInterval = TimeSpan.FromMilliseconds(50);
-            List<ToolCallInfo>? pendingToolCalls = null;
-
-            await foreach (var chunk in _aiAnalysisService.StreamChatWithToolsAsync(apiMessages, tools, key, endpoint, model))
-            {
-                if (_aiAnalysisCts?.Token.IsCancellationRequested == true) break;
-
-                // 处理文本内容
-                if (chunk.IsContent)
-                {
-                    contentBuilder.Append(chunk.ContentDelta);
-                    updateBuffer.Append(chunk.ContentDelta);
-
-                    var now = DateTime.UtcNow;
-                    if ((now - lastUpdate) > uiUpdateInterval || updateBuffer.Length > 20)
-                    {
-                        var textToAppend = updateBuffer.ToString();
-                        updateBuffer.Clear();
-                        lastUpdate = now;
-
-                        await _uiDispatcher.RunOnUiThreadAsync(() =>
-                        {
-                            if (ChatMessages.Any())
-                            {
-                                var lastMsg = ChatMessages.Last();
-                                if (isFirstChunk)
-                                {
-                                    if (lastMsg.Content == "...") lastMsg.Content = "";
-                                    isFirstChunk = false;
-                                }
-                                lastMsg.Content += textToAppend;
-                                if (ChatMessages.Count <= 3) AiAnalysisResult = lastMsg.Content;
-                            }
-                        });
-                    }
-                }
-
-                // 处理工具调用
-                if (chunk.IsToolCall)
-                {
-                    pendingToolCalls = chunk.ToolCalls;
-                }
-            }
-
-            // 刷新剩余缓冲
-            if (updateBuffer.Length > 0)
-            {
-                var finalText = updateBuffer.ToString();
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                    if (ChatMessages.Any())
-                    {
-                        var lastMsg = ChatMessages.Last();
-                        if (isFirstChunk) { if (lastMsg.Content == "...") lastMsg.Content = ""; }
-                        lastMsg.Content += finalText;
-                        if (ChatMessages.Count <= 3) AiAnalysisResult = lastMsg.Content;
-                    }
-                });
-            }
-
-            // 如果没有工具调用，对话结束
-            if (pendingToolCalls == null || pendingToolCalls.Count == 0)
-            {
-                break;
-            }
-
-            // 将 assistant 的工具调用消息加入历史
-            var assistantContent = contentBuilder.Length > 0 ? contentBuilder.ToString() : null;
-            apiMessages.Add(new ChatMessage("assistant", assistantContent, pendingToolCalls));
-
-            // 执行每个工具调用并将结果加入历史
-            foreach (var toolCall in pendingToolCalls)
-            {
-                if (_aiAnalysisCts?.Token.IsCancellationRequested == true) break;
-
-                System.Diagnostics.Debug.WriteLine($"[AI FunctionCall] {toolCall.FunctionName}({toolCall.Arguments})");
-
-                // 在 UI 上显示工具调用状态
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                    if (ChatMessages.Any())
-                    {
-                        var lastMsg = ChatMessages.Last();
-                        if (string.IsNullOrEmpty(lastMsg.Content) || lastMsg.Content == "...")
-                            lastMsg.Content = $"正在调用 {toolCall.FunctionName}...";
-                        else
-                            lastMsg.Content += $"\n\n正在调用 {toolCall.FunctionName}...";
-                    }
-                });
-
-                var result = await ExecuteToolCallAsync(toolCall);
-                apiMessages.Add(ChatMessage.ToolResult(toolCall.Id, result));
-            }
-
-            // 为下一轮 AI 回复添加新的 UI 占位符
-            await _uiDispatcher.RunOnUiThreadAsync(() =>
-            {
-                ChatMessages.Add(new UiChatMessage("assistant", "..."));
-            });
-            await Task.Delay(50);
-        }
-    }
-
-    /// <summary>
-    /// 构建使用 function calling 的系统提示词
-    /// </summary>
-    private static string BuildFunctionCallingSystemPrompt(string language)
-    {
-        return
-            "You are an expert Minecraft technical support agent built into XianYu Launcher. " +
-            "XianYu Launcher is the product's global brand name — always refer to it as \"XianYu Launcher\", never translate or localize this name. " +
-            $"Analyze crash logs and help users fix issues. Respond in {language}. " +
-            "Be concise and reference specific mods or config files if they are responsible. " +
-            "\n\n" +
-            "You have access to tools that can query the user's game environment (installed mods, Java versions, config, etc.) " +
-            "and perform fix actions (search mods, toggle mods, switch Java). " +
-            "Use query tools FIRST to gather information before suggesting fixes. " +
-            "For destructive actions (delete/toggle mods), always explain what you're doing and why. " +
-            "For search actions (searchModrinthProject), prefer using the tool so the user gets a direct download link.\n\n" +
-            "CRITICAL RULES:\n" +
-            "1. CHECK THE LAUNCH COMMAND FIRST! If the user has set invalid JVM arguments (e.g., nonsense in -Djava.library.path or -Xmx), TELL THEM TO FIX IT MANUALLY in the settings. Do NOT switch Java versions for bad arguments.\n" +
-            "2. ONLY use the 'switchJava' tool if the crash log explicitly indicates a Java version mismatch or runtime error. Do not guess.\n" +
-            "3. The 'searchModrinthProject' tool is stricterly for searching MODS, SHADERS, or RESOURCE PACKS. It CANNOT search for Mod Loaders (Forge, Fabric, NeoForge, Quilt). Explain manual installation for loaders if needed.\n" +
-            "4. If you cannot fix the issue via tools, provide clear manual instructions. If the problem persists, advise the user to click the 'Contact Author' (联系作者) button at the top.\n" +
-            "5. For 'toggleMod' or 'deleteMod', you MUST inform the user that a button has been created for them to confirm the action.";
-    }
-
-
-    /// <summary>
-    /// 执行单个工具调用，返回结果字符串
-    /// </summary>
-    private async Task<string> ExecuteToolCallAsync(ToolCallInfo toolCall)
-    {
+        var cancellationToken = BeginAiAnalysisToken();
         try
         {
-            var args = string.IsNullOrWhiteSpace(toolCall.Arguments)
-                ? new JObject()
-                : JObject.Parse(toolCall.Arguments);
-
-            return toolCall.FunctionName switch
-            {
-                // 查询类工具
-                "listInstalledMods" => await ExecuteListInstalledModsAsync(),
-                "getVersionConfig" => await ExecuteGetVersionConfigAsync(),
-                "checkJavaVersions" => await ExecuteCheckJavaVersionsAsync(),
-                "searchKnowledgeBase" => await ExecuteSearchKnowledgeBaseAsync(args),
-                "readModInfo" => await ExecuteReadModInfoAsync(args),
-
-                // 操作类工具 — 返回操作结果，同时设置 UI 修复按钮
-                "searchModrinthProject" => await ExecuteToolSearchModrinthAsync(args),
-                "deleteMod" => await ExecuteToolDeleteModAsync(args),
-                "toggleMod" => await ExecuteToolToggleModAsync(args),
-                "switchJavaForVersion" => await ExecuteToolSwitchJavaAsync(),
-
-                _ => $"未知工具: {toolCall.FunctionName}"
-            };
+            await _aiOrchestrator.SendMessageAsync(userMsg, cancellationToken);
         }
-        catch (Exception ex)
+        finally
         {
-            System.Diagnostics.Debug.WriteLine($"[AI Tool Error] {toolCall.FunctionName}: {ex.Message}");
-            return $"工具执行失败: {ex.Message}";
+            DisposeAiAnalysisToken();
         }
     }
 
-    // ===== 查询类工具实现 =====
-
-    private async Task<string> ExecuteListInstalledModsAsync()
-    {
-        if (string.IsNullOrWhiteSpace(_versionId) || string.IsNullOrWhiteSpace(_minecraftPath))
-            return "无法获取版本信息，未设置版本 ID 或 Minecraft 路径。";
-
-        var modsPath = Path.Combine(_minecraftPath, MinecraftPathConsts.Versions, _versionId, MinecraftPathConsts.Mods);
-        if (!Directory.Exists(modsPath))
-        {
-            // 尝试全局 mods 目录
-            modsPath = Path.Combine(_minecraftPath, MinecraftPathConsts.Mods);
-        }
-        if (!Directory.Exists(modsPath))
-            return "未找到 mods 目录，当前版本可能没有安装任何 Mod。";
-
-        var files = Directory.GetFiles(modsPath, $"*{FileExtensionConsts.Jar}")
-            .Concat(Directory.GetFiles(modsPath, $"*{FileExtensionConsts.JarDisabled}"))
-            .ToList();
-
-        if (files.Count == 0)
-            return "mods 目录为空，没有安装任何 Mod。";
-
-        var sb = new StringBuilder();
-        sb.AppendLine($"共 {files.Count} 个 Mod 文件：");
-        foreach (var file in files)
-        {
-            var fileName = Path.GetFileName(file);
-            var enabled = !fileName.EndsWith(FileExtensionConsts.Disabled, StringComparison.OrdinalIgnoreCase);
-            sb.AppendLine($"- {fileName} [{(enabled ? "启用" : "禁用")}]");
-        }
-        return sb.ToString();
-    }
-
-    private async Task<string> ExecuteGetVersionConfigAsync()
-    {
-        if (string.IsNullOrWhiteSpace(_versionId) || string.IsNullOrWhiteSpace(_minecraftPath))
-            return "未设置版本信息。";
-
-        try
-        {
-            var versionDirectory = Path.Combine(_minecraftPath, MinecraftPathConsts.Versions, _versionId);
-            var versionInfoService = App.GetService<IVersionInfoService>();
-            var config = await versionInfoService.GetFullVersionInfoAsync(_versionId, versionDirectory, preferCache: true);
-
-            var sb = new StringBuilder();
-            sb.AppendLine($"版本 ID: {_versionId}");
-            sb.AppendLine($"Minecraft 版本: {config.MinecraftVersion}");
-            sb.AppendLine($"ModLoader: {config.ModLoaderType ?? "vanilla"} {config.ModLoaderVersion ?? ""}");
-            sb.AppendLine($"Java 路径: {(string.IsNullOrEmpty(config.JavaPath) ? "使用全局设置" : config.JavaPath)}");
-            sb.AppendLine($"内存设置: 自动={config.AutoMemoryAllocation}, 初始={config.InitialHeapMemory}GB, 最大={config.MaximumHeapMemory}GB");
-            return sb.ToString();
-        }
-        catch (Exception ex)
-        {
-            return $"读取版本配置失败: {ex.Message}";
-        }
-    }
-
-    private async Task<string> ExecuteCheckJavaVersionsAsync()
-    {
-        try
-        {
-            var javaRuntimeService = App.GetService<IJavaRuntimeService>();
-            var javaVersions = await javaRuntimeService.DetectJavaVersionsAsync(true);
-
-            if (javaVersions == null || javaVersions.Count == 0)
-                return "未检测到任何已安装的 Java 版本。";
-
-            var sb = new StringBuilder();
-            sb.AppendLine($"检测到 {javaVersions.Count} 个 Java 版本：");
-            foreach (var jv in javaVersions)
-            {
-                sb.AppendLine($"- Java {jv.MajorVersion} ({jv.FullVersion}) - {jv.Path}");
-            }
-            return sb.ToString();
-        }
-        catch (Exception ex)
-        {
-            return $"检测 Java 版本失败: {ex.Message}";
-        }
-    }
-
-    private async Task<string> ExecuteSearchKnowledgeBaseAsync(JObject args)
-    {
-        var keyword = args["keyword"]?.ToString() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(keyword))
-            return "请提供搜索关键词。";
-
-        try
-        {
-            var crashAnalyzer = App.GetService<ICrashAnalyzer>();
-            // 用关键词构造一个模拟日志行来匹配知识库
-            var fakeOutput = new List<string> { keyword };
-            var result = await crashAnalyzer.AnalyzeCrashAsync(0, fakeOutput, fakeOutput);
-
-            if (result.Type == CrashType.Unknown)
-                return $"知识库中未找到与 \"{keyword}\" 匹配的错误规则。";
-
-            var sb = new StringBuilder();
-            sb.AppendLine($"匹配到错误: {result.Title}");
-            sb.AppendLine($"类型: {result.Type}");
-            sb.AppendLine($"分析: {result.Analysis}");
-            if (result.Suggestions.Count > 0)
-            {
-                sb.AppendLine("建议:");
-                foreach (var s in result.Suggestions) sb.AppendLine($"  - {s}");
-            }
-            return sb.ToString();
-        }
-        catch (Exception ex)
-        {
-            return $"搜索知识库失败: {ex.Message}";
-        }
-    }
-
-    private async Task<string> ExecuteReadModInfoAsync(JObject args)
-    {
-        var fileName = args["fileName"]?.ToString() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(fileName))
-            return "请提供 Mod 文件名。";
-
-        // 安全：只取文件名部分
-        fileName = Path.GetFileName(fileName);
-
-        var filePath = await FindModFileByIdAsync(fileName);
-        if (string.IsNullOrWhiteSpace(filePath))
-            return $"未找到 Mod 文件: {fileName}";
-
-        try
-        {
-            // 尝试读取 fabric.mod.json
-            var modId = await TryGetFabricModIdAsync(filePath);
-            if (!string.IsNullOrEmpty(modId))
-                return $"Mod文件: {fileName}\nFabric Mod ID: {modId}\n(完整元数据需解压 jar 读取 fabric.mod.json)";
-
-            return $"Mod文件: {fileName}\n无法解析元数据（可能不是 Fabric mod，或 jar 格式异常）";
-        }
-        catch (Exception ex)
-        {
-            return $"读取 Mod 信息失败: {ex.Message}";
-        }
-    }
-
-    // ===== 操作类工具实现（包装现有方法）=====
-
-    private async Task<string> ExecuteToolSearchModrinthAsync(JObject args)
-    {
-        var query = args["query"]?.ToString() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(query))
-            return "请提供搜索关键词。";
-
-        var parameters = new Dictionary<string, string> { ["query"] = query };
-        if (args["projectType"] != null) parameters["projectType"] = args["projectType"]!.ToString();
-        if (args["loader"] != null) parameters["loader"] = args["loader"]!.ToString();
-
-        // 自动填充当前 loader
-        var currentLoader = await GetCurrentLoaderType();
-        if (!string.IsNullOrWhiteSpace(currentLoader) && !parameters.ContainsKey("loader"))
-            parameters["loader"] = currentLoader;
-
-        // 设置修复按钮让用户点击执行导航
-        await _uiDispatcher.RunOnUiThreadAsync(() =>
-        {
-            ResetFixActionState();
-            _currentFixAction = new CrashFixAction
-            {
-                Type = "searchModrinthProject",
-                ButtonText = $"搜索 {query}",
-                Parameters = parameters
-            };
-            FixButtonText = _currentFixAction.ButtonText;
-            HasFixAction = true;
-        });
-
-        return $"已准备搜索 \"{query}\"，用户可点击按钮执行搜索并查看结果。";
-    }
-
-    private async Task<string> ExecuteToolDeleteModAsync(JObject args)
-    {
-        var modId = args["modId"]?.ToString() ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(modId))
-            return "请提供要删除的 Mod ID 或文件名。";
-
-        modId = Path.GetFileName(modId);
-        var parameters = new Dictionary<string, string> { ["modId"] = modId };
-
-        // 设置修复按钮让用户确认
-        await _uiDispatcher.RunOnUiThreadAsync(() =>
-        {
-            ResetFixActionState();
-            _currentFixAction = new CrashFixAction
-            {
-                Type = "deleteMod",
-                ButtonText = $"删除 {modId}",
-                Parameters = parameters
-            };
-            FixButtonText = _currentFixAction.ButtonText;
-            HasFixAction = true;
-        });
-
-        return $"已准备删除 Mod \"{modId}\"，等待用户确认。";
-    }
-
-    private async Task<string> ExecuteToolToggleModAsync(JObject args)
-    {
-        var fileName = args["fileName"]?.ToString() ?? string.Empty;
-        var enabled = args["enabled"]?.Value<bool>() ?? true;
-
-        if (string.IsNullOrWhiteSpace(fileName))
-            return "请提供 Mod 文件名。";
-
-        fileName = Path.GetFileName(fileName);
-        var parameters = new Dictionary<string, string>
-        {
-            ["fileName"] = fileName,
-            ["enabled"] = enabled.ToString()
-        };
-
-        // 设置修复按钮让用户确认
-        await _uiDispatcher.RunOnUiThreadAsync(() =>
-        {
-            ResetFixActionState();
-            _currentFixAction = new CrashFixAction
-            {
-                Type = "toggleMod",
-                ButtonText = $"{(enabled ? "启用" : "禁用")} {fileName}",
-                Parameters = parameters
-            };
-            FixButtonText = _currentFixAction.ButtonText;
-            HasFixAction = true;
-        });
-        
-        return $"已准备{(enabled ? "启用" : "禁用")} Mod \"{fileName}\"，用户可点击按钮确认执行操作。";
-    }
-    
-    private async Task ExecuteToggleModAsync(Dictionary<string, string> parameters)
-    {
-        var fileName = parameters["fileName"];
-        var enabled = bool.Parse(parameters["enabled"]);
-        
-        try
-        {
-            // 查找文件逻辑
-            var filePath = await FindModFileByIdAsync(fileName);
-            if (string.IsNullOrWhiteSpace(filePath))
-            {
-                // 如果找不到精确匹配，尝试带/不带 .disabled 后缀
-                var candidateNames = new List<string>();
-                if (enabled)
-                {
-                    candidateNames.Add(fileName + FileExtensionConsts.Disabled);
-                }
-                else
-                {
-                    if (fileName.EndsWith(FileExtensionConsts.Disabled, StringComparison.OrdinalIgnoreCase))
-                    {
-                        candidateNames.Add(fileName[..^FileExtensionConsts.Disabled.Length]);
-                    }
-                    else
-                    {
-                        candidateNames.Add(fileName + FileExtensionConsts.Disabled);
-                    }
-                }
-
-                foreach (var candidateName in candidateNames)
-                {
-                    filePath = await FindModFileByIdAsync(candidateName);
-                    if (!string.IsNullOrWhiteSpace(filePath))
-                    {
-                        break;
-                    }
-                }
-            }
-
-            if (string.IsNullOrWhiteSpace(filePath))
-            {
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                    AiAnalysisResult += $"\n\n失败: 未找到 Mod 文件 {fileName}";
-                });
-                return;
-            }
-
-            var currentName = Path.GetFileName(filePath);
-            var dir = Path.GetDirectoryName(filePath)!;
-            string newName;
-
-            if (enabled)
-            {
-                // 启用：移除 .disabled 后缀
-                newName = currentName.EndsWith(FileExtensionConsts.Disabled, StringComparison.OrdinalIgnoreCase)
-                    ? currentName[..^FileExtensionConsts.Disabled.Length]
-                    : currentName;
-            }
-            else
-            {
-                // 禁用：添加 .disabled 后缀
-                newName = currentName.EndsWith(FileExtensionConsts.Disabled, StringComparison.OrdinalIgnoreCase)
-                    ? currentName
-                    : currentName + FileExtensionConsts.Disabled;
-            }
-
-            if (newName != currentName)
-            {
-                var newPath = Path.Combine(dir, newName);
-                File.Move(filePath, newPath);
-                
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                    AiAnalysisResult += $"\n\n成功: 已{(enabled ? "启用" : "禁用")} Mod {currentName} → {newName}";
-                    HasFixAction = false; // 操作完成后隐藏按钮
-                });
-            }
-            else
-            {
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                    AiAnalysisResult += $"\n\n提示: Mod {currentName} 已经是{(enabled ? "启用" : "禁用")}状态。";
-                    HasFixAction = false;
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            await _uiDispatcher.RunOnUiThreadAsync(() =>
-            {
-                 AiAnalysisResult += $"\n\n操作失败: {ex.Message}";
-            });
-        }
-    }
-
-    private async Task<string> ExecuteToolSwitchJavaAsync()
-    {
-        // 设置修复按钮让用户点击执行
-        await _uiDispatcher.RunOnUiThreadAsync(() =>
-        {
-            ResetFixActionState();
-            _currentFixAction = new CrashFixAction
-            {
-                Type = "switchJavaForVersion",
-                ButtonText = "自动切换 Java 版本",
-                Parameters = new Dictionary<string, string>()
-            };
-            FixButtonText = _currentFixAction.ButtonText;
-            HasFixAction = true;
-        });
-
-        return "已准备自动切换 Java 版本，等待用户点击按钮执行。";
-    }
-    
     /// <summary>
     /// 使用本地知识库进行错误分析（流式输出）
     /// </summary>
     [RelayCommand]
     private async Task AnalyzeWithAiAsync()
     {
-        // 检查是否可以进行分析
         if (!_isGameCrashed || IsAiAnalyzing)
         {
             return;
         }
-        
+
+        var cancellationToken = BeginAiAnalysisToken();
         try
         {
-            // 重置分析结果和状态
-            await _uiDispatcher.RunOnUiThreadAsync(() =>
-            {
-                IsAiAnalyzing = true;
-                IsChatEnabled = false;
-                ChatMessages.Clear();
-                // Initialize old property for compatibility
-                AiAnalysisResult = "正在分析崩溃原因...\n\n";
-                ResetFixActionState();
-            });
-            
-            // 短暂等待 UI 更新
-            await Task.Delay(50);
-            
-            // 创建取消令牌
-            _aiAnalysisCts = new System.Threading.CancellationTokenSource();
-
-            var isAiEnabled = await _localSettingsService.ReadSettingAsync<bool?>("EnableAIAnalysis") ?? false;
-
-            if (isAiEnabled)
-            {
-                // 仅使用外部 AI 分析（不执行知识库分析）
-                var endpoint = await _localSettingsService.ReadSettingAsync<string>("AIApiEndpoint") ?? string.Empty;
-                var storedKey = await _localSettingsService.ReadSettingAsync<string>("AIApiKey") ?? string.Empty;
-                var key = TokenEncryption.IsEncrypted(storedKey) ? TokenEncryption.Decrypt(storedKey) : storedKey;
-                var model = await _localSettingsService.ReadSettingAsync<string>("AIModel") ?? string.Empty;
-
-                if (!string.IsNullOrWhiteSpace(key))
-                {
-                    await _uiDispatcher.RunOnUiThreadAsync(() =>
-                    {
-                        AiAnalysisResult = "正在进行外部 AI 分析...\n\n";
-                        ResetFixActionState();
-                    });
-
-                    var sanitizedLog = await _logSanitizerService.SanitizeAsync(FullLog);
-
-                    // 补充启动参数，帮助 AI 诊断 JVM 参数或库路径问题
-                    if (!string.IsNullOrWhiteSpace(_launchCommand))
-                    {
-                        var sanitizedCmd = await _logSanitizerService.SanitizeAsync(_launchCommand);
-                        sanitizedLog = $"=== Launch Command ===\n{sanitizedCmd}\n\n=== Game Log ===\n{sanitizedLog}";
-                    }
-
-                    if (sanitizedLog.Length > 15000)
-                    {
-                        // 保留启动参数（如果在头部）和最后的日志
-                        // 注意：简单截断可能会切掉启动参数，这里做一个智能处理
-                        // 如果加上启动参数超长了，优先保留启动参数和最近的日志
-                        
-                        int keepHeadResponse = 2000; // 保留头部 2000 字符（通常包含启动参数）
-                        int keepTailResponse = 13000; // 保留尾部 13000 字符
-
-                        if (sanitizedLog.Length > (keepHeadResponse + keepTailResponse))
-                        {
-                            string head = sanitizedLog.Substring(0, keepHeadResponse);
-                            string tail = sanitizedLog.Substring(sanitizedLog.Length - keepTailResponse);
-                            sanitizedLog = head + "\n\n[...Log Truncated (Middle)...]\n\n" + tail;
-                        }
-                        else
-                        {
-                             // 稍微超长一点点，直接切尾部（兼容旧逻辑）
-                             sanitizedLog = sanitizedLog.Substring(sanitizedLog.Length - 15000);
-                             sanitizedLog = "[...Log Truncated...] " + sanitizedLog;
-                        }
-                    }
-
-                    await _uiDispatcher.RunOnUiThreadAsync(() =>
-                    {
-                         ChatMessages.Add(new UiChatMessage("user", sanitizedLog));
-                         ChatMessages.Add(new UiChatMessage("assistant", "..."));
-                    });
-                    
-                    await Task.Delay(50);
-
-                    await Task.Run(() => StreamResponseToLastMessage(key, endpoint, model));
-                    
-                    await _uiDispatcher.RunOnUiThreadAsync(() =>
-                    {
-                        IsChatEnabled = true;
-                    });
-                }
-                else
-                {
-                    await _uiDispatcher.RunOnUiThreadAsync(() =>
-                    {
-                        var msg = "未配置 API Key，无法进行 AI 分析。";
-                        ChatMessages.Add(new UiChatMessage("assistant", msg));
-                        AiAnalysisResult = msg;
-                    });
-                }
-                return;
-            }
-            
-            // 使用知识库服务进行分析
-            var crashAnalyzer = App.GetService<XianYuLauncher.Core.Contracts.Services.ICrashAnalyzer>();
-            
-             await _uiDispatcher.RunOnUiThreadAsync(() => {
-                 ChatMessages.Add(new UiChatMessage("assistant", "..."));
-             });
-
-            // 获取流式分析结果
-            var buffered = new StringBuilder();
-            bool isFirstChunk = true;
-            var lastFlush = DateTime.UtcNow;
-            const int flushIntervalMs = 10;
-            const int flushSize = 80;
-
-            await foreach (var chunk in crashAnalyzer.GetStreamingAnalysisAsync(0, _gameOutput, _gameError))
-            {
-                if (_aiAnalysisCts.Token.IsCancellationRequested)
-                {
-                    break;
-                }
-
-                buffered.Append(chunk);
-
-                var now = DateTime.UtcNow;
-                if (buffered.Length >= flushSize || (now - lastFlush).TotalMilliseconds >= flushIntervalMs)
-                {
-                    var text = buffered.ToString();
-                    buffered.Clear();
-                    lastFlush = now;
-
-                    await _uiDispatcher.RunOnUiThreadAsync(() =>
-                    {
-                         if(ChatMessages.Any()) {
-                            var lastMsg = ChatMessages.Last();
-                            if(isFirstChunk) { 
-                                if(lastMsg.Content == "...") lastMsg.Content = "";
-                                isFirstChunk = false; 
-                            }
-                            lastMsg.Content += text;
-                            if (ChatMessages.Count <= 1) AiAnalysisResult = ChatMessages.Last().Content;
-                         }
-                    });
-                }
-            }
-
-            if (buffered.Length > 0)
-            {
-                var remaining = buffered.ToString();
-                buffered.Clear();
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                     if(ChatMessages.Any()) {
-                        ChatMessages.Last().Content += remaining;
-                        if (ChatMessages.Count <= 1) AiAnalysisResult = ChatMessages.Last().Content;
-                     }
-                });
-            }
-
-            // 获取结构化结果用于修复按钮
-            var analysisResult = await crashAnalyzer.AnalyzeCrashAsync(0, _gameOutput, _gameError);
-            await _uiDispatcher.RunOnUiThreadAsync(() =>
-            {
-                ResetFixActionState();
-
-                var actions = analysisResult.FixActions ?? new List<CrashFixAction>();
-                if (actions.Count == 0 && analysisResult.FixAction != null)
-                {
-                    actions.Add(analysisResult.FixAction);
-                }
-
-                if (actions.Count > 0)
-                {
-                    _currentFixAction = actions[0];
-                    FixButtonText = actions[0].ButtonText;
-                    HasFixAction = !string.IsNullOrWhiteSpace(FixButtonText);
-                }
-
-                if (actions.Count > 1)
-                {
-                    _secondaryFixAction = actions[1];
-                    SecondaryFixButtonText = actions[1].ButtonText;
-                    HasSecondaryFixAction = !string.IsNullOrWhiteSpace(SecondaryFixButtonText);
-                }
-            });
-            
-            System.Diagnostics.Debug.WriteLine("崩溃分析: 分析完成");
-            System.Diagnostics.Debug.WriteLine("===============================================");
-        }
-        catch (OperationCanceledException)
-        {
-            System.Diagnostics.Debug.WriteLine("崩溃分析: 分析被用户取消");
-            System.Diagnostics.Debug.WriteLine("===============================================");
-            
-            // 用户取消了分析
-            await _uiDispatcher.RunOnUiThreadAsync(() =>
-            {
-               if(ChatMessages.Any()) {
-                  ChatMessages.Last().Content += $"\n\n{GetLocalizedString("ErrorAnalysis_AnalysisCanceled.Text")}";
-               }
-            });
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine("崩溃分析: 失败: " + ex.Message);
-            System.Diagnostics.Debug.WriteLine("异常类型: " + ex.GetType().Name);
-            System.Diagnostics.Debug.WriteLine("堆栈跟踪: " + ex.StackTrace);
-            System.Diagnostics.Debug.WriteLine("===============================================");
-            
-            await _uiDispatcher.RunOnUiThreadAsync(() =>
-            {
-                var msg = string.Format(GetLocalizedString("ErrorAnalysis_AnalysisFailed.Text"), ex.Message);
-                if (ChatMessages.Any()) {
-                     ChatMessages.Add(new UiChatMessage("assistant", $"\n\n{msg}"));
-                }
-                AiAnalysisResult += $"\n\n{msg}";
-            });
+            await _aiOrchestrator.AnalyzeCrashAsync(cancellationToken);
         }
         finally
         {
-            // 清理资源并更新状态
-            _aiAnalysisCts?.Dispose();
-            _aiAnalysisCts = null;
-            
-            // 更新分析状态
-            await _uiDispatcher.RunOnUiThreadAsync(() =>
-            {
-                IsAiAnalyzing = false;
-                IsChatEnabled = true;
-            });
+            DisposeAiAnalysisToken();
         }
     }
     
@@ -1623,10 +470,10 @@ namespace XianYuLauncher.ViewModels
     private void CancelAiAnalysis()
     {
         System.Diagnostics.Debug.WriteLine("崩溃分析: 收到取消分析请求");
-        if (_aiAnalysisCts != null && !_aiAnalysisCts.IsCancellationRequested)
+        if (IsAiAnalyzing)
         {
             System.Diagnostics.Debug.WriteLine("崩溃分析: 执行取消操作");
-            _aiAnalysisCts.Cancel();
+            CancelActiveAiAnalysis();
         }
         else
         {
@@ -1640,7 +487,7 @@ namespace XianYuLauncher.ViewModels
     /// <param name="launchCommand">启动命令</param>
     public void SetLaunchCommand(string launchCommand)
     {
-        _launchCommand = launchCommand;
+        _sessionCoordinator.SetLaunchCommand(launchCommand);
         System.Diagnostics.Debug.WriteLine($"ErrorAnalysisViewModel: 设置启动命令，长度: {launchCommand?.Length ?? 0}");
     }
     
@@ -1651,8 +498,7 @@ namespace XianYuLauncher.ViewModels
     /// <param name="minecraftPath">Minecraft 路径</param>
     public void SetVersionInfo(string versionId, string minecraftPath)
     {
-        _versionId = versionId;
-        _minecraftPath = minecraftPath;
+        _sessionCoordinator.SetVersionInfo(versionId, minecraftPath);
         System.Diagnostics.Debug.WriteLine($"ErrorAnalysisViewModel: 设置版本信息，版本ID: {versionId}");
     }
     
@@ -1662,33 +508,7 @@ namespace XianYuLauncher.ViewModels
     public void ClearLogsOnly()
     {
         System.Diagnostics.Debug.WriteLine("ErrorAnalysisViewModel: 仅清空日志数据，保留启动命令");
-        
-        // 取消正在进行的流式分析
-        if (_aiAnalysisCts != null && !_aiAnalysisCts.IsCancellationRequested)
-        {
-            System.Diagnostics.Debug.WriteLine("ErrorAnalysisViewModel: 取消正在进行的崩溃分析");
-            _aiAnalysisCts.Cancel();
-        }
-        
-        // 重置崩溃分析结果
-        IsAiAnalyzing = false;
-        IsAiAnalysisAvailable = false;
-        AiAnalysisResult = GetLocalizedString("ErrorAnalysis_NoErrorInfo.Text");
-        ResetFixActionState();
-        
-        // 清空日志但保留启动命令
-        _gameOutput = new List<string>();
-        _gameError = new List<string>();
-        
-        // 清空 UI 集合
-        LogLines.Clear();
-        LogLines.Add("=== 实时游戏日志 ===");
-        LogLines.Add($"日志开始时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
-        LogLines.Add("");
-        LogLines.Add("等待游戏输出...");
-        
-        // 生成完整日志
-        GenerateFullLog();
+        _sessionCoordinator.ClearLogsOnly();
     }
 
     /// <summary>
@@ -1696,12 +516,7 @@ namespace XianYuLauncher.ViewModels
     /// </summary>
     public void ResetFixActionState()
     {
-        HasFixAction = false;
-        FixButtonText = string.Empty;
-        _currentFixAction = null;
-        HasSecondaryFixAction = false;
-        SecondaryFixButtonText = string.Empty;
-        _secondaryFixAction = null;
+        _sessionState.ResetFixActions();
     }
     
     /// <summary>
@@ -1710,16 +525,7 @@ namespace XianYuLauncher.ViewModels
     /// <param name="logLine">日志行</param>
     public void AddGameOutputLog(string logLine)
     {
-        // 使用锁确保线程安全
-        lock (_gameOutput)
-        {
-            _gameOutput.Add(logLine);
-        }
-        
-        // 直接添加到 UI 集合，利用虚拟化提升性能
-        AddLogLineToUI(logLine);
-        
-        ScheduleLogUpdate();
+        _sessionCoordinator.AddGameOutputLog(logLine);
     }
     
     /// <summary>
@@ -1728,424 +534,14 @@ namespace XianYuLauncher.ViewModels
     /// <param name="logLine">日志行</param>
     public void AddGameErrorLog(string logLine)
     {
-        // 使用锁确保线程安全
-        lock (_gameError)
-        {
-            _gameError.Add(logLine);
-        }
-        
-        // 直接添加到 UI 集合，利用虚拟化提升性能
-        AddLogLineToUI(logLine);
-        
-        ScheduleLogUpdate();
-    }
-    
-    /// <summary>
-    /// 添加日志行到 UI 集合（在 UI 线程上执行）
-    /// </summary>
-    private void AddLogLineToUI(string line)
-    {
-        _uiDispatcher.TryEnqueue(() =>
-        {
-            LogLines.Add(line);
-        });
-    }
-    
-    /// <summary>
-    /// 调度日志更新，添加节流机制
-    /// </summary>
-    private void ScheduleLogUpdate()
-    {
-        var now = DateTime.Now;
-        var timeSinceLastUpdate = now - _lastLogUpdateTime;
-        
-        // 如果距离上次更新已经超过间隔时间，立即更新
-        if (timeSinceLastUpdate.TotalMilliseconds >= LogUpdateIntervalMs)
-        {
-            _lastLogUpdateTime = now;
-            GenerateFullLog();
-        }
-        // 否则，只调度一次更新
-        else if (!_isUpdateScheduled)
-        {
-            _isUpdateScheduled = true;
-            var delay = LogUpdateIntervalMs - (int)timeSinceLastUpdate.TotalMilliseconds;
-            
-            // 使用 Task.Delay 实现延迟更新，避免阻塞主线程
-            Task.Delay(delay).ContinueWith(_ =>
-            {
-                if (_isUpdateScheduled)
-                {
-                    _lastLogUpdateTime = DateTime.Now;
-                    _isUpdateScheduled = false;
-                    GenerateFullLog();
-                }
-            });
-        }
-    }
-
-        // 生成完整日志
-    private void GenerateFullLog()
-    {
-        // 简化日志生成，只保留必要的日志内容
-        var sb = new StringBuilder();
-
-        sb.AppendLine("=== 实时游戏日志 ===");
-        sb.AppendLine(string.Format("日志开始时间: {0:yyyy-MM-dd HH:mm:ss}", DateTime.Now));
-        sb.AppendLine();
-        
-        // 准备分析和生成日志所需的列表
-        List<string> outputList = new();
-        List<string> errorList = new();
-        
-        // 使用锁保护日志列表，避免并发修改异常
-        lock (_gameOutput)
-        {
-            outputList.AddRange(_gameOutput);
-        }
-        
-        lock (_gameError)
-        {
-            errorList.AddRange(_gameError);
-        }
-        
-        if (outputList.Count == 0 && errorList.Count == 0)
-        {
-            sb.AppendLine("等待游戏输出...");
-        }
-        else
-        {
-            // 总是分析崩溃原因，确保完整性
-            string errorAnalysis = AnalyzeCrash(outputList, errorList);
-            sb.AppendLine(string.Format("崩溃分析: {0}", errorAnalysis));
-            sb.AppendLine();
-
-            // 设置崩溃原因属性
-            // 确保在 UI 线程上更新属性
-            if (_uiDispatcher.HasThreadAccess)
-            {
-                CrashReason = errorAnalysis;
-            }
-            else
-            {
-                _uiDispatcher.TryEnqueue(() =>
-                {
-                    CrashReason = errorAnalysis;
-                });
-            }
-        }
-
-        sb.AppendLine("=== 游戏输出日志 ===");
-        foreach (var line in outputList)
-        {
-            sb.AppendLine(line);
-        }
-        sb.AppendLine();
-
-        sb.AppendLine("=== 游戏错误日志 ===");
-        foreach (var line in errorList)
-        {
-            sb.AppendLine(line);
-        }
-        sb.AppendLine();
-
-        // 移除系统信息，减少生成时间
-        sb.AppendLine("实时日志持续更新中...");
-
-        // 限制最终日志的大小，避免内存占用过大
-        string finalLog = sb.ToString();
-        _originalLog = finalLog; // 保存原始日志
-
-        // 确保在 UI 线程上更新 FullLog 属性
-        if (_uiDispatcher.HasThreadAccess)
-        {
-            FullLog = finalLog;
-        }
-        else
-        {
-            _uiDispatcher.TryEnqueue(() =>
-            {
-                FullLog = finalLog;
-            });
-        }
-    }
-
-        // 分析崩溃原因
-        private string AnalyzeCrash(List<string> gameOutput, List<string> gameError)
-        {
-            // 检查是否为正常启动过程（避免误判）
-            if (IsNormalStartup(gameOutput, gameError))
-            {
-                return "游戏正在启动中";
-            }
-            
-            // 检查手动触发崩溃
-            if (ContainsKeyword(gameError, "Manually triggered debug crash") || ContainsKeyword(gameOutput, "Manually triggered debug crash"))
-            {
-                return "玩家手动触发崩溃";
-            }
-            
-            // 检查 Java 版本不匹配 - 使用多个关键词提高检测准确性
-            if (ContainsKeyword(gameError, "UnsupportedClassVersionError") || ContainsKeyword(gameOutput, "UnsupportedClassVersionError") ||
-                ContainsKeyword(gameError, "java.lang.UnsupportedClassVersionError") || ContainsKeyword(gameOutput, "java.lang.UnsupportedClassVersionError") ||
-                ContainsKeyword(gameError, "class file version") || ContainsKeyword(gameOutput, "class file version") ||
-                ContainsKeyword(gameError, "compiled by a more recent version") || ContainsKeyword(gameOutput, "compiled by a more recent version"))
-            {
-                return "Java 版本不匹配 - 需要更高版本的 Java";
-            }
-            
-            // 检查致命错误
-            if (ContainsKeyword(gameError, "[Fatal Error]") || ContainsKeyword(gameOutput, "[Fatal Error]"))
-            {
-                return "致命错误导致崩溃";
-            }
-            
-            // 检查 Java 异常（排除警告中的异常）
-            if (ContainsKeywordWithContext(gameError, "java.lang.Exception", "[ERROR]", "[FATAL]") || 
-                ContainsKeywordWithContext(gameOutput, "java.lang.Exception", "[ERROR]", "[FATAL]"))
-            {
-                return "Java异常导致崩溃";
-            }
-            
-            // 检查内存不足
-            if (ContainsKeyword(gameError, "OutOfMemoryError") || ContainsKeyword(gameOutput, "OutOfMemoryError"))
-            {
-                return "内存不足导致崩溃";
-            }
-            
-            // 检查玩家崩溃
-            if (ContainsKeyword(gameError, "玩家崩溃") || ContainsKeyword(gameOutput, "玩家崩溃"))
-            {
-                return "玩家手动触发崩溃";
-            }
-            
-            // 检查真正的错误（不是警告）
-            if (ContainsKeyword(gameError, "[ERROR]") || ContainsKeyword(gameOutput, "[ERROR]") ||
-                ContainsKeyword(gameError, "[FATAL]") || ContainsKeyword(gameOutput, "[FATAL]"))
-            {
-                return "错误日志中存在错误信息";
-            }
-
-            return "未知崩溃原因";
-        }
-        
-        /// <summary>
-        /// 检查是否为正常启动过程
-        /// </summary>
-        private bool IsNormalStartup(List<string> gameOutput, List<string> gameError)
-        {
-            // 合并所有日志
-            var allLogs = new List<string>();
-            allLogs.AddRange(gameOutput);
-            allLogs.AddRange(gameError);
-            
-            // 检查是否包含正常启动的标志
-            bool hasLoadingMessage = ContainsKeyword(allLogs, "Loading Minecraft") ||
-                                    ContainsKeyword(allLogs, "Loading mods") ||
-                                    ContainsKeyword(allLogs, "Datafixer optimizations");
-            
-            // 检查是否只有警告而没有真正的错误
-            bool hasOnlyWarnings = (ContainsKeyword(allLogs, "[WARN]") || ContainsKeyword(allLogs, "[INFO]")) && 
-                                  !ContainsKeyword(allLogs, "[ERROR]") && 
-                                  !ContainsKeyword(allLogs, "[FATAL]");
-            
-            // 检查是否包含 Mixin 相关的警告（这些通常是正常的）
-            bool hasMixinWarnings = ContainsKeyword(allLogs, "Reference map") ||
-                                   ContainsKeyword(allLogs, "@Mixin target") ||
-                                   ContainsKeyword(allLogs, "Force-disabling mixin");
-            
-            // 如果有加载信息且只有警告（特别是 Mixin 警告），认为是正常启动
-            return hasLoadingMessage && hasOnlyWarnings && hasMixinWarnings;
-        }
-        
-        /// <summary>
-        /// 检查关键词是否在特定上下文中出现
-        /// </summary>
-        private bool ContainsKeywordWithContext(List<string> lines, string keyword, params string[] contextKeywords)
-        {
-            for (int i = 0; i < lines.Count; i++)
-            {
-                if (lines[i].Contains(keyword, StringComparison.OrdinalIgnoreCase))
-                {
-                    // 检查是否包含任何上下文关键词
-                    foreach (var contextKeyword in contextKeywords)
-                    {
-                        if (lines[i].Contains(contextKeyword, StringComparison.OrdinalIgnoreCase))
-                        {
-                            return true;
-                        }
-                    }
-                }
-            }
-            return false;
-        }
-        
-        /// <summary>
-        /// 高效检查列表中是否包含关键词
-        /// </summary>
-        /// <param name="lines">日志行列表</param>
-        /// <param name="keyword">关键词</param>
-        /// <returns>是否包含关键词</returns>
-        private bool ContainsKeyword(List<string> lines, string keyword)
-        {
-            // 使用高效的循环方式，避免 LINQ 的额外开销
-            for (int i = 0; i < lines.Count; i++)
-            {
-                if (lines[i].Contains(keyword, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-            return false;
+        _sessionCoordinator.AddGameErrorLog(logLine);
         }
 
         // 导出错误日志
         [RelayCommand]
         private async Task ExportErrorLogsAsync()
         {
-            try
-            {
-                // 打开文件保存对话框让用户选择导出位置
-                var filePicker = new Windows.Storage.Pickers.FileSavePicker();
-                
-                // 设置文件选择器的起始位置
-                var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
-                WinRT.Interop.InitializeWithWindow.Initialize(filePicker, windowHandle);
-                
-                // 设置文件类型
-                filePicker.FileTypeChoices.Add("ZIP 压缩文件", new[] { FileExtensionConsts.Zip });
-                
-                // 设置默认文件名
-                string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-                filePicker.SuggestedFileName = string.Format("crash_logs_{0}", timestamp);
-                
-                // 显示文件选择器
-                var selectedFile = await filePicker.PickSaveFileAsync();
-                
-                // 检查用户是否取消了选择
-                if (selectedFile == null)
-                {
-                    return; // 用户取消了操作
-                }
-                
-                // 创建临时目录用于存放日志文件
-                string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-                Directory.CreateDirectory(tempDir);
-
-                // 1. 生成启动参数 .bat 文件（已脱敏）
-                string batFilePath = Path.Combine(tempDir, "启动参数.bat");
-                string sanitizedLaunchCommand = await _logSanitizerService.SanitizeAsync(_launchCommand);
-                await File.WriteAllTextAsync(batFilePath, sanitizedLaunchCommand);
-
-                // 2. 生成崩溃日志文件 (已脱敏)
-                string crashLogFile = Path.Combine(tempDir, string.Format("crash_report_{0}.txt", timestamp));
-                string sanitizedCrashLog = await _logSanitizerService.SanitizeAsync(FullLog);
-                await File.WriteAllTextAsync(crashLogFile, sanitizedCrashLog);
-
-                // 3. 复制启动器日志
-                try
-                {
-                    // 使用安全日志路径
-                    string launcherLogDir = XianYuLauncher.Core.Helpers.AppEnvironment.SafeLogPath;
-                    
-                    if (Directory.Exists(launcherLogDir))
-                    {
-                        // 创建日志子目录
-                        string logSubDir = Path.Combine(tempDir, "launcher_logs");
-                        Directory.CreateDirectory(logSubDir);
-                        
-                        // 复制最近的日志文件（最多3个）
-                        var logFiles = Directory.GetFiles(launcherLogDir, "log-*.txt")
-                            .OrderByDescending(f => File.GetLastWriteTime(f))
-                            .Take(3);
-                        
-                        foreach (var logFile in logFiles)
-                        {
-                            try 
-                            {
-                                string fileName = Path.GetFileName(logFile);
-                                string destPath = Path.Combine(logSubDir, fileName);
-                                
-                                // 读取并脱敏后再保存
-                                // 使用 FileStream 以 FileShare.ReadWrite 方式打开，避免被日志记录器锁住无法读取
-                                using (var fileStream = new FileStream(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
-                                using (var streamReader = new StreamReader(fileStream))
-                                {
-                                    string content = await streamReader.ReadToEndAsync();
-                                    string sanitizedContent = await _logSanitizerService.SanitizeAsync(content);
-                                    await File.WriteAllTextAsync(destPath, sanitizedContent);
-                                }
-                            }
-                            catch (IOException)
-                            {
-                                // 如果无法读取（被完全锁住），尝试直接复制作为后备方案
-                                // 虽然不会脱敏，但至少能保住日志（或者选择跳过以保护隐私，这里选择跳过比较安全）
-                                System.Diagnostics.Debug.WriteLine("无法读取日志文件进行脱敏");
-                            }
-                        }
-                        
-                        System.Diagnostics.Debug.WriteLine($"已复制 {logFiles.Count()} 个启动器日志文件");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"复制启动器日志失败: {ex.Message}");
-                    // 不中断导出流程，继续执行
-                }
-
-                // 4. 复制 version.json
-                try
-                {
-                    if (!string.IsNullOrEmpty(_versionId) && !string.IsNullOrEmpty(_minecraftPath))
-                    {
-                        string versionJsonPath = Path.Combine(_minecraftPath, MinecraftPathConsts.Versions, _versionId, $"{_versionId}.json");
-                        
-                        if (File.Exists(versionJsonPath))
-                        {
-                            string destPath = Path.Combine(tempDir, "version.json");
-                            File.Copy(versionJsonPath, destPath);
-                            System.Diagnostics.Debug.WriteLine("已复制 version.json");
-                        }
-                        else
-                        {
-                            System.Diagnostics.Debug.WriteLine("version.json 不存在");
-                        }
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine("版本信息未设置，跳过 version.json 复制");
-                    }
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"复制 version.json 失败: {ex.Message}");
-                    // 不中断导出流程，继续执行
-                }
-
-                // 获取用户选择的 zip 文件路径
-                string zipFilePath = selectedFile.Path;
-
-                // 如果文件已存在，先删除
-                if (File.Exists(zipFilePath))
-                {
-                    File.Delete(zipFilePath);
-                }
-
-                // 创建 zip 文件
-                ZipFile.CreateFromDirectory(tempDir, zipFilePath);
-
-                // 清理临时目录
-                Directory.Delete(tempDir, true);
-
-                await _dialogService.ShowMessageDialogAsync(
-                    "成功",
-                    string.Format("崩溃日志已成功导出到：{0}\n\n包含内容：\n• 游戏崩溃日志\n• 启动参数\n• 启动器日志\n• 版本配置文件", zipFilePath),
-                    "确定");
-            }
-            catch (Exception ex)
-            {
-                await _dialogService.ShowMessageDialogAsync("错误", string.Format("导出崩溃日志失败：{0}", ex.Message), "确定");
-            }
+            await _exportService.ExportAsync();
         }
 
         // 复制日志到剪贴板
@@ -2175,6 +571,11 @@ namespace XianYuLauncher.ViewModels
             // 同时重置崩溃分析结果为默认文字
             AiAnalysisResult = GetLocalizedString("ErrorAnalysis_NoErrorInfo.Text");
             IsAiAnalysisAvailable = false;
+        }
+
+        public void Dispose()
+        {
+            _sessionState.PropertyChanged -= SessionState_PropertyChanged;
         }
     }
 }

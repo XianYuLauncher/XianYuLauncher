@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using XianYuLauncher.Features.ErrorAnalysis.Services;
 using XianYuLauncher.Features.ModDownloadDetail.Services;
 using XianYuLauncher.Features.VersionManagement.Services;
 
@@ -11,6 +12,27 @@ internal static class FeatureServiceExtensions
 {
     public static IServiceCollection AddFeatureServices(this IServiceCollection services)
     {
+        services.AddSingleton<ErrorAnalysisSessionState>();
+        services.AddSingleton<IErrorAnalysisSessionCoordinator, ErrorAnalysisSessionCoordinator>();
+        services.AddSingleton<IErrorAnalysisLogService, ErrorAnalysisLogService>();
+        services.AddSingleton<IErrorAnalysisAiOrchestrator, ErrorAnalysisAiOrchestrator>();
+        services.AddSingleton<IErrorAnalysisExportService, ErrorAnalysisExportService>();
+        services.AddSingleton<IAgentToolSupportService, AgentToolSupportService>();
+        services.AddSingleton<IAgentToolDispatcher, AgentToolDispatcher>();
+        services.AddSingleton<IAgentActionExecutor, AgentActionExecutor>();
+        services.AddSingleton<IAgentToolHandler, ListInstalledModsToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetVersionConfigToolHandler>();
+        services.AddSingleton<IAgentToolHandler, CheckJavaVersionsToolHandler>();
+        services.AddSingleton<IAgentToolHandler, SearchKnowledgeBaseToolHandler>();
+        services.AddSingleton<IAgentToolHandler, ReadModInfoToolHandler>();
+        services.AddSingleton<IAgentToolHandler, SearchModrinthProjectToolHandler>();
+        services.AddSingleton<IAgentToolHandler, DeleteModToolHandler>();
+        services.AddSingleton<IAgentToolHandler, ToggleModToolHandler>();
+        services.AddSingleton<IAgentToolHandler, SwitchJavaForVersionToolHandler>();
+        services.AddSingleton<IAgentActionHandler, SearchModrinthProjectActionHandler>();
+        services.AddSingleton<IAgentActionHandler, DeleteModActionHandler>();
+        services.AddSingleton<IAgentActionHandler, ToggleModActionHandler>();
+        services.AddSingleton<IAgentActionHandler, SwitchJavaForVersionActionHandler>();
         services.AddSingleton<IIconMetadataPipelineService, IconMetadataPipelineService>();
         services.AddSingleton<IVersionSettingsOrchestrator, VersionSettingsOrchestrator>();
         services.AddSingleton<IOverviewDataService, OverviewDataService>();
