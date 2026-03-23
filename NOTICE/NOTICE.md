@@ -77,7 +77,7 @@
 - 许可证：Apache License 2.0
 - 项目地址：https://github.com/serilog/serilog
 - 使用包：Serilog、Serilog.Extensions.Hosting、Serilog.Formatting.Compact、Serilog.Settings.Configuration、Serilog.Sinks.File
-- 归档位置：`NOTICE/license/Serilog/`（当前仅预留目录）
+- 归档位置：`NOTICE/license/Serilog/`
 
 ### WinUIEx
 - 版权声明：Copyright (c) Morten Nielsen
