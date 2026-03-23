@@ -1439,30 +1439,28 @@
                     <!-- 截图列表容器 -->
                     <Grid Grid.Row="1" AllowDrop="True">
                         <!-- 截图列表 -->
-                        <ScrollViewer
-                            x:Name="ScreenshotsListScrollViewer"
-                            Margin="0"
-                            VerticalScrollBarVisibility="Auto"
-                            HorizontalScrollBarVisibility="Disabled"
-                            AllowDrop="True">
-                            <StackPanel>
-                                <!-- 截图列表 -->
-                                <ListView 
-                                    x:Name="ScreenshotsListView"
-                                    ItemsSource="{Binding Screenshots}"
-                                    SelectionMode="Single"
-                                    IsItemClickEnabled="False"
-                                    CanReorderItems="False"
-                                    AllowDrop="True"
-                                    Background="Transparent"
-                                    BorderThickness="0"
-                                    VerticalAlignment="Stretch">
-                                <ListView.Resources>
-                                    <Style TargetType="ScrollViewer">
-                                        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
-                                        <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
-                                    </Style>
-                                </ListView.Resources>
+                        <ListView 
+                            x:Name="ScreenshotsListView"
+                            ItemsSource="{Binding Screenshots}"
+                            SelectionMode="Single"
+                            IsItemClickEnabled="False"
+                            CanReorderItems="False"
+                            AllowDrop="True"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            VerticalAlignment="Stretch">
+                            <ListView.Resources>
+                                <Style TargetType="ScrollViewer">
+                                    <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+                                    <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+                                    <Setter Property="IsScrollInertiaEnabled" Value="True"/>
+                                </Style>
+                            </ListView.Resources>
+                            <ListView.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <ItemsStackPanel/>
+                                </ItemsPanelTemplate>
+                            </ListView.ItemsPanel>
                                 <ListView.ItemContainerStyle>
                                     <Style TargetType="ListViewItem">
                                         <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -1616,9 +1614,7 @@
                                     Margin="0,0,24,0" 
                                     TextAlignment="Center" 
                                     MaxWidth="300"/>
-                            </StackPanel>
                         </StackPanel>
-                    </ScrollViewer>
                     </Grid>
                 </Grid>
             </TabViewItem>
