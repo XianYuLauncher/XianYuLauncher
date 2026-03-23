@@ -6,6 +6,7 @@ using Microsoft.Windows.ApplicationModel.Resources;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -15,6 +16,7 @@ using Newtonsoft.Json.Linq;
 using Windows.ApplicationModel.DataTransfer;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Features.ErrorAnalysis.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
@@ -29,23 +31,32 @@ namespace XianYuLauncher.ViewModels
         private readonly ILocalSettingsService _localSettingsService; // To read settings
         private readonly ICommonDialogService _dialogService;
         private readonly IUiDispatcher _uiDispatcher;
+        private readonly ErrorAnalysisSessionState _sessionState;
         private readonly ResourceManager _resourceManager;
         private ResourceContext _resourceContext;
 
-        [ObservableProperty]
-        private string _fullLog = string.Empty;
+        public string FullLog
+        {
+            get => _sessionState.FullLog;
+            set => _sessionState.FullLog = value;
+        }
 
-        [ObservableProperty]
-        private string _crashReason = string.Empty;
-        
-        // 新增：用于 ListView 的日志行集合
-        [ObservableProperty]
-        private ObservableCollection<string> _logLines = new();
+        public string CrashReason
+        {
+            get => _sessionState.CrashReason;
+            set => _sessionState.CrashReason = value;
+        }
+
+        public ObservableCollection<string> LogLines => _sessionState.LogLines;
 
         /// <summary>
         /// 独立 Fixer 聊天窗口是否打开（打开时离开分析页不清空聊天）
         /// </summary>
-        public bool IsFixerWindowOpen { get; set; }
+        public bool IsFixerWindowOpen
+        {
+            get => _sessionState.IsFixerWindowOpen;
+            set => _sessionState.IsFixerWindowOpen = value;
+        }
 
         /// <summary>
         /// 加入QQ群进行反馈
@@ -63,7 +74,8 @@ namespace XianYuLauncher.ViewModels
             IAIAnalysisService aiAnalysisService,
             ILocalSettingsService localSettingsService,
             ICommonDialogService dialogService,
-            IUiDispatcher uiDispatcher)
+            IUiDispatcher uiDispatcher,
+            ErrorAnalysisSessionState sessionState)
         {
             _languageSelectorService = languageSelectorService;
             _logSanitizerService = logSanitizerService;
@@ -71,11 +83,21 @@ namespace XianYuLauncher.ViewModels
             _localSettingsService = localSettingsService;
             _dialogService = dialogService;
             _uiDispatcher = uiDispatcher;
+            _sessionState = sessionState;
             _resourceManager = new ResourceManager();
             _resourceContext = _resourceManager.CreateResourceContext();
-            
-            // 监听聊天消息变化，自动更新空状态提示
-            ChatMessages.CollectionChanged += (_, _) => HasChatMessages = ChatMessages.Count > 0;
+
+            _sessionState.PropertyChanged += SessionState_PropertyChanged;
+        }
+
+        private void SessionState_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(e.PropertyName))
+            {
+                return;
+            }
+
+            OnPropertyChanged(e.PropertyName);
         }
 
         /// <summary>
@@ -124,19 +146,10 @@ namespace XianYuLauncher.ViewModels
             }
         }
 
-        // 崩溃分析相关属性
-        private string _aiAnalysisResult = string.Empty;
         public string AiAnalysisResult
         {
-            get => _aiAnalysisResult;
-            set
-            {
-                if (_aiAnalysisResult != value)
-                {
-                    _aiAnalysisResult = value;
-                    OnPropertyChanged(nameof(AiAnalysisResult));
-                }
-            }
+            get => _sessionState.AiAnalysisResult;
+            set => _sessionState.AiAnalysisResult = value;
         }
 
         public async Task ClearChatStateAsync()
@@ -159,36 +172,65 @@ namespace XianYuLauncher.ViewModels
         }
 
         // Chat Properties
-        [ObservableProperty]
-        private ObservableCollection<UiChatMessage> _chatMessages = new();
+        public ObservableCollection<UiChatMessage> ChatMessages => _sessionState.ChatMessages;
 
         /// <summary>
         /// 是否有聊天消息（用于控制空状态占位提示的显示）
         /// </summary>
-        [ObservableProperty]
-        private bool _hasChatMessages;
+        public bool HasChatMessages
+        {
+            get => _sessionState.HasChatMessages;
+            set => _sessionState.HasChatMessages = value;
+        }
 
-        [ObservableProperty]
-        private string _chatInput = string.Empty;
+        public string ChatInput
+        {
+            get => _sessionState.ChatInput;
+            set => _sessionState.ChatInput = value;
+        }
 
-        [ObservableProperty]
-        private bool _isChatEnabled = false;
+        public bool IsChatEnabled
+        {
+            get => _sessionState.IsChatEnabled;
+            set => _sessionState.IsChatEnabled = value;
+        }
 
         // 新增：智能修复相关属性
-        [ObservableProperty]
-        private bool _hasFixAction;
+        public bool HasFixAction
+        {
+            get => _sessionState.HasFixAction;
+            set => _sessionState.HasFixAction = value;
+        }
 
-        [ObservableProperty]
-        private string _fixButtonText = string.Empty;
+        public string FixButtonText
+        {
+            get => _sessionState.FixButtonText;
+            set => _sessionState.FixButtonText = value;
+        }
 
-        [ObservableProperty]
-        private bool _hasSecondaryFixAction;
+        public bool HasSecondaryFixAction
+        {
+            get => _sessionState.HasSecondaryFixAction;
+            set => _sessionState.HasSecondaryFixAction = value;
+        }
 
-        [ObservableProperty]
-        private string _secondaryFixButtonText = string.Empty;
+        public string SecondaryFixButtonText
+        {
+            get => _sessionState.SecondaryFixButtonText;
+            set => _sessionState.SecondaryFixButtonText = value;
+        }
 
-        private CrashFixAction? _currentFixAction;
-        private CrashFixAction? _secondaryFixAction;
+        private CrashFixAction? _currentFixAction
+        {
+            get => _sessionState.CurrentFixAction;
+            set => _sessionState.CurrentFixAction = value;
+        }
+
+        private CrashFixAction? _secondaryFixAction
+        {
+            get => _sessionState.SecondaryFixAction;
+            set => _sessionState.SecondaryFixAction = value;
+        }
 
         // 占位命令，后续实现逻辑
         [RelayCommand]
@@ -688,13 +730,47 @@ namespace XianYuLauncher.ViewModels
     // 手动实现了属性，不再需要自动生成的 partial 方法
         
         // 原始日志数据
-        private string _originalLog = string.Empty;
-        private string _launchCommand = string.Empty;
-        private List<string> _gameOutput = new();
-        private List<string> _gameError = new();
-        private bool _isGameCrashed = false;
-        private string _versionId = string.Empty; // 当前启动的版本 ID
-        private string _minecraftPath = string.Empty; // Minecraft 路径
+        private string _originalLog
+        {
+            get => _sessionState.Context.OriginalLog;
+            set => _sessionState.Context.OriginalLog = value;
+        }
+
+        private string _launchCommand
+        {
+            get => _sessionState.Context.LaunchCommand;
+            set => _sessionState.Context.LaunchCommand = value;
+        }
+
+        private List<string> _gameOutput
+        {
+            get => _sessionState.Context.GameOutput;
+            set => _sessionState.ReplaceGameOutput(value);
+        }
+
+        private List<string> _gameError
+        {
+            get => _sessionState.Context.GameError;
+            set => _sessionState.ReplaceGameError(value);
+        }
+
+        private bool _isGameCrashed
+        {
+            get => _sessionState.Context.IsGameCrashed;
+            set => _sessionState.Context.IsGameCrashed = value;
+        }
+
+        private string _versionId
+        {
+            get => _sessionState.Context.VersionId;
+            set => _sessionState.Context.VersionId = value;
+        }
+
+        private string _minecraftPath
+        {
+            get => _sessionState.Context.MinecraftPath;
+            set => _sessionState.Context.MinecraftPath = value;
+        }
         
         // 节流机制相关字段
         private DateTime _lastLogUpdateTime = DateTime.MinValue;

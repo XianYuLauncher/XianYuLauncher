@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using XianYuLauncher.Features.ErrorAnalysis.Services;
 using XianYuLauncher.Features.ModDownloadDetail.Services;
 using XianYuLauncher.Features.VersionManagement.Services;
 
@@ -11,6 +12,7 @@ internal static class FeatureServiceExtensions
 {
     public static IServiceCollection AddFeatureServices(this IServiceCollection services)
     {
+        services.AddSingleton<ErrorAnalysisSessionState>();
         services.AddSingleton<IIconMetadataPipelineService, IconMetadataPipelineService>();
         services.AddSingleton<IVersionSettingsOrchestrator, VersionSettingsOrchestrator>();
         services.AddSingleton<IOverviewDataService, OverviewDataService>();
