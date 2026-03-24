@@ -18,6 +18,7 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IErrorAnalysisAiOrchestrator, ErrorAnalysisAiOrchestrator>();
         services.AddSingleton<IErrorAnalysisExportService, ErrorAnalysisExportService>();
         services.AddSingleton<IAgentToolSupportService, AgentToolSupportService>();
+        services.AddSingleton<IAgentGameInstallService, AgentGameInstallService>();
         services.AddSingleton<IAgentToolDispatcher, AgentToolDispatcher>();
         services.AddSingleton<IAgentActionExecutor, AgentActionExecutor>();
         services.AddSingleton<IAgentToolHandler, ListInstalledModsToolHandler>();
@@ -25,10 +26,13 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentToolHandler, CheckJavaVersionsToolHandler>();
         services.AddSingleton<IAgentToolHandler, SearchKnowledgeBaseToolHandler>();
         services.AddSingleton<IAgentToolHandler, ReadModInfoToolHandler>();
+        services.AddSingleton<IAgentToolHandler, InstallGameToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetOperationStatusToolHandler>();
         services.AddSingleton<IAgentToolHandler, SearchModrinthProjectToolHandler>();
         services.AddSingleton<IAgentToolHandler, DeleteModToolHandler>();
         services.AddSingleton<IAgentToolHandler, ToggleModToolHandler>();
         services.AddSingleton<IAgentToolHandler, SwitchJavaForVersionToolHandler>();
+        services.AddSingleton<IAgentActionHandler, InstallGameActionHandler>();
         services.AddSingleton<IAgentActionHandler, SearchModrinthProjectActionHandler>();
         services.AddSingleton<IAgentActionHandler, DeleteModActionHandler>();
         services.AddSingleton<IAgentActionHandler, ToggleModActionHandler>();

@@ -35,6 +35,11 @@ public interface IDownloadTaskManager
     Task StartVanillaDownloadAsync(string versionId, string customVersionName, string? versionIconPath = null, bool showInTeachingTip = false);
 
     /// <summary>
+    /// 启动原版 Minecraft 下载并返回任务 ID。
+    /// </summary>
+    Task<string> StartVanillaDownloadWithTaskIdAsync(string versionId, string customVersionName, string? versionIconPath = null, bool showInTeachingTip = false);
+
+    /// <summary>
     /// 启动 ModLoader 版本下载
     /// </summary>
     /// <param name="minecraftVersion">Minecraft 版本</param>
@@ -56,6 +61,16 @@ public interface IDownloadTaskManager
     /// <param name="modLoaderSelections">加载器选择列表</param>
     /// <param name="customVersionName">自定义版本名称</param>
     Task StartMultiModLoaderDownloadAsync(
+        string minecraftVersion,
+        IEnumerable<ModLoaderSelection> modLoaderSelections,
+        string customVersionName,
+        string? versionIconPath = null,
+        bool showInTeachingTip = false);
+
+    /// <summary>
+    /// 启动多加载器组合版本下载并返回任务 ID。
+    /// </summary>
+    Task<string> StartMultiModLoaderDownloadWithTaskIdAsync(
         string minecraftVersion,
         IEnumerable<ModLoaderSelection> modLoaderSelections,
         string customVersionName,

@@ -17,6 +17,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     private readonly IAIAnalysisService _aiAnalysisService;
     private readonly IAiSettingsDomainService _aiSettingsDomainService;
     private readonly ICrashAnalyzer _crashAnalyzer;
+    private readonly IAgentActionExecutor _actionExecutor;
     private readonly IAgentToolDispatcher _toolDispatcher;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly ErrorAnalysisSessionState _sessionState;
@@ -27,6 +28,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         IAIAnalysisService aiAnalysisService,
         IAiSettingsDomainService aiSettingsDomainService,
         ICrashAnalyzer crashAnalyzer,
+        IAgentActionExecutor actionExecutor,
         IAgentToolDispatcher toolDispatcher,
         IUiDispatcher uiDispatcher,
         ErrorAnalysisSessionState sessionState)
@@ -36,6 +38,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         _aiAnalysisService = aiAnalysisService;
         _aiSettingsDomainService = aiSettingsDomainService;
         _crashAnalyzer = crashAnalyzer;
+        _actionExecutor = actionExecutor;
         _toolDispatcher = toolDispatcher;
         _uiDispatcher = uiDispatcher;
         _sessionState = sessionState;
@@ -57,6 +60,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                 _sessionState.ChatMessages.Clear();
                 _sessionState.AiAnalysisResult = "正在分析崩溃原因...\n\n";
                 _sessionState.ResetFixActions();
+                _sessionState.ClearPendingToolContinuation();
             });
 
             await Task.Delay(50, cancellationToken);
@@ -104,6 +108,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             _sessionState.IsAiAnalyzing = true;
             _sessionState.IsChatEnabled = false;
             _sessionState.ResetFixActions();
+            _sessionState.ClearPendingToolContinuation();
             _sessionState.ChatMessages.Add(new UiChatMessage("user", userMessage));
             _sessionState.ChatMessages.Add(new UiChatMessage("assistant", "..."));
         });
@@ -142,6 +147,46 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         }
     }
 
+    public async Task ApproveActionAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(proposal);
+
+        var pendingContinuation = _sessionState.TakePendingToolContinuation();
+        await RunActionDecisionAsync(
+            pendingContinuation,
+            proposal,
+            approved: true,
+            rejectedActionText: null,
+            async token =>
+            {
+                try
+                {
+                    return await _actionExecutor.ExecuteAsync(proposal, token);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    return $"执行 {proposal.ButtonText} 失败：{ex.Message}";
+                }
+            },
+            cancellationToken);
+    }
+
+    public async Task RejectPendingActionAsync(string? rejectedActionText, CancellationToken cancellationToken)
+    {
+        var pendingContinuation = _sessionState.TakePendingToolContinuation();
+        await RunActionDecisionAsync(
+            pendingContinuation,
+            proposal: null,
+            approved: false,
+            rejectedActionText,
+            _ => Task.FromResult(BuildRejectedActionMessage(rejectedActionText)),
+            cancellationToken);
+    }
+
     private async Task AnalyzeWithExternalAiAsync(
         AiSettingsState settings,
         CancellationToken cancellationToken)
@@ -161,6 +206,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         {
             _sessionState.AiAnalysisResult = "正在进行外部 AI 分析...\n\n";
             _sessionState.ResetFixActions();
+            _sessionState.ClearPendingToolContinuation();
         });
 
         var sanitizedLog = await BuildSanitizedCrashLogAsync();
@@ -295,9 +341,10 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
     private async Task StreamResponseToLastMessageAsync(
         AiSettingsState settings,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        List<ChatMessage>? initialApiMessages = null)
     {
-        var apiMessages = await BuildApiMessagesAsync();
+        var apiMessages = initialApiMessages ?? await BuildApiMessagesAsync();
         var tools = _toolDispatcher.GetAvailableTools();
 
         for (int round = 0; round < MaxToolCallRounds; round++)
@@ -389,9 +436,11 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                 break;
             }
 
-            apiMessages.Add(new ChatMessage("assistant", contentBuilder.Length > 0 ? contentBuilder.ToString() : null, pendingToolCalls));
+            var assistantToolCallMessage = new ChatMessage("assistant", contentBuilder.Length > 0 ? contentBuilder.ToString() : null, pendingToolCalls);
+            apiMessages.Add(assistantToolCallMessage);
 
             List<AgentActionProposal> actionProposals = [];
+            List<string> actionProposalMessages = [];
             foreach (var toolCall in pendingToolCalls)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -418,6 +467,10 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                 if (result.ActionProposal != null)
                 {
                     actionProposals.Add(result.ActionProposal);
+                    if (!string.IsNullOrWhiteSpace(result.Message))
+                    {
+                        actionProposalMessages.Add(result.Message);
+                    }
                 }
 
                 apiMessages.Add(ChatMessage.ToolResult(toolCall.Id, result.Message));
@@ -425,10 +478,17 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
             if (actionProposals.Count > 0)
             {
+                var pendingActionMessage = BuildPendingActionDisplayMessage(actionProposals, actionProposalMessages);
+                assistantToolCallMessage.Content = null;
+
                 await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
+                    SetPendingActionMessageOnLastAssistant(pendingActionMessage);
                     _sessionState.ApplyActionProposals(actionProposals);
+                    _sessionState.SetPendingToolContinuation(apiMessages);
                 });
+
+                return;
             }
 
             await _uiDispatcher.RunOnUiThreadAsync(() =>
@@ -438,6 +498,111 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
             await Task.Delay(50, cancellationToken);
         }
+    }
+
+    private async Task RunActionDecisionAsync(
+        AgentConversationContinuation? pendingContinuation,
+        AgentActionProposal? proposal,
+        bool approved,
+        string? rejectedActionText,
+        Func<CancellationToken, Task<string>> actionExecutor,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
+            {
+                _sessionState.IsAiAnalyzing = true;
+                _sessionState.IsChatEnabled = false;
+                _sessionState.ResetFixActions();
+
+                if (pendingContinuation != null)
+                {
+                    _sessionState.ChatMessages.Add(new UiChatMessage(
+                        "assistant",
+                        approved && proposal != null
+                            ? $"正在执行：{proposal.ButtonText}..."
+                            : "正在根据你的选择继续分析..."));
+                }
+            });
+
+            await Task.Delay(50, cancellationToken);
+            var actionResult = await actionExecutor(cancellationToken);
+
+            if (pendingContinuation == null)
+            {
+                await AppendStandaloneActionResultAsync(actionResult);
+                return;
+            }
+
+            await ContinuePendingConversationAsync(
+                pendingContinuation,
+                proposal,
+                approved,
+                rejectedActionText,
+                actionResult,
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            await AppendCancellationMessageAsync();
+        }
+        finally
+        {
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
+            {
+                _sessionState.IsAiAnalyzing = false;
+                _sessionState.IsChatEnabled = true;
+            });
+        }
+    }
+
+    private async Task ContinuePendingConversationAsync(
+        AgentConversationContinuation pendingContinuation,
+        AgentActionProposal? proposal,
+        bool approved,
+        string? rejectedActionText,
+        string actionResult,
+        CancellationToken cancellationToken)
+    {
+        var assistantPrefix = string.IsNullOrWhiteSpace(actionResult)
+            ? approved && proposal != null
+                ? $"已执行：{proposal.ButtonText}"
+                : BuildRejectedActionMessage(rejectedActionText)
+            : actionResult.Trim();
+
+        await _uiDispatcher.RunOnUiThreadAsync(() =>
+        {
+            if (!_sessionState.ChatMessages.Any())
+            {
+                return;
+            }
+
+            var lastMessage = _sessionState.ChatMessages.Last();
+            lastMessage.Content = string.IsNullOrWhiteSpace(assistantPrefix)
+                ? "..."
+                : assistantPrefix + "\n\n";
+        });
+
+        var settings = await _aiSettingsDomainService.LoadAsync();
+        if (!settings.IsEnabled)
+        {
+            await SetLastAssistantMessageAsync($"{assistantPrefix}\n\n当前为知识库模式，无法继续 AI 对话。请在设置中开启 AI 分析。");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(settings.ApiKey))
+        {
+            await SetLastAssistantMessageAsync($"{assistantPrefix}\n\nAPI Key Missing.");
+            return;
+        }
+
+        pendingContinuation.ApiMessages.Add(new ChatMessage(
+            "user",
+            BuildContinuationUserMessage(approved, proposal, rejectedActionText, actionResult)));
+
+        await Task.Delay(50, cancellationToken);
+        await StreamResponseToLastMessageAsync(settings, cancellationToken, pendingContinuation.ApiMessages);
     }
 
     private async Task<List<ChatMessage>> BuildApiMessagesAsync()
@@ -461,6 +626,90 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         });
 
         return apiMessages;
+    }
+
+    private async Task AppendStandaloneActionResultAsync(string actionResult)
+    {
+        if (string.IsNullOrWhiteSpace(actionResult))
+        {
+            return;
+        }
+
+        await _uiDispatcher.RunOnUiThreadAsync(() =>
+        {
+            _sessionState.ChatMessages.Add(new UiChatMessage("assistant", actionResult));
+            if (_sessionState.ChatMessages.Count <= 3)
+            {
+                _sessionState.AiAnalysisResult = actionResult;
+            }
+        });
+    }
+
+    private void SetPendingActionMessageOnLastAssistant(string pendingActionMessage)
+    {
+        if (!_sessionState.ChatMessages.Any())
+        {
+            return;
+        }
+
+        var lastMessage = _sessionState.ChatMessages.Last();
+        lastMessage.Content = string.IsNullOrWhiteSpace(pendingActionMessage)
+            ? "已创建待确认操作，等待用户确认。"
+            : pendingActionMessage;
+
+        if (_sessionState.ChatMessages.Count <= 3)
+        {
+            _sessionState.AiAnalysisResult = lastMessage.Content;
+        }
+    }
+
+    private static string BuildPendingActionDisplayMessage(
+        IReadOnlyList<AgentActionProposal> actionProposals,
+        IReadOnlyList<string> actionProposalMessages)
+    {
+        var safeMessages = actionProposalMessages
+            .Where(message => !string.IsNullOrWhiteSpace(message))
+            .Select(message => message.Trim())
+            .ToList();
+
+        if (safeMessages.Count > 0)
+        {
+            return string.Join("\n\n", safeMessages);
+        }
+
+        if (actionProposals.Count == 1)
+        {
+            return $"已准备执行“{actionProposals[0].ButtonText}”，等待用户确认。";
+        }
+
+        return "已准备多个待确认操作，等待用户确认。";
+    }
+
+    private static string BuildRejectedActionMessage(string? rejectedActionText)
+    {
+        return string.IsNullOrWhiteSpace(rejectedActionText)
+            ? "已拒绝执行本轮待确认操作。"
+            : $"已拒绝执行：{rejectedActionText.Trim()}";
+    }
+
+    private static string BuildContinuationUserMessage(
+        bool approved,
+        AgentActionProposal? proposal,
+        string? rejectedActionText,
+        string actionResult)
+    {
+        if (approved)
+        {
+            var buttonText = proposal?.ButtonText ?? "该操作";
+            return string.IsNullOrWhiteSpace(actionResult)
+                ? $"我已确认执行你刚才申请的操作“{buttonText}”。请继续。注意：这次确认只对这一个具体操作生效，不代表我同意你后续的其他操作。后面如果你还想调用任何需要确认的工具，仍然必须重新发起新的确认。"
+                : $"我已确认执行你刚才申请的操作“{buttonText}”。操作结果如下：\n{actionResult}\n请基于这个结果继续。注意：这次确认只对这一个具体操作生效，不代表我同意你后续的其他操作。后面如果你还想调用任何需要确认的工具，仍然必须重新发起新的确认。";
+        }
+
+        var rejectedTarget = string.IsNullOrWhiteSpace(rejectedActionText)
+            ? "本轮待确认操作"
+            : rejectedActionText.Trim();
+        return $"我拒绝了你刚才申请的操作“{rejectedTarget}”。请在不执行该操作的前提下继续给出下一步建议。";
     }
 
     private async Task SetLastAssistantMessageAsync(string content)
@@ -504,16 +753,12 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             $"Analyze crash logs and help users fix issues. Respond in {language}. " +
             "Be concise and reference specific mods or config files if they are responsible. " +
             "\n\n" +
-            "You have access to tools that can query the user's game environment (installed mods, Java versions, config, etc.) " +
-            "and perform fix actions (search mods, toggle mods, switch Java). " +
-            "Use query tools FIRST to gather information before suggesting fixes. " +
-            "For destructive actions (delete/toggle mods), always explain what you're doing and why. " +
-            "For search actions (searchModrinthProject), prefer using the tool so the user gets a direct download link.\n\n" +
+            "You may use the provided tools when helpful.\n\n" +
             "CRITICAL RULES:\n" +
             "1. CHECK THE LAUNCH COMMAND FIRST! If the user has set invalid JVM arguments (e.g., nonsense in -Djava.library.path or -Xmx), TELL THEM TO FIX IT MANUALLY in the settings. Do NOT switch Java versions for bad arguments.\n" +
             "2. ONLY use the 'switchJava' tool if the crash log explicitly indicates a Java version mismatch or runtime error. Do not guess.\n" +
             "3. The 'searchModrinthProject' tool is stricterly for searching MODS, SHADERS, or RESOURCE PACKS. It CANNOT search for Mod Loaders (Forge, Fabric, NeoForge, Quilt). Explain manual installation for loaders if needed.\n" +
             "4. If you cannot fix the issue via tools, provide clear manual instructions. If the problem persists, advise the user to click the 'Contact Author' (联系作者) button at the top.\n" +
-            "5. For 'toggleMod' or 'deleteMod', you MUST inform the user that a button has been created for them to confirm the action.";
+            "5. Never fabricate tool calls, tool execution, or tool results. Only describe a tool as executed, succeeded, failed, rejected, cancelled, or completed when you have the real tool result for that exact tool call; otherwise say you do not have the result yet.";
     }
 }

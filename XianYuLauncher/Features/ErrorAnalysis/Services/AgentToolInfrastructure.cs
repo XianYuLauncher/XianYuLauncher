@@ -51,7 +51,7 @@ public interface IAgentActionHandler
 
     AgentToolPermissionLevel PermissionLevel { get; }
 
-    Task ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken);
+    Task<string> ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken);
 }
 
 public interface IAgentToolDispatcher
@@ -63,7 +63,7 @@ public interface IAgentToolDispatcher
 
 public interface IAgentActionExecutor
 {
-    Task ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken);
+    Task<string> ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken);
 }
 
 public interface IAgentToolSupportService
@@ -269,7 +269,7 @@ public sealed class AgentActionExecutor : IAgentActionExecutor
         _handlers = handlers;
     }
 
-    public async Task ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
+    public async Task<string> ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
     {
         var handler = _handlers.FirstOrDefault(h => string.Equals(h.ActionType, proposal.ActionType, StringComparison.OrdinalIgnoreCase));
         if (handler == null)
@@ -277,6 +277,6 @@ public sealed class AgentActionExecutor : IAgentActionExecutor
             throw new InvalidOperationException($"未找到动作处理器: {proposal.ActionType}");
         }
 
-        await handler.ExecuteAsync(proposal, cancellationToken);
+        return await handler.ExecuteAsync(proposal, cancellationToken);
     }
 }

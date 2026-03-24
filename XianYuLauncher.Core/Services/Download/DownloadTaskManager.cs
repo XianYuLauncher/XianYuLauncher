@@ -124,10 +124,15 @@ public class DownloadTaskManager : IDownloadTaskManager
     /// <summary>
     /// 启动原版 Minecraft 下载
     /// </summary>
-    public Task StartVanillaDownloadAsync(string versionId, string customVersionName, string? versionIconPath = null, bool showInTeachingTip = false)
+    public async Task StartVanillaDownloadAsync(string versionId, string customVersionName, string? versionIconPath = null, bool showInTeachingTip = false)
+    {
+        _ = await StartVanillaDownloadWithTaskIdAsync(versionId, customVersionName, versionIconPath, showInTeachingTip).ConfigureAwait(false);
+    }
+
+    public Task<string> StartVanillaDownloadWithTaskIdAsync(string versionId, string customVersionName, string? versionIconPath = null, bool showInTeachingTip = false)
     {
         var taskName = string.IsNullOrEmpty(customVersionName) ? versionId : customVersionName;
-        return EnqueueManagedTaskAsync(
+        return EnqueueManagedTaskWithTaskIdAsync(
             taskName,
             customVersionName,
             DownloadTaskCategory.GameInstall,
@@ -170,7 +175,22 @@ public class DownloadTaskManager : IDownloadTaskManager
     /// <summary>
     /// 启动多加载器组合版本下载（新）
     /// </summary>
-    public Task StartMultiModLoaderDownloadAsync(
+    public async Task StartMultiModLoaderDownloadAsync(
+        string minecraftVersion,
+        IEnumerable<ModLoaderSelection> modLoaderSelections,
+        string customVersionName,
+        string? versionIconPath = null,
+        bool showInTeachingTip = false)
+    {
+        _ = await StartMultiModLoaderDownloadWithTaskIdAsync(
+            minecraftVersion,
+            modLoaderSelections,
+            customVersionName,
+            versionIconPath,
+            showInTeachingTip).ConfigureAwait(false);
+    }
+
+    public Task<string> StartMultiModLoaderDownloadWithTaskIdAsync(
         string minecraftVersion,
         IEnumerable<ModLoaderSelection> modLoaderSelections,
         string customVersionName,
@@ -182,7 +202,7 @@ public class DownloadTaskManager : IDownloadTaskManager
             ? string.Join(" + ", selections.Select(selection => selection.Type))
             : customVersionName;
 
-        return EnqueueManagedTaskAsync(
+        return EnqueueManagedTaskWithTaskIdAsync(
             taskName,
             customVersionName,
             DownloadTaskCategory.GameInstall,
@@ -597,6 +617,31 @@ public class DownloadTaskManager : IDownloadTaskManager
         IReadOnlyList<string>? displayNameResourceArguments = null,
         string? taskTypeResourceKey = null)
     {
+        _ = await EnqueueManagedTaskWithTaskIdAsync(
+            taskName,
+            versionName,
+            taskCategory,
+            executor,
+            showInTeachingTip,
+            iconSource,
+            teachingTipGroupKey,
+            displayNameResourceKey,
+            displayNameResourceArguments,
+            taskTypeResourceKey).ConfigureAwait(false);
+    }
+
+    private async Task<string> EnqueueManagedTaskWithTaskIdAsync(
+        string taskName,
+        string versionName,
+        DownloadTaskCategory taskCategory,
+        Func<DownloadTaskInfo, CancellationToken, Task> executor,
+        bool showInTeachingTip,
+        string? iconSource = null,
+        string? teachingTipGroupKey = null,
+        string? displayNameResourceKey = null,
+        IReadOnlyList<string>? displayNameResourceArguments = null,
+        string? taskTypeResourceKey = null)
+    {
         var createdAtUtc = DateTimeOffset.UtcNow;
         var task = new DownloadTaskInfo
         {
@@ -630,6 +675,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         _logger.LogInformation("下载任务已入队: {TaskName}", taskName);
         OnTaskStateChanged(task);
         await ProcessQueueAsync().ConfigureAwait(false);
+        return task.TaskId;
     }
 
     private static DownloadTaskCategory ResolveResourceTaskCategory(string resourceType)

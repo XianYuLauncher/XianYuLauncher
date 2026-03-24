@@ -137,6 +137,7 @@ namespace XianYuLauncher.Core.Services
 
             // 流式解析：累积 tool_calls delta
             var toolCallAccumulators = new Dictionary<int, ToolCallAccumulator>();
+            var hasObservedToolCallDelta = false;
 
             await using var responseStream = await response.Content.ReadAsStreamAsync();
             using var reader = new System.IO.StreamReader(responseStream);
@@ -156,17 +157,13 @@ namespace XianYuLauncher.Core.Services
                 var delta = parsed["choices"]?[0]?["delta"];
                 if (delta == null) continue;
 
-                // 1. 检查文本内容
-                var contentDelta = delta["content"]?.ToString();
-                if (!string.IsNullOrEmpty(contentDelta))
-                {
-                    yield return new AiStreamChunk { ContentDelta = contentDelta };
-                }
-
-                // 2. 检查 tool_calls 增量
+                // 1. 检查 tool_calls 增量。一旦模型开始输出 tool_calls，后续自由文本一律丢弃，
+                // 避免同一轮响应里继续编造“已拒绝执行/已完成”等内容污染上层 UI。
                 var toolCallsArray = delta["tool_calls"] as JArray;
-                if (toolCallsArray != null)
+                if (toolCallsArray != null && toolCallsArray.Count > 0)
                 {
+                    hasObservedToolCallDelta = true;
+
                     foreach (var tc in toolCallsArray)
                     {
                         var index = tc["index"]?.Value<int>() ?? 0;
@@ -189,6 +186,16 @@ namespace XianYuLauncher.Core.Services
                             var args = funcNode["arguments"]?.ToString();
                             if (!string.IsNullOrEmpty(args)) acc.ArgumentsBuilder.Append(args);
                         }
+                    }
+                }
+
+                // 2. 仅在尚未观察到 tool_call 时转发文本内容。
+                if (!hasObservedToolCallDelta)
+                {
+                    var contentDelta = delta["content"]?.ToString();
+                    if (!string.IsNullOrEmpty(contentDelta))
+                    {
+                        yield return new AiStreamChunk { ContentDelta = contentDelta };
                     }
                 }
             }
