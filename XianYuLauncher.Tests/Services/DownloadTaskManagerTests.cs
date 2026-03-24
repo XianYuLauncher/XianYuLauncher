@@ -86,6 +86,30 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
+    public async Task StartVanillaDownloadWithTaskIdAsync_ShouldReturnCreatedTaskId()
+    {
+        // Arrange
+        _minecraftVersionServiceMock
+            .Setup(m => m.DownloadVersionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var taskId = await _downloadTaskManager.StartVanillaDownloadWithTaskIdAsync("1.20.1", "MyVersion");
+        await Task.Delay(50);
+
+        // Assert
+        taskId.Should().NotBeNullOrWhiteSpace();
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.TaskName == "MyVersion");
+    }
+
+    [Fact]
     public async Task StartVanillaDownloadAsync_ShouldForwardVersionIconPath()
     {
         // Arrange
@@ -834,6 +858,43 @@ public class DownloadTaskManagerTests
         var completedTask = await Task.WhenAny(callbackTriggered.Task, Task.Delay(1000));
         completedTask.Should().Be(callbackTriggered.Task);
         actualIconPath.Should().Be(expectedIconPath);
+    }
+
+    [Fact]
+    public async Task StartMultiModLoaderDownloadWithTaskIdAsync_ShouldReturnCreatedTaskId()
+    {
+        // Arrange
+        var selections = new List<ModLoaderSelection>
+        {
+            new()
+            {
+                Type = "Forge",
+                Version = "47.2.0",
+                InstallOrder = 1,
+                IsAddon = false
+            }
+        };
+
+        _minecraftVersionServiceMock
+            .Setup(m => m.DownloadMultiModLoaderVersionAsync(
+                It.IsAny<string>(),
+                It.IsAny<IEnumerable<ModLoaderSelection>>(),
+                It.IsAny<string>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var taskId = await _downloadTaskManager.StartMultiModLoaderDownloadWithTaskIdAsync("1.20.1", selections, "MyMultiVersion");
+        await Task.Delay(50);
+
+        // Assert
+        taskId.Should().NotBeNullOrWhiteSpace();
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.TaskName == "MyMultiVersion");
     }
 }
 

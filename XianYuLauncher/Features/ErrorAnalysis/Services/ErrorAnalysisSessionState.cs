@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.ViewModels;
 
@@ -62,6 +63,10 @@ public partial class ErrorAnalysisSessionState : ObservableObject
     public AgentActionProposal? CurrentFixAction { get; set; }
 
     public AgentActionProposal? SecondaryFixAction { get; set; }
+
+    public AgentConversationContinuation? PendingToolContinuation { get; private set; }
+
+    public bool HasPendingToolContinuation => PendingToolContinuation != null;
 
     private CancellationTokenSource? _aiAnalysisCts;
 
@@ -130,6 +135,26 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         }
     }
 
+    public void SetPendingToolContinuation(List<ChatMessage> apiMessages)
+    {
+        PendingToolContinuation = new AgentConversationContinuation
+        {
+            ApiMessages = CloneApiMessages(apiMessages)
+        };
+    }
+
+    public AgentConversationContinuation? TakePendingToolContinuation()
+    {
+        var continuation = PendingToolContinuation;
+        PendingToolContinuation = null;
+        return continuation;
+    }
+
+    public void ClearPendingToolContinuation()
+    {
+        PendingToolContinuation = null;
+    }
+
     public CancellationToken BeginAiAnalysisToken()
     {
         _aiAnalysisCts?.Dispose();
@@ -149,5 +174,23 @@ public partial class ErrorAnalysisSessionState : ObservableObject
     {
         _aiAnalysisCts?.Dispose();
         _aiAnalysisCts = null;
+    }
+
+    private static List<ChatMessage> CloneApiMessages(IEnumerable<ChatMessage> apiMessages)
+    {
+        return apiMessages.Select(message => new ChatMessage(message.Role, message.Content, CloneToolCalls(message.ToolCalls))
+        {
+            ToolCallId = message.ToolCallId
+        }).ToList();
+    }
+
+    private static List<ToolCallInfo>? CloneToolCalls(IEnumerable<ToolCallInfo>? toolCalls)
+    {
+        return toolCalls?.Select(toolCall => new ToolCallInfo
+        {
+            Id = toolCall.Id,
+            FunctionName = toolCall.FunctionName,
+            Arguments = toolCall.Arguments
+        }).ToList();
     }
 }

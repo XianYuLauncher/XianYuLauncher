@@ -254,11 +254,11 @@ public sealed class SearchModrinthProjectActionHandler : IAgentActionHandler
 
     public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ConfirmationRequired;
 
-    public async Task ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
+    public async Task<string> ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
     {
         if (!proposal.Parameters.TryGetValue("query", out var query) || string.IsNullOrWhiteSpace(query))
         {
-            return;
+            return "未提供搜索关键词。";
         }
 
         var projectType = proposal.Parameters.TryGetValue("projectType", out var projectTypeValue)
@@ -282,13 +282,19 @@ public sealed class SearchModrinthProjectActionHandler : IAgentActionHandler
         cancellationToken.ThrowIfCancellationRequested();
         if (result?.Hits == null || result.Hits.Count == 0)
         {
-            var curseForgeFound = await TrySearchCurseForgeAsync(query, loader, cancellationToken);
-            if (!curseForgeFound)
+            var curseForgeResult = await TrySearchCurseForgeAsync(query, loader, cancellationToken);
+            if (curseForgeResult.Found)
             {
-                await ShowNotFoundDialogAsync(query);
+                return curseForgeResult.Message;
             }
 
-            return;
+            if (!string.IsNullOrWhiteSpace(curseForgeResult.Message))
+            {
+                return curseForgeResult.Message;
+            }
+
+            await ShowNotFoundDialogAsync(query);
+            return $"未在 Modrinth 或 CurseForge 找到与 '{query}' 对应的项目。";
         }
 
         var normalizedQuery = NormalizeSlug(query);
@@ -300,9 +306,11 @@ public sealed class SearchModrinthProjectActionHandler : IAgentActionHandler
         {
             _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, new Tuple<ModrinthProject, string>(bestMatch, "Modrinth"));
         });
+
+        return $"已打开 {bestMatch.Title} 的项目详情页（来源：Modrinth）。";
     }
 
-    private async Task<bool> TrySearchCurseForgeAsync(string query, string loader, CancellationToken cancellationToken)
+    private async Task<(bool Found, string Message)> TrySearchCurseForgeAsync(string query, string loader, CancellationToken cancellationToken)
     {
         try
         {
@@ -319,7 +327,7 @@ public sealed class SearchModrinthProjectActionHandler : IAgentActionHandler
             cancellationToken.ThrowIfCancellationRequested();
             if (cfResult?.Data == null || cfResult.Data.Count == 0)
             {
-                return false;
+                return (false, string.Empty);
             }
 
             var normalizedQuery = NormalizeSlug(query);
@@ -331,12 +339,11 @@ public sealed class SearchModrinthProjectActionHandler : IAgentActionHandler
             {
                 _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, $"curseforge-{best.Id}");
             });
-            return true;
+            return (true, $"已打开 {best.Name} 的项目详情页（来源：CurseForge）。");
         }
         catch (Exception ex)
         {
-            await AppendAnalysisMessageAsync($"CurseForge 搜索失败: {ex.Message}");
-            return false;
+            return (false, $"CurseForge 搜索失败: {ex.Message}");
         }
     }
 
@@ -405,19 +412,18 @@ public sealed class DeleteModActionHandler : IAgentActionHandler
 
     public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ConfirmationRequired;
 
-    public async Task ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
+    public async Task<string> ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
     {
         if (!TryResolveModId(proposal.Parameters, out var modId))
         {
-            return;
+            return "未提供 Mod 标识。";
         }
 
         modId = Path.GetFileName(modId);
         var modFilePath = await _toolSupportService.FindModFileByIdAsync(modId);
         if (string.IsNullOrWhiteSpace(modFilePath))
         {
-            await AppendAnalysisMessageAsync($"未找到 Mod 文件：{modId}");
-            return;
+            return $"未找到 Mod 文件：{modId}";
         }
 
         bool shouldDelete = false;
@@ -432,18 +438,18 @@ public sealed class DeleteModActionHandler : IAgentActionHandler
 
         if (!shouldDelete)
         {
-            return;
+            return $"已取消删除 Mod：{Path.GetFileName(modFilePath)}";
         }
 
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
             File.Delete(modFilePath);
-            await AppendAnalysisMessageAsync($"已删除 Mod：{Path.GetFileName(modFilePath)}");
+            return $"已删除 Mod：{Path.GetFileName(modFilePath)}";
         }
         catch (Exception ex)
         {
-            await AppendAnalysisMessageAsync($"删除 Mod 失败：{ex.Message}");
+            return $"删除 Mod 失败：{ex.Message}";
         }
     }
 
@@ -491,11 +497,11 @@ public sealed class ToggleModActionHandler : IAgentActionHandler
 
     public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ConfirmationRequired;
 
-    public async Task ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
+    public async Task<string> ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
     {
         if (!proposal.Parameters.TryGetValue("fileName", out var fileName) || string.IsNullOrWhiteSpace(fileName))
         {
-            return;
+            return "未提供 Mod 文件名。";
         }
 
         bool enabled = !proposal.Parameters.TryGetValue("enabled", out var enabledText) || bool.Parse(enabledText);
@@ -531,8 +537,7 @@ public sealed class ToggleModActionHandler : IAgentActionHandler
 
             if (string.IsNullOrWhiteSpace(filePath))
             {
-                await AppendAnalysisMessageAsync($"失败: 未找到 Mod 文件 {fileName}");
-                return;
+                return $"未找到 Mod 文件：{fileName}";
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -550,23 +555,14 @@ public sealed class ToggleModActionHandler : IAgentActionHandler
             if (newName != currentName)
             {
                 File.Move(filePath, Path.Combine(dir, newName));
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                    _sessionState.AiAnalysisResult += $"\n\n成功: 已{(enabled ? "启用" : "禁用")} Mod {currentName} → {newName}";
-                    _sessionState.ResetFixActions();
-                });
-                return;
+                return $"已{(enabled ? "启用" : "禁用")} Mod：{currentName} → {newName}";
             }
 
-            await _uiDispatcher.RunOnUiThreadAsync(() =>
-            {
-                _sessionState.AiAnalysisResult += $"\n\n提示: Mod {currentName} 已经是{(enabled ? "启用" : "禁用")}状态。";
-                _sessionState.ResetFixActions();
-            });
+            return $"Mod {currentName} 已经是{(enabled ? "启用" : "禁用")}状态。";
         }
         catch (Exception ex)
         {
-            await AppendAnalysisMessageAsync($"操作失败: {ex.Message}");
+            return $"操作失败：{ex.Message}";
         }
     }
 
@@ -611,14 +607,13 @@ public sealed class SwitchJavaForVersionActionHandler : IAgentActionHandler
 
     public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ConfirmationRequired;
 
-    public async Task ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
+    public async Task<string> ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
     {
         var versionId = _sessionState.Context.VersionId;
         var minecraftPath = _sessionState.Context.MinecraftPath;
         if (string.IsNullOrWhiteSpace(versionId) || string.IsNullOrWhiteSpace(minecraftPath))
         {
-            await AppendAnalysisMessageAsync("未找到当前版本信息，无法自动切换 Java。");
-            return;
+            return "未找到当前版本信息，无法自动切换 Java。";
         }
 
         VersionInfo? versionInfo;
@@ -634,8 +629,7 @@ public sealed class SwitchJavaForVersionActionHandler : IAgentActionHandler
             }
             catch (Exception ex)
             {
-                await AppendAnalysisMessageAsync($"读取版本信息失败：{ex.Message}");
-                return;
+                return $"读取版本信息失败：{ex.Message}";
             }
         }
 
@@ -645,8 +639,7 @@ public sealed class SwitchJavaForVersionActionHandler : IAgentActionHandler
         var bestJava = _toolSupportService.SelectBestJava(javaVersions, requiredMajorVersion);
         if (bestJava == null || string.IsNullOrWhiteSpace(bestJava.Path))
         {
-            await AppendAnalysisMessageAsync($"未找到可用的 Java {requiredMajorVersion} 版本，请先安装对应版本后再重试。");
-            return;
+            return $"未找到可用的 Java {requiredMajorVersion} 版本，请先安装对应版本后再重试。";
         }
 
         await _uiDispatcher.RunOnUiThreadAsync(() =>
@@ -661,6 +654,8 @@ public sealed class SwitchJavaForVersionActionHandler : IAgentActionHandler
             _navigationService.NavigateTo(typeof(LaunchViewModel).FullName!);
             launchViewModel.LaunchGameCommand.Execute(null);
         });
+
+        return $"已为版本 {versionId} 临时切换到 Java {bestJava.MajorVersion}，并开始启动游戏。";
     }
 
     private async Task AppendAnalysisMessageAsync(string message)

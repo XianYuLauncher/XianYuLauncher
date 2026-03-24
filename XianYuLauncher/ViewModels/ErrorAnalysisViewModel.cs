@@ -21,7 +21,6 @@ namespace XianYuLauncher.ViewModels
         private readonly ILanguageSelectorService _languageSelectorService;
         private readonly IErrorAnalysisLogService _logService;
         private readonly IErrorAnalysisAiOrchestrator _aiOrchestrator;
-        private readonly IAgentActionExecutor _actionExecutor;
         private readonly IErrorAnalysisSessionCoordinator _sessionCoordinator;
         private readonly IErrorAnalysisExportService _exportService;
         private readonly IUiDispatcher _uiDispatcher;
@@ -66,7 +65,6 @@ namespace XianYuLauncher.ViewModels
             ILanguageSelectorService languageSelectorService, 
             IErrorAnalysisLogService logService,
             IErrorAnalysisAiOrchestrator aiOrchestrator,
-            IAgentActionExecutor actionExecutor,
             IErrorAnalysisSessionCoordinator sessionCoordinator,
             IErrorAnalysisExportService exportService,
             IUiDispatcher uiDispatcher,
@@ -75,7 +73,6 @@ namespace XianYuLauncher.ViewModels
             _languageSelectorService = languageSelectorService;
             _logService = logService;
             _aiOrchestrator = aiOrchestrator;
-            _actionExecutor = actionExecutor;
             _sessionCoordinator = sessionCoordinator;
             _exportService = exportService;
             _uiDispatcher = uiDispatcher;
@@ -182,6 +179,7 @@ namespace XianYuLauncher.ViewModels
                 ChatInput = string.Empty;
                 IsChatEnabled = false;
                 ResetFixActionState();
+                _sessionState.ClearPendingToolContinuation();
             });
 
             DisposeAiAnalysisToken();
@@ -256,7 +254,7 @@ namespace XianYuLauncher.ViewModels
                 return;
             }
 
-            await ExecuteActionProposalAsync(_currentFixAction);
+            await ApproveActionProposalAsync(_currentFixAction);
         }
 
         [RelayCommand]
@@ -267,41 +265,34 @@ namespace XianYuLauncher.ViewModels
                 return;
             }
 
-            await ExecuteActionProposalAsync(_secondaryFixAction);
+            await ApproveActionProposalAsync(_secondaryFixAction);
         }
 
         [RelayCommand]
         private async Task RejectFixAction()
         {
             var rejectedText = FixButtonText;
-            await _uiDispatcher.RunOnUiThreadAsync(() =>
-            {
-                ResetFixActionState();
-
-                if (!string.IsNullOrWhiteSpace(rejectedText))
-                {
-                    ChatMessages.Add(new UiChatMessage("assistant", $"已拒绝执行：{rejectedText}"));
-                }
-                else
-                {
-                    ChatMessages.Add(new UiChatMessage("assistant", "已拒绝执行该操作。"));
-                }
-            });
-        }
-
-        private async Task ExecuteActionProposalAsync(AgentActionProposal proposal)
-        {
+            var cancellationToken = BeginAiAnalysisToken();
             try
             {
-                using var cancellationTokenSource = new System.Threading.CancellationTokenSource();
-                await _actionExecutor.ExecuteAsync(proposal, cancellationTokenSource.Token);
+                await _aiOrchestrator.RejectPendingActionAsync(rejectedText, cancellationToken);
             }
-            catch (Exception ex)
+            finally
             {
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                    AiAnalysisResult += $"\n\n{string.Format(GetLocalizedString("ErrorAnalysis_RequestFailed.Text"), ex.Message)}";
-                });
+                DisposeAiAnalysisToken();
+            }
+        }
+
+        private async Task ApproveActionProposalAsync(AgentActionProposal proposal)
+        {
+            var cancellationToken = BeginAiAnalysisToken();
+            try
+            {
+                await _aiOrchestrator.ApproveActionAsync(proposal, cancellationToken);
+            }
+            finally
+            {
+                DisposeAiAnalysisToken();
             }
         }
         
