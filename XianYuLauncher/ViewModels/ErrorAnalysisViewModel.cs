@@ -21,7 +21,7 @@ namespace XianYuLauncher.ViewModels
         private readonly ILanguageSelectorService _languageSelectorService;
         private readonly IErrorAnalysisLogService _logService;
         private readonly IErrorAnalysisAiOrchestrator _aiOrchestrator;
-        private readonly IErrorAnalysisActionExecutor _actionExecutor;
+        private readonly IAgentActionExecutor _actionExecutor;
         private readonly IErrorAnalysisSessionCoordinator _sessionCoordinator;
         private readonly IErrorAnalysisExportService _exportService;
         private readonly IUiDispatcher _uiDispatcher;
@@ -66,7 +66,7 @@ namespace XianYuLauncher.ViewModels
             ILanguageSelectorService languageSelectorService, 
             IErrorAnalysisLogService logService,
             IErrorAnalysisAiOrchestrator aiOrchestrator,
-            IErrorAnalysisActionExecutor actionExecutor,
+            IAgentActionExecutor actionExecutor,
             IErrorAnalysisSessionCoordinator sessionCoordinator,
             IErrorAnalysisExportService exportService,
             IUiDispatcher uiDispatcher,
@@ -236,13 +236,13 @@ namespace XianYuLauncher.ViewModels
             set => _sessionState.SecondaryFixButtonText = value;
         }
 
-        private ErrorAnalysisActionProposal? _currentFixAction
+        private AgentActionProposal? _currentFixAction
         {
             get => _sessionState.CurrentFixAction;
             set => _sessionState.CurrentFixAction = value;
         }
 
-        private ErrorAnalysisActionProposal? _secondaryFixAction
+        private AgentActionProposal? _secondaryFixAction
         {
             get => _sessionState.SecondaryFixAction;
             set => _sessionState.SecondaryFixAction = value;
@@ -289,7 +289,7 @@ namespace XianYuLauncher.ViewModels
             });
         }
 
-        private async Task ExecuteActionProposalAsync(ErrorAnalysisActionProposal proposal)
+        private async Task ExecuteActionProposalAsync(AgentActionProposal proposal)
         {
             try
             {

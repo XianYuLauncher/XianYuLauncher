@@ -11,11 +11,11 @@ using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 
-public sealed class SearchModrinthProjectToolHandler : IErrorAnalysisToolHandler
+public sealed class SearchModrinthProjectToolHandler : IAgentToolHandler
 {
-    private readonly IErrorAnalysisToolSupportService _toolSupportService;
+    private readonly IAgentToolSupportService _toolSupportService;
 
-    public SearchModrinthProjectToolHandler(IErrorAnalysisToolSupportService toolSupportService)
+    public SearchModrinthProjectToolHandler(IAgentToolSupportService toolSupportService)
     {
         _toolSupportService = toolSupportService;
     }
@@ -37,16 +37,16 @@ public sealed class SearchModrinthProjectToolHandler : IErrorAnalysisToolHandler
             required = new[] { "query" }
         });
 
-    public ErrorAnalysisToolPermissionLevel PermissionLevel => ErrorAnalysisToolPermissionLevel.ConfirmationRequired;
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ConfirmationRequired;
 
     public bool IsAvailable(ErrorAnalysisSessionContext context) => true;
 
-    public async Task<ErrorAnalysisToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
     {
         var query = arguments["query"]?.ToString() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(query))
         {
-            return ErrorAnalysisToolExecutionResult.FromMessage("请提供搜索关键词。");
+            return AgentToolExecutionResult.FromMessage("请提供搜索关键词。");
         }
 
         Dictionary<string, string> parameters = new(StringComparer.OrdinalIgnoreCase)
@@ -76,15 +76,15 @@ public sealed class SearchModrinthProjectToolHandler : IErrorAnalysisToolHandler
             }
         }
 
-        var proposal = new ErrorAnalysisActionProposal
+        var proposal = new AgentActionProposal
         {
             ActionType = ToolName,
             ButtonText = $"搜索 {query}",
-            PermissionLevel = ErrorAnalysisToolPermissionLevel.ConfirmationRequired,
+            PermissionLevel = AgentToolPermissionLevel.ConfirmationRequired,
             Parameters = parameters
         };
 
-        return ErrorAnalysisToolExecutionResult.FromActionProposal($"已准备搜索 \"{query}\"，用户可点击按钮执行搜索并查看结果。", proposal);
+        return AgentToolExecutionResult.FromActionProposal($"已准备搜索 \"{query}\"，用户可点击按钮执行搜索并查看结果。", proposal);
     }
 
     private static string NormalizeLoader(string? loader)
@@ -99,7 +99,7 @@ public sealed class SearchModrinthProjectToolHandler : IErrorAnalysisToolHandler
     }
 }
 
-public sealed class DeleteModToolHandler : IErrorAnalysisToolHandler
+public sealed class DeleteModToolHandler : IAgentToolHandler
 {
     public string ToolName => "deleteMod";
 
@@ -116,35 +116,35 @@ public sealed class DeleteModToolHandler : IErrorAnalysisToolHandler
             required = new[] { "modId" }
         });
 
-    public ErrorAnalysisToolPermissionLevel PermissionLevel => ErrorAnalysisToolPermissionLevel.ConfirmationRequired;
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ConfirmationRequired;
 
     public bool IsAvailable(ErrorAnalysisSessionContext context) => !string.IsNullOrWhiteSpace(context.MinecraftPath);
 
-    public Task<ErrorAnalysisToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    public Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
     {
         var modId = arguments["modId"]?.ToString() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(modId))
         {
-            return Task.FromResult(ErrorAnalysisToolExecutionResult.FromMessage("请提供要删除的 Mod ID 或文件名。"));
+            return Task.FromResult(AgentToolExecutionResult.FromMessage("请提供要删除的 Mod ID 或文件名。"));
         }
 
         modId = Path.GetFileName(modId);
-        var proposal = new ErrorAnalysisActionProposal
+        var proposal = new AgentActionProposal
         {
             ActionType = ToolName,
             ButtonText = $"删除 {modId}",
-            PermissionLevel = ErrorAnalysisToolPermissionLevel.ConfirmationRequired,
+            PermissionLevel = AgentToolPermissionLevel.ConfirmationRequired,
             Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["modId"] = modId
             }
         };
 
-        return Task.FromResult(ErrorAnalysisToolExecutionResult.FromActionProposal($"已准备删除 Mod \"{modId}\"，等待用户确认。", proposal));
+        return Task.FromResult(AgentToolExecutionResult.FromActionProposal($"已准备删除 Mod \"{modId}\"，等待用户确认。", proposal));
     }
 }
 
-public sealed class ToggleModToolHandler : IErrorAnalysisToolHandler
+public sealed class ToggleModToolHandler : IAgentToolHandler
 {
     public string ToolName => "toggleMod";
 
@@ -162,25 +162,25 @@ public sealed class ToggleModToolHandler : IErrorAnalysisToolHandler
             required = new[] { "fileName", "enabled" }
         });
 
-    public ErrorAnalysisToolPermissionLevel PermissionLevel => ErrorAnalysisToolPermissionLevel.ConfirmationRequired;
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ConfirmationRequired;
 
     public bool IsAvailable(ErrorAnalysisSessionContext context) => !string.IsNullOrWhiteSpace(context.MinecraftPath);
 
-    public Task<ErrorAnalysisToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    public Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
     {
         var fileName = arguments["fileName"]?.ToString() ?? string.Empty;
         var enabled = arguments["enabled"]?.Value<bool>() ?? true;
         if (string.IsNullOrWhiteSpace(fileName))
         {
-            return Task.FromResult(ErrorAnalysisToolExecutionResult.FromMessage("请提供 Mod 文件名。"));
+            return Task.FromResult(AgentToolExecutionResult.FromMessage("请提供 Mod 文件名。"));
         }
 
         fileName = Path.GetFileName(fileName);
-        var proposal = new ErrorAnalysisActionProposal
+        var proposal = new AgentActionProposal
         {
             ActionType = ToolName,
             ButtonText = $"{(enabled ? "启用" : "禁用")} {fileName}",
-            PermissionLevel = ErrorAnalysisToolPermissionLevel.ConfirmationRequired,
+            PermissionLevel = AgentToolPermissionLevel.ConfirmationRequired,
             Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             {
                 ["fileName"] = fileName,
@@ -188,11 +188,11 @@ public sealed class ToggleModToolHandler : IErrorAnalysisToolHandler
             }
         };
 
-        return Task.FromResult(ErrorAnalysisToolExecutionResult.FromActionProposal($"已准备{(enabled ? "启用" : "禁用")} Mod \"{fileName}\"，用户可点击按钮确认执行操作。", proposal));
+        return Task.FromResult(AgentToolExecutionResult.FromActionProposal($"已准备{(enabled ? "启用" : "禁用")} Mod \"{fileName}\"，用户可点击按钮确认执行操作。", proposal));
     }
 }
 
-public sealed class SwitchJavaForVersionToolHandler : IErrorAnalysisToolHandler
+public sealed class SwitchJavaForVersionToolHandler : IAgentToolHandler
 {
     public string ToolName => "switchJavaForVersion";
 
@@ -206,26 +206,26 @@ public sealed class SwitchJavaForVersionToolHandler : IErrorAnalysisToolHandler
             required = Array.Empty<string>()
         });
 
-    public ErrorAnalysisToolPermissionLevel PermissionLevel => ErrorAnalysisToolPermissionLevel.ConfirmationRequired;
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ConfirmationRequired;
 
     public bool IsAvailable(ErrorAnalysisSessionContext context) =>
         !string.IsNullOrWhiteSpace(context.VersionId) && !string.IsNullOrWhiteSpace(context.MinecraftPath);
 
-    public Task<ErrorAnalysisToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    public Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
     {
-        var proposal = new ErrorAnalysisActionProposal
+        var proposal = new AgentActionProposal
         {
             ActionType = ToolName,
             ButtonText = "自动切换 Java 版本",
-            PermissionLevel = ErrorAnalysisToolPermissionLevel.ConfirmationRequired,
+            PermissionLevel = AgentToolPermissionLevel.ConfirmationRequired,
             Parameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         };
 
-        return Task.FromResult(ErrorAnalysisToolExecutionResult.FromActionProposal("已准备自动切换 Java 版本，等待用户点击按钮执行。", proposal));
+        return Task.FromResult(AgentToolExecutionResult.FromActionProposal("已准备自动切换 Java 版本，等待用户点击按钮执行。", proposal));
     }
 }
 
-public sealed class SearchModrinthProjectActionHandler : IErrorAnalysisActionHandler
+public sealed class SearchModrinthProjectActionHandler : IAgentActionHandler
 {
     private readonly ModrinthService _modrinthService;
     private readonly CurseForgeService _curseForgeService;
@@ -252,9 +252,9 @@ public sealed class SearchModrinthProjectActionHandler : IErrorAnalysisActionHan
 
     public string ActionType => "searchModrinthProject";
 
-    public ErrorAnalysisToolPermissionLevel PermissionLevel => ErrorAnalysisToolPermissionLevel.ConfirmationRequired;
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ConfirmationRequired;
 
-    public async Task ExecuteAsync(ErrorAnalysisActionProposal proposal, CancellationToken cancellationToken)
+    public async Task ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
     {
         if (!proposal.Parameters.TryGetValue("query", out var query) || string.IsNullOrWhiteSpace(query))
         {
@@ -382,15 +382,15 @@ public sealed class SearchModrinthProjectActionHandler : IErrorAnalysisActionHan
     }
 }
 
-public sealed class DeleteModActionHandler : IErrorAnalysisActionHandler
+public sealed class DeleteModActionHandler : IAgentActionHandler
 {
-    private readonly IErrorAnalysisToolSupportService _toolSupportService;
+    private readonly IAgentToolSupportService _toolSupportService;
     private readonly ICommonDialogService _dialogService;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly ErrorAnalysisSessionState _sessionState;
 
     public DeleteModActionHandler(
-        IErrorAnalysisToolSupportService toolSupportService,
+        IAgentToolSupportService toolSupportService,
         ICommonDialogService dialogService,
         IUiDispatcher uiDispatcher,
         ErrorAnalysisSessionState sessionState)
@@ -403,9 +403,9 @@ public sealed class DeleteModActionHandler : IErrorAnalysisActionHandler
 
     public string ActionType => "deleteMod";
 
-    public ErrorAnalysisToolPermissionLevel PermissionLevel => ErrorAnalysisToolPermissionLevel.ConfirmationRequired;
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ConfirmationRequired;
 
-    public async Task ExecuteAsync(ErrorAnalysisActionProposal proposal, CancellationToken cancellationToken)
+    public async Task ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
     {
         if (!TryResolveModId(proposal.Parameters, out var modId))
         {
@@ -471,14 +471,14 @@ public sealed class DeleteModActionHandler : IErrorAnalysisActionHandler
     }
 }
 
-public sealed class ToggleModActionHandler : IErrorAnalysisActionHandler
+public sealed class ToggleModActionHandler : IAgentActionHandler
 {
-    private readonly IErrorAnalysisToolSupportService _toolSupportService;
+    private readonly IAgentToolSupportService _toolSupportService;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly ErrorAnalysisSessionState _sessionState;
 
     public ToggleModActionHandler(
-        IErrorAnalysisToolSupportService toolSupportService,
+        IAgentToolSupportService toolSupportService,
         IUiDispatcher uiDispatcher,
         ErrorAnalysisSessionState sessionState)
     {
@@ -489,9 +489,9 @@ public sealed class ToggleModActionHandler : IErrorAnalysisActionHandler
 
     public string ActionType => "toggleMod";
 
-    public ErrorAnalysisToolPermissionLevel PermissionLevel => ErrorAnalysisToolPermissionLevel.ConfirmationRequired;
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ConfirmationRequired;
 
-    public async Task ExecuteAsync(ErrorAnalysisActionProposal proposal, CancellationToken cancellationToken)
+    public async Task ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
     {
         if (!proposal.Parameters.TryGetValue("fileName", out var fileName) || string.IsNullOrWhiteSpace(fileName))
         {
@@ -579,11 +579,11 @@ public sealed class ToggleModActionHandler : IErrorAnalysisActionHandler
     }
 }
 
-public sealed class SwitchJavaForVersionActionHandler : IErrorAnalysisActionHandler
+public sealed class SwitchJavaForVersionActionHandler : IAgentActionHandler
 {
     private readonly IVersionInfoManager _versionInfoManager;
     private readonly IJavaRuntimeService _javaRuntimeService;
-    private readonly IErrorAnalysisToolSupportService _toolSupportService;
+    private readonly IAgentToolSupportService _toolSupportService;
     private readonly INavigationService _navigationService;
     private readonly IServiceProvider _serviceProvider;
     private readonly IUiDispatcher _uiDispatcher;
@@ -592,7 +592,7 @@ public sealed class SwitchJavaForVersionActionHandler : IErrorAnalysisActionHand
     public SwitchJavaForVersionActionHandler(
         IVersionInfoManager versionInfoManager,
         IJavaRuntimeService javaRuntimeService,
-        IErrorAnalysisToolSupportService toolSupportService,
+        IAgentToolSupportService toolSupportService,
         INavigationService navigationService,
         IServiceProvider serviceProvider,
         IUiDispatcher uiDispatcher,
@@ -609,9 +609,9 @@ public sealed class SwitchJavaForVersionActionHandler : IErrorAnalysisActionHand
 
     public string ActionType => "switchJavaForVersion";
 
-    public ErrorAnalysisToolPermissionLevel PermissionLevel => ErrorAnalysisToolPermissionLevel.ConfirmationRequired;
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ConfirmationRequired;
 
-    public async Task ExecuteAsync(ErrorAnalysisActionProposal proposal, CancellationToken cancellationToken)
+    public async Task ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
     {
         var versionId = _sessionState.Context.VersionId;
         var minecraftPath = _sessionState.Context.MinecraftPath;

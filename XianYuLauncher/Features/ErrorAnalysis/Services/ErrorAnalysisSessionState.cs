@@ -59,9 +59,9 @@ public partial class ErrorAnalysisSessionState : ObservableObject
     [ObservableProperty]
     private string _secondaryFixButtonText = string.Empty;
 
-    public ErrorAnalysisActionProposal? CurrentFixAction { get; set; }
+    public AgentActionProposal? CurrentFixAction { get; set; }
 
-    public ErrorAnalysisActionProposal? SecondaryFixAction { get; set; }
+    public AgentActionProposal? SecondaryFixAction { get; set; }
 
     private CancellationTokenSource? _aiAnalysisCts;
 
@@ -111,7 +111,7 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         SecondaryFixAction = null;
     }
 
-    public void ApplyActionProposals(IReadOnlyList<ErrorAnalysisActionProposal> actions)
+    public void ApplyActionProposals(IReadOnlyList<AgentActionProposal> actions)
     {
         ResetFixActions();
 

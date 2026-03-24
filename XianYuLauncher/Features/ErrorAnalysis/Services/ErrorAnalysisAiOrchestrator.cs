@@ -17,7 +17,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     private readonly IAIAnalysisService _aiAnalysisService;
     private readonly IAiSettingsDomainService _aiSettingsDomainService;
     private readonly ICrashAnalyzer _crashAnalyzer;
-    private readonly IErrorAnalysisToolDispatcher _toolDispatcher;
+    private readonly IAgentToolDispatcher _toolDispatcher;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly ErrorAnalysisSessionState _sessionState;
 
@@ -27,7 +27,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         IAIAnalysisService aiAnalysisService,
         IAiSettingsDomainService aiSettingsDomainService,
         ICrashAnalyzer crashAnalyzer,
-        IErrorAnalysisToolDispatcher toolDispatcher,
+        IAgentToolDispatcher toolDispatcher,
         IUiDispatcher uiDispatcher,
         ErrorAnalysisSessionState sessionState)
     {
@@ -260,7 +260,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             }
 
             var proposals = actions
-                .Select(ErrorAnalysisActionProposal.FromCrashFixAction)
+                .Select(AgentActionProposal.FromCrashFixAction)
                 .ToList();
             _sessionState.ApplyActionProposals(proposals);
         });
@@ -391,7 +391,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
             apiMessages.Add(new ChatMessage("assistant", contentBuilder.Length > 0 ? contentBuilder.ToString() : null, pendingToolCalls));
 
-            List<ErrorAnalysisActionProposal> actionProposals = [];
+            List<AgentActionProposal> actionProposals = [];
             foreach (var toolCall in pendingToolCalls)
             {
                 cancellationToken.ThrowIfCancellationRequested();

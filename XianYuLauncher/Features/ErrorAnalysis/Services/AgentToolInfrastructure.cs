@@ -9,9 +9,9 @@ using XianYuLauncher.Features.ErrorAnalysis.Models;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 
-public sealed class ErrorAnalysisToolExecutionResult
+public sealed class AgentToolExecutionResult
 {
-    private ErrorAnalysisToolExecutionResult(string message, ErrorAnalysisActionProposal? actionProposal)
+    private AgentToolExecutionResult(string message, AgentActionProposal? actionProposal)
     {
         Message = message;
         ActionProposal = actionProposal;
@@ -19,54 +19,54 @@ public sealed class ErrorAnalysisToolExecutionResult
 
     public string Message { get; }
 
-    public ErrorAnalysisActionProposal? ActionProposal { get; }
+    public AgentActionProposal? ActionProposal { get; }
 
-    public static ErrorAnalysisToolExecutionResult FromMessage(string message)
+    public static AgentToolExecutionResult FromMessage(string message)
     {
-        return new ErrorAnalysisToolExecutionResult(message, null);
+        return new AgentToolExecutionResult(message, null);
     }
 
-    public static ErrorAnalysisToolExecutionResult FromActionProposal(string message, ErrorAnalysisActionProposal actionProposal)
+    public static AgentToolExecutionResult FromActionProposal(string message, AgentActionProposal actionProposal)
     {
-        return new ErrorAnalysisToolExecutionResult(message, actionProposal);
+        return new AgentToolExecutionResult(message, actionProposal);
     }
 }
 
-public interface IErrorAnalysisToolHandler
+public interface IAgentToolHandler
 {
     string ToolName { get; }
 
     AiToolDefinition ToolDefinition { get; }
 
-    ErrorAnalysisToolPermissionLevel PermissionLevel { get; }
+    AgentToolPermissionLevel PermissionLevel { get; }
 
     bool IsAvailable(ErrorAnalysisSessionContext context);
 
-    Task<ErrorAnalysisToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken);
+    Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken);
 }
 
-public interface IErrorAnalysisActionHandler
+public interface IAgentActionHandler
 {
     string ActionType { get; }
 
-    ErrorAnalysisToolPermissionLevel PermissionLevel { get; }
+    AgentToolPermissionLevel PermissionLevel { get; }
 
-    Task ExecuteAsync(ErrorAnalysisActionProposal proposal, CancellationToken cancellationToken);
+    Task ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken);
 }
 
-public interface IErrorAnalysisToolDispatcher
+public interface IAgentToolDispatcher
 {
     IReadOnlyList<AiToolDefinition> GetAvailableTools();
 
-    Task<ErrorAnalysisToolExecutionResult> ExecuteAsync(ToolCallInfo toolCall, CancellationToken cancellationToken);
+    Task<AgentToolExecutionResult> ExecuteAsync(ToolCallInfo toolCall, CancellationToken cancellationToken);
 }
 
-public interface IErrorAnalysisActionExecutor
+public interface IAgentActionExecutor
 {
-    Task ExecuteAsync(ErrorAnalysisActionProposal proposal, CancellationToken cancellationToken);
+    Task ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken);
 }
 
-public interface IErrorAnalysisToolSupportService
+public interface IAgentToolSupportService
 {
     IReadOnlyList<string> GetInstalledModFiles();
 
@@ -79,12 +79,12 @@ public interface IErrorAnalysisToolSupportService
     JavaVersion? SelectBestJava(IReadOnlyCollection<JavaVersion> javaVersions, int requiredMajorVersion);
 }
 
-public sealed class ErrorAnalysisToolSupportService : IErrorAnalysisToolSupportService
+public sealed class AgentToolSupportService : IAgentToolSupportService
 {
     private readonly ErrorAnalysisSessionState _sessionState;
     private readonly IVersionInfoService _versionInfoService;
 
-    public ErrorAnalysisToolSupportService(
+    public AgentToolSupportService(
         ErrorAnalysisSessionState sessionState,
         IVersionInfoService versionInfoService)
     {
@@ -212,12 +212,12 @@ public sealed class ErrorAnalysisToolSupportService : IErrorAnalysisToolSupportS
     }
 }
 
-public sealed class ErrorAnalysisToolDispatcher : IErrorAnalysisToolDispatcher
+public sealed class AgentToolDispatcher : IAgentToolDispatcher
 {
-    private readonly IEnumerable<IErrorAnalysisToolHandler> _handlers;
+    private readonly IEnumerable<IAgentToolHandler> _handlers;
     private readonly ErrorAnalysisSessionState _sessionState;
 
-    public ErrorAnalysisToolDispatcher(IEnumerable<IErrorAnalysisToolHandler> handlers, ErrorAnalysisSessionState sessionState)
+    public AgentToolDispatcher(IEnumerable<IAgentToolHandler> handlers, ErrorAnalysisSessionState sessionState)
     {
         _handlers = handlers;
         _sessionState = sessionState;
@@ -231,19 +231,19 @@ public sealed class ErrorAnalysisToolDispatcher : IErrorAnalysisToolDispatcher
             .ToList();
     }
 
-    public async Task<ErrorAnalysisToolExecutionResult> ExecuteAsync(ToolCallInfo toolCall, CancellationToken cancellationToken)
+    public async Task<AgentToolExecutionResult> ExecuteAsync(ToolCallInfo toolCall, CancellationToken cancellationToken)
     {
         try
         {
             var handler = _handlers.FirstOrDefault(h => string.Equals(h.ToolName, toolCall.FunctionName, StringComparison.OrdinalIgnoreCase));
             if (handler == null)
             {
-                return ErrorAnalysisToolExecutionResult.FromMessage($"未知工具: {toolCall.FunctionName}");
+                return AgentToolExecutionResult.FromMessage($"未知工具: {toolCall.FunctionName}");
             }
 
             if (!handler.IsAvailable(_sessionState.Context))
             {
-                return ErrorAnalysisToolExecutionResult.FromMessage($"工具当前不可用: {toolCall.FunctionName}");
+                return AgentToolExecutionResult.FromMessage($"工具当前不可用: {toolCall.FunctionName}");
             }
 
             var args = string.IsNullOrWhiteSpace(toolCall.Arguments)
@@ -255,21 +255,21 @@ public sealed class ErrorAnalysisToolDispatcher : IErrorAnalysisToolDispatcher
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[AI Tool Error] {toolCall.FunctionName}: {ex.Message}");
-            return ErrorAnalysisToolExecutionResult.FromMessage($"工具执行失败: {ex.Message}");
+            return AgentToolExecutionResult.FromMessage($"工具执行失败: {ex.Message}");
         }
     }
 }
 
-public sealed class ErrorAnalysisActionExecutor : IErrorAnalysisActionExecutor
+public sealed class AgentActionExecutor : IAgentActionExecutor
 {
-    private readonly IEnumerable<IErrorAnalysisActionHandler> _handlers;
+    private readonly IEnumerable<IAgentActionHandler> _handlers;
 
-    public ErrorAnalysisActionExecutor(IEnumerable<IErrorAnalysisActionHandler> handlers)
+    public AgentActionExecutor(IEnumerable<IAgentActionHandler> handlers)
     {
         _handlers = handlers;
     }
 
-    public async Task ExecuteAsync(ErrorAnalysisActionProposal proposal, CancellationToken cancellationToken)
+    public async Task ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
     {
         var handler = _handlers.FirstOrDefault(h => string.Equals(h.ActionType, proposal.ActionType, StringComparison.OrdinalIgnoreCase));
         if (handler == null)

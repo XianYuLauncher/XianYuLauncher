@@ -2,29 +2,29 @@ using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Models;
 
-public enum ErrorAnalysisToolPermissionLevel
+public enum AgentToolPermissionLevel
 {
     ReadOnly,
     ConfirmationRequired
 }
 
-public sealed class ErrorAnalysisActionProposal
+public sealed class AgentActionProposal
 {
     public string ActionType { get; init; } = string.Empty;
 
     public string ButtonText { get; init; } = string.Empty;
 
-    public ErrorAnalysisToolPermissionLevel PermissionLevel { get; init; } = ErrorAnalysisToolPermissionLevel.ConfirmationRequired;
+    public AgentToolPermissionLevel PermissionLevel { get; init; } = AgentToolPermissionLevel.ConfirmationRequired;
 
     public Dictionary<string, string> Parameters { get; init; } = [];
 
-    public static ErrorAnalysisActionProposal FromCrashFixAction(CrashFixAction action)
+    public static AgentActionProposal FromCrashFixAction(CrashFixAction action)
     {
-        return new ErrorAnalysisActionProposal
+        return new AgentActionProposal
         {
             ActionType = action.Type,
             ButtonText = action.ButtonText,
-            PermissionLevel = ErrorAnalysisToolPermissionLevel.ConfirmationRequired,
+            PermissionLevel = AgentToolPermissionLevel.ConfirmationRequired,
             Parameters = new Dictionary<string, string>(action.Parameters, StringComparer.OrdinalIgnoreCase)
         };
     }

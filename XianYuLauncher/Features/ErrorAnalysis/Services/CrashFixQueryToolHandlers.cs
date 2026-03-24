@@ -8,11 +8,11 @@ using XianYuLauncher.Features.ErrorAnalysis.Models;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 
-public sealed class ListInstalledModsToolHandler : IErrorAnalysisToolHandler
+public sealed class ListInstalledModsToolHandler : IAgentToolHandler
 {
-    private readonly IErrorAnalysisToolSupportService _toolSupportService;
+    private readonly IAgentToolSupportService _toolSupportService;
 
-    public ListInstalledModsToolHandler(IErrorAnalysisToolSupportService toolSupportService)
+    public ListInstalledModsToolHandler(IAgentToolSupportService toolSupportService)
     {
         _toolSupportService = toolSupportService;
     }
@@ -29,16 +29,16 @@ public sealed class ListInstalledModsToolHandler : IErrorAnalysisToolHandler
             required = Array.Empty<string>()
         });
 
-    public ErrorAnalysisToolPermissionLevel PermissionLevel => ErrorAnalysisToolPermissionLevel.ReadOnly;
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ReadOnly;
 
     public bool IsAvailable(ErrorAnalysisSessionContext context) => !string.IsNullOrWhiteSpace(context.MinecraftPath);
 
-    public Task<ErrorAnalysisToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    public Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
     {
         var files = _toolSupportService.GetInstalledModFiles();
         if (files.Count == 0)
         {
-            return Task.FromResult(ErrorAnalysisToolExecutionResult.FromMessage("mods 目录为空，没有安装任何 Mod。"));
+            return Task.FromResult(AgentToolExecutionResult.FromMessage("mods 目录为空，没有安装任何 Mod。"));
         }
 
         var sb = new StringBuilder();
@@ -51,11 +51,11 @@ public sealed class ListInstalledModsToolHandler : IErrorAnalysisToolHandler
             sb.AppendLine($"- {fileName} [{(enabled ? "启用" : "禁用")}] ");
         }
 
-        return Task.FromResult(ErrorAnalysisToolExecutionResult.FromMessage(sb.ToString()));
+        return Task.FromResult(AgentToolExecutionResult.FromMessage(sb.ToString()));
     }
 }
 
-public sealed class GetVersionConfigToolHandler : IErrorAnalysisToolHandler
+public sealed class GetVersionConfigToolHandler : IAgentToolHandler
 {
     private readonly IVersionInfoService _versionInfoService;
 
@@ -76,12 +76,12 @@ public sealed class GetVersionConfigToolHandler : IErrorAnalysisToolHandler
             required = Array.Empty<string>()
         });
 
-    public ErrorAnalysisToolPermissionLevel PermissionLevel => ErrorAnalysisToolPermissionLevel.ReadOnly;
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ReadOnly;
 
     public bool IsAvailable(ErrorAnalysisSessionContext context) =>
         !string.IsNullOrWhiteSpace(context.VersionId) && !string.IsNullOrWhiteSpace(context.MinecraftPath);
 
-    public async Task<ErrorAnalysisToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -95,16 +95,16 @@ public sealed class GetVersionConfigToolHandler : IErrorAnalysisToolHandler
             sb.AppendLine($"ModLoader: {config.ModLoaderType ?? "vanilla"} {config.ModLoaderVersion ?? string.Empty}");
             sb.AppendLine($"Java 路径: {(string.IsNullOrEmpty(config.JavaPath) ? "使用全局设置" : config.JavaPath)}");
             sb.AppendLine($"内存设置: 自动={config.AutoMemoryAllocation}, 初始={config.InitialHeapMemory}GB, 最大={config.MaximumHeapMemory}GB");
-            return ErrorAnalysisToolExecutionResult.FromMessage(sb.ToString());
+            return AgentToolExecutionResult.FromMessage(sb.ToString());
         }
         catch (Exception ex)
         {
-            return ErrorAnalysisToolExecutionResult.FromMessage($"读取版本配置失败: {ex.Message}");
+            return AgentToolExecutionResult.FromMessage($"读取版本配置失败: {ex.Message}");
         }
     }
 }
 
-public sealed class CheckJavaVersionsToolHandler : IErrorAnalysisToolHandler
+public sealed class CheckJavaVersionsToolHandler : IAgentToolHandler
 {
     private readonly IJavaRuntimeService _javaRuntimeService;
 
@@ -125,11 +125,11 @@ public sealed class CheckJavaVersionsToolHandler : IErrorAnalysisToolHandler
             required = Array.Empty<string>()
         });
 
-    public ErrorAnalysisToolPermissionLevel PermissionLevel => ErrorAnalysisToolPermissionLevel.ReadOnly;
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ReadOnly;
 
     public bool IsAvailable(ErrorAnalysisSessionContext context) => true;
 
-    public async Task<ErrorAnalysisToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
     {
         try
         {
@@ -137,7 +137,7 @@ public sealed class CheckJavaVersionsToolHandler : IErrorAnalysisToolHandler
             cancellationToken.ThrowIfCancellationRequested();
             if (javaVersions.Count == 0)
             {
-                return ErrorAnalysisToolExecutionResult.FromMessage("未检测到任何已安装的 Java 版本。");
+                return AgentToolExecutionResult.FromMessage("未检测到任何已安装的 Java 版本。");
             }
 
             var sb = new StringBuilder();
@@ -147,16 +147,16 @@ public sealed class CheckJavaVersionsToolHandler : IErrorAnalysisToolHandler
                 sb.AppendLine($"- Java {javaVersion.MajorVersion} ({javaVersion.FullVersion}) - {javaVersion.Path}");
             }
 
-            return ErrorAnalysisToolExecutionResult.FromMessage(sb.ToString());
+            return AgentToolExecutionResult.FromMessage(sb.ToString());
         }
         catch (Exception ex)
         {
-            return ErrorAnalysisToolExecutionResult.FromMessage($"检测 Java 版本失败: {ex.Message}");
+            return AgentToolExecutionResult.FromMessage($"检测 Java 版本失败: {ex.Message}");
         }
     }
 }
 
-public sealed class SearchKnowledgeBaseToolHandler : IErrorAnalysisToolHandler
+public sealed class SearchKnowledgeBaseToolHandler : IAgentToolHandler
 {
     private readonly ICrashAnalyzer _crashAnalyzer;
 
@@ -180,16 +180,16 @@ public sealed class SearchKnowledgeBaseToolHandler : IErrorAnalysisToolHandler
             required = new[] { "keyword" }
         });
 
-    public ErrorAnalysisToolPermissionLevel PermissionLevel => ErrorAnalysisToolPermissionLevel.ReadOnly;
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ReadOnly;
 
     public bool IsAvailable(ErrorAnalysisSessionContext context) => true;
 
-    public async Task<ErrorAnalysisToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
     {
         var keyword = arguments["keyword"]?.ToString() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(keyword))
         {
-            return ErrorAnalysisToolExecutionResult.FromMessage("请提供搜索关键词。");
+            return AgentToolExecutionResult.FromMessage("请提供搜索关键词。");
         }
 
         try
@@ -200,7 +200,7 @@ public sealed class SearchKnowledgeBaseToolHandler : IErrorAnalysisToolHandler
 
             if (result.Type == CrashType.Unknown)
             {
-                return ErrorAnalysisToolExecutionResult.FromMessage($"知识库中未找到与 \"{keyword}\" 匹配的错误规则。");
+                return AgentToolExecutionResult.FromMessage($"知识库中未找到与 \"{keyword}\" 匹配的错误规则。");
             }
 
             var sb = new StringBuilder();
@@ -216,20 +216,20 @@ public sealed class SearchKnowledgeBaseToolHandler : IErrorAnalysisToolHandler
                 }
             }
 
-            return ErrorAnalysisToolExecutionResult.FromMessage(sb.ToString());
+            return AgentToolExecutionResult.FromMessage(sb.ToString());
         }
         catch (Exception ex)
         {
-            return ErrorAnalysisToolExecutionResult.FromMessage($"搜索知识库失败: {ex.Message}");
+            return AgentToolExecutionResult.FromMessage($"搜索知识库失败: {ex.Message}");
         }
     }
 }
 
-public sealed class ReadModInfoToolHandler : IErrorAnalysisToolHandler
+public sealed class ReadModInfoToolHandler : IAgentToolHandler
 {
-    private readonly IErrorAnalysisToolSupportService _toolSupportService;
+    private readonly IAgentToolSupportService _toolSupportService;
 
-    public ReadModInfoToolHandler(IErrorAnalysisToolSupportService toolSupportService)
+    public ReadModInfoToolHandler(IAgentToolSupportService toolSupportService)
     {
         _toolSupportService = toolSupportService;
     }
@@ -249,23 +249,23 @@ public sealed class ReadModInfoToolHandler : IErrorAnalysisToolHandler
             required = new[] { "fileName" }
         });
 
-    public ErrorAnalysisToolPermissionLevel PermissionLevel => ErrorAnalysisToolPermissionLevel.ReadOnly;
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ReadOnly;
 
     public bool IsAvailable(ErrorAnalysisSessionContext context) => !string.IsNullOrWhiteSpace(context.MinecraftPath);
 
-    public async Task<ErrorAnalysisToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
     {
         var fileName = arguments["fileName"]?.ToString() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(fileName))
         {
-            return ErrorAnalysisToolExecutionResult.FromMessage("请提供 Mod 文件名。");
+            return AgentToolExecutionResult.FromMessage("请提供 Mod 文件名。");
         }
 
         fileName = Path.GetFileName(fileName);
         var filePath = await _toolSupportService.FindModFileByIdAsync(fileName);
         if (string.IsNullOrWhiteSpace(filePath))
         {
-            return ErrorAnalysisToolExecutionResult.FromMessage($"未找到 Mod 文件: {fileName}");
+            return AgentToolExecutionResult.FromMessage($"未找到 Mod 文件: {fileName}");
         }
 
         try
@@ -274,14 +274,14 @@ public sealed class ReadModInfoToolHandler : IErrorAnalysisToolHandler
             cancellationToken.ThrowIfCancellationRequested();
             if (!string.IsNullOrEmpty(modId))
             {
-                return ErrorAnalysisToolExecutionResult.FromMessage($"Mod文件: {fileName}\nFabric Mod ID: {modId}\n(完整元数据需解压 jar 读取 fabric.mod.json)");
+                return AgentToolExecutionResult.FromMessage($"Mod文件: {fileName}\nFabric Mod ID: {modId}\n(完整元数据需解压 jar 读取 fabric.mod.json)");
             }
 
-            return ErrorAnalysisToolExecutionResult.FromMessage($"Mod文件: {fileName}\n无法解析元数据（可能不是 Fabric mod，或 jar 格式异常）");
+            return AgentToolExecutionResult.FromMessage($"Mod文件: {fileName}\n无法解析元数据（可能不是 Fabric mod，或 jar 格式异常）");
         }
         catch (Exception ex)
         {
-            return ErrorAnalysisToolExecutionResult.FromMessage($"读取 Mod 信息失败: {ex.Message}");
+            return AgentToolExecutionResult.FromMessage($"读取 Mod 信息失败: {ex.Message}");
         }
     }
 }
