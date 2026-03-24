@@ -102,4 +102,4 @@
 
 ---
 
-**XianYu Launcher** - 用❤️发电，为 Minecraft 社区 ☕
+**XianYu Launcher** - 用 ❤️ 发电，为 Minecraft 社区 ☕

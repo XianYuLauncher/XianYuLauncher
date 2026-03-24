@@ -101,4 +101,4 @@
 
 ---
 
-**XianYu Launcher** - 用❤️發電，為 Minecraft 社群 ☕
+**XianYu Launcher** - 用 ❤️ 發電，為 Minecraft 社群 ☕
