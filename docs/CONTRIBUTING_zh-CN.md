@@ -1,4 +1,4 @@
-![XianYu Launcher 贡献指南](/XianYuLauncher/Assets/ContributingHero_zh.png)
+![XianYu Launcher 贡献指南](/XianYuLauncher/Assets/ContributingHero_zh-CN.png)
 
 [English](../CONTRIBUTING.md) | [简体中文](CONTRIBUTING_zh-CN.md) | [繁體中文](CONTRIBUTING_zh-TW.md)
 

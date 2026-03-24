@@ -1,4 +1,4 @@
-![XianYu Launcher Readme 主圖](/XianYuLauncher/Assets/ReadmeHero_zh.png)
+![XianYu Launcher Readme 主圖](/XianYuLauncher/Assets/ReadmeHero_zh-CN.png)
 
 <div align="center">
 

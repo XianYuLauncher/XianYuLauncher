@@ -1,4 +1,4 @@
-![XianYu Launcher Readme Hero](/XianYuLauncher/Assets/ReadmeHero_en.png)
+![XianYu Launcher Readme Hero](/XianYuLauncher/Assets/ReadmeHero_en-US.png)
 
 <div align="center">
 
