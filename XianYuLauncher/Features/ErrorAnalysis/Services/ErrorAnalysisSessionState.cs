@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
-using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.ViewModels;
 
@@ -36,6 +36,9 @@ public partial class ErrorAnalysisSessionState : ObservableObject
     private bool _isAiAnalyzing;
 
     [ObservableProperty]
+    private bool _isAiAnalysisAvailable;
+
+    [ObservableProperty]
     private bool _hasChatMessages;
 
     [ObservableProperty]
@@ -56,9 +59,11 @@ public partial class ErrorAnalysisSessionState : ObservableObject
     [ObservableProperty]
     private string _secondaryFixButtonText = string.Empty;
 
-    public CrashFixAction? CurrentFixAction { get; set; }
+    public ErrorAnalysisActionProposal? CurrentFixAction { get; set; }
 
-    public CrashFixAction? SecondaryFixAction { get; set; }
+    public ErrorAnalysisActionProposal? SecondaryFixAction { get; set; }
+
+    private CancellationTokenSource? _aiAnalysisCts;
 
     public void ReplaceGameOutput(IReadOnlyCollection<string> lines)
     {
@@ -106,7 +111,7 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         SecondaryFixAction = null;
     }
 
-    public void ApplyFixActions(IReadOnlyList<CrashFixAction> actions)
+    public void ApplyActionProposals(IReadOnlyList<ErrorAnalysisActionProposal> actions)
     {
         ResetFixActions();
 
@@ -123,5 +128,26 @@ public partial class ErrorAnalysisSessionState : ObservableObject
             SecondaryFixButtonText = actions[1].ButtonText;
             HasSecondaryFixAction = !string.IsNullOrWhiteSpace(SecondaryFixButtonText);
         }
+    }
+
+    public CancellationToken BeginAiAnalysisToken()
+    {
+        _aiAnalysisCts?.Dispose();
+        _aiAnalysisCts = new CancellationTokenSource();
+        return _aiAnalysisCts.Token;
+    }
+
+    public void CancelAiAnalysis()
+    {
+        if (_aiAnalysisCts != null && !_aiAnalysisCts.IsCancellationRequested)
+        {
+            _aiAnalysisCts.Cancel();
+        }
+    }
+
+    public void DisposeAiAnalysisToken()
+    {
+        _aiAnalysisCts?.Dispose();
+        _aiAnalysisCts = null;
     }
 }

@@ -3,6 +3,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Services;
@@ -16,6 +17,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     private readonly IAIAnalysisService _aiAnalysisService;
     private readonly IAiSettingsDomainService _aiSettingsDomainService;
     private readonly ICrashAnalyzer _crashAnalyzer;
+    private readonly IErrorAnalysisToolDispatcher _toolDispatcher;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly ErrorAnalysisSessionState _sessionState;
 
@@ -25,6 +27,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         IAIAnalysisService aiAnalysisService,
         IAiSettingsDomainService aiSettingsDomainService,
         ICrashAnalyzer crashAnalyzer,
+        IErrorAnalysisToolDispatcher toolDispatcher,
         IUiDispatcher uiDispatcher,
         ErrorAnalysisSessionState sessionState)
     {
@@ -33,11 +36,12 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         _aiAnalysisService = aiAnalysisService;
         _aiSettingsDomainService = aiSettingsDomainService;
         _crashAnalyzer = crashAnalyzer;
+        _toolDispatcher = toolDispatcher;
         _uiDispatcher = uiDispatcher;
         _sessionState = sessionState;
     }
 
-    public async Task AnalyzeCrashAsync(Func<ToolCallInfo, Task<string>> executeToolCallAsync, CancellationToken cancellationToken)
+    public async Task AnalyzeCrashAsync(CancellationToken cancellationToken)
     {
         if (!_sessionState.Context.IsGameCrashed || _sessionState.IsAiAnalyzing)
         {
@@ -60,7 +64,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             var settings = await _aiSettingsDomainService.LoadAsync();
             if (settings.IsEnabled)
             {
-                await AnalyzeWithExternalAiAsync(settings, executeToolCallAsync, cancellationToken);
+                await AnalyzeWithExternalAiAsync(settings, cancellationToken);
                 return;
             }
 
@@ -93,7 +97,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         }
     }
 
-    public async Task SendMessageAsync(string userMessage, Func<ToolCallInfo, Task<string>> executeToolCallAsync, CancellationToken cancellationToken)
+    public async Task SendMessageAsync(string userMessage, CancellationToken cancellationToken)
     {
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
@@ -117,7 +121,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
             if (!string.IsNullOrWhiteSpace(settings.ApiKey))
             {
-                await StreamResponseToLastMessageAsync(settings, executeToolCallAsync, cancellationToken);
+                await StreamResponseToLastMessageAsync(settings, cancellationToken);
             }
             else
             {
@@ -140,7 +144,6 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
     private async Task AnalyzeWithExternalAiAsync(
         AiSettingsState settings,
-        Func<ToolCallInfo, Task<string>> executeToolCallAsync,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(settings.ApiKey))
@@ -169,7 +172,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         });
 
         await Task.Delay(50, cancellationToken);
-        await StreamResponseToLastMessageAsync(settings, executeToolCallAsync, cancellationToken);
+        await StreamResponseToLastMessageAsync(settings, cancellationToken);
     }
 
     private async Task AnalyzeWithKnowledgeBaseAsync(CancellationToken cancellationToken)
@@ -256,7 +259,10 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                 actions = [analysisResult.FixAction];
             }
 
-            _sessionState.ApplyFixActions(actions);
+            var proposals = actions
+                .Select(ErrorAnalysisActionProposal.FromCrashFixAction)
+                .ToList();
+            _sessionState.ApplyActionProposals(proposals);
         });
     }
 
@@ -289,11 +295,10 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
     private async Task StreamResponseToLastMessageAsync(
         AiSettingsState settings,
-        Func<ToolCallInfo, Task<string>> executeToolCallAsync,
         CancellationToken cancellationToken)
     {
         var apiMessages = await BuildApiMessagesAsync();
-        var tools = XianYuLauncher.Core.Services.FixerToolRegistry.GetAllTools();
+        var tools = _toolDispatcher.GetAvailableTools();
 
         for (int round = 0; round < MaxToolCallRounds; round++)
         {
@@ -386,6 +391,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
             apiMessages.Add(new ChatMessage("assistant", contentBuilder.Length > 0 ? contentBuilder.ToString() : null, pendingToolCalls));
 
+            List<ErrorAnalysisActionProposal> actionProposals = [];
             foreach (var toolCall in pendingToolCalls)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -408,8 +414,21 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                     }
                 });
 
-                var result = await executeToolCallAsync(toolCall);
-                apiMessages.Add(ChatMessage.ToolResult(toolCall.Id, result));
+                var result = await _toolDispatcher.ExecuteAsync(toolCall, cancellationToken);
+                if (result.ActionProposal != null)
+                {
+                    actionProposals.Add(result.ActionProposal);
+                }
+
+                apiMessages.Add(ChatMessage.ToolResult(toolCall.Id, result.Message));
+            }
+
+            if (actionProposals.Count > 0)
+            {
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
+                {
+                    _sessionState.ApplyActionProposals(actionProposals);
+                });
             }
 
             await _uiDispatcher.RunOnUiThreadAsync(() =>

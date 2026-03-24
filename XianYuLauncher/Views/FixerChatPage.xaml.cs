@@ -14,5 +14,12 @@ public sealed partial class FixerChatPage : Page
     {
         ViewModel = App.GetService<ErrorAnalysisViewModel>();
         this.InitializeComponent();
+        Unloaded += FixerChatPage_Unloaded;
+    }
+
+    private void FixerChatPage_Unloaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        Unloaded -= FixerChatPage_Unloaded;
+        ViewModel.Dispose();
     }
 }

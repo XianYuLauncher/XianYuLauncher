@@ -26,12 +26,21 @@ namespace XianYuLauncher.Views
             ViewModel = App.GetService<ErrorAnalysisViewModel>();
             _uiDispatcher = App.GetService<IUiDispatcher>();
             this.InitializeComponent();
+            Unloaded += ErrorAnalysisPage_Unloaded;
             
             // 订阅LogLines集合变化事件，实现自动滚动到底部
             ViewModel.LogLines.CollectionChanged += LogLines_CollectionChanged;
 
             // 添加键盘快捷键支持
             LogListView.KeyDown += LogListView_KeyDown;
+        }
+
+        private void ErrorAnalysisPage_Unloaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        {
+            ViewModel.LogLines.CollectionChanged -= LogLines_CollectionChanged;
+            LogListView.KeyDown -= LogListView_KeyDown;
+            Unloaded -= ErrorAnalysisPage_Unloaded;
+            ViewModel.Dispose();
         }
         
         /// <summary>
