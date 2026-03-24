@@ -13,6 +13,9 @@ internal static class FeatureServiceExtensions
     public static IServiceCollection AddFeatureServices(this IServiceCollection services)
     {
         services.AddSingleton<ErrorAnalysisSessionState>();
+        services.AddSingleton<IErrorAnalysisLogService, ErrorAnalysisLogService>();
+        services.AddSingleton<IErrorAnalysisAiOrchestrator, ErrorAnalysisAiOrchestrator>();
+        services.AddSingleton<IErrorAnalysisExportService, ErrorAnalysisExportService>();
         services.AddSingleton<IIconMetadataPipelineService, IconMetadataPipelineService>();
         services.AddSingleton<IVersionSettingsOrchestrator, VersionSettingsOrchestrator>();
         services.AddSingleton<IOverviewDataService, OverviewDataService>();

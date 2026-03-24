@@ -33,6 +33,9 @@ public partial class ErrorAnalysisSessionState : ObservableObject
     private string _aiAnalysisResult = string.Empty;
 
     [ObservableProperty]
+    private bool _isAiAnalyzing;
+
+    [ObservableProperty]
     private bool _hasChatMessages;
 
     [ObservableProperty]
@@ -72,6 +75,53 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         {
             Context.GameError.Clear();
             Context.GameError.AddRange(lines);
+        }
+    }
+
+    public (List<string> Output, List<string> Error) CreateLogSnapshot()
+    {
+        List<string> output = [];
+        List<string> error = [];
+
+        lock (Context.GameOutput)
+        {
+            output.AddRange(Context.GameOutput);
+        }
+
+        lock (Context.GameError)
+        {
+            error.AddRange(Context.GameError);
+        }
+
+        return (output, error);
+    }
+
+    public void ResetFixActions()
+    {
+        HasFixAction = false;
+        FixButtonText = string.Empty;
+        CurrentFixAction = null;
+        HasSecondaryFixAction = false;
+        SecondaryFixButtonText = string.Empty;
+        SecondaryFixAction = null;
+    }
+
+    public void ApplyFixActions(IReadOnlyList<CrashFixAction> actions)
+    {
+        ResetFixActions();
+
+        if (actions.Count > 0)
+        {
+            CurrentFixAction = actions[0];
+            FixButtonText = actions[0].ButtonText;
+            HasFixAction = !string.IsNullOrWhiteSpace(FixButtonText);
+        }
+
+        if (actions.Count > 1)
+        {
+            SecondaryFixAction = actions[1];
+            SecondaryFixButtonText = actions[1].ButtonText;
+            HasSecondaryFixAction = !string.IsNullOrWhiteSpace(SecondaryFixButtonText);
         }
     }
 }
