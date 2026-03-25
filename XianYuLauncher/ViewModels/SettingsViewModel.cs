@@ -1442,6 +1442,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     partial void OnIsAIAnalysisEnabledChanged(bool value)
     {
+        _aiSettingsDomainService.PublishEnabledState(value);
         QueueSettingWrite("AI_Enable", () => _aiSettingsDomainService.SaveEnabledAsync(value));
     }
 

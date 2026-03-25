@@ -110,6 +110,13 @@
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE945;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
+                <NavigationViewItem x:Uid="Shell_LauncherAI"
+                                    helpers:NavigationHelper.NavigateTo="XianYuLauncher.ViewModels.LauncherAiViewModel"
+                                    Visibility="{x:Bind ViewModel.LauncherAiNavigationVisibility, Mode=OneWay}">
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xF4A5;"/>
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
             </NavigationView.MenuItems>
             <NavigationView.FooterMenuItems>
                 <NavigationViewItem x:Uid="Shell_下载队列" helpers:NavigationHelper.NavigateTo="XianYuLauncher.ViewModels.DownloadQueueViewModel">

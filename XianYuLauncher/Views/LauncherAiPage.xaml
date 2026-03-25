@@ -1,0 +1,61 @@
+<Page
+    x:Class="XianYuLauncher.Views.LauncherAiPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:XianYuLauncher.Controls"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <Grid x:Name="ContentArea" Padding="20" Background="Transparent">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid Grid.Column="1" Margin="0,0,0,20" ColumnSpacing="16">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel HorizontalAlignment="Stretch">
+                    <TextBlock x:Name="PageTitle" x:Uid="LauncherAiPage_Title" Text="Launcher AI" Style="{ThemeResource TitleTextBlockStyle}" />
+                    <TextBlock x:Name="PageSubtitle" x:Uid="LauncherAiPage_Subtitle" Text="与启动器 Agent 对话，处理启动、版本、模组和排障任务" Style="{ThemeResource BodyTextBlockStyle}" Margin="0,8,0,0" Opacity="0.7" TextWrapping="Wrap" />
+                </StackPanel>
+
+                <Button Grid.Column="1"
+                        x:Uid="LauncherAiPage_PopOutButton"
+                        Click="PopOutButton_Click"
+                        VerticalAlignment="Center"
+                        Style="{StaticResource SubtleButtonStyle}"
+                        Padding="6">
+                    <FontIcon Glyph="&#xE8A7;" FontSize="14" />
+                </Button>
+            </Grid>
+        </Grid>
+
+        <Grid Grid.Row="1" HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <controls:LauncherAiPanel
+                Grid.Column="1"
+                x:Uid="LauncherAiPage_MainPanel"
+                Margin="0,0,0,20"
+                ViewModel="{x:Bind ViewModel.ChatViewModel}"
+                ShowEmptyPlaceholder="True"
+                EmptyPlaceholderText="{x:Bind ViewModel.EmptyStateText, Mode=OneWay}"
+                HeaderVisibility="Collapsed" />
+        </Grid>
+    </Grid>
+</Page>

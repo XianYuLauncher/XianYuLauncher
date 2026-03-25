@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Navigation;
 
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Views;
@@ -21,6 +22,7 @@ public partial class ShellViewModel : ObservableRecipient
 
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IDownloadTaskPresentationService _downloadTaskPresentationService;
+    private readonly IAiSettingsDomainService _aiSettingsDomainService;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly Dictionary<ShellDownloadTipItem, CancellationTokenSource> _pendingTipCloseOperations = new();
 
@@ -30,10 +32,15 @@ public partial class ShellViewModel : ObservableRecipient
     [ObservableProperty]
     private object? selected;
 
+    [ObservableProperty]
+    private bool isLauncherAiVisible;
+
     /// <summary>
     /// 右下角下载 TeachingTip 列表（可多任务同时展示）。
     /// </summary>
     public ObservableCollection<ShellDownloadTipItem> DownloadTeachingTips { get; } = new();
+
+    public Visibility LauncherAiNavigationVisibility => IsLauncherAiVisible ? Visibility.Visible : Visibility.Collapsed;
 
     public INavigationService NavigationService
     {
@@ -49,19 +56,56 @@ public partial class ShellViewModel : ObservableRecipient
         INavigationService navigationService,
         INavigationViewService navigationViewService,
         IDownloadTaskManager downloadTaskManager,
-        IDownloadTaskPresentationService downloadTaskPresentationService)
+        IDownloadTaskPresentationService downloadTaskPresentationService,
+        IAiSettingsDomainService aiSettingsDomainService)
     {
         NavigationService = navigationService;
         NavigationService.Navigated += OnNavigated;
         NavigationViewService = navigationViewService;
         _downloadTaskManager = downloadTaskManager;
         _downloadTaskPresentationService = downloadTaskPresentationService;
+        _aiSettingsDomainService = aiSettingsDomainService;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
         DownloadTeachingTips.CollectionChanged += OnDownloadTeachingTipsCollectionChanged;
 
         _downloadTaskManager.TaskStateChanged += OnTaskStateChanged;
         _downloadTaskManager.TaskProgressChanged += OnTaskProgressChanged;
+        _aiSettingsDomainService.EnabledChanged += OnAiSettingsEnabledChanged;
+
+        _ = InitializeLauncherAiVisibilityAsync();
+    }
+
+    partial void OnIsLauncherAiVisibleChanged(bool value)
+    {
+        OnPropertyChanged(nameof(LauncherAiNavigationVisibility));
+
+        if (!value && NavigationService.Frame?.Content?.GetType() == typeof(LauncherAiPage))
+        {
+            NavigationService.NavigateTo(typeof(LaunchViewModel).FullName!);
+        }
+    }
+
+    private async Task InitializeLauncherAiVisibilityAsync()
+    {
+        var state = await _aiSettingsDomainService.LoadAsync();
+        await EnqueueLauncherAiVisibilityAsync(state.IsEnabled);
+    }
+
+    private void OnAiSettingsEnabledChanged(object? sender, bool value)
+    {
+        _ = EnqueueLauncherAiVisibilityAsync(value);
+    }
+
+    private Task EnqueueLauncherAiVisibilityAsync(bool value)
+    {
+        var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _dispatcherQueue.TryEnqueue(() =>
+        {
+            IsLauncherAiVisible = value;
+            tcs.SetResult();
+        });
+        return tcs.Task;
     }
 
     private void OnDownloadTeachingTipsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
