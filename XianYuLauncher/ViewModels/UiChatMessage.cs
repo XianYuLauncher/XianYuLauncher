@@ -10,13 +10,17 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private string _content = string.Empty;
 
+        [ObservableProperty]
+        private bool _includeInAiHistory = true;
+
         public bool IsUser => Role == "user";
         public bool IsAssistant => Role == "assistant";
         
-        public UiChatMessage(string role, string content)
+        public UiChatMessage(string role, string content, bool includeInAiHistory = true)
         {
             Role = role;
             Content = content;
+            IncludeInAiHistory = includeInAiHistory;
         }
     }
 }

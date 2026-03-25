@@ -103,6 +103,7 @@ namespace XianYuLauncher.Core.Services
             {
                 NullValueHandling = NullValueHandling.Ignore
             });
+
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             HttpResponseMessage? response = null;
@@ -130,7 +131,7 @@ namespace XianYuLauncher.Core.Services
             {
                 var errorBody = response != null ? await response.Content.ReadAsStringAsync() : "Empty response";
                 var statusCode = response?.StatusCode.ToString() ?? "Unknown";
-                _logger.LogError($"AI Request Failed: {statusCode} - {errorBody}");
+                _logger.LogError("AI Request Failed: {StatusCode} - {Body}", statusCode, errorBody);
                 yield return new AiStreamChunk { ContentDelta = $"AI Request Failed: {statusCode}.", IsDone = true };
                 yield break;
             }
