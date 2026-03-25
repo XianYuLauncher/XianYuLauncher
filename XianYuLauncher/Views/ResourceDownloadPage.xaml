@@ -428,7 +428,7 @@
                                         <DropDownButton.Content>
                                             <StackPanel Orientation="Horizontal" Spacing="6">
                                                 <FontIcon Glyph="&#xE71C;" FontSize="12" />
-                                                <TextBlock Text="筛选" />
+                                                <TextBlock x:Uid="ResourceDownloadPage_UnifiedFilterLabel" Text="筛选" />
                                             </StackPanel>
                                         </DropDownButton.Content>
                                         <DropDownButton.Flyout>
@@ -629,7 +629,7 @@
                                     <DropDownButton.Content>
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <FontIcon Glyph="&#xE71C;" FontSize="12" />
-                                            <TextBlock Text="筛选" />
+                                            <TextBlock x:Uid="ResourceDownloadPage_UnifiedFilterLabel" Text="筛选" />
                                         </StackPanel>
                                     </DropDownButton.Content>
                                     <DropDownButton.Flyout>
@@ -851,7 +851,7 @@
                                     <DropDownButton.Content>
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <FontIcon Glyph="&#xE71C;" FontSize="12" />
-                                            <TextBlock Text="筛选" />
+                                            <TextBlock x:Uid="ResourceDownloadPage_UnifiedFilterLabel" Text="筛选" />
                                         </StackPanel>
                                     </DropDownButton.Content>
                                     <DropDownButton.Flyout>
@@ -1074,7 +1074,7 @@
                                     <DropDownButton.Content>
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <FontIcon Glyph="&#xE71C;" FontSize="12" />
-                                            <TextBlock Text="筛选" />
+                                            <TextBlock x:Uid="ResourceDownloadPage_UnifiedFilterLabel" Text="筛选" />
                                         </StackPanel>
                                     </DropDownButton.Content>
                                     <DropDownButton.Flyout>
@@ -1275,7 +1275,7 @@
                                     <DropDownButton.Content>
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <FontIcon Glyph="&#xE71C;" FontSize="12" />
-                                            <TextBlock Text="筛选" />
+                                            <TextBlock x:Uid="ResourceDownloadPage_UnifiedFilterLabel" Text="筛选" />
                                         </StackPanel>
                                     </DropDownButton.Content>
                                     <DropDownButton.Flyout>
@@ -1476,7 +1476,7 @@
                                     <DropDownButton.Content>
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <FontIcon Glyph="&#xE71C;" FontSize="12" />
-                                            <TextBlock Text="筛选" />
+                                            <TextBlock x:Uid="ResourceDownloadPage_UnifiedFilterLabel" Text="筛选" />
                                         </StackPanel>
                                     </DropDownButton.Content>
                                     <DropDownButton.Flyout>

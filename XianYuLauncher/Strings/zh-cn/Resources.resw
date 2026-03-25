@@ -861,6 +861,9 @@
   <data name="ResourceDownloadPage_VersionTypeComboBox.PlaceholderText" xml:space="preserve">
     <value>筛选</value>
   </data>
+  <data name="ResourceDownloadPage_UnifiedFilterLabel.Text" xml:space="preserve">
+    <value>筛选</value>
+  </data>
   <data name="ResourceDownloadPage_AllVersionTypes.Content" xml:space="preserve">
     <value>全部</value>
   </data>
