@@ -43,12 +43,12 @@ namespace XianYuLauncher.ViewModels
         public ObservableCollection<string> LogLines => _sessionState.LogLines;
 
         /// <summary>
-        /// 独立 Fixer 聊天窗口是否打开（打开时离开分析页不清空聊天）
+        /// 独立 Launcher AI 窗口是否打开。
         /// </summary>
-        public bool IsFixerWindowOpen
+        public bool IsLauncherAiWindowOpen
         {
-            get => _sessionState.IsFixerWindowOpen;
-            set => _sessionState.IsFixerWindowOpen = value;
+            get => _sessionState.IsLauncherAiWindowOpen;
+            set => _sessionState.IsLauncherAiWindowOpen = value;
         }
 
         /// <summary>

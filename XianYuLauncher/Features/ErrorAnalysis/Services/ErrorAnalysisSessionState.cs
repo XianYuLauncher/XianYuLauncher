@@ -28,7 +28,7 @@ public partial class ErrorAnalysisSessionState : ObservableObject
     private string _crashReason = string.Empty;
 
     [ObservableProperty]
-    private bool _isFixerWindowOpen;
+    private bool _isLauncherAiWindowOpen;
 
     [ObservableProperty]
     private string _aiAnalysisResult = string.Empty;

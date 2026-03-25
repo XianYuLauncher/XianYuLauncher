@@ -13,6 +13,10 @@ public class AiSettingsDomainService : IAiSettingsDomainService
 
     private readonly ISettingsRepository _settingsRepository;
 
+    public bool CurrentEnabled { get; private set; }
+
+    public event EventHandler<bool>? EnabledChanged;
+
     public AiSettingsDomainService(ISettingsRepository settingsRepository)
     {
         _settingsRepository = settingsRepository;
@@ -23,6 +27,7 @@ public class AiSettingsDomainService : IAiSettingsDomainService
         var endpoint = await _settingsRepository.ReadAsync<string>(AIApiEndpointKey) ?? "https://api.openai.com";
         var model = await _settingsRepository.ReadAsync<string>(AIModelKey) ?? "gpt-3.5-turbo";
         var isEnabled = await _settingsRepository.ReadAsync<bool?>(EnableAIAnalysisKey) ?? false;
+        CurrentEnabled = isEnabled;
 
         var storedKey = await _settingsRepository.ReadAsync<string>(AIApiKeyKey) ?? string.Empty;
         var plainKey = string.Empty;
@@ -49,8 +54,20 @@ public class AiSettingsDomainService : IAiSettingsDomainService
         };
     }
 
+    public void PublishEnabledState(bool value)
+    {
+        if (CurrentEnabled == value)
+        {
+            return;
+        }
+
+        CurrentEnabled = value;
+        EnabledChanged?.Invoke(this, value);
+    }
+
     public Task SaveEnabledAsync(bool value)
     {
+        PublishEnabledState(value);
         return _settingsRepository.SaveAsync(EnableAIAnalysisKey, value);
     }
 

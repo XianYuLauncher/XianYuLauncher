@@ -1,3 +1,4 @@
+using System;
 using System.Threading.Tasks;
 
 namespace XianYuLauncher.Contracts.Services.Settings;
@@ -15,7 +16,13 @@ public sealed class AiSettingsState
 
 public interface IAiSettingsDomainService
 {
+    bool CurrentEnabled { get; }
+
+    event EventHandler<bool>? EnabledChanged;
+
     Task<AiSettingsState> LoadAsync();
+
+    void PublishEnabledState(bool value);
 
     Task SaveEnabledAsync(bool value);
 

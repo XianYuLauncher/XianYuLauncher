@@ -1,5 +1,5 @@
 <windowex:WindowEx
-    x:Class="XianYuLauncher.Views.FixerChatWindow"
+    x:Class="XianYuLauncher.Views.LauncherAiWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:windowex="using:WinUIEx"
@@ -7,7 +7,7 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
-    Title="XianYu Fixer"
+    Title="Launcher AI"
     MinWidth="420"
     MinHeight="500"
     Width="520"
@@ -29,28 +29,24 @@
             </ResourceDictionary>
         </Grid.Resources>
 
-        <!-- 动态光效背景 -->
         <controls:MotionBackgroundControl x:Name="MotionBg" Canvas.ZIndex="-2" Visibility="Collapsed" />
 
-        <!-- 亚克力磨砂层 -->
-        <Rectangle x:Name="AcrylicOverlay" 
-                   Canvas.ZIndex="-1" 
+        <Rectangle x:Name="AcrylicOverlay"
+                   Canvas.ZIndex="-1"
                    IsHitTestVisible="False"
                    Visibility="Collapsed">
             <Rectangle.Fill>
-                <AcrylicBrush TintColor="{ThemeResource MotionOverlayColor}" 
-                              TintOpacity="{ThemeResource MotionOverlayOpacity}" 
+                <AcrylicBrush TintColor="{ThemeResource MotionOverlayColor}"
+                              TintOpacity="{ThemeResource MotionOverlayOpacity}"
                               FallbackColor="{ThemeResource MotionOverlayColor}"/>
             </Rectangle.Fill>
         </Rectangle>
 
-        <!-- 自定义背景图片层 -->
         <Image x:Name="BackgroundImage"
                Stretch="UniformToFill"
                Visibility="Collapsed"
                Canvas.ZIndex="-1" />
 
-        <!-- 自定义标题栏 -->
         <Grid x:Name="AppTitleBar"
               Canvas.ZIndex="1"
               Height="48"
@@ -58,14 +54,13 @@
               Background="Transparent">
             <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Padding="16,0,0,0">
                 <Image Source="/Assets/WindowIcon.ico" Width="16" Height="16" Margin="0,0,12,0" />
-                <TextBlock Text="XianYu Fixer" 
-                           VerticalAlignment="Center" 
-                           Style="{StaticResource CaptionTextBlockStyle}" 
+                <TextBlock Text="Launcher AI"
+                           VerticalAlignment="Center"
+                           Style="{StaticResource CaptionTextBlockStyle}"
                            FontSize="12" />
             </StackPanel>
         </Grid>
 
-        <!-- 内容区域 -->
         <Frame x:Name="ContentFrame" Margin="0,48,0,0" />
     </Grid>
 </windowex:WindowEx>

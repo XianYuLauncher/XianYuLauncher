@@ -22,6 +22,8 @@
                 ItemsSource="{Binding ViewModel.ChatMessages, ElementName=Root}"
                 SelectionMode="None"
                 IsItemClickEnabled="False"
+                VerticalAlignment="Stretch"
+                ScrollViewer.VerticalScrollBarVisibility="Auto"
                 MaxHeight="{Binding MessagesMaxHeight, ElementName=Root}">
                 <ListView.ItemTemplate>
                     <DataTemplate x:DataType="viewModels:UiChatMessage">
@@ -148,7 +150,9 @@
                 Command="{Binding ViewModel.SendMessageCommand, ElementName=Root}"
                 Style="{StaticResource DefaultButtonStyle}"
                 IsEnabled="{Binding ViewModel.IsChatEnabled, ElementName=Root}">
-                <FontIcon Glyph="&#xE725;" />
+                <Grid Width="20" Height="20">
+                    <FontIcon Glyph="&#xE724;" FontSize="16" />
+                </Grid>
             </Button>
         </Grid>
     </Grid>
