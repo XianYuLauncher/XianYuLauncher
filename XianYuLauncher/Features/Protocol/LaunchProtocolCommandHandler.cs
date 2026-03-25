@@ -1,8 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.Contracts.Services;
-using XianYuLauncher.Core.Helpers;
-using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Services;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Views;
 
@@ -10,6 +9,13 @@ namespace XianYuLauncher.Features.Protocol;
 
 public sealed class LaunchProtocolCommandHandler : IProtocolCommandHandler
 {
+    private readonly IVersionPathGameLaunchService _versionPathGameLaunchService;
+
+    public LaunchProtocolCommandHandler(IVersionPathGameLaunchService versionPathGameLaunchService)
+    {
+        _versionPathGameLaunchService = versionPathGameLaunchService;
+    }
+
     public bool CanHandle(ProtocolCommand command) => command is LaunchProtocolCommand;
 
     public async Task HandleAsync(ProtocolCommand command)
@@ -24,38 +30,26 @@ public sealed class LaunchProtocolCommandHandler : IProtocolCommandHandler
         var serverIp = launchCommand.ServerIp;
         var serverPortStr = launchCommand.ServerPort;
 
-        if (string.IsNullOrEmpty(targetPath))
+        PreparedVersionPathLaunch preparedLaunch;
+        try
         {
-            ShowToast("启动错误", "缺少 path 参数，请使用 xianyulauncher://launch/?path=实例路径 格式。");
+            preparedLaunch = _versionPathGameLaunchService.PrepareLaunch(targetPath ?? string.Empty);
+        }
+        catch (InvalidOperationException ex)
+        {
+            var toastTitle = ex.Message.Contains("网络路径", StringComparison.OrdinalIgnoreCase)
+                ? "拦截提示"
+                : "启动错误";
+            ShowToast(toastTitle, ex.Message);
             EnsureMainWindowInitialized();
             App.MainWindow.Activate();
             return;
         }
 
-        if (ProtocolPathSecurityHelper.IsUncPath(targetPath))
-        {
-            ShowToast("拦截提示", "为了您的系统安全，已禁止从网络路径(UNC)加载游戏，请使用本地磁盘路径。");
-            EnsureMainWindowInitialized();
-            App.MainWindow.Activate();
-            return;
-        }
-
-        if (!System.IO.Directory.Exists(targetPath))
-        {
-            ShowToast("启动错误", "找不到目标实例路径");
-            EnsureMainWindowInitialized();
-            App.MainWindow.Activate();
-            return;
-        }
-
-        var versionName = new System.IO.DirectoryInfo(targetPath).Name;
-        if (string.IsNullOrEmpty(versionName))
-        {
-            return;
-        }
+        var versionName = preparedLaunch.VersionName;
 
         var logger = Serilog.Log.Logger;
-        logger.Information("Silent Launch requested for: {VersionName}, Path: {TargetPath}", versionName, targetPath);
+        logger.Information("Silent Launch requested for: {VersionName}, Path: {TargetPath}", versionName, preparedLaunch.VersionPath);
 
         try
         {
@@ -83,43 +77,14 @@ public sealed class LaunchProtocolCommandHandler : IProtocolCommandHandler
 
             ShowToast(toastTitle, toastContent);
 
-            var gameLaunchService = App.GetService<IGameLaunchService>();
-            var tokenRefreshService = App.GetService<ITokenRefreshService>();
-            var profileManager = App.GetService<IProfileManager>();
-
-            var profiles = await profileManager.LoadProfilesAsync();
-            var profile = profiles.FirstOrDefault(p => p.IsActive);
-
-            if (profile == null)
-            {
-                ShowToast("启动失败", "未选择任何账户，请先打开启动器登录。");
-                EnsureMainWindowInitialized();
-                App.MainWindow.Activate();
-                return;
-            }
-
-            if (!profile.IsOffline)
-            {
-                var result = await tokenRefreshService.ValidateAndRefreshTokenAsync(profile);
-                if (!result.Success)
+            var launchResult = await _versionPathGameLaunchService.LaunchAsync(
+                preparedLaunch,
+                new VersionPathLaunchOptions
                 {
-                    ShowToast("启动失败", "账户登录已过期，请重新登录。");
-                    EnsureMainWindowInitialized();
-                    App.MainWindow.Activate();
-                    return;
-                }
-            }
-
-            var launchResult = await gameLaunchService.LaunchGameAsync(
-                versionName,
-                profile,
-                progress => { },
-                status => { },
-                default,
-                null,
-                quickPlaySingleplayer,
-                quickPlayServer,
-                quickPlayPort);
+                    QuickPlaySingleplayer = quickPlaySingleplayer,
+                    QuickPlayServer = quickPlayServer,
+                    QuickPlayPort = quickPlayPort
+                });
 
             if (launchResult.GameProcess != null)
             {
@@ -128,7 +93,7 @@ public sealed class LaunchProtocolCommandHandler : IProtocolCommandHandler
             }
             else
             {
-                ShowToast("启动失败", "游戏未能启动，请查看日志。");
+                ShowToast("启动失败", launchResult.ErrorMessage ?? "游戏未能启动，请查看日志。");
                 EnsureMainWindowInitialized();
                 App.MainWindow.Activate();
             }
