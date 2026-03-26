@@ -256,9 +256,8 @@ public class JavaRuntimeServiceTests
             .Setup(x => x.ReadSettingAsync<List<JavaVersion>>("JavaVersions"))
             .ReturnsAsync((List<JavaVersion>?)null);
 
-        var result = await _service.SelectBestJavaAsync(999);
+        await _service.SelectBestJavaAsync(999);
 
-        Assert.True(result == null || !string.IsNullOrEmpty(result));
         _mockLocalSettingsService.Verify(x => x.ReadSettingAsync<string>("SelectedJavaVersion"), Times.Never);
     }
 

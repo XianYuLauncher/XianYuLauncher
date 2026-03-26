@@ -349,7 +349,7 @@ public class JavaRuntimeService : IJavaRuntimeService
 
         var normalizedValue = rawValue.Trim();
         if (Enum.TryParse<JavaSelectionModeSetting>(normalizedValue, ignoreCase: true, out var mode)
-            && Enum.IsDefined(mode))
+            && Enum.IsDefined<JavaSelectionModeSetting>(mode))
         {
             resolution = $"EnumParse:{mode}";
             return mode;
