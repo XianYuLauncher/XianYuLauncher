@@ -170,30 +170,23 @@ public sealed class ProfileDialogService : IProfileDialogService
         return null;
     }
 
-    public async Task<LoginMethodSelectionResult> ShowLoginMethodSelectionDialogAsync(
-        string title = "选择登录方式",
-        string instruction = "请选择您喜欢的登录方式：",
-        string browserDescription = "• 浏览器登录：打开系统默认浏览器进行登录 (推荐)",
-        string deviceCodeDescription = "• 设备代码登录：获取代码后手动访问网页输入",
-        string browserButtonText = "浏览器登录",
-        string deviceCodeButtonText = "设备代码登录",
-        string cancelButtonText = "取消")
+    public async Task<LoginMethodSelectionResult> ShowLoginMethodSelectionDialogAsync()
     {
         var dialog = new ContentDialog
         {
-            Title = title,
+            Title = "Dialog_LoginMethod_Title".GetLocalized(),
             Content = new StackPanel
             {
                 Children =
                 {
-                    new TextBlock { Text = instruction, Margin = new Thickness(0, 0, 0, 10) },
-                    new TextBlock { Text = browserDescription, Opacity = 0.8, FontSize = 12 },
-                    new TextBlock { Text = deviceCodeDescription, Opacity = 0.8, FontSize = 12 },
+                    new TextBlock { Text = "Dialog_LoginMethod_Instruction".GetLocalized(), Margin = new Thickness(0, 0, 0, 10) },
+                    new TextBlock { Text = "Dialog_LoginMethod_BrowserDesc".GetLocalized(), Opacity = 0.8, FontSize = 12 },
+                    new TextBlock { Text = "Dialog_LoginMethod_DeviceCodeDesc".GetLocalized(), Opacity = 0.8, FontSize = 12 },
                 },
             },
-            PrimaryButtonText = browserButtonText,
-            SecondaryButtonText = deviceCodeButtonText,
-            CloseButtonText = cancelButtonText,
+            PrimaryButtonText = "Dialog_LoginMethod_BrowserButton".GetLocalized(),
+            SecondaryButtonText = "Dialog_LoginMethod_DeviceCodeButton".GetLocalized(),
+            CloseButtonText = "Msg_Cancel".GetLocalized(),
             DefaultButton = ContentDialogButton.Primary,
         };
 
@@ -206,20 +199,15 @@ public sealed class ProfileDialogService : IProfileDialogService
         };
     }
 
-    public async Task<SkinModelSelectionResult> ShowSkinModelSelectionDialogAsync(
-        string title = "选择皮肤模型",
-        string content = "请选择此皮肤适用的人物模型",
-        string steveButtonText = "Steve",
-        string alexButtonText = "Alex",
-        string cancelButtonText = "取消")
+    public async Task<SkinModelSelectionResult> ShowSkinModelSelectionDialogAsync()
     {
         var dialog = new ContentDialog
         {
-            Title = title,
-            Content = content,
-            PrimaryButtonText = steveButtonText,
-            SecondaryButtonText = alexButtonText,
-            CloseButtonText = cancelButtonText,
+            Title = "Dialog_SkinModel_Title".GetLocalized(),
+            Content = "Dialog_SkinModel_Content".GetLocalized(),
+            PrimaryButtonText = "Steve",
+            SecondaryButtonText = "Alex",
+            CloseButtonText = "Msg_Cancel".GetLocalized(),
             DefaultButton = ContentDialogButton.None,
         };
 

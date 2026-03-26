@@ -3591,4 +3591,488 @@ Continue downloading?</value>
   <data name="VersionSettings_LocalCustomGameDirectoryClearButton.Content" xml:space="preserve">
     <value>Clear</value>
   </data>
+  <!-- TutorialPage missing keys -->
+  <data name="TutorialPage_PersonalizationSection_Title.Text" xml:space="preserve">
+    <value>Personalization</value>
+  </data>
+  <data name="TutorialPage_ThemeSettings.Header" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="TutorialPage_ThemeSettings.Description" xml:space="preserve">
+    <value>Choose the appearance theme</value>
+  </data>
+  <data name="TutorialPage_Theme_Light.Content" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="TutorialPage_Theme_Dark.Content" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="TutorialPage_Theme_Default.Content" xml:space="preserve">
+    <value>System Default</value>
+  </data>
+  <data name="TutorialPage_WindowMaterial.Header" xml:space="preserve">
+    <value>Window Material</value>
+  </data>
+  <data name="TutorialPage_WindowMaterial.Description" xml:space="preserve">
+    <value>Choose the window background effect</value>
+  </data>
+  <data name="TutorialPage_LanguageSettings.Header" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="TutorialPage_LanguageSettings.Description" xml:space="preserve">
+    <value>Choose the display language</value>
+  </data>
+  <data name="TutorialPage_Language_Chinese.Content" xml:space="preserve">
+    <value>简体中文</value>
+  </data>
+  <data name="TutorialPage_Language_English.Content" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="TutorialPage_GameSettings_Title.Text" xml:space="preserve">
+    <value>Game Settings</value>
+  </data>
+  <data name="TutorialPage_VersionIsolation.Header" xml:space="preserve">
+    <value>Version Isolation</value>
+  </data>
+  <data name="TutorialPage_VersionIsolation.Description" xml:space="preserve">
+    <value>Each version uses a separate directory, mods don't interfere with each other (recommended)</value>
+  </data>
+  <data name="TutorialPage_BlurAmount.Header" xml:space="preserve">
+    <value>Blur Intensity</value>
+  </data>
+  <data name="TutorialPage_BlurAmount.Description" xml:space="preserve">
+    <value>Adjust the blur intensity of the background image</value>
+  </data>
+  <!-- ErrorAnalysisPage missing keys -->
+  <data name="ErrorAnalysis_NoCrashPlaceholder.Text" xml:space="preserve">
+    <value>No crash content, because the game hasn't crashed yet...</value>
+  </data>
+  <!-- LaunchPage new keys -->
+  <data name="LaunchPage_LaunchGameText.Text" xml:space="preserve">
+    <value>Launch Game</value>
+  </data>
+  <data name="LaunchPage_ViewInBrowserButton.Content" xml:space="preserve">
+    <value>View details in browser</value>
+  </data>
+  <data name="LaunchPage_DevBuildInfoBar.Title" xml:space="preserve">
+    <value>Development Build</value>
+  </data>
+  <data name="LaunchPage_DevBuildInfoBar.Message" xml:space="preserve">
+    <value>May be unstable. Please report issues to the developers.</value>
+  </data>
+  <!-- MultiplayerPage: correct x:Uid key format for InfoBar -->
+  <data name="联机Page_Warning.Title" xml:space="preserve">
+    <value>Warning</value>
+  </data>
+  <data name="联机Page_Warning.Message" xml:space="preserve">
+    <value>Terracotta Multiplayer is third-party open source software. Please report any issues through its official channels. Terracotta uses P2P technology — after connecting, players establish direct network connections with no public relay nodes or third-party server forwarding. The multiplayer experience depends on participants' network conditions. You must comply with all applicable laws and regulations while using the multiplayer feature.</value>
+  </data>
+  <!-- VersionManagementPage extra missing keys -->
+  <data name="VersionManagementPage_DisableToggle.OffContent" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="VersionManagementPage_DeleteButton.Content" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <!-- SettingsPage new keys -->
+  <data name="Settings_JavaPathTextBox.PlaceholderText" xml:space="preserve">
+    <value>Select Java executable path</value>
+  </data>
+  <data name="Settings_JavaBrowseButton.Content" xml:space="preserve">
+    <value>Browse...</value>
+  </data>
+  <data name="Settings_JavaClearButton.Content" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="Settings_BackgroundBrowseButton.Content" xml:space="preserve">
+    <value>Browse...</value>
+  </data>
+  <data name="Settings_BackgroundClearButton.Content" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="Settings_BackgroundPlaceholderText.PlaceholderText" xml:space="preserve">
+    <value>Select background image</value>
+  </data>
+  <data name="Settings_BlurAmount.Header" xml:space="preserve">
+    <value>Blur Intensity</value>
+  </data>
+  <data name="Settings_BlurAmount.Description" xml:space="preserve">
+    <value>Adjust the blur intensity of the background image</value>
+  </data>
+  <!-- C# ViewModel localization keys -->
+  <data name="Msg_Success" xml:space="preserve">
+    <value>Success</value>
+  </data>
+  <data name="Msg_Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
+  <data name="Msg_Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Msg_Prompt" xml:space="preserve">
+    <value>Prompt</value>
+  </data>
+  <data name="Msg_Warning" xml:space="preserve">
+    <value>Warning</value>
+  </data>
+  <data name="Msg_OperationFailed" xml:space="preserve">
+    <value>Operation failed</value>
+  </data>
+  <data name="Msg_SaveFailed" xml:space="preserve">
+    <value>Save failed</value>
+  </data>
+  <data name="Msg_SaveSuccess" xml:space="preserve">
+    <value>Save successful</value>
+  </data>
+  <data name="Msg_UploadSuccess" xml:space="preserve">
+    <value>Upload successful</value>
+  </data>
+  <data name="Msg_UploadFailed" xml:space="preserve">
+    <value>Upload failed</value>
+  </data>
+  <data name="Msg_ValidationFailed" xml:space="preserve">
+    <value>Validation failed</value>
+  </data>
+  <data name="Msg_DownloadCancelled" xml:space="preserve">
+    <value>Download cancelled.</value>
+  </data>
+  <data name="Msg_DownloadInProgress" xml:space="preserve">
+    <value>A download task is in progress. Please wait until it completes.</value>
+  </data>
+  <data name="Msg_NoInstalledVersion" xml:space="preserve">
+    <value>No installed game version found. Please install a game version first.</value>
+  </data>
+  <data name="Msg_InvalidShareCode" xml:space="preserve">
+    <value>Share code is empty or in incorrect format.</value>
+  </data>
+  <data name="Msg_SelectGameVersion" xml:space="preserve">
+    <value>Please select a game version.</value>
+  </data>
+  <data name="Msg_FavoritesEmpty" xml:space="preserve">
+    <value>Favorites are empty; cannot import.</value>
+  </data>
+  <data name="Msg_NoModVersionSelected" xml:space="preserve">
+    <value>No mod version selected for download</value>
+  </data>
+  <data name="Msg_SelectModVersion" xml:space="preserve">
+    <value>Please select a mod version to download first</value>
+  </data>
+  <data name="Msg_NoSaveFound" xml:space="preserve">
+    <value>No save file found. Please launch the game and create a world first.</value>
+  </data>
+  <data name="Msg_SelectInstallVersion" xml:space="preserve">
+    <value>Please select a game version to install first.</value>
+  </data>
+  <data name="Msg_SelectGameVersionFirst" xml:space="preserve">
+    <value>Please select a game version first</value>
+  </data>
+  <data name="Msg_SelectCharacterFirst" xml:space="preserve">
+    <value>Please select a character first</value>
+  </data>
+  <data name="Msg_GeneratingLaunchParams" xml:space="preserve">
+    <value>Generating launch parameters...</value>
+  </data>
+  <data name="Msg_GenerateLaunchParamsFailed" xml:space="preserve">
+    <value>Failed to generate launch parameters</value>
+  </data>
+  <data name="Msg_SkinChangedTo" xml:space="preserve">
+    <value>Changed skin to {0}</value>
+  </data>
+  <data name="Msg_ApplySkinFailed" xml:space="preserve">
+    <value>Failed to apply skin: {0}</value>
+  </data>
+  <data name="Msg_NoSkinTexture" xml:space="preserve">
+    <value>No skin texture available to save</value>
+  </data>
+  <data name="Msg_SkinSavedTo" xml:space="preserve">
+    <value>Skin texture saved to: {0}</value>
+  </data>
+  <data name="Msg_SkinSaveError" xml:space="preserve">
+    <value>Error saving skin texture: {0}</value>
+  </data>
+  <data name="Msg_OfflineNoSkinUpload" xml:space="preserve">
+    <value>Offline mode does not support uploading skins</value>
+  </data>
+  <data name="Msg_SkinUploaded" xml:space="preserve">
+    <value>Skin uploaded successfully</value>
+  </data>
+  <data name="Msg_ApiRequestFailed" xml:space="preserve">
+    <value>API request failed: {0}</value>
+  </data>
+  <data name="Msg_SkinUploadError" xml:space="preserve">
+    <value>Error uploading skin: {0}</value>
+  </data>
+  <data name="Msg_SkinMustBePng" xml:space="preserve">
+    <value>Skin file must be in PNG format</value>
+  </data>
+  <data name="Msg_SkinMustBe64x64" xml:space="preserve">
+    <value>Skin file must be 64x64 pixels</value>
+  </data>
+  <data name="Msg_SkinValidationError" xml:space="preserve">
+    <value>Cannot validate skin file: {0}</value>
+  </data>
+  <data name="Msg_CapeMustBePng" xml:space="preserve">
+    <value>Cape file must be in PNG format</value>
+  </data>
+  <data name="Msg_CapeValidationError" xml:space="preserve">
+    <value>Cannot validate cape file: {0}</value>
+  </data>
+  <data name="Msg_OfflineNoCapeUpload" xml:space="preserve">
+    <value>Offline mode does not support uploading capes</value>
+  </data>
+  <data name="Msg_ExternalNoCapeUpload" xml:space="preserve">
+    <value>External login does not support uploading capes yet</value>
+  </data>
+  <data name="Msg_MsNoCapeUpload" xml:space="preserve">
+    <value>Microsoft accounts do not support direct cape uploads</value>
+  </data>
+  <data name="Msg_UploadTip" xml:space="preserve">
+    <value>Upload tip</value>
+  </data>
+  <data name="Msg_CapeUploaded" xml:space="preserve">
+    <value>Cape uploaded successfully</value>
+  </data>
+  <data name="Msg_CapeUploadError" xml:space="preserve">
+    <value>Error uploading cape: {0}</value>
+  </data>
+  <data name="Msg_NoVersionSelected" xml:space="preserve">
+    <value>No version selected</value>
+  </data>
+  <data name="Msg_SelectVersionFirst" xml:space="preserve">
+    <value>Please select a version first</value>
+  </data>
+  <data name="Msg_LoadingVersionData" xml:space="preserve">
+    <value>Loading version data...</value>
+  </data>
+  <data name="Msg_NoUpdatableResources" xml:space="preserve">
+    <value>No updatable resources currently available.</value>
+  </data>
+  <data name="Msg_UpdateCancelled" xml:space="preserve">
+    <value>Update cancelled.</value>
+  </data>
+  <data name="Msg_NoTargetResources" xml:space="preserve">
+    <value>No target resources to update identified.</value>
+  </data>
+  <data name="Msg_UpdatingResources" xml:space="preserve">
+    <value>Updating resources...</value>
+  </data>
+  <data name="Msg_UpdatingMods" xml:space="preserve">
+    <value>Updating Mods...</value>
+  </data>
+  <data name="Msg_UpdatingShaders" xml:space="preserve">
+    <value>Updating Shaders...</value>
+  </data>
+  <data name="Msg_UpdatingResourcePacks" xml:space="preserve">
+    <value>Updating Resource Packs...</value>
+  </data>
+  <data name="Msg_AddCustomSource" xml:space="preserve">
+    <value>Add Custom Download Source</value>
+  </data>
+  <data name="Msg_EditCustomSource" xml:space="preserve">
+    <value>Edit Custom Download Source</value>
+  </data>
+  <data name="Msg_Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Msg_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Msg_Update" xml:space="preserve">
+    <value>Update</value>
+  </data>
+  <data name="Msg_Loading" xml:space="preserve">
+    <value>Loading...</value>
+  </data>
+  <data name="Msg_NoRecommendation" xml:space="preserve">
+    <value>No recommendations</value>
+  </data>
+  <data name="Msg_LoadFailed" xml:space="preserve">
+    <value>Failed to load</value>
+  </data>
+  <data name="Msg_ProcessingDragDrop" xml:space="preserve">
+    <value>Processing dropped files...</value>
+  </data>
+  <data name="Msg_RegionRestriction" xml:space="preserve">
+    <value>Region Restriction</value>
+  </data>
+  <data name="Msg_OfflineLoginRegionRestricted" xml:space="preserve">
+    <value>Offline login is not available in your region. Please use Microsoft account login.</value>
+  </data>
+  <data name="Msg_ExternalLoginRegionRestricted" xml:space="preserve">
+    <value>External login is not available in your region. Please use Microsoft account login.</value>
+  </data>
+  <data name="Msg_OfflineNoTokenRefresh" xml:space="preserve">
+    <value>Offline accounts do not need to refresh tokens</value>
+  </data>
+  <data name="Msg_RefreshToken" xml:space="preserve">
+    <value>Refresh Token</value>
+  </data>
+  <data name="Msg_LoginFailed" xml:space="preserve">
+    <value>Login failed</value>
+  </data>
+  <!-- ContentDialog localization keys -->
+  <data name="Dialog_LoginMethod_Title" xml:space="preserve">
+    <value>Select Login Method</value>
+  </data>
+  <data name="Dialog_LoginMethod_Instruction" xml:space="preserve">
+    <value>Please select your preferred login method:</value>
+  </data>
+  <data name="Dialog_LoginMethod_BrowserDesc" xml:space="preserve">
+    <value>• Browser Login: Opens system default browser for login (recommended)</value>
+  </data>
+  <data name="Dialog_LoginMethod_DeviceCodeDesc" xml:space="preserve">
+    <value>• Device Code Login: Get a code and manually enter it on a webpage</value>
+  </data>
+  <data name="Dialog_LoginMethod_BrowserButton" xml:space="preserve">
+    <value>Browser Login</value>
+  </data>
+  <data name="Dialog_LoginMethod_DeviceCodeButton" xml:space="preserve">
+    <value>Device Code Login</value>
+  </data>
+  <data name="Dialog_SkinModel_Title" xml:space="preserve">
+    <value>Select Skin Model</value>
+  </data>
+  <data name="Dialog_SkinModel_Content" xml:space="preserve">
+    <value>Please select the character model for this skin</value>
+  </data>
+  <data name="Dialog_JavaNotFound_Title" xml:space="preserve">
+    <value>Java Runtime Not Found</value>
+  </data>
+  <data name="Dialog_JavaNotFound_Content" xml:space="preserve">
+    <value>No Java runtime found for the current game version.
+
+Game version requires: Java {0}
+
+We recommend using the auto-download feature to install and configure automatically.</value>
+  </data>
+  <data name="Dialog_JavaNotFound_AutoDownload" xml:space="preserve">
+    <value>Auto Download (Recommended)</value>
+  </data>
+  <data name="Dialog_JavaNotFound_ManualDownload" xml:space="preserve">
+    <value>Manual Download</value>
+  </data>
+  <data name="Dialog_OfflineTip_Title" xml:space="preserve">
+    <value>Offline Play Reminder</value>
+  </data>
+  <data name="Dialog_OfflineTip_Content" xml:space="preserve">
+    <value>You have launched in offline mode {0} times. Consider supporting the official version!</value>
+  </data>
+  <data name="Dialog_OfflineTip_OK" xml:space="preserve">
+    <value>Got It</value>
+  </data>
+  <data name="Dialog_OfflineTip_Support" xml:space="preserve">
+    <value>Support Official</value>
+  </data>
+  <data name="Dialog_ExportSuccess_Title" xml:space="preserve">
+    <value>Export Successful</value>
+  </data>
+  <data name="Dialog_ExportSuccess_Content" xml:space="preserve">
+    <value>Launch parameters exported to desktop:
+{0}
+
+You can double-click the file to launch the game.</value>
+  </data>
+  <data name="Dialog_ExportSuccess_OpenLocation" xml:space="preserve">
+    <value>Open File Location</value>
+  </data>
+  <data name="Dialog_RegionRestricted_Title" xml:space="preserve">
+    <value>Region Restriction</value>
+  </data>
+  <data name="Dialog_RegionRestricted_Go" xml:space="preserve">
+    <value>Go</value>
+  </data>
+  <data name="Dialog_Privacy_Agree" xml:space="preserve">
+    <value>Agree</value>
+  </data>
+  <data name="Dialog_Privacy_Agreement" xml:space="preserve">
+    <value>User Agreement</value>
+  </data>
+  <data name="Dialog_Privacy_Reject" xml:space="preserve">
+    <value>Decline</value>
+  </data>
+  <data name="Dialog_Crash_Title" xml:space="preserve">
+    <value>Game Crashed</value>
+  </data>
+  <data name="Dialog_Crash_ExportLog" xml:space="preserve">
+    <value>Export Crash Log</value>
+  </data>
+  <data name="Dialog_Crash_ViewLog" xml:space="preserve">
+    <value>View Detailed Log</value>
+  </data>
+  <data name="Dialog_Crash_Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Dialog_Crash_InstructionTitle" xml:space="preserve">
+    <value>How to Get Help</value>
+  </data>
+  <data name="Dialog_Crash_Step1" xml:space="preserve">
+    <value>1. Click the "Export Crash Log" button below</value>
+  </data>
+  <data name="Dialog_Crash_Step2" xml:space="preserve">
+    <value>2. Send the exported ZIP file to technical support</value>
+  </data>
+  <data name="Dialog_Crash_LogInfo" xml:space="preserve">
+    <value>Log files contain launcher logs, game logs, and other info to help quickly diagnose the issue</value>
+  </data>
+  <data name="Dialog_Crash_LogPreview" xml:space="preserve">
+    <value>View Log Preview</value>
+  </data>
+  <data name="Dialog_AddServer_Title" xml:space="preserve">
+    <value>Add Server</value>
+  </data>
+  <data name="Dialog_AddServer_NameHeader" xml:space="preserve">
+    <value>Server Name</value>
+  </data>
+  <data name="Dialog_AddServer_AddressHeader" xml:space="preserve">
+    <value>Server Address</value>
+  </data>
+  <data name="Dialog_AddServer_AddressPlaceholder" xml:space="preserve">
+    <value>e.g. 127.0.0.1</value>
+  </data>
+  <data name="Dialog_AddServer_AddButton" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="Dialog_FavoritesImport_Unsupported" xml:space="preserve">
+    <value>The following resources are not supported for the selected version:</value>
+  </data>
+  <data name="Dialog_FavoritesImport_Title" xml:space="preserve">
+    <value>Some resources not supported for this version</value>
+  </data>
+  <data name="Dialog_OK" xml:space="preserve">
+    <value>OK</value>
+  </data>
+  <data name="Dialog_Confirm" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="Dialog_Install" xml:space="preserve">
+    <value>Install</value>
+  </data>
+  <data name="Dialog_AllPublishers" xml:space="preserve">
+    <value>All Publishers</value>
+  </data>
+  <!-- Custom Source Dialog keys -->
+  <data name="Dialog_CustomSource_NameHeader" xml:space="preserve">
+    <value>Source Name</value>
+  </data>
+  <data name="Dialog_CustomSource_NamePlaceholder" xml:space="preserve">
+    <value>e.g. My Mirror</value>
+  </data>
+  <data name="Dialog_CustomSource_UrlHeader" xml:space="preserve">
+    <value>Base URL</value>
+  </data>
+  <data name="Dialog_CustomSource_PriorityHeader" xml:space="preserve">
+    <value>Priority (higher value = higher priority)</value>
+  </data>
+  <data name="Dialog_CustomSource_TemplateHeader" xml:space="preserve">
+    <value>Template Type</value>
+  </data>
+  <data name="Dialog_CustomSource_OfficialResource" xml:space="preserve">
+    <value>Official Resources</value>
+  </data>
+  <data name="Dialog_CustomSource_CommunityResource" xml:space="preserve">
+    <value>Community Resources</value>
+  </data>
+  <data name="Dialog_CustomSource_EnableHeader" xml:space="preserve">
+    <value>Enable</value>
+  </data>
 </root>

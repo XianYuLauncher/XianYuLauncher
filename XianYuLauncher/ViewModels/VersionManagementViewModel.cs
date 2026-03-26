@@ -1715,7 +1715,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                         FileNameText = v.FileName,
                         ShowVersionTypeBadge = true,
                         ShowFileName = !string.IsNullOrWhiteSpace(v.FileName),
-                        InlineActionText = "更新",
+                        InlineActionText = "Msg_Update".GetLocalized(),
                         ShowInlineActionButton = false,
                         ShowSelectRadio = true,
                         SelectionGroupName = "VersionManagement_ModpackSelection",
@@ -2133,7 +2133,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     {
         if (SelectedVersion == null)
         {
-            StatusMessage = "未选择版本";
+            StatusMessage = "Msg_NoVersionSelected".GetLocalized();
             return;
         }
         
@@ -2574,7 +2574,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             _modpackUpdateCheckCancellationTokenSource?.Dispose();
             _modpackUpdateCheckCancellationTokenSource = null;
             ResetModpackUpdateState();
-            StatusMessage = "正在加载版本数据...";
+            StatusMessage = "Msg_LoadingVersionData".GetLocalized();
 
             try
             {
@@ -2974,14 +2974,14 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         
         if (SelectedVersion == null)
         {
-            StatusMessage = "请先选择一个版本";
+            StatusMessage = "Msg_SelectVersionFirst".GetLocalized();
             return;
         }
         
         try
         {
             IsLoading = true;
-            StatusMessage = "正在处理拖放文件...";
+            StatusMessage = "Msg_ProcessingDragDrop".GetLocalized();
 
             var importResult = await _dragDropImportService.ImportByTabAsync(
                 storageItems,
@@ -3249,7 +3249,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         var updatableItems = BuildUpdatableResourceItems();
         if (updatableItems.Count == 0)
         {
-            StatusMessage = "当前没有可更新的资源。";
+            StatusMessage = "Msg_NoUpdatableResources".GetLocalized();
             return;
         }
 
@@ -3257,7 +3257,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         if (selectedItems == null || selectedItems.Count == 0)
         {
-            StatusMessage = "已取消更新。";
+            StatusMessage = "Msg_UpdateCancelled".GetLocalized();
             return;
         }
 
@@ -3279,7 +3279,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         var batchResults = new List<ResourceUpdateBatchResult>();
 
-        DownloadProgressDialogTitle = "正在更新资源...";
+        DownloadProgressDialogTitle = "Msg_UpdatingResources".GetLocalized();
         IsDownloading = true;
         DownloadProgress = 0;
         CurrentDownloadItem = string.Empty;
@@ -3288,7 +3288,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         {
             if (selectedMods.Count > 0)
             {
-                DownloadProgressDialogTitle = "正在更新 Mod...";
+                DownloadProgressDialogTitle = "Msg_UpdatingMods".GetLocalized();
                 var modResult = await ModsModule.UpdateSelectedModsAsync(
                     selectedMods,
                     showResultDialog: false,
@@ -3298,7 +3298,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
             if (selectedShaders.Count > 0)
             {
-                DownloadProgressDialogTitle = "正在更新光影...";
+                DownloadProgressDialogTitle = "Msg_UpdatingShaders".GetLocalized();
                 var shaderResult = await ShadersModule.UpdateSelectedShadersAsync(
                     selectedShaders,
                     showResultDialog: false,
@@ -3308,7 +3308,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
             if (selectedResourcePacks.Count > 0)
             {
-                DownloadProgressDialogTitle = "正在更新资源包...";
+                DownloadProgressDialogTitle = "Msg_UpdatingResourcePacks".GetLocalized();
                 var resourcePackResult = await ResourcePacksModule.UpdateSelectedResourcePacksAsync(
                     selectedResourcePacks,
                     showResultDialog: false,
@@ -3324,7 +3324,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         if (batchResults.Count == 0)
         {
-            StatusMessage = "未识别到可更新的目标资源。";
+            StatusMessage = "Msg_NoTargetResources".GetLocalized();
             return;
         }
 
@@ -3366,7 +3366,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     {
         if (SelectedVersion == null)
         {
-            StatusMessage = "未选择版本";
+            StatusMessage = "Msg_NoVersionSelected".GetLocalized();
             return;
         }
 

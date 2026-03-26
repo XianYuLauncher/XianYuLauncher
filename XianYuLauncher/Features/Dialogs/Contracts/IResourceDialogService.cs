@@ -26,8 +26,8 @@ public interface IResourceDialogService
         Func<T, string> displayMemberFunc,
         Func<T, double>? opacityFunc = null,
         string? tip = null,
-        string primaryButtonText = "确认",
-        string closeButtonText = "取消") where T : class;
+        string? primaryButtonText = null,
+        string? closeButtonText = null) where T : class;
 
     Task<T?> ShowModVersionSelectionDialogAsync<T>(
         string title,
@@ -38,8 +38,8 @@ public interface IResourceDialogService
         Func<T, string> releaseDateFunc,
         Func<T, string> fileNameFunc,
         Func<T, string?>? resourceTypeTagFunc = null,
-        string primaryButtonText = "安装",
-        string closeButtonText = "取消") where T : class;
+        string? primaryButtonText = null,
+        string? closeButtonText = null) where T : class;
 
     Task<List<XianYuLauncher.Models.UpdatableResourceItem>?> ShowUpdatableResourcesSelectionDialogAsync(IEnumerable<XianYuLauncher.Models.UpdatableResourceItem> availableUpdates);
 
@@ -51,6 +51,6 @@ public interface IResourceDialogService
     Task ShowPublishersListDialogAsync(
         IEnumerable<PublisherDialogItem> publishers,
         bool isLoading,
-        string title = "所有发布者",
-        string closeButtonText = "关闭");
+        string? title = null,
+        string? closeButtonText = null);
 }

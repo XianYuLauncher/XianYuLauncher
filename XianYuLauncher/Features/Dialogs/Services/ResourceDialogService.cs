@@ -27,7 +27,7 @@ public sealed class ResourceDialogService : IResourceDialogService
     {
         var resultList = results.ToList();
         var panel = new StackPanel { Spacing = 12 };
-        panel.Children.Add(new TextBlock { Text = "以下资源不支持所选版本：", FontSize = 14 });
+        panel.Children.Add(new TextBlock { Text = "Dialog_FavoritesImport_Unsupported".GetLocalized(), FontSize = 14 });
 
         var listView = new ListView
         {
@@ -68,7 +68,7 @@ public sealed class ResourceDialogService : IResourceDialogService
         };
 
         panel.Children.Add(listView);
-        await _commonDialogService.ShowCustomDialogAsync("部分资源不支持此版本", panel, primaryButtonText: "确定", closeButtonText: null);
+        await _commonDialogService.ShowCustomDialogAsync("Dialog_FavoritesImport_Title".GetLocalized(), panel, primaryButtonText: "Dialog_OK".GetLocalized(), closeButtonText: null);
     }
 
     public async Task<string?> ShowModpackInstallNameDialogAsync(
@@ -272,8 +272,8 @@ public sealed class ResourceDialogService : IResourceDialogService
         Func<T, string> displayMemberFunc,
         Func<T, double>? opacityFunc = null,
         string? tip = null,
-        string primaryButtonText = "确认",
-        string closeButtonText = "取消") where T : class
+        string? primaryButtonText = null,
+        string? closeButtonText = null) where T : class
     {
         var primaryTextBrush = _dialogThemePaletteService.GetPrimaryTextBrush();
         var secondaryTextBrush = _dialogThemePaletteService.GetSecondaryTextBrush();
@@ -321,8 +321,8 @@ public sealed class ResourceDialogService : IResourceDialogService
         {
             Title = title,
             Content = panel,
-            PrimaryButtonText = primaryButtonText,
-            CloseButtonText = closeButtonText,
+            PrimaryButtonText = primaryButtonText ?? "Dialog_Confirm".GetLocalized(),
+            CloseButtonText = closeButtonText ?? "Msg_Cancel".GetLocalized(),
             DefaultButton = ContentDialogButton.Primary,
         };
 
@@ -344,8 +344,8 @@ public sealed class ResourceDialogService : IResourceDialogService
         Func<T, string> releaseDateFunc,
         Func<T, string> fileNameFunc,
         Func<T, string?>? resourceTypeTagFunc = null,
-        string primaryButtonText = "安装",
-        string closeButtonText = "取消") where T : class
+        string? primaryButtonText = null,
+        string? closeButtonText = null) where T : class
     {
         var primaryTextBrush = _dialogThemePaletteService.GetPrimaryTextBrush();
         var secondaryTextBrush = _dialogThemePaletteService.GetSecondaryTextBrush();
@@ -450,8 +450,8 @@ public sealed class ResourceDialogService : IResourceDialogService
         {
             Title = title,
             Content = panel,
-            PrimaryButtonText = primaryButtonText,
-            CloseButtonText = closeButtonText,
+            PrimaryButtonText = primaryButtonText ?? "Dialog_Confirm".GetLocalized(),
+            CloseButtonText = closeButtonText ?? "Msg_Cancel".GetLocalized(),
             DefaultButton = ContentDialogButton.Primary,
         };
 
@@ -538,8 +538,8 @@ public sealed class ResourceDialogService : IResourceDialogService
     public async Task ShowPublishersListDialogAsync(
         IEnumerable<PublisherDialogItem> publishers,
         bool isLoading,
-        string title = "所有发布者",
-        string closeButtonText = "关闭")
+        string? title = null,
+        string? closeButtonText = null)
     {
         var stackPanel = new StackPanel { Spacing = 12, Width = 420, MaxHeight = 500 };
         var secondaryTextBrush = _dialogThemePaletteService.GetSecondaryTextBrush();
@@ -645,9 +645,9 @@ public sealed class ResourceDialogService : IResourceDialogService
 
         var dialog = new ContentDialog
         {
-            Title = title,
+            Title = title ?? "Dialog_AllPublishers".GetLocalized(),
             Content = stackPanel,
-            CloseButtonText = closeButtonText,
+            CloseButtonText = closeButtonText ?? "Dialog_Crash_Close".GetLocalized(),
             DefaultButton = ContentDialogButton.None,
         };
 

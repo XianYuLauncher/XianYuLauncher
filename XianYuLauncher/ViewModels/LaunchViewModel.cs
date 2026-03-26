@@ -400,7 +400,7 @@ public partial class LaunchViewModel : ObservableRecipient
     /// 推荐 Mod 标题
     /// </summary>
     [ObservableProperty]
-    private string _recommendedModTitle = "加载中...";
+    private string _recommendedModTitle = "Msg_Loading".GetLocalized();
 
     /// <summary>
     /// 启动页新闻卡片动态展示集合（最终展示最多3条）
@@ -993,13 +993,13 @@ public partial class LaunchViewModel : ObservableRecipient
             }
             else
             {
-                RecommendedModTitle = "暂无推荐";
+                RecommendedModTitle = "Msg_NoRecommendation".GetLocalized();
             }
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[Mod推荐加载] 失败: {ex.Message}");
-            RecommendedModTitle = "加载失败";
+            RecommendedModTitle = "Msg_LoadFailed".GetLocalized();
         }
     }
     
@@ -1872,19 +1872,19 @@ public partial class LaunchViewModel : ObservableRecipient
     {
         if (string.IsNullOrEmpty(SelectedVersion))
         {
-            await ShowMessageAsync("请先选择一个游戏版本", "提示");
+            await ShowMessageAsync("Msg_SelectGameVersionFirst".GetLocalized(), "Msg_Prompt".GetLocalized());
             return;
         }
         
         if (SelectedProfile == null)
         {
-            await ShowMessageAsync("请先选择一个角色", "提示");
+            await ShowMessageAsync("Msg_SelectCharacterFirst".GetLocalized(), "Msg_Prompt".GetLocalized());
             return;
         }
         
         try
         {
-            LaunchStatus = "正在生成启动参数...";
+            LaunchStatus = "Msg_GeneratingLaunchParams".GetLocalized();
             
             // 使用 RegionValidator 检查地区限制
             var regionValidation = _regionValidator.ValidateLoginMethod(SelectedProfile);
@@ -1901,8 +1901,8 @@ public partial class LaunchViewModel : ObservableRecipient
             
             if (result == null)
             {
-                await ShowMessageAsync("生成启动参数失败", "错误");
-                LaunchStatus = "生成启动参数失败";
+                await ShowMessageAsync("Msg_GenerateLaunchParamsFailed".GetLocalized(), "Msg_Error".GetLocalized());
+                LaunchStatus = "Msg_GenerateLaunchParamsFailed".GetLocalized();
                 return;
             }
             

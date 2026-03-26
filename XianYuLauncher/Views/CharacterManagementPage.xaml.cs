@@ -875,7 +875,7 @@ namespace XianYuLauncher.Views
             // 检查是否有皮肤纹理可以保存
             if (ViewModel.CurrentSkinTexture == null)
             {
-                await ShowMessageAsync("保存失败", "没有可保存的皮肤纹理");
+                await ShowMessageAsync("Msg_SaveFailed".GetLocalized(), "Msg_NoSkinTexture".GetLocalized());
                 return;
             }
 
@@ -902,12 +902,12 @@ namespace XianYuLauncher.Views
                 {
                     // 将皮肤纹理保存到文件
                     await SaveImageToFileAsync(ViewModel.CurrentSkinTexture, file);
-                    await ShowMessageAsync("保存成功", $"皮肤纹理已保存到: {file.Path}");
+                    await ShowMessageAsync("Msg_SaveSuccess".GetLocalized(), "Msg_SkinSavedTo".GetLocalized(file.Path));
                 }
             }
             catch (Exception ex)
             {
-                await ShowMessageAsync("保存失败", $"保存皮肤纹理时发生错误: {ex.Message}");
+                await ShowMessageAsync("Msg_SaveFailed".GetLocalized(), "Msg_SkinSaveError".GetLocalized(ex.Message));
             }
         }
 
@@ -964,7 +964,7 @@ namespace XianYuLauncher.Views
             
             if (ViewModel.CurrentProfile.IsOffline)
             {
-                await ShowMessageAsync("操作失败", "离线模式不支持上传皮肤");
+                await ShowMessageAsync("Msg_OperationFailed".GetLocalized(), "Msg_OfflineNoSkinUpload".GetLocalized());
                 Debug.WriteLine($"[CharacterManagementPage] 离线模式，拒绝上传皮肤");
                 return;
             }
@@ -1032,7 +1032,7 @@ namespace XianYuLauncher.Views
                     await ViewModel.UploadSkinAsync(file, model);
                 }
 
-                await ShowMessageAsync("上传成功", "皮肤已成功上传");
+                await ShowMessageAsync("Msg_UploadSuccess".GetLocalized(), "Msg_SkinUploaded".GetLocalized());
                 Debug.WriteLine($"[CharacterManagementPage] 皮肤上传成功");
 
                 // 5. 刷新皮肤信息
@@ -1043,12 +1043,12 @@ namespace XianYuLauncher.Views
             catch (HttpRequestException ex)
             {
                 Debug.WriteLine($"[CharacterManagementPage] 皮肤上传API请求失败: {ex.Message}");
-                await ShowMessageAsync("上传失败", $"API请求失败: {ex.Message}");
+                await ShowMessageAsync("Msg_UploadFailed".GetLocalized(), "Msg_ApiRequestFailed".GetLocalized(ex.Message));
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[CharacterManagementPage] 皮肤上传失败: {ex.Message}");
-                await ShowMessageAsync("上传失败", $"上传皮肤时发生错误: {ex.Message}");
+                await ShowMessageAsync("Msg_UploadFailed".GetLocalized(), "Msg_SkinUploadError".GetLocalized(ex.Message));
             }
         }
         
@@ -1153,7 +1153,7 @@ namespace XianYuLauncher.Views
                 // 1. 检查文件扩展名是否为PNG
                 if (file.FileType != ".png")
                 {
-                    await ShowMessageAsync("验证失败", "皮肤文件必须是PNG格式");
+                    await ShowMessageAsync("Msg_ValidationFailed".GetLocalized(), "Msg_SkinMustBePng".GetLocalized());
                     return false;
                 }
 
@@ -1164,7 +1164,7 @@ namespace XianYuLauncher.Views
                     var bitmap = await Microsoft.Graphics.Canvas.CanvasBitmap.LoadAsync(device, stream);
                     if (bitmap.SizeInPixels.Width != 64 || bitmap.SizeInPixels.Height != 64)
                     {
-                        await ShowMessageAsync("验证失败", "皮肤文件必须是64x64尺寸");
+                        await ShowMessageAsync("Msg_ValidationFailed".GetLocalized(), "Msg_SkinMustBe64x64".GetLocalized());
                         return false;
                     }
                 }
@@ -1173,7 +1173,7 @@ namespace XianYuLauncher.Views
             }
             catch (Exception ex)
             {
-                await ShowMessageAsync("验证失败", $"无法验证皮肤文件: {ex.Message}");
+                await ShowMessageAsync("Msg_ValidationFailed".GetLocalized(), "Msg_SkinValidationError".GetLocalized(ex.Message));
                 return false;
             }
         }
@@ -1190,7 +1190,7 @@ namespace XianYuLauncher.Views
                 // 1. 检查文件扩展名是否为PNG
                 if (file.FileType != ".png")
                 {
-                    await ShowMessageAsync("验证失败", "披风文件必须是PNG格式");
+                    await ShowMessageAsync("Msg_ValidationFailed".GetLocalized(), "Msg_CapeMustBePng".GetLocalized());
                     return false;
                 }
 
@@ -1205,7 +1205,7 @@ namespace XianYuLauncher.Views
             }
             catch (Exception ex)
             {
-                await ShowMessageAsync("验证失败", $"无法验证披风文件: {ex.Message}");
+                await ShowMessageAsync("Msg_ValidationFailed".GetLocalized(), "Msg_CapeValidationError".GetLocalized(ex.Message));
                 return false;
             }
         }
@@ -1221,7 +1221,7 @@ namespace XianYuLauncher.Views
             
             if (ViewModel.CurrentProfile.IsOffline)
             {
-                await ShowMessageAsync("操作失败", "离线模式不支持上传披风");
+                await ShowMessageAsync("Msg_OperationFailed".GetLocalized(), "Msg_OfflineNoCapeUpload".GetLocalized());
                 Debug.WriteLine($"[CharacterManagementPage] 离线模式，拒绝上传披风");
                 return;
             }
@@ -1229,7 +1229,7 @@ namespace XianYuLauncher.Views
             // 禁用外置登录的上传功能
             if (ViewModel.CurrentProfile.TokenType == "external")
             {
-                await ShowMessageAsync("操作失败", "外置登录暂不支持上传披风");
+                await ShowMessageAsync("Msg_OperationFailed".GetLocalized(), "Msg_ExternalNoCapeUpload".GetLocalized());
                 Debug.WriteLine($"[CharacterManagementPage] 外置登录，拒绝上传披风");
                 return;
             }
@@ -1277,11 +1277,11 @@ namespace XianYuLauncher.Views
                 {
                     // 微软账号不支持直接上传披风，显示提示
                     Debug.WriteLine($"[CharacterManagementPage] 微软账号不支持直接上传披风");
-                    await ShowMessageAsync("上传提示", "微软账号不支持直接上传披风");
+                    await ShowMessageAsync("Msg_UploadTip".GetLocalized(), "Msg_MsNoCapeUpload".GetLocalized());
                     return;
                 }
 
-                await ShowMessageAsync("上传成功", "披风已成功上传");
+                await ShowMessageAsync("Msg_UploadSuccess".GetLocalized(), "Msg_CapeUploaded".GetLocalized());
                 Debug.WriteLine($"[CharacterManagementPage] 披风上传成功");
 
                 // 4. 刷新皮肤和披风信息
@@ -1292,12 +1292,12 @@ namespace XianYuLauncher.Views
             catch (HttpRequestException ex)
             {
                 Debug.WriteLine($"[CharacterManagementPage] 披风上传API请求失败: {ex.Message}");
-                await ShowMessageAsync("上传失败", $"API请求失败: {ex.Message}");
+                await ShowMessageAsync("Msg_UploadFailed".GetLocalized(), "Msg_ApiRequestFailed".GetLocalized(ex.Message));
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[CharacterManagementPage] 披风上传失败: {ex.Message}");
-                await ShowMessageAsync("上传失败", $"上传披风时发生错误: {ex.Message}");
+                await ShowMessageAsync("Msg_UploadFailed".GetLocalized(), "Msg_CapeUploadError".GetLocalized(ex.Message));
             }
         }
         

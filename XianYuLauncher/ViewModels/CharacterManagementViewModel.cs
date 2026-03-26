@@ -68,12 +68,12 @@ namespace XianYuLauncher.ViewModels
                  await UploadSkinAsync(file, skin.Variant);
                  
                  // 刷新
-                 await ShowMessageAsync("成功", $"已将皮肤更改为 {skin.Name}");
+                 await ShowMessageAsync("Msg_Success".GetLocalized(), "Msg_SkinChangedTo".GetLocalized(skin.Name));
                  await LoadCapesAsync(); // This reloads skin info
             }
             catch (Exception ex)
             {
-                await ShowMessageAsync("失败", $"应用皮肤失败: {ex.Message}");
+                await ShowMessageAsync("Msg_Failed".GetLocalized(), "Msg_ApplySkinFailed".GetLocalized(ex.Message));
             }
         }
         

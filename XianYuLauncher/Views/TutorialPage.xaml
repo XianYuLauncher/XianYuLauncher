@@ -136,7 +136,8 @@
                     <Border Style="{StaticResource CardBorderStyle}" Padding="0" Background="Transparent" BorderThickness="0"
                             Visibility="{x:Bind ViewModel.MaterialType, Converter={StaticResource MaterialTypeToCustomBackgroundVisibilityConverter}, Mode=OneWay}">
                         <controls:SettingsCard
-                            Header="模糊强度" 
+                            x:Uid="TutorialPage_BlurAmount"
+                            Header="模糊强度"
                             Description="调整背景图片的模糊程度">
                             <controls:SettingsCard.HeaderIcon>
                                 <FontIcon Glyph="&#xE91B;" />

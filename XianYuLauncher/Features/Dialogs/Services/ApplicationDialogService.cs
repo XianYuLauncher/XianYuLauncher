@@ -18,11 +18,11 @@ public sealed class ApplicationDialogService : IApplicationDialogService
     {
         var dialog = new ContentDialog
         {
-            Title = "Java运行时环境未找到",
-            Content = $"未找到适用于当前游戏版本的Java运行时环境。\n\n游戏版本需要: Java {requiredVersion}\n\n推荐使用自动下载功能，启动器将自动安装并配置环境。",
-            PrimaryButtonText = "自动下载(推荐)",
-            SecondaryButtonText = "手动下载",
-            CloseButtonText = "取消",
+            Title = "Dialog_JavaNotFound_Title".GetLocalized(),
+            Content = "Dialog_JavaNotFound_Content".GetLocalized(requiredVersion),
+            PrimaryButtonText = "Dialog_JavaNotFound_AutoDownload".GetLocalized(),
+            SecondaryButtonText = "Dialog_JavaNotFound_ManualDownload".GetLocalized(),
+            CloseButtonText = "Msg_Cancel".GetLocalized(),
         };
 
         dialog.PrimaryButtonClick += (_, _) => onAutoDownload?.Invoke();
@@ -35,10 +35,10 @@ public sealed class ApplicationDialogService : IApplicationDialogService
     {
         var dialog = new ContentDialog
         {
-            Title = "离线游玩提示",
-            Content = $"您已经使用离线模式启动{offlineLaunchCount}次了,支持一下正版吧！",
-            PrimaryButtonText = "知道了",
-            SecondaryButtonText = "支持正版",
+            Title = "Dialog_OfflineTip_Title".GetLocalized(),
+            Content = "Dialog_OfflineTip_Content".GetLocalized(offlineLaunchCount),
+            PrimaryButtonText = "Dialog_OfflineTip_OK".GetLocalized(),
+            SecondaryButtonText = "Dialog_OfflineTip_Support".GetLocalized(),
         };
 
         var result = await _dialogHostService.ShowAsync(dialog);
@@ -67,10 +67,10 @@ public sealed class ApplicationDialogService : IApplicationDialogService
     {
         var dialog = new ContentDialog
         {
-            Title = "导出成功",
-            Content = $"启动参数已成功导出到桌面:\n{Path.GetFileName(filePath)}\n\n您可以双击该文件来启动游戏。",
-            PrimaryButtonText = "打开文件位置",
-            CloseButtonText = "确定",
+            Title = "Dialog_ExportSuccess_Title".GetLocalized(),
+            Content = "Dialog_ExportSuccess_Content".GetLocalized(Path.GetFileName(filePath)),
+            PrimaryButtonText = "Dialog_ExportSuccess_OpenLocation".GetLocalized(),
+            CloseButtonText = "Dialog_OK".GetLocalized(),
         };
 
         dialog.PrimaryButtonClick += (_, _) =>
@@ -91,10 +91,10 @@ public sealed class ApplicationDialogService : IApplicationDialogService
     {
         var dialog = new ContentDialog
         {
-            Title = "地区限制",
+            Title = "Dialog_RegionRestricted_Title".GetLocalized(),
             Content = errorMessage,
-            PrimaryButtonText = "前往",
-            CloseButtonText = "取消",
+            PrimaryButtonText = "Dialog_RegionRestricted_Go".GetLocalized(),
+            CloseButtonText = "Msg_Cancel".GetLocalized(),
             DefaultButton = ContentDialogButton.Close,
         };
 
@@ -106,9 +106,9 @@ public sealed class ApplicationDialogService : IApplicationDialogService
         string title,
         string agreementContent,
         Func<Task>? onOpenAgreementLink = null,
-        string primaryButtonText = "同意",
-        string secondaryButtonText = "用户协议",
-        string closeButtonText = "拒绝")
+        string? primaryButtonText = null,
+        string? secondaryButtonText = null,
+        string? closeButtonText = null)
     {
         var dialog = new ContentDialog
         {
@@ -126,9 +126,9 @@ public sealed class ApplicationDialogService : IApplicationDialogService
                 VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
                 HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
             },
-            PrimaryButtonText = primaryButtonText,
-            SecondaryButtonText = secondaryButtonText,
-            CloseButtonText = closeButtonText,
+            PrimaryButtonText = primaryButtonText ?? "Dialog_Privacy_Agree".GetLocalized(),
+            SecondaryButtonText = secondaryButtonText ?? "Dialog_Privacy_Agreement".GetLocalized(),
+            CloseButtonText = closeButtonText ?? "Dialog_Privacy_Reject".GetLocalized(),
             DefaultButton = ContentDialogButton.Primary,
         };
 

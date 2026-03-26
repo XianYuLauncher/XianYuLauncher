@@ -38,6 +38,8 @@ public class LocalSettingsService : ILocalSettingsService
         _localsettingsFile = _options.LocalSettingsFile ?? _defaultLocalSettingsFile;
 
         _settings = new Dictionary<string, object>();
+
+        System.Diagnostics.Debug.WriteLine($"[LocalSettingsService] Settings path: {Path.Combine(_applicationDataFolder, _localsettingsFile)}");
     }
 
     private async Task InitializeAsync()

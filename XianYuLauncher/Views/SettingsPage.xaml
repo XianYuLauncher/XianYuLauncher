@@ -295,17 +295,17 @@
                         </controls:SettingsCard>
                         <controls:SettingsCard x:Uid="Settings_JavaSelectionMode" Header="Java 选择方式" Description="选择启动游戏时使用的 Java 版本" Background="Transparent" BorderThickness="0" Padding="16,12,0,12">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <RadioButton Content="自动" IsChecked="{x:Bind ViewModel.JavaSelectionMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Auto, Mode=OneWay}"
+                                <RadioButton x:Uid="Settings_JavaSelectionMode_Auto" Content="自动" IsChecked="{x:Bind ViewModel.JavaSelectionMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Auto, Mode=OneWay}"
                                              Command="{x:Bind ViewModel.SwitchJavaSelectionModeCommand}" CommandParameter="Auto" GroupName="JavaMode" />
-                                <RadioButton Content="手动" IsChecked="{x:Bind ViewModel.JavaSelectionMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Manual, Mode=OneWay}"
+                                <RadioButton x:Uid="Settings_JavaSelectionMode_Manual" Content="手动" IsChecked="{x:Bind ViewModel.JavaSelectionMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Manual, Mode=OneWay}"
                                              Command="{x:Bind ViewModel.SwitchJavaSelectionModeCommand}" CommandParameter="Manual" GroupName="JavaMode" />
                             </StackPanel>
                         </controls:SettingsCard>
                         <controls:SettingsCard x:Uid="Settings_JavaPathLabel" Header="Java 路径" Description="手动指定 Java 可执行文件路径" Background="Transparent" BorderThickness="0" Padding="16,12,0,12">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBox Text="{x:Bind ViewModel.JavaPath, Mode=TwoWay}" PlaceholderText="请选择Java可执行文件路径" Width="280" IsReadOnly="True" />
-                                <Button x:Uid="Settings_Browse" Content="浏览..." Command="{x:Bind ViewModel.BrowseJavaPathCommand}" />
-                                <Button x:Uid="Settings_Clear" Content="清除" Command="{x:Bind ViewModel.ClearJavaPathCommand}" />
+                                <TextBox x:Uid="Settings_JavaPathTextBox" Text="{x:Bind ViewModel.JavaPath, Mode=TwoWay}" PlaceholderText="请选择Java可执行文件路径" Width="280" IsReadOnly="True" />
+                                <Button x:Uid="Settings_JavaBrowseButton" Content="浏览..." Command="{x:Bind ViewModel.BrowseJavaPathCommand}" />
+                                <Button x:Uid="Settings_JavaClearButton" Content="清除" Command="{x:Bind ViewModel.ClearJavaPathCommand}" />
                             </StackPanel>
                         </controls:SettingsCard>
                     </controls:SettingsExpander.Items>
@@ -469,13 +469,13 @@
                         <controls:SettingsCard x:Uid="Settings_BackgroundImage" Header="背景图片" Description="选择自定义背景图片"
                                                Visibility="{x:Bind ViewModel.IsCustomBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBox Text="{x:Bind ViewModel.BackgroundImagePath, Mode=TwoWay}" PlaceholderText="请选择背景图片" Width="250" IsReadOnly="True" />
-                                <Button Content="浏览..." Command="{x:Bind ViewModel.BrowseBackgroundImageCommand}" />
-                                <Button Content="清除" Command="{x:Bind ViewModel.ClearBackgroundImageCommand}" />
+                                <TextBox x:Uid="Settings_BackgroundPlaceholderText" Text="{x:Bind ViewModel.BackgroundImagePath, Mode=TwoWay}" PlaceholderText="请选择背景图片" Width="250" IsReadOnly="True" />
+                                <Button x:Uid="Settings_BackgroundBrowseButton" Content="浏览..." Command="{x:Bind ViewModel.BrowseBackgroundImageCommand}" />
+                                <Button x:Uid="Settings_BackgroundClearButton" Content="清除" Command="{x:Bind ViewModel.ClearBackgroundImageCommand}" />
                             </StackPanel>
                         </controls:SettingsCard>
                         <!-- 背景模糊强度 -->
-                        <controls:SettingsCard Header="模糊强度" Description="调整背景图片的模糊程度"
+                        <controls:SettingsCard x:Uid="Settings_BlurAmount" Header="模糊强度" Description="调整背景图片的模糊程度"
                                                Visibility="{x:Bind ViewModel.IsCustomBackground, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                             <StackPanel Orientation="Horizontal" Spacing="12">
                                 <Slider Minimum="0" Maximum="100" StepFrequency="1" Value="{x:Bind ViewModel.BackgroundBlurAmount, Mode=TwoWay}" Width="200" />

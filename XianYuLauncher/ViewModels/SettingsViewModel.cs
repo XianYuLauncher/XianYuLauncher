@@ -3638,9 +3638,9 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         {
             var dialogResult = await _selectionDialogService.ShowSettingsCustomSourceDialogAsync(new SettingsCustomSourceDialogRequest
             {
-                Title = "添加自定义下载源",
-                PrimaryButtonText = "保存",
-                CloseButtonText = "取消",
+                Title = "Msg_AddCustomSource".GetLocalized(),
+                PrimaryButtonText = "Msg_Save".GetLocalized(),
+                CloseButtonText = "Msg_Cancel".GetLocalized(),
                 Template = DownloadSourceTemplateType.Official,
                 Priority = 100,
                 Enabled = true,
@@ -3695,9 +3695,9 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         {
             var dialogResult = await _selectionDialogService.ShowSettingsCustomSourceDialogAsync(new SettingsCustomSourceDialogRequest
             {
-                Title = "编辑自定义下载源",
-                PrimaryButtonText = "保存",
-                CloseButtonText = "取消",
+                Title = "Msg_EditCustomSource".GetLocalized(),
+                PrimaryButtonText = "Msg_Save".GetLocalized(),
+                CloseButtonText = "Msg_Cancel".GetLocalized(),
                 Name = source.Name,
                 BaseUrl = source.BaseUrl,
                 Template = source.Template,

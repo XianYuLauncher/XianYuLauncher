@@ -283,8 +283,9 @@
                             FontFamily="{StaticResource SymbolThemeFontFamily}" 
                             Glyph="&#xE768;" 
                             FontSize="16" />
-                        <TextBlock 
-                            Text="启动游戏" 
+                        <TextBlock
+                            x:Uid="LaunchPage_LaunchGameText"
+                            Text="启动游戏"
                             FontSize="14"
                             FontWeight="SemiBold"
                             VerticalAlignment="Center" />
@@ -337,6 +338,7 @@
                         TextWrapping="Wrap"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                     <HyperlinkButton
+                        x:Uid="LaunchPage_ViewInBrowserButton"
                         Content="在浏览器中查看详情"
                         Command="{x:Bind ViewModel.OpenNewsTeachingTipLinkCommand}"
                         HorizontalAlignment="Left">
@@ -364,6 +366,7 @@
             Spacing="10">
             <InfoBar
                 x:Name="DevBuildInfoBar"
+                x:Uid="LaunchPage_DevBuildInfoBar"
                 IsOpen="{x:Bind ViewModel.IsDevBuild, Mode=OneWay}"
                 Severity="Warning"
                 Title="开发版"
