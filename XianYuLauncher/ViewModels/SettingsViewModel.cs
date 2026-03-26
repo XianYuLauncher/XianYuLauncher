@@ -2134,7 +2134,9 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     partial void OnJavaSelectionModeChanged(JavaSelectionModeType value)
     {
-        QueueSettingWrite("JavaSelectionMode", () => _gameSettingsDomainService.SaveJavaSelectionModeAsync(value.ToString()));
+        RunFireAndForget(
+            _gameSettingsDomainService.SaveJavaSelectionModeAsync(value.ToString()),
+            "保存设置:JavaSelectionMode");
     }
     
     /// <summary>
@@ -3989,5 +3991,4 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     
     #endregion
 }
-
 
