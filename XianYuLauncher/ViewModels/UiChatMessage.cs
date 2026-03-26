@@ -13,14 +13,22 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private bool _includeInAiHistory = true;
 
+        [ObservableProperty]
+        private bool _showRoleHeader = true;
+
+        [ObservableProperty]
+        private string _displayRoleText = string.Empty;
+
         public bool IsUser => Role == "user";
         public bool IsAssistant => Role == "assistant";
+        public bool IsTool => Role == "tool";
         
         public UiChatMessage(string role, string content, bool includeInAiHistory = true)
         {
             Role = role;
             Content = content;
             IncludeInAiHistory = includeInAiHistory;
+            DisplayRoleText = role;
         }
     }
 }

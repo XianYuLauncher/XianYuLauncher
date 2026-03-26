@@ -251,12 +251,12 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
                 await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
-                    if (!_sessionState.ChatMessages.Any())
+                    var lastMsg = GetLastAssistantMessage();
+                    if (lastMsg == null)
                     {
                         return;
                     }
 
-                    var lastMsg = _sessionState.ChatMessages.Last();
                     if (isFirstChunk)
                     {
                         if (lastMsg.Content == "...")
@@ -270,7 +270,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                     lastMsg.Content += text;
                     if (_sessionState.ChatMessages.Count <= 1)
                     {
-                        _sessionState.AiAnalysisResult = _sessionState.ChatMessages.Last().Content;
+                        _sessionState.AiAnalysisResult = lastMsg.Content;
                     }
                 });
             }
@@ -281,15 +281,16 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             var remaining = buffered.ToString();
             await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
-                if (!_sessionState.ChatMessages.Any())
+                var lastMsg = GetLastAssistantMessage();
+                if (lastMsg == null)
                 {
                     return;
                 }
 
-                _sessionState.ChatMessages.Last().Content += remaining;
+                lastMsg.Content += remaining;
                 if (_sessionState.ChatMessages.Count <= 1)
                 {
-                    _sessionState.AiAnalysisResult = _sessionState.ChatMessages.Last().Content;
+                    _sessionState.AiAnalysisResult = lastMsg.Content;
                 }
             });
         }
@@ -376,12 +377,12 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
                         await _uiDispatcher.RunOnUiThreadAsync(() =>
                         {
-                            if (!_sessionState.ChatMessages.Any())
+                            var lastMsg = GetLastAssistantMessage();
+                            if (lastMsg == null)
                             {
                                 return;
                             }
 
-                            var lastMsg = _sessionState.ChatMessages.Last();
                             if (isFirstChunk)
                             {
                                 if (lastMsg.Content == "...")
@@ -412,12 +413,12 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                 var finalText = updateBuffer.ToString();
                 await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
-                    if (!_sessionState.ChatMessages.Any())
+                    var lastMsg = GetLastAssistantMessage();
+                    if (lastMsg == null)
                     {
                         return;
                     }
 
-                    var lastMsg = _sessionState.ChatMessages.Last();
                     if (isFirstChunk && lastMsg.Content == "...")
                     {
                         lastMsg.Content = string.Empty;
@@ -447,20 +448,8 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
                 await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
-                    if (!_sessionState.ChatMessages.Any())
-                    {
-                        return;
-                    }
-
-                    var lastMsg = _sessionState.ChatMessages.Last();
-                    if (string.IsNullOrEmpty(lastMsg.Content) || lastMsg.Content == "...")
-                    {
-                        lastMsg.Content = $"正在调用 {toolCall.FunctionName}...";
-                    }
-                    else
-                    {
-                        lastMsg.Content += $"\n\n正在调用 {toolCall.FunctionName}...";
-                    }
+                    RemoveTrailingAssistantPlaceholderIfNeeded();
+                    _sessionState.ChatMessages.Add(new UiChatMessage("tool", toolCall.FunctionName, includeInAiHistory: false));
                 });
 
                 var result = await _toolDispatcher.ExecuteAsync(toolCall, cancellationToken);
@@ -483,6 +472,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
                 await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
+                    EnsureTrailingAssistantMessage();
                     SetPendingActionMessageOnLastAssistant(pendingActionMessage);
                     _sessionState.ApplyActionProposals(actionProposals);
                     _sessionState.SetPendingToolContinuation(apiMessages);
@@ -493,7 +483,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
             await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
-                _sessionState.ChatMessages.Add(new UiChatMessage("assistant", "..."));
+                EnsureTrailingAssistantMessage();
             });
 
             await Task.Delay(50, cancellationToken);
@@ -657,7 +647,12 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             return;
         }
 
-        var lastMessage = _sessionState.ChatMessages.Last();
+        var lastMessage = GetLastAssistantMessage();
+        if (lastMessage == null)
+        {
+            return;
+        }
+
         lastMessage.Content = string.IsNullOrWhiteSpace(pendingActionMessage)
             ? "已创建待确认操作，等待用户确认。"
             : pendingActionMessage;
@@ -722,9 +717,10 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     {
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
-            if (_sessionState.ChatMessages.Any())
+            var lastAssistant = GetLastAssistantMessage();
+            if (lastAssistant != null)
             {
-                _sessionState.ChatMessages.Last().Content = content;
+                lastAssistant.Content = content;
             }
         });
     }
@@ -733,11 +729,41 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     {
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
-            if (_sessionState.ChatMessages.Any())
+            var lastAssistant = GetLastAssistantMessage();
+            if (lastAssistant != null)
             {
-                _sessionState.ChatMessages.Last().Content += $"\n\n{GetLocalizedString("ErrorAnalysis_AnalysisCanceled.Text")}";
+                lastAssistant.Content += $"\n\n{GetLocalizedString("ErrorAnalysis_AnalysisCanceled.Text")}";
             }
         });
+    }
+
+    private UiChatMessage? GetLastAssistantMessage()
+    {
+        return _sessionState.ChatMessages.LastOrDefault(message => message.IsAssistant);
+    }
+
+    private void EnsureTrailingAssistantMessage()
+    {
+        if (_sessionState.ChatMessages.LastOrDefault()?.IsAssistant == true)
+        {
+            return;
+        }
+
+        _sessionState.ChatMessages.Add(new UiChatMessage("assistant", "..."));
+    }
+
+    private void RemoveTrailingAssistantPlaceholderIfNeeded()
+    {
+        if (_sessionState.ChatMessages.LastOrDefault() is not UiChatMessage lastAssistant
+            || !lastAssistant.IsAssistant)
+        {
+            return;
+        }
+
+        if (lastAssistant.Content == "...")
+        {
+            _sessionState.ChatMessages.Remove(lastAssistant);
+        }
     }
 
     private string GetLocalizedString(string resourceKey)
