@@ -11,6 +11,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 {
     private const int MaxToolCallRounds = 8;
+    private const int MaxHistoricalToolTraceChars = 10000;
 
     private readonly ILanguageSelectorService _languageSelectorService;
     private readonly ILogSanitizerService _logSanitizerService;
@@ -630,15 +631,27 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
             int count = Math.Max(0, _sessionState.ChatMessages.Count - 1);
-            foreach (var msg in _sessionState.ChatMessages.Take(count))
-            {
-                if (msg.Role == "system")
-                {
-                    continue;
-                }
+            var historyMessages = _sessionState.ChatMessages
+                .Take(count)
+                .Where(msg => msg.Role != "system" && msg.IncludeInAiHistory)
+                .ToList();
+            var trimmedTraceIndices = GetTrimmedToolTraceMessageIndices(historyMessages);
 
-                if (!msg.IncludeInAiHistory)
+            for (int index = 0; index < historyMessages.Count; index++)
+            {
+                var msg = historyMessages[index];
+
+                if (trimmedTraceIndices.Contains(index))
                 {
+                    if (msg.IsAssistant && msg.ToolCalls != null && msg.ToolCalls.Count > 0)
+                    {
+                        var preservedContent = string.IsNullOrWhiteSpace(msg.AiHistoryContent) ? null : msg.AiHistoryContent;
+                        if (!string.IsNullOrWhiteSpace(preservedContent))
+                        {
+                            apiMessages.Add(new ChatMessage("assistant", preservedContent));
+                        }
+                    }
+
                     continue;
                 }
 
@@ -666,6 +679,76 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         });
 
         return apiMessages;
+    }
+
+    private static HashSet<int> GetTrimmedToolTraceMessageIndices(IReadOnlyList<UiChatMessage> historyMessages)
+    {
+        var trimmedIndices = new HashSet<int>();
+        int currentTurnStartIndex = FindLastUserMessageIndex(historyMessages);
+        if (currentTurnStartIndex <= 0)
+        {
+            return trimmedIndices;
+        }
+
+        Queue<ToolTraceRange> traceQueue = [];
+        int totalToolChars = 0;
+
+        for (int index = 0; index < currentTurnStartIndex; index++)
+        {
+            var message = historyMessages[index];
+            if (!message.IsAssistant || message.ToolCalls == null || message.ToolCalls.Count == 0)
+            {
+                continue;
+            }
+
+            int traceEndIndex = index;
+            int traceToolChars = 0;
+            for (int toolIndex = index + 1; toolIndex < currentTurnStartIndex; toolIndex++)
+            {
+                if (!historyMessages[toolIndex].IsTool)
+                {
+                    break;
+                }
+
+                traceEndIndex = toolIndex;
+                traceToolChars += GetToolHistoryContentLength(historyMessages[toolIndex]);
+            }
+
+            traceQueue.Enqueue(new ToolTraceRange(index, traceEndIndex, traceToolChars));
+            totalToolChars += traceToolChars;
+            index = traceEndIndex;
+        }
+
+        while (totalToolChars > MaxHistoricalToolTraceChars && traceQueue.Count > 0)
+        {
+            var trimmedTrace = traceQueue.Dequeue();
+            for (int index = trimmedTrace.StartIndex; index <= trimmedTrace.EndIndex; index++)
+            {
+                trimmedIndices.Add(index);
+            }
+
+            totalToolChars -= trimmedTrace.ToolContentLength;
+        }
+
+        return trimmedIndices;
+    }
+
+    private static int FindLastUserMessageIndex(IReadOnlyList<UiChatMessage> historyMessages)
+    {
+        for (int index = historyMessages.Count - 1; index >= 0; index--)
+        {
+            if (historyMessages[index].IsUser)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private static int GetToolHistoryContentLength(UiChatMessage message)
+    {
+        return (message.AiHistoryContent ?? message.Content ?? string.Empty).Length;
     }
 
     private async Task AppendStandaloneActionResultAsync(string actionResult)
@@ -798,6 +881,8 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             })
             .ToList();
     }
+
+            private readonly record struct ToolTraceRange(int StartIndex, int EndIndex, int ToolContentLength);
 
     private void EnsureTrailingAssistantMessage()
     {
