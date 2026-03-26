@@ -29,7 +29,13 @@
                     <DataTemplate x:DataType="viewModels:UiChatMessage">
                         <Grid Margin="0,8">
                             <StackPanel Spacing="4">
-                                <TextBlock Text="{x:Bind Role, Mode=OneWay}" FontWeight="Bold" FontSize="12" Opacity="0.6" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <TextBlock
+                                    Text="{x:Bind DisplayRoleText, Mode=OneWay}"
+                                    FontWeight="Bold"
+                                    FontSize="12"
+                                    Opacity="0.6"
+                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                    Visibility="{x:Bind ShowRoleHeader, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
                                 <TextBlock
                                     Text="{x:Bind Content, Mode=OneWay}"
                                     TextWrapping="Wrap"
@@ -45,6 +51,44 @@
                                     Foreground="{ThemeResource TextFillColorPrimaryBrush}"
                                     IsTextSelectionEnabled="True"
                                     Visibility="{x:Bind IsAssistant, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <Border
+                                    Visibility="{x:Bind IsTool, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="10"
+                                    Padding="12,10">
+                                    <Grid ColumnSpacing="10" VerticalAlignment="Center">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid Width="20" Height="20" VerticalAlignment="Center">
+                                            <FontIcon
+                                                Glyph="&#xEC7A;"
+                                                FontSize="16"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center" />
+                                        </Grid>
+                                        <StackPanel Grid.Column="1" Spacing="0" VerticalAlignment="Center">
+                                            <TextBlock
+                                                Text="Invoking"
+                                                FontSize="11"
+                                                LineHeight="12"
+                                                Opacity="0.72"
+                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                            <TextBlock
+                                                Text="{x:Bind Content, Mode=OneWay}"
+                                                FontFamily="{ThemeResource ContentControlThemeFontFamily}"
+                                                FontSize="13"
+                                                LineHeight="16"
+                                                FontWeight="SemiBold"
+                                                Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                                TextWrapping="WrapWholeWords" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
                             </StackPanel>
                         </Grid>
                     </DataTemplate>

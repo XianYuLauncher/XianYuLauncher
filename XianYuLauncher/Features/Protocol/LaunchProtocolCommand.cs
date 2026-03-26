@@ -7,13 +7,15 @@ public sealed class LaunchProtocolCommand : ProtocolCommand
         string? targetPath,
         string? mapName,
         string? serverIp,
-        string? serverPort)
+        string? serverPort,
+        string? profileId)
         : base(uri)
     {
         TargetPath = targetPath;
         MapName = mapName;
         ServerIp = serverIp;
         ServerPort = serverPort;
+        ProfileId = profileId;
     }
 
     public string? TargetPath { get; }
@@ -23,4 +25,6 @@ public sealed class LaunchProtocolCommand : ProtocolCommand
     public string? ServerIp { get; }
 
     public string? ServerPort { get; }
+
+    public string? ProfileId { get; }
 }

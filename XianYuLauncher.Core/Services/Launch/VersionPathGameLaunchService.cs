@@ -19,6 +19,8 @@ public sealed class VersionPathLaunchOptions
 {
     public string? OverrideJavaPath { get; init; }
 
+    public string? ProfileId { get; init; }
+
     public string? QuickPlaySingleplayer { get; init; }
 
     public string? QuickPlayServer { get; init; }
@@ -127,13 +129,15 @@ public sealed class VersionPathGameLaunchService : IVersionPathGameLaunchService
             cancellationToken.ThrowIfCancellationRequested();
 
             var profiles = await _profileManager.LoadProfilesAsync();
-            var profile = profiles.FirstOrDefault(p => p.IsActive);
+            var profile = ResolveLaunchProfile(profiles, launchOptions.ProfileId);
             if (profile == null)
             {
                 return new GameLaunchResult
                 {
                     Success = false,
-                    ErrorMessage = "未选择任何账户，请先打开启动器登录。"
+                    ErrorMessage = string.IsNullOrWhiteSpace(launchOptions.ProfileId)
+                        ? "未选择任何账户，请先打开启动器登录。"
+                        : "未找到指定档案，请确认档案仍然存在。"
                 };
             }
 
@@ -182,5 +186,20 @@ public sealed class VersionPathGameLaunchService : IVersionPathGameLaunchService
                 }
             }
         }
+    }
+
+    private MinecraftProfile? ResolveLaunchProfile(List<MinecraftProfile> profiles, string? profileId)
+    {
+        if (profiles.Count == 0)
+        {
+            return null;
+        }
+
+        if (!string.IsNullOrWhiteSpace(profileId))
+        {
+            return profiles.FirstOrDefault(profile => string.Equals(profile.Id, profileId, StringComparison.OrdinalIgnoreCase));
+        }
+
+        return _profileManager.GetActiveProfile(profiles);
     }
 }

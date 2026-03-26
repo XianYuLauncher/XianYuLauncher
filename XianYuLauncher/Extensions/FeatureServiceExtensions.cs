@@ -27,6 +27,8 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentToolHandler, SearchKnowledgeBaseToolHandler>();
         services.AddSingleton<IAgentToolHandler, ReadModInfoToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetCurrentGameDirectoryToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetProfilesToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetGameManifestToolHandler>();
         services.AddSingleton<IAgentToolHandler, InstallGameToolHandler>();
         services.AddSingleton<IAgentToolHandler, LaunchGameToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetOperationStatusToolHandler>();

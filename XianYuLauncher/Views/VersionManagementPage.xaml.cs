@@ -3,17 +3,22 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models.VersionManagement;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Features.Dialogs.Models;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.Graphics.Canvas;
 using System.IO.Compression;
 using Windows.Foundation;
+using System.Collections.ObjectModel;
 
 namespace XianYuLauncher.Views;
 
@@ -23,6 +28,7 @@ public sealed partial class VersionManagementPage : Page
     private readonly ICommonDialogService _dialogService;
     private readonly IProgressDialogService _progressDialogService;
     private readonly IResourceDialogService _resourceDialogService;
+    private readonly IProfileManager _profileManager;
     
     // 标记页面是否正在卸载
     private bool _isUnloading = false;
@@ -35,6 +41,7 @@ public sealed partial class VersionManagementPage : Page
         _dialogService = App.GetService<ICommonDialogService>();
         _progressDialogService = App.GetService<IProgressDialogService>();
         _resourceDialogService = App.GetService<IResourceDialogService>();
+        _profileManager = App.GetService<IProfileManager>();
         this.DataContext = ViewModel;
         InitializeComponent();
         
@@ -241,6 +248,115 @@ public sealed partial class VersionManagementPage : Page
             PageTitle.Text = "VersionManagerPage_Title".GetLocalized();
             PageSubtitle.Text = "VersionManagerPage_Subtitle_SelectVersion".GetLocalized();
         }
+    }
+
+    private async void SaveLaunchProfileFlyout_Opening(object sender, object e)
+    {
+        if (sender is not Flyout flyout
+            || flyout.Target is not FrameworkElement target
+            || target.Tag is not SaveInfo save)
+        {
+            return;
+        }
+
+        var profiles = await _profileManager.LoadProfilesAsync();
+        flyout.Content = await BuildProfileFlyoutContentAsync(
+            flyout,
+            profiles,
+            profile => ViewModel.LaunchWithSave(save, profile.Id));
+    }
+
+    private static async Task<FrameworkElement> BuildProfileFlyoutContentAsync(Flyout ownerFlyout, List<MinecraftProfile> profiles, Action<MinecraftProfile> onSelected)
+    {
+        if (profiles.Count == 0)
+        {
+            return new Border
+            {
+                MinWidth = 320,
+                MaxWidth = 360,
+                Padding = new Thickness(16, 14, 16, 14),
+                Child = new TextBlock
+                {
+                    Text = "LauncherProfileFlyout_NoProfiles".GetLocalized(),
+                    Foreground = Application.Current.Resources["TextFillColorSecondaryBrush"] as Brush,
+                },
+            };
+        }
+
+        var items = await CreateProfileSelectionItemsAsync(profiles);
+        var itemTemplate = Application.Current.Resources["ProfileSelectionItemTemplate"] as DataTemplate;
+        var listView = new ListView
+        {
+            ItemsSource = items,
+            ItemTemplate = itemTemplate,
+            SelectionMode = ListViewSelectionMode.None,
+            IsItemClickEnabled = true,
+            MaxHeight = 320,
+            MinWidth = 320,
+        };
+
+        listView.ItemClick += (_, args) =>
+        {
+            if (args.ClickedItem is not ProfileSelectionItem selectedItem)
+            {
+                return;
+            }
+
+            var profile = profiles.FirstOrDefault(item => string.Equals(item.Id, selectedItem.Id, StringComparison.OrdinalIgnoreCase));
+            if (profile == null)
+            {
+                return;
+            }
+
+            ownerFlyout.Hide();
+            onSelected(profile);
+        };
+
+        return new Border
+        {
+            MinWidth = 320,
+            MaxWidth = 360,
+            Padding = new Thickness(0, 8, 0, 8),
+            Child = new StackPanel
+            {
+                Children =
+                {
+                    new TextBlock
+                    {
+                        Text = "LauncherProfileDialog_ShortcutTitle".GetLocalized(),
+                        Margin = new Thickness(16, 0, 16, 8),
+                        FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
+                    },
+                    listView,
+                },
+            },
+        };
+    }
+
+    private static async Task<ObservableCollection<ProfileSelectionItem>> CreateProfileSelectionItemsAsync(List<MinecraftProfile> profiles)
+    {
+        BitmapImage avatar;
+        try
+        {
+            avatar = await ProfileAvatarImageHelper.CreateDefaultProfileAvatarAsync();
+        }
+        catch
+        {
+            avatar = new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+        }
+
+        var items = new ObservableCollection<ProfileSelectionItem>();
+        foreach (var profile in profiles.OrderByDescending(profile => profile.IsActive).ThenBy(profile => profile.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            items.Add(new ProfileSelectionItem
+            {
+                Id = profile.Id,
+                Name = profile.Name,
+                Avatar = avatar,
+            });
+        }
+
+        return items;
     }
     
     #region 拖放事件处理

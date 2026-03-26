@@ -11,6 +11,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 {
     private const int MaxToolCallRounds = 8;
+    private const int MaxHistoricalToolTraceChars = 10000;
 
     private readonly ILanguageSelectorService _languageSelectorService;
     private readonly ILogSanitizerService _logSanitizerService;
@@ -251,12 +252,12 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
                 await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
-                    if (!_sessionState.ChatMessages.Any())
+                    var lastMsg = GetLastAssistantMessage();
+                    if (lastMsg == null)
                     {
                         return;
                     }
 
-                    var lastMsg = _sessionState.ChatMessages.Last();
                     if (isFirstChunk)
                     {
                         if (lastMsg.Content == "...")
@@ -270,7 +271,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                     lastMsg.Content += text;
                     if (_sessionState.ChatMessages.Count <= 1)
                     {
-                        _sessionState.AiAnalysisResult = _sessionState.ChatMessages.Last().Content;
+                        _sessionState.AiAnalysisResult = lastMsg.Content;
                     }
                 });
             }
@@ -281,15 +282,16 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             var remaining = buffered.ToString();
             await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
-                if (!_sessionState.ChatMessages.Any())
+                var lastMsg = GetLastAssistantMessage();
+                if (lastMsg == null)
                 {
                     return;
                 }
 
-                _sessionState.ChatMessages.Last().Content += remaining;
+                lastMsg.Content += remaining;
                 if (_sessionState.ChatMessages.Count <= 1)
                 {
-                    _sessionState.AiAnalysisResult = _sessionState.ChatMessages.Last().Content;
+                    _sessionState.AiAnalysisResult = lastMsg.Content;
                 }
             });
         }
@@ -376,12 +378,12 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
                         await _uiDispatcher.RunOnUiThreadAsync(() =>
                         {
-                            if (!_sessionState.ChatMessages.Any())
+                            var lastMsg = GetLastAssistantMessage();
+                            if (lastMsg == null)
                             {
                                 return;
                             }
 
-                            var lastMsg = _sessionState.ChatMessages.Last();
                             if (isFirstChunk)
                             {
                                 if (lastMsg.Content == "...")
@@ -412,12 +414,12 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                 var finalText = updateBuffer.ToString();
                 await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
-                    if (!_sessionState.ChatMessages.Any())
+                    var lastMsg = GetLastAssistantMessage();
+                    if (lastMsg == null)
                     {
                         return;
                     }
 
-                    var lastMsg = _sessionState.ChatMessages.Last();
                     if (isFirstChunk && lastMsg.Content == "...")
                     {
                         lastMsg.Content = string.Empty;
@@ -439,31 +441,45 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             var assistantToolCallMessage = new ChatMessage("assistant", contentBuilder.Length > 0 ? contentBuilder.ToString() : null, pendingToolCalls);
             apiMessages.Add(assistantToolCallMessage);
 
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
+            {
+                var lastAssistant = GetLastAssistantMessage();
+                if (lastAssistant == null)
+                {
+                    return;
+                }
+
+                lastAssistant.ToolCalls = CloneToolCalls(pendingToolCalls);
+                lastAssistant.AiHistoryContent = string.IsNullOrWhiteSpace(lastAssistant.Content) ? null : lastAssistant.Content;
+            });
+
             List<AgentActionProposal> actionProposals = [];
             List<string> actionProposalMessages = [];
             foreach (var toolCall in pendingToolCalls)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
+                UiChatMessage? toolUiMessage = null;
                 await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
-                    if (!_sessionState.ChatMessages.Any())
+                    RemoveTrailingAssistantPlaceholderIfNeeded();
+                    toolUiMessage = new UiChatMessage("tool", toolCall.FunctionName)
                     {
-                        return;
-                    }
-
-                    var lastMsg = _sessionState.ChatMessages.Last();
-                    if (string.IsNullOrEmpty(lastMsg.Content) || lastMsg.Content == "...")
-                    {
-                        lastMsg.Content = $"正在调用 {toolCall.FunctionName}...";
-                    }
-                    else
-                    {
-                        lastMsg.Content += $"\n\n正在调用 {toolCall.FunctionName}...";
-                    }
+                        ToolCallId = toolCall.Id,
+                        AiHistoryContent = string.Empty
+                    };
+                    _sessionState.ChatMessages.Add(toolUiMessage);
                 });
 
                 var result = await _toolDispatcher.ExecuteAsync(toolCall, cancellationToken);
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
+                {
+                    if (toolUiMessage != null)
+                    {
+                        toolUiMessage.AiHistoryContent = result.Message;
+                    }
+                });
+
                 if (result.ActionProposal != null)
                 {
                     actionProposals.Add(result.ActionProposal);
@@ -483,6 +499,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
                 await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
+                    EnsureTrailingAssistantMessage();
                     SetPendingActionMessageOnLastAssistant(pendingActionMessage);
                     _sessionState.ApplyActionProposals(actionProposals);
                     _sessionState.SetPendingToolContinuation(apiMessages);
@@ -493,7 +510,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
             await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
-                _sessionState.ChatMessages.Add(new UiChatMessage("assistant", "..."));
+                EnsureTrailingAssistantMessage();
             });
 
             await Task.Delay(50, cancellationToken);
@@ -614,23 +631,124 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
             int count = Math.Max(0, _sessionState.ChatMessages.Count - 1);
-            foreach (var msg in _sessionState.ChatMessages.Take(count))
+            var historyMessages = _sessionState.ChatMessages
+                .Take(count)
+                .Where(msg => msg.Role != "system" && msg.IncludeInAiHistory)
+                .ToList();
+            var trimmedTraceIndices = GetTrimmedToolTraceMessageIndices(historyMessages);
+
+            for (int index = 0; index < historyMessages.Count; index++)
             {
-                if (msg.Role == "system")
+                var msg = historyMessages[index];
+
+                if (trimmedTraceIndices.Contains(index))
                 {
+                    if (msg.IsAssistant && msg.ToolCalls != null && msg.ToolCalls.Count > 0)
+                    {
+                        var preservedContent = string.IsNullOrWhiteSpace(msg.AiHistoryContent) ? null : msg.AiHistoryContent;
+                        if (!string.IsNullOrWhiteSpace(preservedContent))
+                        {
+                            apiMessages.Add(new ChatMessage("assistant", preservedContent));
+                        }
+                    }
+
                     continue;
                 }
 
-                if (!msg.IncludeInAiHistory)
+                if (msg.IsAssistant && msg.ToolCalls != null && msg.ToolCalls.Count > 0)
                 {
+                    var content = string.IsNullOrWhiteSpace(msg.AiHistoryContent) ? null : msg.AiHistoryContent;
+                    apiMessages.Add(new ChatMessage("assistant", content, CloneToolCalls(msg.ToolCalls)));
                     continue;
                 }
 
-                apiMessages.Add(new ChatMessage(msg.Role, msg.Content));
+                if (msg.IsTool)
+                {
+                    if (string.IsNullOrWhiteSpace(msg.ToolCallId))
+                    {
+                        continue;
+                    }
+
+                    var toolResultContent = msg.AiHistoryContent ?? msg.Content ?? string.Empty;
+                    apiMessages.Add(ChatMessage.ToolResult(msg.ToolCallId, toolResultContent));
+                    continue;
+                }
+
+                apiMessages.Add(new ChatMessage(msg.Role, msg.Content ?? string.Empty));
             }
         });
 
         return apiMessages;
+    }
+
+    private static HashSet<int> GetTrimmedToolTraceMessageIndices(IReadOnlyList<UiChatMessage> historyMessages)
+    {
+        var trimmedIndices = new HashSet<int>();
+        int currentTurnStartIndex = FindLastUserMessageIndex(historyMessages);
+        if (currentTurnStartIndex <= 0)
+        {
+            return trimmedIndices;
+        }
+
+        Queue<ToolTraceRange> traceQueue = [];
+        int totalToolChars = 0;
+
+        for (int index = 0; index < currentTurnStartIndex; index++)
+        {
+            var message = historyMessages[index];
+            if (!message.IsAssistant || message.ToolCalls == null || message.ToolCalls.Count == 0)
+            {
+                continue;
+            }
+
+            int traceEndIndex = index;
+            int traceToolChars = 0;
+            for (int toolIndex = index + 1; toolIndex < currentTurnStartIndex; toolIndex++)
+            {
+                if (!historyMessages[toolIndex].IsTool)
+                {
+                    break;
+                }
+
+                traceEndIndex = toolIndex;
+                traceToolChars += GetToolHistoryContentLength(historyMessages[toolIndex]);
+            }
+
+            traceQueue.Enqueue(new ToolTraceRange(index, traceEndIndex, traceToolChars));
+            totalToolChars += traceToolChars;
+            index = traceEndIndex;
+        }
+
+        while (totalToolChars > MaxHistoricalToolTraceChars && traceQueue.Count > 0)
+        {
+            var trimmedTrace = traceQueue.Dequeue();
+            for (int index = trimmedTrace.StartIndex; index <= trimmedTrace.EndIndex; index++)
+            {
+                trimmedIndices.Add(index);
+            }
+
+            totalToolChars -= trimmedTrace.ToolContentLength;
+        }
+
+        return trimmedIndices;
+    }
+
+    private static int FindLastUserMessageIndex(IReadOnlyList<UiChatMessage> historyMessages)
+    {
+        for (int index = historyMessages.Count - 1; index >= 0; index--)
+        {
+            if (historyMessages[index].IsUser)
+            {
+                return index;
+            }
+        }
+
+        return -1;
+    }
+
+    private static int GetToolHistoryContentLength(UiChatMessage message)
+    {
+        return (message.AiHistoryContent ?? message.Content ?? string.Empty).Length;
     }
 
     private async Task AppendStandaloneActionResultAsync(string actionResult)
@@ -657,7 +775,12 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             return;
         }
 
-        var lastMessage = _sessionState.ChatMessages.Last();
+        var lastMessage = GetLastAssistantMessage();
+        if (lastMessage == null)
+        {
+            return;
+        }
+
         lastMessage.Content = string.IsNullOrWhiteSpace(pendingActionMessage)
             ? "已创建待确认操作，等待用户确认。"
             : pendingActionMessage;
@@ -722,9 +845,10 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     {
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
-            if (_sessionState.ChatMessages.Any())
+            var lastAssistant = GetLastAssistantMessage();
+            if (lastAssistant != null)
             {
-                _sessionState.ChatMessages.Last().Content = content;
+                lastAssistant.Content = content;
             }
         });
     }
@@ -733,11 +857,55 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     {
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
-            if (_sessionState.ChatMessages.Any())
+            var lastAssistant = GetLastAssistantMessage();
+            if (lastAssistant != null)
             {
-                _sessionState.ChatMessages.Last().Content += $"\n\n{GetLocalizedString("ErrorAnalysis_AnalysisCanceled.Text")}";
+                lastAssistant.Content += $"\n\n{GetLocalizedString("ErrorAnalysis_AnalysisCanceled.Text")}";
             }
         });
+    }
+
+    private UiChatMessage? GetLastAssistantMessage()
+    {
+        return _sessionState.ChatMessages.LastOrDefault(message => message.IsAssistant);
+    }
+
+    private static List<ToolCallInfo> CloneToolCalls(IEnumerable<ToolCallInfo> toolCalls)
+    {
+        return toolCalls
+            .Select(toolCall => new ToolCallInfo
+            {
+                Id = toolCall.Id,
+                FunctionName = toolCall.FunctionName,
+                Arguments = toolCall.Arguments
+            })
+            .ToList();
+    }
+
+            private readonly record struct ToolTraceRange(int StartIndex, int EndIndex, int ToolContentLength);
+
+    private void EnsureTrailingAssistantMessage()
+    {
+        if (_sessionState.ChatMessages.LastOrDefault()?.IsAssistant == true)
+        {
+            return;
+        }
+
+        _sessionState.ChatMessages.Add(new UiChatMessage("assistant", "..."));
+    }
+
+    private void RemoveTrailingAssistantPlaceholderIfNeeded()
+    {
+        if (_sessionState.ChatMessages.LastOrDefault() is not UiChatMessage lastAssistant
+            || !lastAssistant.IsAssistant)
+        {
+            return;
+        }
+
+        if (lastAssistant.Content == "...")
+        {
+            _sessionState.ChatMessages.Remove(lastAssistant);
+        }
     }
 
     private string GetLocalizedString(string resourceKey)
@@ -764,7 +932,8 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             "1. CHECK THE LAUNCH COMMAND FIRST! If the user has set invalid JVM arguments (e.g., nonsense in -Djava.library.path or -Xmx), TELL THEM TO FIX IT MANUALLY in the settings. Do NOT switch Java versions for bad arguments.\n" +
             "2. ONLY use the 'switchJava' tool if the crash log explicitly indicates a Java version mismatch or runtime error. Do not guess.\n" +
             "3. The 'searchModrinthProject' tool is stricterly for searching MODS, SHADERS, or RESOURCE PACKS. It CANNOT search for Mod Loaders (Forge, Fabric, NeoForge, Quilt). Explain manual installation for loaders if needed.\n" +
-            "4. If you cannot fix the issue via tools, provide clear manual instructions. If the problem persists, advise the user to click the 'Contact Author' (联系作者) button at the top.\n" +
-            "5. Never fabricate tool calls, tool execution, or tool results. Only describe a tool as executed, succeeded, failed, rejected, cancelled, or completed when you have the real tool result for that exact tool call; otherwise say you do not have the result yet.";
+            "4. If the user explicitly asks to install a specific Minecraft version, call 'get_game_manifest' with queryType='list' and searchText set to that version string before 'install_game'. Use latest_release/latest_snapshot only when the user explicitly asks for latest release or latest snapshot.\n" +
+            "5. If you cannot fix the issue via tools, provide clear manual instructions. If the problem persists, advise the user to click the 'Contact Author' (联系作者) button at the top.\n" +
+            "6. Never fabricate tool calls, tool execution, or tool results. Only describe a tool as executed, succeeded, failed, rejected, cancelled, or completed when you have the real tool result for that exact tool call; otherwise say you do not have the result yet.";
     }
 }

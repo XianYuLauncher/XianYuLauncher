@@ -23,6 +23,7 @@ namespace XianYuLauncher.ViewModels;
 public partial class ResourceDownloadViewModel : ObservableRecipient
 {
     private readonly IMinecraftVersionService _minecraftVersionService;
+    private readonly IGameManifestQueryService _gameManifestQueryService;
     private readonly INavigationService _navigationService;
     private readonly ModrinthService _modrinthService;
     private readonly CurseForgeService _curseForgeService;
@@ -651,11 +652,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     // TabView 选中索引，用于控制显示哪个标签页
     [ObservableProperty]
     private int _selectedTabIndex = 0;
-    
-    // 版本列表缓存相关
-    private const string VersionCacheFileName = "version_cache.json";
-    private const string VersionCacheTimeKey = "VersionListCacheTime";
-    private static readonly TimeSpan CacheExpiration = TimeSpan.FromHours(24);
     
     [ObservableProperty]
     private bool _isFavoritesSelectionMode = false;
@@ -1794,6 +1790,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
     public ResourceDownloadViewModel(
         IMinecraftVersionService minecraftVersionService,
+        IGameManifestQueryService gameManifestQueryService,
         INavigationService navigationService,
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
@@ -1812,6 +1809,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         IGameDirResolver gameDirResolver)
     {
         _minecraftVersionService = minecraftVersionService;
+        _gameManifestQueryService = gameManifestQueryService;
         _navigationService = navigationService;
         _modrinthService = modrinthService;
         _curseForgeService = curseForgeService;
@@ -2545,109 +2543,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         IsVersionLoading = true;
         try
         {
-            List<Core.Models.VersionEntry>? versionList = null;
-            
-            // 检查缓存
-            if (!forceRefresh)
-            {
-                var cachedTime = await _localSettingsService.ReadSettingAsync<DateTime?>(VersionCacheTimeKey);
-                if (cachedTime.HasValue)
-                {
-                    var timeSinceCache = DateTime.Now - cachedTime.Value;
-                    var remainingTime = CacheExpiration - timeSinceCache;
-                    
-                    if (timeSinceCache < CacheExpiration)
-                    {
-                        // 缓存未过期，尝试加载缓存
-                        System.Diagnostics.Debug.WriteLine($"[版本缓存] 缓存未过期，剩余 {remainingTime.TotalHours:F1} 小时刷新");
-                        
-                        // 从文件读取缓存
-                        var cacheFilePath = System.IO.Path.Combine(_fileService.GetLauncherCachePath(), VersionCacheFileName);
-                        if (System.IO.File.Exists(cacheFilePath))
-                        {
-                            try
-                            {
-                                var json = await System.IO.File.ReadAllTextAsync(cacheFilePath);
-                                var cachedData = Newtonsoft.Json.JsonConvert.DeserializeObject<List<CachedVersionEntry>>(json);
-                                
-                                if (cachedData != null && cachedData.Count > 0)
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"[版本缓存] 成功加载缓存，共 {cachedData.Count} 个版本");
-                                    
-                                    // 转换缓存数据为 VersionEntry
-                                    versionList = cachedData.Select(c => new Core.Models.VersionEntry
-                                    {
-                                        Id = c.Id,
-                                        Type = c.Type,
-                                        Url = c.Url,
-                                        Time = c.Time,
-                                        ReleaseTime = c.ReleaseTime
-                                    }).ToList();
-                                    
-                                    // 更新UI
-                                    await UpdateVersionsUI(versionList);
-                                    return;
-                                }
-                                else
-                                {
-                                    System.Diagnostics.Debug.WriteLine("[版本缓存] 缓存数据为空，重新加载");
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                System.Diagnostics.Debug.WriteLine($"[版本缓存] 读取缓存文件失败: {ex.Message}");
-                            }
-                        }
-                        else
-                        {
-                            System.Diagnostics.Debug.WriteLine("[版本缓存] 缓存文件不存在，重新加载");
-                        }
-                    }
-                    else
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[版本缓存] 当前已超过24小时（已过 {timeSinceCache.TotalHours:F1} 小时），刷新");
-                    }
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("[版本缓存] 首次加载，无缓存数据");
-                }
-            }
-            
-            // 从网络加载
-            System.Diagnostics.Debug.WriteLine("[版本缓存] 从网络加载版本列表...");
-            var manifest = await _minecraftVersionService.GetVersionManifestAsync();
-            versionList = manifest.Versions.ToList();
-            System.Diagnostics.Debug.WriteLine($"[版本缓存] 成功加载 {versionList.Count} 个版本");
-            
-            // 保存到缓存文件
-            try
-            {
-                var cacheData = versionList.Select(v => new CachedVersionEntry
-                {
-                    Id = v.Id ?? string.Empty,
-                    Type = v.Type ?? string.Empty,
-                    Url = v.Url ?? string.Empty,
-                    Time = v.Time ?? string.Empty,
-                    ReleaseTime = v.ReleaseTime ?? string.Empty
-                }).ToList();
-                
-                var cacheFilePath = System.IO.Path.Combine(_fileService.GetLauncherCachePath(), VersionCacheFileName);
-                var json = Newtonsoft.Json.JsonConvert.SerializeObject(cacheData, Newtonsoft.Json.Formatting.None);
-                await System.IO.File.WriteAllTextAsync(cacheFilePath, json);
-                
-                // 保存缓存时间到 LocalSettings（时间戳很小，不会超限）
-                await _localSettingsService.SaveSettingAsync(VersionCacheTimeKey, DateTime.Now);
-                System.Diagnostics.Debug.WriteLine("[版本缓存] 缓存已更新，下次刷新时间: " + DateTime.Now.Add(CacheExpiration).ToString("yyyy-MM-dd HH:mm:ss"));
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"[版本缓存] 保存缓存失败: {ex.Message}");
-                // 保存失败不影响主流程，继续更新UI
-            }
-            
-            // 更新UI
-            await UpdateVersionsUI(versionList);
+            var catalog = await _gameManifestQueryService.GetCatalogAsync(forceRefresh);
+            System.Diagnostics.Debug.WriteLine($"[版本缓存] {(catalog.IsFromCache ? "成功加载缓存" : "从网络加载版本列表")}, 共 {catalog.Versions.Count} 个版本");
+            await UpdateVersionsUI(catalog.Versions.ToList(), catalog.LatestReleaseVersion, catalog.LatestSnapshotVersion);
         }
         catch (Exception ex)
         {
@@ -2663,11 +2561,11 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     /// <summary>
     /// 更新版本列表UI
     /// </summary>
-    private async Task UpdateVersionsUI(List<Core.Models.VersionEntry> versionList)
+    private async Task UpdateVersionsUI(List<Core.Models.VersionEntry> versionList, string latestReleaseVersion, string latestSnapshotVersion)
     {
         // 更新最新版本信息（使用延迟更新，减少UI刷新）
-        LatestReleaseVersion = versionList.FirstOrDefault(v => v.Type == "release")?.Id ?? string.Empty;
-        LatestSnapshotVersion = versionList.FirstOrDefault(v => v.Type == "snapshot")?.Id ?? string.Empty;
+        LatestReleaseVersion = latestReleaseVersion;
+        LatestSnapshotVersion = latestSnapshotVersion;
         
         // 1. 使用临时列表存储所有版本，然后一次性替换Versions集合
         // 这是性能优化的关键：减少UI更新次数
@@ -2679,18 +2577,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         
         // 3. 同时更新可用版本列表，避免重复请求
         await UpdateAvailableVersionsFromManifest(versionList);
-    }
-    
-    /// <summary>
-    /// 缓存版本条目（用于序列化）
-    /// </summary>
-    public class CachedVersionEntry
-    {
-        public string Id { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty;
-        public string Url { get; set; } = string.Empty;
-        public string Time { get; set; } = string.Empty;
-        public string ReleaseTime { get; set; } = string.Empty;
     }
     
     /// <summary>

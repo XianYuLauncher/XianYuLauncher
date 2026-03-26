@@ -69,6 +69,7 @@ public sealed class VersionPathGameLaunchServiceTests : IDisposable
             .Setup(service => service.SetMinecraftDataPath(It.IsAny<string>()))
             .Callback<string>(path => callOrder.Add($"set:{path}"));
         _profileManager.Setup(service => service.LoadProfilesAsync()).ReturnsAsync([activeProfile]);
+        _profileManager.Setup(service => service.GetActiveProfile(It.IsAny<List<MinecraftProfile>>())).Returns(activeProfile);
         _gameLaunchService
             .Setup(service => service.LaunchGameAsync(
                 preparedLaunch.VersionName,
@@ -110,6 +111,7 @@ public sealed class VersionPathGameLaunchServiceTests : IDisposable
             .Setup(service => service.SetMinecraftDataPath(It.IsAny<string>()))
             .Callback<string>(path => callOrder.Add($"set:{path}"));
         _profileManager.Setup(service => service.LoadProfilesAsync()).ReturnsAsync([activeProfile]);
+        _profileManager.Setup(service => service.GetActiveProfile(It.IsAny<List<MinecraftProfile>>())).Returns(activeProfile);
         _gameLaunchService
             .Setup(service => service.LaunchGameAsync(
                 preparedLaunch.VersionName,

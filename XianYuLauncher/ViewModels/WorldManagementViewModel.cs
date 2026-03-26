@@ -129,13 +129,19 @@ public partial class WorldManagementViewModel : ObservableRecipient
     [RelayCommand]
     private void LaunchWorld()
     {
+        LaunchWorld(null);
+    }
+
+    public void LaunchWorld(string? profileId)
+    {
         if (string.IsNullOrEmpty(CurrentVersionId) || string.IsNullOrEmpty(WorldName))
             return;
 
         _navigationService.NavigateTo(typeof(LaunchViewModel).FullName!, new LaunchMapParameter
         {
             VersionId = CurrentVersionId,
-            WorldFolder = WorldName
+            WorldFolder = WorldName,
+            ProfileId = profileId ?? string.Empty,
         });
     }
 

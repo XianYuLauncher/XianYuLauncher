@@ -131,6 +131,8 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
             _lastChatMessage = lastMessage;
             _lastChatMessage.PropertyChanged += ChatMessage_PropertyChanged;
         }
+
+        UpdateMessageRolePresentation();
     }
 
     private void DetachViewModelHandlers(ErrorAnalysisViewModel? viewModel)
@@ -203,6 +205,8 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
 
     private void ChatMessages_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
+        UpdateMessageRolePresentation();
+
         if (e.Action == NotifyCollectionChangedAction.Add)
         {
             if (e.NewItems != null)
@@ -233,6 +237,10 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
                 _lastChatMessage = null;
             }
 
+            UpdatePlaceholderState();
+        }
+        else
+        {
             UpdatePlaceholderState();
         }
     }
@@ -278,6 +286,29 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
     {
         var shouldShow = ShowEmptyPlaceholder && (ViewModel?.HasChatMessages != true);
         EmptyStatePanel.Visibility = shouldShow ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void UpdateMessageRolePresentation()
+    {
+        if (_attachedViewModel == null)
+        {
+            return;
+        }
+
+        string? previousNonToolRole = null;
+        foreach (var message in _attachedViewModel.ChatMessages)
+        {
+            if (message.IsTool)
+            {
+                message.DisplayRoleText = string.Empty;
+                message.ShowRoleHeader = false;
+                continue;
+            }
+
+            message.DisplayRoleText = message.Role;
+            message.ShowRoleHeader = !string.Equals(previousNonToolRole, message.Role, StringComparison.OrdinalIgnoreCase);
+            previousNonToolRole = message.Role;
+        }
     }
 
     private void ChatInput_KeyDown(object sender, KeyRoutedEventArgs e)
