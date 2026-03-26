@@ -58,18 +58,18 @@ public class LocalSettingsService : ILocalSettingsService
             {
                 LogJavaSelectionModeRead<T>(key, obj, storageMode: "MSIX", stage: "RawRead");
 
-                if (TryReadDirectValue(obj, out T? directValue))
-                {
-                    LogJavaSelectionModeResolved(key, typeof(T), directValue, storageMode: "MSIX", resolution: "DirectValue");
-                    return directValue;
-                }
-
                 // 特殊处理：兼容读取 JavaSelectionMode 的历史存储格式，但不在读取时改写存储。
                 if (TryReadJavaSelectionModeCompatibilityValue(key, obj, out T? compatibilityValue, out var compatibilityResolution))
                 {
                     Log.Warning("[LocalSettings.JavaSelectionMode] Compatibility read applied. StorageMode=MSIX; Resolution={Resolution}; RequestedType={RequestedType}; RawType={RawType}; RawValue={RawValue}", compatibilityResolution, typeof(T).FullName, obj.GetType().FullName, obj);
                     LogJavaSelectionModeResolved(key, typeof(T), compatibilityValue, storageMode: "MSIX", resolution: compatibilityResolution);
                     return compatibilityValue;
+                }
+
+                if (TryReadDirectValue(obj, out T? directValue))
+                {
+                    LogJavaSelectionModeResolved(key, typeof(T), directValue, storageMode: "MSIX", resolution: "DirectValue");
+                    return directValue;
                 }
                 
                 if (obj is string jsonString)
@@ -90,18 +90,18 @@ public class LocalSettingsService : ILocalSettingsService
             {
                 LogJavaSelectionModeRead<T>(key, obj, storageMode: "File", stage: "RawRead");
 
-                if (TryReadDirectValue(obj, out T? directValue))
-                {
-                    LogJavaSelectionModeResolved(key, typeof(T), directValue, storageMode: "File", resolution: "DirectValue");
-                    return directValue;
-                }
-
                 // 特殊处理：兼容读取 JavaSelectionMode 的历史存储格式，但不在读取时改写存储。
                 if (TryReadJavaSelectionModeCompatibilityValue(key, obj, out T? compatibilityValue, out var compatibilityResolution))
                 {
                     Log.Warning("[LocalSettings.JavaSelectionMode] Compatibility read applied. StorageMode=File; Resolution={Resolution}; RequestedType={RequestedType}; RawType={RawType}; RawValue={RawValue}", compatibilityResolution, typeof(T).FullName, obj.GetType().FullName, obj);
                     LogJavaSelectionModeResolved(key, typeof(T), compatibilityValue, storageMode: "File", resolution: compatibilityResolution);
                     return compatibilityValue;
+                }
+
+                if (TryReadDirectValue(obj, out T? directValue))
+                {
+                    LogJavaSelectionModeResolved(key, typeof(T), directValue, storageMode: "File", resolution: "DirectValue");
+                    return directValue;
                 }
                 
                 // 调试：检查读取的Java版本数据
@@ -393,6 +393,18 @@ public class LocalSettingsService : ILocalSettingsService
             {
                 value = (T?)(object?)modeName;
                 resolution = $"IntToStringName:{intValue}";
+                return true;
+            }
+        }
+
+        if (targetType == typeof(string) && rawValue is string stringValue)
+        {
+            var normalizedValue = UnwrapStoredString(stringValue);
+            if (TryParseStoredInt(normalizedValue, out var numericValue)
+                && TryMapJavaSelectionModeIntToName(numericValue, out var modeName))
+            {
+                value = (T?)(object?)modeName;
+                resolution = $"NumericStringToStringName:{normalizedValue}";
                 return true;
             }
         }

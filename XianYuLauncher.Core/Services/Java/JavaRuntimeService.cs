@@ -1,5 +1,6 @@
 using Microsoft.Win32;
 using System.Diagnostics;
+using System.Globalization;
 using Serilog;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
@@ -12,6 +13,12 @@ namespace XianYuLauncher.Core.Services;
 /// </summary>
 public class JavaRuntimeService : IJavaRuntimeService
 {
+    private enum JavaSelectionModeSetting
+    {
+        Auto = 0,
+        Manual = 1,
+    }
+
     private readonly ILocalSettingsService _localSettingsService;
     
     private const string JavaPathKey = "JavaPath";
@@ -88,9 +95,10 @@ public class JavaRuntimeService : IJavaRuntimeService
         
         // 2. 获取 Java 选择模式
         var javaSelectionMode = await _localSettingsService.ReadSettingAsync<string>(JavaSelectionModeKey);
-        var isAutoMode = !string.Equals(javaSelectionMode, "Manual", StringComparison.OrdinalIgnoreCase);
+        var resolvedMode = ResolveJavaSelectionMode(javaSelectionMode, out var modeResolution);
+        var isAutoMode = resolvedMode != JavaSelectionModeSetting.Manual;
         System.Diagnostics.Debug.WriteLine($"[JavaRuntimeService] Java 选择模式: {(isAutoMode ? "自动" : "手动")} (值: {javaSelectionMode ?? "(null)"})");
-        Log.Information("[JavaRuntimeService] Java selection mode resolved. RawValue={RawValue}; Mode={Mode}", javaSelectionMode ?? "(null)", isAutoMode ? "Auto" : "Manual");
+        Log.Information("[JavaRuntimeService] Java selection mode resolved. RawValue={RawValue}; Mode={Mode}; Resolution={Resolution}", javaSelectionMode ?? "(null)", resolvedMode, modeResolution);
         
         // 3. 检测所有 Java 版本
         var javaVersions = await DetectJavaVersionsAsync();
@@ -329,6 +337,34 @@ public class JavaRuntimeService : IJavaRuntimeService
         }
         
         return false;
+    }
+
+    private static JavaSelectionModeSetting ResolveJavaSelectionMode(string? rawValue, out string resolution)
+    {
+        if (string.IsNullOrWhiteSpace(rawValue))
+        {
+            resolution = "DefaultAuto:Empty";
+            return JavaSelectionModeSetting.Auto;
+        }
+
+        var normalizedValue = rawValue.Trim();
+        if (Enum.TryParse<JavaSelectionModeSetting>(normalizedValue, ignoreCase: true, out var mode)
+            && Enum.IsDefined(mode))
+        {
+            resolution = $"EnumParse:{mode}";
+            return mode;
+        }
+
+        if (int.TryParse(normalizedValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out var numericValue)
+            && Enum.IsDefined(typeof(JavaSelectionModeSetting), numericValue))
+        {
+            mode = (JavaSelectionModeSetting)numericValue;
+            resolution = $"NumericFallback:{mode}";
+            return mode;
+        }
+
+        resolution = $"DefaultAuto:Unrecognized:{normalizedValue}";
+        return JavaSelectionModeSetting.Auto;
     }
 
     #region Private Helper Methods

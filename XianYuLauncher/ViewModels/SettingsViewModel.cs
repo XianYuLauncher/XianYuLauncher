@@ -2124,7 +2124,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         var rawValue = await _gameSettingsDomainService.LoadJavaSelectionModeAsync();
         Log.Information("[Settings.JavaSelectionMode] Load requested. RawValue={RawValue}", rawValue ?? "(null)");
         if (!string.IsNullOrWhiteSpace(rawValue)
-            && Enum.TryParse<JavaSelectionModeType>(rawValue, out var mode))
+            && Enum.TryParse<JavaSelectionModeType>(rawValue, ignoreCase: true, out var mode))
         {
             JavaSelectionMode = mode;
             Log.Information("[Settings.JavaSelectionMode] Applied value from settings. Mode={Mode}", mode);
@@ -3998,5 +3998,4 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     
     #endregion
 }
-
 

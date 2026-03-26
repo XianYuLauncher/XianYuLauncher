@@ -196,6 +196,72 @@ public class JavaRuntimeServiceTests
         }
     }
 
+    [Theory]
+    [InlineData("Manual")]
+    [InlineData("manual")]
+    [InlineData("1")]
+    public async Task SelectBestJavaAsync_ManualModeCompatibilityValues_ReturnsSelectedPath(string storedMode)
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var selectedJavaPath = Path.Combine(tempDir, "java.exe");
+        File.WriteAllText(selectedJavaPath, "dummy");
+
+        try
+        {
+            _mockLocalSettingsService
+                .Setup(x => x.ReadSettingAsync<string>("JavaSelectionMode"))
+                .ReturnsAsync(storedMode);
+            _mockLocalSettingsService
+                .Setup(x => x.ReadSettingAsync<string>("SelectedJavaVersion"))
+                .ReturnsAsync(selectedJavaPath);
+            _mockLocalSettingsService
+                .Setup(x => x.ReadSettingAsync<string>("JavaPath"))
+                .ReturnsAsync((string?)null);
+            _mockLocalSettingsService
+                .Setup(x => x.ReadSettingAsync<List<JavaVersion>>("JavaVersions"))
+                .ReturnsAsync([
+                    new JavaVersion
+                    {
+                        Path = selectedJavaPath,
+                        FullVersion = "25.0.1",
+                        MajorVersion = 25,
+                        IsJDK = false,
+                    }
+                ]);
+
+            var result = await _service.SelectBestJavaAsync(25);
+
+            Assert.Equal(selectedJavaPath, result);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task SelectBestJavaAsync_AutoModeNumericCompatibilityValue_DoesNotReadManualSelection()
+    {
+        _mockLocalSettingsService
+            .Setup(x => x.ReadSettingAsync<string>("JavaSelectionMode"))
+            .ReturnsAsync("0");
+        _mockLocalSettingsService
+            .Setup(x => x.ReadSettingAsync<string>("JavaPath"))
+            .ReturnsAsync((string?)null);
+        _mockLocalSettingsService
+            .Setup(x => x.ReadSettingAsync<List<JavaVersion>>("JavaVersions"))
+            .ReturnsAsync((List<JavaVersion>?)null);
+
+        var result = await _service.SelectBestJavaAsync(999);
+
+        Assert.True(result == null || !string.IsNullOrEmpty(result));
+        _mockLocalSettingsService.Verify(x => x.ReadSettingAsync<string>("SelectedJavaVersion"), Times.Never);
+    }
+
     #endregion
 
     #region DetectJavaVersionsAsync Tests
