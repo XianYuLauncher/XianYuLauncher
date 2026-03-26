@@ -2122,11 +2122,19 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     private async Task LoadJavaSelectionModeAsync()
     {
         var rawValue = await _gameSettingsDomainService.LoadJavaSelectionModeAsync();
+        Log.Information("[Settings.JavaSelectionMode] Load requested. RawValue={RawValue}", rawValue ?? "(null)");
         if (!string.IsNullOrWhiteSpace(rawValue)
-            && Enum.TryParse<JavaSelectionModeType>(rawValue, out var mode))
+            && Enum.TryParse<JavaSelectionModeType>(rawValue, ignoreCase: true, out var mode))
         {
             JavaSelectionMode = mode;
+            Log.Information("[Settings.JavaSelectionMode] Applied value from settings. Mode={Mode}", mode);
+            return;
         }
+
+        Log.Warning(
+            "[Settings.JavaSelectionMode] Failed to parse stored value. RawValue={RawValue}; KeepingCurrentMode={CurrentMode}",
+            rawValue ?? "(null)",
+            JavaSelectionMode);
     }
     
     /// <summary>
@@ -2134,6 +2142,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     partial void OnJavaSelectionModeChanged(JavaSelectionModeType value)
     {
+        Log.Information("[Settings.JavaSelectionMode] UI changed. Mode={Mode}; PersistStrategy=DebouncedQueue", value);
         QueueSettingWrite("JavaSelectionMode", () => _gameSettingsDomainService.SaveJavaSelectionModeAsync(value.ToString()));
     }
     
@@ -3989,5 +3998,4 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     
     #endregion
 }
-
 
