@@ -397,9 +397,9 @@ public class LocalSettingsService : ILocalSettingsService
             }
         }
 
-        if (targetType == typeof(string) && rawValue is string stringValue)
+        if (targetType == typeof(string) && rawValue is string rawStringValue)
         {
-            var normalizedValue = UnwrapStoredString(stringValue);
+            var normalizedValue = UnwrapStoredString(rawStringValue);
             if (TryParseStoredInt(normalizedValue, out var numericValue)
                 && TryMapJavaSelectionModeIntToName(numericValue, out var modeName))
             {
