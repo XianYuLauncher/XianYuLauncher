@@ -1006,8 +1006,8 @@ namespace XianYuLauncher.ViewModels
                 _localSettingsService.SaveSettingAsync("JavaVersions", coreVersions);
             }
             
-            // 保存Java设置 - 保存枚举的整数值而不是字符串
-            _localSettingsService.SaveSettingAsync("JavaSelectionMode", (int)JavaSelectionMode);
+            // 保存Java设置 - 与设置页保持一致，统一使用字符串枚举名
+            _localSettingsService.SaveSettingAsync("JavaSelectionMode", JavaSelectionMode.ToString());
             if (SelectedJavaVersion != null)
             {
                 _localSettingsService.SaveSettingAsync("SelectedJavaVersion", SelectedJavaVersion.Path);

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Serilog;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
@@ -79,12 +80,20 @@ public class GameSettingsDomainService : IGameSettingsDomainService
 
     public Task<string?> LoadJavaSelectionModeAsync()
     {
-        return _settingsRepository.ReadAsync<string>(JavaSelectionModeKey);
+        return LoadJavaSelectionModeCoreAsync();
     }
 
     public Task SaveJavaSelectionModeAsync(string value)
     {
+        Log.Information("[GameSettings.JavaSelectionMode] Save requested. Value={Value}", value);
         return _settingsRepository.SaveAsync(JavaSelectionModeKey, value);
+    }
+
+    private async Task<string?> LoadJavaSelectionModeCoreAsync()
+    {
+        var value = await _settingsRepository.ReadAsync<string>(JavaSelectionModeKey);
+        Log.Information("[GameSettings.JavaSelectionMode] Load completed. Value={Value}", value ?? "(null)");
+        return value;
     }
 
     public Task<string?> LoadJavaPathAsync()

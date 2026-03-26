@@ -1,5 +1,6 @@
 using Microsoft.Win32;
 using System.Diagnostics;
+using Serilog;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
@@ -76,6 +77,7 @@ public class JavaRuntimeService : IJavaRuntimeService
     public async Task<string?> SelectBestJavaAsync(int requiredMajorVersion, string? versionSpecificPath = null)
     {
         System.Diagnostics.Debug.WriteLine($"[JavaRuntimeService] 开始选择 Java，需要版本: {requiredMajorVersion}");
+        Log.Information("[JavaRuntimeService] SelectBestJavaAsync started. RequiredMajorVersion={RequiredMajorVersion}; VersionSpecificPath={VersionSpecificPath}", requiredMajorVersion, versionSpecificPath ?? "(null)");
         
         // 1. 如果指定了版本特定路径且有效，优先使用
         if (!string.IsNullOrEmpty(versionSpecificPath) && File.Exists(versionSpecificPath))
@@ -85,9 +87,10 @@ public class JavaRuntimeService : IJavaRuntimeService
         }
         
         // 2. 获取 Java 选择模式
-        var javaSelectionMode = await _localSettingsService.ReadSettingAsync<int?>(JavaSelectionModeKey);
-        var isAutoMode = javaSelectionMode == null || javaSelectionMode == 0; // 0 = Auto, 1 = Manual
-        System.Diagnostics.Debug.WriteLine($"[JavaRuntimeService] Java 选择模式: {(isAutoMode ? "自动" : "手动")} (值: {javaSelectionMode})");
+        var javaSelectionMode = await _localSettingsService.ReadSettingAsync<string>(JavaSelectionModeKey);
+        var isAutoMode = !string.Equals(javaSelectionMode, "Manual", StringComparison.OrdinalIgnoreCase);
+        System.Diagnostics.Debug.WriteLine($"[JavaRuntimeService] Java 选择模式: {(isAutoMode ? "自动" : "手动")} (值: {javaSelectionMode ?? "(null)"})");
+        Log.Information("[JavaRuntimeService] Java selection mode resolved. RawValue={RawValue}; Mode={Mode}", javaSelectionMode ?? "(null)", isAutoMode ? "Auto" : "Manual");
         
         // 3. 检测所有 Java 版本
         var javaVersions = await DetectJavaVersionsAsync();
@@ -125,6 +128,7 @@ public class JavaRuntimeService : IJavaRuntimeService
             // 手动模式：使用用户选择的版本
             var selectedJavaPath = await _localSettingsService.ReadSettingAsync<string>(SelectedJavaVersionKey);
             System.Diagnostics.Debug.WriteLine($"[JavaRuntimeService] 手动模式：用户选择的路径: {selectedJavaPath ?? "(未设置)"}");
+            Log.Information("[JavaRuntimeService] Manual mode selected Java path loaded. SelectedJavaPath={SelectedJavaPath}", selectedJavaPath ?? "(null)");
             
             if (!string.IsNullOrEmpty(selectedJavaPath))
             {
@@ -146,6 +150,7 @@ public class JavaRuntimeService : IJavaRuntimeService
         if (!string.IsNullOrEmpty(customJavaPath))
         {
             System.Diagnostics.Debug.WriteLine($"[JavaRuntimeService] 检查旧版自定义路径: {customJavaPath}");
+            Log.Information("[JavaRuntimeService] Fallback custom Java path loaded. CustomJavaPath={CustomJavaPath}", customJavaPath);
             if (File.Exists(customJavaPath))
             {
                 System.Diagnostics.Debug.WriteLine($"[JavaRuntimeService] ✓ 使用旧版自定义路径");

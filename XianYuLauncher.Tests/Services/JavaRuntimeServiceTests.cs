@@ -152,6 +152,50 @@ public class JavaRuntimeServiceTests
         Assert.True(result == null || !string.IsNullOrEmpty(result));
     }
 
+    [Fact]
+    public async Task SelectBestJavaAsync_ManualModeWithSelectedJavaPath_ReturnsSelectedPath()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        var selectedJavaPath = Path.Combine(tempDir, "java.exe");
+        File.WriteAllText(selectedJavaPath, "dummy");
+
+        try
+        {
+            _mockLocalSettingsService
+                .Setup(x => x.ReadSettingAsync<string>("JavaSelectionMode"))
+                .ReturnsAsync("Manual");
+            _mockLocalSettingsService
+                .Setup(x => x.ReadSettingAsync<string>("SelectedJavaVersion"))
+                .ReturnsAsync(selectedJavaPath);
+            _mockLocalSettingsService
+                .Setup(x => x.ReadSettingAsync<string>("JavaPath"))
+                .ReturnsAsync((string?)null);
+            _mockLocalSettingsService
+                .Setup(x => x.ReadSettingAsync<List<JavaVersion>>("JavaVersions"))
+                .ReturnsAsync([
+                    new JavaVersion
+                    {
+                        Path = selectedJavaPath,
+                        FullVersion = "25.0.1",
+                        MajorVersion = 25,
+                        IsJDK = false,
+                    }
+                ]);
+
+            var result = await _service.SelectBestJavaAsync(25);
+
+            Assert.Equal(selectedJavaPath, result);
+        }
+        finally
+        {
+            if (Directory.Exists(tempDir))
+            {
+                Directory.Delete(tempDir, true);
+            }
+        }
+    }
+
     #endregion
 
     #region DetectJavaVersionsAsync Tests
