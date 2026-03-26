@@ -440,19 +440,45 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             var assistantToolCallMessage = new ChatMessage("assistant", contentBuilder.Length > 0 ? contentBuilder.ToString() : null, pendingToolCalls);
             apiMessages.Add(assistantToolCallMessage);
 
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
+            {
+                var lastAssistant = GetLastAssistantMessage();
+                if (lastAssistant == null)
+                {
+                    return;
+                }
+
+                lastAssistant.ToolCalls = CloneToolCalls(pendingToolCalls);
+                lastAssistant.AiHistoryContent = string.IsNullOrWhiteSpace(lastAssistant.Content) ? null : lastAssistant.Content;
+            });
+
             List<AgentActionProposal> actionProposals = [];
             List<string> actionProposalMessages = [];
             foreach (var toolCall in pendingToolCalls)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
+                UiChatMessage? toolUiMessage = null;
                 await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     RemoveTrailingAssistantPlaceholderIfNeeded();
-                    _sessionState.ChatMessages.Add(new UiChatMessage("tool", toolCall.FunctionName, includeInAiHistory: false));
+                    toolUiMessage = new UiChatMessage("tool", toolCall.FunctionName)
+                    {
+                        ToolCallId = toolCall.Id,
+                        AiHistoryContent = string.Empty
+                    };
+                    _sessionState.ChatMessages.Add(toolUiMessage);
                 });
 
                 var result = await _toolDispatcher.ExecuteAsync(toolCall, cancellationToken);
+                await _uiDispatcher.RunOnUiThreadAsync(() =>
+                {
+                    if (toolUiMessage != null)
+                    {
+                        toolUiMessage.AiHistoryContent = result.Message;
+                    }
+                });
+
                 if (result.ActionProposal != null)
                 {
                     actionProposals.Add(result.ActionProposal);
@@ -616,7 +642,26 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                     continue;
                 }
 
-                apiMessages.Add(new ChatMessage(msg.Role, msg.Content));
+                if (msg.IsAssistant && msg.ToolCalls != null && msg.ToolCalls.Count > 0)
+                {
+                    var content = string.IsNullOrWhiteSpace(msg.AiHistoryContent) ? null : msg.AiHistoryContent;
+                    apiMessages.Add(new ChatMessage("assistant", content, CloneToolCalls(msg.ToolCalls)));
+                    continue;
+                }
+
+                if (msg.IsTool)
+                {
+                    if (string.IsNullOrWhiteSpace(msg.ToolCallId))
+                    {
+                        continue;
+                    }
+
+                    var toolResultContent = msg.AiHistoryContent ?? msg.Content ?? string.Empty;
+                    apiMessages.Add(ChatMessage.ToolResult(msg.ToolCallId, toolResultContent));
+                    continue;
+                }
+
+                apiMessages.Add(new ChatMessage(msg.Role, msg.Content ?? string.Empty));
             }
         });
 
@@ -740,6 +785,18 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     private UiChatMessage? GetLastAssistantMessage()
     {
         return _sessionState.ChatMessages.LastOrDefault(message => message.IsAssistant);
+    }
+
+    private static List<ToolCallInfo> CloneToolCalls(IEnumerable<ToolCallInfo> toolCalls)
+    {
+        return toolCalls
+            .Select(toolCall => new ToolCallInfo
+            {
+                Id = toolCall.Id,
+                FunctionName = toolCall.FunctionName,
+                Arguments = toolCall.Arguments
+            })
+            .ToList();
     }
 
     private void EnsureTrailingAssistantMessage()
