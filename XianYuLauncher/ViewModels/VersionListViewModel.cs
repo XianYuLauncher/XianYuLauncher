@@ -13,6 +13,7 @@ using Windows.Storage.Pickers;
 using Windows.System;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
@@ -26,6 +27,8 @@ public partial class VersionListViewModel : ObservableRecipient
     private readonly IFileService _fileService;
     private readonly Core.Services.ModrinthService _modrinthService;
     private readonly ICommonDialogService _dialogService;
+    private readonly IProfileDialogService _profileDialogService;
+    private readonly IProfileManager _profileManager;
     private readonly IUiDispatcher _uiDispatcher;
 
     /// <summary>
@@ -176,6 +179,8 @@ public partial class VersionListViewModel : ObservableRecipient
         Core.Services.ModrinthService modrinthService,
         IVersionInfoService versionInfoService,
         ICommonDialogService dialogService,
+        IProfileDialogService profileDialogService,
+        IProfileManager profileManager,
         IUiDispatcher uiDispatcher)
     {
         _minecraftVersionService = minecraftVersionService;
@@ -183,6 +188,8 @@ public partial class VersionListViewModel : ObservableRecipient
         _modrinthService = modrinthService;
         _versionInfoService = versionInfoService;
         _dialogService = dialogService;
+        _profileDialogService = profileDialogService;
+        _profileManager = profileManager;
         _uiDispatcher = uiDispatcher;
         
         // 订阅Minecraft路径变化事件
@@ -684,9 +691,24 @@ public partial class VersionListViewModel : ObservableRecipient
         
         try
         {
-            string desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-            string safeName = string.Join("_", version.Name.Split(Path.GetInvalidFileNameChars()));
-            string shortcutPath = Path.Combine(desktopPath, $"{safeName}.url");
+            var profiles = await _profileManager.LoadProfilesAsync();
+            MinecraftProfile? selectedProfile = null;
+            if (profiles.Count > 0)
+            {
+                selectedProfile = await _profileDialogService.ShowLauncherProfileSelectionDialogAsync(
+                    profiles,
+                    "LauncherProfileDialog_ShortcutTitle".GetLocalized(),
+                    "LauncherProfileDialog_ShortcutPrimaryButton".GetLocalized(),
+                    "LauncherProfileDialog_CloseButton".GetLocalized());
+
+                if (selectedProfile == null)
+                {
+                    return;
+                }
+            }
+
+            string shortcutPath = VersionManagementShortcutOps.BuildVersionShortcutPath(version.Name, selectedProfile?.Name);
+            string shortcutName = Path.GetFileNameWithoutExtension(shortcutPath);
             
             // Check if shortcut already exists
             if (Helpers.ShortcutHelper.ShortcutExists(shortcutPath))
@@ -697,7 +719,7 @@ public partial class VersionListViewModel : ObservableRecipient
                     if (dialogService != null)
                     {
                         var result = await dialogService.ShowConfirmationDialogAsync("快捷方式已存在", 
-                            $"桌面上已存在 {safeName} 的快捷方式。\n是否覆盖现有快捷方式？", "覆盖", "取消");
+                            $"桌面上已存在 {shortcutName} 的快捷方式。\n是否覆盖现有快捷方式？", "覆盖", "取消");
                         if (!result) return;
                     }
                 }
@@ -707,30 +729,12 @@ public partial class VersionListViewModel : ObservableRecipient
                 }
             }
 
-            // Construct shortcut URL
-            string targetPath = Helpers.ShortcutHelper.TrimTrailingDirectorySeparator(version.Path);
-            string url = $"xianyulauncher://launch/?path={Uri.EscapeDataString(targetPath)}";
+            shortcutName = await VersionManagementShortcutOps.CreateVersionShortcutFileAsync(
+                version.Name,
+                version.Path,
+                selectedProfile);
             
-            // Validate URL
-            if (!Helpers.ShortcutHelper.ValidateShortcutUrl(url))
-            {
-                throw new InvalidOperationException("Invalid shortcut URL constructed for version.");
-            }
-
-            // Prepare icon (use same approach as map/server shortcuts for consistency)
-            string cacheDir = Path.Combine(AppEnvironment.SafeCachePath, "Shortcuts");
-            if (!Directory.Exists(cacheDir)) Directory.CreateDirectory(cacheDir);
-            string iconPath = Helpers.ShortcutHelper.PrepareDefaultAppIcon(cacheDir);
-
-            var builder = new System.Text.StringBuilder();
-            builder.AppendLine("[InternetShortcut]");
-            builder.AppendLine($"URL={url}");
-            builder.AppendLine($"IconIndex=0");
-            builder.AppendLine($"IconFile={iconPath}");
-
-            await File.WriteAllTextAsync(shortcutPath, builder.ToString());
-            
-            StatusMessage = $"快捷方式已创建: {safeName}";
+            StatusMessage = $"快捷方式已创建: {shortcutName}";
             
             try 
             {
@@ -738,7 +742,7 @@ public partial class VersionListViewModel : ObservableRecipient
                 if (dialogService != null)
                 {
                     await dialogService.ShowMessageDialogAsync("快捷方式已创建", 
-                        $"已在桌面创建 {safeName} 的快捷方式。\n双击该快捷方式可直接启动该版本。");
+                        $"已在桌面创建 {shortcutName} 的快捷方式。\n双击该快捷方式可直接启动该版本。");
                 }
             }
             catch (Exception ex)

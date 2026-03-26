@@ -3,7 +3,10 @@ using System.IO;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using XianYuLauncher.Models.VersionManagement;
 using XianYuLauncher.ViewModels;
@@ -18,6 +21,8 @@ public partial class ServersViewModel : ObservableObject
     private readonly IVersionManagementContext _context;
     private readonly INavigationService _navigationService;
     private readonly ICommonDialogService _dialogService;
+    private readonly IProfileDialogService _profileDialogService;
+    private readonly IProfileManager _profileManager;
     private readonly ISelectionDialogService _selectionDialogService;
     private readonly IUiDispatcher _uiDispatcher;
 
@@ -27,12 +32,16 @@ public partial class ServersViewModel : ObservableObject
         IVersionManagementContext context,
         INavigationService navigationService,
         ICommonDialogService dialogService,
+        IProfileDialogService profileDialogService,
+        IProfileManager profileManager,
         ISelectionDialogService selectionDialogService,
         IUiDispatcher uiDispatcher)
     {
         _context = context;
         _navigationService = navigationService;
         _dialogService = dialogService;
+        _profileDialogService = profileDialogService;
+        _profileManager = profileManager;
         _selectionDialogService = selectionDialogService;
         _uiDispatcher = uiDispatcher;
     }
@@ -248,9 +257,25 @@ public partial class ServersViewModel : ObservableObject
 
         try
         {
+            var profiles = await _profileManager.LoadProfilesAsync();
+            MinecraftProfile? selectedProfile = null;
+            if (profiles.Count > 0)
+            {
+                selectedProfile = await _profileDialogService.ShowLauncherProfileSelectionDialogAsync(
+                    profiles,
+                    "LauncherProfileDialog_ShortcutTitle".GetLocalized(),
+                    "LauncherProfileDialog_ShortcutPrimaryButton".GetLocalized(),
+                    "LauncherProfileDialog_CloseButton".GetLocalized());
+
+                if (selectedProfile == null)
+                {
+                    return;
+                }
+            }
+
             _context.StatusMessage = $"正在创建快捷方式: {server.Name}...";
 
-            var shortcutPath = VersionManagementShortcutOps.BuildServerShortcutPath(server.Name, _context.SelectedVersion.Name);
+            var shortcutPath = VersionManagementShortcutOps.BuildServerShortcutPath(server.Name, _context.SelectedVersion.Name, selectedProfile?.Name);
             var shortcutName = Path.GetFileNameWithoutExtension(shortcutPath);
 
             if (Helpers.ShortcutHelper.ShortcutExists(shortcutPath))
@@ -265,7 +290,8 @@ public partial class ServersViewModel : ObservableObject
             shortcutName = await VersionManagementShortcutOps.CreateServerShortcutFileAsync(
                 server,
                 _context.SelectedVersion.Name,
-                _context.SelectedVersion.Path);
+                _context.SelectedVersion.Path,
+                selectedProfile);
 
             _context.StatusMessage = $"快捷方式已创建: {shortcutName}";
 

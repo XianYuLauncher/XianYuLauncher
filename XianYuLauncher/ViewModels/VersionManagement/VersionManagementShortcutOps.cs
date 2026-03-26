@@ -3,26 +3,42 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.Models.VersionManagement;
 
 namespace XianYuLauncher.ViewModels;
 
 internal static class VersionManagementShortcutOps
 {
-    public static async Task<string> CreateMapShortcutFileAsync(MapInfo map, string versionName, string versionPath)
+    public static async Task<string> CreateVersionShortcutFileAsync(string versionName, string versionPath, MinecraftProfile? profile = null)
     {
-        var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        var safeMapName = string.Join("_", map.Name.Split(Path.GetInvalidFileNameChars()));
-        var safeVersionName = string.Join("_", versionName.Split(Path.GetInvalidFileNameChars()));
-        var shortcutName = $"{safeVersionName} - {safeMapName}";
-        var shortcutPath = Path.Combine(desktopPath, $"{shortcutName}.url");
+        var shortcutName = BuildShortcutDisplayName(versionName, profile?.Name);
+        var shortcutPath = BuildShortcutPath(shortcutName);
+        var targetPath = Helpers.ShortcutHelper.TrimTrailingDirectorySeparator(versionPath);
+        var encodedPath = Uri.EscapeDataString(targetPath ?? string.Empty);
+        var url = AppendProfileQuery($"xianyulauncher://launch/?path={encodedPath}", profile);
+
+        if (!Helpers.ShortcutHelper.ValidateShortcutUrl(url))
+        {
+            throw new InvalidOperationException("Invalid shortcut URL constructed for version.");
+        }
+
+        var iconPath = Helpers.ShortcutHelper.PrepareDefaultAppIcon(EnsureShortcutCacheDirectory());
+        await WriteInternetShortcutFileAsync(shortcutPath, url, iconPath);
+        return shortcutName;
+    }
+
+    public static async Task<string> CreateMapShortcutFileAsync(MapInfo map, string versionName, string versionPath, MinecraftProfile? profile = null)
+    {
+        var shortcutName = BuildShortcutDisplayName($"{versionName} - {map.Name}", profile?.Name);
+        var shortcutPath = BuildShortcutPath(shortcutName);
 
         var iconPath = await ResolveMapShortcutIconAsync(map);
 
         var targetPath = Helpers.ShortcutHelper.TrimTrailingDirectorySeparator(versionPath);
         var encodedPath = Uri.EscapeDataString(targetPath ?? string.Empty);
         var encodedMap = Uri.EscapeDataString(map.FileName ?? string.Empty);
-        var url = $"xianyulauncher://launch/?path={encodedPath}&map={encodedMap}";
+        var url = AppendProfileQuery($"xianyulauncher://launch/?path={encodedPath}&map={encodedMap}", profile);
 
         if (!Helpers.ShortcutHelper.ValidateShortcutUrl(url))
         {
@@ -33,13 +49,10 @@ internal static class VersionManagementShortcutOps
         return shortcutName;
     }
 
-    public static async Task<string> CreateServerShortcutFileAsync(ServerItem server, string versionName, string versionPath)
+    public static async Task<string> CreateServerShortcutFileAsync(ServerItem server, string versionName, string versionPath, MinecraftProfile? profile = null)
     {
-        var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        var safeServerName = string.Join("_", server.Name.Split(Path.GetInvalidFileNameChars()));
-        var safeVersionName = string.Join("_", versionName.Split(Path.GetInvalidFileNameChars()));
-        var shortcutName = $"{safeVersionName} - {safeServerName}";
-        var shortcutPath = Path.Combine(desktopPath, $"{shortcutName}.url");
+        var shortcutName = BuildShortcutDisplayName($"{versionName} - {server.Name}", profile?.Name);
+        var shortcutPath = BuildShortcutPath(shortcutName);
 
         var iconPath = await ResolveServerShortcutIconAsync(server);
 
@@ -48,7 +61,7 @@ internal static class VersionManagementShortcutOps
 
         var encodedPath = Uri.EscapeDataString(targetPath ?? string.Empty);
         var encodedServer = Uri.EscapeDataString(finalAddress ?? string.Empty);
-        var url = $"xianyulauncher://launch/?path={encodedPath}&server={encodedServer}&port={portPart}";
+        var url = AppendProfileQuery($"xianyulauncher://launch/?path={encodedPath}&server={encodedServer}&port={portPart}", profile);
 
         if (!Helpers.ShortcutHelper.ValidateShortcutUrl(url))
         {
@@ -59,20 +72,31 @@ internal static class VersionManagementShortcutOps
         return shortcutName;
     }
 
-    public static string BuildMapShortcutPath(string mapName, string versionName)
+    public static string BuildVersionShortcutPath(string versionName, string? profileName = null)
     {
-        var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        var safeMapName = string.Join("_", mapName.Split(Path.GetInvalidFileNameChars()));
-        var safeVersionName = string.Join("_", versionName.Split(Path.GetInvalidFileNameChars()));
-        return Path.Combine(desktopPath, $"{safeVersionName} - {safeMapName}.url");
+        return BuildShortcutPath(BuildShortcutDisplayName(versionName, profileName));
     }
 
-    public static string BuildServerShortcutPath(string serverName, string versionName)
+    public static string BuildMapShortcutPath(string mapName, string versionName, string? profileName = null)
+    {
+        return BuildShortcutPath(BuildShortcutDisplayName($"{versionName} - {mapName}", profileName));
+    }
+
+    public static string BuildServerShortcutPath(string serverName, string versionName, string? profileName = null)
+    {
+        return BuildShortcutPath(BuildShortcutDisplayName($"{versionName} - {serverName}", profileName));
+    }
+
+    private static string BuildShortcutDisplayName(string baseName, string? profileName)
+    {
+        var safeBaseName = string.Join("_", baseName.Split(Path.GetInvalidFileNameChars()));
+        return safeBaseName;
+    }
+
+    private static string BuildShortcutPath(string shortcutName)
     {
         var desktopPath = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        var safeServerName = string.Join("_", serverName.Split(Path.GetInvalidFileNameChars()));
-        var safeVersionName = string.Join("_", versionName.Split(Path.GetInvalidFileNameChars()));
-        return Path.Combine(desktopPath, $"{safeVersionName} - {safeServerName}.url");
+        return Path.Combine(desktopPath, $"{shortcutName}.url");
     }
 
     private static async Task<string> ResolveMapShortcutIconAsync(MapInfo map)
@@ -220,5 +244,15 @@ internal static class VersionManagementShortcutOps
         builder.AppendLine("IconIndex=0");
         builder.AppendLine($"IconFile={iconPath}");
         await File.WriteAllTextAsync(shortcutPath, builder.ToString());
+    }
+
+    private static string AppendProfileQuery(string url, MinecraftProfile? profile)
+    {
+        if (profile == null || string.IsNullOrWhiteSpace(profile.Id))
+        {
+            return url;
+        }
+
+        return $"{url}&profileId={Uri.EscapeDataString(profile.Id)}";
     }
 }

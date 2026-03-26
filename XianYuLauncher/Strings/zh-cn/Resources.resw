@@ -2812,6 +2812,18 @@
   <data name="LauncherAiPanel_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>在独立窗口中打开</value>
   </data>
+  <data name="LauncherProfileDialog_ShortcutTitle" xml:space="preserve">
+    <value>选择启动档案</value>
+  </data>
+  <data name="LauncherProfileDialog_ShortcutPrimaryButton" xml:space="preserve">
+    <value>创建快捷方式</value>
+  </data>
+  <data name="LauncherProfileDialog_CloseButton" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="LauncherProfileFlyout_NoProfiles" xml:space="preserve">
+    <value>暂无可用启动档案</value>
+  </data>
   <data name="Settings_AI_Disclaimer.Text" xml:space="preserve">
     <value>XianYuFixer 仅提供接入 OpenAI API 规范的 LLM 的能力，软件内不提供任何 AI 服务或账号。使用前请确认您所在地区允许使用相关服务，并严格遵守所选 AI 提供商的服务条款、使用政策与隐私规则；API Key 由您自行申请与保管，相关费用与合规责任由用户自行承担。</value>
   </data>

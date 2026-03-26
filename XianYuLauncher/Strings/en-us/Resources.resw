@@ -2815,6 +2815,18 @@ Continue downloading?</value>
   <data name="LauncherAiPanel_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>Open in a separate window</value>
   </data>
+  <data name="LauncherProfileDialog_ShortcutTitle" xml:space="preserve">
+    <value>Select a launch profile</value>
+  </data>
+  <data name="LauncherProfileDialog_ShortcutPrimaryButton" xml:space="preserve">
+    <value>Create shortcut</value>
+  </data>
+  <data name="LauncherProfileDialog_CloseButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="LauncherProfileFlyout_NoProfiles" xml:space="preserve">
+    <value>No launch profiles available</value>
+  </data>
   <data name="Settings_AI_Disclaimer.Text" xml:space="preserve">
     <value>XianYuFixer only provides the capability to access LLMs compatible with the OpenAI API specification. No AI services or accounts are provided within the software. Please confirm that relevant services are permitted in your region before use, and strictly abide by the terms of service, usage policies, and privacy rules of the selected AI provider; API Keys must be applied for and kept by yourself, and relevant costs and compliance responsibilities are borne by the user.</value>
   </data>
