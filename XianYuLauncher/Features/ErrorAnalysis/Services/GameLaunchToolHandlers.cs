@@ -1,4 +1,5 @@
 using System.Text;
+using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
@@ -118,10 +119,12 @@ public sealed class LaunchGameToolHandler : IAgentToolHandler
 public sealed class LaunchGameActionHandler : IAgentActionHandler
 {
     private readonly IVersionPathGameLaunchService _versionPathGameLaunchService;
+    private readonly IServiceProvider _serviceProvider;
 
-    public LaunchGameActionHandler(IVersionPathGameLaunchService versionPathGameLaunchService)
+    public LaunchGameActionHandler(IVersionPathGameLaunchService versionPathGameLaunchService, IServiceProvider serviceProvider)
     {
         _versionPathGameLaunchService = versionPathGameLaunchService;
+        _serviceProvider = serviceProvider;
     }
 
     public string ActionType => LaunchGameToolHandler.ToolNameValue;
@@ -147,10 +150,25 @@ public sealed class LaunchGameActionHandler : IAgentActionHandler
             cancellationToken: cancellationToken);
         if (result.GameProcess != null)
         {
+            StartDetachedMonitoring(result.GameProcess, result.LaunchCommand);
             return $"已开始启动 {preparedLaunch.VersionName}。实例路径：{preparedLaunch.VersionPath}。启动前已临时切换到 {preparedLaunch.MinecraftPath}，现在已恢复原游戏目录。";
         }
 
         return $"启动 {preparedLaunch.VersionName} 失败：{result.ErrorMessage ?? "游戏未能启动，请查看日志。"}";
+    }
+
+    private void StartDetachedMonitoring(System.Diagnostics.Process gameProcess, string? launchCommand)
+    {
+        var monitor = _serviceProvider.GetRequiredService<IGameProcessMonitor>();
+        _ = monitor.MonitorProcessAsync(gameProcess, launchCommand ?? string.Empty).ContinueWith(
+            task =>
+            {
+                if (task.Exception != null)
+                {
+                    Serilog.Log.Warning(task.Exception.GetBaseException(), "Launcher AI 启动后的进程监控失败");
+                }
+            },
+            TaskContinuationOptions.OnlyOnFaulted);
     }
 }
 
