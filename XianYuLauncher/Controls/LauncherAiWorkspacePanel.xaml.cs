@@ -138,7 +138,7 @@ public sealed partial class LauncherAiWorkspacePanel : UserControl
             }
         }
 
-        RebuildTabs();
+        SyncTabs(e);
     }
 
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -230,22 +230,12 @@ public sealed partial class LauncherAiWorkspacePanel : UserControl
                 return;
             }
 
-            var canClose = ViewModel.Conversations.Count > 1;
             foreach (var conversation in ViewModel.Conversations)
             {
-                var item = new TabViewItem
-                {
-                    Header = conversation.Title,
-                    Tag = conversation.Id,
-                    IsClosable = canClose,
-                    Content = null,
-                };
-
-                ToolTipService.SetToolTip(item, conversation.ToolTip);
-                _tabItems[conversation.Id] = item;
-                ConversationTabView.TabItems.Add(item);
+                AddTabItem(conversation, ConversationTabView.TabItems.Count);
             }
 
+            UpdateClosableState();
             UpdateSelection();
         }
         finally
@@ -277,5 +267,137 @@ public sealed partial class LauncherAiWorkspacePanel : UserControl
         ChatPanel.ViewModel = ChatViewModel;
         ChatPanel.EmptyPlaceholderText = ResolvedEmptyStateText;
         ChatPanel.MessagesMaxHeight = MessagesMaxHeight;
+    }
+
+    private void SyncTabs(NotifyCollectionChangedEventArgs e)
+    {
+        if (ConversationTabView == null || ViewModel == null)
+        {
+            return;
+        }
+
+        _isRefreshingTabs = true;
+        try
+        {
+            switch (e.Action)
+            {
+                case NotifyCollectionChangedAction.Add:
+                    InsertNewTabs(e.NewItems, e.NewStartingIndex);
+                    break;
+                case NotifyCollectionChangedAction.Remove:
+                    RemoveTabs(e.OldItems);
+                    break;
+                case NotifyCollectionChangedAction.Replace:
+                    RemoveTabs(e.OldItems);
+                    InsertNewTabs(e.NewItems, e.NewStartingIndex);
+                    break;
+                case NotifyCollectionChangedAction.Move:
+                    MoveTabs(e.OldItems, e.NewStartingIndex);
+                    break;
+                default:
+                    RebuildTabs();
+                    return;
+            }
+
+            UpdateClosableState();
+            UpdateSelection();
+        }
+        finally
+        {
+            _isRefreshingTabs = false;
+        }
+    }
+
+    private void InsertNewTabs(System.Collections.IList? newItems, int startIndex)
+    {
+        if (newItems == null)
+        {
+            return;
+        }
+
+        var insertIndex = startIndex < 0 ? ConversationTabView.TabItems.Count : startIndex;
+        for (var offset = 0; offset < newItems.Count; offset++)
+        {
+            if (newItems[offset] is LauncherAiConversationTab conversation)
+            {
+                AddTabItem(conversation, Math.Min(insertIndex + offset, ConversationTabView.TabItems.Count));
+            }
+        }
+    }
+
+    private void RemoveTabs(System.Collections.IList? oldItems)
+    {
+        if (oldItems == null)
+        {
+            return;
+        }
+
+        foreach (var item in oldItems)
+        {
+            if (item is LauncherAiConversationTab conversation)
+            {
+                RemoveTabItem(conversation.Id);
+            }
+        }
+    }
+
+    private void MoveTabs(System.Collections.IList? movedItems, int newStartingIndex)
+    {
+        if (movedItems == null)
+        {
+            return;
+        }
+
+        var targetIndex = newStartingIndex;
+        foreach (var item in movedItems)
+        {
+            if (item is not LauncherAiConversationTab conversation
+                || !_tabItems.TryGetValue(conversation.Id, out var tabItem))
+            {
+                continue;
+            }
+
+            ConversationTabView.TabItems.Remove(tabItem);
+            ConversationTabView.TabItems.Insert(Math.Min(targetIndex, ConversationTabView.TabItems.Count), tabItem);
+            targetIndex++;
+        }
+    }
+
+    private void AddTabItem(LauncherAiConversationTab conversation, int insertIndex)
+    {
+        if (ConversationTabView == null || _tabItems.ContainsKey(conversation.Id))
+        {
+            return;
+        }
+
+        var item = new TabViewItem
+        {
+            Header = conversation.Title,
+            Tag = conversation.Id,
+            Content = null,
+        };
+
+        ToolTipService.SetToolTip(item, conversation.ToolTip);
+        _tabItems[conversation.Id] = item;
+        ConversationTabView.TabItems.Insert(insertIndex, item);
+    }
+
+    private void RemoveTabItem(Guid conversationId)
+    {
+        if (ConversationTabView == null || !_tabItems.Remove(conversationId, out var item))
+        {
+            return;
+        }
+
+        ConversationTabView.TabItems.Remove(item);
+    }
+
+    private void UpdateClosableState()
+    {
+        var canClose = ViewModel != null && ViewModel.Conversations.Count > 1;
+        foreach (var item in _tabItems.Values)
+        {
+            item.IsClosable = canClose;
+        }
     }
 }
