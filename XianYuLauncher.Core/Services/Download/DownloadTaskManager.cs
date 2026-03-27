@@ -551,7 +551,30 @@ public class DownloadTaskManager : IDownloadTaskManager
     /// <summary>
     /// 启动社区资源下载（Mod、资源包、光影、数据包、世界）
     /// </summary>
-    public Task StartResourceDownloadAsync(
+    public async Task StartResourceDownloadAsync(
+        string resourceName,
+        string resourceType,
+        string downloadUrl,
+        string savePath,
+        string? iconUrl = null,
+        IEnumerable<ResourceDependency>? dependencies = null,
+        bool showInTeachingTip = false,
+        string? teachingTipGroupKey = null,
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown)
+    {
+        _ = await StartResourceDownloadWithTaskIdAsync(
+            resourceName,
+            resourceType,
+            downloadUrl,
+            savePath,
+            iconUrl,
+            dependencies,
+            showInTeachingTip,
+            teachingTipGroupKey,
+            communityResourceProvider).ConfigureAwait(false);
+    }
+
+    public Task<string> StartResourceDownloadWithTaskIdAsync(
         string resourceName,
         string resourceType,
         string downloadUrl,
@@ -564,7 +587,7 @@ public class DownloadTaskManager : IDownloadTaskManager
     {
         var dependencyList = dependencies?.ToList();
 
-        return EnqueueManagedTaskAsync(
+        return EnqueueManagedTaskWithTaskIdAsync(
             resourceName,
             resourceType,
             ResolveResourceTaskCategory(resourceType),

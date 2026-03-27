@@ -40,6 +40,7 @@ namespace XianYuLauncher.ViewModels
         private readonly IVersionInfoService _versionInfoService;
         private readonly IUiDispatcher _uiDispatcher;
         private readonly ICommunityResourceInstallPlanner _communityResourceInstallPlanner;
+        private readonly ICommunityResourceInstallService _communityResourceInstallService;
         private readonly IGameDirResolver _gameDirResolver;
         private readonly IHttpImageSourceService _httpImageSourceService;
         private readonly ILogger<ModDownloadDetailViewModel> _logger;
@@ -524,6 +525,7 @@ namespace XianYuLauncher.ViewModels
             IVersionInfoService versionInfoService,
             IUiDispatcher uiDispatcher,
             ICommunityResourceInstallPlanner communityResourceInstallPlanner,
+            ICommunityResourceInstallService communityResourceInstallService,
             IGameDirResolver gameDirResolver,
             IHttpImageSourceService httpImageSourceService,
             ILogger<ModDownloadDetailViewModel> logger)
@@ -542,6 +544,7 @@ namespace XianYuLauncher.ViewModels
             _versionInfoService = versionInfoService;
             _uiDispatcher = uiDispatcher;
             _communityResourceInstallPlanner = communityResourceInstallPlanner;
+            _communityResourceInstallService = communityResourceInstallService;
             _gameDirResolver = gameDirResolver;
             _httpImageSourceService = httpImageSourceService;
             _logger = logger;
@@ -1338,53 +1341,18 @@ namespace XianYuLauncher.ViewModels
 
                 var installPlan = await BuildInstallPlanAsync(currentDownloadingModVersion, targetVersion, selectedSaveName);
                 string targetDir = installPlan.PrimaryTargetDirectory;
-                string savePath = installPlan.SavePath;
 
                 _fileService.CreateDirectory(targetDir);
 
-                // 如果URL缺失且是CurseForge资源，尝试手动构造
-                if (string.IsNullOrEmpty(currentDownloadingModVersion.DownloadUrl) && 
-                    currentDownloadingModVersion.IsCurseForge && 
-                    currentDownloadingModVersion.OriginalCurseForgeFile != null)
-                {
-                    try 
-                    {
-                        currentDownloadingModVersion.DownloadUrl = _curseForgeService.ConstructDownloadUrl(
-                            currentDownloadingModVersion.OriginalCurseForgeFile.Id,
-                            currentDownloadingModVersion.OriginalCurseForgeFile.FileName ?? currentDownloadingModVersion.FileName);
-                        WriteDebugLog($"CompleteDatapackDownloadAsync 手动构造下载 URL: {currentDownloadingModVersion.DownloadUrl}");
-                    }
-                    catch (Exception ex)
-                    {
-                        WriteErrorLog(ex, "CompleteDatapackDownloadAsync 构造下载 URL 失败");
-                    }
-                }
-
-                InitializeDownloadTeachingTip();
-
-                await ProcessDependenciesForResourceAsync(currentDownloadingModVersion, targetDir, targetVersion);
-
-                string resolvedDownloadUrl = _modResourceDownloadOrchestrator.EnsureDownloadUrl(currentDownloadingModVersion);
-                if (string.IsNullOrWhiteSpace(resolvedDownloadUrl))
-                {
-                    throw new Exception("无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
-                }
-
-                CompleteDownloadTeachingTip();
-
-                await _modResourceDownloadOrchestrator.StartResourceDownloadAsync(
-                    ModName,
-                    ProjectType,
-                    ModIconUrl,
-                    resolvedDownloadUrl,
-                    savePath,
-                    showInTeachingTip: true,
-                    teachingTipGroupKey: _downloadTeachingTipGroupKey,
-                    communityResourceProvider: ResolveCommunityResourceProvider(currentDownloadingModVersion));
+                string operationId = await StartPlannedInstallAsync(
+                    installPlan,
+                    currentDownloadingModVersion,
+                    targetVersion);
 
                 ResetDownloadTeachingTipSession();
 
                 DownloadStatus = "下载已开始，请查看下载提示。";
+                WriteInformationLog($"社区资源下载任务已启动: {operationId}");
                 
                 _currentDownloadingModVersion = null;
                 _currentDownloadingGameVersion = null;
@@ -1461,6 +1429,44 @@ namespace XianYuLauncher.ViewModels
             }
 
             throw new InvalidOperationException("无法生成资源安装计划。");
+        }
+
+        private CommunityResourceInstallDescriptor CreateInstallDescriptor(
+            ModVersionViewModel modVersion,
+            InstalledGameVersionViewModel? targetVersion)
+        {
+            return new CommunityResourceInstallDescriptor
+            {
+                ResourceName = ModName,
+                ResourceIconUrl = ModIconUrl,
+                FileName = modVersion.FileName,
+                DownloadUrl = modVersion.DownloadUrl,
+                CommunityResourceProvider = ResolveCommunityResourceProvider(modVersion),
+                OriginalVersion = modVersion.OriginalVersion,
+                OriginalCurseForgeFile = modVersion.OriginalCurseForgeFile,
+                TargetLoaderType = targetVersion?.LoaderType,
+                TargetGameVersion = targetVersion?.GameVersion
+            };
+        }
+
+        private string EnsureDownloadTeachingTipGroupKey()
+        {
+            return _downloadTeachingTipGroupKey ??= Guid.NewGuid().ToString("N");
+        }
+
+        private async Task<string> StartPlannedInstallAsync(
+            CommunityResourceInstallPlan installPlan,
+            ModVersionViewModel modVersion,
+            InstalledGameVersionViewModel? targetVersion)
+        {
+            var descriptor = CreateInstallDescriptor(modVersion, targetVersion);
+            var operationId = await _communityResourceInstallService.StartInstallAsync(
+                installPlan,
+                descriptor,
+                showInTeachingTip: true,
+                teachingTipGroupKey: EnsureDownloadTeachingTipGroupKey());
+            modVersion.DownloadUrl = descriptor.DownloadUrl;
+            return operationId;
         }
 
         // 加载已安装游戏版本
@@ -1859,7 +1865,6 @@ namespace XianYuLauncher.ViewModels
                 DownloadStatus = "正在准备下载...";
                 var installPlan = await BuildInstallPlanAsync(modVersion, targetVersion, SelectedSaveName);
                 _fileService.CreateDirectory(installPlan.PrimaryTargetDirectory);
-                string savePath = installPlan.SavePath;
                 
                 // 如果是世界，则不执行普通下载逻辑，转为 InstallWorldAsync
                 if (ProjectType == "world")
@@ -1869,36 +1874,15 @@ namespace XianYuLauncher.ViewModels
                    return;
                 }
 
-                string dependenciesTargetDir = installPlan.DependencyTargetDirectory;
-                
-                InitializeDownloadTeachingTip();
-
-                if (!string.IsNullOrEmpty(dependenciesTargetDir))
-                {
-                    await ProcessDependenciesForResourceAsync(modVersion, dependenciesTargetDir, targetVersion);
-                }
-
-                string resolvedDownloadUrl = _modResourceDownloadOrchestrator.EnsureDownloadUrl(modVersion);
-                if (string.IsNullOrWhiteSpace(resolvedDownloadUrl))
-                {
-                    throw new Exception("无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
-                }
-
-                CompleteDownloadTeachingTip();
-
-                await _modResourceDownloadOrchestrator.StartResourceDownloadAsync(
-                    ModName,
-                    ProjectType,
-                    ModIconUrl,
-                    resolvedDownloadUrl,
-                    savePath,
-                    showInTeachingTip: true,
-                    teachingTipGroupKey: _downloadTeachingTipGroupKey,
-                    communityResourceProvider: ResolveCommunityResourceProvider(modVersion));
+                string operationId = await StartPlannedInstallAsync(
+                    installPlan,
+                    modVersion,
+                    targetVersion);
 
                 ResetDownloadTeachingTipSession();
 
                 DownloadStatus = "下载已开始，请查看下载提示。";
+                WriteInformationLog($"社区资源下载任务已启动: {operationId}");
             }
             catch (Exception ex)
             {
@@ -2796,43 +2780,22 @@ namespace XianYuLauncher.ViewModels
                 
                 WriteDebugLog($"QuickInstall 下载路径: {savePath}");
                 WriteDebugLog($"QuickInstall 下载 URL: {modVersion.DownloadUrl}");
-
-                string resolvedQuickInstallDownloadUrl = _modResourceDownloadOrchestrator.EnsureDownloadUrl(modVersion);
-                if (string.IsNullOrEmpty(resolvedQuickInstallDownloadUrl))
-                {
-                    IsDownloading = false;
-                    await _commonDialogService.ShowMessageDialogAsync("下载失败", "无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
-                    return;
-                }
                 
                 IsDownloading = true;
                 DownloadStatus = "正在准备下载...";
                 DownloadProgress = 0;
                 DownloadProgressText = "0.0%";
-                
-                InitializeDownloadTeachingTip();
 
-                // 先下载依赖
-                // 注意：这里仍然是同步等待依赖下载完成，如果依赖较多可能会导致短暂无响应
-                // 理想情况下应该将依赖下载也纳入 DownloadTaskManager 管理
-                await ProcessDependenciesForResourceAsync(modVersion, targetDir, gameVersion);
-                CompleteDownloadTeachingTip();
-
-                await _modResourceDownloadOrchestrator.StartResourceDownloadAsync(
-                    ModName,
-                    ProjectType,
-                    ModIconUrl,
-                    resolvedQuickInstallDownloadUrl,
-                    savePath,
-                    showInTeachingTip: true,
-                    teachingTipGroupKey: _downloadTeachingTipGroupKey,
-                    communityResourceProvider: ResolveCommunityResourceProvider(modVersion));
+                string operationId = await StartPlannedInstallAsync(
+                    installPlan,
+                    modVersion,
+                    gameVersion);
 
                 ResetDownloadTeachingTipSession();
 
                 DownloadStatus = "下载已开始，请查看下载提示。";
                 IsDownloading = false;
-                WriteInformationLog($"QuickInstall 下载任务已启动: {savePath}");
+                WriteInformationLog($"QuickInstall 下载任务已启动: {operationId}");
             }
             catch (TaskCanceledException)
             {

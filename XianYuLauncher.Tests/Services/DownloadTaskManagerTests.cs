@@ -978,6 +978,46 @@ public class DownloadTaskManagerResourceDownloadTests
         firstState.Progress.Should().Be(0);
     }
 
+    [Fact]
+    public async Task StartResourceDownloadWithTaskIdAsync_ShouldReturnCreatedTaskId()
+    {
+        // Arrange
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>((url, path, sha1, progress, ct) =>
+                Task.FromResult(DownloadResult.Succeeded(path, url)));
+
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            downloadManagerMock.Object);
+
+        var savePath = Path.Combine(_tempDirectory, "test_resource.jar");
+
+        // Act
+        var taskId = await downloadTaskManager.StartResourceDownloadWithTaskIdAsync(
+            "Test Resource",
+            "mod",
+            "https://example.com/test.jar",
+            savePath);
+
+        await Task.Delay(100);
+
+        // Assert
+        taskId.Should().NotBeNullOrWhiteSpace();
+        downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId &&
+            task.TaskName == "Test Resource" &&
+            task.VersionName == "mod");
+    }
+
     /// <summary>
     /// 测试下载完成通知
     /// Property 3: 下载完成通知
