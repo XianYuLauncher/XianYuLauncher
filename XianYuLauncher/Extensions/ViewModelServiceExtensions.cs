@@ -45,7 +45,8 @@ internal static class ViewModelServiceExtensions
 
         services.AddTransient<ErrorAnalysisViewModel>();
         services.AddTransient<ErrorAnalysisPage>();
-        services.AddTransient<LauncherAiViewModel>();
+        services.AddSingleton<LauncherAiWorkspaceState>();
+        services.AddSingleton<LauncherAiViewModel>();
         services.AddTransient<LauncherAiPage>();
         services.AddTransient<LauncherAiWindowPage>();
 

@@ -1579,6 +1579,9 @@ Continue downloading?</value>
   <data name="ErrorAnalysis_LogDetails.Text" xml:space="preserve">
     <value>Real-time Log Details</value>
   </data>
+  <data name="ErrorAnalysis_AiPanel.SectionTitle" xml:space="preserve">
+    <value>Crash Analysis</value>
+  </data>
   <data name="ErrorAnalysis_AnalysisTitle.Text" xml:space="preserve">
     <value>XianYu Fixer</value>
   </data>
@@ -2802,15 +2805,6 @@ Continue downloading?</value>
   </data>
   <data name="LauncherAiPage_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>Open in a separate window</value>
-  </data>
-  <data name="LauncherAiPage_MainPanel.SectionTitle" xml:space="preserve">
-    <value>Launcher AI</value>
-  </data>
-  <data name="LauncherAiWindowPage_MainPanel.SectionTitle" xml:space="preserve">
-    <value>Launcher AI</value>
-  </data>
-  <data name="ErrorAnalysis_AiPanel.SectionTitle" xml:space="preserve">
-    <value>Crash Analysis</value>
   </data>
   <data name="LauncherAiPanel_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>Open in a separate window</value>
