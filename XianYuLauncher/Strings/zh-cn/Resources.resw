@@ -2800,6 +2800,12 @@
   <data name="LauncherAiPanel_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>在独立窗口中打开</value>
   </data>
+  <data name="ErrorAnalysisChatPanel_AddImageButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>添加图片</value>
+  </data>
+  <data name="ErrorAnalysisChatPanel_RemovePendingImageButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>移除图片</value>
+  </data>
   <data name="LauncherProfileDialog_ShortcutTitle" xml:space="preserve">
     <value>选择启动档案</value>
   </data>

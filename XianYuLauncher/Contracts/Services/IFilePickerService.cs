@@ -16,6 +16,13 @@ public interface IFilePickerService
         string? settingsIdentifier = null,
         string? commitButtonText = null);
 
+    Task<IReadOnlyList<string>> PickMultipleFilePathsAsync(
+        IReadOnlyList<string> fileTypeFilters,
+        PickerLocationId suggestedStartLocation,
+        PickerViewMode? viewMode = null,
+        string? settingsIdentifier = null,
+        string? commitButtonText = null);
+
     Task<string?> PickSingleFolderPathAsync(PickerLocationId suggestedStartLocation);
 
     Task<string?> PickSaveFilePathAsync(

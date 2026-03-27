@@ -4,6 +4,7 @@ using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
@@ -64,6 +65,46 @@ public sealed class OpenAiAnalysisServiceTests
         var content = string.Concat(chunks.Where(chunk => chunk.IsContent).Select(chunk => chunk.ContentDelta));
         content.Should().Be("第一段第二段");
         chunks.Should().NotContain(chunk => chunk.IsToolCall);
+    }
+
+    [Fact]
+    public async Task StreamChatWithToolsAsync_WithImageAttachments_ShouldSerializeImageUrlParts()
+    {
+        var payloads = new[]
+        {
+            "{\"choices\":[{\"delta\":{\"content\":\"已收到图片\"}}]}"
+        };
+
+        await using var server = await FakeSseServer.StartAsync(payloads);
+        var service = new OpenAiAnalysisService(Mock.Of<ILogger<OpenAiAnalysisService>>());
+
+        _ = await CollectChunksAsync(service.StreamChatWithToolsAsync(
+            [new ChatMessage("user", "请看看这张图")
+            {
+                ImageAttachments =
+                [
+                    new ChatImageAttachment
+                    {
+                        FileName = "test.png",
+                        FilePath = @"C:\\Temp\\test.png",
+                        ContentType = "image/png",
+                        DataUrl = "data:image/png;base64,AAAA"
+                    }
+                ]
+            }],
+            [],
+            "test-key",
+            server.Endpoint,
+            "test-model"));
+
+        server.LastRequestBody.Should().NotBeNullOrWhiteSpace();
+        var body = JObject.Parse(server.LastRequestBody!);
+        var content = body["messages"]![0]!["content"]!.Should().BeOfType<JArray>().Subject;
+        content.Should().HaveCount(2);
+        content[0]!["type"]!.Value<string>().Should().Be("text");
+        content[0]!["text"]!.Value<string>().Should().Be("请看看这张图");
+        content[1]!["type"]!.Value<string>().Should().Be("image_url");
+        content[1]!["image_url"]!["url"]!.Value<string>().Should().Be("data:image/png;base64,AAAA");
     }
 
     [Fact]
@@ -155,6 +196,8 @@ public sealed class OpenAiAnalysisServiceTests
 
         public string BaseEndpoint { get; }
 
+        public string? LastRequestBody { get; private set; }
+
         public string? LastRequestUri { get; private set; }
 
         public static async Task<FakeSseServer> StartAsync(IReadOnlyList<string> payloads)
@@ -202,9 +245,11 @@ public sealed class OpenAiAnalysisServiceTests
             var responseTask = Task.Run(async () =>
             {
                 var context = await listener.GetContextAsync();
+                using var reader = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding ?? Encoding.UTF8, leaveOpen: false);
                 if (server != null)
                 {
                     server.LastRequestUri = context.Request.Url?.ToString()?.TrimEnd('/');
+                    server.LastRequestBody = await reader.ReadToEndAsync();
                 }
 
                 context.Response.StatusCode = (int)statusCode;

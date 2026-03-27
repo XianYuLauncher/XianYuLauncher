@@ -75,7 +75,11 @@ namespace XianYuLauncher.Core.Services
                 }
                 else
                 {
-                    apiMessages.Add(new { role = msg.Role, content = msg.Content ?? string.Empty });
+                    apiMessages.Add(new
+                    {
+                        role = msg.Role,
+                        content = BuildMessageContent(msg)
+                    });
                 }
             }
 
@@ -220,6 +224,35 @@ namespace XianYuLauncher.Core.Services
             {
                 yield return new AiStreamChunk { IsDone = true };
             }
+        }
+
+        private static object BuildMessageContent(ChatMessage message)
+        {
+            if (message.ImageAttachments == null || message.ImageAttachments.Count == 0)
+            {
+                return message.Content ?? string.Empty;
+            }
+
+            List<object> contentParts = [];
+            if (!string.IsNullOrWhiteSpace(message.Content))
+            {
+                contentParts.Add(new
+                {
+                    type = "text",
+                    text = message.Content
+                });
+            }
+
+            contentParts.AddRange(message.ImageAttachments.Select(attachment => new
+            {
+                type = "image_url",
+                image_url = new
+                {
+                    url = attachment.DataUrl
+                }
+            }));
+
+            return contentParts;
         }
 
         /// <summary>

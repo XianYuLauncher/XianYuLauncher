@@ -8,9 +8,14 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.DataTransfer;
+using Windows.Storage.Pickers;
+using Windows.Storage;
+using Windows.System;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
 
@@ -23,10 +28,21 @@ namespace XianYuLauncher.ViewModels
         private readonly IErrorAnalysisAiOrchestrator _aiOrchestrator;
         private readonly IErrorAnalysisSessionCoordinator _sessionCoordinator;
         private readonly IErrorAnalysisExportService _exportService;
+        private readonly IFilePickerService _filePickerService;
         private readonly IUiDispatcher _uiDispatcher;
         private readonly ErrorAnalysisSessionState _sessionState;
         private readonly ResourceManager _resourceManager;
         private ResourceContext _resourceContext;
+
+        private static readonly IReadOnlyDictionary<string, string> SupportedImageContentTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [".png"] = "image/png",
+            [".jpg"] = "image/jpeg",
+            [".jpeg"] = "image/jpeg",
+            [".webp"] = "image/webp",
+            [".gif"] = "image/gif",
+            [".bmp"] = "image/bmp"
+        };
 
         public string FullLog
         {
@@ -67,6 +83,7 @@ namespace XianYuLauncher.ViewModels
             IErrorAnalysisAiOrchestrator aiOrchestrator,
             IErrorAnalysisSessionCoordinator sessionCoordinator,
             IErrorAnalysisExportService exportService,
+            IFilePickerService filePickerService,
             IUiDispatcher uiDispatcher,
             ErrorAnalysisSessionState sessionState)
         {
@@ -75,6 +92,7 @@ namespace XianYuLauncher.ViewModels
             _aiOrchestrator = aiOrchestrator;
             _sessionCoordinator = sessionCoordinator;
             _exportService = exportService;
+            _filePickerService = filePickerService;
             _uiDispatcher = uiDispatcher;
             _sessionState = sessionState;
             _resourceManager = new ResourceManager();
@@ -100,6 +118,11 @@ namespace XianYuLauncher.ViewModels
                     OnPropertyChanged(nameof(IsAnalyzeButtonEnabled));
                     OnPropertyChanged(nameof(AnalyzeButtonVisibility));
                     OnPropertyChanged(nameof(CancelButtonVisibility));
+                }
+
+                if (e.PropertyName == nameof(ErrorAnalysisSessionState.HasPendingImageAttachments))
+                {
+                    OnPropertyChanged(nameof(HasPendingChatAttachments));
                 }
             }
 
@@ -177,6 +200,7 @@ namespace XianYuLauncher.ViewModels
             {
                 ChatMessages.Clear();
                 ChatInput = string.Empty;
+                PendingImageAttachments.Clear();
                 IsChatEnabled = false;
                 ResetFixActionState();
                 _sessionState.ClearPendingToolContinuation();
@@ -202,6 +226,10 @@ namespace XianYuLauncher.ViewModels
             get => _sessionState.ChatInput;
             set => _sessionState.ChatInput = value;
         }
+
+        public ObservableCollection<ChatImageAttachment> PendingImageAttachments => _sessionState.PendingImageAttachments;
+
+        public bool HasPendingChatAttachments => _sessionState.HasPendingImageAttachments;
 
         public bool IsChatEnabled
         {
@@ -415,21 +443,91 @@ namespace XianYuLauncher.ViewModels
     [RelayCommand]
     private async Task SendMessage()
     {
-        if (string.IsNullOrWhiteSpace(ChatInput)) return;
+        if (string.IsNullOrWhiteSpace(ChatInput) && PendingImageAttachments.Count == 0) return;
         if (IsAiAnalyzing) return;
 
         var userMsg = ChatInput.Trim();
+        var imageAttachments = PendingImageAttachments
+            .Select(CloneAttachment)
+            .ToList();
+
         ChatInput = string.Empty;
+        PendingImageAttachments.Clear();
 
         var cancellationToken = BeginAiAnalysisToken();
         try
         {
-            await _aiOrchestrator.SendMessageAsync(userMsg, cancellationToken);
+            await _aiOrchestrator.SendMessageAsync(userMsg, imageAttachments, cancellationToken);
         }
         finally
         {
             DisposeAiAnalysisToken();
         }
+    }
+
+    [RelayCommand]
+    private async Task PickChatImages()
+    {
+        if (IsAiAnalyzing)
+        {
+            return;
+        }
+
+        var selectedPaths = await _filePickerService.PickMultipleFilePathsAsync(
+            [".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"],
+            PickerLocationId.PicturesLibrary,
+            PickerViewMode.Thumbnail,
+            settingsIdentifier: "LauncherAiChatImages",
+            commitButtonText: _languageSelectorService.Language == "zh-CN" ? "选择图片" : "Select images");
+
+        if (selectedPaths.Count == 0)
+        {
+            return;
+        }
+
+        var existingPaths = new HashSet<string>(
+            PendingImageAttachments.Select(attachment => attachment.FilePath),
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var path in selectedPaths)
+        {
+            if (existingPaths.Contains(path))
+            {
+                continue;
+            }
+
+            var attachment = await CreateChatImageAttachmentAsync(path);
+            if (attachment == null)
+            {
+                continue;
+            }
+
+            PendingImageAttachments.Add(attachment);
+            existingPaths.Add(path);
+        }
+    }
+
+    [RelayCommand]
+    private void RemovePendingImageAttachment(ChatImageAttachment? attachment)
+    {
+        if (attachment == null)
+        {
+            return;
+        }
+
+        _ = PendingImageAttachments.Remove(attachment);
+    }
+
+    [RelayCommand]
+    private async Task OpenChatAttachment(ChatImageAttachment? attachment)
+    {
+        if (attachment == null || string.IsNullOrWhiteSpace(attachment.FilePath) || !File.Exists(attachment.FilePath))
+        {
+            return;
+        }
+
+        StorageFile file = await StorageFile.GetFileFromPathAsync(attachment.FilePath);
+        _ = await Launcher.LaunchFileAsync(file);
     }
 
     /// <summary>
@@ -567,6 +665,40 @@ namespace XianYuLauncher.ViewModels
         public void Dispose()
         {
             _sessionState.PropertyChanged -= SessionState_PropertyChanged;
+        }
+
+        private static ChatImageAttachment CloneAttachment(ChatImageAttachment attachment)
+        {
+            return new ChatImageAttachment
+            {
+                FileName = attachment.FileName,
+                FilePath = attachment.FilePath,
+                ContentType = attachment.ContentType,
+                DataUrl = attachment.DataUrl
+            };
+        }
+
+        private static async Task<ChatImageAttachment?> CreateChatImageAttachmentAsync(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+            {
+                return null;
+            }
+
+            var extension = Path.GetExtension(filePath);
+            if (!SupportedImageContentTypes.TryGetValue(extension, out var contentType))
+            {
+                return null;
+            }
+
+            byte[] bytes = await File.ReadAllBytesAsync(filePath);
+            return new ChatImageAttachment
+            {
+                FileName = Path.GetFileName(filePath),
+                FilePath = filePath,
+                ContentType = contentType,
+                DataUrl = $"data:{contentType};base64,{Convert.ToBase64String(bytes)}"
+            };
         }
     }
 }

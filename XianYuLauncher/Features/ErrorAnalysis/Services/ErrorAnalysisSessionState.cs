@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
+using System.Linq;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.ViewModels;
@@ -13,6 +14,7 @@ public partial class ErrorAnalysisSessionState : ObservableObject
     public ErrorAnalysisSessionState()
     {
         ChatMessages.CollectionChanged += (_, _) => HasChatMessages = ChatMessages.Count > 0;
+        PendingImageAttachments.CollectionChanged += (_, _) => HasPendingImageAttachments = PendingImageAttachments.Count > 0;
     }
 
     public ErrorAnalysisSessionContext Context { get; } = new();
@@ -20,6 +22,8 @@ public partial class ErrorAnalysisSessionState : ObservableObject
     public ObservableCollection<string> LogLines { get; } = [];
 
     public ObservableCollection<UiChatMessage> ChatMessages { get; } = [];
+
+    public ObservableCollection<ChatImageAttachment> PendingImageAttachments { get; } = [];
 
     [ObservableProperty]
     private string _fullLog = string.Empty;
@@ -44,6 +48,9 @@ public partial class ErrorAnalysisSessionState : ObservableObject
 
     [ObservableProperty]
     private string _chatInput = string.Empty;
+
+    [ObservableProperty]
+    private bool _hasPendingImageAttachments;
 
     [ObservableProperty]
     private bool _isChatEnabled;
@@ -187,6 +194,7 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         return new ErrorAnalysisSessionSnapshot
         {
             ChatInput = ChatInput,
+            PendingImageAttachments = CloneImageAttachments(PendingImageAttachments),
             IsChatEnabled = IsChatEnabled,
             HasChatMessages = HasChatMessages,
             ChatMessages = CloneUiMessages(ChatMessages),
@@ -200,6 +208,7 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         ArgumentNullException.ThrowIfNull(snapshot);
 
         ChatInput = snapshot.ChatInput;
+    ReplacePendingImageAttachments(snapshot.PendingImageAttachments);
         IsChatEnabled = snapshot.IsChatEnabled;
         ReplaceChatMessages(snapshot.ChatMessages);
         ApplyActionProposals(snapshot.ActionProposals);
@@ -207,6 +216,20 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         OnPropertyChanged(nameof(PendingToolContinuation));
         OnPropertyChanged(nameof(HasPendingToolContinuation));
         HasChatMessages = ChatMessages.Count > 0 || snapshot.HasChatMessages;
+    }
+
+    public void ClearPendingImageAttachments()
+    {
+        PendingImageAttachments.Clear();
+    }
+
+    private void ReplacePendingImageAttachments(IEnumerable<ChatImageAttachment> attachments)
+    {
+        PendingImageAttachments.Clear();
+        foreach (var attachment in CloneImageAttachments(attachments))
+        {
+            PendingImageAttachments.Add(attachment);
+        }
     }
 
     private void ReplaceChatMessages(IEnumerable<UiChatMessage> messages)
@@ -222,7 +245,8 @@ public partial class ErrorAnalysisSessionState : ObservableObject
     {
         return apiMessages.Select(message => new ChatMessage(message.Role, message.Content, CloneToolCalls(message.ToolCalls))
         {
-            ToolCallId = message.ToolCallId
+            ToolCallId = message.ToolCallId,
+            ImageAttachments = CloneImageAttachments(message.ImageAttachments)
         }).ToList();
     }
 
@@ -238,14 +262,26 @@ public partial class ErrorAnalysisSessionState : ObservableObject
 
     private static List<UiChatMessage> CloneUiMessages(IEnumerable<UiChatMessage> messages)
     {
-        return messages.Select(message => new UiChatMessage(message.Role, message.Content, message.IncludeInAiHistory)
+        return messages.Select(message => new UiChatMessage(message.Role, message.Content, message.IncludeInAiHistory, message.ImageAttachments)
         {
             ShowRoleHeader = message.ShowRoleHeader,
             DisplayRoleText = message.DisplayRoleText,
             AiHistoryContent = message.AiHistoryContent,
+            AiHistoryImageAttachments = CloneImageAttachments(message.AiHistoryImageAttachments),
             ToolCallId = message.ToolCallId,
             ToolCalls = CloneToolCalls(message.ToolCalls)
         }).ToList();
+    }
+
+    private static List<ChatImageAttachment> CloneImageAttachments(IEnumerable<ChatImageAttachment>? attachments)
+    {
+        return attachments?.Select(attachment => new ChatImageAttachment
+        {
+            FileName = attachment.FileName,
+            FilePath = attachment.FilePath,
+            ContentType = attachment.ContentType,
+            DataUrl = attachment.DataUrl
+        }).ToList() ?? [];
     }
 
     private static List<AgentActionProposal> CloneActionProposals(params AgentActionProposal?[] proposals)

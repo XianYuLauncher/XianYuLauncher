@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Controls;
@@ -323,6 +324,49 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
         {
             ViewModel.SendMessageCommand.Execute(null);
             e.Handled = true;
+        }
+    }
+
+    private void ChatImageCard_Tapped(object sender, TappedRoutedEventArgs e)
+    {
+        if (ViewModel == null
+            || sender is not FrameworkElement element
+            || element.Tag is not ChatImageAttachment attachment)
+        {
+            return;
+        }
+
+        if (ViewModel.OpenChatAttachmentCommand.CanExecute(attachment))
+        {
+            ViewModel.OpenChatAttachmentCommand.Execute(attachment);
+        }
+    }
+
+    private void ChatImageCard_PointerEntered(object sender, PointerRoutedEventArgs e)
+    {
+        SetCardOpacity(sender, 0.9);
+    }
+
+    private void ChatImageCard_PointerExited(object sender, PointerRoutedEventArgs e)
+    {
+        SetCardOpacity(sender, 1.0);
+    }
+
+    private void ChatImageCard_PointerPressed(object sender, PointerRoutedEventArgs e)
+    {
+        SetCardOpacity(sender, 0.8);
+    }
+
+    private void ChatImageCard_PointerReleased(object sender, PointerRoutedEventArgs e)
+    {
+        SetCardOpacity(sender, 0.9);
+    }
+
+    private static void SetCardOpacity(object sender, double opacity)
+    {
+        if (sender is UIElement element)
+        {
+            element.Opacity = opacity;
         }
     }
 }

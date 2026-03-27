@@ -2803,6 +2803,12 @@ Continue downloading?</value>
   <data name="LauncherAiPanel_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>Open in a separate window</value>
   </data>
+  <data name="ErrorAnalysisChatPanel_AddImageButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Add image</value>
+  </data>
+  <data name="ErrorAnalysisChatPanel_RemovePendingImageButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Remove image</value>
+  </data>
   <data name="LauncherProfileDialog_ShortcutTitle" xml:space="preserve">
     <value>Select a launch profile</value>
   </data>
