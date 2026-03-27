@@ -3,6 +3,7 @@ using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Features.Dialogs.Services;
 
@@ -26,11 +27,11 @@ public sealed class SelectionDialogService : ISelectionDialogService
         };
 
         var stackPanel = new StackPanel { Spacing = 12 };
-        var nameBox = new TextBox { Text = request.Name, PlaceholderText = "例如：我的镜像站", Header = "源名称" };
-        var urlBox = new TextBox { Text = request.BaseUrl, PlaceholderText = "https://mirror.example.com", Header = "Base URL" };
+        var nameBox = new TextBox { Text = request.Name, PlaceholderText = "Dialog_CustomSource_NamePlaceholder".GetLocalized(), Header = "Dialog_CustomSource_NameHeader".GetLocalized() };
+        var urlBox = new TextBox { Text = request.BaseUrl, PlaceholderText = "https://mirror.example.com", Header = "Dialog_CustomSource_UrlHeader".GetLocalized() };
         var priorityBox = new NumberBox
         {
-            Header = "优先级（数值越大优先级越高）",
+            Header = "Dialog_CustomSource_PriorityHeader".GetLocalized(),
             Value = request.Priority,
             Minimum = 1,
             Maximum = 1000,
@@ -45,8 +46,8 @@ public sealed class SelectionDialogService : ISelectionDialogService
         {
             templateCombo = new ComboBox
             {
-                Header = "模板类型",
-                ItemsSource = new[] { "官方资源", "社区资源" },
+                Header = "Dialog_CustomSource_TemplateHeader".GetLocalized(),
+                ItemsSource = new[] { "Dialog_CustomSource_OfficialResource".GetLocalized(), "Dialog_CustomSource_CommunityResource".GetLocalized() },
                 SelectedIndex = request.Template == DownloadSourceTemplateType.Official ? 0 : 1,
             };
             stackPanel.Children.Add(templateCombo);
@@ -55,7 +56,7 @@ public sealed class SelectionDialogService : ISelectionDialogService
         {
             stackPanel.Children.Add(new TextBlock
             {
-                Text = $"模板类型: {(request.Template == DownloadSourceTemplateType.Official ? "官方资源" : "社区资源")}",
+                Text = $"{"Dialog_CustomSource_TemplateHeader".GetLocalized()}: {(request.Template == DownloadSourceTemplateType.Official ? "Dialog_CustomSource_OfficialResource".GetLocalized() : "Dialog_CustomSource_CommunityResource".GetLocalized())}",
                 Opacity = 0.7,
                 Margin = new Thickness(0, 8, 0, 0),
             });
@@ -66,7 +67,7 @@ public sealed class SelectionDialogService : ISelectionDialogService
         ToggleSwitch? enabledSwitch = null;
         if (request.ShowEnabledSwitch)
         {
-            enabledSwitch = new ToggleSwitch { Header = "启用", IsOn = request.Enabled };
+            enabledSwitch = new ToggleSwitch { Header = "Dialog_CustomSource_EnableHeader".GetLocalized(), IsOn = request.Enabled };
             stackPanel.Children.Add(enabledSwitch);
         }
 
@@ -101,14 +102,14 @@ public sealed class SelectionDialogService : ISelectionDialogService
         var stackPanel = new StackPanel { Spacing = 12 };
         var nameInput = new TextBox
         {
-            Header = "服务器名称",
+            Header = "Dialog_AddServer_NameHeader".GetLocalized(),
             PlaceholderText = "Minecraft Server",
             Text = defaultName,
         };
         var addrInput = new TextBox
         {
-            Header = "服务器地址",
-            PlaceholderText = "例如: 127.0.0.1",
+            Header = "Dialog_AddServer_AddressHeader".GetLocalized(),
+            PlaceholderText = "Dialog_AddServer_AddressPlaceholder".GetLocalized(),
         };
 
         stackPanel.Children.Add(nameInput);
@@ -116,9 +117,9 @@ public sealed class SelectionDialogService : ISelectionDialogService
 
         var dialog = new ContentDialog
         {
-            Title = "添加服务器",
-            PrimaryButtonText = "添加",
-            CloseButtonText = "取消",
+            Title = "Dialog_AddServer_Title".GetLocalized(),
+            PrimaryButtonText = "Dialog_AddServer_AddButton".GetLocalized(),
+            CloseButtonText = "Msg_Cancel".GetLocalized(),
             DefaultButton = ContentDialogButton.Primary,
             Content = stackPanel,
         };

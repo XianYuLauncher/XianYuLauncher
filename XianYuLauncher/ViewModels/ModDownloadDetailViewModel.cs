@@ -1120,7 +1120,7 @@ namespace XianYuLauncher.ViewModels
             WriteDebugLog($"OpenDownloadDialog 命令被调用，Mod 版本: {modVersion?.VersionNumber}");
             if (modVersion == null)
             {
-                await ShowMessageAsync("未选择要下载的Mod版本");
+                await ShowMessageAsync("Msg_NoModVersionSelected".GetLocalized());
                 return;
             }
 
@@ -1185,7 +1185,7 @@ namespace XianYuLauncher.ViewModels
             var selectedModVersion = SelectedModVersion;
             if (selectedModVersion == null)
             {
-                await ShowMessageAsync("请先选择要下载的Mod版本");
+                await ShowMessageAsync("Msg_SelectModVersion".GetLocalized());
                 return;
             }
             
@@ -1272,7 +1272,7 @@ namespace XianYuLauncher.ViewModels
                 
                 if (saveNamesList.Count == 0)
                 {
-                    await ShowMessageAsync("未找到存档，请先启动游戏创建一个世界。");
+                    await ShowMessageAsync("Msg_NoSaveFound".GetLocalized());
                     return;
                 }
                 
@@ -1662,7 +1662,7 @@ namespace XianYuLauncher.ViewModels
             var selectedModVersion = SelectedModVersion;
             if (selectedModVersion == null)
             {
-                await ShowMessageAsync("请先选择要下载的Mod版本");
+                await ShowMessageAsync("Msg_SelectModVersion".GetLocalized());
                 return;
             }
 
@@ -1715,7 +1715,7 @@ namespace XianYuLauncher.ViewModels
             var selectedModVersion = SelectedModVersion;
             if (selectedModVersion == null)
             {
-                await ShowMessageAsync("请先选择要下载的Mod版本");
+                await ShowMessageAsync("Msg_SelectModVersion".GetLocalized());
                 return;
             }
 
@@ -1766,7 +1766,7 @@ namespace XianYuLauncher.ViewModels
 
             if (modVersion == null)
             {
-                await ShowMessageAsync("未选择要下载的Mod版本");
+                await ShowMessageAsync("Msg_NoModVersionSelected".GetLocalized());
                 return;
             }
             
@@ -2606,7 +2606,7 @@ namespace XianYuLauncher.ViewModels
                 var selectedQuickInstallVersion = SelectedQuickInstallVersion;
                 if (selectedQuickInstallVersion == null)
                 {
-                    await ShowMessageAsync("请先选择要安装的游戏版本。");
+                    await ShowMessageAsync("Msg_SelectInstallVersion".GetLocalized());
                     return;
                 }
 
@@ -2835,7 +2835,7 @@ namespace XianYuLauncher.ViewModels
             {
                 CancelDownloadTeachingTip();
                 IsDownloading = false;
-                await ShowMessageAsync("下载已取消。");
+                await ShowMessageAsync("Msg_DownloadCancelled".GetLocalized());
             }
             catch (Exception ex)
             {

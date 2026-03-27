@@ -916,7 +916,7 @@ namespace XianYuLauncher.Views
             if (!IsChinaMainland())
             {
                 // 非中国大陆地区，不允许离线登录
-                await _dialogService.ShowMessageDialogAsync("地区限制", "当前地区无法使用离线登录，请使用微软账户登录。", "确定");
+                await _dialogService.ShowMessageDialogAsync("Msg_RegionRestriction".GetLocalized(), "Msg_OfflineLoginRegionRestricted".GetLocalized(), "Dialog_OK".GetLocalized());
                 return;
             }
             
@@ -942,7 +942,7 @@ namespace XianYuLauncher.Views
             if (!IsChinaMainland())
             {
                 // 非中国大陆地区，不允许外置登录
-                await _dialogService.ShowMessageDialogAsync("地区限制", "当前地区无法使用外置登录，请使用微软账户登录。", "确定");
+                await _dialogService.ShowMessageDialogAsync("Msg_RegionRestriction".GetLocalized(), "Msg_ExternalLoginRegionRestricted".GetLocalized(), "Dialog_OK".GetLocalized());
                 return;
             }
             
@@ -969,7 +969,7 @@ namespace XianYuLauncher.Views
                 if (profile.IsOffline)
                 {
                     // 离线账户无需续签
-                    await _dialogService.ShowMessageDialogAsync("提示", "离线账户无需续签令牌", "确定");
+                    await _dialogService.ShowMessageDialogAsync("Msg_Prompt".GetLocalized(), "Msg_OfflineNoTokenRefresh".GetLocalized(), "Dialog_OK".GetLocalized());
                     return;
                 }
                 
@@ -991,8 +991,8 @@ namespace XianYuLauncher.Views
                 var tokenRefreshService = App.GetService<XianYuLauncher.Core.Contracts.Services.ITokenRefreshService>();
 
                 await _progressDialogService.ShowProgressDialogAsync(
-                    "续签令牌",
-                    "正在验证令牌...",
+                    "Msg_RefreshToken".GetLocalized(),
+                    "Msg_RefreshToken".GetLocalized(),
                     async (_, status, _) =>
                     {
                         status.Report("正在验证令牌...");
@@ -1054,7 +1054,7 @@ namespace XianYuLauncher.Views
 
             if (showFinalMessage)
             {
-                await _dialogService.ShowMessageDialogAsync("续签令牌", finalMessage, "确定");
+                await _dialogService.ShowMessageDialogAsync("Msg_RefreshToken".GetLocalized(), finalMessage, "Dialog_OK".GetLocalized());
             }
         }
         
@@ -1762,7 +1762,7 @@ namespace XianYuLauncher.Views
         /// </summary>
         private async Task ShowLoginErrorDialogAsync(string errorMessage)
         {
-            await _dialogService.ShowMessageDialogAsync("登录失败", errorMessage, "确定");
+            await _dialogService.ShowMessageDialogAsync("Msg_LoginFailed".GetLocalized(), errorMessage, "Dialog_OK".GetLocalized());
 
             // 重置登录状态
             ViewModel.IsLoggingIn = false;

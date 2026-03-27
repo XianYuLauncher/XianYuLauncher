@@ -3588,4 +3588,488 @@
   <data name="VersionSettings_LocalCustomGameDirectoryClearButton.Content" xml:space="preserve">
     <value>清除</value>
   </data>
+  <!-- TutorialPage missing keys -->
+  <data name="TutorialPage_PersonalizationSection_Title.Text" xml:space="preserve">
+    <value>个性化</value>
+  </data>
+  <data name="TutorialPage_ThemeSettings.Header" xml:space="preserve">
+    <value>主题</value>
+  </data>
+  <data name="TutorialPage_ThemeSettings.Description" xml:space="preserve">
+    <value>选择应用的外观主题</value>
+  </data>
+  <data name="TutorialPage_Theme_Light.Content" xml:space="preserve">
+    <value>浅色</value>
+  </data>
+  <data name="TutorialPage_Theme_Dark.Content" xml:space="preserve">
+    <value>深色</value>
+  </data>
+  <data name="TutorialPage_Theme_Default.Content" xml:space="preserve">
+    <value>跟随系统</value>
+  </data>
+  <data name="TutorialPage_WindowMaterial.Header" xml:space="preserve">
+    <value>窗口材质</value>
+  </data>
+  <data name="TutorialPage_WindowMaterial.Description" xml:space="preserve">
+    <value>选择窗口背景效果</value>
+  </data>
+  <data name="TutorialPage_LanguageSettings.Header" xml:space="preserve">
+    <value>语言</value>
+  </data>
+  <data name="TutorialPage_LanguageSettings.Description" xml:space="preserve">
+    <value>选择应用的显示语言</value>
+  </data>
+  <data name="TutorialPage_Language_Chinese.Content" xml:space="preserve">
+    <value>简体中文</value>
+  </data>
+  <data name="TutorialPage_Language_English.Content" xml:space="preserve">
+    <value>English</value>
+  </data>
+  <data name="TutorialPage_GameSettings_Title.Text" xml:space="preserve">
+    <value>游戏设置</value>
+  </data>
+  <data name="TutorialPage_VersionIsolation.Header" xml:space="preserve">
+    <value>启用版本隔离</value>
+  </data>
+  <data name="TutorialPage_VersionIsolation.Description" xml:space="preserve">
+    <value>每个版本使用独立目录，Mod 互不干扰（推荐开启）</value>
+  </data>
+  <data name="TutorialPage_BlurAmount.Header" xml:space="preserve">
+    <value>模糊强度</value>
+  </data>
+  <data name="TutorialPage_BlurAmount.Description" xml:space="preserve">
+    <value>调整背景图片的模糊程度</value>
+  </data>
+  <!-- ErrorAnalysisPage missing keys -->
+  <data name="ErrorAnalysis_NoCrashPlaceholder.Text" xml:space="preserve">
+    <value>没有崩溃内容，因为游戏还没崩溃...</value>
+  </data>
+  <!-- LaunchPage new keys -->
+  <data name="LaunchPage_LaunchGameText.Text" xml:space="preserve">
+    <value>启动游戏</value>
+  </data>
+  <data name="LaunchPage_ViewInBrowserButton.Content" xml:space="preserve">
+    <value>在浏览器中查看详情</value>
+  </data>
+  <data name="LaunchPage_DevBuildInfoBar.Title" xml:space="preserve">
+    <value>开发版</value>
+  </data>
+  <data name="LaunchPage_DevBuildInfoBar.Message" xml:space="preserve">
+    <value>可能不稳定，遇到问题请向开发人员反馈。</value>
+  </data>
+  <!-- MultiplayerPage: correct x:Uid key format for InfoBar -->
+  <data name="联机Page_Warning.Title" xml:space="preserve">
+    <value>警告</value>
+  </data>
+  <data name="联机Page_Warning.Message" xml:space="preserve">
+    <value>陶瓦联机是第三方开源自由软件，您在使用过程中所遇到的问题请通过其官方渠道进行反馈。陶瓦联机基于 P2P 点对点技术实现，联机成功后房间内用户之间将直接建立网络连接，无任何公共中转节点、不通过第三方服务器转发流量，最终联机体验取决于参与联机者的网络环境。您在使用多人联机功能的全过程中，必须严格遵守您所在国家与地区的全部法律法规，不得用于任何违法违规及经营性活动。</value>
+  </data>
+  <!-- VersionManagementPage extra missing keys -->
+  <data name="VersionManagementPage_DisableToggle.OffContent" xml:space="preserve">
+    <value>禁用</value>
+  </data>
+  <data name="VersionManagementPage_DeleteButton.Content" xml:space="preserve">
+    <value>删除</value>
+  </data>
+  <!-- SettingsPage new keys -->
+  <data name="Settings_JavaPathTextBox.PlaceholderText" xml:space="preserve">
+    <value>请选择Java可执行文件路径</value>
+  </data>
+  <data name="Settings_JavaBrowseButton.Content" xml:space="preserve">
+    <value>浏览...</value>
+  </data>
+  <data name="Settings_JavaClearButton.Content" xml:space="preserve">
+    <value>清除</value>
+  </data>
+  <data name="Settings_BackgroundBrowseButton.Content" xml:space="preserve">
+    <value>浏览...</value>
+  </data>
+  <data name="Settings_BackgroundClearButton.Content" xml:space="preserve">
+    <value>清除</value>
+  </data>
+  <data name="Settings_BackgroundPlaceholderText.PlaceholderText" xml:space="preserve">
+    <value>请选择背景图片</value>
+  </data>
+  <data name="Settings_BlurAmount.Header" xml:space="preserve">
+    <value>模糊强度</value>
+  </data>
+  <data name="Settings_BlurAmount.Description" xml:space="preserve">
+    <value>调整背景图片的模糊程度</value>
+  </data>
+  <!-- C# ViewModel localization keys -->
+  <data name="Msg_Success" xml:space="preserve">
+    <value>成功</value>
+  </data>
+  <data name="Msg_Failed" xml:space="preserve">
+    <value>失败</value>
+  </data>
+  <data name="Msg_Error" xml:space="preserve">
+    <value>错误</value>
+  </data>
+  <data name="Msg_Prompt" xml:space="preserve">
+    <value>提示</value>
+  </data>
+  <data name="Msg_Warning" xml:space="preserve">
+    <value>警告</value>
+  </data>
+  <data name="Msg_OperationFailed" xml:space="preserve">
+    <value>操作失败</value>
+  </data>
+  <data name="Msg_SaveFailed" xml:space="preserve">
+    <value>保存失败</value>
+  </data>
+  <data name="Msg_SaveSuccess" xml:space="preserve">
+    <value>保存成功</value>
+  </data>
+  <data name="Msg_UploadSuccess" xml:space="preserve">
+    <value>上传成功</value>
+  </data>
+  <data name="Msg_UploadFailed" xml:space="preserve">
+    <value>上传失败</value>
+  </data>
+  <data name="Msg_ValidationFailed" xml:space="preserve">
+    <value>验证失败</value>
+  </data>
+  <data name="Msg_DownloadCancelled" xml:space="preserve">
+    <value>下载已取消。</value>
+  </data>
+  <data name="Msg_DownloadInProgress" xml:space="preserve">
+    <value>当前有下载任务正在进行，请等待完成后再试。</value>
+  </data>
+  <data name="Msg_NoInstalledVersion" xml:space="preserve">
+    <value>未找到已安装的游戏版本，请先安装游戏版本。</value>
+  </data>
+  <data name="Msg_InvalidShareCode" xml:space="preserve">
+    <value>分享码内容为空或格式不正确。</value>
+  </data>
+  <data name="Msg_SelectGameVersion" xml:space="preserve">
+    <value>请选择一个游戏版本。</value>
+  </data>
+  <data name="Msg_FavoritesEmpty" xml:space="preserve">
+    <value>收藏夹为空，无法导入。</value>
+  </data>
+  <data name="Msg_NoModVersionSelected" xml:space="preserve">
+    <value>未选择要下载的Mod版本</value>
+  </data>
+  <data name="Msg_SelectModVersion" xml:space="preserve">
+    <value>请先选择要下载的Mod版本</value>
+  </data>
+  <data name="Msg_NoSaveFound" xml:space="preserve">
+    <value>未找到存档，请先启动游戏创建一个世界。</value>
+  </data>
+  <data name="Msg_SelectInstallVersion" xml:space="preserve">
+    <value>请先选择要安装的游戏版本。</value>
+  </data>
+  <data name="Msg_SelectGameVersionFirst" xml:space="preserve">
+    <value>请先选择一个游戏版本</value>
+  </data>
+  <data name="Msg_SelectCharacterFirst" xml:space="preserve">
+    <value>请先选择一个角色</value>
+  </data>
+  <data name="Msg_GeneratingLaunchParams" xml:space="preserve">
+    <value>正在生成启动参数...</value>
+  </data>
+  <data name="Msg_GenerateLaunchParamsFailed" xml:space="preserve">
+    <value>生成启动参数失败</value>
+  </data>
+  <data name="Msg_SkinChangedTo" xml:space="preserve">
+    <value>已将皮肤更改为 {0}</value>
+  </data>
+  <data name="Msg_ApplySkinFailed" xml:space="preserve">
+    <value>应用皮肤失败: {0}</value>
+  </data>
+  <data name="Msg_NoSkinTexture" xml:space="preserve">
+    <value>没有可保存的皮肤纹理</value>
+  </data>
+  <data name="Msg_SkinSavedTo" xml:space="preserve">
+    <value>皮肤纹理已保存到: {0}</value>
+  </data>
+  <data name="Msg_SkinSaveError" xml:space="preserve">
+    <value>保存皮肤纹理时发生错误: {0}</value>
+  </data>
+  <data name="Msg_OfflineNoSkinUpload" xml:space="preserve">
+    <value>离线模式不支持上传皮肤</value>
+  </data>
+  <data name="Msg_SkinUploaded" xml:space="preserve">
+    <value>皮肤已成功上传</value>
+  </data>
+  <data name="Msg_ApiRequestFailed" xml:space="preserve">
+    <value>API请求失败: {0}</value>
+  </data>
+  <data name="Msg_SkinUploadError" xml:space="preserve">
+    <value>上传皮肤时发生错误: {0}</value>
+  </data>
+  <data name="Msg_SkinMustBePng" xml:space="preserve">
+    <value>皮肤文件必须是PNG格式</value>
+  </data>
+  <data name="Msg_SkinMustBe64x64" xml:space="preserve">
+    <value>皮肤文件必须是64x64尺寸</value>
+  </data>
+  <data name="Msg_SkinValidationError" xml:space="preserve">
+    <value>无法验证皮肤文件: {0}</value>
+  </data>
+  <data name="Msg_CapeMustBePng" xml:space="preserve">
+    <value>披风文件必须是PNG格式</value>
+  </data>
+  <data name="Msg_CapeValidationError" xml:space="preserve">
+    <value>无法验证披风文件: {0}</value>
+  </data>
+  <data name="Msg_OfflineNoCapeUpload" xml:space="preserve">
+    <value>离线模式不支持上传披风</value>
+  </data>
+  <data name="Msg_ExternalNoCapeUpload" xml:space="preserve">
+    <value>外置登录暂不支持上传披风</value>
+  </data>
+  <data name="Msg_MsNoCapeUpload" xml:space="preserve">
+    <value>微软账号不支持直接上传披风</value>
+  </data>
+  <data name="Msg_UploadTip" xml:space="preserve">
+    <value>上传提示</value>
+  </data>
+  <data name="Msg_CapeUploaded" xml:space="preserve">
+    <value>披风已成功上传</value>
+  </data>
+  <data name="Msg_CapeUploadError" xml:space="preserve">
+    <value>上传披风时发生错误: {0}</value>
+  </data>
+  <data name="Msg_NoVersionSelected" xml:space="preserve">
+    <value>未选择版本</value>
+  </data>
+  <data name="Msg_SelectVersionFirst" xml:space="preserve">
+    <value>请先选择一个版本</value>
+  </data>
+  <data name="Msg_LoadingVersionData" xml:space="preserve">
+    <value>正在加载版本数据...</value>
+  </data>
+  <data name="Msg_NoUpdatableResources" xml:space="preserve">
+    <value>当前没有可更新的资源。</value>
+  </data>
+  <data name="Msg_UpdateCancelled" xml:space="preserve">
+    <value>已取消更新。</value>
+  </data>
+  <data name="Msg_NoTargetResources" xml:space="preserve">
+    <value>未识别到可更新的目标资源。</value>
+  </data>
+  <data name="Msg_UpdatingResources" xml:space="preserve">
+    <value>正在更新资源...</value>
+  </data>
+  <data name="Msg_UpdatingMods" xml:space="preserve">
+    <value>正在更新 Mod...</value>
+  </data>
+  <data name="Msg_UpdatingShaders" xml:space="preserve">
+    <value>正在更新光影...</value>
+  </data>
+  <data name="Msg_UpdatingResourcePacks" xml:space="preserve">
+    <value>正在更新资源包...</value>
+  </data>
+  <data name="Msg_AddCustomSource" xml:space="preserve">
+    <value>添加自定义下载源</value>
+  </data>
+  <data name="Msg_EditCustomSource" xml:space="preserve">
+    <value>编辑自定义下载源</value>
+  </data>
+  <data name="Msg_Save" xml:space="preserve">
+    <value>保存</value>
+  </data>
+  <data name="Msg_Cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="Msg_Update" xml:space="preserve">
+    <value>更新</value>
+  </data>
+  <data name="Msg_Loading" xml:space="preserve">
+    <value>加载中...</value>
+  </data>
+  <data name="Msg_NoRecommendation" xml:space="preserve">
+    <value>暂无推荐</value>
+  </data>
+  <data name="Msg_LoadFailed" xml:space="preserve">
+    <value>加载失败</value>
+  </data>
+  <data name="Msg_ProcessingDragDrop" xml:space="preserve">
+    <value>正在处理拖放文件...</value>
+  </data>
+  <data name="Msg_RegionRestriction" xml:space="preserve">
+    <value>地区限制</value>
+  </data>
+  <data name="Msg_OfflineLoginRegionRestricted" xml:space="preserve">
+    <value>当前地区无法使用离线登录，请使用微软账户登录。</value>
+  </data>
+  <data name="Msg_ExternalLoginRegionRestricted" xml:space="preserve">
+    <value>当前地区无法使用外置登录，请使用微软账户登录。</value>
+  </data>
+  <data name="Msg_OfflineNoTokenRefresh" xml:space="preserve">
+    <value>离线账户无需续签令牌</value>
+  </data>
+  <data name="Msg_RefreshToken" xml:space="preserve">
+    <value>续签令牌</value>
+  </data>
+  <data name="Msg_LoginFailed" xml:space="preserve">
+    <value>登录失败</value>
+  </data>
+  <!-- ContentDialog localization keys -->
+  <data name="Dialog_LoginMethod_Title" xml:space="preserve">
+    <value>选择登录方式</value>
+  </data>
+  <data name="Dialog_LoginMethod_Instruction" xml:space="preserve">
+    <value>请选择您喜欢的登录方式：</value>
+  </data>
+  <data name="Dialog_LoginMethod_BrowserDesc" xml:space="preserve">
+    <value>• 浏览器登录：打开系统默认浏览器进行登录 (推荐)</value>
+  </data>
+  <data name="Dialog_LoginMethod_DeviceCodeDesc" xml:space="preserve">
+    <value>• 设备代码登录：获取代码后手动访问网页输入</value>
+  </data>
+  <data name="Dialog_LoginMethod_BrowserButton" xml:space="preserve">
+    <value>浏览器登录</value>
+  </data>
+  <data name="Dialog_LoginMethod_DeviceCodeButton" xml:space="preserve">
+    <value>设备代码登录</value>
+  </data>
+  <data name="Dialog_SkinModel_Title" xml:space="preserve">
+    <value>选择皮肤模型</value>
+  </data>
+  <data name="Dialog_SkinModel_Content" xml:space="preserve">
+    <value>请选择此皮肤适用的人物模型</value>
+  </data>
+  <data name="Dialog_JavaNotFound_Title" xml:space="preserve">
+    <value>Java运行时环境未找到</value>
+  </data>
+  <data name="Dialog_JavaNotFound_Content" xml:space="preserve">
+    <value>未找到适用于当前游戏版本的Java运行时环境。
+
+游戏版本需要: Java {0}
+
+推荐使用自动下载功能，启动器将自动安装并配置环境。</value>
+  </data>
+  <data name="Dialog_JavaNotFound_AutoDownload" xml:space="preserve">
+    <value>自动下载(推荐)</value>
+  </data>
+  <data name="Dialog_JavaNotFound_ManualDownload" xml:space="preserve">
+    <value>手动下载</value>
+  </data>
+  <data name="Dialog_OfflineTip_Title" xml:space="preserve">
+    <value>离线游玩提示</value>
+  </data>
+  <data name="Dialog_OfflineTip_Content" xml:space="preserve">
+    <value>您已经使用离线模式启动{0}次了,支持一下正版吧！</value>
+  </data>
+  <data name="Dialog_OfflineTip_OK" xml:space="preserve">
+    <value>知道了</value>
+  </data>
+  <data name="Dialog_OfflineTip_Support" xml:space="preserve">
+    <value>支持正版</value>
+  </data>
+  <data name="Dialog_ExportSuccess_Title" xml:space="preserve">
+    <value>导出成功</value>
+  </data>
+  <data name="Dialog_ExportSuccess_Content" xml:space="preserve">
+    <value>启动参数已成功导出到桌面:
+{0}
+
+您可以双击该文件来启动游戏。</value>
+  </data>
+  <data name="Dialog_ExportSuccess_OpenLocation" xml:space="preserve">
+    <value>打开文件位置</value>
+  </data>
+  <data name="Dialog_RegionRestricted_Title" xml:space="preserve">
+    <value>地区限制</value>
+  </data>
+  <data name="Dialog_RegionRestricted_Go" xml:space="preserve">
+    <value>前往</value>
+  </data>
+  <data name="Dialog_Privacy_Agree" xml:space="preserve">
+    <value>同意</value>
+  </data>
+  <data name="Dialog_Privacy_Agreement" xml:space="preserve">
+    <value>用户协议</value>
+  </data>
+  <data name="Dialog_Privacy_Reject" xml:space="preserve">
+    <value>拒绝</value>
+  </data>
+  <data name="Dialog_Crash_Title" xml:space="preserve">
+    <value>游戏崩溃</value>
+  </data>
+  <data name="Dialog_Crash_ExportLog" xml:space="preserve">
+    <value>导出崩溃日志</value>
+  </data>
+  <data name="Dialog_Crash_ViewLog" xml:space="preserve">
+    <value>查看详细日志</value>
+  </data>
+  <data name="Dialog_Crash_Close" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <data name="Dialog_Crash_InstructionTitle" xml:space="preserve">
+    <value>正确的求助步骤</value>
+  </data>
+  <data name="Dialog_Crash_Step1" xml:space="preserve">
+    <value>1. 点击下方「导出崩溃日志」按钮</value>
+  </data>
+  <data name="Dialog_Crash_Step2" xml:space="preserve">
+    <value>2. 将导出的 ZIP 文件发送给技术支持</value>
+  </data>
+  <data name="Dialog_Crash_LogInfo" xml:space="preserve">
+    <value>日志文件包含启动器日志、游戏日志等信息，能帮助快速定位问题</value>
+  </data>
+  <data name="Dialog_Crash_LogPreview" xml:space="preserve">
+    <value>查看日志预览</value>
+  </data>
+  <data name="Dialog_AddServer_Title" xml:space="preserve">
+    <value>添加服务器</value>
+  </data>
+  <data name="Dialog_AddServer_NameHeader" xml:space="preserve">
+    <value>服务器名称</value>
+  </data>
+  <data name="Dialog_AddServer_AddressHeader" xml:space="preserve">
+    <value>服务器地址</value>
+  </data>
+  <data name="Dialog_AddServer_AddressPlaceholder" xml:space="preserve">
+    <value>例如: 127.0.0.1</value>
+  </data>
+  <data name="Dialog_AddServer_AddButton" xml:space="preserve">
+    <value>添加</value>
+  </data>
+  <data name="Dialog_FavoritesImport_Unsupported" xml:space="preserve">
+    <value>以下资源不支持所选版本：</value>
+  </data>
+  <data name="Dialog_FavoritesImport_Title" xml:space="preserve">
+    <value>部分资源不支持此版本</value>
+  </data>
+  <data name="Dialog_OK" xml:space="preserve">
+    <value>确定</value>
+  </data>
+  <data name="Dialog_Confirm" xml:space="preserve">
+    <value>确认</value>
+  </data>
+  <data name="Dialog_Install" xml:space="preserve">
+    <value>安装</value>
+  </data>
+  <data name="Dialog_AllPublishers" xml:space="preserve">
+    <value>所有发布者</value>
+  </data>
+  <!-- Custom Source Dialog keys -->
+  <data name="Dialog_CustomSource_NameHeader" xml:space="preserve">
+    <value>源名称</value>
+  </data>
+  <data name="Dialog_CustomSource_NamePlaceholder" xml:space="preserve">
+    <value>例如：我的镜像站</value>
+  </data>
+  <data name="Dialog_CustomSource_UrlHeader" xml:space="preserve">
+    <value>Base URL</value>
+  </data>
+  <data name="Dialog_CustomSource_PriorityHeader" xml:space="preserve">
+    <value>优先级（数值越大优先级越高）</value>
+  </data>
+  <data name="Dialog_CustomSource_TemplateHeader" xml:space="preserve">
+    <value>模板类型</value>
+  </data>
+  <data name="Dialog_CustomSource_OfficialResource" xml:space="preserve">
+    <value>官方资源</value>
+  </data>
+  <data name="Dialog_CustomSource_CommunityResource" xml:space="preserve">
+    <value>社区资源</value>
+  </data>
+  <data name="Dialog_CustomSource_EnableHeader" xml:space="preserve">
+    <value>启用</value>
+  </data>
 </root>

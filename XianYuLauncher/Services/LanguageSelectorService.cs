@@ -47,7 +47,14 @@ public class LanguageSelectorService : ILanguageSelectorService
             return languageName;
         }
 
-        return "zh-CN";
+        // No saved preference — detect from system language
+        var systemLanguage = CultureInfo.CurrentUICulture.Name;
+        if (systemLanguage.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
+        {
+            return "zh-CN";
+        }
+
+        return "en-US";
     }
 
     private async Task SaveLanguageInSettingsAsync(string language)

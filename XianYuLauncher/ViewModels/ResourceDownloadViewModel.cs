@@ -16,6 +16,7 @@ using XianYuLauncher.Core.Services;
 using XianYuLauncher.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.ViewModels;
 
@@ -735,14 +736,14 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     {
         if (IsFavoritesDownloading)
         {
-            await ShowMessageAsync("当前有下载任务正在进行，请等待完成后再试。");
+            await ShowMessageAsync("Msg_DownloadInProgress".GetLocalized());
             return;
         }
 
         await LoadFavoritesInstallVersionsAsync();
         if (FavoritesInstallVersions.Count == 0)
         {
-            await ShowMessageAsync("未找到已安装的游戏版本，请先安装游戏版本。");
+            await ShowMessageAsync("Msg_NoInstalledVersion".GetLocalized());
             return;
         }
 
@@ -780,7 +781,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         var rawIds = ParseShareCodeInput(ShareCodeInput);
         if (rawIds.Count == 0)
         {
-            await ShowMessageAsync("分享码内容为空或格式不正确。");
+            await ShowMessageAsync("Msg_InvalidShareCode".GetLocalized());
             return;
         }
 
@@ -852,13 +853,13 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     {
         if (SelectedFavoritesInstallVersion == null)
         {
-            await ShowMessageAsync("请选择一个游戏版本。");
+            await ShowMessageAsync("Msg_SelectGameVersion".GetLocalized());
             return;
         }
         
         if (IsFavoritesDownloading)
         {
-            await ShowMessageAsync("当前有下载任务正在进行，请等待完成后再试。");
+            await ShowMessageAsync("Msg_DownloadInProgress".GetLocalized());
             return;
         }
 
@@ -868,7 +869,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         if (targets.Count == 0)
         {
-            await ShowMessageAsync("收藏夹为空，无法导入。");
+            await ShowMessageAsync("Msg_FavoritesEmpty".GetLocalized());
             return;
         }
 

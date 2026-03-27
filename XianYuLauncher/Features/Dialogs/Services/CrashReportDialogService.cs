@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Features.Dialogs.Services;
 
@@ -132,17 +133,17 @@ public sealed class CrashReportDialogService : ICrashReportDialogService
         var instructionStack = new StackPanel { Spacing = 10 };
         instructionStack.Children.Add(new TextBlock
         {
-            Text = "正确的求助步骤",
+            Text = "Dialog_Crash_InstructionTitle".GetLocalized(),
             FontSize = 16,
             FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
             Margin = new Thickness(0, 0, 0, 4),
             Foreground = _dialogThemePaletteService.GetPrimaryTextBrush(),
         });
-        instructionStack.Children.Add(new TextBlock { Text = "1. 点击下方「导出崩溃日志」按钮", FontSize = 14, TextWrapping = TextWrapping.Wrap, Foreground = _dialogThemePaletteService.GetSecondaryTextBrush() });
-        instructionStack.Children.Add(new TextBlock { Text = "2. 将导出的 ZIP 文件发送给技术支持", FontSize = 14, TextWrapping = TextWrapping.Wrap, Foreground = _dialogThemePaletteService.GetSecondaryTextBrush() });
+        instructionStack.Children.Add(new TextBlock { Text = "Dialog_Crash_Step1".GetLocalized(), FontSize = 14, TextWrapping = TextWrapping.Wrap, Foreground = _dialogThemePaletteService.GetSecondaryTextBrush() });
+        instructionStack.Children.Add(new TextBlock { Text = "Dialog_Crash_Step2".GetLocalized(), FontSize = 14, TextWrapping = TextWrapping.Wrap, Foreground = _dialogThemePaletteService.GetSecondaryTextBrush() });
         instructionStack.Children.Add(new TextBlock
         {
-            Text = "日志文件包含启动器日志、游戏日志等信息，能帮助快速定位问题",
+            Text = "Dialog_Crash_LogInfo".GetLocalized(),
             FontSize = 13,
             TextWrapping = TextWrapping.Wrap,
             Foreground = _dialogThemePaletteService.GetTertiaryTextBrush(),
@@ -154,7 +155,7 @@ public sealed class CrashReportDialogService : ICrashReportDialogService
 
         var logExpander = new Expander
         {
-            Header = "查看日志预览",
+            Header = "Dialog_Crash_LogPreview".GetLocalized(),
             IsExpanded = false,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
@@ -179,11 +180,11 @@ public sealed class CrashReportDialogService : ICrashReportDialogService
 
         var dialog = new ContentDialog
         {
-            Title = "游戏崩溃",
+            Title = "Dialog_Crash_Title".GetLocalized(),
             Content = warningPanel,
-            PrimaryButtonText = "导出崩溃日志",
-            SecondaryButtonText = "查看详细日志",
-            CloseButtonText = "关闭",
+            PrimaryButtonText = "Dialog_Crash_ExportLog".GetLocalized(),
+            SecondaryButtonText = "Dialog_Crash_ViewLog".GetLocalized(),
+            CloseButtonText = "Dialog_Crash_Close".GetLocalized(),
             DefaultButton = ContentDialogButton.Primary,
         };
 

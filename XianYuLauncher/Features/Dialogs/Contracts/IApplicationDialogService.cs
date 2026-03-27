@@ -18,7 +18,7 @@ public interface IApplicationDialogService
         string title,
         string agreementContent,
         Func<Task>? onOpenAgreementLink = null,
-        string primaryButtonText = "同意",
-        string secondaryButtonText = "用户协议",
-        string closeButtonText = "拒绝");
+        string? primaryButtonText = null,
+        string? secondaryButtonText = null,
+        string? closeButtonText = null);
 }
