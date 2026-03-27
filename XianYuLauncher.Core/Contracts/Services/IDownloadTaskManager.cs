@@ -190,6 +190,17 @@ public interface IDownloadTaskManager
         string? teachingTipGroupKey = null,
         CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown);
 
+    Task<string> StartResourceDownloadWithTaskIdAsync(
+        string resourceName,
+        string resourceType,
+        string downloadUrl,
+        string savePath,
+        string? iconUrl = null,
+        IEnumerable<ResourceDependency>? dependencies = null,
+        bool showInTeachingTip = false,
+        string? teachingTipGroupKey = null,
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown);
+
     /// <summary>
     /// 启动世界下载（下载zip并解压到saves目录）
     /// </summary>

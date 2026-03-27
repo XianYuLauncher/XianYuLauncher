@@ -7,6 +7,8 @@ public interface IModResourceDownloadOrchestrator
 {
     string EnsureDownloadUrl(ModVersionViewModel modVersion);
 
+    string EnsureDownloadUrl(CommunityResourceInstallDescriptor descriptor);
+
     Task ProcessDependenciesForResourceAsync(
         string projectType,
         string gameDir,
@@ -14,6 +16,11 @@ public interface IModResourceDownloadOrchestrator
         string targetDir,
         InstalledGameVersionViewModel? gameVersion,
         Action<string, double, string>? onProgress = null);
+
+    Task<IReadOnlyList<ResourceDependency>> BuildDependenciesAsync(
+        CommunityResourceInstallPlan installPlan,
+        CommunityResourceInstallDescriptor descriptor,
+        CancellationToken cancellationToken = default);
 
     Task StartResourceDownloadAsync(
         string modName,
@@ -24,4 +31,12 @@ public interface IModResourceDownloadOrchestrator
         bool showInTeachingTip = false,
         string? teachingTipGroupKey = null,
         CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown);
+
+    Task<string> StartResourceDownloadWithTaskIdAsync(
+        string resourceName,
+        CommunityResourceInstallPlan installPlan,
+        CommunityResourceInstallDescriptor descriptor,
+        IEnumerable<ResourceDependency>? dependencies = null,
+        bool showInTeachingTip = false,
+        string? teachingTipGroupKey = null);
 }

@@ -12,6 +12,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Services;
 using XianYuLauncher.Core.Models;
@@ -40,6 +41,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly IGameDirResolver _gameDirResolver;
+    private readonly ICommunityResourceInstallPlanner _communityResourceInstallPlanner;
 
     // 版本下载相关属性和命令
     [ObservableProperty]
@@ -1134,7 +1136,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             return (false, "资源为空");
         }
 
-        string projectType = NormalizeProjectType(project.ProjectType);
+        string projectType = ModResourcePathHelper.NormalizeProjectType(project.ProjectType);
         if (IsCurseForgeProject(project.ProjectId) && (string.IsNullOrEmpty(project.ProjectType) || projectType == "mod"))
         {
             projectType = await ResolveCurseForgeProjectTypeAsync(project, projectType);
@@ -1559,17 +1561,37 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
     private async Task<string> GetTargetDirectoryAsync(string projectType, InstalledGameVersionViewModel gameVersion)
     {
-        string gameDir = await _gameDirResolver.GetGameDirForVersionAsync(gameVersion.OriginalVersionName);
-
-        string targetFolder = projectType switch
+        string normalizedProjectType = ModResourcePathHelper.NormalizeProjectType(projectType);
+        if (normalizedProjectType == "world")
         {
-            "resourcepack" => MinecraftPathConsts.ResourcePacks,
-            "shader" => MinecraftPathConsts.ShaderPacks,
-            "datapack" => MinecraftPathConsts.Datapacks,
-            _ => MinecraftPathConsts.Mods
-        };
+            string gameDir = await _gameDirResolver.GetGameDirForVersionAsync(gameVersion.OriginalVersionName);
+            return ModResourcePathHelper.GetDependencyTargetDir(gameDir, normalizedProjectType);
+        }
 
-        return Path.Combine(gameDir, targetFolder);
+        var planningResult = await _communityResourceInstallPlanner.PlanAsync(new CommunityResourceInstallRequest
+        {
+            ResourceType = normalizedProjectType,
+            FileName = "placeholder.bin",
+            TargetVersionName = gameVersion.OriginalVersionName,
+            UseCustomDownloadPath = false
+        });
+
+        if (planningResult.IsReadyToInstall && planningResult.Plan != null)
+        {
+            return planningResult.Plan.PrimaryTargetDirectory;
+        }
+
+        if (!string.IsNullOrWhiteSpace(planningResult.UnsupportedReason))
+        {
+            throw new InvalidOperationException(planningResult.UnsupportedReason);
+        }
+
+        if (planningResult.MissingRequirements.Count > 0)
+        {
+            throw new InvalidOperationException(planningResult.MissingRequirements[0].Message);
+        }
+
+        throw new InvalidOperationException("无法解析资源目标目录。");
     }
 
     private async Task<string> ResolveModrinthDependencyTargetDirAsync(string projectId, InstalledGameVersionViewModel gameVersion)
@@ -1577,7 +1599,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         try
         {
             var detail = await _modrinthService.GetProjectDetailAsync(projectId);
-            string projectType = NormalizeProjectType(detail?.ProjectType);
+            string projectType = ModResourcePathHelper.NormalizeProjectType(detail?.ProjectType);
             return await GetTargetDirectoryAsync(projectType, gameVersion);
         }
         catch
@@ -1588,7 +1610,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
     private async Task<string> ResolveCurseForgeDependencyTargetDirAsync(CurseForgeModDetail modDetail, InstalledGameVersionViewModel gameVersion)
     {
-        string projectType = MapCurseForgeClassIdToProjectType(modDetail?.ClassId);
+        string projectType = ModResourcePathHelper.MapCurseForgeClassIdToProjectType(modDetail?.ClassId);
         return await GetTargetDirectoryAsync(projectType, gameVersion);
     }
 
@@ -1622,8 +1644,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         try
         {
             var detail = await _curseForgeService.GetModDetailAsync(modId);
-            string mappedType = MapCurseForgeClassIdToProjectType(detail?.ClassId);
-            return NormalizeProjectType(mappedType);
+            string mappedType = ModResourcePathHelper.MapCurseForgeClassIdToProjectType(detail?.ClassId);
+            return ModResourcePathHelper.NormalizeProjectType(mappedType);
         }
         catch
         {
@@ -1644,29 +1666,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         var idText = projectId.Substring("curseforge-".Length);
         return int.TryParse(idText, out modId);
-    }
-
-    private static string MapCurseForgeClassIdToProjectType(int? classId)
-    {
-        return classId switch
-        {
-            12 => "resourcepack",
-            4471 => "modpack",
-            6552 => "shader",
-            6945 => "datapack",
-            _ => "mod"
-        };
-    }
-
-    private static string NormalizeProjectType(string? projectType)
-    {
-        if (string.IsNullOrEmpty(projectType)) return "mod";
-
-        return projectType.ToLower() switch
-        {
-            "shaderpack" => "shader",
-            _ => projectType.ToLower()
-        };
     }
 
     private static string NormalizeShareCodeId(string projectId)
@@ -1806,7 +1805,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         IResourceDialogService resourceDialogService,
         IDownloadTaskManager downloadTaskManager,
         IUiDispatcher uiDispatcher,
-        IGameDirResolver gameDirResolver)
+        IGameDirResolver gameDirResolver,
+        ICommunityResourceInstallPlanner communityResourceInstallPlanner)
     {
         _minecraftVersionService = minecraftVersionService;
         _gameManifestQueryService = gameManifestQueryService;
@@ -1826,6 +1826,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         _downloadTaskManager = downloadTaskManager;
         _uiDispatcher = uiDispatcher;
         _gameDirResolver = gameDirResolver;
+        _communityResourceInstallPlanner = communityResourceInstallPlanner;
 
         // Load saved favorites
         foreach (var item in _favoritesService.Load())
