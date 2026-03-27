@@ -1,8 +1,10 @@
 using System.Text;
+using System.Net;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.ViewModels;
@@ -103,7 +105,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         }
     }
 
-    public async Task SendMessageAsync(string userMessage, CancellationToken cancellationToken)
+    public async Task SendMessageAsync(string userMessage, IReadOnlyList<ChatImageAttachment> imageAttachments, CancellationToken cancellationToken)
     {
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
@@ -111,7 +113,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             _sessionState.IsChatEnabled = false;
             _sessionState.ResetFixActions();
             _sessionState.ClearPendingToolContinuation();
-            _sessionState.ChatMessages.Add(new UiChatMessage("user", userMessage));
+            _sessionState.ChatMessages.Add(new UiChatMessage("user", userMessage, imageAttachments: imageAttachments));
             _sessionState.ChatMessages.Add(new UiChatMessage("assistant", "..."));
         });
 
@@ -138,6 +140,10 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         catch (OperationCanceledException)
         {
             await AppendCancellationMessageAsync();
+        }
+        catch (Exception ex)
+        {
+            await SetLastAssistantMessageAsync(string.Format(GetLocalizedString("ErrorAnalysis_AnalysisFailed.Text"), ex.Message));
         }
         finally
         {
@@ -345,176 +351,195 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     private async Task StreamResponseToLastMessageAsync(
         AiSettingsState settings,
         CancellationToken cancellationToken,
-        List<ChatMessage>? initialApiMessages = null)
+        List<ChatMessage>? initialApiMessages = null,
+        bool hasRetriedWithoutImages = false)
     {
         var apiMessages = initialApiMessages ?? await BuildApiMessagesAsync();
         var tools = _toolDispatcher.GetAvailableTools();
-
-        for (int round = 0; round < MaxToolCallRounds; round++)
+        try
         {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            bool isFirstChunk = true;
-            var contentBuilder = new StringBuilder();
-            var updateBuffer = new StringBuilder();
-            var lastUpdate = DateTime.UtcNow;
-            var uiUpdateInterval = TimeSpan.FromMilliseconds(50);
-            List<ToolCallInfo>? pendingToolCalls = null;
-
-            await foreach (var chunk in _aiAnalysisService.StreamChatWithToolsAsync(apiMessages, tools, settings.ApiKey, settings.ApiEndpoint, settings.Model))
+            for (int round = 0; round < MaxToolCallRounds; round++)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                if (chunk.IsContent)
+                bool isFirstChunk = true;
+                var contentBuilder = new StringBuilder();
+                var updateBuffer = new StringBuilder();
+                var lastUpdate = DateTime.UtcNow;
+                var uiUpdateInterval = TimeSpan.FromMilliseconds(50);
+                List<ToolCallInfo>? pendingToolCalls = null;
+
+                await foreach (var chunk in _aiAnalysisService.StreamChatWithToolsAsync(apiMessages, tools, settings.ApiKey, settings.ApiEndpoint, settings.Model))
                 {
-                    contentBuilder.Append(chunk.ContentDelta);
-                    updateBuffer.Append(chunk.ContentDelta);
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                    var now = DateTime.UtcNow;
-                    if ((now - lastUpdate) > uiUpdateInterval || updateBuffer.Length > 20)
+                    if (chunk.IsContent)
                     {
-                        var textToAppend = updateBuffer.ToString();
-                        updateBuffer.Clear();
-                        lastUpdate = now;
+                        contentBuilder.Append(chunk.ContentDelta);
+                        updateBuffer.Append(chunk.ContentDelta);
 
-                        await _uiDispatcher.RunOnUiThreadAsync(() =>
+                        var now = DateTime.UtcNow;
+                        if ((now - lastUpdate) > uiUpdateInterval || updateBuffer.Length > 20)
                         {
-                            var lastMsg = GetLastAssistantMessage();
-                            if (lastMsg == null)
-                            {
-                                return;
-                            }
+                            var textToAppend = updateBuffer.ToString();
+                            updateBuffer.Clear();
+                            lastUpdate = now;
 
-                            if (isFirstChunk)
+                            await _uiDispatcher.RunOnUiThreadAsync(() =>
                             {
-                                if (lastMsg.Content == "...")
+                                var lastMsg = GetLastAssistantMessage();
+                                if (lastMsg == null)
                                 {
-                                    lastMsg.Content = string.Empty;
+                                    return;
                                 }
 
-                                isFirstChunk = false;
-                            }
+                                if (isFirstChunk)
+                                {
+                                    if (lastMsg.Content == "...")
+                                    {
+                                        lastMsg.Content = string.Empty;
+                                    }
 
-                            lastMsg.Content += textToAppend;
-                            if (_sessionState.ChatMessages.Count <= 3)
-                            {
-                                _sessionState.AiAnalysisResult = lastMsg.Content;
-                            }
-                        });
+                                    isFirstChunk = false;
+                                }
+
+                                lastMsg.Content += textToAppend;
+                                if (_sessionState.ChatMessages.Count <= 3)
+                                {
+                                    _sessionState.AiAnalysisResult = lastMsg.Content;
+                                }
+                            });
+                        }
+                    }
+
+                    if (chunk.IsToolCall)
+                    {
+                        pendingToolCalls = chunk.ToolCalls;
                     }
                 }
 
-                if (chunk.IsToolCall)
+                if (updateBuffer.Length > 0)
                 {
-                    pendingToolCalls = chunk.ToolCalls;
-                }
-            }
+                    var finalText = updateBuffer.ToString();
+                    await _uiDispatcher.RunOnUiThreadAsync(() =>
+                    {
+                        var lastMsg = GetLastAssistantMessage();
+                        if (lastMsg == null)
+                        {
+                            return;
+                        }
 
-            if (updateBuffer.Length > 0)
-            {
-                var finalText = updateBuffer.ToString();
+                        if (isFirstChunk && lastMsg.Content == "...")
+                        {
+                            lastMsg.Content = string.Empty;
+                        }
+
+                        lastMsg.Content += finalText;
+                        if (_sessionState.ChatMessages.Count <= 3)
+                        {
+                            _sessionState.AiAnalysisResult = lastMsg.Content;
+                        }
+                    });
+                }
+
+                if (pendingToolCalls == null || pendingToolCalls.Count == 0)
+                {
+                    break;
+                }
+
+                var assistantToolCallMessage = new ChatMessage("assistant", contentBuilder.Length > 0 ? contentBuilder.ToString() : null, pendingToolCalls);
+                apiMessages.Add(assistantToolCallMessage);
+
                 await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
-                    var lastMsg = GetLastAssistantMessage();
-                    if (lastMsg == null)
+                    var lastAssistant = GetLastAssistantMessage();
+                    if (lastAssistant == null)
                     {
                         return;
                     }
 
-                    if (isFirstChunk && lastMsg.Content == "...")
-                    {
-                        lastMsg.Content = string.Empty;
-                    }
-
-                    lastMsg.Content += finalText;
-                    if (_sessionState.ChatMessages.Count <= 3)
-                    {
-                        _sessionState.AiAnalysisResult = lastMsg.Content;
-                    }
+                    lastAssistant.ToolCalls = CloneToolCalls(pendingToolCalls);
+                    lastAssistant.AiHistoryContent = string.IsNullOrWhiteSpace(lastAssistant.Content) ? null : lastAssistant.Content;
                 });
-            }
 
-            if (pendingToolCalls == null || pendingToolCalls.Count == 0)
-            {
-                break;
-            }
-
-            var assistantToolCallMessage = new ChatMessage("assistant", contentBuilder.Length > 0 ? contentBuilder.ToString() : null, pendingToolCalls);
-            apiMessages.Add(assistantToolCallMessage);
-
-            await _uiDispatcher.RunOnUiThreadAsync(() =>
-            {
-                var lastAssistant = GetLastAssistantMessage();
-                if (lastAssistant == null)
+                List<AgentActionProposal> actionProposals = [];
+                List<string> actionProposalMessages = [];
+                foreach (var toolCall in pendingToolCalls)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
+                    UiChatMessage? toolUiMessage = null;
+                    await _uiDispatcher.RunOnUiThreadAsync(() =>
+                    {
+                        RemoveTrailingAssistantPlaceholderIfNeeded();
+                        toolUiMessage = new UiChatMessage("tool", toolCall.FunctionName)
+                        {
+                            ToolCallId = toolCall.Id,
+                            AiHistoryContent = string.Empty
+                        };
+                        _sessionState.ChatMessages.Add(toolUiMessage);
+                    });
+
+                    var result = await _toolDispatcher.ExecuteAsync(toolCall, cancellationToken);
+                    await _uiDispatcher.RunOnUiThreadAsync(() =>
+                    {
+                        if (toolUiMessage != null)
+                        {
+                            toolUiMessage.AiHistoryContent = result.Message;
+                        }
+                    });
+
+                    if (result.ActionProposal != null)
+                    {
+                        actionProposals.Add(result.ActionProposal);
+                        if (!string.IsNullOrWhiteSpace(result.Message))
+                        {
+                            actionProposalMessages.Add(result.Message);
+                        }
+                    }
+
+                    apiMessages.Add(ChatMessage.ToolResult(toolCall.Id, result.Message));
+                }
+
+                if (actionProposals.Count > 0)
+                {
+                    var pendingActionMessage = BuildPendingActionDisplayMessage(actionProposals, actionProposalMessages);
+                    assistantToolCallMessage.Content = null;
+
+                    await _uiDispatcher.RunOnUiThreadAsync(() =>
+                    {
+                        EnsureTrailingAssistantMessage();
+                        SetPendingActionMessageOnLastAssistant(pendingActionMessage);
+                        _sessionState.ApplyActionProposals(actionProposals);
+                        _sessionState.SetPendingToolContinuation(apiMessages);
+                    });
+
                     return;
                 }
-
-                lastAssistant.ToolCalls = CloneToolCalls(pendingToolCalls);
-                lastAssistant.AiHistoryContent = string.IsNullOrWhiteSpace(lastAssistant.Content) ? null : lastAssistant.Content;
-            });
-
-            List<AgentActionProposal> actionProposals = [];
-            List<string> actionProposalMessages = [];
-            foreach (var toolCall in pendingToolCalls)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                UiChatMessage? toolUiMessage = null;
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                    RemoveTrailingAssistantPlaceholderIfNeeded();
-                    toolUiMessage = new UiChatMessage("tool", toolCall.FunctionName)
-                    {
-                        ToolCallId = toolCall.Id,
-                        AiHistoryContent = string.Empty
-                    };
-                    _sessionState.ChatMessages.Add(toolUiMessage);
-                });
-
-                var result = await _toolDispatcher.ExecuteAsync(toolCall, cancellationToken);
-                await _uiDispatcher.RunOnUiThreadAsync(() =>
-                {
-                    if (toolUiMessage != null)
-                    {
-                        toolUiMessage.AiHistoryContent = result.Message;
-                    }
-                });
-
-                if (result.ActionProposal != null)
-                {
-                    actionProposals.Add(result.ActionProposal);
-                    if (!string.IsNullOrWhiteSpace(result.Message))
-                    {
-                        actionProposalMessages.Add(result.Message);
-                    }
-                }
-
-                apiMessages.Add(ChatMessage.ToolResult(toolCall.Id, result.Message));
-            }
-
-            if (actionProposals.Count > 0)
-            {
-                var pendingActionMessage = BuildPendingActionDisplayMessage(actionProposals, actionProposalMessages);
-                assistantToolCallMessage.Content = null;
 
                 await _uiDispatcher.RunOnUiThreadAsync(() =>
                 {
                     EnsureTrailingAssistantMessage();
-                    SetPendingActionMessageOnLastAssistant(pendingActionMessage);
-                    _sessionState.ApplyActionProposals(actionProposals);
-                    _sessionState.SetPendingToolContinuation(apiMessages);
                 });
 
+                await Task.Delay(50, cancellationToken);
+            }
+        }
+        catch (AiAnalysisRequestException ex) when (!hasRetriedWithoutImages)
+        {
+            var fallback = await PrepareTextOnlyRetryAsync(apiMessages, ex);
+            if (!fallback.Handled)
+            {
+                throw;
+            }
+
+            if (fallback.RetryMessages == null)
+            {
                 return;
             }
 
-            await _uiDispatcher.RunOnUiThreadAsync(() =>
-            {
-                EnsureTrailingAssistantMessage();
-            });
-
             await Task.Delay(50, cancellationToken);
+            await StreamResponseToLastMessageAsync(settings, cancellationToken, fallback.RetryMessages, hasRetriedWithoutImages: true);
         }
     }
 
@@ -678,6 +703,9 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                     continue;
                 }
 
+                var historyContent = msg.AiHistoryContent ?? msg.Content ?? string.Empty;
+                var historyAttachments = CloneImageAttachments(msg.AiHistoryImageAttachments ?? msg.ImageAttachments);
+
                 if (msg.IsTool)
                 {
                     if (string.IsNullOrWhiteSpace(msg.ToolCallId)
@@ -692,7 +720,17 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                     continue;
                 }
 
-                apiMessages.Add(new ChatMessage(msg.Role, msg.Content ?? string.Empty));
+                if (msg.IsUser
+                    && string.IsNullOrWhiteSpace(historyContent)
+                    && historyAttachments.Count == 0)
+                {
+                    continue;
+                }
+
+                apiMessages.Add(new ChatMessage(msg.Role, historyContent)
+                {
+                    ImageAttachments = historyAttachments.Count > 0 ? historyAttachments : null
+                });
             }
         });
 
@@ -934,6 +972,17 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             .ToList();
     }
 
+    private static List<ChatImageAttachment> CloneImageAttachments(IEnumerable<ChatImageAttachment>? imageAttachments)
+    {
+        return imageAttachments?.Select(image => new ChatImageAttachment
+        {
+            FileName = image.FileName,
+            FilePath = image.FilePath,
+            ContentType = image.ContentType,
+            DataUrl = image.DataUrl
+        }).ToList() ?? [];
+    }
+
             private readonly record struct ToolTraceRange(int StartIndex, int EndIndex, int ToolContentLength);
 
     private void EnsureTrailingAssistantMessage()
@@ -967,8 +1016,113 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         {
             "ErrorAnalysis_AnalysisCanceled.Text" => isChinese ? "分析已取消。" : "Analysis canceled.",
             "ErrorAnalysis_AnalysisFailed.Text" => isChinese ? "分析失败: {0}" : "Analysis failed: {0}",
+            "ErrorAnalysis_ImageFallbackRetry.Text" => isChinese ? "当前模型不支持图片输入，已自动忽略图片并按文字内容重试。" : "This model does not support image input. The request was retried with text only.",
+            "ErrorAnalysis_ImageFallbackRequiresText.Text" => isChinese ? "当前模型不支持图片输入，且这条消息没有文字内容，无法自动回退重试。请补充文字描述后再试。" : "This model does not support image input, and this message has no text content. Please add a text description and try again.",
             _ => resourceKey
         };
+    }
+
+    private async Task<ImageFallbackPreparationResult> PrepareTextOnlyRetryAsync(List<ChatMessage> apiMessages, AiAnalysisRequestException exception)
+    {
+        if (!ContainsImageAttachments(apiMessages) || !IsImageInputUnsupportedError(exception))
+        {
+            return ImageFallbackPreparationResult.NotHandled;
+        }
+
+        bool canRetry = true;
+        await _uiDispatcher.RunOnUiThreadAsync(() =>
+        {
+            foreach (var message in _sessionState.ChatMessages.Where(message => message.IsUser && message.HasImageAttachments))
+            {
+                message.AiHistoryImageAttachments = [];
+            }
+
+            var latestUserMessage = _sessionState.ChatMessages.LastOrDefault(message => message.IsUser);
+            var latestUserText = latestUserMessage?.AiHistoryContent ?? latestUserMessage?.Content;
+            canRetry = !string.IsNullOrWhiteSpace(latestUserText);
+
+            var lastAssistant = GetLastAssistantMessage();
+            if (lastAssistant != null)
+            {
+                lastAssistant.Content = GetLocalizedString(
+                    canRetry
+                        ? "ErrorAnalysis_ImageFallbackRetry.Text"
+                        : "ErrorAnalysis_ImageFallbackRequiresText.Text");
+                lastAssistant.IncludeInAiHistory = false;
+                lastAssistant.AiHistoryContent = null;
+            }
+
+            if (canRetry)
+            {
+                EnsureTrailingAssistantMessage();
+            }
+        });
+
+        if (!canRetry)
+        {
+            return new ImageFallbackPreparationResult(true, null);
+        }
+
+        return new ImageFallbackPreparationResult(true, StripImageAttachments(apiMessages));
+    }
+
+    private static bool ContainsImageAttachments(IEnumerable<ChatMessage> apiMessages)
+    {
+        return apiMessages.Any(message => message.ImageAttachments != null && message.ImageAttachments.Count > 0);
+    }
+
+    private static bool IsImageInputUnsupportedError(AiAnalysisRequestException exception)
+    {
+        if (exception.StatusCode != HttpStatusCode.BadRequest)
+        {
+            return false;
+        }
+
+        var body = exception.ResponseBody ?? exception.Message;
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return false;
+        }
+
+        return body.Contains("image_url", StringComparison.OrdinalIgnoreCase)
+            || body.Contains("expected `text`", StringComparison.OrdinalIgnoreCase)
+            || body.Contains("does not support image", StringComparison.OrdinalIgnoreCase)
+            || body.Contains("multimodal", StringComparison.OrdinalIgnoreCase)
+            || body.Contains("vision", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static List<ChatMessage> StripImageAttachments(IEnumerable<ChatMessage> apiMessages)
+    {
+        List<ChatMessage> strippedMessages = [];
+        foreach (var message in apiMessages)
+        {
+            var cloned = new ChatMessage(message.Role, message.Content, message.ToolCalls != null ? CloneToolCalls(message.ToolCalls) : null)
+            {
+                ToolCallId = message.ToolCallId
+            };
+
+            if (message.Role == "user")
+            {
+                cloned.ImageAttachments = null;
+                if (string.IsNullOrWhiteSpace(cloned.Content))
+                {
+                    continue;
+                }
+            }
+            else
+            {
+                cloned.ImageAttachments = CloneImageAttachments(message.ImageAttachments);
+            }
+
+            strippedMessages.Add(cloned);
+        }
+
+        return strippedMessages;
+    }
+
+    private readonly record struct ImageFallbackPreparationResult(bool Handled, List<ChatMessage>? RetryMessages)
+    {
+        public static ImageFallbackPreparationResult NotHandled => new(false, null);
     }
 
     private static string BuildSystemPrompt(AiSettingsState settings, string language)

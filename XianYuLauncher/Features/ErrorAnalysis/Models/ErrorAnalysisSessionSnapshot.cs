@@ -7,6 +7,8 @@ public sealed class ErrorAnalysisSessionSnapshot
 {
     public string ChatInput { get; init; } = string.Empty;
 
+    public List<ChatImageAttachment> PendingImageAttachments { get; init; } = [];
+
     public bool IsChatEnabled { get; init; }
 
     public bool HasChatMessages { get; init; }

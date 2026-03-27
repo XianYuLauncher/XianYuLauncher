@@ -4,14 +4,21 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:ct="using:CommunityToolkit.WinUI.UI.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:models="using:XianYuLauncher.Core.Models"
     xmlns:viewModels="using:XianYuLauncher.ViewModels"
     mc:Ignorable="d"
     x:Name="Root">
 
+    <UserControl.Resources>
+        <helpers:PathToImageSourceConverter x:Key="PathToImageSourceConverter" />
+    </UserControl.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -42,7 +49,54 @@
                                     FontSize="14"
                                     Foreground="{ThemeResource TextFillColorPrimaryBrush}"
                                     IsTextSelectionEnabled="True"
-                                    Visibility="{x:Bind IsUser, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                    Visibility="{x:Bind ShowUserText, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
+                                <ScrollViewer
+                                    HorizontalScrollMode="Auto"
+                                    HorizontalScrollBarVisibility="Auto"
+                                    VerticalScrollBarVisibility="Disabled"
+                                    Visibility="{x:Bind HasImageAttachments, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                                    <ItemsControl ItemsSource="{x:Bind ImageAttachments, Mode=OneWay}">
+                                        <ItemsControl.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <StackPanel Orientation="Horizontal" Spacing="8" />
+                                            </ItemsPanelTemplate>
+                                        </ItemsControl.ItemsPanel>
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="models:ChatImageAttachment">
+                                                <StackPanel Width="140" Spacing="6">
+                                                    <Border
+                                                        Width="140"
+                                                        Height="110"
+                                                        Tag="{Binding}"
+                                                        Tapped="ChatImageCard_Tapped"
+                                                        PointerEntered="ChatImageCard_PointerEntered"
+                                                        PointerExited="ChatImageCard_PointerExited"
+                                                        PointerPressed="ChatImageCard_PointerPressed"
+                                                        PointerReleased="ChatImageCard_PointerReleased"
+                                                        PointerCanceled="ChatImageCard_PointerExited"
+                                                        PointerCaptureLost="ChatImageCard_PointerExited"
+                                                        HorizontalAlignment="Left"
+                                                        VerticalAlignment="Top"
+                                                        Background="{ThemeResource LayerFillColorAltBrush}"
+                                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                        BorderThickness="1"
+                                                        CornerRadius="12"
+                                                        Opacity="1">
+                                                        <Image
+                                                            Source="{Binding FilePath, Converter={StaticResource PathToImageSourceConverter}}"
+                                                            Stretch="UniformToFill" />
+                                                    </Border>
+                                                    <TextBlock
+                                                        Text="{Binding FileName}"
+                                                        TextWrapping="NoWrap"
+                                                        TextTrimming="CharacterEllipsis"
+                                                        FontSize="12"
+                                                        Opacity="0.8" />
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
                                 <ct:MarkdownTextBlock
                                     Text="{x:Bind Content, Mode=OneWay}"
                                     Background="Transparent"
@@ -178,9 +232,76 @@
             </Button>
         </StackPanel>
 
-        <Grid Grid.Row="2" Margin="0,12,0,0" ColumnSpacing="8">
+        <ScrollViewer
+            Grid.Row="2"
+            Margin="0,12,0,0"
+            HorizontalScrollMode="Auto"
+            HorizontalScrollBarVisibility="Auto"
+            VerticalScrollMode="Disabled"
+            VerticalScrollBarVisibility="Disabled"
+            Visibility="{Binding ViewModel.HasPendingChatAttachments, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}">
+            <ItemsControl ItemsSource="{Binding ViewModel.PendingImageAttachments, ElementName=Root}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal" Spacing="10" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="models:ChatImageAttachment">
+                        <StackPanel Width="120" Spacing="6">
+                            <Grid Width="120" Height="92">
+                                <Border
+                                    Width="120"
+                                    Height="92"
+                                    Tag="{Binding}"
+                                    Tapped="ChatImageCard_Tapped"
+                                    PointerEntered="ChatImageCard_PointerEntered"
+                                    PointerExited="ChatImageCard_PointerExited"
+                                    PointerPressed="ChatImageCard_PointerPressed"
+                                    PointerReleased="ChatImageCard_PointerReleased"
+                                    PointerCanceled="ChatImageCard_PointerExited"
+                                    PointerCaptureLost="ChatImageCard_PointerExited"
+                                    HorizontalAlignment="Left"
+                                    VerticalAlignment="Top"
+                                    Background="{ThemeResource LayerFillColorAltBrush}"
+                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                    BorderThickness="1"
+                                    CornerRadius="12"
+                                    Opacity="1">
+                                    <Image
+                                        Source="{Binding FilePath, Converter={StaticResource PathToImageSourceConverter}}"
+                                        Stretch="UniformToFill" />
+                                </Border>
+                                <Button
+                                    x:Uid="ErrorAnalysisChatPanel_RemovePendingImageButton"
+                                    Width="24"
+                                    Height="24"
+                                    HorizontalAlignment="Right"
+                                    VerticalAlignment="Top"
+                                    Margin="0,6,6,0"
+                                    Padding="0"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Command="{Binding ViewModel.RemovePendingImageAttachmentCommand, ElementName=Root}"
+                                    CommandParameter="{Binding}">
+                                    <FontIcon Glyph="&#xE711;" FontSize="11" />
+                                </Button>
+                            </Grid>
+                            <TextBlock
+                                Text="{Binding FileName}"
+                                TextWrapping="NoWrap"
+                                TextTrimming="CharacterEllipsis"
+                                FontSize="12" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <Grid Grid.Row="3" Margin="0,12,0,0" ColumnSpacing="8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBox
@@ -191,6 +312,16 @@
                 KeyDown="ChatInput_KeyDown"/>
             <Button
                 Grid.Column="1"
+                x:Uid="ErrorAnalysisChatPanel_AddImageButton"
+                Command="{Binding ViewModel.PickChatImagesCommand, ElementName=Root}"
+                Style="{StaticResource DefaultButtonStyle}"
+                IsEnabled="{Binding ViewModel.IsChatEnabled, ElementName=Root}">
+                <Grid Width="20" Height="20">
+                    <FontIcon Glyph="&#xE91B;" FontSize="16" />
+                </Grid>
+            </Button>
+            <Button
+                Grid.Column="2"
                 Command="{Binding ViewModel.SendMessageCommand, ElementName=Root}"
                 Style="{StaticResource DefaultButtonStyle}"
                 IsEnabled="{Binding ViewModel.IsChatEnabled, ElementName=Root}">

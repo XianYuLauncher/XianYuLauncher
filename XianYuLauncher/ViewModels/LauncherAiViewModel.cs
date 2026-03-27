@@ -366,6 +366,11 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
             return Truncate(firstUserMessage, 18);
         }
 
+        if (snapshot.ChatMessages.Any(message => message.IsUser && message.HasImageAttachments))
+        {
+            return _languageSelectorService.Language == "zh-CN" ? "图片对话" : "Image Chat";
+        }
+
         if (conversation.IsErrorAnalysisConversation)
         {
             return _languageSelectorService.Language == "zh-CN" ? "崩溃分析" : "Crash Analysis";
