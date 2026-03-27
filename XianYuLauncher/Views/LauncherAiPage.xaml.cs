@@ -12,7 +12,6 @@ public sealed partial class LauncherAiPage : Page
     {
         ViewModel = App.GetService<LauncherAiViewModel>();
         InitializeComponent();
-        Unloaded += LauncherAiPage_Unloaded;
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -24,11 +23,5 @@ public sealed partial class LauncherAiPage : Page
     private void PopOutButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         LauncherAiWindow.ShowOrActivate();
-    }
-
-    private void LauncherAiPage_Unloaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
-    {
-        Unloaded -= LauncherAiPage_Unloaded;
-        ViewModel.ChatViewModel.Dispose();
     }
 }

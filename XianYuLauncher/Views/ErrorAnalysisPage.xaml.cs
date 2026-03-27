@@ -18,12 +18,14 @@ namespace XianYuLauncher.Views
     public sealed partial class ErrorAnalysisPage : Page
     {
         public ErrorAnalysisViewModel ViewModel { get; }
+        public LauncherAiViewModel LauncherAiWorkspaceViewModel { get; }
         private readonly IUiDispatcher _uiDispatcher;
         private bool _isScrollPending = false;
 
         public ErrorAnalysisPage()
         {
             ViewModel = App.GetService<ErrorAnalysisViewModel>();
+            LauncherAiWorkspaceViewModel = App.GetService<LauncherAiViewModel>();
             _uiDispatcher = App.GetService<IUiDispatcher>();
             this.InitializeComponent();
             Unloaded += ErrorAnalysisPage_Unloaded;
@@ -40,6 +42,7 @@ namespace XianYuLauncher.Views
             ViewModel.LogLines.CollectionChanged -= LogLines_CollectionChanged;
             LogListView.KeyDown -= LogListView_KeyDown;
             Unloaded -= ErrorAnalysisPage_Unloaded;
+            LauncherAiWorkspaceViewModel.SetErrorAnalysisPageOpen(false);
             ViewModel.Dispose();
         }
         
@@ -138,9 +141,13 @@ namespace XianYuLauncher.Views
         /// <summary>
         /// 处理导航到页面事件
         /// </summary>
-        protected override void OnNavigatedTo(NavigationEventArgs e)
+        protected override async void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+
+            LauncherAiWorkspaceViewModel.SetErrorAnalysisPageOpen(true);
+            await LauncherAiWorkspaceViewModel.InitializeAsync();
+            LauncherAiWorkspaceViewModel.ActivateErrorAnalysisConversation(forceNewConversation: e.Parameter is Tuple<string, List<string>, List<string>>);
 
             // 每次进入页面先清理修复按钮状态，避免残留
             ViewModel.ResetFixActionState();
@@ -173,6 +180,7 @@ namespace XianYuLauncher.Views
         /// </summary>
         private void PopOutChat_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
+            LauncherAiWorkspaceViewModel.ActivateErrorAnalysisConversation();
             LauncherAiWindow.ShowOrActivate();
         }
     }

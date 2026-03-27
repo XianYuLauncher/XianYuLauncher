@@ -1582,6 +1582,9 @@
   <data name="ErrorAnalysis_LogDetails.Text" xml:space="preserve">
     <value>实时日志详情</value>
   </data>
+  <data name="ErrorAnalysis_AiPanel.SectionTitle" xml:space="preserve">
+    <value>崩溃分析</value>
+  </data>
   <data name="ErrorAnalysis_AnalysisTitle.Text" xml:space="preserve">
     <value>XianYu Fixer</value>
   </data>
@@ -2799,15 +2802,6 @@
   </data>
   <data name="LauncherAiPage_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>在独立窗口中打开</value>
-  </data>
-  <data name="LauncherAiPage_MainPanel.SectionTitle" xml:space="preserve">
-    <value>Launcher AI</value>
-  </data>
-  <data name="LauncherAiWindowPage_MainPanel.SectionTitle" xml:space="preserve">
-    <value>Launcher AI</value>
-  </data>
-  <data name="ErrorAnalysis_AiPanel.SectionTitle" xml:space="preserve">
-    <value>崩溃分析</value>
   </data>
   <data name="LauncherAiPanel_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>在独立窗口中打开</value>

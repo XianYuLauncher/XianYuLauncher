@@ -4,6 +4,7 @@ using WinUIEx;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
+using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Views;
 
@@ -12,6 +13,7 @@ public sealed partial class LauncherAiWindow : WindowEx
     private static LauncherAiWindow? _currentWindow;
 
     private readonly ErrorAnalysisSessionState _sessionState;
+    private readonly LauncherAiViewModel _launcherAiViewModel;
     private readonly MaterialService _materialService;
     private readonly IThemeSelectorService _themeSelectorService;
     private readonly IUiDispatcher _uiDispatcher;
@@ -27,6 +29,7 @@ public sealed partial class LauncherAiWindow : WindowEx
         AppWindow.TitleBar.PreferredHeightOption = Microsoft.UI.Windowing.TitleBarHeightOption.Tall;
 
         _sessionState = App.GetService<ErrorAnalysisSessionState>();
+        _launcherAiViewModel = App.GetService<LauncherAiViewModel>();
         _sessionState.IsLauncherAiWindowOpen = true;
         Closed += OnWindowClosed;
 
@@ -65,6 +68,7 @@ public sealed partial class LauncherAiWindow : WindowEx
     private void OnWindowClosed(object sender, WindowEventArgs args)
     {
         _sessionState.IsLauncherAiWindowOpen = false;
+        _launcherAiViewModel.CleanupTransientErrorAnalysisConversation();
         _materialService.BackgroundChanged -= OnBackgroundChanged;
         _materialService.MotionSettingsChanged -= OnMotionSettingsChanged;
 

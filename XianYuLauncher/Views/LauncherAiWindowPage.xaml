@@ -8,12 +8,7 @@
     mc:Ignorable="d">
 
     <Grid Padding="20" Background="Transparent">
-        <controls:LauncherAiPanel
-            x:Uid="LauncherAiWindowPage_MainPanel"
-            ViewModel="{x:Bind ViewModel.ChatViewModel}"
-            ShowEmptyPlaceholder="True"
-            EmptyPlaceholderText="{x:Bind ViewModel.EmptyStateText, Mode=OneWay}"
-            HeaderVisibility="Collapsed"
-            PopOutButtonVisibility="Collapsed" />
+        <controls:LauncherAiWorkspacePanel
+            ViewModel="{x:Bind ViewModel}" />
     </Grid>
 </Page>

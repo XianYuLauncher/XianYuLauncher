@@ -634,9 +634,13 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             int count = Math.Max(0, _sessionState.ChatMessages.Count - 1);
             var historyMessages = _sessionState.ChatMessages
                 .Take(count)
-                .Where(msg => msg.Role != "system" && msg.IncludeInAiHistory)
+                .Where(msg => msg.Role != "system"
+                    && (msg.IncludeInAiHistory
+                        || msg.IsTool
+                        || (msg.IsAssistant && msg.ToolCalls != null && msg.ToolCalls.Count > 0)))
                 .ToList();
             var trimmedTraceIndices = GetTrimmedToolTraceMessageIndices(historyMessages);
+            HashSet<string> validToolCallIds = [];
 
             for (int index = 0; index < historyMessages.Count; index++)
             {
@@ -659,19 +663,31 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                 if (msg.IsAssistant && msg.ToolCalls != null && msg.ToolCalls.Count > 0)
                 {
                     var content = string.IsNullOrWhiteSpace(msg.AiHistoryContent) ? null : msg.AiHistoryContent;
-                    apiMessages.Add(new ChatMessage("assistant", content, CloneToolCalls(msg.ToolCalls)));
+                    var clonedToolCalls = CloneToolCalls(msg.ToolCalls) ?? [];
+                    apiMessages.Add(new ChatMessage("assistant", content, clonedToolCalls));
+
+                    foreach (var toolCall in clonedToolCalls)
+                    {
+                        if (!string.IsNullOrWhiteSpace(toolCall.Id))
+                        {
+                            validToolCallIds.Add(toolCall.Id);
+                        }
+                    }
+
                     continue;
                 }
 
                 if (msg.IsTool)
                 {
-                    if (string.IsNullOrWhiteSpace(msg.ToolCallId))
+                    if (string.IsNullOrWhiteSpace(msg.ToolCallId)
+                        || !validToolCallIds.Contains(msg.ToolCallId))
                     {
                         continue;
                     }
 
                     var toolResultContent = msg.AiHistoryContent ?? msg.Content ?? string.Empty;
                     apiMessages.Add(ChatMessage.ToolResult(msg.ToolCallId, toolResultContent));
+                    validToolCallIds.Remove(msg.ToolCallId);
                     continue;
                 }
 

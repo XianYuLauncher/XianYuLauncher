@@ -141,18 +141,24 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         {
             ApiMessages = CloneApiMessages(apiMessages)
         };
+        OnPropertyChanged(nameof(PendingToolContinuation));
+        OnPropertyChanged(nameof(HasPendingToolContinuation));
     }
 
     public AgentConversationContinuation? TakePendingToolContinuation()
     {
         var continuation = PendingToolContinuation;
         PendingToolContinuation = null;
+        OnPropertyChanged(nameof(PendingToolContinuation));
+        OnPropertyChanged(nameof(HasPendingToolContinuation));
         return continuation;
     }
 
     public void ClearPendingToolContinuation()
     {
         PendingToolContinuation = null;
+        OnPropertyChanged(nameof(PendingToolContinuation));
+        OnPropertyChanged(nameof(HasPendingToolContinuation));
     }
 
     public CancellationToken BeginAiAnalysisToken()
@@ -176,6 +182,42 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         _aiAnalysisCts = null;
     }
 
+    public ErrorAnalysisSessionSnapshot CreateSnapshot()
+    {
+        return new ErrorAnalysisSessionSnapshot
+        {
+            ChatInput = ChatInput,
+            IsChatEnabled = IsChatEnabled,
+            HasChatMessages = HasChatMessages,
+            ChatMessages = CloneUiMessages(ChatMessages),
+            ActionProposals = CloneActionProposals(CurrentFixAction, SecondaryFixAction),
+            PendingToolContinuation = CloneContinuation(PendingToolContinuation),
+        };
+    }
+
+    public void ApplySnapshot(ErrorAnalysisSessionSnapshot snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+
+        ChatInput = snapshot.ChatInput;
+        IsChatEnabled = snapshot.IsChatEnabled;
+        ReplaceChatMessages(snapshot.ChatMessages);
+        ApplyActionProposals(snapshot.ActionProposals);
+        PendingToolContinuation = CloneContinuation(snapshot.PendingToolContinuation);
+        OnPropertyChanged(nameof(PendingToolContinuation));
+        OnPropertyChanged(nameof(HasPendingToolContinuation));
+        HasChatMessages = ChatMessages.Count > 0 || snapshot.HasChatMessages;
+    }
+
+    private void ReplaceChatMessages(IEnumerable<UiChatMessage> messages)
+    {
+        ChatMessages.Clear();
+        foreach (var message in CloneUiMessages(messages))
+        {
+            ChatMessages.Add(message);
+        }
+    }
+
     private static List<ChatMessage> CloneApiMessages(IEnumerable<ChatMessage> apiMessages)
     {
         return apiMessages.Select(message => new ChatMessage(message.Role, message.Content, CloneToolCalls(message.ToolCalls))
@@ -192,5 +234,49 @@ public partial class ErrorAnalysisSessionState : ObservableObject
             FunctionName = toolCall.FunctionName,
             Arguments = toolCall.Arguments
         }).ToList();
+    }
+
+    private static List<UiChatMessage> CloneUiMessages(IEnumerable<UiChatMessage> messages)
+    {
+        return messages.Select(message => new UiChatMessage(message.Role, message.Content, message.IncludeInAiHistory)
+        {
+            ShowRoleHeader = message.ShowRoleHeader,
+            DisplayRoleText = message.DisplayRoleText,
+            AiHistoryContent = message.AiHistoryContent,
+            ToolCallId = message.ToolCallId,
+            ToolCalls = CloneToolCalls(message.ToolCalls)
+        }).ToList();
+    }
+
+    private static List<AgentActionProposal> CloneActionProposals(params AgentActionProposal?[] proposals)
+    {
+        return proposals
+            .Where(proposal => proposal != null)
+            .Select(proposal => CloneActionProposal(proposal!))
+            .ToList();
+    }
+
+    private static AgentActionProposal CloneActionProposal(AgentActionProposal proposal)
+    {
+        return new AgentActionProposal
+        {
+            ActionType = proposal.ActionType,
+            ButtonText = proposal.ButtonText,
+            PermissionLevel = proposal.PermissionLevel,
+            Parameters = new Dictionary<string, string>(proposal.Parameters, StringComparer.OrdinalIgnoreCase)
+        };
+    }
+
+    private static AgentConversationContinuation? CloneContinuation(AgentConversationContinuation? continuation)
+    {
+        if (continuation == null)
+        {
+            return null;
+        }
+
+        return new AgentConversationContinuation
+        {
+            ApiMessages = CloneApiMessages(continuation.ApiMessages)
+        };
     }
 }
