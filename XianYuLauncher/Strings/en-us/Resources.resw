@@ -126,6 +126,9 @@
   <data name="Shell_启动.Content" xml:space="preserve">
     <value>Launch</value>
   </data>
+  <data name="Shell_LauncherAI.Content" xml:space="preserve">
+    <value>Launcher AI</value>
+  </data>
   <data name="Shell_资源下载.Content" xml:space="preserve">
     <value>Download</value>
   </data>
@@ -1576,6 +1579,9 @@ Continue downloading?</value>
   <data name="ErrorAnalysis_LogDetails.Text" xml:space="preserve">
     <value>Real-time Log Details</value>
   </data>
+  <data name="ErrorAnalysis_AiPanel.SectionTitle" xml:space="preserve">
+    <value>Crash Analysis</value>
+  </data>
   <data name="ErrorAnalysis_AnalysisTitle.Text" xml:space="preserve">
     <value>XianYu Fixer</value>
   </data>
@@ -2780,16 +2786,40 @@ Continue downloading?</value>
     <value>Version '{0}' already exists, please use a different name</value>
   </data>
   <data name="Settings_AI_Analysis_Title.Text" xml:space="preserve">
-    <value>XianYuFixer AI Analysis</value>
+    <value>Launcher AI</value>
   </data>
   <data name="Settings_AI_CrashAnalysis.Header" xml:space="preserve">
-    <value>AI Crash Analysis</value>
+    <value>Launcher AI</value>
   </data>
   <data name="Settings_AI_CrashAnalysis.Description" xml:space="preserve">
-    <value>Use third-party AI service to analyze crash logs</value>
+    <value>Enable Launcher AI for conversations and in-app problem solving through a third-party AI service</value>
   </data>
   <data name="Settings_AI_CrashAnalysisDescription.Text" xml:space="preserve">
-    <value>Enable to use third-party AI service for crash log analysis.</value>
+    <value>Enable Launcher AI for conversations, troubleshooting, and assisted actions inside the launcher.</value>
+  </data>
+  <data name="LauncherAiPage_Title.Text" xml:space="preserve">
+    <value>Launcher AI</value>
+  </data>
+  <data name="LauncherAiPage_Subtitle.Text" xml:space="preserve">
+    <value>Talk to the launcher agent to handle launches, versions, mods, and troubleshooting tasks.</value>
+  </data>
+  <data name="LauncherAiPage_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Open in a separate window</value>
+  </data>
+  <data name="LauncherAiPanel_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Open in a separate window</value>
+  </data>
+  <data name="LauncherProfileDialog_ShortcutTitle" xml:space="preserve">
+    <value>Select a launch profile</value>
+  </data>
+  <data name="LauncherProfileDialog_ShortcutPrimaryButton" xml:space="preserve">
+    <value>Create shortcut</value>
+  </data>
+  <data name="LauncherProfileDialog_CloseButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="LauncherProfileFlyout_NoProfiles" xml:space="preserve">
+    <value>No launch profiles available</value>
   </data>
   <data name="Settings_AI_Disclaimer.Text" xml:space="preserve">
     <value>XianYuFixer only provides the capability to access LLMs compatible with the OpenAI API specification. No AI services or accounts are provided within the software. Please confirm that relevant services are permitted in your region before use, and strictly abide by the terms of service, usage policies, and privacy rules of the selected AI provider; API Keys must be applied for and kept by yourself, and relevant costs and compliance responsibilities are borne by the user.</value>

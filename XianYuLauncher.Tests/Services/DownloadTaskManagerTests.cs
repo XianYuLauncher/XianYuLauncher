@@ -86,6 +86,30 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
+    public async Task StartVanillaDownloadWithTaskIdAsync_ShouldReturnCreatedTaskId()
+    {
+        // Arrange
+        _minecraftVersionServiceMock
+            .Setup(m => m.DownloadVersionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var taskId = await _downloadTaskManager.StartVanillaDownloadWithTaskIdAsync("1.20.1", "MyVersion");
+        await Task.Delay(50);
+
+        // Assert
+        taskId.Should().NotBeNullOrWhiteSpace();
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.TaskName == "MyVersion");
+    }
+
+    [Fact]
     public async Task StartVanillaDownloadAsync_ShouldForwardVersionIconPath()
     {
         // Arrange
@@ -835,6 +859,43 @@ public class DownloadTaskManagerTests
         completedTask.Should().Be(callbackTriggered.Task);
         actualIconPath.Should().Be(expectedIconPath);
     }
+
+    [Fact]
+    public async Task StartMultiModLoaderDownloadWithTaskIdAsync_ShouldReturnCreatedTaskId()
+    {
+        // Arrange
+        var selections = new List<ModLoaderSelection>
+        {
+            new()
+            {
+                Type = "Forge",
+                Version = "47.2.0",
+                InstallOrder = 1,
+                IsAddon = false
+            }
+        };
+
+        _minecraftVersionServiceMock
+            .Setup(m => m.DownloadMultiModLoaderVersionAsync(
+                It.IsAny<string>(),
+                It.IsAny<IEnumerable<ModLoaderSelection>>(),
+                It.IsAny<string>(),
+                It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var taskId = await _downloadTaskManager.StartMultiModLoaderDownloadWithTaskIdAsync("1.20.1", selections, "MyMultiVersion");
+        await Task.Delay(50);
+
+        // Assert
+        taskId.Should().NotBeNullOrWhiteSpace();
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.TaskName == "MyMultiVersion");
+    }
 }
 
 
@@ -915,6 +976,46 @@ public class DownloadTaskManagerResourceDownloadTests
         firstState.VersionName.Should().Be("mod");
         firstState.State.Should().Be(DownloadTaskState.Queued);
         firstState.Progress.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task StartResourceDownloadWithTaskIdAsync_ShouldReturnCreatedTaskId()
+    {
+        // Arrange
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>((url, path, sha1, progress, ct) =>
+                Task.FromResult(DownloadResult.Succeeded(path, url)));
+
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            downloadManagerMock.Object);
+
+        var savePath = Path.Combine(_tempDirectory, "test_resource.jar");
+
+        // Act
+        var taskId = await downloadTaskManager.StartResourceDownloadWithTaskIdAsync(
+            "Test Resource",
+            "mod",
+            "https://example.com/test.jar",
+            savePath);
+
+        await Task.Delay(100);
+
+        // Assert
+        taskId.Should().NotBeNullOrWhiteSpace();
+        downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId &&
+            task.TaskName == "Test Resource" &&
+            task.VersionName == "mod");
     }
 
     /// <summary>

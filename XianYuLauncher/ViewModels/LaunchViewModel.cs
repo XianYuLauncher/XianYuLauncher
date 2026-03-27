@@ -24,6 +24,7 @@ using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.ErrorAnalysis.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
@@ -162,16 +163,15 @@ public partial class LaunchViewModel : ObservableRecipient
             return;
         }
 
-        var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
         var minecraftPath = _fileService.GetMinecraftDataPath();
-        errorAnalysisViewModel.SetVersionInfo(SelectedVersion, minecraftPath);
+        _errorAnalysisSessionCoordinator.SetVersionInfo(SelectedVersion, minecraftPath);
 
         _navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!, Tuple.Create(launchCommand, gameOutput, gameError));
 
         if (action == CrashReportDialogAction.ExportLogs)
         {
             await Task.Delay(500);
-            await errorAnalysisViewModel.ExportErrorLogsCommand.ExecuteAsync(null);
+            await _errorAnalysisExportService.ExportAsync();
         }
     }
 
@@ -499,6 +499,8 @@ public partial class LaunchViewModel : ObservableRecipient
     }
 
     private readonly IVersionInfoManager _versionInfoManager; // Add this field
+    private readonly IErrorAnalysisSessionCoordinator _errorAnalysisSessionCoordinator;
+    private readonly IErrorAnalysisExportService _errorAnalysisExportService;
 
     public LaunchViewModel()
     {
@@ -528,6 +530,8 @@ public partial class LaunchViewModel : ObservableRecipient
         _tokenRefreshService = App.GetService<ITokenRefreshService>();
         _versionConfigService = App.GetService<IVersionConfigService>();
         _versionInfoManager = App.GetService<IVersionInfoManager>(); // Inject this service
+        _errorAnalysisSessionCoordinator = App.GetService<IErrorAnalysisSessionCoordinator>();
+        _errorAnalysisExportService = App.GetService<IErrorAnalysisExportService>();
 
         // ... existing code ...
         
@@ -794,8 +798,7 @@ public partial class LaunchViewModel : ObservableRecipient
         {
             try
             {
-                var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
-                errorAnalysisViewModel.AddGameOutputLog(e.Line);
+                _errorAnalysisSessionCoordinator.AddGameOutputLog(e.Line);
             }
             catch (Exception)
             {
@@ -820,8 +823,7 @@ public partial class LaunchViewModel : ObservableRecipient
         {
             try
             {
-                var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
-                errorAnalysisViewModel.AddGameErrorLog(e.Line);
+                _errorAnalysisSessionCoordinator.AddGameErrorLog(e.Line);
             }
             catch (Exception)
             {
@@ -1710,16 +1712,10 @@ public partial class LaunchViewModel : ObservableRecipient
                 
                 if (_isRealTimeLogsEnabled)
                 {
-                    var errorAnalysisViewModel = App.GetService<ErrorAnalysisViewModel>();
-                    
-                    // 清空上次的日志，避免显示旧版本的日志（只在启动新游戏时清理）
-                    errorAnalysisViewModel.ClearLogsOnly();
-                    
-                    errorAnalysisViewModel.SetLaunchCommand(_launchCommand);
-                    
-                    // 设置版本信息（用于导出日志时包含 version.json）
                     string minecraftPath = _fileService.GetMinecraftDataPath();
-                    errorAnalysisViewModel.SetVersionInfo(SelectedVersion, minecraftPath);
+                    _errorAnalysisSessionCoordinator.ClearLogsOnly();
+                    _errorAnalysisSessionCoordinator.SetLaunchCommand(_launchCommand);
+                    _errorAnalysisSessionCoordinator.SetVersionInfo(SelectedVersion, minecraftPath);
                     
                     _navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!);
                 }

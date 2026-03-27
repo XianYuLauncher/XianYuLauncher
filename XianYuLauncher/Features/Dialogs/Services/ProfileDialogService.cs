@@ -1,7 +1,5 @@
 using System.Collections.ObjectModel;
-using System.IO;
 using System.Net.Http;
-using Microsoft.Graphics.Canvas;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -10,6 +8,7 @@ using Serilog;
 using Windows.Storage;
 using Windows.Storage.Streams;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.Dialogs.Models;
 using XianYuLauncher.Helpers;
@@ -36,7 +35,7 @@ public sealed class ProfileDialogService : IProfileDialogService
         BitmapImage defaultAvatar;
         try
         {
-            defaultAvatar = await ProcessLocalSteveAvatarAsync();
+            defaultAvatar = await ProfileAvatarImageHelper.CreateDefaultProfileAvatarAsync();
         }
         catch
         {
@@ -170,6 +169,80 @@ public sealed class ProfileDialogService : IProfileDialogService
         return null;
     }
 
+    public async Task<MinecraftProfile?> ShowLauncherProfileSelectionDialogAsync(
+        List<MinecraftProfile> profiles,
+        string title,
+        string primaryButtonText,
+        string closeButtonText)
+    {
+        var items = new ObservableCollection<ProfileSelectionItem>();
+
+        BitmapImage defaultAvatar;
+        try
+        {
+            defaultAvatar = await ProfileAvatarImageHelper.CreateDefaultProfileAvatarAsync();
+        }
+        catch
+        {
+            defaultAvatar = new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+        }
+
+        foreach (var profile in profiles
+                     .OrderByDescending(profile => profile.IsActive)
+                     .ThenBy(profile => profile.Name, StringComparer.OrdinalIgnoreCase))
+        {
+            items.Add(new ProfileSelectionItem
+            {
+                Id = profile.Id,
+                Name = profile.Name,
+                Avatar = defaultAvatar,
+            });
+        }
+
+        var itemTemplate = Application.Current.Resources["ProfileSelectionItemTemplate"] as DataTemplate;
+        var listView = new ListView
+        {
+            SelectionMode = ListViewSelectionMode.Single,
+            ItemsSource = items,
+            SelectedIndex = items.Count > 0 ? 0 : -1,
+            MaxHeight = 300,
+            ItemTemplate = itemTemplate,
+        };
+
+        var activeProfileId = profiles.FirstOrDefault(profile => profile.IsActive)?.Id;
+        if (!string.IsNullOrWhiteSpace(activeProfileId))
+        {
+            var activeItem = items.FirstOrDefault(item => string.Equals(item.Id, activeProfileId, StringComparison.OrdinalIgnoreCase));
+            if (activeItem != null)
+            {
+                listView.SelectedItem = activeItem;
+            }
+        }
+
+        var dialog = new ContentDialog
+        {
+            Title = title,
+            PrimaryButtonText = primaryButtonText,
+            CloseButtonText = closeButtonText,
+            DefaultButton = ContentDialogButton.Primary,
+            Content = listView,
+        };
+
+        var result = await _dialogHostService.ShowAsync(dialog);
+        if (result != ContentDialogResult.Primary)
+        {
+            return null;
+        }
+
+        var selectedItem = listView.SelectedItem as ProfileSelectionItem;
+        if (selectedItem == null)
+        {
+            return null;
+        }
+
+        return profiles.FirstOrDefault(profile => string.Equals(profile.Id, selectedItem.Id, StringComparison.OrdinalIgnoreCase));
+    }
+
     public async Task<LoginMethodSelectionResult> ShowLoginMethodSelectionDialogAsync(
         string title = "选择登录方式",
         string instruction = "请选择您喜欢的登录方式：",
@@ -232,47 +305,8 @@ public sealed class ProfileDialogService : IProfileDialogService
         };
     }
 
-    private static async Task<BitmapImage> ProcessLocalSteveAvatarAsync()
-    {
-        var device = CanvasDevice.GetSharedDevice();
-        var uri = new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png");
-        var file = await StorageFile.GetFileFromApplicationUriAsync(uri);
-
-        using var stream = await file.OpenReadAsync();
-        var originalBitmap = await CanvasBitmap.LoadAsync(device, stream);
-
-        var renderTarget = new CanvasRenderTarget(device, 32, 32, 96);
-        using (var drawingSession = renderTarget.CreateDrawingSession())
-        {
-            PixelArtRenderHelper.SetAliased(drawingSession);
-            PixelArtRenderHelper.DrawNearestNeighbor(
-                drawingSession,
-                originalBitmap,
-                new Windows.Foundation.Rect(0, 0, 32, 32),
-                originalBitmap.Bounds);
-        }
-
-        using var outputStream = new InMemoryRandomAccessStream();
-        await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
-        outputStream.Seek(0);
-
-        var bitmapImage = new BitmapImage();
-        await bitmapImage.SetSourceAsync(outputStream);
-        return bitmapImage;
-    }
-
     private static async Task<BitmapImage?> ProcessAvatarBytesAsync(byte[] skinBytes)
     {
-        try
-        {
-            var device = CanvasDevice.GetSharedDevice();
-            using var stream = new MemoryStream(skinBytes);
-            var originalBitmap = await CanvasBitmap.LoadAsync(device, stream.AsRandomAccessStream());
-            return await SkinAvatarHelper.CropHeadFromSkinAsync(originalBitmap, outputSize: 32, includeOverlay: true);
-        }
-        catch
-        {
-            return null;
-        }
+        return await ProfileAvatarImageHelper.CreateProfileAvatarFromSkinAsync(skinBytes, outputSize: 32, includeOverlay: true);
     }
 }

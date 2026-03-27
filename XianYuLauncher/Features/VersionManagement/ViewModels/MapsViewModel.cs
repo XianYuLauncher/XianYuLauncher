@@ -4,7 +4,10 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using XianYuLauncher.Models.VersionManagement;
 using XianYuLauncher.ViewModels;
@@ -19,6 +22,8 @@ public partial class MapsViewModel : ObservableObject
     private readonly IVersionManagementContext _context;
     private readonly INavigationService _navigationService;
     private readonly ICommonDialogService _dialogService;
+    private readonly IProfileDialogService _profileDialogService;
+    private readonly IProfileManager _profileManager;
     private readonly IUiDispatcher _uiDispatcher;
 
     // 源列表
@@ -28,11 +33,15 @@ public partial class MapsViewModel : ObservableObject
         IVersionManagementContext context,
         INavigationService navigationService,
         ICommonDialogService dialogService,
+        IProfileDialogService profileDialogService,
+        IProfileManager profileManager,
         IUiDispatcher uiDispatcher)
     {
         _context = context;
         _navigationService = navigationService;
         _dialogService = dialogService;
+        _profileDialogService = profileDialogService;
+        _profileManager = profileManager;
         _uiDispatcher = uiDispatcher;
 
         Maps.CollectionChanged += (_, _) => OnPropertyChanged(nameof(IsMapListEmpty));
@@ -325,9 +334,25 @@ public partial class MapsViewModel : ObservableObject
         if (map == null || _context.SelectedVersion == null) return;
         try
         {
+            var profiles = await _profileManager.LoadProfilesAsync();
+            MinecraftProfile? selectedProfile = null;
+            if (profiles.Count > 0)
+            {
+                selectedProfile = await _profileDialogService.ShowLauncherProfileSelectionDialogAsync(
+                    profiles,
+                    "LauncherProfileDialog_ShortcutTitle".GetLocalized(),
+                    "LauncherProfileDialog_ShortcutPrimaryButton".GetLocalized(),
+                    "LauncherProfileDialog_CloseButton".GetLocalized());
+
+                if (selectedProfile == null)
+                {
+                    return;
+                }
+            }
+
             _context.StatusMessage = $"正在创建快捷方式: {map.Name}...";
 
-            var shortcutPath = VersionManagementShortcutOps.BuildMapShortcutPath(map.Name, _context.SelectedVersion.Name);
+            var shortcutPath = VersionManagementShortcutOps.BuildMapShortcutPath(map.Name, _context.SelectedVersion.Name, selectedProfile?.Name);
             var shortcutName = Path.GetFileNameWithoutExtension(shortcutPath);
 
             if (Helpers.ShortcutHelper.ShortcutExists(shortcutPath))
@@ -342,7 +367,8 @@ public partial class MapsViewModel : ObservableObject
             shortcutName = await VersionManagementShortcutOps.CreateMapShortcutFileAsync(
                 map,
                 _context.SelectedVersion.Name,
-                _context.SelectedVersion.Path);
+                _context.SelectedVersion.Path,
+                selectedProfile);
 
             _context.StatusMessage = $"快捷方式已创建: {shortcutName}";
 

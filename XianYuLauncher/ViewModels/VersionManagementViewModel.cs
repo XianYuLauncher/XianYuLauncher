@@ -864,6 +864,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         ModInfoService modInfoService,
         IGameHistoryService gameHistoryService,
         ICommonDialogService commonDialogService,
+        IProfileDialogService profileDialogService,
+        IProfileManager profileManager,
         IResourceDialogService resourceDialogService,
         ISelectionDialogService selectionDialogService,
         IIconMetadataPipelineService iconMetadataPipelineService,
@@ -920,8 +922,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
         
         // 初始化子 ViewModels
-        MapsModule = new MapsViewModel(this, navigationService, commonDialogService, uiDispatcher);
-        ServersModule = new ServersViewModel(this, navigationService, commonDialogService, selectionDialogService, uiDispatcher);
+        MapsModule = new MapsViewModel(this, navigationService, commonDialogService, profileDialogService, profileManager, uiDispatcher);
+        ServersModule = new ServersViewModel(this, navigationService, commonDialogService, profileDialogService, profileManager, selectionDialogService, uiDispatcher);
         ShadersModule = new ShadersViewModel(this, navigationService, commonDialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher);
         ResourcePacksModule = new ResourcePacksViewModel(this, navigationService, commonDialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher);
         ModsModule = new ModsViewModel(this, navigationService, commonDialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher);
@@ -2749,6 +2751,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         [RelayCommand]
         private void LaunchWithSave(SaveInfo? save)
         {
+            LaunchWithSave(save, null);
+        }
+
+        public void LaunchWithSave(SaveInfo? save, string? profileId)
+        {
             if (save == null || SelectedVersion == null)
                 return;
             
@@ -2756,7 +2763,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _navigationService.NavigateTo(typeof(LaunchViewModel).FullName!, new LaunchMapParameter
         {
             VersionId = SelectedVersion.Name,
-            WorldFolder = save.Name
+                WorldFolder = save.Name,
+                ProfileId = profileId ?? string.Empty,
         });
     }
 

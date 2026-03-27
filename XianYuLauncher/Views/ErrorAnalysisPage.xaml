@@ -2,9 +2,9 @@
     x:Class="XianYuLauncher.Views.ErrorAnalysisPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:XianYuLauncher.Controls"
     xmlns:local="using:XianYuLauncher.Views"
     xmlns:viewModels="using:XianYuLauncher.ViewModels"
-    xmlns:ct="using:CommunityToolkit.WinUI.UI.Controls"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
@@ -80,179 +80,15 @@
         </Grid>
         
         <!-- 错误分析区域 -->
-        <Grid Grid.Row="3" Margin="16,16,16,16">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
-            
-            <!-- 标题栏 -->
-            <Grid Margin="0,0,0,12">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <FontIcon Glyph="&#xE946;" FontSize="18" Foreground="{ThemeResource AccentTextFillColorPrimaryBrush}" />
-                    <TextBlock x:Uid="ErrorAnalysis_AnalysisTitle" Text="崩溃分析" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
-                </StackPanel>
-                <Button Grid.Column="1" 
-                        Click="PopOutChat_Click"
-                        ToolTipService.ToolTip="在独立窗口中打开"
-                        Style="{StaticResource SubtleButtonStyle}"
-                        Padding="6">
-                    <FontIcon Glyph="&#xE8A7;" FontSize="14" />
-                </Button>
-            </Grid>
-            
-            <!-- 分析结果卡片 - 使用 Mica 背景 -->
-            <Border Grid.Row="1" 
-                    CornerRadius="8"
-                    BorderThickness="1"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    Background="{ThemeResource LayerFillColorDefaultBrush}">
-                
-                <Grid Padding="20">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-
-                    <!-- 空状态占位提示 -->
-                    <StackPanel Grid.Row="0"
-                                HorizontalAlignment="Center" 
-                                VerticalAlignment="Center"
-                                Orientation="Horizontal"
-                                Spacing="8"
-                                Visibility="{x:Bind ViewModel.HasChatMessages, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
-                        <FontIcon Glyph="&#xE7FC;" FontSize="14" Foreground="{ThemeResource TextFillColorDisabledBrush}" />
-                        <TextBlock x:Uid="ErrorAnalysis_NoCrashPlaceholder" 
-                                   Text="没有崩溃内容，因为游戏还没崩溃..." 
-                                   Foreground="{ThemeResource TextFillColorDisabledBrush}" 
-                                   FontSize="14" />
-                    </StackPanel>
-
-                    <ListView 
-                              Grid.Row="0"
-                              ItemsSource="{x:Bind ViewModel.ChatMessages}"
-                              SelectionMode="None"
-                              IsItemClickEnabled="False"
-                              MaxHeight="300"
-                              x:Name="ChatListView"
-                              Visibility="{x:Bind ViewModel.HasChatMessages, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                        <ListView.ItemTemplate>
-                            <DataTemplate x:DataType="viewModels:UiChatMessage">
-                                <Grid Margin="0,8">
-                                    <StackPanel Spacing="4">
-                                         <TextBlock Text="{x:Bind Role, Mode=OneWay}" FontWeight="Bold" FontSize="12" Opacity="0.6" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                         <TextBlock 
-                                            Text="{x:Bind Content, Mode=OneWay}" 
-                                            TextWrapping="Wrap" 
-                                            FontSize="14"
-                                            Foreground="{ThemeResource TextFillColorPrimaryBrush}" 
-                                            IsTextSelectionEnabled="True" 
-                                            Visibility="{x:Bind IsUser, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                                      <ct:MarkdownTextBlock 
-                                                          Text="{x:Bind Content, Mode=OneWay}" 
-                                                          Background="Transparent" 
-                                                          TextWrapping="Wrap" 
-                                                          FontSize="14"
-                                                          Foreground="{ThemeResource TextFillColorPrimaryBrush}" 
-                                                          IsTextSelectionEnabled="True" 
-                                                          Visibility="{x:Bind IsAssistant, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                    </StackPanel>
-                                </Grid>
-                            </DataTemplate>
-                        </ListView.ItemTemplate>
-                    </ListView>
-
-                    <!-- 智能修复即操作区域 -->
-                    <StackPanel Grid.Row="1" Margin="0,16,0,0" Spacing="8">
-                        <Grid
-                            Visibility="{x:Bind ViewModel.HasFixAction, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                            ColumnSpacing="8">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Button
-                                x:Uid="ErrorAnalysis_FixButton"
-                                Grid.Column="0"
-                                Command="{x:Bind ViewModel.FixErrorCommand}"
-                                HorizontalAlignment="Stretch"
-                                Padding="12,8"
-                                CornerRadius="4"
-                                Style="{StaticResource AccentButtonStyle}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <FontIcon Glyph="&#xE73E;" FontSize="16" Foreground="White" Margin="0,0,12,0" />
-                                    <TextBlock 
-                                        Grid.Column="1" 
-                                        Text="{x:Bind ViewModel.FixButtonText, Mode=OneWay}" 
-                                        Foreground="White" 
-                                        FontWeight="SemiBold"
-                                        TextTrimming="CharacterEllipsis"/>
-                                    <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" Foreground="White" Opacity="0.8" />
-                                </Grid>
-                            </Button>
-                            <Button
-                                Grid.Column="1"
-                                Command="{x:Bind ViewModel.RejectFixActionCommand}"
-                                Padding="12,8"
-                                CornerRadius="4"
-                                Style="{StaticResource DefaultButtonStyle}">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <FontIcon Glyph="&#xE711;" FontSize="14" />
-                                    <TextBlock Text="拒绝" />
-                                </StackPanel>
-                            </Button>
-                        </Grid>
-                        <Button
-                            x:Uid="ErrorAnalysis_FixSecondaryButton"
-                            Command="{x:Bind ViewModel.FixErrorSecondaryCommand}"
-                            Visibility="{x:Bind ViewModel.HasSecondaryFixAction, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                            HorizontalAlignment="Stretch"
-                            Padding="12,8"
-                            CornerRadius="4">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <FontIcon Glyph="&#xE74D;" FontSize="16" Margin="0,0,12,0" />
-                                <TextBlock 
-                                    Grid.Column="1" 
-                                    Text="{x:Bind ViewModel.SecondaryFixButtonText, Mode=OneWay}" 
-                                    FontWeight="SemiBold"
-                                    TextTrimming="CharacterEllipsis"/>
-                                <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" Opacity="0.8" />
-                            </Grid>
-                        </Button>
-                    </StackPanel>
-
-                    <Grid Grid.Row="2" Margin="0,12,0,0" ColumnSpacing="8">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBox x:Name="ChatInputBox"
-                                 Text="{x:Bind ViewModel.ChatInput, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" 
-                                 PlaceholderText="Ask a follow-up question..." 
-                                 IsEnabled="{x:Bind ViewModel.IsChatEnabled, Mode=OneWay}"
-                                 KeyDown="ChatInput_KeyDown"/> 
-                        <Button Grid.Column="1" Command="{x:Bind ViewModel.SendMessageCommand}" Style="{StaticResource DefaultButtonStyle}" IsEnabled="{x:Bind ViewModel.IsChatEnabled, Mode=OneWay}">
-                            <FontIcon Glyph="&#xE725;" />
-                        </Button>
-                    </Grid>
-                </Grid>
-            </Border>
-        </Grid>
+        <controls:LauncherAiPanel
+            Grid.Row="3"
+            Margin="16,16,16,16"
+            x:Uid="ErrorAnalysis_AiPanel"
+            ViewModel="{x:Bind ViewModel}"
+            MessagesMaxHeight="300"
+            ShowEmptyPlaceholder="True"
+            EmptyPlaceholderText="{x:Bind ViewModel.NoErrorInfoText, Mode=OneWay}"
+            PopOutRequested="PopOutChat_Click" />
         </Grid>
     </Grid>
 </Page>

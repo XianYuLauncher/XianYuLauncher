@@ -1,59 +1,62 @@
 using Microsoft.UI.Xaml;
-using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using WinUIEx;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Features.ErrorAnalysis.Services;
 using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Views;
 
-/// <summary>
-/// XianYu Fixer 独立聊天窗口 — 全量支持所有背景材质，实时响应设置变更
-/// </summary>
-public sealed partial class FixerChatWindow : WindowEx
+public sealed partial class LauncherAiWindow : WindowEx
 {
-    private readonly ErrorAnalysisViewModel _viewModel;
+    private static LauncherAiWindow? _currentWindow;
+
+    private readonly ErrorAnalysisSessionState _sessionState;
+    private readonly LauncherAiViewModel _launcherAiViewModel;
     private readonly MaterialService _materialService;
     private readonly IThemeSelectorService _themeSelectorService;
     private readonly IUiDispatcher _uiDispatcher;
 
-    public FixerChatWindow()
+    public LauncherAiWindow()
     {
         InitializeComponent();
 
         AppWindow.SetIcon(System.IO.Path.Combine(AppContext.BaseDirectory, "Assets/WindowIcon.ico"));
 
-        // 自定义标题栏
         ExtendsContentIntoTitleBar = true;
         SetTitleBar(AppTitleBar);
         AppWindow.TitleBar.PreferredHeightOption = Microsoft.UI.Windowing.TitleBarHeightOption.Tall;
 
-        // 标记独立窗口已打开
-        _viewModel = App.GetService<ErrorAnalysisViewModel>();
-        _viewModel.IsFixerWindowOpen = true;
-        this.Closed += OnWindowClosed;
+        _sessionState = App.GetService<ErrorAnalysisSessionState>();
+        _launcherAiViewModel = App.GetService<LauncherAiViewModel>();
+        _sessionState.IsLauncherAiWindowOpen = true;
+        Closed += OnWindowClosed;
 
         _uiDispatcher = App.GetService<IUiDispatcher>();
-        // 订阅材质变更事件，实时响应
         _materialService = App.GetService<MaterialService>();
         _materialService.BackgroundChanged += OnBackgroundChanged;
         _materialService.MotionSettingsChanged += OnMotionSettingsChanged;
 
-        // 应用主题设置（跟随主窗口）
         _themeSelectorService = App.GetService<IThemeSelectorService>();
         ApplyTheme();
 
-        // 初始加载材质
         LoadBackgroundAsync();
-
-        // 导航到聊天页面
-        ContentFrame.Navigate(typeof(FixerChatPage));
+        ContentFrame.Navigate(typeof(LauncherAiWindowPage));
     }
 
-    /// <summary>
-    /// 应用主题设置（从 ThemeSelectorService 同步）
-    /// </summary>
+    public static void ShowOrActivate()
+    {
+        if (_currentWindow != null)
+        {
+            _currentWindow.Activate();
+            return;
+        }
+
+        _currentWindow = new LauncherAiWindow();
+        _currentWindow.Activate();
+    }
+
     private void ApplyTheme()
     {
         if (Content is FrameworkElement rootElement)
@@ -64,14 +67,17 @@ public sealed partial class FixerChatWindow : WindowEx
 
     private void OnWindowClosed(object sender, WindowEventArgs args)
     {
-        _viewModel.IsFixerWindowOpen = false;
+        _sessionState.IsLauncherAiWindowOpen = false;
+        _launcherAiViewModel.CleanupTransientErrorAnalysisConversation();
         _materialService.BackgroundChanged -= OnBackgroundChanged;
         _materialService.MotionSettingsChanged -= OnMotionSettingsChanged;
+
+        if (ReferenceEquals(_currentWindow, this))
+        {
+            _currentWindow = null;
+        }
     }
 
-    /// <summary>
-    /// 初始加载背景设置
-    /// </summary>
     private async void LoadBackgroundAsync()
     {
         try
@@ -93,14 +99,11 @@ public sealed partial class FixerChatWindow : WindowEx
         }
         catch (System.Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Fixer窗口加载背景失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"Launcher AI 窗口加载背景失败: {ex.Message}");
             SystemBackdrop = new Microsoft.UI.Xaml.Media.MicaBackdrop();
         }
     }
 
-    /// <summary>
-    /// 应用 SystemBackdrop（Mica/MicaAlt/Acrylic），CustomBackground 和 Motion 需要清空
-    /// </summary>
     private void ApplySystemBackdrop(MaterialType materialType)
     {
         switch (materialType)
@@ -127,12 +130,8 @@ public sealed partial class FixerChatWindow : WindowEx
         }
     }
 
-    /// <summary>
-    /// 应用背景视觉层（图片 / Motion / 隐藏）
-    /// </summary>
     private void ApplyBackground(MaterialType materialType, string? backgroundPath)
     {
-        // 重置
         BackgroundImage.Visibility = Visibility.Collapsed;
         MotionBg.Visibility = Visibility.Collapsed;
         AcrylicOverlay.Visibility = Visibility.Collapsed;
@@ -156,9 +155,6 @@ public sealed partial class FixerChatWindow : WindowEx
         }
     }
 
-    /// <summary>
-    /// 加载流光设置（速度 + 颜色）
-    /// </summary>
     private async Task LoadMotionSettingsAsync()
     {
         try
@@ -181,8 +177,6 @@ public sealed partial class FixerChatWindow : WindowEx
         }
     }
 
-    // ---- 实时事件响应 ----
-
     private void OnBackgroundChanged(object? sender, BackgroundChangedEventArgs e)
     {
         _uiDispatcher.TryEnqueue(() =>
@@ -202,8 +196,6 @@ public sealed partial class FixerChatWindow : WindowEx
         _uiDispatcher.TryEnqueue(() => _ = LoadMotionSettingsAsync());
     }
 
-    // ---- 工具方法 ----
-
     private static Windows.UI.Color ParseColor(string hex)
     {
         try
@@ -218,8 +210,19 @@ public sealed partial class FixerChatWindow : WindowEx
                 var b = byte.Parse(hex[6..8], System.Globalization.NumberStyles.HexNumber);
                 return Windows.UI.Color.FromArgb(a, r, g, b);
             }
+
+            if (hex.Length == 6)
+            {
+                var r = byte.Parse(hex[..2], System.Globalization.NumberStyles.HexNumber);
+                var g = byte.Parse(hex[2..4], System.Globalization.NumberStyles.HexNumber);
+                var b = byte.Parse(hex[4..6], System.Globalization.NumberStyles.HexNumber);
+                return Windows.UI.Color.FromArgb(255, r, g, b);
+            }
         }
-        catch { }
+        catch
+        {
+        }
+
         return Windows.UI.Color.FromArgb(255, 255, 255, 255);
     }
 }
