@@ -916,7 +916,7 @@ namespace XianYuLauncher.Views
             if (!IsChinaMainland())
             {
                 // 非中国大陆地区，不允许离线登录
-                await _dialogService.ShowMessageDialogAsync("Msg_RegionRestriction".GetLocalized(), "Msg_OfflineLoginRegionRestricted".GetLocalized(), "OK");
+                await _dialogService.ShowMessageDialogAsync("Msg_RegionRestriction".GetLocalized(), "Msg_OfflineLoginRegionRestricted".GetLocalized(), "Dialog_OK".GetLocalized());
                 return;
             }
             
@@ -942,7 +942,7 @@ namespace XianYuLauncher.Views
             if (!IsChinaMainland())
             {
                 // 非中国大陆地区，不允许外置登录
-                await _dialogService.ShowMessageDialogAsync("Msg_RegionRestriction".GetLocalized(), "Msg_ExternalLoginRegionRestricted".GetLocalized(), "OK");
+                await _dialogService.ShowMessageDialogAsync("Msg_RegionRestriction".GetLocalized(), "Msg_ExternalLoginRegionRestricted".GetLocalized(), "Dialog_OK".GetLocalized());
                 return;
             }
             
@@ -969,7 +969,7 @@ namespace XianYuLauncher.Views
                 if (profile.IsOffline)
                 {
                     // 离线账户无需续签
-                    await _dialogService.ShowMessageDialogAsync("Msg_Prompt".GetLocalized(), "Msg_OfflineNoTokenRefresh".GetLocalized(), "OK");
+                    await _dialogService.ShowMessageDialogAsync("Msg_Prompt".GetLocalized(), "Msg_OfflineNoTokenRefresh".GetLocalized(), "Dialog_OK".GetLocalized());
                     return;
                 }
                 
@@ -1054,7 +1054,7 @@ namespace XianYuLauncher.Views
 
             if (showFinalMessage)
             {
-                await _dialogService.ShowMessageDialogAsync("Msg_RefreshToken".GetLocalized(), finalMessage, "OK");
+                await _dialogService.ShowMessageDialogAsync("Msg_RefreshToken".GetLocalized(), finalMessage, "Dialog_OK".GetLocalized());
             }
         }
         
@@ -1762,7 +1762,7 @@ namespace XianYuLauncher.Views
         /// </summary>
         private async Task ShowLoginErrorDialogAsync(string errorMessage)
         {
-            await _dialogService.ShowMessageDialogAsync("Msg_LoginFailed".GetLocalized(), errorMessage, "OK");
+            await _dialogService.ShowMessageDialogAsync("Msg_LoginFailed".GetLocalized(), errorMessage, "Dialog_OK".GetLocalized());
 
             // 重置登录状态
             ViewModel.IsLoggingIn = false;
