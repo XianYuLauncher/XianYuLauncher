@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services
@@ -37,8 +39,7 @@ namespace XianYuLauncher.Core.Services
         {
             if (string.IsNullOrWhiteSpace(apiKey))
             {
-                yield return new AiStreamChunk { ContentDelta = "API Key is missing.", IsDone = true };
-                yield break;
+                throw new AiAnalysisRequestException("API Key is missing.");
             }
 
             endpoint = NormalizeEndpoint(endpoint);
@@ -107,7 +108,6 @@ namespace XianYuLauncher.Core.Services
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             HttpResponseMessage? response = null;
-            string? earlyError = null;
             try
             {
                 using var request = new HttpRequestMessage(HttpMethod.Post, endpoint);
@@ -118,22 +118,22 @@ namespace XianYuLauncher.Core.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error during streaming AI chat with tools");
-                earlyError = $"Chat Error: {ex.Message}";
-            }
-
-            if (earlyError != null)
-            {
-                yield return new AiStreamChunk { ContentDelta = earlyError, IsDone = true };
-                yield break;
+                throw new AiAnalysisRequestException($"Chat Error: {ex.Message}", requestUri: endpoint, innerException: ex);
             }
 
             if (response == null || !response.IsSuccessStatusCode)
             {
                 var errorBody = response != null ? await response.Content.ReadAsStringAsync() : "Empty response";
-                var statusCode = response?.StatusCode.ToString() ?? "Unknown";
-                _logger.LogError("AI Request Failed: {StatusCode} - {Body}", statusCode, errorBody);
-                yield return new AiStreamChunk { ContentDelta = $"AI Request Failed: {statusCode}.", IsDone = true };
-                yield break;
+                var statusCode = response?.StatusCode;
+                var statusText = statusCode.HasValue
+                    ? $"{(int)statusCode.Value} {statusCode.Value}"
+                    : "Unknown";
+                _logger.LogError("AI Request Failed: {StatusCode} - {Body}", statusText, errorBody);
+                throw new AiAnalysisRequestException(
+                    BuildDetailedRequestFailureMessage(endpoint, statusCode, errorBody),
+                    statusCode,
+                    errorBody,
+                    endpoint);
             }
 
             // 流式解析：累积 tool_calls delta
@@ -229,13 +229,70 @@ namespace XianYuLauncher.Core.Services
         {
             // 同样只是个兜底的默认值，用户设置优先。
             if (string.IsNullOrWhiteSpace(endpoint))
-                return "https://api.openai.com/v1/chat/completions";
-
-            if (!endpoint.EndsWith("/v1/chat/completions") && !endpoint.EndsWith("/chat/completions"))
             {
-                endpoint = endpoint.TrimEnd('/') + "/v1/chat/completions";
+                return "https://api.openai.com/v1/chat/completions";
             }
-            return endpoint;
+
+            endpoint = endpoint.TrimEnd('/');
+
+            if (endpoint.EndsWith("/v1/chat/completions", StringComparison.OrdinalIgnoreCase)
+                || endpoint.EndsWith("/chat/completions", StringComparison.OrdinalIgnoreCase))
+            {
+                return endpoint;
+            }
+
+            if (endpoint.EndsWith("/v1", StringComparison.OrdinalIgnoreCase))
+            {
+                return endpoint + "/chat/completions";
+            }
+
+            return endpoint + "/v1/chat/completions";
+        }
+
+        private static string BuildDetailedRequestFailureMessage(string endpoint, HttpStatusCode? statusCode, string? errorBody)
+        {
+            var statusText = statusCode.HasValue
+                ? $"{(int)statusCode.Value} {statusCode.Value}"
+                : "Unknown";
+            var providerMessage = ExtractProviderErrorMessage(errorBody);
+
+            if (!string.IsNullOrWhiteSpace(providerMessage))
+            {
+                return $"AI Request Failed: {statusText}. Endpoint: {endpoint}. Response: {providerMessage}";
+            }
+
+            return $"AI Request Failed: {statusText}. Endpoint: {endpoint}.";
+        }
+
+        private static string? ExtractProviderErrorMessage(string? errorBody)
+        {
+            if (string.IsNullOrWhiteSpace(errorBody))
+            {
+                return null;
+            }
+
+            try
+            {
+                if (JToken.Parse(errorBody) is JObject obj)
+                {
+                    var message = obj["error"]?["message"]?.ToString()
+                        ?? obj["message"]?.ToString()
+                        ?? obj["error_message"]?.ToString()
+                        ?? obj["msg"]?.ToString();
+
+                    if (!string.IsNullOrWhiteSpace(message))
+                    {
+                        return message.Trim();
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            var compact = errorBody.Trim();
+            const int maxLength = 280;
+            return compact.Length <= maxLength ? compact : compact[..maxLength] + "...";
         }
 
         /// <summary>
