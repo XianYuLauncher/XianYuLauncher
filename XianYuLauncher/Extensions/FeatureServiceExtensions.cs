@@ -19,6 +19,7 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IErrorAnalysisExportService, ErrorAnalysisExportService>();
         services.AddSingleton<IAgentToolSupportService, AgentToolSupportService>();
         services.AddSingleton<IAgentGameInstallService, AgentGameInstallService>();
+        services.AddSingleton<IAgentCommunityResourceService, AgentCommunityResourceService>();
         services.AddSingleton<IAgentToolDispatcher, AgentToolDispatcher>();
         services.AddSingleton<IAgentActionExecutor, AgentActionExecutor>();
         services.AddSingleton<IAgentToolHandler, ListInstalledModsToolHandler>();
@@ -32,12 +33,17 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentToolHandler, InstallGameToolHandler>();
         services.AddSingleton<IAgentToolHandler, LaunchGameToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetOperationStatusToolHandler>();
+        services.AddSingleton<IAgentToolHandler, SearchCommunityResourcesToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetCommunityResourceFilesToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetInstancesToolHandler>();
+        services.AddSingleton<IAgentToolHandler, InstallCommunityResourceToolHandler>();
         services.AddSingleton<IAgentToolHandler, SearchModrinthProjectToolHandler>();
         services.AddSingleton<IAgentToolHandler, DeleteModToolHandler>();
         services.AddSingleton<IAgentToolHandler, ToggleModToolHandler>();
         services.AddSingleton<IAgentToolHandler, SwitchJavaForVersionToolHandler>();
         services.AddSingleton<IAgentActionHandler, InstallGameActionHandler>();
         services.AddSingleton<IAgentActionHandler, LaunchGameActionHandler>();
+        services.AddSingleton<IAgentActionHandler, InstallCommunityResourceActionHandler>();
         services.AddSingleton<IAgentActionHandler, SearchModrinthProjectActionHandler>();
         services.AddSingleton<IAgentActionHandler, DeleteModActionHandler>();
         services.AddSingleton<IAgentActionHandler, ToggleModActionHandler>();

@@ -1,4 +1,5 @@
 using System.Text;
+using Newtonsoft.Json.Linq;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
@@ -586,7 +587,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             ? approved && proposal != null
                 ? $"已执行：{proposal.ButtonText}"
                 : BuildRejectedActionMessage(rejectedActionText)
-            : actionResult.Trim();
+            : ExtractDisplayMessage(actionResult);
 
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
@@ -758,12 +759,14 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             return;
         }
 
+        var displayMessage = ExtractDisplayMessage(actionResult);
+
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
-            _sessionState.ChatMessages.Add(new UiChatMessage("assistant", actionResult));
+            _sessionState.ChatMessages.Add(new UiChatMessage("assistant", displayMessage));
             if (_sessionState.ChatMessages.Count <= 3)
             {
-                _sessionState.AiAnalysisResult = actionResult;
+                _sessionState.AiAnalysisResult = displayMessage;
             }
         });
     }
@@ -798,7 +801,8 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     {
         var safeMessages = actionProposalMessages
             .Where(message => !string.IsNullOrWhiteSpace(message))
-            .Select(message => message.Trim())
+            .Select(ExtractDisplayMessage)
+            .Where(message => !string.IsNullOrWhiteSpace(message))
             .ToList();
 
         if (safeMessages.Count > 0)
@@ -812,6 +816,37 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         }
 
         return "已准备多个待确认操作，等待用户确认。";
+    }
+
+    private static string ExtractDisplayMessage(string message)
+    {
+        var trimmed = message.Trim();
+        if (trimmed.Length == 0)
+        {
+            return trimmed;
+        }
+
+        if (trimmed[0] is not '{' and not '[')
+        {
+            return trimmed;
+        }
+
+        try
+        {
+            if (JToken.Parse(trimmed) is JObject obj)
+            {
+                var displayMessage = obj["message"]?.ToString();
+                if (!string.IsNullOrWhiteSpace(displayMessage))
+                {
+                    return displayMessage.Trim();
+                }
+            }
+        }
+        catch
+        {
+        }
+
+        return trimmed;
     }
 
     private static string BuildRejectedActionMessage(string? rejectedActionText)
@@ -931,9 +966,11 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             "CRITICAL RULES:\n" +
             "1. CHECK THE LAUNCH COMMAND FIRST! If the user has set invalid JVM arguments (e.g., nonsense in -Djava.library.path or -Xmx), TELL THEM TO FIX IT MANUALLY in the settings. Do NOT switch Java versions for bad arguments.\n" +
             "2. ONLY use the 'switchJava' tool if the crash log explicitly indicates a Java version mismatch or runtime error. Do not guess.\n" +
-            "3. The 'searchModrinthProject' tool is stricterly for searching MODS, SHADERS, or RESOURCE PACKS. It CANNOT search for Mod Loaders (Forge, Fabric, NeoForge, Quilt). Explain manual installation for loaders if needed.\n" +
-            "4. If the user explicitly asks to install a specific Minecraft version, call 'get_game_manifest' with queryType='list' and searchText set to that version string before 'install_game'. Use latest_release/latest_snapshot only when the user explicitly asks for latest release or latest snapshot.\n" +
-            "5. If you cannot fix the issue via tools, provide clear manual instructions. If the problem persists, advise the user to click the 'Contact Author' (联系作者) button at the top.\n" +
-            "6. Never fabricate tool calls, tool execution, or tool results. Only describe a tool as executed, succeeded, failed, rejected, cancelled, or completed when you have the real tool result for that exact tool call; otherwise say you do not have the result yet.";
+            "3. For AI-driven community resource installation, prefer the read-only tool chain 'search_community_resources' -> 'get_community_resource_files' -> 'get_instances' -> 'install_community_resource'. Only use 'searchModrinthProject' when the goal is to open the UI detail page, not when preparing a silent install.\n" +
+            "4. The 'searchModrinthProject' tool is stricterly for opening MOD / SHADER / RESOURCE PACK detail pages. It CANNOT search for Mod Loaders (Forge, Fabric, NeoForge, Quilt). Explain manual installation for loaders if needed.\n" +
+            "5. If the user explicitly asks to install a specific Minecraft version, call 'get_game_manifest' with queryType='list' and searchText set to that version string before 'install_game'. Use latest_release/latest_snapshot only when the user explicitly asks for latest release or latest snapshot.\n" +
+            "6. 'install_community_resource' V1 only supports mod, resourcepack, and shader. Datapack / world / modpack installs are out of scope until dedicated selection tools exist.\n" +
+            "7. If you cannot fix the issue via tools, provide clear manual instructions. If the problem persists, advise the user to click the 'Contact Author' (联系作者) button at the top.\n" +
+            "8. Never fabricate tool calls, tool execution, or tool results. Only describe a tool as executed, succeeded, failed, rejected, cancelled, or completed when you have the real tool result for that exact tool call; otherwise say you do not have the result yet.";
     }
 }
