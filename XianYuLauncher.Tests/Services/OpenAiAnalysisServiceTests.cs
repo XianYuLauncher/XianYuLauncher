@@ -4,6 +4,7 @@ using System.Text;
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 
@@ -65,6 +66,67 @@ public sealed class OpenAiAnalysisServiceTests
         chunks.Should().NotContain(chunk => chunk.IsToolCall);
     }
 
+    [Fact]
+    public async Task StreamChatWithToolsAsync_WhenRequestFails_ShouldThrowRequestExceptionWithBody()
+    {
+        await using var server = await FakeSseServer.StartFailureAsync(HttpStatusCode.BadRequest, "{\"error\":\"bad request\"}");
+        var service = new OpenAiAnalysisService(Mock.Of<ILogger<OpenAiAnalysisService>>());
+
+        var action = async () => await CollectChunksAsync(service.StreamChatWithToolsAsync(
+            [new ChatMessage("user", "你好")],
+            [],
+            "test-key",
+            server.Endpoint,
+            "test-model"));
+
+        var exception = await action.Should().ThrowAsync<AiAnalysisRequestException>();
+        exception.Which.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        exception.Which.ResponseBody.Should().Be("{\"error\":\"bad request\"}");
+        exception.Which.RequestUri.Should().Be(server.Endpoint);
+    }
+
+    [Fact]
+    public async Task StreamChatWithToolsAsync_WithVersionedBaseEndpoint_ShouldAppendOnlyChatCompletions()
+    {
+        var payloads = new[]
+        {
+            "{\"choices\":[{\"delta\":{\"content\":\"你好\"}}]}"
+        };
+
+        await using var server = await FakeSseServer.StartAsync(payloads, "/compatible-mode/v1/chat/completions/");
+        var service = new OpenAiAnalysisService(Mock.Of<ILogger<OpenAiAnalysisService>>());
+
+        var chunks = await CollectChunksAsync(service.StreamChatWithToolsAsync(
+            [new ChatMessage("user", "你好")],
+            [],
+            "test-key",
+            server.BaseEndpoint,
+            "test-model"));
+
+        string.Concat(chunks.Where(chunk => chunk.IsContent).Select(chunk => chunk.ContentDelta)).Should().Be("你好");
+        server.LastRequestUri.Should().Be(server.Endpoint);
+    }
+
+    [Fact]
+    public async Task StreamChatWithToolsAsync_WhenProviderReturnsJsonMessage_ShouldExposeDetailedFailureMessage()
+    {
+        const string errorBody = "{\"error\":{\"message\":\"model not found\"}}";
+        await using var server = await FakeSseServer.StartFailureAsync(HttpStatusCode.NotFound, errorBody, "/compatible-mode/v1/chat/completions/");
+        var service = new OpenAiAnalysisService(Mock.Of<ILogger<OpenAiAnalysisService>>());
+
+        var action = async () => await CollectChunksAsync(service.StreamChatWithToolsAsync(
+            [new ChatMessage("user", "你好")],
+            [],
+            "test-key",
+            server.BaseEndpoint,
+            "missing-model"));
+
+        var exception = await action.Should().ThrowAsync<AiAnalysisRequestException>();
+        exception.Which.Message.Should().Contain("404 NotFound");
+        exception.Which.Message.Should().Contain(server.Endpoint);
+        exception.Which.Message.Should().Contain("model not found");
+    }
+
     private static async Task<List<AiStreamChunk>> CollectChunksAsync(IAsyncEnumerable<AiStreamChunk> source)
     {
         List<AiStreamChunk> chunks = [];
@@ -86,23 +148,77 @@ public sealed class OpenAiAnalysisServiceTests
             _listener = listener;
             _responseTask = responseTask;
             Endpoint = endpoint;
+            BaseEndpoint = endpoint[..endpoint.LastIndexOf("/chat/completions", StringComparison.OrdinalIgnoreCase)];
         }
 
         public string Endpoint { get; }
 
+        public string BaseEndpoint { get; }
+
+        public string? LastRequestUri { get; private set; }
+
         public static async Task<FakeSseServer> StartAsync(IReadOnlyList<string> payloads)
         {
+            return await StartCoreAsync(HttpStatusCode.OK, payloads, failureBody: null, "/v1/chat/completions/");
+        }
+
+        public static async Task<FakeSseServer> StartAsync(IReadOnlyList<string> payloads, string endpointPath)
+        {
+            return await StartCoreAsync(HttpStatusCode.OK, payloads, failureBody: null, endpointPath);
+        }
+
+        public static async Task<FakeSseServer> StartFailureAsync(HttpStatusCode statusCode, string failureBody)
+        {
+            return await StartCoreAsync(statusCode, payloads: [], failureBody, "/v1/chat/completions/");
+        }
+
+        public static async Task<FakeSseServer> StartFailureAsync(HttpStatusCode statusCode, string failureBody, string endpointPath)
+        {
+            return await StartCoreAsync(statusCode, payloads: [], failureBody, endpointPath);
+        }
+
+        private static async Task<FakeSseServer> StartCoreAsync(HttpStatusCode statusCode, IReadOnlyList<string> payloads, string? failureBody, string endpointPath)
+        {
             var port = GetFreePort();
-            var prefix = $"http://127.0.0.1:{port}/v1/chat/completions/";
+            var normalizedPath = endpointPath.Trim();
+            if (!normalizedPath.StartsWith('/'))
+            {
+                normalizedPath = "/" + normalizedPath;
+            }
+
+            if (!normalizedPath.EndsWith('/'))
+            {
+                normalizedPath += "/";
+            }
+
+            var prefix = $"http://127.0.0.1:{port}{normalizedPath}";
             var endpoint = prefix.TrimEnd('/');
             var listener = new HttpListener();
             listener.Prefixes.Add(prefix);
             listener.Start();
 
+            FakeSseServer? server = null;
+
             var responseTask = Task.Run(async () =>
             {
                 var context = await listener.GetContextAsync();
-                context.Response.StatusCode = (int)HttpStatusCode.OK;
+                if (server != null)
+                {
+                    server.LastRequestUri = context.Request.Url?.ToString()?.TrimEnd('/');
+                }
+
+                context.Response.StatusCode = (int)statusCode;
+
+                if (statusCode != HttpStatusCode.OK)
+                {
+                    context.Response.ContentType = "application/json";
+                    await using var failureWriter = new StreamWriter(context.Response.OutputStream, new UTF8Encoding(false), leaveOpen: false);
+                    await failureWriter.WriteAsync(failureBody ?? string.Empty);
+                    await failureWriter.FlushAsync();
+                    context.Response.Close();
+                    return;
+                }
+
                 context.Response.ContentType = "text/event-stream";
                 context.Response.SendChunked = true;
 
@@ -119,7 +235,8 @@ public sealed class OpenAiAnalysisServiceTests
             });
 
             await Task.Yield();
-            return new FakeSseServer(listener, responseTask, endpoint);
+            server = new FakeSseServer(listener, responseTask, endpoint);
+            return server;
         }
 
         public async ValueTask DisposeAsync()

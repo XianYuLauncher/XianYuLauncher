@@ -627,7 +627,8 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     {
         List<ChatMessage> apiMessages = [];
         string languageForAi = _languageSelectorService.Language == "zh-CN" ? "Simplified Chinese" : "English";
-        apiMessages.Add(new ChatMessage("system", BuildFunctionCallingSystemPrompt(languageForAi)));
+        var settings = await _aiSettingsDomainService.LoadAsync();
+        apiMessages.Add(new ChatMessage("system", BuildSystemPrompt(settings, languageForAi)));
 
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
@@ -970,7 +971,14 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         };
     }
 
-    private static string BuildFunctionCallingSystemPrompt(string language)
+    private static string BuildSystemPrompt(AiSettingsState settings, string language)
+    {
+        return string.IsNullOrWhiteSpace(settings.SystemPrompt)
+            ? BuildDefaultFunctionCallingSystemPrompt(language)
+            : settings.SystemPrompt.Trim();
+    }
+
+    private static string BuildDefaultFunctionCallingSystemPrompt(string language)
     {
         return
             "You are an expert Minecraft technical support agent built into XianYu Launcher. " +
