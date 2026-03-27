@@ -400,7 +400,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                     .Where(category => IsLikelyLoaderToken(category) || string.Equals(resourceType, "datapack", StringComparison.OrdinalIgnoreCase))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToList(),
-                game_versions = project.Versions.Take(8).ToList(),
+                game_versions = ModrinthVersionPresentationHelper.SelectRepresentativeGameVersions(project.Versions, 8),
                 downloads = project.Downloads,
                 icon_url = project.IconUrl?.ToString()
             })
@@ -518,7 +518,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                     detail.Categories,
                     detectedResourceType,
                     detectedResourceType is "mod" or "datapack" ? detectedResourceType : null),
-                game_versions = detail.GameVersions.Take(10).ToList(),
+                game_versions = ModrinthVersionPresentationHelper.SelectRepresentativeGameVersions(detail.GameVersions, 10),
                 downloads = detail.Downloads,
                 icon_url = detail.IconUrl?.ToString()
             },
