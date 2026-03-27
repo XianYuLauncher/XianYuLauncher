@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.ViewModels;
@@ -89,6 +90,7 @@ public sealed class LaunchProtocolCommandHandler : IProtocolCommandHandler
 
             if (launchResult.GameProcess != null)
             {
+                StartDetachedMonitoring(launchResult.GameProcess, launchResult.LaunchCommand);
                 ShowToast("游戏已启动", $"{versionName} 正在运行中...");
                 Application.Current.Exit();
             }
@@ -106,6 +108,20 @@ public sealed class LaunchProtocolCommandHandler : IProtocolCommandHandler
             EnsureMainWindowInitialized();
             App.MainWindow.Activate();
         }
+    }
+
+    private static void StartDetachedMonitoring(System.Diagnostics.Process gameProcess, string? launchCommand)
+    {
+        var monitor = App.GetService<IGameProcessMonitor>();
+        _ = monitor.MonitorProcessAsync(gameProcess, launchCommand ?? string.Empty).ContinueWith(
+            task =>
+            {
+                if (task.Exception != null)
+                {
+                    Serilog.Log.Warning(task.Exception.GetBaseException(), "协议静默启动后的进程监控失败");
+                }
+            },
+            TaskContinuationOptions.OnlyOnFaulted);
     }
 
     private static void EnsureMainWindowInitialized()
