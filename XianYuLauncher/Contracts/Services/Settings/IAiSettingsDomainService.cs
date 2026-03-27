@@ -12,6 +12,8 @@ public sealed class AiSettingsState
     public string ApiKey { get; init; } = string.Empty;
 
     public string Model { get; init; } = "gpt-3.5-turbo";
+
+    public string SystemPrompt { get; init; } = string.Empty;
 }
 
 public interface IAiSettingsDomainService
@@ -31,4 +33,6 @@ public interface IAiSettingsDomainService
     Task SaveApiKeyAsync(string value);
 
     Task SaveModelAsync(string value);
+
+    Task SaveSystemPromptAsync(string value);
 }

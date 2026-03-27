@@ -1586,7 +1586,7 @@
     <value>崩溃分析</value>
   </data>
   <data name="ErrorAnalysis_AnalysisTitle.Text" xml:space="preserve">
-    <value>XianYu Fixer</value>
+    <value>Launcher AI</value>
   </data>
   <data name="ErrorAnalysis_NoErrorInfo.Text" xml:space="preserve">
     <value>没有分析内容，因为 Minecraft 还没崩溃...</value>
@@ -2785,14 +2785,8 @@
   <data name="Settings_AI_Analysis_Title.Text" xml:space="preserve">
     <value>Launcher AI</value>
   </data>
-  <data name="Settings_AI_CrashAnalysis.Header" xml:space="preserve">
-    <value>Launcher AI</value>
-  </data>
-  <data name="Settings_AI_CrashAnalysis.Description" xml:space="preserve">
+  <data name="Settings_LauncherAI.Description" xml:space="preserve">
     <value>启用后可在启动器内使用第三方 AI 服务进行对话与问题处理</value>
-  </data>
-  <data name="Settings_AI_CrashAnalysisDescription.Text" xml:space="preserve">
-    <value>启用后可在启动器内使用第三方 AI 服务进行对话、排障与操作辅助。</value>
   </data>
   <data name="LauncherAiPage_Title.Text" xml:space="preserve">
     <value>Launcher AI</value>
@@ -2819,13 +2813,7 @@
     <value>暂无可用启动档案</value>
   </data>
   <data name="Settings_AI_Disclaimer.Text" xml:space="preserve">
-    <value>XianYuFixer 仅提供接入 OpenAI API 规范的 LLM 的能力，软件内不提供任何 AI 服务或账号。使用前请确认您所在地区允许使用相关服务，并严格遵守所选 AI 提供商的服务条款、使用政策与隐私规则；API Key 由您自行申请与保管，相关费用与合规责任由用户自行承担。</value>
-  </data>
-  <data name="Settings_AI_ConfigDetails.Header" xml:space="preserve">
-    <value>AI 配置详情</value>
-  </data>
-  <data name="Settings_AI_ConfigDescription.Text" xml:space="preserve">
-    <value>配置 API 端点、密钥与模型</value>
+    <value>Launcher AI 仅提供接入 OpenAI API 规范的 LLM 的能力，软件内不提供任何 AI 服务或账号。使用前请确认您所在地区允许使用相关服务，并严格遵守所选 AI 提供商的服务条款、使用政策与隐私规则；API Key 由您自行申请与保管，相关费用与合规责任由用户自行承担。</value>
   </data>
   <data name="Settings_AI_ApiEndpoint.Header" xml:space="preserve">
     <value>API 端点 (Base URL)</value>
@@ -2844,6 +2832,15 @@
   </data>
   <data name="Settings_AI_ModelName.Description" xml:space="preserve">
     <value>使用的 AI 模型</value>
+  </data>
+  <data name="Settings_AI_SystemPrompt.Header" xml:space="preserve">
+    <value>系统提示</value>
+  </data>
+  <data name="Settings_AI_SystemPrompt.Description" xml:space="preserve">
+    <value>留空则使用内置默认提示词</value>
+  </data>
+  <data name="Settings_AI_SystemPromptTextBox.PlaceholderText" xml:space="preserve">
+    <value>留空则使用内置默认系统提示词</value>
   </data>
   <data name="ResourceDownloadPage_FavoritesButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>拖拽资源到此处以收藏</value>
@@ -2902,9 +2899,6 @@
   </data>
   <data name="Settings_NetworkSection.Text" xml:space="preserve">
     <value>网络</value>
-  </data>
-  <data name="Settings_AISection.Text" xml:space="preserve">
-    <value>AI 分析</value>
   </data>
   <data name="Settings_AboutSection.Text" xml:space="preserve">
     <value>关于</value>

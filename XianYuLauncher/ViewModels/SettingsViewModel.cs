@@ -141,6 +141,9 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
 
     [ObservableProperty]
     private string _aiModel = "gpt-3.5-turbo";
+
+    [ObservableProperty]
+    private string _aiSystemPrompt = string.Empty;
     
     /// <summary>
     /// 下载源项（用于下拉框显示）
@@ -1460,6 +1463,11 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     {
         QueueSettingWrite("AI_Model", () => _aiSettingsDomainService.SaveModelAsync(value));
     }
+
+    partial void OnAiSystemPromptChanged(string value)
+    {
+        QueueSettingWrite("AI_SystemPrompt", () => _aiSettingsDomainService.SaveSystemPromptAsync(value), 400);
+    }
     
     /// <summary>
     /// 刷新缓存大小信息
@@ -2563,6 +2571,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         AiApiEndpoint = state.ApiEndpoint;
         AiApiKey = state.ApiKey;
         AiModel = state.Model;
+        AiSystemPrompt = state.SystemPrompt;
     }
 
     private async Task LoadJavaPathAsync()

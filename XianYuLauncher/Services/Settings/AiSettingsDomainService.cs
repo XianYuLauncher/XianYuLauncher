@@ -10,6 +10,7 @@ public class AiSettingsDomainService : IAiSettingsDomainService
     private const string AIApiEndpointKey = "AIApiEndpoint";
     private const string AIApiKeyKey = "AIApiKey";
     private const string AIModelKey = "AIModel";
+    private const string AISystemPromptKey = "AISystemPrompt";
 
     private readonly ISettingsRepository _settingsRepository;
 
@@ -26,6 +27,7 @@ public class AiSettingsDomainService : IAiSettingsDomainService
     {
         var endpoint = await _settingsRepository.ReadAsync<string>(AIApiEndpointKey) ?? "https://api.openai.com";
         var model = await _settingsRepository.ReadAsync<string>(AIModelKey) ?? "gpt-3.5-turbo";
+        var systemPrompt = await _settingsRepository.ReadAsync<string>(AISystemPromptKey) ?? string.Empty;
         var isEnabled = await _settingsRepository.ReadAsync<bool?>(EnableAIAnalysisKey) ?? false;
         CurrentEnabled = isEnabled;
 
@@ -50,7 +52,8 @@ public class AiSettingsDomainService : IAiSettingsDomainService
             IsEnabled = isEnabled,
             ApiEndpoint = endpoint,
             ApiKey = plainKey,
-            Model = model
+            Model = model,
+            SystemPrompt = systemPrompt
         };
     }
 
@@ -85,5 +88,10 @@ public class AiSettingsDomainService : IAiSettingsDomainService
     public Task SaveModelAsync(string value)
     {
         return _settingsRepository.SaveAsync(AIModelKey, value);
+    }
+
+    public Task SaveSystemPromptAsync(string value)
+    {
+        return _settingsRepository.SaveAsync(AISystemPromptKey, value);
     }
 }
