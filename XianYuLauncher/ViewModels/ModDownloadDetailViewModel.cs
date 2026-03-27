@@ -39,6 +39,7 @@ namespace XianYuLauncher.ViewModels
         private readonly IModDetailLoadOrchestrator _modDetailLoadOrchestrator;
         private readonly IVersionInfoService _versionInfoService;
         private readonly IUiDispatcher _uiDispatcher;
+        private readonly ICommunityResourceInstallPlanner _communityResourceInstallPlanner;
         private readonly IGameDirResolver _gameDirResolver;
         private readonly IHttpImageSourceService _httpImageSourceService;
         private readonly ILogger<ModDownloadDetailViewModel> _logger;
@@ -522,6 +523,7 @@ namespace XianYuLauncher.ViewModels
             IModDetailLoadOrchestrator modDetailLoadOrchestrator,
             IVersionInfoService versionInfoService,
             IUiDispatcher uiDispatcher,
+            ICommunityResourceInstallPlanner communityResourceInstallPlanner,
             IGameDirResolver gameDirResolver,
             IHttpImageSourceService httpImageSourceService,
             ILogger<ModDownloadDetailViewModel> logger)
@@ -539,6 +541,7 @@ namespace XianYuLauncher.ViewModels
             _modDetailLoadOrchestrator = modDetailLoadOrchestrator;
             _versionInfoService = versionInfoService;
             _uiDispatcher = uiDispatcher;
+            _communityResourceInstallPlanner = communityResourceInstallPlanner;
             _gameDirResolver = gameDirResolver;
             _httpImageSourceService = httpImageSourceService;
             _logger = logger;
@@ -1324,31 +1327,20 @@ namespace XianYuLauncher.ViewModels
                 }
                 
                 string? selectedSaveName = SelectedSaveName;
-                if (string.IsNullOrEmpty(selectedSaveName))
+                if (string.IsNullOrEmpty(selectedSaveName) && !UseCustomDownloadPath)
                 {
                     IsDownloading = false;
                     DownloadStatus = "下载已取消";
                     return;
                 }
-                
-                string savesDir;
+
                 var targetVersion = _currentDownloadingGameVersion ?? SelectedInstalledVersion;
 
-                if (targetVersion != null)
-                {
-                    savesDir = await ResolveSavesDirectoryAsync(targetVersion);
-                }
-                else
-                {
-                    savesDir = await ResolveSavesDirectoryAsync(null);
-                }
-                
-                string selectedSaveDir = Path.Combine(savesDir, selectedSaveName);
-                string targetDir = Path.Combine(selectedSaveDir, MinecraftPathConsts.Datapacks);
-                
+                var installPlan = await BuildInstallPlanAsync(currentDownloadingModVersion, targetVersion, selectedSaveName);
+                string targetDir = installPlan.PrimaryTargetDirectory;
+                string savePath = installPlan.SavePath;
+
                 _fileService.CreateDirectory(targetDir);
-                
-                string savePath = Path.Combine(targetDir, currentDownloadingModVersion.FileName);
 
                 // 如果URL缺失且是CurseForge资源，尝试手动构造
                 if (string.IsNullOrEmpty(currentDownloadingModVersion.DownloadUrl) && 
@@ -1427,6 +1419,48 @@ namespace XianYuLauncher.ViewModels
                 targetDir,
                 gameVersion,
                 (fileName, progress, statusMessage) => UpdateDownloadTeachingTip(fileName, progress, statusMessage));
+        }
+
+        private CommunityResourceInstallRequest CreateInstallRequest(
+            ModVersionViewModel modVersion,
+            InstalledGameVersionViewModel? targetVersion,
+            string? targetSaveName = null)
+        {
+            return new CommunityResourceInstallRequest
+            {
+                ResourceType = ProjectType,
+                FileName = modVersion.FileName,
+                TargetVersionName = targetVersion?.OriginalVersionName,
+                UseCustomDownloadPath = UseCustomDownloadPath,
+                CustomDownloadPath = CustomDownloadPath,
+                TargetSaveName = targetSaveName
+            };
+        }
+
+        private async Task<CommunityResourceInstallPlan> BuildInstallPlanAsync(
+            ModVersionViewModel modVersion,
+            InstalledGameVersionViewModel? targetVersion,
+            string? targetSaveName = null)
+        {
+            var planningResult = await _communityResourceInstallPlanner.PlanAsync(
+                CreateInstallRequest(modVersion, targetVersion, targetSaveName));
+
+            if (planningResult.IsReadyToInstall && planningResult.Plan != null)
+            {
+                return planningResult.Plan;
+            }
+
+            if (!string.IsNullOrWhiteSpace(planningResult.UnsupportedReason))
+            {
+                throw new InvalidOperationException(planningResult.UnsupportedReason);
+            }
+
+            if (planningResult.MissingRequirements.Count > 0)
+            {
+                throw new InvalidOperationException(planningResult.MissingRequirements[0].Message);
+            }
+
+            throw new InvalidOperationException("无法生成资源安装计划。");
         }
 
         // 加载已安装游戏版本
@@ -1802,60 +1836,30 @@ namespace XianYuLauncher.ViewModels
                 
                 if (isDatapack)
                 {
-                    // 保存当前正在下载的Mod版本
-                    _currentDownloadingModVersion = modVersion;
-                    
-                    // 数据包特殊处理：需要选择存档
-                    // 打开存档选择弹窗
-                    await ShowSaveSelectionDialog();
-                    
-                    // 注意：存档选择后的下载逻辑在CompleteDatapackDownloadAsync方法中处理
-                    // 这里直接返回，等待用户选择存档后再继续
-                    return;
+                    if (!UseCustomDownloadPath || string.IsNullOrWhiteSpace(CustomDownloadPath))
+                    {
+                        // 保存当前正在下载的Mod版本
+                        _currentDownloadingModVersion = modVersion;
+                        _currentDownloadingGameVersion = targetVersion;
+
+                        // 数据包特殊处理：需要选择存档
+                        // 打开存档选择弹窗
+                        await ShowSaveSelectionDialog();
+
+                        // 注意：存档选择后的下载逻辑在CompleteDatapackDownloadAsync方法中处理
+                        // 这里直接返回，等待用户选择存档后再继续
+                        return;
+                    }
+
+                    SelectedSaveName = null;
                 }
                 
                 // 非数据包类型，继续常规下载流程
                 IsDownloading = true;
                 DownloadStatus = "正在准备下载...";
-                
-                string savePath;
-                
-                // 如果使用自定义下载路径
-                string? customDownloadPath = CustomDownloadPath;
-                if (UseCustomDownloadPath && !string.IsNullOrEmpty(customDownloadPath))
-                {
-                    savePath = Path.Combine(customDownloadPath, modVersion.FileName);
-                }
-                else
-                {
-                    string gameDir = await ResolveTargetGameDirAsync(targetVersion);
-                    
-                    // 根据项目类型选择文件夹名称
-                    string targetFolder;
-                    
-                    // 非数据包类型，使用常规逻辑
-                    switch (ProjectType)
-                    {
-                        case "resourcepack":
-                            targetFolder = "resourcepacks";
-                            break;
-                        case "shader":
-                            targetFolder = "shaderpacks";
-                            break;
-                        default:
-                            targetFolder = "mods";
-                            break;
-                    }
-                    
-                    // 构建目标文件夹路径
-                    string targetDir = Path.Combine(gameDir, targetFolder);
-                    
-                    // 创建目标文件夹（如果不存在）
-                    _fileService.CreateDirectory(targetDir);
-                    
-                    // 构建完整的文件保存路径
-                    savePath = Path.Combine(targetDir, modVersion.FileName);
-                }
+                var installPlan = await BuildInstallPlanAsync(modVersion, targetVersion, SelectedSaveName);
+                _fileService.CreateDirectory(installPlan.PrimaryTargetDirectory);
+                string savePath = installPlan.SavePath;
                 
                 // 如果是世界，则不执行普通下载逻辑，转为 InstallWorldAsync
                 if (ProjectType == "world")
@@ -1865,7 +1869,7 @@ namespace XianYuLauncher.ViewModels
                    return;
                 }
 
-                var dependenciesTargetDir = Path.GetDirectoryName(savePath);
+                string dependenciesTargetDir = installPlan.DependencyTargetDirectory;
                 
                 InitializeDownloadTeachingTip();
 
@@ -2785,11 +2789,10 @@ namespace XianYuLauncher.ViewModels
                     return;
                 }
                 
-                // 直接构建下载路径
-                string gameDir = await _gameDirResolver.GetGameDirForVersionAsync(gameVersion.OriginalVersionName);
-                string targetDir = ModDownloadPlanningHelper.BuildTargetDirectory(gameDir, ProjectType);
+                var installPlan = await BuildInstallPlanAsync(modVersion, gameVersion);
+                string targetDir = installPlan.PrimaryTargetDirectory;
                 _fileService.CreateDirectory(targetDir);
-                string savePath = Path.Combine(targetDir, modVersion.FileName);
+                string savePath = installPlan.SavePath;
                 
                 WriteDebugLog($"QuickInstall 下载路径: {savePath}");
                 WriteDebugLog($"QuickInstall 下载 URL: {modVersion.DownloadUrl}");
