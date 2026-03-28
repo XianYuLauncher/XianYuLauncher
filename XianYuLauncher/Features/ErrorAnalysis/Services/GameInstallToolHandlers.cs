@@ -197,24 +197,24 @@ public sealed class InstallGameActionHandler : IAgentActionHandler
 
 public sealed class GetOperationStatusToolHandler : IAgentToolHandler
 {
-    private readonly IAgentGameInstallService _gameInstallService;
+    private readonly IAgentOperationStatusService _operationStatusService;
 
-    public GetOperationStatusToolHandler(IAgentGameInstallService gameInstallService)
+    public GetOperationStatusToolHandler(IAgentOperationStatusService operationStatusService)
     {
-        _gameInstallService = gameInstallService;
+        _operationStatusService = operationStatusService;
     }
 
     public string ToolName => "get_operation_status";
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "根据 operation_id 查询当前任务状态、进度、排队位置和错误信息。",
+        "根据 operation_id 查询 install_game、install_community_resource 或 launch_game 返回的任务状态。",
         new
         {
             type = "object",
             properties = new
             {
-                operation_id = new { type = "string", description = "install_game 执行后返回的 operation_id" }
+                operation_id = new { type = "string", description = "install_game、install_community_resource 或 launch_game 执行后返回的 operation_id" }
             },
             required = new[] { "operation_id" }
         });
@@ -233,6 +233,6 @@ public sealed class GetOperationStatusToolHandler : IAgentToolHandler
             return Task.FromResult(AgentToolExecutionResult.FromMessage("请提供 operation_id。"));
         }
 
-        return Task.FromResult(AgentToolExecutionResult.FromMessage(_gameInstallService.GetOperationStatusMessage(operationId)));
+        return Task.FromResult(AgentToolExecutionResult.FromMessage(_operationStatusService.GetOperationStatusMessage(operationId)));
     }
 }

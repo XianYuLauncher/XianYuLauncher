@@ -1,4 +1,3 @@
-using System.Text;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
@@ -32,8 +31,6 @@ public interface IAgentGameInstallService
         IReadOnlyList<ModLoaderSelection> loaderSelections,
         string versionName,
         CancellationToken cancellationToken);
-
-    string GetOperationStatusMessage(string operationId);
 }
 
 public sealed class AgentGameInstallService : IAgentGameInstallService
@@ -119,53 +116,6 @@ public sealed class AgentGameInstallService : IAgentGameInstallService
             loaderSelections,
             versionName,
             showInTeachingTip: true);
-    }
-
-    public string GetOperationStatusMessage(string operationId)
-    {
-        if (string.IsNullOrWhiteSpace(operationId))
-        {
-            return "请提供 operation_id。";
-        }
-
-        var task = _downloadTaskManager.TasksSnapshot.FirstOrDefault(
-            item => string.Equals(item.TaskId, operationId.Trim(), StringComparison.OrdinalIgnoreCase));
-        if (task == null)
-        {
-            return $"未找到 operation_id 为 {operationId.Trim()} 的下载任务。";
-        }
-
-        var builder = new StringBuilder();
-        builder.AppendLine($"operation_id: {task.TaskId}");
-        builder.AppendLine($"state: {MapState(task.State)}");
-        builder.AppendLine($"progress_percent: {task.Progress:0.##}");
-        builder.AppendLine($"status_message: {task.StatusMessage}");
-        builder.AppendLine($"task_name: {task.TaskName}");
-
-        if (!string.IsNullOrWhiteSpace(task.VersionName))
-        {
-            builder.AppendLine($"version_name: {task.VersionName}");
-        }
-
-        builder.AppendLine($"task_category: {task.TaskCategory}");
-        builder.AppendLine($"is_terminal: {task.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled}");
-
-        if (task.QueuePosition.HasValue)
-        {
-            builder.AppendLine($"queue_position: {task.QueuePosition.Value}");
-        }
-
-        if (!string.IsNullOrWhiteSpace(task.SpeedText))
-        {
-            builder.AppendLine($"speed_text: {task.SpeedText}");
-        }
-
-        if (!string.IsNullOrWhiteSpace(task.ErrorMessage))
-        {
-            builder.AppendLine($"error_message: {task.ErrorMessage}");
-        }
-
-        return builder.ToString().TrimEnd();
     }
 
     private async Task<List<ResolvedLoader>> ResolveLoadersAsync(
@@ -451,16 +401,4 @@ public sealed class AgentGameInstallService : IAgentGameInstallService
         return loaderKey is not "optifine" and not "liteloader";
     }
 
-    private static string MapState(DownloadTaskState state)
-    {
-        return state switch
-        {
-            DownloadTaskState.Queued => "queued",
-            DownloadTaskState.Downloading => "downloading",
-            DownloadTaskState.Completed => "completed",
-            DownloadTaskState.Failed => "failed",
-            DownloadTaskState.Cancelled => "cancelled",
-            _ => "unknown"
-        };
-    }
 }
