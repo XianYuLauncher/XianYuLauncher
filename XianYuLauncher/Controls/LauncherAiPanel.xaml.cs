@@ -48,6 +48,12 @@ public sealed partial class LauncherAiPanel : UserControl
         typeof(LauncherAiPanel),
         new PropertyMetadata(Visibility.Visible));
 
+    public static readonly DependencyProperty IsComposerEnabledProperty = DependencyProperty.Register(
+        nameof(IsComposerEnabled),
+        typeof(bool),
+        typeof(LauncherAiPanel),
+        new PropertyMetadata(true));
+
     public LauncherAiPanel()
     {
         InitializeComponent();
@@ -95,6 +101,12 @@ public sealed partial class LauncherAiPanel : UserControl
     {
         get => (Visibility)GetValue(HeaderVisibilityProperty);
         set => SetValue(HeaderVisibilityProperty, value);
+    }
+
+    public bool IsComposerEnabled
+    {
+        get => (bool)GetValue(IsComposerEnabledProperty);
+        set => SetValue(IsComposerEnabledProperty, value);
     }
 
     private void PopOutButton_Click(object sender, RoutedEventArgs e)

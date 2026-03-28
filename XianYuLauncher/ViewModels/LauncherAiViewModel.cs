@@ -13,6 +13,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
     private readonly ILanguageSelectorService _languageSelectorService;
     private readonly ErrorAnalysisSessionState _sessionState;
     private readonly LauncherAiWorkspaceState _workspaceState;
+    private readonly HashSet<UiChatMessage> _trackedSessionMessages = [];
     private bool _isApplyingConversationSnapshot;
 
     public LauncherAiViewModel(
@@ -31,6 +32,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         _workspaceState.PropertyChanged += WorkspaceState_PropertyChanged;
         _workspaceState.Conversations.CollectionChanged += Conversations_CollectionChanged;
         _sessionState.PropertyChanged += SessionState_PropertyChanged;
+        AttachSessionMessageHandlers(_sessionState.ChatMessages);
         _sessionState.ChatMessages.CollectionChanged += SessionMessages_Changed;
     }
 
@@ -46,13 +48,14 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         ? "还没有对话，先向 Launcher AI 提一个问题。"
         : "No conversation yet. Ask Launcher AI a question to get started.";
 
-    public async Task InitializeAsync()
+    public async Task InitializeAsync(bool ensureDefaultConversation = true)
     {
         var state = await _aiSettingsDomainService.LoadAsync();
 
-        if (!_workspaceState.IsInitialized)
+        _workspaceState.DefaultChatEnabled = state.IsEnabled;
+
+        if (ensureDefaultConversation && _workspaceState.Conversations.Count == 0)
         {
-            _workspaceState.DefaultChatEnabled = state.IsEnabled;
             var initialSnapshot = BuildInitialSnapshot(state.IsEnabled);
             var initialConversation = new LauncherAiConversationTab
             {
@@ -62,11 +65,17 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
             ApplyConversationMetadata(initialConversation, initialSnapshot, _workspaceState.NextConversationNumber++);
             _workspaceState.Conversations.Add(initialConversation);
             _workspaceState.SelectedConversationId = initialConversation.Id;
-            _workspaceState.IsInitialized = true;
         }
-        else
+
+        if (!_workspaceState.IsInitialized)
         {
-            _workspaceState.DefaultChatEnabled = state.IsEnabled;
+            if (_workspaceState.SelectedConversationId == null
+                && _workspaceState.Conversations.FirstOrDefault() is LauncherAiConversationTab conversation)
+            {
+                _workspaceState.SelectedConversationId = conversation.Id;
+            }
+
+            _workspaceState.IsInitialized = true;
         }
 
         EnsureActiveConversationLoaded();
@@ -92,6 +101,12 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         var conversation = EnsureErrorAnalysisConversation(forceNewConversation);
         if (conversation == null)
         {
+            return;
+        }
+
+        if (_workspaceState.SelectedConversationId == conversation.Id)
+        {
+            PersistActiveConversationSnapshot();
             return;
         }
 
@@ -202,6 +217,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         _workspaceState.PropertyChanged -= WorkspaceState_PropertyChanged;
         _workspaceState.Conversations.CollectionChanged -= Conversations_CollectionChanged;
         _sessionState.PropertyChanged -= SessionState_PropertyChanged;
+        DetachAllSessionMessageHandlers();
         _sessionState.ChatMessages.CollectionChanged -= SessionMessages_Changed;
         ChatViewModel.Dispose();
     }
@@ -241,9 +257,40 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         }
     }
 
-    private void SessionMessages_Changed(object? sender, EventArgs e)
+    private void SessionMessages_Changed(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
+        if (e.OldItems != null)
+        {
+            foreach (UiChatMessage message in e.OldItems)
+            {
+                DetachSessionMessageHandler(message);
+            }
+        }
+
+        if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset)
+        {
+            DetachAllSessionMessageHandlers();
+            AttachSessionMessageHandlers(_sessionState.ChatMessages);
+        }
+        else if (e.NewItems != null)
+        {
+            foreach (UiChatMessage message in e.NewItems)
+            {
+                AttachSessionMessageHandler(message);
+            }
+        }
+
         if (_isApplyingConversationSnapshot)
+        {
+            return;
+        }
+
+        PersistActiveConversationSnapshot();
+    }
+
+    private void SessionMessage_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (_isApplyingConversationSnapshot || sender is not UiChatMessage)
         {
             return;
         }
@@ -349,6 +396,44 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         var snapshot = _sessionState.CreateSnapshot();
         activeConversation.Snapshot = snapshot;
         ApplyConversationMetadata(activeConversation, snapshot, 0);
+    }
+
+    private void AttachSessionMessageHandlers(IEnumerable<UiChatMessage> messages)
+    {
+        foreach (var message in messages)
+        {
+            AttachSessionMessageHandler(message);
+        }
+    }
+
+    private void AttachSessionMessageHandler(UiChatMessage message)
+    {
+        if (!_trackedSessionMessages.Add(message))
+        {
+            return;
+        }
+
+        message.PropertyChanged += SessionMessage_PropertyChanged;
+    }
+
+    private void DetachSessionMessageHandler(UiChatMessage message)
+    {
+        if (!_trackedSessionMessages.Remove(message))
+        {
+            return;
+        }
+
+        message.PropertyChanged -= SessionMessage_PropertyChanged;
+    }
+
+    private void DetachAllSessionMessageHandlers()
+    {
+        foreach (var message in _trackedSessionMessages)
+        {
+            message.PropertyChanged -= SessionMessage_PropertyChanged;
+        }
+
+        _trackedSessionMessages.Clear();
     }
 
     private void ApplyConversationMetadata(LauncherAiConversationTab conversation, ErrorAnalysisSessionSnapshot snapshot, int fallbackNumber)

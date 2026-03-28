@@ -166,6 +166,20 @@ public partial class LaunchViewModel : ObservableRecipient
         var minecraftPath = _fileService.GetMinecraftDataPath();
         _errorAnalysisSessionCoordinator.SetVersionInfo(SelectedVersion, minecraftPath);
 
+        if (_navigationService.Frame?.Content is Views.ErrorAnalysisPage)
+        {
+            _errorAnalysisSessionCoordinator.RefreshLogDataPreservingAnalysis(launchCommand, gameOutput, gameError);
+            App.GetService<ErrorAnalysisViewModel>().SetGameCrashStatus(true);
+
+            if (action == CrashReportDialogAction.ExportLogs)
+            {
+                await Task.Delay(500);
+                await _errorAnalysisExportService.ExportAsync();
+            }
+
+            return;
+        }
+
         _navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!, Tuple.Create(launchCommand, gameOutput, gameError));
 
         if (action == CrashReportDialogAction.ExportLogs)

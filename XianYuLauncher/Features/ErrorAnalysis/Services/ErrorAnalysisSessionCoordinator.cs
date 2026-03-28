@@ -6,6 +6,8 @@ public interface IErrorAnalysisSessionCoordinator
 {
     void SetLogData(string launchCommand, IReadOnlyList<string> gameOutput, IReadOnlyList<string> gameError);
 
+    void RefreshLogDataPreservingAnalysis(string launchCommand, IReadOnlyList<string> gameOutput, IReadOnlyList<string> gameError);
+
     void SetGameCrashStatus(bool isCrashed);
 
     void SetLaunchCommand(string launchCommand);
@@ -35,6 +37,11 @@ public sealed class ErrorAnalysisSessionCoordinator : IErrorAnalysisSessionCoord
     public void SetLogData(string launchCommand, IReadOnlyList<string> gameOutput, IReadOnlyList<string> gameError)
     {
         ResetAnalysisState();
+        _logService.SetLogData(launchCommand, gameOutput, gameError);
+    }
+
+    public void RefreshLogDataPreservingAnalysis(string launchCommand, IReadOnlyList<string> gameOutput, IReadOnlyList<string> gameError)
+    {
         _logService.SetLogData(launchCommand, gameOutput, gameError);
     }
 
