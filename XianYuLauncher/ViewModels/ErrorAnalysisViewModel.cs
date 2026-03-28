@@ -2,7 +2,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.Windows.ApplicationModel.Resources;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -19,6 +18,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
+using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.ViewModels
 {
@@ -32,8 +32,6 @@ namespace XianYuLauncher.ViewModels
         private readonly IFilePickerService _filePickerService;
         private readonly IUiDispatcher _uiDispatcher;
         private readonly ErrorAnalysisSessionState _sessionState;
-        private readonly ResourceManager _resourceManager;
-        private ResourceContext _resourceContext;
 
         private static readonly IReadOnlyDictionary<string, string> SupportedImageContentTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -96,8 +94,6 @@ namespace XianYuLauncher.ViewModels
             _filePickerService = filePickerService;
             _uiDispatcher = uiDispatcher;
             _sessionState = sessionState;
-            _resourceManager = new ResourceManager();
-            _resourceContext = _resourceManager.CreateResourceContext();
 
             _sessionState.PropertyChanged += SessionState_PropertyChanged;
         }
@@ -151,45 +147,7 @@ namespace XianYuLauncher.ViewModels
             await AnalyzeWithAiAsync();
         }
 
-        public string NoErrorInfoText => GetLocalizedString("ErrorAnalysis_NoErrorInfo.Text");
-
-
-        /// <summary>
-        /// 获取本地化字符串
-        /// </summary>
-        /// <param name="resourceKey">资源键</param>
-        /// <returns>本地化后的字符串</returns>
-        private string GetLocalizedString(string resourceKey)
-        {
-            try
-            {
-                // 根据当前语言返回相应的本地化文本
-                var isChinese = _languageSelectorService.Language == "zh-CN";
-                
-                switch (resourceKey)
-                {
-                    case "ErrorAnalysis_NoErrorInfo.Text":
-                        return isChinese ? "没有分析内容,因为Minecraft还没崩溃..." : "No analysis content because Minecraft hasn't crashed yet...";
-                    case "ErrorAnalysis_Analyzing.Text":
-                        return isChinese ? "正在分析崩溃原因..." : "Analyzing crash reason...";
-                    case "ErrorAnalysis_AnalysisComplete.Text":
-                        return isChinese ? "分析完成。" : "Analysis completed.";
-                    case "ErrorAnalysis_AnalysisCanceled.Text":
-                        return isChinese ? "分析已取消。" : "Analysis canceled.";
-                    case "ErrorAnalysis_RequestFailed.Text":
-                        return isChinese ? "分析请求失败: {0}" : "Analysis request failed: {0}";
-                    case "ErrorAnalysis_AnalysisFailed.Text":
-                        return isChinese ? "分析失败: {0}" : "Analysis failed: {0}";
-                    default:
-                        return resourceKey;
-                }
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"获取本地化资源失败: {ex.Message}");
-                return resourceKey; // 发生异常时，返回资源键作为默认值
-            }
-        }
+        public string NoErrorInfoText => "ErrorAnalysis_NoErrorInfoText".GetLocalized();
 
         public string AiAnalysisResult
         {
@@ -692,7 +650,7 @@ namespace XianYuLauncher.ViewModels
             LogLines.Add("日志已清空");
             
             // 同时重置崩溃分析结果为默认文字
-            AiAnalysisResult = GetLocalizedString("ErrorAnalysis_NoErrorInfo.Text");
+            AiAnalysisResult = NoErrorInfoText;
             IsAiAnalysisAvailable = false;
         }
 
