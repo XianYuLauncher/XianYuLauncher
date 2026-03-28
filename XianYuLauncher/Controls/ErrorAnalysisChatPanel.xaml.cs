@@ -124,6 +124,7 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
         AttachViewModelHandlers(ViewModel);
         UpdatePlaceholderState();
         UpdateComposerState();
+        UpdateComposerButtonHeights();
         _ = ScrollChatToBottomAsync();
     }
 
@@ -205,6 +206,40 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
         if (ChatActionButton != null)
         {
             ChatActionButton.IsEnabled = isEnabled;
+        }
+    }
+
+    private void ChatInputBox_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        UpdateComposerButtonHeights();
+    }
+
+    private void UpdateComposerButtonHeights()
+    {
+        if (ChatInputBox == null)
+        {
+            return;
+        }
+
+        var height = ChatInputBox.ActualHeight;
+        if (height <= 0)
+        {
+            return;
+        }
+
+        if (ComposerButtonsPanel != null)
+        {
+            ComposerButtonsPanel.Height = height;
+        }
+
+        if (AddImageButton != null)
+        {
+            AddImageButton.Height = height;
+        }
+
+        if (ChatActionButton != null)
+        {
+            ChatActionButton.Height = height;
         }
     }
 
@@ -357,7 +392,7 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
         }
     }
 
-    private void ChatInput_KeyDown(object sender, KeyRoutedEventArgs e)
+    private void ChatInput_PreviewKeyDown(object sender, KeyRoutedEventArgs e)
     {
         if (e.Key != VirtualKey.Enter || ViewModel == null)
         {
