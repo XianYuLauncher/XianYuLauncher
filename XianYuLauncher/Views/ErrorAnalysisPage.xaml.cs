@@ -146,7 +146,7 @@ namespace XianYuLauncher.Views
             base.OnNavigatedTo(e);
 
             LauncherAiWorkspaceViewModel.SetErrorAnalysisPageOpen(true);
-            await LauncherAiWorkspaceViewModel.InitializeAsync();
+            await LauncherAiWorkspaceViewModel.InitializeAsync(ensureDefaultConversation: false);
             LauncherAiWorkspaceViewModel.ActivateErrorAnalysisConversation(forceNewConversation: e.Parameter is Tuple<string, List<string>, List<string>>);
 
             // 每次进入页面先清理修复按钮状态，避免残留

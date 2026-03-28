@@ -21,6 +21,12 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
         typeof(ErrorAnalysisChatPanel),
         new PropertyMetadata(null, OnViewModelChanged));
 
+    public static readonly DependencyProperty IsComposerEnabledProperty = DependencyProperty.Register(
+        nameof(IsComposerEnabled),
+        typeof(bool),
+        typeof(ErrorAnalysisChatPanel),
+        new PropertyMetadata(true, OnComposerStateChanged));
+
     public static readonly DependencyProperty ShowEmptyPlaceholderProperty = DependencyProperty.Register(
         nameof(ShowEmptyPlaceholder),
         typeof(bool),
@@ -58,6 +64,12 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
         set => SetValue(ShowEmptyPlaceholderProperty, value);
     }
 
+    public bool IsComposerEnabled
+    {
+        get => (bool)GetValue(IsComposerEnabledProperty);
+        set => SetValue(IsComposerEnabledProperty, value);
+    }
+
     public string EmptyPlaceholderText
     {
         get => (string)GetValue(EmptyPlaceholderTextProperty);
@@ -87,6 +99,7 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
             panel.DetachViewModelHandlers(e.OldValue as ErrorAnalysisViewModel);
             panel.AttachViewModelHandlers(e.NewValue as ErrorAnalysisViewModel);
             panel.UpdatePlaceholderState();
+            panel.UpdateComposerState();
         }
     }
 
@@ -98,10 +111,19 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
         }
     }
 
+    private static void OnComposerStateChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        if (d is ErrorAnalysisChatPanel panel)
+        {
+            panel.UpdateComposerState();
+        }
+    }
+
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
         AttachViewModelHandlers(ViewModel);
         UpdatePlaceholderState();
+        UpdateComposerState();
         _ = ScrollChatToBottomAsync();
     }
 
@@ -160,6 +182,29 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
         if (e.PropertyName == nameof(ErrorAnalysisViewModel.HasChatMessages))
         {
             UpdatePlaceholderState();
+        }
+
+        if (e.PropertyName == nameof(ErrorAnalysisViewModel.CanComposeChat)
+            || e.PropertyName == nameof(ErrorAnalysisViewModel.IsAiAnalyzing))
+        {
+            UpdateComposerState();
+        }
+    }
+
+    private void UpdateComposerState()
+    {
+        bool isEnabled = IsComposerEnabled && ViewModel?.CanComposeChat == true;
+
+        ChatInputBox.IsEnabled = isEnabled;
+
+        if (AddImageButton != null)
+        {
+            AddImageButton.IsEnabled = isEnabled;
+        }
+
+        if (ChatActionButton != null)
+        {
+            ChatActionButton.IsEnabled = isEnabled;
         }
     }
 

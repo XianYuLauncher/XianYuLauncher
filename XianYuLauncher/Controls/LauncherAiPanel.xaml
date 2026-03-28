@@ -49,6 +49,7 @@
                 <controls:ErrorAnalysisChatPanel
                     Grid.RowSpan="3"
                     ViewModel="{Binding ViewModel, ElementName=Root}"
+                    IsComposerEnabled="{Binding IsComposerEnabled, ElementName=Root}"
                     MessagesMaxHeight="{Binding MessagesMaxHeight, ElementName=Root}"
                     ShowEmptyPlaceholder="{Binding ShowEmptyPlaceholder, ElementName=Root}"
                     EmptyPlaceholderText="{Binding EmptyPlaceholderText, ElementName=Root}" />

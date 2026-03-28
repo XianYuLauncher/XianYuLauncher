@@ -308,23 +308,22 @@
                 x:Name="ChatInputBox"
                 Text="{Binding ViewModel.ChatInput, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 PlaceholderText="Ask a follow-up question..."
-                IsEnabled="{Binding ViewModel.CanComposeChat, ElementName=Root}"
                 KeyDown="ChatInput_KeyDown"/>
             <Button
                 Grid.Column="1"
+                x:Name="AddImageButton"
                 x:Uid="ErrorAnalysisChatPanel_AddImageButton"
                 Command="{Binding ViewModel.PickChatImagesCommand, ElementName=Root}"
-                Style="{StaticResource DefaultButtonStyle}"
-                IsEnabled="{Binding ViewModel.CanComposeChat, ElementName=Root}">
+                Style="{StaticResource DefaultButtonStyle}">
                 <Grid Width="20" Height="20">
                     <FontIcon Glyph="&#xE91B;" FontSize="16" />
                 </Grid>
             </Button>
             <Button
                 Grid.Column="2"
+                x:Name="ChatActionButton"
                 Command="{Binding ViewModel.CurrentChatActionCommand, ElementName=Root}"
-                Style="{StaticResource DefaultButtonStyle}"
-                IsEnabled="{Binding ViewModel.CanComposeChat, ElementName=Root}">
+                Style="{StaticResource DefaultButtonStyle}">
                 <Grid Width="20" Height="20">
                     <FontIcon Glyph="{Binding ViewModel.CurrentChatActionGlyph, ElementName=Root}" FontSize="16" />
                 </Grid>
