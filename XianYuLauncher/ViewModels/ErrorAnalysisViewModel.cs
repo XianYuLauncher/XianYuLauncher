@@ -10,6 +10,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage.Pickers;
 using Windows.Storage;
@@ -113,11 +114,15 @@ namespace XianYuLauncher.ViewModels
                 OnPropertyChanged(e.PropertyName);
 
                 if (e.PropertyName == nameof(ErrorAnalysisSessionState.IsAiAnalyzing) ||
-                    e.PropertyName == nameof(ErrorAnalysisSessionState.IsAiAnalysisAvailable))
+                    e.PropertyName == nameof(ErrorAnalysisSessionState.IsAiAnalysisAvailable) ||
+                    e.PropertyName == nameof(ErrorAnalysisSessionState.IsChatEnabled))
                 {
                     OnPropertyChanged(nameof(IsAnalyzeButtonEnabled));
                     OnPropertyChanged(nameof(AnalyzeButtonVisibility));
                     OnPropertyChanged(nameof(CancelButtonVisibility));
+                    OnPropertyChanged(nameof(CanComposeChat));
+                    OnPropertyChanged(nameof(CurrentChatActionCommand));
+                    OnPropertyChanged(nameof(CurrentChatActionGlyph));
                 }
 
                 if (e.PropertyName == nameof(ErrorAnalysisSessionState.HasPendingImageAttachments))
@@ -206,7 +211,8 @@ namespace XianYuLauncher.ViewModels
                 _sessionState.ClearPendingToolContinuation();
             });
 
-            DisposeAiAnalysisToken();
+            IsAiAnalyzing = false;
+            _sessionState.DisposeAiAnalysisToken();
         }
 
         // Chat Properties
@@ -236,6 +242,14 @@ namespace XianYuLauncher.ViewModels
             get => _sessionState.IsChatEnabled;
             set => _sessionState.IsChatEnabled = value;
         }
+
+        public bool CanComposeChat => IsChatEnabled || IsAiAnalyzing;
+
+        public ICommand CurrentChatActionCommand => IsAiAnalyzing
+            ? CancelAiAnalysisCommand
+            : SendMessageCommand;
+
+        public string CurrentChatActionGlyph => IsAiAnalyzing ? "\uE71A" : "\uE724";
 
         // 新增：智能修复相关属性
         public bool HasFixAction
@@ -300,27 +314,27 @@ namespace XianYuLauncher.ViewModels
         private async Task RejectFixAction()
         {
             var rejectedText = FixButtonText;
-            var cancellationToken = BeginAiAnalysisToken();
+            var tokenSource = BeginAiAnalysisTokenSource();
             try
             {
-                await _aiOrchestrator.RejectPendingActionAsync(rejectedText, cancellationToken);
+                await _aiOrchestrator.RejectPendingActionAsync(rejectedText, tokenSource.Token);
             }
             finally
             {
-                DisposeAiAnalysisToken();
+                CompleteAiAnalysisToken(tokenSource);
             }
         }
 
         private async Task ApproveActionProposalAsync(AgentActionProposal proposal)
         {
-            var cancellationToken = BeginAiAnalysisToken();
+            var tokenSource = BeginAiAnalysisTokenSource();
             try
             {
-                await _aiOrchestrator.ApproveActionAsync(proposal, cancellationToken);
+                await _aiOrchestrator.ApproveActionAsync(proposal, tokenSource.Token);
             }
             finally
             {
-                DisposeAiAnalysisToken();
+                CompleteAiAnalysisToken(tokenSource);
             }
         }
         
@@ -397,9 +411,10 @@ namespace XianYuLauncher.ViewModels
         }
         
         // 用于存储当前崩溃分析的取消令牌
-        private System.Threading.CancellationToken BeginAiAnalysisToken()
+        private CancellationTokenSource BeginAiAnalysisTokenSource()
         {
-            return _sessionState.BeginAiAnalysisToken();
+            IsAiAnalyzing = true;
+            return _sessionState.BeginAiAnalysisTokenSource();
         }
 
         private void CancelActiveAiAnalysis()
@@ -407,9 +422,28 @@ namespace XianYuLauncher.ViewModels
             _sessionState.CancelAiAnalysis();
         }
 
-        private void DisposeAiAnalysisToken()
+        private void CompleteAiAnalysisToken(CancellationTokenSource tokenSource)
         {
-            _sessionState.DisposeAiAnalysisToken();
+            if (_sessionState.IsCurrentAiAnalysisTokenSource(tokenSource))
+            {
+                IsAiAnalyzing = false;
+            }
+
+            _sessionState.CompleteAiAnalysisTokenSource(tokenSource);
+        }
+
+        private void RemoveTrailingAssistantPlaceholderIfNeeded()
+        {
+            if (ChatMessages.LastOrDefault() is not UiChatMessage lastAssistant
+                || !lastAssistant.IsAssistant)
+            {
+                return;
+            }
+
+            if (lastAssistant.Content == "...")
+            {
+                ChatMessages.Remove(lastAssistant);
+            }
         }
 
         // 设置日志数据
@@ -440,11 +474,16 @@ namespace XianYuLauncher.ViewModels
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task SendMessage()
     {
         if (string.IsNullOrWhiteSpace(ChatInput) && PendingImageAttachments.Count == 0) return;
-        if (IsAiAnalyzing) return;
+
+        if (IsAiAnalyzing)
+        {
+            _sessionState.SuppressNextCancellationMessage();
+            RemoveTrailingAssistantPlaceholderIfNeeded();
+        }
 
         var userMsg = ChatInput.Trim();
         var imageAttachments = PendingImageAttachments
@@ -454,25 +493,20 @@ namespace XianYuLauncher.ViewModels
         ChatInput = string.Empty;
         PendingImageAttachments.Clear();
 
-        var cancellationToken = BeginAiAnalysisToken();
+        var tokenSource = BeginAiAnalysisTokenSource();
         try
         {
-            await _aiOrchestrator.SendMessageAsync(userMsg, imageAttachments, cancellationToken);
+            await _aiOrchestrator.SendMessageAsync(userMsg, imageAttachments, tokenSource.Token);
         }
         finally
         {
-            DisposeAiAnalysisToken();
+            CompleteAiAnalysisToken(tokenSource);
         }
     }
 
     [RelayCommand]
     private async Task PickChatImages()
     {
-        if (IsAiAnalyzing)
-        {
-            return;
-        }
-
         var selectedPaths = await _filePickerService.PickMultipleFilePathsAsync(
             [".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"],
             PickerLocationId.PicturesLibrary,
@@ -541,14 +575,14 @@ namespace XianYuLauncher.ViewModels
             return;
         }
 
-        var cancellationToken = BeginAiAnalysisToken();
+        var tokenSource = BeginAiAnalysisTokenSource();
         try
         {
-            await _aiOrchestrator.AnalyzeCrashAsync(cancellationToken);
+            await _aiOrchestrator.AnalyzeCrashAsync(tokenSource.Token);
         }
         finally
         {
-            DisposeAiAnalysisToken();
+            CompleteAiAnalysisToken(tokenSource);
         }
     }
     

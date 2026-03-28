@@ -50,7 +50,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
     public async Task AnalyzeCrashAsync(CancellationToken cancellationToken)
     {
-        if (!_sessionState.Context.IsGameCrashed || _sessionState.IsAiAnalyzing)
+        if (!_sessionState.Context.IsGameCrashed)
         {
             return;
         }
@@ -59,8 +59,6 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         {
             await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
-                _sessionState.IsAiAnalyzing = true;
-                _sessionState.IsChatEnabled = false;
                 _sessionState.ChatMessages.Clear();
                 _sessionState.AiAnalysisResult = "正在分析崩溃原因...\n\n";
                 _sessionState.ResetFixActions();
@@ -95,22 +93,12 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                 _sessionState.AiAnalysisResult += $"\n\n{msg}";
             });
         }
-        finally
-        {
-            await _uiDispatcher.RunOnUiThreadAsync(() =>
-            {
-                _sessionState.IsAiAnalyzing = false;
-                _sessionState.IsChatEnabled = true;
-            });
-        }
     }
 
     public async Task SendMessageAsync(string userMessage, IReadOnlyList<ChatImageAttachment> imageAttachments, CancellationToken cancellationToken)
     {
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
-            _sessionState.IsAiAnalyzing = true;
-            _sessionState.IsChatEnabled = false;
             _sessionState.ResetFixActions();
             _sessionState.ClearPendingToolContinuation();
             _sessionState.ChatMessages.Add(new UiChatMessage("user", userMessage, imageAttachments: imageAttachments));
@@ -144,14 +132,6 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         catch (Exception ex)
         {
             await SetLastAssistantMessageAsync(string.Format(GetLocalizedString("ErrorAnalysis_AnalysisFailed.Text"), ex.Message));
-        }
-        finally
-        {
-            await _uiDispatcher.RunOnUiThreadAsync(() =>
-            {
-                _sessionState.IsAiAnalyzing = false;
-                _sessionState.IsChatEnabled = true;
-            });
         }
     }
 
@@ -555,8 +535,6 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         {
             await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
-                _sessionState.IsAiAnalyzing = true;
-                _sessionState.IsChatEnabled = false;
                 _sessionState.ResetFixActions();
 
                 if (pendingContinuation != null)
@@ -589,14 +567,6 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         catch (OperationCanceledException)
         {
             await AppendCancellationMessageAsync();
-        }
-        finally
-        {
-            await _uiDispatcher.RunOnUiThreadAsync(() =>
-            {
-                _sessionState.IsAiAnalyzing = false;
-                _sessionState.IsChatEnabled = true;
-            });
         }
     }
 
@@ -947,6 +917,11 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     {
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
+            if (_sessionState.TryConsumeCancellationMessageSuppression())
+            {
+                return;
+            }
+
             var lastAssistant = GetLastAssistantMessage();
             if (lastAssistant != null)
             {

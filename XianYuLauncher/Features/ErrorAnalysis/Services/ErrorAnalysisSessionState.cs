@@ -76,6 +76,7 @@ public partial class ErrorAnalysisSessionState : ObservableObject
     public bool HasPendingToolContinuation => PendingToolContinuation != null;
 
     private CancellationTokenSource? _aiAnalysisCts;
+    private bool _suppressNextCancellationMessage;
 
     public void ReplaceGameOutput(IReadOnlyCollection<string> lines)
     {
@@ -168,11 +169,53 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         OnPropertyChanged(nameof(HasPendingToolContinuation));
     }
 
+    public CancellationTokenSource BeginAiAnalysisTokenSource()
+    {
+        if (_aiAnalysisCts != null)
+        {
+            _aiAnalysisCts.Cancel();
+            _aiAnalysisCts.Dispose();
+        }
+
+        _aiAnalysisCts = new CancellationTokenSource();
+        return _aiAnalysisCts;
+    }
+
+    public bool IsCurrentAiAnalysisTokenSource(CancellationTokenSource tokenSource)
+    {
+        return ReferenceEquals(_aiAnalysisCts, tokenSource);
+    }
+
+    public void CompleteAiAnalysisTokenSource(CancellationTokenSource tokenSource)
+    {
+        if (!ReferenceEquals(_aiAnalysisCts, tokenSource))
+        {
+            return;
+        }
+
+        tokenSource.Dispose();
+        _aiAnalysisCts = null;
+    }
+
+    public void SuppressNextCancellationMessage()
+    {
+        _suppressNextCancellationMessage = true;
+    }
+
+    public bool TryConsumeCancellationMessageSuppression()
+    {
+        if (!_suppressNextCancellationMessage)
+        {
+            return false;
+        }
+
+        _suppressNextCancellationMessage = false;
+        return true;
+    }
+
     public CancellationToken BeginAiAnalysisToken()
     {
-        _aiAnalysisCts?.Dispose();
-        _aiAnalysisCts = new CancellationTokenSource();
-        return _aiAnalysisCts.Token;
+        return BeginAiAnalysisTokenSource().Token;
     }
 
     public void CancelAiAnalysis()
