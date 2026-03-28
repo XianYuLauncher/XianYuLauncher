@@ -1,4 +1,4 @@
-namespace XianYuLauncher.Features.ErrorAnalysis.Services;
+namespace XianYuLauncher.Core.Services;
 
 public interface ILaunchOperationTracker
 {

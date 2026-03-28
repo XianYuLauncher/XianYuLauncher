@@ -2,29 +2,29 @@ using System.Text;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 
-namespace XianYuLauncher.Features.ErrorAnalysis.Services;
+namespace XianYuLauncher.Core.Services;
 
 public sealed class AgentOperationSnapshot
 {
-    public required string OperationId { get; init; }
+    public required string OperationId { get; set; }
 
-    public required string State { get; init; }
+    public required string State { get; set; }
 
-    public required string StatusMessage { get; init; }
+    public required string StatusMessage { get; set; }
 
-    public required bool IsTerminal { get; init; }
+    public required bool IsTerminal { get; set; }
 
-    public string? OperationKind { get; init; }
+    public string? OperationKind { get; set; }
 
-    public double? ProgressPercent { get; init; }
+    public double? ProgressPercent { get; set; }
 
-    public string? TaskName { get; init; }
+    public string? TaskName { get; set; }
 
-    public string? VersionName { get; init; }
+    public string? VersionName { get; set; }
 
-    public int? QueuePosition { get; init; }
+    public int? QueuePosition { get; set; }
 
-    public string? ErrorMessage { get; init; }
+    public string? ErrorMessage { get; set; }
 }
 
 public interface IAgentOperationStatusService

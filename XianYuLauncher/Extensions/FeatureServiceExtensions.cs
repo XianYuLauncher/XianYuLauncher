@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
 using XianYuLauncher.Features.ModDownloadDetail.Services;
 using XianYuLauncher.Features.VersionManagement.Services;
