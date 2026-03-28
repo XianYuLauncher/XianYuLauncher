@@ -35,10 +35,14 @@ public interface IAgentOperationStatusService
 public sealed class AgentOperationStatusService : IAgentOperationStatusService
 {
     private readonly IDownloadTaskManager _downloadTaskManager;
+    private readonly ILaunchOperationTracker _launchOperationTracker;
 
-    public AgentOperationStatusService(IDownloadTaskManager downloadTaskManager)
+    public AgentOperationStatusService(
+        IDownloadTaskManager downloadTaskManager,
+        ILaunchOperationTracker launchOperationTracker)
     {
         _downloadTaskManager = downloadTaskManager;
+        _launchOperationTracker = launchOperationTracker;
     }
 
     public string GetOperationStatusMessage(string operationId)
@@ -47,6 +51,12 @@ public sealed class AgentOperationStatusService : IAgentOperationStatusService
         if (string.IsNullOrWhiteSpace(normalizedOperationId))
         {
             return "请提供 operation_id。";
+        }
+
+        if (_launchOperationTracker.TryGetSnapshot(normalizedOperationId, out var launchSnapshot)
+            && launchSnapshot != null)
+        {
+            return FormatSnapshot(launchSnapshot);
         }
 
         var task = _downloadTaskManager.TasksSnapshot.FirstOrDefault(

@@ -119,11 +119,16 @@ public sealed class LaunchGameToolHandler : IAgentToolHandler
 public sealed class LaunchGameActionHandler : IAgentActionHandler
 {
     private readonly IVersionPathGameLaunchService _versionPathGameLaunchService;
+    private readonly ILaunchOperationTracker _launchOperationTracker;
     private readonly IServiceProvider _serviceProvider;
 
-    public LaunchGameActionHandler(IVersionPathGameLaunchService versionPathGameLaunchService, IServiceProvider serviceProvider)
+    public LaunchGameActionHandler(
+        IVersionPathGameLaunchService versionPathGameLaunchService,
+        ILaunchOperationTracker launchOperationTracker,
+        IServiceProvider serviceProvider)
     {
         _versionPathGameLaunchService = versionPathGameLaunchService;
+        _launchOperationTracker = launchOperationTracker;
         _serviceProvider = serviceProvider;
     }
 
@@ -141,20 +146,40 @@ public sealed class LaunchGameActionHandler : IAgentActionHandler
         proposal.Parameters.TryGetValue("profileId", out var profileId);
 
         var preparedLaunch = _versionPathGameLaunchService.PrepareLaunch(path);
-        var result = await _versionPathGameLaunchService.LaunchAsync(
-            preparedLaunch,
-            new VersionPathLaunchOptions
-            {
-                ProfileId = profileId,
-            },
-            cancellationToken: cancellationToken);
-        if (result.GameProcess != null)
+        var operationId = _launchOperationTracker.CreateOperation(preparedLaunch.VersionName, preparedLaunch.VersionPath);
+
+        try
         {
-            StartDetachedMonitoring(result.GameProcess, result.LaunchCommand);
-            return $"已开始启动 {preparedLaunch.VersionName}。实例路径：{preparedLaunch.VersionPath}。启动前已临时切换到 {preparedLaunch.MinecraftPath}，现在已恢复原游戏目录。";
+            var result = await _versionPathGameLaunchService.LaunchAsync(
+                preparedLaunch,
+                new VersionPathLaunchOptions
+                {
+                    ProfileId = profileId,
+                },
+                cancellationToken: cancellationToken);
+            if (result.GameProcess != null)
+            {
+                StartDetachedMonitoring(result.GameProcess, result.LaunchCommand);
+                _launchOperationTracker.CompleteOperation(operationId);
+                return $"已开始启动 {preparedLaunch.VersionName}。实例路径：{preparedLaunch.VersionPath}。启动前已临时切换到 {preparedLaunch.MinecraftPath}，现在已恢复原游戏目录。\noperation_id: {operationId}\n可继续使用 get_operation_status 查询本次启动请求状态。";
+            }
+
+            var errorMessage = result.ErrorMessage ?? "游戏未能启动，请查看日志。";
+            _launchOperationTracker.FailOperation(operationId, errorMessage);
+            return $"启动 {preparedLaunch.VersionName} 失败：{errorMessage}\noperation_id: {operationId}\n可继续使用 get_operation_status 查询本次启动请求状态。";
         }
 
-        return $"启动 {preparedLaunch.VersionName} 失败：{result.ErrorMessage ?? "游戏未能启动，请查看日志。"}";
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _launchOperationTracker.CancelOperation(operationId);
+            throw;
+        }
+
+        catch (Exception ex)
+        {
+            _launchOperationTracker.FailOperation(operationId, ex.Message);
+            throw;
+        }
     }
 
     private void StartDetachedMonitoring(System.Diagnostics.Process gameProcess, string? launchCommand)
