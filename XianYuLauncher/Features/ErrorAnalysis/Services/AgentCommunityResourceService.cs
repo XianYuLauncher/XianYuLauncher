@@ -340,7 +340,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             executionContext.Plan,
             executionContext.Descriptor,
             showInTeachingTip: true,
-            teachingTipGroupKey: "launcher-ai-community-resource",
+            teachingTipGroupKey: CreateInstallTeachingTipGroupKey(),
             cancellationToken: cancellationToken);
 
         return SerializePayload(new
@@ -355,6 +355,11 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             download_dependencies = executionContext.Command.DownloadDependencies,
             message = $"已开始安装 {executionContext.ResourceName} 到 {executionContext.TargetVersionName}。可继续使用 get_operation_status 查询下载状态。"
         });
+    }
+
+    private static string CreateInstallTeachingTipGroupKey()
+    {
+        return $"launcher-ai-community-resource-{Guid.NewGuid():N}";
     }
 
     private async Task<List<object>> SearchModrinthAsync(
