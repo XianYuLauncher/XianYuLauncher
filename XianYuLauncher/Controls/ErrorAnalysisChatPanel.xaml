@@ -303,32 +303,50 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBox
                 x:Name="ChatInputBox"
                 Text="{Binding ViewModel.ChatInput, ElementName=Root, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                 PlaceholderText="Ask a follow-up question..."
-                KeyDown="ChatInput_KeyDown"/>
-            <Button
+                AcceptsReturn="True"
+                TextWrapping="Wrap"
+                MaxHeight="64"
+                ScrollViewer.VerticalScrollBarVisibility="Auto"
+                VerticalContentAlignment="Top"
+                VerticalAlignment="Top"
+                SizeChanged="ChatInputBox_SizeChanged"
+                PreviewKeyDown="ChatInput_PreviewKeyDown"/>
+            <Grid
+                x:Name="ComposerButtonsPanel"
                 Grid.Column="1"
-                x:Name="AddImageButton"
-                x:Uid="ErrorAnalysisChatPanel_AddImageButton"
-                Command="{Binding ViewModel.PickChatImagesCommand, ElementName=Root}"
-                Style="{StaticResource DefaultButtonStyle}">
-                <Grid Width="20" Height="20">
-                    <FontIcon Glyph="&#xE91B;" FontSize="16" />
-                </Grid>
-            </Button>
-            <Button
-                Grid.Column="2"
-                x:Name="ChatActionButton"
-                Command="{Binding ViewModel.CurrentChatActionCommand, ElementName=Root}"
-                Style="{StaticResource DefaultButtonStyle}">
-                <Grid Width="20" Height="20">
-                    <FontIcon Glyph="{Binding ViewModel.CurrentChatActionGlyph, ElementName=Root}" FontSize="16" />
-                </Grid>
-            </Button>
+                ColumnSpacing="8"
+                VerticalAlignment="Top">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Button
+                    Grid.Column="0"
+                    x:Name="AddImageButton"
+                    x:Uid="ErrorAnalysisChatPanel_AddImageButton"
+                    VerticalAlignment="Stretch"
+                    Command="{Binding ViewModel.PickChatImagesCommand, ElementName=Root}"
+                    Style="{StaticResource DefaultButtonStyle}">
+                    <Grid Width="20" Height="20">
+                        <FontIcon Glyph="&#xE91B;" FontSize="16" />
+                    </Grid>
+                </Button>
+                <Button
+                    Grid.Column="1"
+                    x:Name="ChatActionButton"
+                    VerticalAlignment="Stretch"
+                    Command="{Binding ViewModel.CurrentChatActionCommand, ElementName=Root}"
+                    Style="{StaticResource DefaultButtonStyle}">
+                    <Grid Width="20" Height="20">
+                        <FontIcon Glyph="{Binding ViewModel.CurrentChatActionGlyph, ElementName=Root}" FontSize="16" />
+                    </Grid>
+                </Button>
+            </Grid>
         </Grid>
     </Grid>
 </UserControl>
