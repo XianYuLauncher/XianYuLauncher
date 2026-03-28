@@ -1585,11 +1585,8 @@ Continue downloading?</value>
   <data name="ErrorAnalysis_AnalysisTitle.Text" xml:space="preserve">
     <value>Launcher AI</value>
   </data>
-  <data name="ErrorAnalysis_NoErrorInfo.Text" xml:space="preserve">
+  <data name="ErrorAnalysis_NoErrorInfoText" xml:space="preserve">
     <value>No analysis content because Minecraft hasn't crashed yet...</value>
-  </data>
-  <data name="ErrorAnalysis_Analyzing.Text" xml:space="preserve">
-    <value>Analyzing the crash reason...</value>
   </data>
   <data name="联机Page_DownloadingTerracottaTitle" xml:space="preserve">
     <value>Downloading Terracotta Plugin</value>
@@ -1597,17 +1594,20 @@ Continue downloading?</value>
   <data name="联机Page_DownloadingTerracottaMessage" xml:space="preserve">
     <value>Downloading and installing Terracotta plugin, please wait...</value>
   </data>
-  <data name="ErrorAnalysis_AnalysisComplete.Text" xml:space="preserve">
-    <value>Analysis completed.</value>
-  </data>
-  <data name="ErrorAnalysis_AnalysisCanceled.Text" xml:space="preserve">
+  <data name="ErrorAnalysis_AnalysisCanceledText" xml:space="preserve">
     <value>Analysis canceled.</value>
   </data>
-  <data name="ErrorAnalysis_RequestFailed.Text" xml:space="preserve">
-    <value>Analysis request failed: {0}</value>
-  </data>
-  <data name="ErrorAnalysis_AnalysisFailed.Text" xml:space="preserve">
+  <data name="ErrorAnalysis_AnalysisFailedText" xml:space="preserve">
     <value>Analysis failed: {0}</value>
+  </data>
+  <data name="ErrorAnalysis_EmptyAssistantResponseText" xml:space="preserve">
+    <value>The AI returned no content. Please try again, or verify that the current endpoint/model supports streaming responses.</value>
+  </data>
+  <data name="ErrorAnalysis_ImageFallbackRetryText" xml:space="preserve">
+    <value>This model does not support image input. The request was retried with text only.</value>
+  </data>
+  <data name="ErrorAnalysis_ImageFallbackRequiresUserText" xml:space="preserve">
+    <value>This model does not support image input, and this message has no text content. Please add a text description and try again.</value>
   </data>
   <data name="VersionManagerPage_SelectAllText" xml:space="preserve">
     <value>Select All</value>

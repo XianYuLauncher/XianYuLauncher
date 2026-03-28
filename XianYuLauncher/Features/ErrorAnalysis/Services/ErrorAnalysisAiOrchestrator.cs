@@ -7,6 +7,7 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
+using XianYuLauncher.Helpers;
 using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Services;
@@ -84,7 +85,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         {
             await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
-                var msg = string.Format(GetLocalizedString("ErrorAnalysis_AnalysisFailed.Text"), ex.Message);
+                var msg = "ErrorAnalysis_AnalysisFailedText".GetLocalized(ex.Message);
                 if (_sessionState.ChatMessages.Any())
                 {
                     _sessionState.ChatMessages.Add(new UiChatMessage("assistant", $"\n\n{msg}"));
@@ -131,7 +132,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         }
         catch (Exception ex)
         {
-            await SetLastAssistantMessageAsync(string.Format(GetLocalizedString("ErrorAnalysis_AnalysisFailed.Text"), ex.Message));
+            await SetLastAssistantMessageAsync("ErrorAnalysis_AnalysisFailedText".GetLocalized(ex.Message));
         }
     }
 
@@ -985,7 +986,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             var lastAssistant = GetLastAssistantMessage();
             if (lastAssistant != null)
             {
-                AppendAssistantMessageContent(lastAssistant, $"\n\n{GetLocalizedString("ErrorAnalysis_AnalysisCanceled.Text")}");
+                AppendAssistantMessageContent(lastAssistant, "\n\n" + "ErrorAnalysis_AnalysisCanceledText".GetLocalized());
             }
         });
     }
@@ -1044,22 +1045,6 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         }
     }
 
-    private string GetLocalizedString(string resourceKey)
-    {
-        var isChinese = _languageSelectorService.Language == "zh-CN";
-        return resourceKey switch
-        {
-            "ErrorAnalysis_AnalysisCanceled.Text" => isChinese ? "分析已取消。" : "Analysis canceled.",
-            "ErrorAnalysis_AnalysisFailed.Text" => isChinese ? "分析失败: {0}" : "Analysis failed: {0}",
-            "ErrorAnalysis_EmptyAssistantResponse.Text" => isChinese
-                ? "AI 没有返回任何内容。请稍后重试，或检查当前接口/模型是否支持流式输出。"
-                : "The AI returned no content. Please try again, or verify that the current endpoint/model supports streaming responses.",
-            "ErrorAnalysis_ImageFallbackRetry.Text" => isChinese ? "当前模型不支持图片输入，已自动忽略图片并按文字内容重试。" : "This model does not support image input. The request was retried with text only.",
-            "ErrorAnalysis_ImageFallbackRequiresText.Text" => isChinese ? "当前模型不支持图片输入，且这条消息没有文字内容，无法自动回退重试。请补充文字描述后再试。" : "This model does not support image input, and this message has no text content. Please add a text description and try again.",
-            _ => resourceKey
-        };
-    }
-
     private async Task<ImageFallbackPreparationResult> PrepareTextOnlyRetryAsync(List<ChatMessage> apiMessages, AiAnalysisRequestException exception)
     {
         if (!ContainsImageAttachments(apiMessages) || !IsImageInputUnsupportedError(exception))
@@ -1082,10 +1067,10 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             var lastAssistant = GetLastAssistantMessage();
             if (lastAssistant != null)
             {
-                lastAssistant.Content = GetLocalizedString(
-                    canRetry
-                        ? "ErrorAnalysis_ImageFallbackRetry.Text"
-                        : "ErrorAnalysis_ImageFallbackRequiresText.Text");
+                lastAssistant.Content = (canRetry
+                        ? "ErrorAnalysis_ImageFallbackRetryText"
+                        : "ErrorAnalysis_ImageFallbackRequiresUserText")
+                    .GetLocalized();
                 lastAssistant.IncludeInAiHistory = false;
                 lastAssistant.AiHistoryContent = null;
             }
@@ -1173,7 +1158,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                 return;
             }
 
-            var emptyResponseMessage = GetLocalizedString("ErrorAnalysis_EmptyAssistantResponse.Text");
+            var emptyResponseMessage = "ErrorAnalysis_EmptyAssistantResponseText".GetLocalized();
             if (string.IsNullOrWhiteSpace(lastAssistant.Content) || lastAssistant.Content == "...")
             {
                 SetAssistantMessageContent(lastAssistant, emptyResponseMessage);
