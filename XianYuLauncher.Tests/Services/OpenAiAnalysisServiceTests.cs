@@ -168,6 +168,30 @@ public sealed class OpenAiAnalysisServiceTests
         exception.Which.Message.Should().Contain("model not found");
     }
 
+    [Fact]
+    public async Task StreamChatWithToolsAsync_WhenStreamReturnsErrorPayload_ShouldThrowRequestException()
+    {
+        var payloads = new[]
+        {
+            "{\"error\":{\"message\":\"provider stream rejected the request\"}}"
+        };
+
+        await using var server = await FakeSseServer.StartAsync(payloads);
+        var service = new OpenAiAnalysisService(Mock.Of<ILogger<OpenAiAnalysisService>>());
+
+        var action = async () => await CollectChunksAsync(service.StreamChatWithToolsAsync(
+            [new ChatMessage("user", "你好")],
+            [],
+            "test-key",
+            server.Endpoint,
+            "test-model"));
+
+        var exception = await action.Should().ThrowAsync<AiAnalysisRequestException>();
+        exception.Which.Message.Should().Contain("provider stream rejected the request");
+        exception.Which.ResponseBody.Should().Be("{\"error\":{\"message\":\"provider stream rejected the request\"}}");
+        exception.Which.RequestUri.Should().Be(server.Endpoint);
+    }
+
     private static async Task<List<AiStreamChunk>> CollectChunksAsync(IAsyncEnumerable<AiStreamChunk> source)
     {
         List<AiStreamChunk> chunks = [];

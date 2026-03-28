@@ -249,13 +249,13 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                     {
                         if (lastMsg.Content == "...")
                         {
-                            lastMsg.Content = string.Empty;
+                            SetAssistantMessageContent(lastMsg, string.Empty);
                         }
 
                         isFirstChunk = false;
                     }
 
-                    lastMsg.Content += text;
+                    AppendAssistantMessageContent(lastMsg, text);
                     if (_sessionState.ChatMessages.Count <= 1)
                     {
                         _sessionState.AiAnalysisResult = lastMsg.Content;
@@ -275,7 +275,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                     return;
                 }
 
-                lastMsg.Content += remaining;
+                AppendAssistantMessageContent(lastMsg, remaining);
                 if (_sessionState.ChatMessages.Count <= 1)
                 {
                     _sessionState.AiAnalysisResult = lastMsg.Content;
@@ -377,13 +377,13 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                                 {
                                     if (lastMsg.Content == "...")
                                     {
-                                        lastMsg.Content = string.Empty;
+                                        SetAssistantMessageContent(lastMsg, string.Empty);
                                     }
 
                                     isFirstChunk = false;
                                 }
 
-                                lastMsg.Content += textToAppend;
+                                AppendAssistantMessageContent(lastMsg, textToAppend);
                                 if (_sessionState.ChatMessages.Count <= 3)
                                 {
                                     _sessionState.AiAnalysisResult = lastMsg.Content;
@@ -411,15 +411,21 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
                         if (isFirstChunk && lastMsg.Content == "...")
                         {
-                            lastMsg.Content = string.Empty;
+                            SetAssistantMessageContent(lastMsg, string.Empty);
                         }
 
-                        lastMsg.Content += finalText;
+                        AppendAssistantMessageContent(lastMsg, finalText);
                         if (_sessionState.ChatMessages.Count <= 3)
                         {
                             _sessionState.AiAnalysisResult = lastMsg.Content;
                         }
                     });
+                }
+
+                if (contentBuilder.Length == 0 && (pendingToolCalls == null || pendingToolCalls.Count == 0))
+                {
+                    await SetEmptyAssistantResponseMessageAsync();
+                    break;
                 }
 
                 if (pendingToolCalls == null || pendingToolCalls.Count == 0)
@@ -621,9 +627,11 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             }
 
             var lastMessage = _sessionState.ChatMessages.Last();
-            lastMessage.Content = string.IsNullOrWhiteSpace(assistantPrefix)
-                ? "..."
-                : assistantPrefix + "\n\n";
+            SetAssistantMessageContent(
+                lastMessage,
+                string.IsNullOrWhiteSpace(assistantPrefix)
+                    ? "..."
+                    : assistantPrefix + "\n\n");
         });
 
         var settings = await _aiSettingsDomainService.LoadAsync();
@@ -702,7 +710,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                     continue;
                 }
 
-                var historyContent = msg.AiHistoryContent ?? msg.Content ?? string.Empty;
+                var historyContent = GetMessageHistoryContent(msg);
                 var historyAttachments = CloneImageAttachments(msg.AiHistoryImageAttachments ?? msg.ImageAttachments);
 
                 if (msg.IsTool)
@@ -960,7 +968,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             var lastAssistant = GetLastAssistantMessage();
             if (lastAssistant != null)
             {
-                lastAssistant.Content = content;
+                SetAssistantMessageContent(lastAssistant, content);
             }
         });
     }
@@ -977,7 +985,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             var lastAssistant = GetLastAssistantMessage();
             if (lastAssistant != null)
             {
-                lastAssistant.Content += $"\n\n{GetLocalizedString("ErrorAnalysis_AnalysisCanceled.Text")}";
+                AppendAssistantMessageContent(lastAssistant, $"\n\n{GetLocalizedString("ErrorAnalysis_AnalysisCanceled.Text")}");
             }
         });
     }
@@ -1043,6 +1051,9 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         {
             "ErrorAnalysis_AnalysisCanceled.Text" => isChinese ? "分析已取消。" : "Analysis canceled.",
             "ErrorAnalysis_AnalysisFailed.Text" => isChinese ? "分析失败: {0}" : "Analysis failed: {0}",
+            "ErrorAnalysis_EmptyAssistantResponse.Text" => isChinese
+                ? "AI 没有返回任何内容。请稍后重试，或检查当前接口/模型是否支持流式输出。"
+                : "The AI returned no content. Please try again, or verify that the current endpoint/model supports streaming responses.",
             "ErrorAnalysis_ImageFallbackRetry.Text" => isChinese ? "当前模型不支持图片输入，已自动忽略图片并按文字内容重试。" : "This model does not support image input. The request was retried with text only.",
             "ErrorAnalysis_ImageFallbackRequiresText.Text" => isChinese ? "当前模型不支持图片输入，且这条消息没有文字内容，无法自动回退重试。请补充文字描述后再试。" : "This model does not support image input, and this message has no text content. Please add a text description and try again.",
             _ => resourceKey
@@ -1150,6 +1161,65 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     private readonly record struct ImageFallbackPreparationResult(bool Handled, List<ChatMessage>? RetryMessages)
     {
         public static ImageFallbackPreparationResult NotHandled => new(false, null);
+    }
+
+    private async Task SetEmptyAssistantResponseMessageAsync()
+    {
+        await _uiDispatcher.RunOnUiThreadAsync(() =>
+        {
+            var lastAssistant = GetLastAssistantMessage();
+            if (lastAssistant == null)
+            {
+                return;
+            }
+
+            var emptyResponseMessage = GetLocalizedString("ErrorAnalysis_EmptyAssistantResponse.Text");
+            if (string.IsNullOrWhiteSpace(lastAssistant.Content) || lastAssistant.Content == "...")
+            {
+                SetAssistantMessageContent(lastAssistant, emptyResponseMessage);
+            }
+            else if (!lastAssistant.Content.Contains(emptyResponseMessage, StringComparison.Ordinal))
+            {
+                SetAssistantMessageContent(lastAssistant, $"{lastAssistant.Content.TrimEnd()}\n\n{emptyResponseMessage}");
+            }
+
+            if (_sessionState.ChatMessages.Count <= 3)
+            {
+                _sessionState.AiAnalysisResult = lastAssistant.Content;
+            }
+        });
+    }
+
+    private static string GetMessageHistoryContent(UiChatMessage message)
+    {
+        if (message.IsAssistant && (message.ToolCalls == null || message.ToolCalls.Count == 0))
+        {
+            return message.Content ?? string.Empty;
+        }
+
+        return message.AiHistoryContent ?? message.Content ?? string.Empty;
+    }
+
+    private static void SetAssistantMessageContent(UiChatMessage message, string content)
+    {
+        message.Content = content;
+
+        if (!message.IncludeInAiHistory)
+        {
+            return;
+        }
+
+        if (message.ToolCalls != null && message.ToolCalls.Count > 0)
+        {
+            return;
+        }
+
+        message.AiHistoryContent = content;
+    }
+
+    private static void AppendAssistantMessageContent(UiChatMessage message, string content)
+    {
+        SetAssistantMessageContent(message, (message.Content ?? string.Empty) + content);
     }
 
     private static string BuildSystemPrompt(AiSettingsState settings, string language)
