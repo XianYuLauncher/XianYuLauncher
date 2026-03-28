@@ -159,6 +159,16 @@ namespace XianYuLauncher.Core.Services
                 try { parsed = JObject.Parse(data); }
                 catch { continue; }
 
+                if (parsed["error"] != null)
+                {
+                    var errorBody = parsed.ToString(Formatting.None);
+                    _logger.LogError("AI Stream Failed: {Body}", errorBody);
+                    throw new AiAnalysisRequestException(
+                        BuildDetailedStreamFailureMessage(endpoint, errorBody),
+                        responseBody: errorBody,
+                        requestUri: endpoint);
+                }
+
                 var delta = parsed["choices"]?[0]?["delta"];
                 if (delta == null) continue;
 
@@ -295,6 +305,17 @@ namespace XianYuLauncher.Core.Services
             }
 
             return $"AI Request Failed: {statusText}. Endpoint: {endpoint}.";
+        }
+
+        private static string BuildDetailedStreamFailureMessage(string endpoint, string? errorBody)
+        {
+            var providerMessage = ExtractProviderErrorMessage(errorBody);
+            if (!string.IsNullOrWhiteSpace(providerMessage))
+            {
+                return $"AI Stream Failed. Endpoint: {endpoint}. Response: {providerMessage}";
+            }
+
+            return $"AI Stream Failed. Endpoint: {endpoint}.";
         }
 
         private static string? ExtractProviderErrorMessage(string? errorBody)
