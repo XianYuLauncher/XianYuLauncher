@@ -226,6 +226,7 @@ public sealed class InstallCommunityResourceToolHandler : IAgentToolHandler
         {
             ActionType = ToolName,
             ButtonText = preparation.ButtonText,
+            DisplayMessage = preparation.Message,
             PermissionLevel = AgentToolPermissionLevel.ConfirmationRequired,
             Parameters = new Dictionary<string, string>(preparation.ProposalParameters, StringComparer.OrdinalIgnoreCase)
         };

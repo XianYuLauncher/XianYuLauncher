@@ -139,7 +139,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     {
         ArgumentNullException.ThrowIfNull(proposal);
 
-        var pendingContinuation = _sessionState.TakePendingToolContinuation();
+        var pendingContinuation = _sessionState.PeekPendingToolContinuation();
         await RunActionDecisionAsync(
             pendingContinuation,
             proposal,
@@ -165,7 +165,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
     public async Task RejectPendingActionAsync(string? rejectedActionText, CancellationToken cancellationToken)
     {
-        var pendingContinuation = _sessionState.TakePendingToolContinuation();
+        var pendingContinuation = _sessionState.PeekPendingToolContinuation();
         await RunActionDecisionAsync(
             pendingContinuation,
             proposal: null,
@@ -535,8 +535,6 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         {
             await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
-                _sessionState.ResetFixActions();
-
                 if (pendingContinuation != null)
                 {
                     _sessionState.ChatMessages.Add(new UiChatMessage(
@@ -550,6 +548,37 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             await Task.Delay(50, cancellationToken);
             var actionResult = await actionExecutor(cancellationToken);
 
+            if (pendingContinuation == null)
+            {
+                await _uiDispatcher.RunOnUiThreadAsync(_sessionState.ResetFixActions);
+                await AppendStandaloneActionResultAsync(actionResult);
+                return;
+            }
+
+            var continuationUserMessage = BuildContinuationUserMessage(approved, proposal, rejectedActionText, actionResult);
+            AgentActionProposal? nextProposal = null;
+            int remainingProposalCount = 0;
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
+            {
+                _sessionState.AppendPendingToolContinuationUserMessage(new ChatMessage("user", continuationUserMessage));
+                nextProposal = _sessionState.CompleteCurrentActionProposal();
+                remainingProposalCount = _sessionState.PendingActionProposalCount;
+            });
+
+            if (nextProposal != null)
+            {
+                var assistantPrefix = string.IsNullOrWhiteSpace(actionResult)
+                    ? approved && proposal != null
+                        ? $"已执行：{proposal.ButtonText}"
+                        : BuildRejectedActionMessage(rejectedActionText)
+                    : ExtractDisplayMessage(actionResult);
+
+                var nextPendingMessage = BuildPendingActionDisplayMessage(nextProposal, remainingProposalCount);
+                await SetLastAssistantMessageAsync($"{assistantPrefix}\n\n{nextPendingMessage}");
+                return;
+            }
+
+            pendingContinuation = _sessionState.TakePendingToolContinuation();
             if (pendingContinuation == null)
             {
                 await AppendStandaloneActionResultAsync(actionResult);
@@ -824,23 +853,46 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         IReadOnlyList<AgentActionProposal> actionProposals,
         IReadOnlyList<string> actionProposalMessages)
     {
-        var safeMessages = actionProposalMessages
+        if (actionProposals.Count == 0)
+        {
+            return "已准备待确认操作，等待用户确认。";
+        }
+
+        var firstMessage = actionProposalMessages
             .Where(message => !string.IsNullOrWhiteSpace(message))
             .Select(ExtractDisplayMessage)
-            .Where(message => !string.IsNullOrWhiteSpace(message))
-            .ToList();
+            .FirstOrDefault(message => !string.IsNullOrWhiteSpace(message));
 
-        if (safeMessages.Count > 0)
+        var firstProposal = actionProposals[0];
+        if (!string.IsNullOrWhiteSpace(firstMessage) && string.IsNullOrWhiteSpace(firstProposal.DisplayMessage))
         {
-            return string.Join("\n\n", safeMessages);
+            firstProposal = new AgentActionProposal
+            {
+                ActionType = firstProposal.ActionType,
+                ButtonText = firstProposal.ButtonText,
+                DisplayMessage = firstMessage,
+                PermissionLevel = firstProposal.PermissionLevel,
+                Parameters = new Dictionary<string, string>(firstProposal.Parameters, StringComparer.OrdinalIgnoreCase)
+            };
         }
 
-        if (actionProposals.Count == 1)
+        return BuildPendingActionDisplayMessage(firstProposal, actionProposals.Count);
+    }
+
+    private static string BuildPendingActionDisplayMessage(AgentActionProposal proposal, int pendingActionCount)
+    {
+        var displayMessage = ExtractDisplayMessage(proposal.DisplayMessage);
+        if (string.IsNullOrWhiteSpace(displayMessage))
         {
-            return $"已准备执行“{actionProposals[0].ButtonText}”，等待用户确认。";
+            displayMessage = $"已准备执行“{proposal.ButtonText}”，等待用户确认。";
         }
 
-        return "已准备多个待确认操作，等待用户确认。";
+        if (pendingActionCount <= 1)
+        {
+            return displayMessage;
+        }
+
+        return $"{displayMessage}\n\n当前操作处理后，还会继续逐项确认剩余 {pendingActionCount - 1} 个操作。";
     }
 
     private static string ExtractDisplayMessage(string message)

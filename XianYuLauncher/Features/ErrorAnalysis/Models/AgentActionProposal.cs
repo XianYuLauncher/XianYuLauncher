@@ -14,6 +14,8 @@ public sealed class AgentActionProposal
 
     public string ButtonText { get; init; } = string.Empty;
 
+    public string DisplayMessage { get; init; } = string.Empty;
+
     public AgentToolPermissionLevel PermissionLevel { get; init; } = AgentToolPermissionLevel.ConfirmationRequired;
 
     public Dictionary<string, string> Parameters { get; init; } = [];
@@ -24,6 +26,7 @@ public sealed class AgentActionProposal
         {
             ActionType = action.Type,
             ButtonText = action.ButtonText,
+            DisplayMessage = string.Empty,
             PermissionLevel = AgentToolPermissionLevel.ConfirmationRequired,
             Parameters = new Dictionary<string, string>(action.Parameters, StringComparer.OrdinalIgnoreCase)
         };
