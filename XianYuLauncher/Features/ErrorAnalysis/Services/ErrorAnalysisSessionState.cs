@@ -11,6 +11,8 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 
 public partial class ErrorAnalysisSessionState : ObservableObject
 {
+    private readonly List<AgentActionProposal> _pendingActionProposals = [];
+
     public ErrorAnalysisSessionState()
     {
         ChatMessages.CollectionChanged += (_, _) => HasChatMessages = ChatMessages.Count > 0;
@@ -75,6 +77,8 @@ public partial class ErrorAnalysisSessionState : ObservableObject
 
     public bool HasPendingToolContinuation => PendingToolContinuation != null;
 
+    public int PendingActionProposalCount => _pendingActionProposals.Count;
+
     private CancellationTokenSource? _aiAnalysisCts;
     private bool _suppressNextCancellationMessage;
 
@@ -116,31 +120,15 @@ public partial class ErrorAnalysisSessionState : ObservableObject
 
     public void ResetFixActions()
     {
-        HasFixAction = false;
-        FixButtonText = string.Empty;
-        CurrentFixAction = null;
-        HasSecondaryFixAction = false;
-        SecondaryFixButtonText = string.Empty;
-        SecondaryFixAction = null;
+        _pendingActionProposals.Clear();
+        UpdateVisibleFixActions();
     }
 
     public void ApplyActionProposals(IReadOnlyList<AgentActionProposal> actions)
     {
-        ResetFixActions();
-
-        if (actions.Count > 0)
-        {
-            CurrentFixAction = actions[0];
-            FixButtonText = actions[0].ButtonText;
-            HasFixAction = !string.IsNullOrWhiteSpace(FixButtonText);
-        }
-
-        if (actions.Count > 1)
-        {
-            SecondaryFixAction = actions[1];
-            SecondaryFixButtonText = actions[1].ButtonText;
-            HasSecondaryFixAction = !string.IsNullOrWhiteSpace(SecondaryFixButtonText);
-        }
+        _pendingActionProposals.Clear();
+        _pendingActionProposals.AddRange(CloneActionProposals(actions));
+        UpdateVisibleFixActions();
     }
 
     public void SetPendingToolContinuation(List<ChatMessage> apiMessages)
@@ -151,6 +139,33 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         };
         OnPropertyChanged(nameof(PendingToolContinuation));
         OnPropertyChanged(nameof(HasPendingToolContinuation));
+    }
+
+    public AgentConversationContinuation? PeekPendingToolContinuation()
+    {
+        return PendingToolContinuation;
+    }
+
+    public void AppendPendingToolContinuationUserMessage(ChatMessage message)
+    {
+        if (PendingToolContinuation == null)
+        {
+            return;
+        }
+
+        PendingToolContinuation.ApiMessages.AddRange(CloneApiMessages([message]));
+        OnPropertyChanged(nameof(PendingToolContinuation));
+    }
+
+    public AgentActionProposal? CompleteCurrentActionProposal()
+    {
+        if (_pendingActionProposals.Count > 0)
+        {
+            _pendingActionProposals.RemoveAt(0);
+        }
+
+        UpdateVisibleFixActions();
+        return CurrentFixAction;
     }
 
     public AgentConversationContinuation? TakePendingToolContinuation()
@@ -241,7 +256,7 @@ public partial class ErrorAnalysisSessionState : ObservableObject
             IsChatEnabled = IsChatEnabled,
             HasChatMessages = HasChatMessages,
             ChatMessages = CloneUiMessages(ChatMessages),
-            ActionProposals = CloneActionProposals(CurrentFixAction, SecondaryFixAction),
+            ActionProposals = CloneActionProposals(_pendingActionProposals),
             PendingToolContinuation = CloneContinuation(PendingToolContinuation),
         };
     }
@@ -251,7 +266,7 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         ArgumentNullException.ThrowIfNull(snapshot);
 
         ChatInput = snapshot.ChatInput;
-    ReplacePendingImageAttachments(snapshot.PendingImageAttachments);
+        ReplacePendingImageAttachments(snapshot.PendingImageAttachments);
         IsChatEnabled = snapshot.IsChatEnabled;
         ReplaceChatMessages(snapshot.ChatMessages);
         ApplyActionProposals(snapshot.ActionProposals);
@@ -282,6 +297,17 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         {
             ChatMessages.Add(message);
         }
+    }
+
+    private void UpdateVisibleFixActions()
+    {
+        CurrentFixAction = _pendingActionProposals.FirstOrDefault();
+        FixButtonText = CurrentFixAction?.ButtonText ?? string.Empty;
+        HasFixAction = !string.IsNullOrWhiteSpace(FixButtonText);
+
+        SecondaryFixAction = null;
+        SecondaryFixButtonText = string.Empty;
+        HasSecondaryFixAction = false;
     }
 
     private static List<ChatMessage> CloneApiMessages(IEnumerable<ChatMessage> apiMessages)
@@ -327,12 +353,11 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         }).ToList() ?? [];
     }
 
-    private static List<AgentActionProposal> CloneActionProposals(params AgentActionProposal?[] proposals)
+    private static List<AgentActionProposal> CloneActionProposals(IEnumerable<AgentActionProposal>? proposals)
     {
-        return proposals
-            .Where(proposal => proposal != null)
-            .Select(proposal => CloneActionProposal(proposal!))
-            .ToList();
+        return proposals?
+            .Select(CloneActionProposal)
+            .ToList() ?? [];
     }
 
     private static AgentActionProposal CloneActionProposal(AgentActionProposal proposal)
@@ -341,6 +366,7 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         {
             ActionType = proposal.ActionType,
             ButtonText = proposal.ButtonText,
+            DisplayMessage = proposal.DisplayMessage,
             PermissionLevel = proposal.PermissionLevel,
             Parameters = new Dictionary<string, string>(proposal.Parameters, StringComparer.OrdinalIgnoreCase)
         };
