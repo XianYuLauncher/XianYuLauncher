@@ -147,7 +147,7 @@ namespace XianYuLauncher.Views
 
             LauncherAiWorkspaceViewModel.SetErrorAnalysisPageOpen(true);
             await LauncherAiWorkspaceViewModel.InitializeAsync(ensureDefaultConversation: false);
-            LauncherAiWorkspaceViewModel.ActivateErrorAnalysisConversation(forceNewConversation: e.Parameter is Tuple<string, List<string>, List<string>>);
+            LauncherAiWorkspaceViewModel.ActivateConversationForEmbeddedSurface();
 
             // 每次进入页面先清理修复按钮状态，避免残留
             ViewModel.ResetFixActionState();
@@ -180,7 +180,6 @@ namespace XianYuLauncher.Views
         /// </summary>
         private void PopOutChat_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
-            LauncherAiWorkspaceViewModel.ActivateErrorAnalysisConversation();
             LauncherAiWindow.ShowOrActivate();
         }
     }

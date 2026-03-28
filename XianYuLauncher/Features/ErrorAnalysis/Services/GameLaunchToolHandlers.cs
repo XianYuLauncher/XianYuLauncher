@@ -7,6 +7,7 @@ using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
+using XianYuLauncher.Services;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 
@@ -120,16 +121,16 @@ public sealed class LaunchGameActionHandler : IAgentActionHandler
 {
     private readonly IVersionPathGameLaunchService _versionPathGameLaunchService;
     private readonly ILaunchOperationTracker _launchOperationTracker;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IGameLaunchObservationService _gameLaunchObservationService;
 
     public LaunchGameActionHandler(
         IVersionPathGameLaunchService versionPathGameLaunchService,
         ILaunchOperationTracker launchOperationTracker,
-        IServiceProvider serviceProvider)
+        IGameLaunchObservationService gameLaunchObservationService)
     {
         _versionPathGameLaunchService = versionPathGameLaunchService;
         _launchOperationTracker = launchOperationTracker;
-        _serviceProvider = serviceProvider;
+        _gameLaunchObservationService = gameLaunchObservationService;
     }
 
     public string ActionType => LaunchGameToolHandler.ToolNameValue;
@@ -159,7 +160,15 @@ public sealed class LaunchGameActionHandler : IAgentActionHandler
                 cancellationToken: cancellationToken);
             if (result.GameProcess != null)
             {
-                StartDetachedMonitoring(result.GameProcess, result.LaunchCommand);
+                _gameLaunchObservationService.Observe(new GameLaunchObservationRequest
+                {
+                    GameProcess = result.GameProcess,
+                    LaunchCommand = result.LaunchCommand ?? string.Empty,
+                    VersionId = preparedLaunch.VersionName,
+                    MinecraftPath = preparedLaunch.MinecraftPath,
+                    Origin = GameLaunchObservationOrigin.LauncherAi,
+                    EnableLiveErrorAnalysisStreaming = false,
+                });
                 _launchOperationTracker.CompleteOperation(operationId);
                 return $"已开始启动 {preparedLaunch.VersionName}。实例路径：{preparedLaunch.VersionPath}。启动前已临时切换到 {preparedLaunch.MinecraftPath}，现在已恢复原游戏目录。\noperation_id: {operationId}\n可继续使用 get_operation_status 查询本次启动请求状态。";
             }
@@ -180,20 +189,6 @@ public sealed class LaunchGameActionHandler : IAgentActionHandler
             _launchOperationTracker.FailOperation(operationId, ex.Message);
             throw;
         }
-    }
-
-    private void StartDetachedMonitoring(System.Diagnostics.Process gameProcess, string? launchCommand)
-    {
-        var monitor = _serviceProvider.GetRequiredService<IGameProcessMonitor>();
-        _ = monitor.MonitorProcessAsync(gameProcess, launchCommand ?? string.Empty).ContinueWith(
-            task =>
-            {
-                if (task.Exception != null)
-                {
-                    Serilog.Log.Warning(task.Exception.GetBaseException(), "Launcher AI 启动后的进程监控失败");
-                }
-            },
-            TaskContinuationOptions.OnlyOnFaulted);
     }
 }
 

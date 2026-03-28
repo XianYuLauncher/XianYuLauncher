@@ -56,11 +56,17 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             return;
         }
 
+        var preserveExistingConversation = _sessionState.ChatMessages.Any(message => message.IsUser);
+
         try
         {
             await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
-                _sessionState.ChatMessages.Clear();
+                if (!preserveExistingConversation)
+                {
+                    _sessionState.ChatMessages.Clear();
+                }
+
                 _sessionState.AiAnalysisResult = "正在分析崩溃原因...\n\n";
                 _sessionState.ResetFixActions();
                 _sessionState.ClearPendingToolContinuation();
@@ -71,11 +77,11 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             var settings = await _aiSettingsDomainService.LoadAsync();
             if (settings.IsEnabled)
             {
-                await AnalyzeWithExternalAiAsync(settings, cancellationToken);
+                await AnalyzeWithExternalAiAsync(settings, preserveExistingConversation, cancellationToken);
                 return;
             }
 
-            await AnalyzeWithKnowledgeBaseAsync(cancellationToken);
+            await AnalyzeWithKnowledgeBaseAsync(preserveExistingConversation, cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -178,6 +184,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
     private async Task AnalyzeWithExternalAiAsync(
         AiSettingsState settings,
+        bool preserveExistingConversation,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(settings.ApiKey))
@@ -202,7 +209,19 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
-            _sessionState.ChatMessages.Add(new UiChatMessage("user", sanitizedLog));
+            if (preserveExistingConversation)
+            {
+                var crashPrompt = new UiChatMessage("user", "游戏刚刚崩溃了，请结合新的崩溃日志继续分析。")
+                {
+                    AiHistoryContent = BuildCrashContinuationPrompt(sanitizedLog)
+                };
+                _sessionState.ChatMessages.Add(crashPrompt);
+            }
+            else
+            {
+                _sessionState.ChatMessages.Add(new UiChatMessage("user", sanitizedLog));
+            }
+
             _sessionState.ChatMessages.Add(new UiChatMessage("assistant", "..."));
         });
 
@@ -210,12 +229,17 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         await StreamResponseToLastMessageAsync(settings, cancellationToken);
     }
 
-    private async Task AnalyzeWithKnowledgeBaseAsync(CancellationToken cancellationToken)
+    private async Task AnalyzeWithKnowledgeBaseAsync(bool preserveExistingConversation, CancellationToken cancellationToken)
     {
         var (gameOutput, gameError) = _sessionState.CreateLogSnapshot();
 
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
+            if (preserveExistingConversation)
+            {
+                _sessionState.ChatMessages.Add(new UiChatMessage("user", "游戏刚刚崩溃了，请继续分析原因。"));
+            }
+
             _sessionState.ChatMessages.Add(new UiChatMessage("assistant", "..."));
         });
 
@@ -327,6 +351,11 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
         sanitizedLog = sanitizedLog[^15000..];
         return "[...Log Truncated...] " + sanitizedLog;
+    }
+
+    private static string BuildCrashContinuationPrompt(string sanitizedLog)
+    {
+        return $"游戏刚刚崩溃了。请结合当前对话上下文与以下新的崩溃日志继续分析，并在需要时重新给出下一步修复建议。\n\n{sanitizedLog}";
     }
 
     private async Task StreamResponseToLastMessageAsync(
