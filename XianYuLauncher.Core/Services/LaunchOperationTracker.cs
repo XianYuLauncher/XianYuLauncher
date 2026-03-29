@@ -140,7 +140,7 @@ public sealed class LaunchOperationTracker : ILaunchOperationTracker
             State = entry.State,
             StatusMessage = entry.StatusMessage,
             IsTerminal = entry.IsTerminal,
-            OperationKind = "launch_game",
+            OperationKind = "launchGame",
             TaskName = $"启动 {entry.VersionName}",
             VersionName = entry.VersionName,
             ErrorMessage = entry.ErrorMessage

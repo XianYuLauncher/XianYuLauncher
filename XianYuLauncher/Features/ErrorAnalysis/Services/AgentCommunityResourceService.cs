@@ -353,7 +353,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             resource_name = executionContext.ResourceName,
             target_version_name = executionContext.TargetVersionName,
             download_dependencies = executionContext.Command.DownloadDependencies,
-            message = $"已开始安装 {executionContext.ResourceName} 到 {executionContext.TargetVersionName}。可继续使用 get_operation_status 查询下载状态。"
+            message = $"已开始安装 {executionContext.ResourceName} 到 {executionContext.TargetVersionName}。可继续使用 getOperationStatus 查询下载状态。"
         });
     }
 
@@ -693,7 +693,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             return CommunityResourceInstallExecutionContext.FromMessage(SerializePayload(new
             {
                 status = "invalid_request",
-                message = $"目标实例 {targetVersionName} 不存在，请先调用 get_instances 获取可用实例。",
+                message = $"目标实例 {targetVersionName} 不存在，请先调用 getInstances 获取可用实例。",
                 available_instances = installedVersions.OrderBy(version => version, StringComparer.OrdinalIgnoreCase).ToList()
             }));
         }

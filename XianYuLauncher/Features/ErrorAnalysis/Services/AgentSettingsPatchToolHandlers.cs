@@ -215,14 +215,14 @@ public sealed class PatchInstanceLaunchSettingsToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "修改实例启动设置的确认式 patch 工具。调用前应先用 get_instances 确认实例，再读取 getVersionConfig；只有需要解释最终生效值时才补 getEffectiveLaunchSettings。优先使用 target_version_name 和 java_id，不要优先传绝对路径。本工具只生成确认提案，不会直接写入。实例设置遵循 UI 的扁平语义：use_global_settings_overall 是唯一总开关；设置 Java/JVM/GC/内存/分辨率/游戏目录等实例字段时，若当前仍使用全局设置，工具会自动关闭该总开关。当前支持字段：use_global_settings_overall、java_id、java_path、custom_jvm_arguments、garbage_collector_mode、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、window_width、window_height、game_directory_mode、custom_game_directory_path。",
+        "修改实例启动设置的确认式 patch 工具。调用前应先用 getInstances 确认实例，再读取 getVersionConfig；只有需要解释最终生效值时才补 getEffectiveLaunchSettings。优先使用 target_version_name 和 java_id，不要优先传绝对路径。本工具只生成确认提案，不会直接写入。实例设置遵循 UI 的扁平语义：use_global_settings_overall 是唯一总开关；设置 Java/JVM/GC/内存/分辨率/游戏目录等实例字段时，若当前仍使用全局设置，工具会自动关闭该总开关。当前支持字段：use_global_settings_overall、java_id、java_path、custom_jvm_arguments、garbage_collector_mode、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、window_width、window_height、game_directory_mode、custom_game_directory_path。",
         new
         {
             type = "object",
             properties = new
             {
-                target_version_name = new { type = "string", description = "目标实例名，优先使用 get_instances 返回的 target_version_name。" },
-                target_version_path = new { type = "string", description = "可选。get_instances 返回的 version_directory_path；若提供，启动器会校验它与 target_version_name 是否一致。" },
+                target_version_name = new { type = "string", description = "目标实例名，优先使用 getInstances 返回的 target_version_name。" },
+                target_version_path = new { type = "string", description = "可选。getInstances 返回的 version_directory_path；若提供，启动器会校验它与 target_version_name 是否一致。" },
                 use_global_settings_overall = new { type = "boolean", description = "可选。对应 UI 的“使用全局设置”总开关。true 表示整套实例启动设置改为跟随全局；false 表示切到实例本地设置。" },
                 java_id = new { type = "string", description = "可选。checkJavaVersions 返回的 java_id，例如 java_2。设置该字段时，若当前仍使用全局设置，工具会自动关闭 use_global_settings_overall。" },
                 java_path = new { type = "string", description = "可选。实例 Java 的绝对路径。优先推荐使用 java_id。设置该字段时，若当前仍使用全局设置，工具会自动关闭 use_global_settings_overall。" },

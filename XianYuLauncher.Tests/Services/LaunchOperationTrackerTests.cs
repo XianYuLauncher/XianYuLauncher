@@ -15,7 +15,7 @@ public sealed class LaunchOperationTrackerTests
         snapshot!.State.Should().Be("launching");
         snapshot.StatusMessage.Should().Be("正在启动 1.21.10...");
         snapshot.IsTerminal.Should().BeFalse();
-        snapshot.OperationKind.Should().Be("launch_game");
+        snapshot.OperationKind.Should().Be("launchGame");
         snapshot.TaskName.Should().Be("启动 1.21.10");
         snapshot.VersionName.Should().Be("1.21.10");
     }

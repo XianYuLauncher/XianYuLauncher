@@ -637,7 +637,7 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             && !hasResolutionSettingsRequest
             && !hasGameDirectorySettingsRequest)
         {
-            return AgentToolExecutionResult.FromMessage("至少需要提供一个实例级变更字段，例如 use_global_settings_overall、java_id、java_path、custom_jvm_arguments、garbage_collector_mode、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、window_width、window_height、game_directory_mode 或 custom_game_directory_path。调用前建议先使用 get_instances、getVersionConfig 和 checkJavaVersions。");
+            return AgentToolExecutionResult.FromMessage("至少需要提供一个实例级变更字段，例如 use_global_settings_overall、java_id、java_path、custom_jvm_arguments、garbage_collector_mode、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、window_width、window_height、game_directory_mode 或 custom_game_directory_path。调用前建议先使用 getInstances、getVersionConfig 和 checkJavaVersions。");
         }
 
         if (effectiveRequestedUseGlobalSettingsOverall == true)
@@ -1183,7 +1183,7 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         var normalizedTargetVersionPath = NormalizeDirectoryPath(requestedTargetVersionPath);
         if (string.IsNullOrWhiteSpace(normalizedTargetVersionName) && string.IsNullOrWhiteSpace(normalizedTargetVersionPath))
         {
-            return ResolvedTargetVersion.CreateFailure("必须提供 target_version_name，或提供 target_version_path 让启动器推导目标实例。建议先调用 get_instances。");
+            return ResolvedTargetVersion.CreateFailure("必须提供 target_version_name，或提供 target_version_path 让启动器推导目标实例。建议先调用 getInstances。");
         }
 
         if (string.IsNullOrWhiteSpace(normalizedTargetVersionName) && !string.IsNullOrWhiteSpace(normalizedTargetVersionPath))
@@ -1198,21 +1198,21 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
                 Path.GetFileName(normalizedTargetVersionPath),
                 StringComparison.OrdinalIgnoreCase))
         {
-            return ResolvedTargetVersion.CreateFailure("target_version_name 与 target_version_path 指向的实例不一致。请优先使用 get_instances 返回的 target_version_name / version_directory_path。");
+            return ResolvedTargetVersion.CreateFailure("target_version_name 与 target_version_path 指向的实例不一致。请优先使用 getInstances 返回的 target_version_name / version_directory_path。");
         }
 
         var installedVersions = await _minecraftVersionService.GetInstalledVersionsAsync(currentMinecraftPath);
         cancellationToken.ThrowIfCancellationRequested();
         if (!installedVersions.Any(version => string.Equals(version, normalizedTargetVersionName, StringComparison.OrdinalIgnoreCase)))
         {
-            return ResolvedTargetVersion.CreateFailure($"目标实例 {normalizedTargetVersionName} 不存在，请先调用 get_instances 获取当前目录下的可用实例。");
+            return ResolvedTargetVersion.CreateFailure($"目标实例 {normalizedTargetVersionName} 不存在，请先调用 getInstances 获取当前目录下的可用实例。");
         }
 
         var resolvedTargetVersionPath = Path.Combine(currentMinecraftPath, MinecraftPathConsts.Versions, normalizedTargetVersionName!);
         if (!string.IsNullOrWhiteSpace(normalizedTargetVersionPath)
             && !PathEquals(normalizedTargetVersionPath, resolvedTargetVersionPath))
         {
-            return ResolvedTargetVersion.CreateFailure("target_version_path 必须来自当前活动目录下 get_instances 返回的 version_directory_path。");
+            return ResolvedTargetVersion.CreateFailure("target_version_path 必须来自当前活动目录下 getInstances 返回的 version_directory_path。");
         }
 
         if (!Directory.Exists(resolvedTargetVersionPath))
