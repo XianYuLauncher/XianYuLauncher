@@ -1,5 +1,6 @@
 using System.Text;
 using Newtonsoft.Json.Linq;
+using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
@@ -68,7 +69,7 @@ public sealed class GetVersionConfigToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "获取当前游戏版本的配置信息，包括 Minecraft 版本号、ModLoader 类型和版本、Java 路径、内存设置等",
+        "获取当前会话实例的版本配置快照，返回 JSON，包含 uses_global_settings_overall，以及 Java/JVM/GC/内存/分辨率/版本隔离的局部配置与 follows_global 状态。",
         new
         {
             type = "object",
@@ -89,13 +90,12 @@ public sealed class GetVersionConfigToolHandler : IAgentToolHandler
             var config = await _versionInfoService.GetFullVersionInfoAsync(context.VersionId, versionDirectory, preferCache: true);
             cancellationToken.ThrowIfCancellationRequested();
 
-            var sb = new StringBuilder();
-            sb.AppendLine($"版本 ID: {context.VersionId}");
-            sb.AppendLine($"Minecraft 版本: {config.MinecraftVersion}");
-            sb.AppendLine($"ModLoader: {config.ModLoaderType ?? "vanilla"} {config.ModLoaderVersion ?? string.Empty}");
-            sb.AppendLine($"Java 路径: {(string.IsNullOrEmpty(config.JavaPath) ? "使用全局设置" : config.JavaPath)}");
-            sb.AppendLine($"内存设置: 自动={config.AutoMemoryAllocation}, 初始={config.InitialHeapMemory}GB, 最大={config.MaximumHeapMemory}GB");
-            return AgentToolExecutionResult.FromMessage(sb.ToString());
+            return AgentToolExecutionResult.FromMessage(
+                AgentSettingsSnapshotJsonHelper.BuildVersionConfigSnapshotJson(
+                    context.VersionId,
+                    context.MinecraftPath,
+                    versionDirectory,
+                    config));
         }
         catch (Exception ex)
         {
@@ -107,17 +107,94 @@ public sealed class GetVersionConfigToolHandler : IAgentToolHandler
 public sealed class CheckJavaVersionsToolHandler : IAgentToolHandler
 {
     private readonly IJavaRuntimeService _javaRuntimeService;
+    private readonly IGameSettingsDomainService _gameSettingsDomainService;
 
-    public CheckJavaVersionsToolHandler(IJavaRuntimeService javaRuntimeService)
+    public CheckJavaVersionsToolHandler(
+        IJavaRuntimeService javaRuntimeService,
+        IGameSettingsDomainService gameSettingsDomainService)
     {
         _javaRuntimeService = javaRuntimeService;
+        _gameSettingsDomainService = gameSettingsDomainService;
     }
 
     public string ToolName => "checkJavaVersions";
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "列出本机已安装的所有 Java 版本，返回版本号和路径",
+        "列出启动器当前可见的 Java 版本清单。默认优先返回已缓存列表；refresh=true 时重新扫描。返回 JSON，包含 java_selection_mode、selected_java_path 和 java_versions。",
+        new
+        {
+            type = "object",
+            properties = new
+            {
+                refresh = new { type = "boolean", description = "可选。true 表示重新扫描本机 Java 版本；默认 false 优先读取已缓存列表。" }
+            },
+            required = Array.Empty<string>()
+        });
+
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ReadOnly;
+
+    public bool IsAvailable(ErrorAnalysisSessionContext context) => true;
+
+    public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var refresh = arguments["refresh"]?.Value<bool>()
+                ?? arguments["forceRefresh"]?.Value<bool>()
+                ?? false;
+            var selectionMode = await _gameSettingsDomainService.LoadJavaSelectionModeAsync();
+            var selectedJavaPath = NullIfWhiteSpace(await _gameSettingsDomainService.LoadJavaPathAsync());
+
+            IReadOnlyList<JavaVersion> javaVersions;
+            var cachedJavaVersions = refresh ? null : await _gameSettingsDomainService.LoadJavaVersionsAsync();
+            if (!refresh && cachedJavaVersions is { Count: > 0 })
+            {
+                javaVersions = cachedJavaVersions;
+            }
+            else
+            {
+                javaVersions = await _javaRuntimeService.DetectJavaVersionsAsync(refresh);
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            return AgentToolExecutionResult.FromMessage(
+                AgentSettingsSnapshotJsonHelper.BuildJavaVersionsSnapshotJson(
+                    refresh,
+                    selectionMode,
+                    selectedJavaPath,
+                    javaVersions,
+                    !refresh && cachedJavaVersions is { Count: > 0 }));
+        }
+        catch (Exception ex)
+        {
+            return AgentToolExecutionResult.FromMessage($"检测 Java 版本失败: {ex.Message}");
+        }
+    }
+
+    private static string? NullIfWhiteSpace(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+}
+
+public sealed class GetMinecraftPathsToolHandler : IAgentToolHandler
+{
+    private const string CurrentPathFallbackName = "当前活动目录";
+
+    private readonly IGameSettingsDomainService _gameSettingsDomainService;
+
+    public GetMinecraftPathsToolHandler(IGameSettingsDomainService gameSettingsDomainService)
+    {
+        _gameSettingsDomainService = gameSettingsDomainService;
+    }
+
+    public string ToolName => "getMinecraftPaths";
+
+    public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
+        ToolName,
+        "返回启动器已保存的 Minecraft 根目录列表和当前活动目录。结果包含短 ID，可供后续目录切换工具使用。",
         new
         {
             type = "object",
@@ -133,25 +210,16 @@ public sealed class CheckJavaVersionsToolHandler : IAgentToolHandler
     {
         try
         {
-            var javaVersions = await _javaRuntimeService.DetectJavaVersionsAsync(true);
+            var currentMinecraftPath = await _gameSettingsDomainService.ResolveCurrentMinecraftPathAsync();
+            var pathsJson = await _gameSettingsDomainService.LoadMinecraftPathsJsonAsync();
             cancellationToken.ThrowIfCancellationRequested();
-            if (javaVersions.Count == 0)
-            {
-                return AgentToolExecutionResult.FromMessage("未检测到任何已安装的 Java 版本。");
-            }
 
-            var sb = new StringBuilder();
-            sb.AppendLine($"检测到 {javaVersions.Count} 个 Java 版本：");
-            foreach (var javaVersion in javaVersions)
-            {
-                sb.AppendLine($"- Java {javaVersion.MajorVersion} ({javaVersion.FullVersion}) - {javaVersion.Path}");
-            }
-
-            return AgentToolExecutionResult.FromMessage(sb.ToString());
+            return AgentToolExecutionResult.FromMessage(
+                AgentSettingsSnapshotJsonHelper.BuildMinecraftPathsSnapshotJson(currentMinecraftPath, pathsJson));
         }
         catch (Exception ex)
         {
-            return AgentToolExecutionResult.FromMessage($"检测 Java 版本失败: {ex.Message}");
+            return AgentToolExecutionResult.FromMessage($"读取 Minecraft 目录列表失败: {ex.Message}");
         }
     }
 }
