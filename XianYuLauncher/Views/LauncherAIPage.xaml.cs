@@ -4,13 +4,13 @@ using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Views;
 
-public sealed partial class LauncherAiWindowPage : Page
+public sealed partial class LauncherAIPage : Page
 {
-    public LauncherAiViewModel ViewModel { get; }
+    public LauncherAIViewModel ViewModel { get; }
 
-    public LauncherAiWindowPage()
+    public LauncherAIPage()
     {
-        ViewModel = App.GetService<LauncherAiViewModel>();
+        ViewModel = App.GetService<LauncherAIViewModel>();
         InitializeComponent();
     }
 
@@ -18,5 +18,10 @@ public sealed partial class LauncherAiWindowPage : Page
     {
         base.OnNavigatedTo(e);
         _ = ViewModel.InitializeAsync();
+    }
+
+    private void PopOutButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+    {
+        LauncherAIWindow.ShowOrActivate();
     }
 }

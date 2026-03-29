@@ -876,7 +876,7 @@
                 </controls:SettingsExpander>
 
                 <!-- ==================== Launcher AI ==================== -->
-                <TextBlock x:Name="AiSectionHeader" Text="Launcher AI" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
+                <TextBlock x:Name="AISectionHeader" Text="Launcher AI" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,24,0,4" />
 
                 <!-- Launcher AI 设置 -->
                 <controls:SettingsExpander x:Uid="Settings_LauncherAI" Header="Launcher AI" Description="启用后可在启动器内使用第三方 AI 服务进行对话与问题处理" IsExpanded="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay}">
@@ -893,22 +893,22 @@
                         </controls:SettingsCard>
                         <controls:SettingsCard x:Uid="Settings_AI_ApiEndpoint" Header="API 端点" Description="OpenAI 兼容的 API 基础 URL"
                                                Visibility="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <TextBox Text="{x:Bind ViewModel.AiApiEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="https://api.openai.com" Width="300" />
+                            <TextBox Text="{x:Bind ViewModel.AIApiEndpoint, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="https://api.openai.com" Width="300" />
                         </controls:SettingsCard>
                         <controls:SettingsCard x:Uid="Settings_AI_ApiKey" Header="API 密钥" Description="您的 API 密钥"
                                                Visibility="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <PasswordBox Password="{x:Bind ViewModel.AiApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="sk-..." Width="300" />
+                            <PasswordBox Password="{x:Bind ViewModel.AIApiKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="sk-..." Width="300" />
                         </controls:SettingsCard>
                         <controls:SettingsCard x:Uid="Settings_AI_ModelName" Header="模型名称" Description="使用的 AI 模型"
                                                Visibility="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <TextBox Text="{x:Bind ViewModel.AiModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="gpt-3.5-turbo" Width="300" />
+                            <TextBox Text="{x:Bind ViewModel.AIModel, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" PlaceholderText="gpt-3.5-turbo" Width="300" />
                         </controls:SettingsCard>
                         <controls:SettingsCard x:Uid="Settings_AI_SystemPrompt" Header="系统提示" Description="留空则使用内置默认提示词"
                                                ContentAlignment="Vertical"
                                                HorizontalContentAlignment="Stretch"
                                                Visibility="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
                             <TextBox x:Uid="Settings_AI_SystemPromptTextBox"
-                                     Text="{x:Bind ViewModel.AiSystemPrompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     Text="{x:Bind ViewModel.AISystemPrompt, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                      PlaceholderText="留空则使用内置默认系统提示词"
                                      AcceptsReturn="True"
                                      TextWrapping="Wrap"

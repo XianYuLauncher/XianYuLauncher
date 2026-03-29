@@ -6,38 +6,38 @@ using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Controls;
 
-public sealed partial class LauncherAiWorkspacePanel : UserControl
+public sealed partial class LauncherAIWorkspacePanel : UserControl
 {
     public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register(
         nameof(ViewModel),
-        typeof(LauncherAiViewModel),
-        typeof(LauncherAiWorkspacePanel),
+        typeof(LauncherAIViewModel),
+        typeof(LauncherAIWorkspacePanel),
         new PropertyMetadata(null, OnViewModelChanged));
 
     public static readonly DependencyProperty EmptyPlaceholderTextProperty = DependencyProperty.Register(
         nameof(EmptyPlaceholderText),
         typeof(string),
-        typeof(LauncherAiWorkspacePanel),
+        typeof(LauncherAIWorkspacePanel),
         new PropertyMetadata(string.Empty, OnPresentationPropertyChanged));
 
     public static readonly DependencyProperty MessagesMaxHeightProperty = DependencyProperty.Register(
         nameof(MessagesMaxHeight),
         typeof(double),
-        typeof(LauncherAiWorkspacePanel),
+        typeof(LauncherAIWorkspacePanel),
         new PropertyMetadata(double.PositiveInfinity, OnPresentationPropertyChanged));
 
     private bool _isRefreshingTabs;
     private readonly Dictionary<Guid, TabViewItem> _tabItems = [];
 
-    public LauncherAiWorkspacePanel()
+    public LauncherAIWorkspacePanel()
     {
         InitializeComponent();
-        Unloaded += LauncherAiWorkspacePanel_Unloaded;
+        Unloaded += LauncherAIWorkspacePanel_Unloaded;
     }
 
-    public LauncherAiViewModel? ViewModel
+    public LauncherAIViewModel? ViewModel
     {
-        get => (LauncherAiViewModel?)GetValue(ViewModelProperty);
+        get => (LauncherAIViewModel?)GetValue(ViewModelProperty);
         set => SetValue(ViewModelProperty, value);
     }
 
@@ -61,26 +61,26 @@ public sealed partial class LauncherAiWorkspacePanel : UserControl
 
     private static void OnViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is not LauncherAiWorkspacePanel panel)
+        if (d is not LauncherAIWorkspacePanel panel)
         {
             return;
         }
 
-        panel.DetachViewModelHandlers(e.OldValue as LauncherAiViewModel);
-        panel.AttachViewModelHandlers(e.NewValue as LauncherAiViewModel);
+        panel.DetachViewModelHandlers(e.OldValue as LauncherAIViewModel);
+        panel.AttachViewModelHandlers(e.NewValue as LauncherAIViewModel);
         panel.UpdateChatPanel();
         panel.RebuildTabs();
     }
 
     private static void OnPresentationPropertyChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        if (d is LauncherAiWorkspacePanel panel)
+        if (d is LauncherAIWorkspacePanel panel)
         {
             panel.UpdateChatPanel();
         }
     }
 
-    private void AttachViewModelHandlers(LauncherAiViewModel? viewModel)
+    private void AttachViewModelHandlers(LauncherAIViewModel? viewModel)
     {
         if (viewModel == null)
         {
@@ -96,7 +96,7 @@ public sealed partial class LauncherAiWorkspacePanel : UserControl
         }
     }
 
-    private void DetachViewModelHandlers(LauncherAiViewModel? viewModel)
+    private void DetachViewModelHandlers(LauncherAIViewModel? viewModel)
     {
         if (viewModel == null)
         {
@@ -115,7 +115,7 @@ public sealed partial class LauncherAiWorkspacePanel : UserControl
         ConversationTabView?.TabItems.Clear();
     }
 
-    private void LauncherAiWorkspacePanel_Unloaded(object sender, RoutedEventArgs e)
+    private void LauncherAIWorkspacePanel_Unloaded(object sender, RoutedEventArgs e)
     {
         DetachViewModelHandlers(ViewModel);
     }
@@ -124,7 +124,7 @@ public sealed partial class LauncherAiWorkspacePanel : UserControl
     {
         if (e.OldItems != null)
         {
-            foreach (LauncherAiConversationTab conversation in e.OldItems)
+            foreach (LauncherAIConversationTab conversation in e.OldItems)
             {
                 conversation.PropertyChanged -= Conversation_PropertyChanged;
             }
@@ -132,7 +132,7 @@ public sealed partial class LauncherAiWorkspacePanel : UserControl
 
         if (e.NewItems != null)
         {
-            foreach (LauncherAiConversationTab conversation in e.NewItems)
+            foreach (LauncherAIConversationTab conversation in e.NewItems)
             {
                 conversation.PropertyChanged += Conversation_PropertyChanged;
             }
@@ -150,11 +150,11 @@ public sealed partial class LauncherAiWorkspacePanel : UserControl
             return;
         }
 
-        if (e.PropertyName == nameof(LauncherAiViewModel.SelectedConversation))
+        if (e.PropertyName == nameof(LauncherAIViewModel.SelectedConversation))
         {
             UpdateSelection();
         }
-        else if (e.PropertyName == nameof(LauncherAiViewModel.EmptyStateText))
+        else if (e.PropertyName == nameof(LauncherAIViewModel.EmptyStateText))
         {
             UpdateChatPanel();
         }
@@ -162,20 +162,20 @@ public sealed partial class LauncherAiWorkspacePanel : UserControl
 
     private void Conversation_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (sender is not LauncherAiConversationTab conversation
+        if (sender is not LauncherAIConversationTab conversation
             || !_tabItems.TryGetValue(conversation.Id, out var item))
         {
             return;
         }
 
         if (string.IsNullOrWhiteSpace(e.PropertyName)
-            || e.PropertyName == nameof(LauncherAiConversationTab.Title))
+            || e.PropertyName == nameof(LauncherAIConversationTab.Title))
         {
             item.Header = conversation.Title;
         }
 
         if (string.IsNullOrWhiteSpace(e.PropertyName)
-            || e.PropertyName == nameof(LauncherAiConversationTab.ToolTip))
+            || e.PropertyName == nameof(LauncherAIConversationTab.ToolTip))
         {
             ToolTipService.SetToolTip(item, conversation.ToolTip);
         }
@@ -318,7 +318,7 @@ public sealed partial class LauncherAiWorkspacePanel : UserControl
         var insertIndex = startIndex < 0 ? ConversationTabView.TabItems.Count : startIndex;
         for (var offset = 0; offset < newItems.Count; offset++)
         {
-            if (newItems[offset] is LauncherAiConversationTab conversation)
+            if (newItems[offset] is LauncherAIConversationTab conversation)
             {
                 AddTabItem(conversation, Math.Min(insertIndex + offset, ConversationTabView.TabItems.Count));
             }
@@ -334,7 +334,7 @@ public sealed partial class LauncherAiWorkspacePanel : UserControl
 
         foreach (var item in oldItems)
         {
-            if (item is LauncherAiConversationTab conversation)
+            if (item is LauncherAIConversationTab conversation)
             {
                 RemoveTabItem(conversation.Id);
             }
@@ -351,7 +351,7 @@ public sealed partial class LauncherAiWorkspacePanel : UserControl
         var targetIndex = newStartingIndex;
         foreach (var item in movedItems)
         {
-            if (item is not LauncherAiConversationTab conversation
+            if (item is not LauncherAIConversationTab conversation
                 || !_tabItems.TryGetValue(conversation.Id, out var tabItem))
             {
                 continue;
@@ -363,7 +363,7 @@ public sealed partial class LauncherAiWorkspacePanel : UserControl
         }
     }
 
-    private void AddTabItem(LauncherAiConversationTab conversation, int insertIndex)
+    private void AddTabItem(LauncherAIConversationTab conversation, int insertIndex)
     {
         if (ConversationTabView == null || _tabItems.ContainsKey(conversation.Id))
         {

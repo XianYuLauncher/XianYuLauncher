@@ -2791,16 +2791,16 @@ Continue downloading?</value>
   <data name="Settings_LauncherAI.Description" xml:space="preserve">
     <value>Enable Launcher AI for conversations and in-app problem solving through a third-party AI service</value>
   </data>
-  <data name="LauncherAiPage_Title.Text" xml:space="preserve">
+  <data name="LauncherAIPage_Title.Text" xml:space="preserve">
     <value>Launcher AI</value>
   </data>
-  <data name="LauncherAiPage_Subtitle.Text" xml:space="preserve">
+  <data name="LauncherAIPage_Subtitle.Text" xml:space="preserve">
     <value>Talk to the launcher agent to handle launches, versions, mods, and troubleshooting tasks.</value>
   </data>
-  <data name="LauncherAiPage_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
+  <data name="LauncherAIPage_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>Open in a separate window</value>
   </data>
-  <data name="LauncherAiPanel_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
+  <data name="LauncherAIPanel_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>Open in a separate window</value>
   </data>
   <data name="ErrorAnalysisChatPanel_AddImageButton.ToolTipService.ToolTip" xml:space="preserve">

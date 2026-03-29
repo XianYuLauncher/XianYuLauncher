@@ -26,7 +26,7 @@ internal static class MiscServiceExtensions
         services.AddSingleton<IAnnouncementService, AnnouncementService>();
         services.AddSingleton<LaunchNewsCardService>();
 
-        services.AddSingleton<IAIAnalysisService, OpenAiAnalysisService>();
+        services.AddSingleton<IAIAnalysisService, OpenAIAnalysisService>();
 
         services.AddSingleton<IAfdianService, LocalAfdianService>();
 

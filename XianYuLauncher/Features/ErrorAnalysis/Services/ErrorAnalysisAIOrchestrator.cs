@@ -12,7 +12,7 @@ using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 
-public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
+public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
 {
     private const int MaxToolCallRounds = 8;
     private const int MaxHistoricalToolTraceChars = 10000;
@@ -21,19 +21,19 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     private readonly ILogSanitizerService _logSanitizerService;
     private readonly IErrorAnalysisSessionContextQueryService _sessionContextQueryService;
     private readonly IAIAnalysisService _aiAnalysisService;
-    private readonly IAiSettingsDomainService _aiSettingsDomainService;
+    private readonly IAISettingsDomainService _aiSettingsDomainService;
     private readonly ICrashAnalyzer _crashAnalyzer;
     private readonly IAgentActionExecutor _actionExecutor;
     private readonly IAgentToolDispatcher _toolDispatcher;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly ErrorAnalysisSessionState _sessionState;
 
-    public ErrorAnalysisAiOrchestrator(
+    public ErrorAnalysisAIOrchestrator(
         ILanguageSelectorService languageSelectorService,
         ILogSanitizerService logSanitizerService,
         IErrorAnalysisSessionContextQueryService sessionContextQueryService,
         IAIAnalysisService aiAnalysisService,
-        IAiSettingsDomainService aiSettingsDomainService,
+        IAISettingsDomainService aiSettingsDomainService,
         ICrashAnalyzer crashAnalyzer,
         IAgentActionExecutor actionExecutor,
         IAgentToolDispatcher toolDispatcher,
@@ -70,7 +70,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                     _sessionState.ChatMessages.Clear();
                 }
 
-                _sessionState.AiAnalysisResult = "正在分析崩溃原因...\n\n";
+                _sessionState.AIAnalysisResult = "正在分析崩溃原因...\n\n";
                 _sessionState.ResetFixActions();
                 _sessionState.ClearPendingToolContinuation();
             });
@@ -80,7 +80,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             var settings = await _aiSettingsDomainService.LoadAsync();
             if (settings.IsEnabled)
             {
-                await AnalyzeWithExternalAiAsync(settings, cancellationToken);
+                await AnalyzeWithExternalAIAsync(settings, cancellationToken);
                 return;
             }
 
@@ -100,7 +100,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                     _sessionState.ChatMessages.Add(new UiChatMessage("assistant", $"\n\n{msg}"));
                 }
 
-                _sessionState.AiAnalysisResult += $"\n\n{msg}";
+                _sessionState.AIAnalysisResult += $"\n\n{msg}";
             });
         }
     }
@@ -185,8 +185,8 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             cancellationToken);
     }
 
-    private async Task AnalyzeWithExternalAiAsync(
-        AiSettingsState settings,
+    private async Task AnalyzeWithExternalAIAsync(
+        AISettingsState settings,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(settings.ApiKey))
@@ -195,7 +195,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             {
                 const string msg = "未配置 API Key，无法进行 AI 分析。";
                 _sessionState.ChatMessages.Add(new UiChatMessage("assistant", msg));
-                _sessionState.AiAnalysisResult = msg;
+                _sessionState.AIAnalysisResult = msg;
             });
             return;
         }
@@ -204,7 +204,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
-            _sessionState.AiAnalysisResult = "正在进行外部 AI 分析...\n\n";
+            _sessionState.AIAnalysisResult = "正在进行外部 AI 分析...\n\n";
             _sessionState.ResetFixActions();
             _sessionState.ClearPendingToolContinuation();
             _sessionState.ChatMessages.Add(new UiChatMessage("user", crashPrompt));
@@ -266,7 +266,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                     AppendAssistantMessageContent(lastMsg, text);
                     if (_sessionState.ChatMessages.Count <= 2)
                     {
-                        _sessionState.AiAnalysisResult = lastMsg.Content;
+                        _sessionState.AIAnalysisResult = lastMsg.Content;
                     }
                 });
             }
@@ -286,7 +286,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                 AppendAssistantMessageContent(lastMsg, remaining);
                 if (_sessionState.ChatMessages.Count <= 2)
                 {
-                    _sessionState.AiAnalysisResult = lastMsg.Content;
+                    _sessionState.AIAnalysisResult = lastMsg.Content;
                 }
             });
         }
@@ -310,12 +310,12 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     }
 
     private async Task StreamResponseToLastMessageAsync(
-        AiSettingsState settings,
+        AISettingsState settings,
         CancellationToken cancellationToken,
         List<ChatMessage>? initialApiMessages = null,
         bool hasRetriedWithoutImages = false)
     {
-        var apiMessages = initialApiMessages ?? await BuildApiMessagesAsync();
+        var apiMessages = initialApiMessages ?? await BuildApiMessagesAsync(cancellationToken);
         var tools = _toolDispatcher.GetAvailableTools();
         try
         {
@@ -367,7 +367,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                                 AppendAssistantMessageContent(lastMsg, textToAppend);
                                 if (_sessionState.ChatMessages.Count <= 3)
                                 {
-                                    _sessionState.AiAnalysisResult = lastMsg.Content;
+                                    _sessionState.AIAnalysisResult = lastMsg.Content;
                                 }
                             });
                         }
@@ -398,7 +398,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                         AppendAssistantMessageContent(lastMsg, finalText);
                         if (_sessionState.ChatMessages.Count <= 3)
                         {
-                            _sessionState.AiAnalysisResult = lastMsg.Content;
+                            _sessionState.AIAnalysisResult = lastMsg.Content;
                         }
                     });
                 }
@@ -426,7 +426,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                     }
 
                     lastAssistant.ToolCalls = CloneToolCalls(pendingToolCalls);
-                    lastAssistant.AiHistoryContent = string.IsNullOrWhiteSpace(lastAssistant.Content) ? null : lastAssistant.Content;
+                    lastAssistant.AIHistoryContent = string.IsNullOrWhiteSpace(lastAssistant.Content) ? null : lastAssistant.Content;
                 });
 
                 List<AgentActionProposal> actionProposals = [];
@@ -442,7 +442,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                         toolUiMessage = new UiChatMessage("tool", toolCall.FunctionName)
                         {
                             ToolCallId = toolCall.Id,
-                            AiHistoryContent = string.Empty
+                            AIHistoryContent = string.Empty
                         };
                         _sessionState.ChatMessages.Add(toolUiMessage);
                     });
@@ -452,7 +452,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                     {
                         if (toolUiMessage != null)
                         {
-                            toolUiMessage.AiHistoryContent = result.Message;
+                            toolUiMessage.AIHistoryContent = result.Message;
                         }
                     });
 
@@ -636,7 +636,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         await StreamResponseToLastMessageAsync(settings, cancellationToken, pendingContinuation.ApiMessages);
     }
 
-    private async Task<List<ChatMessage>> BuildApiMessagesAsync()
+    private async Task<List<ChatMessage>> BuildApiMessagesAsync(CancellationToken cancellationToken)
     {
         List<ChatMessage> apiMessages = [];
         string languageForAi = _languageSelectorService.Language == "zh-CN" ? "Simplified Chinese" : "English";
@@ -649,7 +649,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             var historyMessages = _sessionState.ChatMessages
                 .Take(count)
                 .Where(msg => msg.Role != "system"
-                    && (msg.IncludeInAiHistory
+                    && (msg.IncludeInAIHistory
                         || msg.IsTool
                         || (msg.IsAssistant && msg.ToolCalls != null && msg.ToolCalls.Count > 0)))
                 .ToList();
@@ -664,7 +664,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                 {
                     if (msg.IsAssistant && msg.ToolCalls != null && msg.ToolCalls.Count > 0)
                     {
-                        var preservedContent = string.IsNullOrWhiteSpace(msg.AiHistoryContent) ? null : msg.AiHistoryContent;
+                        var preservedContent = string.IsNullOrWhiteSpace(msg.AIHistoryContent) ? null : msg.AIHistoryContent;
                         if (!string.IsNullOrWhiteSpace(preservedContent))
                         {
                             apiMessages.Add(new ChatMessage("assistant", preservedContent));
@@ -676,7 +676,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
                 if (msg.IsAssistant && msg.ToolCalls != null && msg.ToolCalls.Count > 0)
                 {
-                    var content = string.IsNullOrWhiteSpace(msg.AiHistoryContent) ? null : msg.AiHistoryContent;
+                    var content = string.IsNullOrWhiteSpace(msg.AIHistoryContent) ? null : msg.AIHistoryContent;
                     var clonedToolCalls = CloneToolCalls(msg.ToolCalls) ?? [];
                     apiMessages.Add(new ChatMessage("assistant", content, clonedToolCalls));
 
@@ -692,7 +692,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                 }
 
                 var historyContent = GetMessageHistoryContent(msg);
-                var historyAttachments = CloneImageAttachments(msg.AiHistoryImageAttachments ?? msg.ImageAttachments);
+                var historyAttachments = CloneImageAttachments(msg.AIHistoryImageAttachments ?? msg.ImageAttachments);
 
                 if (msg.IsTool)
                 {
@@ -702,7 +702,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                         continue;
                     }
 
-                    var toolResultContent = msg.AiHistoryContent ?? msg.Content ?? string.Empty;
+                    var toolResultContent = msg.AIHistoryContent ?? msg.Content ?? string.Empty;
                     apiMessages.Add(ChatMessage.ToolResult(msg.ToolCallId, toolResultContent));
                     validToolCallIds.Remove(msg.ToolCallId);
                     continue;
@@ -722,7 +722,62 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             }
         });
 
+        await EnsureImageDataUrlsAsync(apiMessages, cancellationToken);
+
         return apiMessages;
+    }
+
+    private static async Task EnsureImageDataUrlsAsync(IEnumerable<ChatMessage> apiMessages, CancellationToken cancellationToken)
+    {
+        foreach (var message in apiMessages)
+        {
+            if (message.ImageAttachments == null || message.ImageAttachments.Count == 0)
+            {
+                continue;
+            }
+
+            foreach (var attachment in message.ImageAttachments)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (!string.IsNullOrWhiteSpace(attachment.DataUrl)
+                    || string.IsNullOrWhiteSpace(attachment.FilePath)
+                    || !File.Exists(attachment.FilePath))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var bytes = await File.ReadAllBytesAsync(attachment.FilePath, cancellationToken);
+                    var contentType = string.IsNullOrWhiteSpace(attachment.ContentType)
+                        ? GetImageContentTypeFromPath(attachment.FilePath)
+                        : attachment.ContentType;
+                    attachment.ContentType = contentType;
+                    attachment.DataUrl = $"data:{contentType};base64,{Convert.ToBase64String(bytes)}";
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LauncherAIPersistence] 读取图片附件失败: {attachment.FilePath}, {ex.Message}");
+                }
+            }
+        }
+    }
+
+    private static string GetImageContentTypeFromPath(string filePath)
+    {
+        return Path.GetExtension(filePath).ToLowerInvariant() switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".webp" => "image/webp",
+            ".gif" => "image/gif",
+            ".bmp" => "image/bmp",
+            _ => "image/png"
+        };
     }
 
     private static HashSet<int> GetTrimmedToolTraceMessageIndices(IReadOnlyList<UiChatMessage> historyMessages)
@@ -792,7 +847,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
     private static int GetToolHistoryContentLength(UiChatMessage message)
     {
-        return (message.AiHistoryContent ?? message.Content ?? string.Empty).Length;
+        return (message.AIHistoryContent ?? message.Content ?? string.Empty).Length;
     }
 
     private async Task AppendStandaloneActionResultAsync(string actionResult)
@@ -809,7 +864,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             _sessionState.ChatMessages.Add(new UiChatMessage("assistant", displayMessage));
             if (_sessionState.ChatMessages.Count <= 3)
             {
-                _sessionState.AiAnalysisResult = displayMessage;
+                _sessionState.AIAnalysisResult = displayMessage;
             }
         });
     }
@@ -831,11 +886,11 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             ? "已创建待确认操作，等待用户确认。"
             : pendingActionMessage;
         lastMessage.SuppressContentRendering = true;
-        lastMessage.IncludeInAiHistory = false;
+        lastMessage.IncludeInAIHistory = false;
 
         if (_sessionState.ChatMessages.Count <= 3)
         {
-            _sessionState.AiAnalysisResult = lastMessage.Content;
+            _sessionState.AIAnalysisResult = lastMessage.Content;
         }
     }
 
@@ -1038,11 +1093,11 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         {
             foreach (var message in _sessionState.ChatMessages.Where(message => message.IsUser && message.HasImageAttachments))
             {
-                message.AiHistoryImageAttachments = [];
+                message.AIHistoryImageAttachments = [];
             }
 
             var latestUserMessage = _sessionState.ChatMessages.LastOrDefault(message => message.IsUser);
-            var latestUserText = latestUserMessage?.AiHistoryContent ?? latestUserMessage?.Content;
+            var latestUserText = latestUserMessage?.AIHistoryContent ?? latestUserMessage?.Content;
             canRetry = !string.IsNullOrWhiteSpace(latestUserText);
 
             var lastAssistant = GetLastAssistantMessage();
@@ -1052,8 +1107,8 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                         ? "ErrorAnalysis_ImageFallbackRetryText"
                         : "ErrorAnalysis_ImageFallbackRequiresUserText")
                     .GetLocalized();
-                lastAssistant.IncludeInAiHistory = false;
-                lastAssistant.AiHistoryContent = null;
+                lastAssistant.IncludeInAIHistory = false;
+                lastAssistant.AIHistoryContent = null;
             }
 
             if (canRetry)
@@ -1151,7 +1206,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
             if (_sessionState.ChatMessages.Count <= 3)
             {
-                _sessionState.AiAnalysisResult = lastAssistant.Content;
+                _sessionState.AIAnalysisResult = lastAssistant.Content;
             }
         });
     }
@@ -1163,14 +1218,14 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             return message.Content ?? string.Empty;
         }
 
-        return message.AiHistoryContent ?? message.Content ?? string.Empty;
+        return message.AIHistoryContent ?? message.Content ?? string.Empty;
     }
 
     private static void SetAssistantMessageContent(UiChatMessage message, string content)
     {
         message.Content = content;
 
-        if (!message.IncludeInAiHistory)
+        if (!message.IncludeInAIHistory)
         {
             return;
         }
@@ -1180,7 +1235,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             return;
         }
 
-        message.AiHistoryContent = content;
+        message.AIHistoryContent = content;
     }
 
     private static void AppendAssistantMessageContent(UiChatMessage message, string content)
@@ -1188,7 +1243,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         SetAssistantMessageContent(message, (message.Content ?? string.Empty) + content);
     }
 
-    private static string BuildSystemPrompt(AiSettingsState settings, string language)
+    private static string BuildSystemPrompt(AISettingsState settings, string language)
     {
         return string.IsNullOrWhiteSpace(settings.SystemPrompt)
             ? BuildDefaultFunctionCallingSystemPrompt(language)

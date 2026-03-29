@@ -3,11 +3,17 @@ using XianYuLauncher.Features.ErrorAnalysis.Models;
 
 namespace XianYuLauncher.ViewModels;
 
-public sealed partial class LauncherAiConversationTab : ObservableObject
+public sealed partial class LauncherAIConversationTab : ObservableObject
 {
     public Guid Id { get; init; }
 
     public bool IsErrorAnalysisConversation { get; init; }
+
+    public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+
+    public DateTimeOffset LastUpdatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+
+    public LauncherAIConversationInterruptionStorageModel? Interruption { get; set; }
 
     [ObservableProperty]
     private string _title = string.Empty;

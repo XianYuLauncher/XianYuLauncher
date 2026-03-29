@@ -4,7 +4,7 @@ using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Services.Settings;
 
-public class AiSettingsDomainService : IAiSettingsDomainService
+public class AISettingsDomainService : IAISettingsDomainService
 {
     private const string EnableAIAnalysisKey = "EnableAIAnalysis";
     private const string AIApiEndpointKey = "AIApiEndpoint";
@@ -18,12 +18,12 @@ public class AiSettingsDomainService : IAiSettingsDomainService
 
     public event EventHandler<bool>? EnabledChanged;
 
-    public AiSettingsDomainService(ISettingsRepository settingsRepository)
+    public AISettingsDomainService(ISettingsRepository settingsRepository)
     {
         _settingsRepository = settingsRepository;
     }
 
-    public async Task<AiSettingsState> LoadAsync()
+    public async Task<AISettingsState> LoadAsync()
     {
         var endpoint = await _settingsRepository.ReadAsync<string>(AIApiEndpointKey) ?? "https://api.openai.com";
         var model = await _settingsRepository.ReadAsync<string>(AIModelKey) ?? "gpt-3.5-turbo";
@@ -47,7 +47,7 @@ public class AiSettingsDomainService : IAiSettingsDomainService
             }
         }
 
-        return new AiSettingsState
+        return new AISettingsState
         {
             IsEnabled = isEnabled,
             ApiEndpoint = endpoint,

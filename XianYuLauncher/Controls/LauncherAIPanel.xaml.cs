@@ -4,57 +4,57 @@ using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Controls;
 
-public sealed partial class LauncherAiPanel : UserControl
+public sealed partial class LauncherAIPanel : UserControl
 {
     public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register(
         nameof(ViewModel),
         typeof(ErrorAnalysisViewModel),
-        typeof(LauncherAiPanel),
+        typeof(LauncherAIPanel),
         new PropertyMetadata(null));
 
     public static readonly DependencyProperty SectionTitleProperty = DependencyProperty.Register(
         nameof(SectionTitle),
         typeof(string),
-        typeof(LauncherAiPanel),
+        typeof(LauncherAIPanel),
         new PropertyMetadata(string.Empty));
 
     public static readonly DependencyProperty ShowEmptyPlaceholderProperty = DependencyProperty.Register(
         nameof(ShowEmptyPlaceholder),
         typeof(bool),
-        typeof(LauncherAiPanel),
+        typeof(LauncherAIPanel),
         new PropertyMetadata(false));
 
     public static readonly DependencyProperty EmptyPlaceholderTextProperty = DependencyProperty.Register(
         nameof(EmptyPlaceholderText),
         typeof(string),
-        typeof(LauncherAiPanel),
+        typeof(LauncherAIPanel),
         new PropertyMetadata(string.Empty));
 
     public static readonly DependencyProperty MessagesMaxHeightProperty = DependencyProperty.Register(
         nameof(MessagesMaxHeight),
         typeof(double),
-        typeof(LauncherAiPanel),
+        typeof(LauncherAIPanel),
         new PropertyMetadata(double.PositiveInfinity));
 
     public static readonly DependencyProperty PopOutButtonVisibilityProperty = DependencyProperty.Register(
         nameof(PopOutButtonVisibility),
         typeof(Visibility),
-        typeof(LauncherAiPanel),
+        typeof(LauncherAIPanel),
         new PropertyMetadata(Visibility.Visible));
 
     public static readonly DependencyProperty HeaderVisibilityProperty = DependencyProperty.Register(
         nameof(HeaderVisibility),
         typeof(Visibility),
-        typeof(LauncherAiPanel),
+        typeof(LauncherAIPanel),
         new PropertyMetadata(Visibility.Visible));
 
     public static readonly DependencyProperty IsComposerEnabledProperty = DependencyProperty.Register(
         nameof(IsComposerEnabled),
         typeof(bool),
-        typeof(LauncherAiPanel),
+        typeof(LauncherAIPanel),
         new PropertyMetadata(true));
 
-    public LauncherAiPanel()
+    public LauncherAIPanel()
     {
         InitializeComponent();
     }

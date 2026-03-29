@@ -186,7 +186,7 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
         }
 
         if (e.PropertyName == nameof(ErrorAnalysisViewModel.CanComposeChat)
-            || e.PropertyName == nameof(ErrorAnalysisViewModel.IsAiAnalyzing))
+            || e.PropertyName == nameof(ErrorAnalysisViewModel.IsAIAnalyzing))
         {
             UpdateComposerState();
         }
