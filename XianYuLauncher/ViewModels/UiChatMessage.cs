@@ -14,7 +14,7 @@ namespace XianYuLauncher.ViewModels
         private string _content = string.Empty;
 
         [ObservableProperty]
-        private bool _includeInAiHistory = true;
+        private bool _includeInAIHistory = true;
 
         [ObservableProperty]
         private bool _showRoleHeader = true;
@@ -23,7 +23,7 @@ namespace XianYuLauncher.ViewModels
         private string _displayRoleText = string.Empty;
 
         [ObservableProperty]
-        private string? _aiHistoryContent;
+        private string? _aIHistoryContent;
 
         [ObservableProperty]
         private string? _toolCallId;
@@ -35,7 +35,7 @@ namespace XianYuLauncher.ViewModels
         private List<ChatImageAttachment> _imageAttachments = [];
 
         [ObservableProperty]
-        private List<ChatImageAttachment>? _aiHistoryImageAttachments;
+        private List<ChatImageAttachment>? _aIHistoryImageAttachments;
 
         [ObservableProperty]
         private bool _suppressContentRendering;
@@ -48,15 +48,15 @@ namespace XianYuLauncher.ViewModels
         public bool ShowAssistantText => IsAssistant && !SuppressContentRendering && !string.IsNullOrWhiteSpace(Content);
         public bool ShouldShowMessageContainer => ShowUserText || HasImageAttachments || ShowAssistantText || IsTool;
         
-        public UiChatMessage(string role, string content, bool includeInAiHistory = true, IEnumerable<ChatImageAttachment>? imageAttachments = null)
+        public UiChatMessage(string role, string content, bool includeInAIHistory = true, IEnumerable<ChatImageAttachment>? imageAttachments = null)
         {
             Role = role;
             Content = content;
-            IncludeInAiHistory = includeInAiHistory;
+            IncludeInAIHistory = includeInAIHistory;
             DisplayRoleText = role;
-            AiHistoryContent = content;
+            AIHistoryContent = content;
             ImageAttachments = CloneImageAttachments(imageAttachments);
-            AiHistoryImageAttachments = CloneImageAttachments(ImageAttachments);
+            AIHistoryImageAttachments = CloneImageAttachments(ImageAttachments);
         }
 
         partial void OnContentChanged(string value)

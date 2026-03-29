@@ -362,7 +362,7 @@ public sealed class SearchModrinthProjectActionHandler : IAgentActionHandler
     {
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
-            _sessionState.AiAnalysisResult += $"\n\n{message}";
+            _sessionState.AIAnalysisResult += $"\n\n{message}";
         });
     }
 
@@ -472,7 +472,7 @@ public sealed class DeleteModActionHandler : IAgentActionHandler
     {
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
-            _sessionState.AiAnalysisResult += $"\n\n{message}";
+            _sessionState.AIAnalysisResult += $"\n\n{message}";
         });
     }
 }
@@ -570,7 +570,7 @@ public sealed class ToggleModActionHandler : IAgentActionHandler
     {
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
-            _sessionState.AiAnalysisResult += $"\n\n{message}";
+            _sessionState.AIAnalysisResult += $"\n\n{message}";
         });
     }
 }
@@ -662,7 +662,7 @@ public sealed class SwitchJavaForVersionActionHandler : IAgentActionHandler
     {
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
-            _sessionState.AiAnalysisResult += $"\n\n{message}";
+            _sessionState.AIAnalysisResult += $"\n\n{message}";
         });
     }
 }

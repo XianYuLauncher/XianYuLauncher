@@ -1,6 +1,6 @@
 namespace XianYuLauncher.Core.Models;
 
-public sealed class LauncherAiWorkspaceStorageModel
+public sealed class LauncherAIWorkspaceStorageModel
 {
     public const int CurrentSchemaVersion = 1;
 
@@ -12,10 +12,10 @@ public sealed class LauncherAiWorkspaceStorageModel
 
     public int NextConversationNumber { get; init; } = 1;
 
-    public List<LauncherAiConversationIndexEntryStorageModel> Conversations { get; init; } = [];
+    public List<LauncherAIConversationIndexEntryStorageModel> Conversations { get; init; } = [];
 }
 
-public sealed class LauncherAiConversationIndexEntryStorageModel
+public sealed class LauncherAIConversationIndexEntryStorageModel
 {
     public Guid ConversationId { get; init; }
 
@@ -26,9 +26,9 @@ public sealed class LauncherAiConversationIndexEntryStorageModel
     public DateTimeOffset LastUpdatedAtUtc { get; init; }
 }
 
-public sealed class LauncherAiConversationStorageModel
+public sealed class LauncherAIConversationStorageModel
 {
-    public int SchemaVersion { get; init; } = LauncherAiWorkspaceStorageModel.CurrentSchemaVersion;
+    public int SchemaVersion { get; init; } = LauncherAIWorkspaceStorageModel.CurrentSchemaVersion;
 
     public Guid ConversationId { get; init; }
 
@@ -42,12 +42,12 @@ public sealed class LauncherAiConversationStorageModel
 
     public DateTimeOffset LastUpdatedAtUtc { get; init; }
 
-    public LauncherAiConversationInterruptionStorageModel? Interruption { get; init; }
+    public LauncherAIConversationInterruptionStorageModel? Interruption { get; init; }
 
-    public LauncherAiSessionStorageModel Session { get; init; } = new();
+    public LauncherAISessionStorageModel Session { get; init; } = new();
 }
 
-public sealed class LauncherAiConversationInterruptionStorageModel
+public sealed class LauncherAIConversationInterruptionStorageModel
 {
     public string Kind { get; init; } = string.Empty;
 
@@ -56,45 +56,45 @@ public sealed class LauncherAiConversationInterruptionStorageModel
     public string? Message { get; init; }
 }
 
-public sealed class LauncherAiSessionStorageModel
+public sealed class LauncherAISessionStorageModel
 {
     public string ChatInput { get; init; } = string.Empty;
 
     public bool IsChatEnabled { get; init; }
 
-    public List<LauncherAiAttachmentStorageModel> PendingImageAttachments { get; init; } = [];
+    public List<LauncherAIAttachmentStorageModel> PendingImageAttachments { get; init; } = [];
 
-    public List<LauncherAiChatMessageStorageModel> ChatMessages { get; init; } = [];
+    public List<LauncherAIChatMessageStorageModel> ChatMessages { get; init; } = [];
 
-    public List<LauncherAiActionProposalStorageModel> ActionProposals { get; init; } = [];
+    public List<LauncherAIActionProposalStorageModel> ActionProposals { get; init; } = [];
 }
 
-public sealed class LauncherAiChatMessageStorageModel
+public sealed class LauncherAIChatMessageStorageModel
 {
     public string Role { get; init; } = string.Empty;
 
     public string Content { get; init; } = string.Empty;
 
-    public bool IncludeInAiHistory { get; init; } = true;
+    public bool IncludeInAIHistory { get; init; } = true;
 
     public bool ShowRoleHeader { get; init; } = true;
 
     public string DisplayRoleText { get; init; } = string.Empty;
 
-    public string? AiHistoryContent { get; init; }
+    public string? AIHistoryContent { get; init; }
 
     public string? ToolCallId { get; init; }
 
     public List<ToolCallInfo>? ToolCalls { get; init; }
 
-    public List<LauncherAiAttachmentStorageModel> ImageAttachments { get; init; } = [];
+    public List<LauncherAIAttachmentStorageModel> ImageAttachments { get; init; } = [];
 
-    public List<LauncherAiAttachmentStorageModel>? AiHistoryImageAttachments { get; init; }
+    public List<LauncherAIAttachmentStorageModel>? AIHistoryImageAttachments { get; init; }
 
     public bool SuppressContentRendering { get; init; }
 }
 
-public sealed class LauncherAiAttachmentStorageModel
+public sealed class LauncherAIAttachmentStorageModel
 {
     public string FileName { get; init; } = string.Empty;
 
@@ -103,7 +103,7 @@ public sealed class LauncherAiAttachmentStorageModel
     public string ContentType { get; init; } = "image/png";
 }
 
-public sealed class LauncherAiActionProposalStorageModel
+public sealed class LauncherAIActionProposalStorageModel
 {
     public string ActionType { get; init; } = string.Empty;
 

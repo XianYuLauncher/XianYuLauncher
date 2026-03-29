@@ -80,7 +80,7 @@
         </Grid>
         
         <!-- 错误分析区域 -->
-        <controls:LauncherAiPanel
+        <controls:LauncherAIPanel
             Grid.Row="3"
             Margin="16,16,16,16"
             x:Uid="ErrorAnalysis_AiPanel"

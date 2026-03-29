@@ -5,39 +5,39 @@ using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services;
 
-public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspacePersistenceService
+public sealed class LauncherAIWorkspacePersistenceService : ILauncherAIWorkspacePersistenceService
 {
     private readonly IFileService _fileService;
-    private readonly ILogger<LauncherAiWorkspacePersistenceService> _logger;
+    private readonly ILogger<LauncherAIWorkspacePersistenceService> _logger;
     private readonly Lock _attachmentMapLock = new();
-    private readonly Dictionary<string, LauncherAiAttachmentStorageModel> _attachmentSourceMap = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, LauncherAIAttachmentStorageModel> _attachmentSourceMap = new(StringComparer.OrdinalIgnoreCase);
 
     private readonly string _workspaceRootPath;
     private readonly string _conversationsPath;
     private readonly string _attachmentsPath;
 
-    public LauncherAiWorkspacePersistenceService(
+    public LauncherAIWorkspacePersistenceService(
         IFileService fileService,
-        ILogger<LauncherAiWorkspacePersistenceService> logger,
+        ILogger<LauncherAIWorkspacePersistenceService> logger,
         string? workspaceRootPath = null)
     {
         _fileService = fileService;
         _logger = logger;
         _workspaceRootPath = string.IsNullOrWhiteSpace(workspaceRootPath)
-            ? Path.Combine(AppEnvironment.SafeAppDataPath, AppDataFileConsts.LauncherAiFolder)
+            ? Path.Combine(AppEnvironment.SafeAppDataPath, AppDataFileConsts.LauncherAIFolder)
             : workspaceRootPath;
-        _conversationsPath = Path.Combine(_workspaceRootPath, AppDataFileConsts.LauncherAiConversationsFolder);
-        _attachmentsPath = Path.Combine(_workspaceRootPath, AppDataFileConsts.LauncherAiAttachmentsFolder);
+        _conversationsPath = Path.Combine(_workspaceRootPath, AppDataFileConsts.LauncherAIConversationsFolder);
+        _attachmentsPath = Path.Combine(_workspaceRootPath, AppDataFileConsts.LauncherAIAttachmentsFolder);
     }
 
-    public Task<LauncherAiWorkspaceStorageModel?> LoadWorkspaceAsync(CancellationToken cancellationToken = default)
+    public Task<LauncherAIWorkspaceStorageModel?> LoadWorkspaceAsync(CancellationToken cancellationToken = default)
     {
         return Task.Run(() =>
         {
             try
             {
                 EnsureWorkspaceDirectories();
-                return _fileService.Read<LauncherAiWorkspaceStorageModel>(_workspaceRootPath, AppDataFileConsts.LauncherAiWorkspaceJson);
+                return _fileService.Read<LauncherAIWorkspaceStorageModel>(_workspaceRootPath, AppDataFileConsts.LauncherAIWorkspaceJson);
             }
             catch (Exception ex)
             {
@@ -47,25 +47,25 @@ public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspace
         }, cancellationToken);
     }
 
-    public Task SaveWorkspaceAsync(LauncherAiWorkspaceStorageModel workspace, CancellationToken cancellationToken = default)
+    public Task SaveWorkspaceAsync(LauncherAIWorkspaceStorageModel workspace, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(workspace);
 
         return Task.Run(() =>
         {
             EnsureWorkspaceDirectories();
-            _fileService.Save(_workspaceRootPath, AppDataFileConsts.LauncherAiWorkspaceJson, workspace);
+            _fileService.Save(_workspaceRootPath, AppDataFileConsts.LauncherAIWorkspaceJson, workspace);
         }, cancellationToken);
     }
 
-    public Task<LauncherAiConversationStorageModel?> LoadConversationAsync(Guid conversationId, CancellationToken cancellationToken = default)
+    public Task<LauncherAIConversationStorageModel?> LoadConversationAsync(Guid conversationId, CancellationToken cancellationToken = default)
     {
         return Task.Run(() =>
         {
             try
             {
                 EnsureWorkspaceDirectories();
-                return _fileService.Read<LauncherAiConversationStorageModel>(_conversationsPath, GetConversationFileName(conversationId));
+                return _fileService.Read<LauncherAIConversationStorageModel>(_conversationsPath, GetConversationFileName(conversationId));
             }
             catch (Exception ex)
             {
@@ -75,7 +75,7 @@ public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspace
         }, cancellationToken);
     }
 
-    public Task SaveConversationAsync(LauncherAiConversationStorageModel conversation, CancellationToken cancellationToken = default)
+    public Task SaveConversationAsync(LauncherAIConversationStorageModel conversation, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(conversation);
 
@@ -110,14 +110,14 @@ public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspace
         }, cancellationToken);
     }
 
-    public Task<LauncherAiAttachmentStorageModel?> PersistAttachmentAsync(
+    public Task<LauncherAIAttachmentStorageModel?> PersistAttachmentAsync(
         Guid conversationId,
         ChatImageAttachment attachment,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(attachment);
 
-        return Task.Run<LauncherAiAttachmentStorageModel?>(() =>
+        return Task.Run<LauncherAIAttachmentStorageModel?>(() =>
         {
             try
             {
@@ -144,7 +144,7 @@ public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspace
                 var targetPath = Path.Combine(conversationAttachmentPath, storedFileName);
                 File.Copy(attachment.FilePath, targetPath, overwrite: false);
 
-                storedAttachment = new LauncherAiAttachmentStorageModel
+                storedAttachment = new LauncherAIAttachmentStorageModel
                 {
                     FileName = string.IsNullOrWhiteSpace(attachment.FileName) ? Path.GetFileName(targetPath) : attachment.FileName,
                     RelativeFilePath = CreateRelativeAttachmentPath(conversationId, storedFileName),
@@ -162,7 +162,7 @@ public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspace
         }, cancellationToken);
     }
 
-    public bool TryCreateStoredAttachmentModel(Guid conversationId, ChatImageAttachment attachment, out LauncherAiAttachmentStorageModel attachmentModel)
+    public bool TryCreateStoredAttachmentModel(Guid conversationId, ChatImageAttachment attachment, out LauncherAIAttachmentStorageModel attachmentModel)
     {
         attachmentModel = null!;
 
@@ -176,7 +176,7 @@ public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspace
             return false;
         }
 
-        attachmentModel = new LauncherAiAttachmentStorageModel
+        attachmentModel = new LauncherAIAttachmentStorageModel
         {
             FileName = string.IsNullOrWhiteSpace(attachment.FileName) ? Path.GetFileName(attachment.FilePath) : attachment.FileName,
             RelativeFilePath = relativePath,
@@ -188,7 +188,7 @@ public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspace
         return true;
     }
 
-    public ChatImageAttachment? RestoreAttachment(LauncherAiAttachmentStorageModel attachment)
+    public ChatImageAttachment? RestoreAttachment(LauncherAIAttachmentStorageModel attachment)
     {
         ArgumentNullException.ThrowIfNull(attachment);
 
@@ -309,7 +309,7 @@ public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspace
         };
     }
 
-    private bool TryGetCachedAttachment(Guid conversationId, string sourceFilePath, out LauncherAiAttachmentStorageModel attachmentModel)
+    private bool TryGetCachedAttachment(Guid conversationId, string sourceFilePath, out LauncherAIAttachmentStorageModel attachmentModel)
     {
         attachmentModel = null!;
 
@@ -337,7 +337,7 @@ public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspace
         }
     }
 
-    private void CacheAttachment(Guid conversationId, string sourceFilePath, LauncherAiAttachmentStorageModel attachmentModel)
+    private void CacheAttachment(Guid conversationId, string sourceFilePath, LauncherAIAttachmentStorageModel attachmentModel)
     {
         if (string.IsNullOrWhiteSpace(sourceFilePath))
         {

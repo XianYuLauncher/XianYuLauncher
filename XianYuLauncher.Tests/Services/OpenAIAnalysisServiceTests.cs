@@ -11,7 +11,7 @@ using XianYuLauncher.Core.Services;
 
 namespace XianYuLauncher.Tests.Services;
 
-public sealed class OpenAiAnalysisServiceTests
+public sealed class OpenAIAnalysisServiceTests
 {
     [Fact]
     public async Task StreamChatWithToolsAsync_ShouldIgnoreTailContentAfterToolCallStarts()
@@ -25,7 +25,7 @@ public sealed class OpenAiAnalysisServiceTests
         };
 
         await using var server = await FakeSseServer.StartAsync(payloads);
-        var service = new OpenAiAnalysisService(Mock.Of<ILogger<OpenAiAnalysisService>>());
+        var service = new OpenAIAnalysisService(Mock.Of<ILogger<OpenAIAnalysisService>>());
 
         var chunks = await CollectChunksAsync(service.StreamChatWithToolsAsync(
             [new ChatMessage("user", "请删除 Test.jar")],
@@ -53,7 +53,7 @@ public sealed class OpenAiAnalysisServiceTests
         };
 
         await using var server = await FakeSseServer.StartAsync(payloads);
-        var service = new OpenAiAnalysisService(Mock.Of<ILogger<OpenAiAnalysisService>>());
+        var service = new OpenAIAnalysisService(Mock.Of<ILogger<OpenAIAnalysisService>>());
 
         var chunks = await CollectChunksAsync(service.StreamChatWithToolsAsync(
             [new ChatMessage("user", "你好")],
@@ -76,7 +76,7 @@ public sealed class OpenAiAnalysisServiceTests
         };
 
         await using var server = await FakeSseServer.StartAsync(payloads);
-        var service = new OpenAiAnalysisService(Mock.Of<ILogger<OpenAiAnalysisService>>());
+        var service = new OpenAIAnalysisService(Mock.Of<ILogger<OpenAIAnalysisService>>());
 
         _ = await CollectChunksAsync(service.StreamChatWithToolsAsync(
             [new ChatMessage("user", "请看看这张图")
@@ -111,7 +111,7 @@ public sealed class OpenAiAnalysisServiceTests
     public async Task StreamChatWithToolsAsync_WhenRequestFails_ShouldThrowRequestExceptionWithBody()
     {
         await using var server = await FakeSseServer.StartFailureAsync(HttpStatusCode.BadRequest, "{\"error\":\"bad request\"}");
-        var service = new OpenAiAnalysisService(Mock.Of<ILogger<OpenAiAnalysisService>>());
+        var service = new OpenAIAnalysisService(Mock.Of<ILogger<OpenAIAnalysisService>>());
 
         var action = async () => await CollectChunksAsync(service.StreamChatWithToolsAsync(
             [new ChatMessage("user", "你好")],
@@ -135,7 +135,7 @@ public sealed class OpenAiAnalysisServiceTests
         };
 
         await using var server = await FakeSseServer.StartAsync(payloads, "/compatible-mode/v1/chat/completions/");
-        var service = new OpenAiAnalysisService(Mock.Of<ILogger<OpenAiAnalysisService>>());
+        var service = new OpenAIAnalysisService(Mock.Of<ILogger<OpenAIAnalysisService>>());
 
         var chunks = await CollectChunksAsync(service.StreamChatWithToolsAsync(
             [new ChatMessage("user", "你好")],
@@ -153,7 +153,7 @@ public sealed class OpenAiAnalysisServiceTests
     {
         const string errorBody = "{\"error\":{\"message\":\"model not found\"}}";
         await using var server = await FakeSseServer.StartFailureAsync(HttpStatusCode.NotFound, errorBody, "/compatible-mode/v1/chat/completions/");
-        var service = new OpenAiAnalysisService(Mock.Of<ILogger<OpenAiAnalysisService>>());
+        var service = new OpenAIAnalysisService(Mock.Of<ILogger<OpenAIAnalysisService>>());
 
         var action = async () => await CollectChunksAsync(service.StreamChatWithToolsAsync(
             [new ChatMessage("user", "你好")],
@@ -177,7 +177,7 @@ public sealed class OpenAiAnalysisServiceTests
         };
 
         await using var server = await FakeSseServer.StartAsync(payloads);
-        var service = new OpenAiAnalysisService(Mock.Of<ILogger<OpenAiAnalysisService>>());
+        var service = new OpenAIAnalysisService(Mock.Of<ILogger<OpenAIAnalysisService>>());
 
         var action = async () => await CollectChunksAsync(service.StreamChatWithToolsAsync(
             [new ChatMessage("user", "你好")],

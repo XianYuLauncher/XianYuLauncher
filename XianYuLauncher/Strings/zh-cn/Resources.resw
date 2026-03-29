@@ -2788,16 +2788,16 @@
   <data name="Settings_LauncherAI.Description" xml:space="preserve">
     <value>启用后可在启动器内使用第三方 AI 服务进行对话与问题处理</value>
   </data>
-  <data name="LauncherAiPage_Title.Text" xml:space="preserve">
+  <data name="LauncherAIPage_Title.Text" xml:space="preserve">
     <value>Launcher AI</value>
   </data>
-  <data name="LauncherAiPage_Subtitle.Text" xml:space="preserve">
+  <data name="LauncherAIPage_Subtitle.Text" xml:space="preserve">
     <value>与启动器 Agent 对话，处理启动、版本、模组和排障任务</value>
   </data>
-  <data name="LauncherAiPage_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
+  <data name="LauncherAIPage_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>在独立窗口中打开</value>
   </data>
-  <data name="LauncherAiPanel_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
+  <data name="LauncherAIPanel_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>在独立窗口中打开</value>
   </data>
   <data name="ErrorAnalysisChatPanel_AddImageButton.ToolTipService.ToolTip" xml:space="preserve">

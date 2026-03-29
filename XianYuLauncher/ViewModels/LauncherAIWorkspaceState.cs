@@ -3,9 +3,9 @@ using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace XianYuLauncher.ViewModels;
 
-public sealed partial class LauncherAiWorkspaceState : ObservableObject
+public sealed partial class LauncherAIWorkspaceState : ObservableObject
 {
-    public ObservableCollection<LauncherAiConversationTab> Conversations { get; } = [];
+    public ObservableCollection<LauncherAIConversationTab> Conversations { get; } = [];
 
     [ObservableProperty]
     private Guid? _activeErrorAnalysisConversationId;

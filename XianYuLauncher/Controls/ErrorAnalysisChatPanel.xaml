@@ -284,7 +284,7 @@
                         <Button
                             Grid.Column="0"
                             Command="{Binding ViewModel.FixErrorCommand, ElementName=Root}"
-                            IsEnabled="{Binding ViewModel.IsAiAnalyzing, ElementName=Root, Converter={StaticResource BoolNegationConverter}}"
+                            IsEnabled="{Binding ViewModel.IsAIAnalyzing, ElementName=Root, Converter={StaticResource BoolNegationConverter}}"
                             HorizontalAlignment="Stretch"
                             Padding="12,8"
                             CornerRadius="4"
@@ -307,7 +307,7 @@
                         </Button>
                         <Button
                             Grid.Column="1"
-                            IsEnabled="{Binding ViewModel.IsAiAnalyzing, ElementName=Root, Converter={StaticResource BoolNegationConverter}}"
+                            IsEnabled="{Binding ViewModel.IsAIAnalyzing, ElementName=Root, Converter={StaticResource BoolNegationConverter}}"
                             Command="{Binding ViewModel.RejectFixActionCommand, ElementName=Root}"
                             Padding="12,8"
                             CornerRadius="4"
@@ -323,7 +323,7 @@
             <Button
                 Command="{Binding ViewModel.FixErrorSecondaryCommand, ElementName=Root}"
                 Visibility="{Binding ViewModel.HasSecondaryFixAction, ElementName=Root, Converter={StaticResource BoolToVisibilityConverter}}"
-                IsEnabled="{Binding ViewModel.IsAiAnalyzing, ElementName=Root, Converter={StaticResource BoolNegationConverter}}"
+                IsEnabled="{Binding ViewModel.IsAIAnalyzing, ElementName=Root, Converter={StaticResource BoolNegationConverter}}"
                 HorizontalAlignment="Stretch"
                 Padding="12,8"
                 CornerRadius="4">

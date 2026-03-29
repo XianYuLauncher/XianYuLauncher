@@ -18,14 +18,14 @@ namespace XianYuLauncher.Views
     public sealed partial class ErrorAnalysisPage : Page
     {
         public ErrorAnalysisViewModel ViewModel { get; }
-        public LauncherAiViewModel LauncherAiWorkspaceViewModel { get; }
+        public LauncherAIViewModel LauncherAIWorkspaceViewModel { get; }
         private readonly IUiDispatcher _uiDispatcher;
         private bool _isScrollPending = false;
 
         public ErrorAnalysisPage()
         {
             ViewModel = App.GetService<ErrorAnalysisViewModel>();
-            LauncherAiWorkspaceViewModel = App.GetService<LauncherAiViewModel>();
+            LauncherAIWorkspaceViewModel = App.GetService<LauncherAIViewModel>();
             _uiDispatcher = App.GetService<IUiDispatcher>();
             this.InitializeComponent();
             Unloaded += ErrorAnalysisPage_Unloaded;
@@ -42,7 +42,7 @@ namespace XianYuLauncher.Views
             ViewModel.LogLines.CollectionChanged -= LogLines_CollectionChanged;
             LogListView.KeyDown -= LogListView_KeyDown;
             Unloaded -= ErrorAnalysisPage_Unloaded;
-            LauncherAiWorkspaceViewModel.SetErrorAnalysisPageOpen(false);
+            LauncherAIWorkspaceViewModel.SetErrorAnalysisPageOpen(false);
             ViewModel.Dispose();
         }
         
@@ -145,9 +145,9 @@ namespace XianYuLauncher.Views
         {
             base.OnNavigatedTo(e);
 
-            LauncherAiWorkspaceViewModel.SetErrorAnalysisPageOpen(true);
-            await LauncherAiWorkspaceViewModel.InitializeAsync(ensureDefaultConversation: false);
-            LauncherAiWorkspaceViewModel.ActivateConversationForEmbeddedSurface();
+            LauncherAIWorkspaceViewModel.SetErrorAnalysisPageOpen(true);
+            await LauncherAIWorkspaceViewModel.InitializeAsync(ensureDefaultConversation: false);
+            LauncherAIWorkspaceViewModel.ActivateConversationForEmbeddedSurface();
 
             // 每次进入页面先清理修复按钮状态，避免残留
             ViewModel.ResetFixActionState();
@@ -180,7 +180,7 @@ namespace XianYuLauncher.Views
         /// </summary>
         private void PopOutChat_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
-            LauncherAiWindow.ShowOrActivate();
+            LauncherAIWindow.ShowOrActivate();
         }
     }
 }

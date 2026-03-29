@@ -3,7 +3,7 @@ using XianYuLauncher.Features.ErrorAnalysis.Models;
 
 namespace XianYuLauncher.ViewModels;
 
-public sealed partial class LauncherAiConversationTab : ObservableObject
+public sealed partial class LauncherAIConversationTab : ObservableObject
 {
     public Guid Id { get; init; }
 
@@ -13,7 +13,7 @@ public sealed partial class LauncherAiConversationTab : ObservableObject
 
     public DateTimeOffset LastUpdatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
 
-    public LauncherAiConversationInterruptionStorageModel? Interruption { get; set; }
+    public LauncherAIConversationInterruptionStorageModel? Interruption { get; set; }
 
     [ObservableProperty]
     private string _title = string.Empty;

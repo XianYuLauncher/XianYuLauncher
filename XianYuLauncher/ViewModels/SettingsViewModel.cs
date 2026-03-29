@@ -117,7 +117,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         private readonly UpdateService _updateService;
         private readonly IGameSettingsDomainService _gameSettingsDomainService;
         private readonly IPersonalizationSettingsDomainService _personalizationSettingsDomainService;
-        private readonly IAiSettingsDomainService _aiSettingsDomainService;
+        private readonly IAISettingsDomainService _aiSettingsDomainService;
         private readonly IAboutSettingsDomainService _aboutSettingsDomainService;
         private readonly INetworkSettingsApplicationService _networkSettingsApplicationService;
         private readonly IDownloadSourceSettingsService _downloadSourceSettingsService;
@@ -134,16 +134,16 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     private bool _isAIAnalysisEnabled;
 
     [ObservableProperty]
-    private string _aiApiEndpoint = "https://api.openai.com";
+    private string _aIApiEndpoint = "https://api.openai.com";
 
     [ObservableProperty]
-    private string _aiApiKey = string.Empty;
+    private string _aIApiKey = string.Empty;
 
     [ObservableProperty]
-    private string _aiModel = "gpt-3.5-turbo";
+    private string _aIModel = "gpt-3.5-turbo";
 
     [ObservableProperty]
-    private string _aiSystemPrompt = string.Empty;
+    private string _aISystemPrompt = string.Empty;
     
     /// <summary>
     /// 下载源项（用于下拉框显示）
@@ -1105,7 +1105,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         UpdateService updateService,
         IGameSettingsDomainService gameSettingsDomainService,
         IPersonalizationSettingsDomainService personalizationSettingsDomainService,
-        IAiSettingsDomainService aiSettingsDomainService,
+        IAISettingsDomainService aiSettingsDomainService,
         IAboutSettingsDomainService aboutSettingsDomainService,
         INetworkSettingsApplicationService networkSettingsApplicationService,
         IDownloadSourceSettingsService downloadSourceSettingsService,
@@ -1449,22 +1449,22 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         QueueSettingWrite("AI_Enable", () => _aiSettingsDomainService.SaveEnabledAsync(value));
     }
 
-    partial void OnAiApiEndpointChanged(string value)
+    partial void OnAIApiEndpointChanged(string value)
     {
         QueueSettingWrite("AI_Endpoint", () => _aiSettingsDomainService.SaveApiEndpointAsync(value));
     }
 
-    partial void OnAiApiKeyChanged(string value)
+    partial void OnAIApiKeyChanged(string value)
     {
         QueueSettingWrite("AI_ApiKey", () => _aiSettingsDomainService.SaveApiKeyAsync(value), 400);
     }
 
-    partial void OnAiModelChanged(string value)
+    partial void OnAIModelChanged(string value)
     {
         QueueSettingWrite("AI_Model", () => _aiSettingsDomainService.SaveModelAsync(value));
     }
 
-    partial void OnAiSystemPromptChanged(string value)
+    partial void OnAISystemPromptChanged(string value)
     {
         QueueSettingWrite("AI_SystemPrompt", () => _aiSettingsDomainService.SaveSystemPromptAsync(value), 400);
     }
@@ -2568,10 +2568,10 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     {
         var state = await _aiSettingsDomainService.LoadAsync();
         IsAIAnalysisEnabled = state.IsEnabled;
-        AiApiEndpoint = state.ApiEndpoint;
-        AiApiKey = state.ApiKey;
-        AiModel = state.Model;
-        AiSystemPrompt = state.SystemPrompt;
+        AIApiEndpoint = state.ApiEndpoint;
+        AIApiKey = state.ApiKey;
+        AIModel = state.Model;
+        AISystemPrompt = state.SystemPrompt;
     }
 
     private async Task LoadJavaPathAsync()

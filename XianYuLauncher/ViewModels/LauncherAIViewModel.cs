@@ -9,13 +9,13 @@ using XianYuLauncher.Features.ErrorAnalysis.Services;
 
 namespace XianYuLauncher.ViewModels;
 
-public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
+public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable
 {
-    private readonly IAiSettingsDomainService _aiSettingsDomainService;
+    private readonly IAISettingsDomainService _aiSettingsDomainService;
     private readonly ILanguageSelectorService _languageSelectorService;
-    private readonly ILauncherAiWorkspacePersistenceService _workspacePersistenceService;
+    private readonly ILauncherAIWorkspacePersistenceService _workspacePersistenceService;
     private readonly ErrorAnalysisSessionState _sessionState;
-    private readonly LauncherAiWorkspaceState _workspaceState;
+    private readonly LauncherAIWorkspaceState _workspaceState;
     private readonly CancellationTokenSource _lifecycleCts = new();
     private readonly SemaphoreSlim _initializationSemaphore = new(1, 1);
     private readonly SemaphoreSlim _persistenceSemaphore = new(1, 1);
@@ -28,13 +28,13 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
     private long _dirtyWorkspaceStamp;
     private long _nextDirtyStamp;
 
-    public LauncherAiViewModel(
+    public LauncherAIViewModel(
         ErrorAnalysisViewModel chatViewModel,
-        IAiSettingsDomainService aiSettingsDomainService,
+        IAISettingsDomainService aiSettingsDomainService,
         ILanguageSelectorService languageSelectorService,
-        ILauncherAiWorkspacePersistenceService workspacePersistenceService,
+        ILauncherAIWorkspacePersistenceService workspacePersistenceService,
         ErrorAnalysisSessionState sessionState,
-        LauncherAiWorkspaceState workspaceState)
+        LauncherAIWorkspaceState workspaceState)
     {
         ChatViewModel = chatViewModel;
         _aiSettingsDomainService = aiSettingsDomainService;
@@ -52,9 +52,9 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
 
     public ErrorAnalysisViewModel ChatViewModel { get; }
 
-    public ObservableCollection<LauncherAiConversationTab> Conversations => _workspaceState.Conversations;
+    public ObservableCollection<LauncherAIConversationTab> Conversations => _workspaceState.Conversations;
 
-    public LauncherAiConversationTab? SelectedConversation => _workspaceState.SelectedConversationId is Guid id
+    public LauncherAIConversationTab? SelectedConversation => _workspaceState.SelectedConversationId is Guid id
         ? _workspaceState.Conversations.FirstOrDefault(conversation => conversation.Id == id)
         : _workspaceState.Conversations.FirstOrDefault();
 
@@ -76,7 +76,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
                 await RestoreWorkspaceAsync();
 
                 if (_workspaceState.SelectedConversationId == null
-                    && _workspaceState.Conversations.FirstOrDefault() is LauncherAiConversationTab conversation)
+                    && _workspaceState.Conversations.FirstOrDefault() is LauncherAIConversationTab conversation)
                 {
                     _workspaceState.SelectedConversationId = conversation.Id;
                 }
@@ -88,7 +88,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
             if (ensureDefaultConversation && _workspaceState.Conversations.Count == 0)
             {
                 var initialSnapshot = BuildInitialSnapshot(state.IsEnabled);
-                var initialConversation = new LauncherAiConversationTab
+                var initialConversation = new LauncherAIConversationTab
                 {
                     Id = Guid.NewGuid(),
                     CreatedAtUtc = DateTimeOffset.UtcNow,
@@ -127,7 +127,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
 
     public void ActivateErrorAnalysisConversation(bool forceNewConversation = false)
     {
-        if (_sessionState.IsAiAnalyzing)
+        if (_sessionState.IsAIAnalyzing)
         {
             return;
         }
@@ -155,7 +155,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
 
     public void ActivateConversationForEmbeddedSurface()
     {
-        if (_sessionState.IsAiAnalyzing)
+        if (_sessionState.IsAIAnalyzing)
         {
             return;
         }
@@ -173,7 +173,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
 
     public void CleanupTransientErrorAnalysisConversation()
     {
-        if (_workspaceState.IsErrorAnalysisPageOpen || _sessionState.IsLauncherAiWindowOpen)
+        if (_workspaceState.IsErrorAnalysisPageOpen || _sessionState.IsLauncherAIWindowOpen)
         {
             return;
         }
@@ -207,7 +207,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
 
     public void CreateConversation()
     {
-        if (_sessionState.IsAiAnalyzing)
+        if (_sessionState.IsAIAnalyzing)
         {
             return;
         }
@@ -224,7 +224,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
     public void CloseConversation(Guid conversationId)
     {
         var conversation = _workspaceState.Conversations.FirstOrDefault(item => item.Id == conversationId);
-        if (conversation == null || _sessionState.IsAiAnalyzing)
+        if (conversation == null || _sessionState.IsAIAnalyzing)
         {
             return;
         }
@@ -252,7 +252,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
             return true;
         }
 
-        if (_sessionState.IsAiAnalyzing)
+        if (_sessionState.IsAIAnalyzing)
         {
             return false;
         }
@@ -284,7 +284,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
     private void WorkspaceState_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(e.PropertyName)
-            || e.PropertyName == nameof(LauncherAiWorkspaceState.SelectedConversationId))
+            || e.PropertyName == nameof(LauncherAIWorkspaceState.SelectedConversationId))
         {
             OnPropertyChanged(nameof(SelectedConversation));
         }
@@ -371,7 +371,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         return _sessionState.CreateSnapshot();
     }
 
-    private LauncherAiConversationTab? EnsureErrorAnalysisConversation(bool forceNewConversation)
+    private LauncherAIConversationTab? EnsureErrorAnalysisConversation(bool forceNewConversation)
     {
         if (forceNewConversation)
         {
@@ -502,14 +502,14 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         _trackedSessionMessages.Clear();
     }
 
-    private void ApplyConversationMetadata(LauncherAiConversationTab conversation, ErrorAnalysisSessionSnapshot snapshot, int fallbackNumber)
+    private void ApplyConversationMetadata(LauncherAIConversationTab conversation, ErrorAnalysisSessionSnapshot snapshot, int fallbackNumber)
     {
         var title = BuildConversationTitle(conversation, snapshot, fallbackNumber);
         conversation.Title = title;
         conversation.ToolTip = title;
     }
 
-    private string BuildConversationTitle(LauncherAiConversationTab conversation, ErrorAnalysisSessionSnapshot snapshot, int fallbackNumber)
+    private string BuildConversationTitle(LauncherAIConversationTab conversation, ErrorAnalysisSessionSnapshot snapshot, int fallbackNumber)
     {
         var firstUserMessage = snapshot.ChatMessages.FirstOrDefault(message => message.IsUser)?.Content?.Trim();
         if (!string.IsNullOrWhiteSpace(firstUserMessage))
@@ -546,10 +546,10 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         return value[..Math.Max(0, maxLength - 1)] + "…";
     }
 
-    private LauncherAiConversationTab CreateConversationCore(ErrorAnalysisSessionSnapshot snapshot, bool isErrorAnalysisConversation)
+    private LauncherAIConversationTab CreateConversationCore(ErrorAnalysisSessionSnapshot snapshot, bool isErrorAnalysisConversation)
     {
         var now = DateTimeOffset.UtcNow;
-        var conversation = new LauncherAiConversationTab
+        var conversation = new LauncherAIConversationTab
         {
             Id = Guid.NewGuid(),
             IsErrorAnalysisConversation = isErrorAnalysisConversation,
@@ -566,7 +566,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         return conversation;
     }
 
-    private void RemoveConversation(LauncherAiConversationTab conversation, bool ensureReplacement)
+    private void RemoveConversation(LauncherAIConversationTab conversation, bool ensureReplacement)
     {
         var removedConversationId = conversation.Id;
         var closingIndex = _workspaceState.Conversations.IndexOf(conversation);
@@ -654,7 +654,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[LauncherAiPersistence] 保存工作区失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[LauncherAIPersistence] 保存工作区失败: {ex.Message}");
         }
         finally
         {
@@ -688,7 +688,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
             var workspaceStorage = CreateWorkspaceStorageModel();
             var conversations = _workspaceState.Conversations.ToList();
             var conversationsById = conversations.ToDictionary(conversation => conversation.Id);
-            List<LauncherAiConversationStorageModel> conversationStorages = [];
+            List<LauncherAIConversationStorageModel> conversationStorages = [];
             Dictionary<Guid, long> savedConversationStamps = [];
             foreach (var dirtyConversation in dirtyConversationStamps)
             {
@@ -772,15 +772,15 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         }
     }
 
-    private LauncherAiWorkspaceStorageModel CreateWorkspaceStorageModel()
+    private LauncherAIWorkspaceStorageModel CreateWorkspaceStorageModel()
     {
-        return new LauncherAiWorkspaceStorageModel
+        return new LauncherAIWorkspaceStorageModel
         {
             SelectedConversationId = _workspaceState.SelectedConversationId,
             ActiveErrorAnalysisConversationId = _workspaceState.ActiveErrorAnalysisConversationId,
             NextConversationNumber = Math.Max(1, _workspaceState.NextConversationNumber),
             Conversations = _workspaceState.Conversations
-                .Select(conversation => new LauncherAiConversationIndexEntryStorageModel
+                .Select(conversation => new LauncherAIConversationIndexEntryStorageModel
                 {
                     ConversationId = conversation.Id,
                     IsErrorAnalysisConversation = conversation.IsErrorAnalysisConversation,
@@ -791,11 +791,11 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         };
     }
 
-    private async Task<LauncherAiConversationStorageModel> CreateConversationStorageModelAsync(
-        LauncherAiConversationTab conversation,
+    private async Task<LauncherAIConversationStorageModel> CreateConversationStorageModelAsync(
+        LauncherAIConversationTab conversation,
         CancellationToken cancellationToken)
     {
-        return new LauncherAiConversationStorageModel
+        return new LauncherAIConversationStorageModel
         {
             ConversationId = conversation.Id,
             IsErrorAnalysisConversation = conversation.IsErrorAnalysisConversation,
@@ -808,12 +808,12 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         };
     }
 
-    private async Task<LauncherAiSessionStorageModel> CreateSessionStorageModelAsync(
+    private async Task<LauncherAISessionStorageModel> CreateSessionStorageModelAsync(
         Guid conversationId,
         ErrorAnalysisSessionSnapshot snapshot,
         CancellationToken cancellationToken)
     {
-        return new LauncherAiSessionStorageModel
+        return new LauncherAISessionStorageModel
         {
             ChatInput = snapshot.ChatInput,
             IsChatEnabled = snapshot.IsChatEnabled,
@@ -823,29 +823,29 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         };
     }
 
-    private async Task<List<LauncherAiChatMessageStorageModel>> CreateMessageStorageModelsAsync(
+    private async Task<List<LauncherAIChatMessageStorageModel>> CreateMessageStorageModelsAsync(
         Guid conversationId,
         IEnumerable<UiChatMessage> messages,
         CancellationToken cancellationToken)
     {
-        List<LauncherAiChatMessageStorageModel> results = [];
+        List<LauncherAIChatMessageStorageModel> results = [];
         foreach (var message in messages)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            results.Add(new LauncherAiChatMessageStorageModel
+            results.Add(new LauncherAIChatMessageStorageModel
             {
                 Role = message.Role,
                 Content = message.Content,
-                IncludeInAiHistory = message.IncludeInAiHistory,
+                IncludeInAIHistory = message.IncludeInAIHistory,
                 ShowRoleHeader = message.ShowRoleHeader,
                 DisplayRoleText = message.DisplayRoleText,
-                AiHistoryContent = message.AiHistoryContent,
+                AIHistoryContent = message.AIHistoryContent,
                 ToolCallId = message.ToolCallId,
                 ToolCalls = CloneToolCalls(message.ToolCalls),
                 ImageAttachments = await CreateAttachmentStorageModelsAsync(conversationId, message.ImageAttachments, cancellationToken),
-                AiHistoryImageAttachments = message.AiHistoryImageAttachments == null
+                AIHistoryImageAttachments = message.AIHistoryImageAttachments == null
                     ? null
-                    : await CreateAttachmentStorageModelsAsync(conversationId, message.AiHistoryImageAttachments, cancellationToken),
+                    : await CreateAttachmentStorageModelsAsync(conversationId, message.AIHistoryImageAttachments, cancellationToken),
                 SuppressContentRendering = message.SuppressContentRendering,
             });
         }
@@ -853,12 +853,12 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         return results;
     }
 
-    private async Task<List<LauncherAiAttachmentStorageModel>> CreateAttachmentStorageModelsAsync(
+    private async Task<List<LauncherAIAttachmentStorageModel>> CreateAttachmentStorageModelsAsync(
         Guid conversationId,
         IEnumerable<ChatImageAttachment> attachments,
         CancellationToken cancellationToken)
     {
-        List<LauncherAiAttachmentStorageModel> results = [];
+        List<LauncherAIAttachmentStorageModel> results = [];
         foreach (var attachment in attachments)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -901,7 +901,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
                     }
 
                     var snapshot = CreateSnapshotFromStorage(conversationStorage);
-                    var conversation = new LauncherAiConversationTab
+                    var conversation = new LauncherAIConversationTab
                     {
                         Id = conversationStorage.ConversationId,
                         IsErrorAnalysisConversation = conversationStorage.IsErrorAnalysisConversation,
@@ -922,7 +922,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[LauncherAiPersistence] 恢复会话失败: {conversationIndex.ConversationId}, {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"[LauncherAIPersistence] 恢复会话失败: {conversationIndex.ConversationId}, {ex.Message}");
                 }
             }
 
@@ -947,9 +947,9 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
             : null;
     }
 
-    private ErrorAnalysisSessionSnapshot CreateSnapshotFromStorage(LauncherAiConversationStorageModel conversationStorage)
+    private ErrorAnalysisSessionSnapshot CreateSnapshotFromStorage(LauncherAIConversationStorageModel conversationStorage)
     {
-        var storage = conversationStorage.Session ?? new LauncherAiSessionStorageModel();
+        var storage = conversationStorage.Session ?? new LauncherAISessionStorageModel();
         var chatMessages = (storage.ChatMessages ?? []).Select(CreateUiChatMessage).ToList();
         if (conversationStorage.Interruption != null)
         {
@@ -967,31 +967,31 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         };
     }
 
-    private UiChatMessage CreateUiChatMessage(LauncherAiChatMessageStorageModel storage)
+    private UiChatMessage CreateUiChatMessage(LauncherAIChatMessageStorageModel storage)
     {
         var role = storage.Role ?? string.Empty;
         var content = storage.Content ?? string.Empty;
         var message = new UiChatMessage(
             role,
             content,
-            storage.IncludeInAiHistory,
+            storage.IncludeInAIHistory,
             RestoreAttachments(storage.ImageAttachments))
         {
             ShowRoleHeader = storage.ShowRoleHeader,
             DisplayRoleText = string.IsNullOrWhiteSpace(storage.DisplayRoleText) ? role : storage.DisplayRoleText,
-            AiHistoryContent = storage.AiHistoryContent,
+            AIHistoryContent = storage.AIHistoryContent,
             ToolCallId = storage.ToolCallId,
             ToolCalls = CloneToolCalls(storage.ToolCalls),
-            AiHistoryImageAttachments = storage.AiHistoryImageAttachments == null
+            AIHistoryImageAttachments = storage.AIHistoryImageAttachments == null
                 ? null
-                : RestoreAttachments(storage.AiHistoryImageAttachments),
+                : RestoreAttachments(storage.AIHistoryImageAttachments),
             SuppressContentRendering = storage.SuppressContentRendering,
         };
 
         return message;
     }
 
-    private List<ChatImageAttachment> RestoreAttachments(IEnumerable<LauncherAiAttachmentStorageModel>? attachments)
+    private List<ChatImageAttachment> RestoreAttachments(IEnumerable<LauncherAIAttachmentStorageModel>? attachments)
     {
         List<ChatImageAttachment> results = [];
         foreach (var attachment in attachments ?? [])
@@ -1006,9 +1006,9 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         return results;
     }
 
-    private static LauncherAiActionProposalStorageModel CreateActionProposalStorageModel(AgentActionProposal proposal)
+    private static LauncherAIActionProposalStorageModel CreateActionProposalStorageModel(AgentActionProposal proposal)
     {
-        return new LauncherAiActionProposalStorageModel
+        return new LauncherAIActionProposalStorageModel
         {
             ActionType = proposal.ActionType,
             ButtonText = proposal.ButtonText,
@@ -1018,7 +1018,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         };
     }
 
-    private static AgentActionProposal CreateActionProposal(LauncherAiActionProposalStorageModel storage)
+    private static AgentActionProposal CreateActionProposal(LauncherAIActionProposalStorageModel storage)
     {
         return new AgentActionProposal
         {
@@ -1047,16 +1047,16 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         }).ToList();
     }
 
-    private LauncherAiConversationInterruptionStorageModel? CreateConversationInterruption(LauncherAiConversationTab conversation)
+    private LauncherAIConversationInterruptionStorageModel? CreateConversationInterruption(LauncherAIConversationTab conversation)
     {
         if (SelectedConversation?.Id != conversation.Id)
         {
             return conversation.Interruption;
         }
 
-        if (_sessionState.IsAiAnalyzing)
+        if (_sessionState.IsAIAnalyzing)
         {
-            return new LauncherAiConversationInterruptionStorageModel
+            return new LauncherAIConversationInterruptionStorageModel
             {
                 Kind = "ai_analysis_in_progress",
                 InterruptedAtUtc = DateTimeOffset.UtcNow,
@@ -1068,7 +1068,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
 
         if (_sessionState.HasPendingToolContinuation)
         {
-            return new LauncherAiConversationInterruptionStorageModel
+            return new LauncherAIConversationInterruptionStorageModel
             {
                 Kind = "tool_continuation_pending",
                 InterruptedAtUtc = DateTimeOffset.UtcNow,
@@ -1081,7 +1081,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         return conversation.Interruption;
     }
 
-    private UiChatMessage CreateInterruptedConversationMessage(LauncherAiConversationInterruptionStorageModel interruption)
+    private UiChatMessage CreateInterruptedConversationMessage(LauncherAIConversationInterruptionStorageModel interruption)
     {
         var content = string.IsNullOrWhiteSpace(interruption.Message)
             ? (_languageSelectorService.Language == "zh-CN"
@@ -1089,10 +1089,10 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
                 : "This conversation was interrupted when the app exited. History has been restored, but it will not resume automatically.")
             : interruption.Message!;
 
-        return new UiChatMessage("assistant", content, includeInAiHistory: false)
+        return new UiChatMessage("assistant", content, includeInAIHistory: false)
         {
             ShowRoleHeader = false,
-            AiHistoryContent = null,
+            AIHistoryContent = null,
         };
     }
 
@@ -1126,7 +1126,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[LauncherAiPersistence] 删除会话失败: {conversationId}, {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[LauncherAIPersistence] 删除会话失败: {conversationId}, {ex.Message}");
         }
     }
 }

@@ -18,7 +18,7 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IErrorAnalysisSessionCoordinator, ErrorAnalysisSessionCoordinator>();
         services.AddSingleton<IErrorAnalysisLogService, ErrorAnalysisLogService>();
         services.AddSingleton<IErrorAnalysisSessionContextQueryService, ErrorAnalysisSessionContextQueryService>();
-        services.AddSingleton<IErrorAnalysisAiOrchestrator, ErrorAnalysisAiOrchestrator>();
+        services.AddSingleton<IErrorAnalysisAIOrchestrator, ErrorAnalysisAIOrchestrator>();
         services.AddSingleton<IErrorAnalysisExportService, ErrorAnalysisExportService>();
         services.AddSingleton<IAgentToolSupportService, AgentToolSupportService>();
         services.AddSingleton<IAgentSettingsQueryService, AgentSettingsQueryService>();
@@ -28,7 +28,7 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentOperationStatusService, AgentOperationStatusService>();
         services.AddSingleton<IAgentGameInstallService, AgentGameInstallService>();
         services.AddSingleton<IAgentCommunityResourceService, AgentCommunityResourceService>();
-        services.AddSingleton<ILauncherAiWorkspacePersistenceService, LauncherAiWorkspacePersistenceService>();
+        services.AddSingleton<ILauncherAIWorkspacePersistenceService, LauncherAIWorkspacePersistenceService>();
         services.AddSingleton<IAgentToolDispatcher, AgentToolDispatcher>();
         services.AddSingleton<IAgentActionExecutor, AgentActionExecutor>();
         services.AddSingleton<IAgentToolHandler, ListInstalledModsToolHandler>();
