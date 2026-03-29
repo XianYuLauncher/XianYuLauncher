@@ -27,6 +27,7 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentOperationStatusService, AgentOperationStatusService>();
         services.AddSingleton<IAgentGameInstallService, AgentGameInstallService>();
         services.AddSingleton<IAgentCommunityResourceService, AgentCommunityResourceService>();
+        services.AddSingleton<ILauncherAiWorkspacePersistenceService, LauncherAiWorkspacePersistenceService>();
         services.AddSingleton<IAgentToolDispatcher, AgentToolDispatcher>();
         services.AddSingleton<IAgentActionExecutor, AgentActionExecutor>();
         services.AddSingleton<IAgentToolHandler, ListInstalledModsToolHandler>();
