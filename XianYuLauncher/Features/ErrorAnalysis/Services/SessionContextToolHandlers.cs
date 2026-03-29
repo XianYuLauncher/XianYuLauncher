@@ -107,7 +107,13 @@ public sealed class GetLogChunkToolHandler : IAgentToolHandler
 
     public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
     {
-        var startOffset = arguments.Value<int?>("start_offset") ?? 0;
+        var startOffsetToken = arguments["start_offset"];
+        if (startOffsetToken == null || startOffsetToken.Type == JTokenType.Null)
+        {
+            return AgentToolExecutionResult.FromMessage("缺少 start_offset 参数。");
+        }
+
+        var startOffset = startOffsetToken.Value<int>();
         if (startOffset < 0)
         {
             return AgentToolExecutionResult.FromMessage("start_offset 不能小于 0。");

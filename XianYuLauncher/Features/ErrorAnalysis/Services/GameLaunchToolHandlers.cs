@@ -170,25 +170,40 @@ public sealed class LaunchGameActionHandler : IAgentActionHandler
                     EnableLiveErrorAnalysisStreaming = false,
                 });
                 _launchOperationTracker.CompleteOperation(operationId);
-                return $"已开始启动 {preparedLaunch.VersionName}。实例路径：{preparedLaunch.VersionPath}。启动前已临时切换到 {preparedLaunch.MinecraftPath}，现在已恢复原游戏目录。\noperation_id: {operationId}\n可继续使用 get_operation_status 查询本次启动请求状态。";
+                return AppendOperationStatusHint(
+                    $"已开始启动 {preparedLaunch.VersionName}。实例路径：{preparedLaunch.VersionPath}。启动前已临时切换到 {preparedLaunch.MinecraftPath}，现在已恢复原游戏目录。",
+                    operationId);
             }
 
-            var errorMessage = result.ErrorMessage ?? "游戏未能启动，请查看日志。";
+            var errorMessage = NormalizeLaunchErrorMessage(result.ErrorMessage);
             _launchOperationTracker.FailOperation(operationId, errorMessage);
-            return $"启动 {preparedLaunch.VersionName} 失败：{errorMessage}\noperation_id: {operationId}\n可继续使用 get_operation_status 查询本次启动请求状态。";
+            return AppendOperationStatusHint($"启动 {preparedLaunch.VersionName} 失败：{errorMessage}", operationId);
         }
 
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             _launchOperationTracker.CancelOperation(operationId);
-            throw;
+            return AppendOperationStatusHint($"启动 {preparedLaunch.VersionName} 已取消。", operationId);
         }
 
         catch (Exception ex)
         {
-            _launchOperationTracker.FailOperation(operationId, ex.Message);
-            throw;
+            var errorMessage = NormalizeLaunchErrorMessage(ex.Message);
+            _launchOperationTracker.FailOperation(operationId, errorMessage);
+            return AppendOperationStatusHint($"启动 {preparedLaunch.VersionName} 失败：{errorMessage}", operationId);
         }
+    }
+
+    private static string AppendOperationStatusHint(string message, string operationId)
+    {
+        return $"{message}\noperation_id: {operationId}\n可继续使用 get_operation_status 查询本次启动请求状态。";
+    }
+
+    private static string NormalizeLaunchErrorMessage(string? errorMessage)
+    {
+        return string.IsNullOrWhiteSpace(errorMessage)
+            ? "游戏未能启动，请查看日志。"
+            : errorMessage.Trim();
     }
 }
 

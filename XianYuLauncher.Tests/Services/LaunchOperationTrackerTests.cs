@@ -64,4 +64,17 @@ public sealed class LaunchOperationTrackerTests
         snapshot.IsTerminal.Should().BeTrue();
         snapshot.ErrorMessage.Should().BeNull();
     }
+
+    [Fact]
+    public void TryGetSnapshot_ShouldTreatOperationIdAsCaseInsensitive()
+    {
+        var tracker = new LaunchOperationTracker();
+        var operationId = tracker.CreateOperation("1.21.10", @"D:\\.minecraft\\versions\\1.21.10");
+
+        var found = tracker.TryGetSnapshot(operationId.ToUpperInvariant(), out var snapshot);
+
+        found.Should().BeTrue();
+        snapshot.Should().NotBeNull();
+        snapshot!.OperationId.Should().Be(operationId);
+    }
 }

@@ -175,7 +175,9 @@ public sealed class GameLaunchObservationService : IGameLaunchObservationService
                     _logger.LogWarning(task.Exception.GetBaseException(), "游戏进程监控失败: {VersionId}", request.VersionId);
                 }
             },
-            TaskContinuationOptions.OnlyOnFaulted);
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
     }
 
     public void TerminateProcess(Process process, bool isUserTerminated = true)

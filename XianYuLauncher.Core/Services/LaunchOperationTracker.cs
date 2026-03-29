@@ -16,7 +16,7 @@ public interface ILaunchOperationTracker
 public sealed class LaunchOperationTracker : ILaunchOperationTracker
 {
     private readonly Lock _lock = new();
-    private readonly Dictionary<string, LaunchOperationEntry> _operations = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, LaunchOperationEntry> _operations = new(StringComparer.OrdinalIgnoreCase);
 
     private sealed class LaunchOperationEntry
     {

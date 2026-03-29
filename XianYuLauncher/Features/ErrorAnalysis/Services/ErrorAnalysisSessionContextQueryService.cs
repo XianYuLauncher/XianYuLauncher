@@ -112,13 +112,16 @@ public sealed class ErrorAnalysisSessionContextQueryService : IErrorAnalysisSess
         var normalizedChars = NormalizeRequestedChars(maxChars);
         var sanitizedLog = await GetSanitizedLogAsync(context);
         var slice = AiContextFormattingHelper.GetSlice(sanitizedLog, startOffset, normalizedChars);
+        var emptyMessage = slice.TotalLength == 0
+            ? "当前会话没有可用日志。"
+            : startOffset >= slice.TotalLength
+                ? $"start_offset 超出日志范围。total_chars: {slice.TotalLength}"
+                : "当前会话没有可用日志。";
         return FormatLogSlice(
             title: "当前会话日志分片",
             requestedChars: normalizedChars,
             slice,
-            emptyMessage: startOffset >= slice.TotalLength
-                ? $"start_offset 超出日志范围。total_chars: {slice.TotalLength}"
-                : "当前会话没有可用日志。");
+            emptyMessage: emptyMessage);
     }
 
     private async Task<string> BuildLaunchSummaryAsync(ErrorAnalysisSessionContext context, CancellationToken cancellationToken)
