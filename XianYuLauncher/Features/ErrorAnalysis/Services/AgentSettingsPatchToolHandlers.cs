@@ -19,7 +19,7 @@ public sealed class PatchGlobalLaunchSettingsToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "修改全局启动设置的 patch 工具。当前 Phase 5.5 支持 Java、JVM/GC、内存与分辨率字段：java_selection_mode、selected_java_id、selected_java_path、clear_selected_java、custom_jvm_arguments、garbage_collector_mode、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、window_width、window_height。调用前建议先用 getGlobalLaunchSettings 和 checkJavaVersions。",
+        "修改全局启动设置的 patch 工具。当前 Phase 5.6 支持 Java、JVM/GC、内存、分辨率与游戏目录字段：java_selection_mode、selected_java_id、selected_java_path、clear_selected_java、custom_jvm_arguments、garbage_collector_mode、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、window_width、window_height、game_directory_mode、custom_game_directory_path。调用前建议先用 getGlobalLaunchSettings 和 checkJavaVersions。",
         new
         {
             type = "object",
@@ -35,7 +35,9 @@ public sealed class PatchGlobalLaunchSettingsToolHandler : IAgentToolHandler
                 initial_heap_memory_gb = new { type = "number", description = "可选。全局初始堆内存，单位 GB，范围 1-64；仅当 auto_memory_allocation=false 时允许修改。" },
                 maximum_heap_memory_gb = new { type = "number", description = "可选。全局最大堆内存，单位 GB，范围 1-64；仅当 auto_memory_allocation=false 时允许修改。" },
                 window_width = new { type = "integer", description = "可选。全局窗口宽度，范围 800-4096。" },
-                window_height = new { type = "integer", description = "可选。全局窗口高度，范围 600-2160。" }
+                window_height = new { type = "integer", description = "可选。全局窗口高度，范围 600-2160。" },
+                game_directory_mode = new { type = "string", description = "可选。全局游戏目录模式。", @enum = new[] { "default", "version_isolation", "custom" } },
+                custom_game_directory_path = new { type = "string", description = "可选。全局自定义游戏目录绝对路径；仅当 game_directory_mode=custom 时允许设置。传空字符串可清空已保存的自定义目录。" }
             },
             required = Array.Empty<string>()
         });
@@ -60,6 +62,9 @@ public sealed class PatchGlobalLaunchSettingsToolHandler : IAgentToolHandler
             MaximumHeapMemoryGb = ReadNullableDouble(arguments, "maximum_heap_memory_gb", "maximumHeapMemoryGb"),
             WindowWidth = ReadNullableInt32(arguments, "window_width", "windowWidth"),
             WindowHeight = ReadNullableInt32(arguments, "window_height", "windowHeight"),
+            GameDirectoryMode = ReadFirstNonEmpty(arguments, "game_directory_mode", "gameDirectoryMode", "game_isolation_mode", "gameIsolationMode", "mode_key", "modeKey"),
+            HasCustomGameDirectoryPath = TryReadString(arguments, out var customGameDirectoryPath, "custom_game_directory_path", "customGameDirectoryPath", "game_directory_custom_path", "gameDirectoryCustomPath", "custom_path", "customPath"),
+            CustomGameDirectoryPath = customGameDirectoryPath,
         }, cancellationToken);
     }
 
@@ -206,7 +211,7 @@ public sealed class PatchInstanceLaunchSettingsToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "修改实例启动设置的 patch 工具。当前 Phase 5.5 支持 Java、JVM/GC、内存与分辨率字段：use_global_java_setting、java_id、java_path、custom_jvm_arguments、garbage_collector_mode、override_memory、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、override_resolution、window_width、window_height。实例定位优先使用 get_instances 返回的 target_version_name，必要时再传 target_version_path。",
+        "修改实例启动设置的 patch 工具。当前 Phase 5.6 支持 Java、JVM/GC、内存、分辨率与游戏目录字段：use_global_java_setting、java_id、java_path、custom_jvm_arguments、garbage_collector_mode、override_memory、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、override_resolution、window_width、window_height、game_directory_mode、custom_game_directory_path。实例定位优先使用 get_instances 返回的 target_version_name，必要时再传 target_version_path。",
         new
         {
             type = "object",
@@ -225,7 +230,9 @@ public sealed class PatchInstanceLaunchSettingsToolHandler : IAgentToolHandler
                 maximum_heap_memory_gb = new { type = "number", description = "可选。实例最大堆内存，单位 GB，范围 1-64；仅当 override_memory=true 且 auto_memory_allocation=false 时允许修改。" },
                 override_resolution = new { type = "boolean", description = "可选。true 表示实例使用独立分辨率；false 表示实例分辨率改为跟随全局。" },
                 window_width = new { type = "integer", description = "可选。实例窗口宽度，范围 800-4096；仅当 override_resolution=true 时允许修改。" },
-                window_height = new { type = "integer", description = "可选。实例窗口高度，范围 600-2160；仅当 override_resolution=true 时允许修改。" }
+                window_height = new { type = "integer", description = "可选。实例窗口高度，范围 600-2160；仅当 override_resolution=true 时允许修改。" },
+                game_directory_mode = new { type = "string", description = "可选。实例游戏目录模式。follow_global 表示跟随全局，其余表示保存实例级目录模式。", @enum = new[] { "follow_global", "default", "version_isolation", "custom" } },
+                custom_game_directory_path = new { type = "string", description = "可选。实例自定义游戏目录绝对路径；仅当 game_directory_mode=custom 时允许设置。传空字符串可清空已保存的自定义目录。" }
             },
             required = Array.Empty<string>()
         });
@@ -253,6 +260,9 @@ public sealed class PatchInstanceLaunchSettingsToolHandler : IAgentToolHandler
             OverrideResolution = ReadNullableBoolean(arguments, "override_resolution", "overrideResolution"),
             WindowWidth = ReadNullableInt32(arguments, "window_width", "windowWidth"),
             WindowHeight = ReadNullableInt32(arguments, "window_height", "windowHeight"),
+            GameDirectoryMode = ReadFirstNonEmpty(arguments, "game_directory_mode", "gameDirectoryMode", "game_isolation_mode", "gameIsolationMode", "mode_key", "modeKey", "local_mode", "localMode"),
+            HasCustomGameDirectoryPath = TryReadString(arguments, out var customGameDirectoryPath, "custom_game_directory_path", "customGameDirectoryPath", "game_directory_custom_path", "gameDirectoryCustomPath", "local_custom_path", "localCustomPath", "custom_path", "customPath"),
+            CustomGameDirectoryPath = customGameDirectoryPath,
         }, cancellationToken);
     }
 
@@ -395,6 +405,12 @@ public sealed class AgentGlobalLaunchSettingsPatchRequest
     public int? WindowWidth { get; init; }
 
     public int? WindowHeight { get; init; }
+
+    public string? GameDirectoryMode { get; init; }
+
+    public bool HasCustomGameDirectoryPath { get; init; }
+
+    public string? CustomGameDirectoryPath { get; init; }
 }
 
 public sealed class AgentInstanceLaunchSettingsPatchRequest
@@ -428,4 +444,10 @@ public sealed class AgentInstanceLaunchSettingsPatchRequest
     public int? WindowWidth { get; init; }
 
     public int? WindowHeight { get; init; }
+
+    public string? GameDirectoryMode { get; init; }
+
+    public bool HasCustomGameDirectoryPath { get; init; }
+
+    public string? CustomGameDirectoryPath { get; init; }
 }
