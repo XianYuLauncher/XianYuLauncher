@@ -21,6 +21,7 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IErrorAnalysisExportService, ErrorAnalysisExportService>();
         services.AddSingleton<IAgentToolSupportService, AgentToolSupportService>();
         services.AddSingleton<IAgentSettingsQueryService, AgentSettingsQueryService>();
+        services.AddSingleton<IAgentSettingsActionProposalService, AgentSettingsActionProposalService>();
         services.AddSingleton<ILaunchOperationTracker, LaunchOperationTracker>();
         services.AddSingleton<IAgentOperationStatusService, AgentOperationStatusService>();
         services.AddSingleton<IAgentGameInstallService, AgentGameInstallService>();
