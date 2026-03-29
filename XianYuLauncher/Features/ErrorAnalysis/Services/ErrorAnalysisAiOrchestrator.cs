@@ -830,6 +830,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         lastMessage.Content = string.IsNullOrWhiteSpace(pendingActionMessage)
             ? "已创建待确认操作，等待用户确认。"
             : pendingActionMessage;
+        lastMessage.SuppressContentRendering = true;
         lastMessage.IncludeInAiHistory = false;
 
         if (_sessionState.ChatMessages.Count <= 3)
