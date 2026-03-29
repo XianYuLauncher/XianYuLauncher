@@ -68,7 +68,7 @@ public sealed class GetVersionConfigToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "获取当前会话实例的版本配置快照，返回 JSON，包含 uses_global_settings_overall，以及 Java/JVM/GC/内存/分辨率/版本隔离的局部配置与 follows_global 状态。",
+        "获取当前会话实例的版本配置快照，返回 JSON，包含 uses_global_settings_overall，以及 Java/JVM/GC/内存/分辨率/版本隔离的局部配置与 follows_global 状态。它描述的是实例局部设置，不是最终生效值；需要最终结果时改用 getEffectiveLaunchSettings。",
         new
         {
             type = "object",
@@ -108,7 +108,7 @@ public sealed class CheckJavaVersionsToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "列出启动器当前可见的 Java 版本清单。默认优先返回已缓存列表；refresh=true 时重新扫描。返回 JSON，包含 java_selection_mode、selected_java_path 和 java_versions。",
+        "列出启动器当前可见的 Java 版本清单。默认优先返回已缓存列表；refresh=true 时重新扫描。返回 JSON，包含 java_selection_mode、selected_java_path 和 java_versions。修改 Java 设置前应先调用本工具，并优先使用返回的 java_id。",
         new
         {
             type = "object",
@@ -154,7 +154,7 @@ public sealed class GetMinecraftPathsToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "返回启动器已保存的 Minecraft 根目录列表和当前活动目录。结果包含短 ID，可供后续目录切换工具使用。",
+        "返回启动器已保存的 Minecraft 根目录列表和当前活动目录。结果包含短 ID。调用 switchMinecraftPath 前应先读取本工具，并优先使用 path_id。",
         new
         {
             type = "object",
@@ -193,7 +193,7 @@ public sealed class GetGlobalLaunchSettingsToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "返回启动器当前全局启动设置的 JSON 快照，包含 Java 选择方式、当前选中的 Java、全局 JVM/GC、内存、分辨率，以及当前全局游戏目录模式。",
+        "返回启动器当前全局启动设置的 JSON 快照，包含 Java 选择方式、当前选中的 Java、全局 JVM/GC、内存、分辨率，以及当前全局游戏目录模式。修改全局启动设置前应先调用本工具；它返回的是全局默认值，不是实例最终生效值。",
         new
         {
             type = "object",
@@ -232,7 +232,7 @@ public sealed class GetEffectiveLaunchSettingsToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "返回当前会话实例的最终生效启动设置 JSON 快照，包含 required_java_version、最终 Java/内存/JVM/GC/分辨率，以及最终生效的游戏目录。",
+        "返回当前会话实例的最终生效启动设置 JSON 快照，包含 required_java_version、最终 Java/内存/JVM/GC/分辨率，以及最终生效的游戏目录。仅在需要解释实际启动使用了什么值或来源时调用。",
         new
         {
             type = "object",

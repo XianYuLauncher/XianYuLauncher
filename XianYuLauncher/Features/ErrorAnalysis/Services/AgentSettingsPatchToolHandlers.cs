@@ -19,7 +19,7 @@ public sealed class PatchGlobalLaunchSettingsToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "修改全局启动设置的 patch 工具。当前 Phase 5.6 支持 Java、JVM/GC、内存、分辨率与游戏目录字段：java_selection_mode、selected_java_id、selected_java_path、clear_selected_java、custom_jvm_arguments、garbage_collector_mode、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、window_width、window_height、game_directory_mode、custom_game_directory_path。调用前建议先用 getGlobalLaunchSettings 和 checkJavaVersions。",
+        "修改全局启动设置的确认式 patch 工具。调用前应先读取 getGlobalLaunchSettings；若涉及 Java，再先读取 checkJavaVersions。优先使用 selected_java_id 而不是 selected_java_path。本工具只生成确认提案，不会直接写入。当前支持字段：java_selection_mode、selected_java_id、selected_java_path、clear_selected_java、custom_jvm_arguments、garbage_collector_mode、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、window_width、window_height、game_directory_mode、custom_game_directory_path。",
         new
         {
             type = "object",
@@ -211,7 +211,7 @@ public sealed class PatchInstanceLaunchSettingsToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "修改实例启动设置的 patch 工具。当前 Phase 5.6 支持 Java、JVM/GC、内存、分辨率与游戏目录字段：use_global_java_setting、java_id、java_path、custom_jvm_arguments、garbage_collector_mode、override_memory、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、override_resolution、window_width、window_height、game_directory_mode、custom_game_directory_path。实例定位优先使用 get_instances 返回的 target_version_name，必要时再传 target_version_path。",
+        "修改实例启动设置的确认式 patch 工具。调用前应先用 get_instances 确认实例，再读取 getVersionConfig；只有需要解释最终生效值时才补 getEffectiveLaunchSettings。优先使用 target_version_name 和 java_id，不要优先传绝对路径。本工具只生成确认提案，不会直接写入。当前支持字段：use_global_java_setting、java_id、java_path、custom_jvm_arguments、garbage_collector_mode、override_memory、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、override_resolution、window_width、window_height、game_directory_mode、custom_game_directory_path。",
         new
         {
             type = "object",

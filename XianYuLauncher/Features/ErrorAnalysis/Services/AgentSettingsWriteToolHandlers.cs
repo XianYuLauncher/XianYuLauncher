@@ -25,7 +25,7 @@ public sealed class SwitchMinecraftPathToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "切换启动器当前活动的 Minecraft 根目录。必须先调用 getMinecraftPaths，从返回的 path_id 或 path 中选择一个已保存目录；本工具只生成确认提案，不会直接写入。",
+        "切换启动器当前活动的 Minecraft 根目录。调用前必须先读取 getMinecraftPaths，并从返回结果中选择目标目录；优先使用 path_id，不要优先传 path。本工具只生成确认提案，不会直接写入。",
         new
         {
             type = "object",
