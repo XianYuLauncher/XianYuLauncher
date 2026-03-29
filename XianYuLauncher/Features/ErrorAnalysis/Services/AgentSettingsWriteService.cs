@@ -25,8 +25,12 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
 {
     private const string GlobalJavaSelectionModeParameterKey = "java_selection_mode";
     private const string GlobalSelectedJavaPathParameterKey = "selected_java_path";
+    private const string GlobalCustomJvmArgumentsParameterKey = "custom_jvm_arguments";
+    private const string GlobalGarbageCollectorModeParameterKey = "garbage_collector_mode";
     private const string InstanceUseGlobalJavaSettingParameterKey = "use_global_java_setting";
     private const string InstanceJavaPathParameterKey = "java_path";
+    private const string InstanceCustomJvmArgumentsParameterKey = "custom_jvm_arguments";
+    private const string InstanceGarbageCollectorModeParameterKey = "garbage_collector_mode";
 
     private readonly IGameSettingsDomainService _gameSettingsDomainService;
     private readonly IJavaRuntimeService _javaRuntimeService;
@@ -53,12 +57,21 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
 
     public async Task<AgentToolExecutionResult> PrepareGlobalLaunchSettingsPatchAsync(AgentGlobalLaunchSettingsPatchRequest request, CancellationToken cancellationToken)
     {
+        var currentGlobalLaunchSettings = await _gameSettingsDomainService.LoadGlobalLaunchSettingsAsync();
         var currentMode = NormalizeJavaSelectionMode(await _gameSettingsDomainService.LoadJavaSelectionModeAsync());
         var currentSelectedJavaPath = NullIfWhiteSpace(await _gameSettingsDomainService.LoadJavaPathAsync());
+        var currentCustomJvmArguments = NormalizeJvmArguments(currentGlobalLaunchSettings.CustomJvmArguments);
+        var currentGarbageCollectorMode = GarbageCollectorModeHelper.Normalize(currentGlobalLaunchSettings.GarbageCollectorMode);
         var explicitMode = NormalizeRequestedJavaSelectionMode(request.JavaSelectionMode, out var modeErrorMessage);
         if (!string.IsNullOrWhiteSpace(modeErrorMessage))
         {
             return AgentToolExecutionResult.FromMessage(modeErrorMessage);
+        }
+
+        var explicitGarbageCollectorMode = NormalizeRequestedGarbageCollectorMode(request.GarbageCollectorMode, out var garbageCollectorModeErrorMessage);
+        if (!string.IsNullOrWhiteSpace(garbageCollectorModeErrorMessage))
+        {
+            return AgentToolExecutionResult.FromMessage(garbageCollectorModeErrorMessage);
         }
 
         var clearSelectedJava = request.ClearSelectedJava;
@@ -70,9 +83,10 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
 
         var hasSelectedJavaRequest = !string.IsNullOrWhiteSpace(request.SelectedJavaId)
             || !string.IsNullOrWhiteSpace(request.SelectedJavaPath);
-        if (explicitMode == null && !clearSelectedJava && !hasSelectedJavaRequest)
+        var hasJvmSettingsRequest = request.HasCustomJvmArguments || explicitGarbageCollectorMode != null;
+        if (explicitMode == null && !clearSelectedJava && !hasSelectedJavaRequest && !hasJvmSettingsRequest)
         {
-            return AgentToolExecutionResult.FromMessage("至少需要提供一个 Java 变更字段，例如 java_selection_mode、selected_java_id、selected_java_path 或 clear_selected_java。调用前建议先使用 checkJavaVersions 和 getGlobalLaunchSettings。");
+            return AgentToolExecutionResult.FromMessage("至少需要提供一个变更字段，例如 java_selection_mode、selected_java_id、selected_java_path、clear_selected_java、custom_jvm_arguments 或 garbage_collector_mode。调用前建议先使用 getGlobalLaunchSettings 和 checkJavaVersions。");
         }
 
         var knownJavaVersions = await LoadKnownJavaVersionsAsync(cancellationToken);
@@ -96,6 +110,10 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
 
         var finalMode = explicitMode ?? currentMode;
         var finalSelectedJavaPath = currentSelectedJavaPath;
+        var finalCustomJvmArguments = request.HasCustomJvmArguments
+            ? NormalizeJvmArguments(request.CustomJvmArguments)
+            : currentCustomJvmArguments;
+        var finalGarbageCollectorMode = explicitGarbageCollectorMode ?? currentGarbageCollectorMode;
 
         if (requestedJava != null)
         {
@@ -155,9 +173,31 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             });
         }
 
+        if (!string.Equals(currentCustomJvmArguments, finalCustomJvmArguments, StringComparison.Ordinal))
+        {
+            changes.Add(new AgentSettingsFieldChange
+            {
+                FieldKey = "custom_jvm_arguments",
+                DisplayName = "JVM 参数",
+                OldValue = DescribeJvmArguments(currentCustomJvmArguments),
+                NewValue = DescribeJvmArguments(finalCustomJvmArguments),
+            });
+        }
+
+        if (!string.Equals(currentGarbageCollectorMode, finalGarbageCollectorMode, StringComparison.Ordinal))
+        {
+            changes.Add(new AgentSettingsFieldChange
+            {
+                FieldKey = "garbage_collector_mode",
+                DisplayName = "GC 模式",
+                OldValue = currentGarbageCollectorMode,
+                NewValue = finalGarbageCollectorMode,
+            });
+        }
+
         if (changes.Count == 0)
         {
-            return AgentToolExecutionResult.FromMessage("全局 Java 设置未发生变化。");
+            return AgentToolExecutionResult.FromMessage("全局 Java/JVM/GC 设置未发生变化。");
         }
 
         var proposal = _proposalService.CreateProposal(
@@ -171,6 +211,8 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
 
         proposal.Parameters[GlobalJavaSelectionModeParameterKey] = finalMode;
         proposal.Parameters[GlobalSelectedJavaPathParameterKey] = finalSelectedJavaPath ?? string.Empty;
+        proposal.Parameters[GlobalCustomJvmArgumentsParameterKey] = finalCustomJvmArguments;
+        proposal.Parameters[GlobalGarbageCollectorModeParameterKey] = finalGarbageCollectorMode;
 
         return AgentToolExecutionResult.FromActionProposal(proposal.DisplayMessage, proposal);
     }
@@ -192,6 +234,11 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             return "手动模式下必须指定一个全局 Java。";
         }
 
+        proposal.Parameters.TryGetValue(GlobalCustomJvmArgumentsParameterKey, out var rawCustomJvmArguments);
+        var finalCustomJvmArguments = NormalizeJvmArguments(rawCustomJvmArguments);
+        proposal.Parameters.TryGetValue(GlobalGarbageCollectorModeParameterKey, out var rawGarbageCollectorMode);
+        var finalGarbageCollectorMode = GarbageCollectorModeHelper.Normalize(rawGarbageCollectorMode);
+
         if (string.Equals(finalMode, JavaSelectionModeManual, StringComparison.Ordinal))
         {
             var ensureResult = await EnsureJavaPresentInKnownListAsync(finalSelectedJavaPath!, cancellationToken);
@@ -210,11 +257,16 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         if (string.IsNullOrWhiteSpace(finalSelectedJavaPath))
         {
             await _gameSettingsDomainService.ClearJavaSelectionAsync();
-            return $"已更新全局 Java 设置：选择方式切换为{DescribeGlobalJavaSelectionMode(finalMode)}，并清空了手动 Java 选择。";
+        }
+        else
+        {
+            await _gameSettingsDomainService.SaveSelectedJavaVersionAsync(finalSelectedJavaPath);
         }
 
-        await _gameSettingsDomainService.SaveSelectedJavaVersionAsync(finalSelectedJavaPath);
-        return $"已更新全局 Java 设置：选择方式为{DescribeGlobalJavaSelectionMode(finalMode)}，当前全局 Java 为 {finalSelectedJavaPath}。";
+        await _gameSettingsDomainService.SaveGlobalCustomJvmArgumentsAsync(finalCustomJvmArguments);
+        await _gameSettingsDomainService.SaveGlobalGarbageCollectorModeAsync(finalGarbageCollectorMode);
+
+        return $"已更新全局启动设置：{BuildChangeSummary(proposal)}。";
     }
 
     public async Task<AgentToolExecutionResult> PrepareInstanceLaunchSettingsPatchAsync(AgentInstanceLaunchSettingsPatchRequest request, CancellationToken cancellationToken)
@@ -227,9 +279,16 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
 
         var hasJavaRequest = !string.IsNullOrWhiteSpace(request.JavaId)
             || !string.IsNullOrWhiteSpace(request.JavaPath);
-        if (request.UseGlobalJavaSetting == null && !hasJavaRequest)
+        var explicitGarbageCollectorMode = NormalizeRequestedGarbageCollectorMode(request.GarbageCollectorMode, out var garbageCollectorModeErrorMessage);
+        if (!string.IsNullOrWhiteSpace(garbageCollectorModeErrorMessage))
         {
-            return AgentToolExecutionResult.FromMessage("至少需要提供一个 Java 变更字段，例如 use_global_java_setting、java_id 或 java_path。调用前建议先使用 get_instances、getVersionConfig 和 checkJavaVersions。");
+            return AgentToolExecutionResult.FromMessage(garbageCollectorModeErrorMessage);
+        }
+
+        var hasJvmSettingsRequest = request.HasCustomJvmArguments || explicitGarbageCollectorMode != null;
+        if (request.UseGlobalJavaSetting == null && !hasJavaRequest && !hasJvmSettingsRequest)
+        {
+            return AgentToolExecutionResult.FromMessage("至少需要提供一个实例级变更字段，例如 use_global_java_setting、java_id、java_path、custom_jvm_arguments 或 garbage_collector_mode。调用前建议先使用 get_instances、getVersionConfig 和 checkJavaVersions。");
         }
 
         if (request.UseGlobalJavaSetting == true && hasJavaRequest)
@@ -245,6 +304,8 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
 
         var currentUseGlobalJavaSetting = currentConfig.UseGlobalJavaSetting;
         var currentJavaPath = NullIfWhiteSpace(currentConfig.JavaPath);
+        var currentCustomJvmArguments = NormalizeJvmArguments(currentConfig.CustomJvmArguments);
+        var currentGarbageCollectorMode = GarbageCollectorModeHelper.Normalize(currentConfig.GarbageCollectorMode);
         var knownJavaVersions = await LoadKnownJavaVersionsAsync(cancellationToken);
         ResolvedJavaSelection? requestedJava = null;
         if (hasJavaRequest)
@@ -266,6 +327,10 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
 
         var finalUseGlobalJavaSetting = request.UseGlobalJavaSetting ?? currentUseGlobalJavaSetting;
         var finalJavaPath = currentJavaPath;
+        var finalCustomJvmArguments = request.HasCustomJvmArguments
+            ? NormalizeJvmArguments(request.CustomJvmArguments)
+            : currentCustomJvmArguments;
+        var finalGarbageCollectorMode = explicitGarbageCollectorMode ?? currentGarbageCollectorMode;
         if (requestedJava != null)
         {
             finalUseGlobalJavaSetting = false;
@@ -276,6 +341,9 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         {
             return AgentToolExecutionResult.FromMessage("实例独立 Java 模式必须提供一个可用的 java_id 或 java_path；若要让实例继续跟随全局，请将 use_global_java_setting 设为 true。");
         }
+
+        var currentJvmSettingsFollowGlobal = JvmSettingsFollowGlobal(currentUseGlobalJavaSetting, currentConfig.OverrideMemory, currentConfig.OverrideResolution);
+        var finalJvmSettingsFollowGlobal = JvmSettingsFollowGlobal(finalUseGlobalJavaSetting, currentConfig.OverrideMemory, currentConfig.OverrideResolution);
 
         List<AgentSettingsFieldChange> changes = [];
         if (currentUseGlobalJavaSetting != finalUseGlobalJavaSetting)
@@ -304,9 +372,44 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             });
         }
 
+        if (!string.Equals(currentCustomJvmArguments, finalCustomJvmArguments, StringComparison.Ordinal))
+        {
+            changes.Add(new AgentSettingsFieldChange
+            {
+                FieldKey = "custom_jvm_arguments",
+                DisplayName = "JVM 参数",
+                OldValue = DescribeJvmArguments(currentCustomJvmArguments),
+                NewValue = DescribeJvmArguments(finalCustomJvmArguments),
+            });
+        }
+
+        if (!string.Equals(currentGarbageCollectorMode, finalGarbageCollectorMode, StringComparison.Ordinal))
+        {
+            changes.Add(new AgentSettingsFieldChange
+            {
+                FieldKey = "garbage_collector_mode",
+                DisplayName = "GC 模式",
+                OldValue = currentGarbageCollectorMode,
+                NewValue = finalGarbageCollectorMode,
+            });
+        }
+
+        if (hasJvmSettingsRequest && (currentJvmSettingsFollowGlobal != finalJvmSettingsFollowGlobal || finalJvmSettingsFollowGlobal))
+        {
+            changes.Add(new AgentSettingsFieldChange
+            {
+                FieldKey = "jvm_gc_effective_source",
+                DisplayName = "JVM/GC 生效方式",
+                OldValue = DescribeJvmGcSource(currentJvmSettingsFollowGlobal),
+                NewValue = DescribeJvmGcSourceAfterPatch(finalJvmSettingsFollowGlobal, hasJvmSettingsRequest),
+                SwitchesToFollowGlobal = !currentJvmSettingsFollowGlobal && finalJvmSettingsFollowGlobal,
+                SwitchesToOverride = currentJvmSettingsFollowGlobal && !finalJvmSettingsFollowGlobal,
+            });
+        }
+
         if (changes.Count == 0)
         {
-            return AgentToolExecutionResult.FromMessage($"实例 {targetVersion.VersionName} 的 Java 设置未发生变化。");
+            return AgentToolExecutionResult.FromMessage($"实例 {targetVersion.VersionName} 的 Java/JVM/GC 设置未发生变化。");
         }
 
         var proposal = _proposalService.CreateProposal(
@@ -322,6 +425,8 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
 
         proposal.Parameters[InstanceUseGlobalJavaSettingParameterKey] = finalUseGlobalJavaSetting.ToString();
         proposal.Parameters[InstanceJavaPathParameterKey] = finalJavaPath ?? string.Empty;
+        proposal.Parameters[InstanceCustomJvmArgumentsParameterKey] = finalCustomJvmArguments;
+        proposal.Parameters[InstanceGarbageCollectorModeParameterKey] = finalGarbageCollectorMode;
 
         return AgentToolExecutionResult.FromActionProposal(proposal.DisplayMessage, proposal);
     }
@@ -350,6 +455,11 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             return "实例独立 Java 模式必须保留一个有效的 Java 路径。";
         }
 
+        proposal.Parameters.TryGetValue(InstanceCustomJvmArgumentsParameterKey, out var rawCustomJvmArguments);
+        var finalCustomJvmArguments = NormalizeJvmArguments(rawCustomJvmArguments);
+        proposal.Parameters.TryGetValue(InstanceGarbageCollectorModeParameterKey, out var rawGarbageCollectorMode);
+        var finalGarbageCollectorMode = GarbageCollectorModeHelper.Normalize(rawGarbageCollectorMode);
+
         if (!finalUseGlobalJavaSetting)
         {
             var ensureResult = await EnsureJavaPresentInKnownListAsync(finalJavaPath!, cancellationToken);
@@ -373,6 +483,8 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         var settings = CreateVersionSettings(currentConfig);
         settings.UseGlobalJavaSetting = finalUseGlobalJavaSetting;
         settings.JavaPath = finalJavaPath ?? string.Empty;
+        settings.CustomJvmArguments = finalCustomJvmArguments;
+        settings.GarbageCollectorMode = finalGarbageCollectorMode;
 
         await _versionSettingsOrchestrator.SaveVersionSettingsAsync(
             new VersionListViewModel.VersionInfoItem
@@ -382,9 +494,7 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             },
             settings);
 
-        return finalUseGlobalJavaSetting
-            ? $"已更新实例 {targetVersion.VersionName} 的 Java 设置：改为跟随全局。"
-            : $"已更新实例 {targetVersion.VersionName} 的 Java 设置：改为版本独立，并使用 {finalJavaPath}。";
+        return $"已更新实例 {targetVersion.VersionName} 的启动设置：{BuildChangeSummary(proposal)}。";
     }
 
     private async Task<ResolvedTargetVersion> ResolveTargetVersionAsync(
@@ -601,6 +711,28 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         return javaEntry == null ? normalizedJavaPath : BuildJavaDisplay(javaEntry);
     }
 
+    private static string DescribeJvmArguments(string? arguments)
+    {
+        return string.IsNullOrWhiteSpace(arguments) ? "未设置" : arguments;
+    }
+
+    private static string DescribeJvmGcSource(bool followsGlobal)
+    {
+        return followsGlobal ? "跟随全局" : "使用实例值";
+    }
+
+    private static string DescribeJvmGcSourceAfterPatch(bool followsGlobal, bool hasJvmSettingsRequest)
+    {
+        if (!followsGlobal)
+        {
+            return "使用实例值";
+        }
+
+        return hasJvmSettingsRequest
+            ? "仍跟随全局（本地值已更新，待实例脱离全局后生效）"
+            : "跟随全局";
+    }
+
     private static string BuildJavaDisplay(AgentJavaInventoryEntry javaEntry)
     {
         var javaType = javaEntry.IsJdk ? "JDK" : "JRE";
@@ -637,6 +769,24 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         return null;
     }
 
+    private static string? NormalizeRequestedGarbageCollectorMode(string? rawMode, out string errorMessage)
+    {
+        errorMessage = string.Empty;
+        if (string.IsNullOrWhiteSpace(rawMode))
+        {
+            return null;
+        }
+
+        var normalized = GarbageCollectorModeHelper.Normalize(rawMode);
+        if (!GarbageCollectorModeHelper.AllModes.Any(mode => string.Equals(mode, rawMode.Trim(), StringComparison.OrdinalIgnoreCase)))
+        {
+            errorMessage = $"garbage_collector_mode 仅支持 {string.Join(" / ", GarbageCollectorModeHelper.AllModes)}。";
+            return null;
+        }
+
+        return normalized;
+    }
+
     private static string ToStoredJavaSelectionMode(string mode)
     {
         return string.Equals(mode, JavaSelectionModeManual, StringComparison.Ordinal)
@@ -647,6 +797,11 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
     private static string? NullIfWhiteSpace(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static string NormalizeJvmArguments(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
     }
 
     private static string? NormalizeText(string? value)
@@ -670,6 +825,24 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
     private static bool PathEquals(string? left, string? right)
     {
         return string.Equals(NormalizeDirectoryPath(left), NormalizeDirectoryPath(right), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool JvmSettingsFollowGlobal(bool useGlobalJavaSetting, bool overrideMemory, bool overrideResolution)
+    {
+        return useGlobalJavaSetting && !overrideMemory && !overrideResolution;
+    }
+
+    private string BuildChangeSummary(AgentActionProposal proposal)
+    {
+        if (_proposalService.TryParsePayload(proposal, out var payload)
+            && payload is { Changes.Count: > 0 })
+        {
+            return string.Join("、", payload.Changes
+                .Select(change => change.DisplayName)
+                .Distinct(StringComparer.Ordinal));
+        }
+
+        return "设置项";
     }
 
     private const string JavaSelectionModeAuto = "auto";
