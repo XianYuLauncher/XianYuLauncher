@@ -1,6 +1,5 @@
 using System.Text;
 using Newtonsoft.Json.Linq;
-using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
@@ -58,11 +57,11 @@ public sealed class ListInstalledModsToolHandler : IAgentToolHandler
 
 public sealed class GetVersionConfigToolHandler : IAgentToolHandler
 {
-    private readonly IVersionInfoService _versionInfoService;
+    private readonly IAgentSettingsQueryService _settingsQueryService;
 
-    public GetVersionConfigToolHandler(IVersionInfoService versionInfoService)
+    public GetVersionConfigToolHandler(IAgentSettingsQueryService settingsQueryService)
     {
-        _versionInfoService = versionInfoService;
+        _settingsQueryService = settingsQueryService;
     }
 
     public string ToolName => "getVersionConfig";
@@ -86,16 +85,8 @@ public sealed class GetVersionConfigToolHandler : IAgentToolHandler
     {
         try
         {
-            var versionDirectory = Path.Combine(context.MinecraftPath, MinecraftPathConsts.Versions, context.VersionId);
-            var config = await _versionInfoService.GetFullVersionInfoAsync(context.VersionId, versionDirectory, preferCache: true);
-            cancellationToken.ThrowIfCancellationRequested();
-
             return AgentToolExecutionResult.FromMessage(
-                AgentSettingsSnapshotJsonHelper.BuildVersionConfigSnapshotJson(
-                    context.VersionId,
-                    context.MinecraftPath,
-                    versionDirectory,
-                    config));
+                await _settingsQueryService.GetVersionConfigSnapshotAsync(context, cancellationToken));
         }
         catch (Exception ex)
         {
@@ -106,15 +97,11 @@ public sealed class GetVersionConfigToolHandler : IAgentToolHandler
 
 public sealed class CheckJavaVersionsToolHandler : IAgentToolHandler
 {
-    private readonly IJavaRuntimeService _javaRuntimeService;
-    private readonly IGameSettingsDomainService _gameSettingsDomainService;
+    private readonly IAgentSettingsQueryService _settingsQueryService;
 
-    public CheckJavaVersionsToolHandler(
-        IJavaRuntimeService javaRuntimeService,
-        IGameSettingsDomainService gameSettingsDomainService)
+    public CheckJavaVersionsToolHandler(IAgentSettingsQueryService settingsQueryService)
     {
-        _javaRuntimeService = javaRuntimeService;
-        _gameSettingsDomainService = gameSettingsDomainService;
+        _settingsQueryService = settingsQueryService;
     }
 
     public string ToolName => "checkJavaVersions";
@@ -143,49 +130,24 @@ public sealed class CheckJavaVersionsToolHandler : IAgentToolHandler
             var refresh = arguments["refresh"]?.Value<bool>()
                 ?? arguments["forceRefresh"]?.Value<bool>()
                 ?? false;
-            var selectionMode = await _gameSettingsDomainService.LoadJavaSelectionModeAsync();
-            var selectedJavaPath = NullIfWhiteSpace(await _gameSettingsDomainService.LoadJavaPathAsync());
-
-            IReadOnlyList<JavaVersion> javaVersions;
-            var cachedJavaVersions = refresh ? null : await _gameSettingsDomainService.LoadJavaVersionsAsync();
-            if (!refresh && cachedJavaVersions is { Count: > 0 })
-            {
-                javaVersions = cachedJavaVersions;
-            }
-            else
-            {
-                javaVersions = await _javaRuntimeService.DetectJavaVersionsAsync(refresh);
-            }
-
-            cancellationToken.ThrowIfCancellationRequested();
 
             return AgentToolExecutionResult.FromMessage(
-                AgentSettingsSnapshotJsonHelper.BuildJavaVersionsSnapshotJson(
-                    refresh,
-                    selectionMode,
-                    selectedJavaPath,
-                    javaVersions,
-                    !refresh && cachedJavaVersions is { Count: > 0 }));
+                await _settingsQueryService.GetJavaVersionsSnapshotAsync(refresh, cancellationToken));
         }
         catch (Exception ex)
         {
             return AgentToolExecutionResult.FromMessage($"检测 Java 版本失败: {ex.Message}");
         }
     }
-
-    private static string? NullIfWhiteSpace(string? value)
-    {
-        return string.IsNullOrWhiteSpace(value) ? null : value;
-    }
 }
 
 public sealed class GetMinecraftPathsToolHandler : IAgentToolHandler
 {
-    private readonly IGameSettingsDomainService _gameSettingsDomainService;
+    private readonly IAgentSettingsQueryService _settingsQueryService;
 
-    public GetMinecraftPathsToolHandler(IGameSettingsDomainService gameSettingsDomainService)
+    public GetMinecraftPathsToolHandler(IAgentSettingsQueryService settingsQueryService)
     {
-        _gameSettingsDomainService = gameSettingsDomainService;
+        _settingsQueryService = settingsQueryService;
     }
 
     public string ToolName => "getMinecraftPaths";
@@ -208,12 +170,8 @@ public sealed class GetMinecraftPathsToolHandler : IAgentToolHandler
     {
         try
         {
-            var currentMinecraftPath = await _gameSettingsDomainService.ResolveCurrentMinecraftPathAsync();
-            var pathsJson = await _gameSettingsDomainService.LoadMinecraftPathsJsonAsync();
-            cancellationToken.ThrowIfCancellationRequested();
-
             return AgentToolExecutionResult.FromMessage(
-                AgentSettingsSnapshotJsonHelper.BuildMinecraftPathsSnapshotJson(currentMinecraftPath, pathsJson));
+                await _settingsQueryService.GetMinecraftPathsSnapshotAsync(cancellationToken));
         }
         catch (Exception ex)
         {
@@ -224,11 +182,11 @@ public sealed class GetMinecraftPathsToolHandler : IAgentToolHandler
 
 public sealed class GetGlobalLaunchSettingsToolHandler : IAgentToolHandler
 {
-    private readonly IGameSettingsDomainService _gameSettingsDomainService;
+    private readonly IAgentSettingsQueryService _settingsQueryService;
 
-    public GetGlobalLaunchSettingsToolHandler(IGameSettingsDomainService gameSettingsDomainService)
+    public GetGlobalLaunchSettingsToolHandler(IAgentSettingsQueryService settingsQueryService)
     {
-        _gameSettingsDomainService = gameSettingsDomainService;
+        _settingsQueryService = settingsQueryService;
     }
 
     public string ToolName => "getGlobalLaunchSettings";
@@ -251,45 +209,8 @@ public sealed class GetGlobalLaunchSettingsToolHandler : IAgentToolHandler
     {
         try
         {
-            var globalLaunchSettingsTask = _gameSettingsDomainService.LoadGlobalLaunchSettingsAsync();
-            var javaSelectionModeTask = _gameSettingsDomainService.LoadJavaSelectionModeAsync();
-            var selectedJavaPathTask = _gameSettingsDomainService.LoadJavaPathAsync();
-            var knownJavaVersionsTask = _gameSettingsDomainService.LoadJavaVersionsAsync();
-            var gameIsolationModeTask = _gameSettingsDomainService.LoadGameIsolationModeAsync();
-            var legacyVersionIsolationTask = _gameSettingsDomainService.LoadEnableVersionIsolationAsync();
-            var customGameDirectoryPathTask = _gameSettingsDomainService.LoadCustomGameDirectoryAsync();
-            var currentMinecraftPathTask = _gameSettingsDomainService.ResolveCurrentMinecraftPathAsync();
-
-            await Task.WhenAll(
-                globalLaunchSettingsTask,
-                javaSelectionModeTask,
-                selectedJavaPathTask,
-                knownJavaVersionsTask,
-                gameIsolationModeTask,
-                legacyVersionIsolationTask,
-                customGameDirectoryPathTask,
-                currentMinecraftPathTask);
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var globalLaunchSettings = await globalLaunchSettingsTask;
             return AgentToolExecutionResult.FromMessage(
-                AgentSettingsSnapshotJsonHelper.BuildGlobalLaunchSettingsSnapshotJson(new AgentGlobalSettingsSnapshotInput
-                {
-                    AutoMemoryAllocation = globalLaunchSettings.AutoMemoryAllocation,
-                    InitialHeapMemory = globalLaunchSettings.InitialHeapMemory,
-                    MaximumHeapMemory = globalLaunchSettings.MaximumHeapMemory,
-                    CustomJvmArguments = globalLaunchSettings.CustomJvmArguments,
-                    GarbageCollectorMode = globalLaunchSettings.GarbageCollectorMode,
-                    WindowWidth = globalLaunchSettings.WindowWidth,
-                    WindowHeight = globalLaunchSettings.WindowHeight,
-                    JavaSelectionMode = await javaSelectionModeTask,
-                    SelectedJavaPath = await selectedJavaPathTask,
-                    KnownJavaVersions = await knownJavaVersionsTask ?? [],
-                    GameIsolationModeKey = await gameIsolationModeTask,
-                    LegacyEnableVersionIsolation = await legacyVersionIsolationTask,
-                    CustomGameDirectoryPath = await customGameDirectoryPathTask,
-                    CurrentMinecraftPath = await currentMinecraftPathTask,
-                }));
+                await _settingsQueryService.GetGlobalLaunchSettingsSnapshotAsync(cancellationToken));
         }
         catch (Exception ex)
         {
@@ -300,24 +221,11 @@ public sealed class GetGlobalLaunchSettingsToolHandler : IAgentToolHandler
 
 public sealed class GetEffectiveLaunchSettingsToolHandler : IAgentToolHandler
 {
-    private readonly IVersionInfoService _versionInfoService;
-    private readonly IVersionInfoManager _versionInfoManager;
-    private readonly ILaunchSettingsResolver _launchSettingsResolver;
-    private readonly IGameDirResolver _gameDirResolver;
-    private readonly IGameSettingsDomainService _gameSettingsDomainService;
+    private readonly IAgentSettingsQueryService _settingsQueryService;
 
-    public GetEffectiveLaunchSettingsToolHandler(
-        IVersionInfoService versionInfoService,
-        IVersionInfoManager versionInfoManager,
-        ILaunchSettingsResolver launchSettingsResolver,
-        IGameDirResolver gameDirResolver,
-        IGameSettingsDomainService gameSettingsDomainService)
+    public GetEffectiveLaunchSettingsToolHandler(IAgentSettingsQueryService settingsQueryService)
     {
-        _versionInfoService = versionInfoService;
-        _versionInfoManager = versionInfoManager;
-        _launchSettingsResolver = launchSettingsResolver;
-        _gameDirResolver = gameDirResolver;
-        _gameSettingsDomainService = gameSettingsDomainService;
+        _settingsQueryService = settingsQueryService;
     }
 
     public string ToolName => "getEffectiveLaunchSettings";
@@ -341,68 +249,12 @@ public sealed class GetEffectiveLaunchSettingsToolHandler : IAgentToolHandler
     {
         try
         {
-            var versionDirectory = Path.Combine(context.MinecraftPath, MinecraftPathConsts.Versions, context.VersionId);
-            var versionConfigTask = _versionInfoService.GetFullVersionInfoAsync(context.VersionId, versionDirectory, preferCache: true);
-            var versionInfoTask = GetVersionInfoWithFallbackAsync(context, cancellationToken);
-            var resolvedGameDirectoryTask = _gameDirResolver.GetGameDirForVersionAsync(context.VersionId);
-            var globalGameIsolationModeTask = _gameSettingsDomainService.LoadGameIsolationModeAsync();
-            var globalLegacyVersionIsolationTask = _gameSettingsDomainService.LoadEnableVersionIsolationAsync();
-            var globalCustomGameDirectoryTask = _gameSettingsDomainService.LoadCustomGameDirectoryAsync();
-
-            await Task.WhenAll(
-                versionConfigTask,
-                versionInfoTask,
-                resolvedGameDirectoryTask,
-                globalGameIsolationModeTask,
-                globalLegacyVersionIsolationTask,
-                globalCustomGameDirectoryTask);
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var versionConfig = await versionConfigTask;
-            var versionInfo = await versionInfoTask;
-            var requiredJavaVersion = versionInfo?.JavaVersion?.MajorVersion ?? 8;
-            var effectiveSettings = await _launchSettingsResolver.ResolveAsync(versionConfig, requiredJavaVersion);
-            cancellationToken.ThrowIfCancellationRequested();
-
             return AgentToolExecutionResult.FromMessage(
-                AgentSettingsSnapshotJsonHelper.BuildEffectiveLaunchSettingsSnapshotJson(new AgentEffectiveSettingsSnapshotInput
-                {
-                    VersionId = context.VersionId,
-                    MinecraftRootPath = context.MinecraftPath,
-                    VersionDirectoryPath = versionDirectory,
-                    Config = versionConfig,
-                    EffectiveSettings = effectiveSettings,
-                    RequiredJavaVersion = requiredJavaVersion,
-                    RequiredJavaVersionFromVersionInfo = versionInfo?.JavaVersion?.MajorVersion is > 0,
-                    ResolvedGameDirectory = await resolvedGameDirectoryTask,
-                    GlobalGameIsolationModeKey = await globalGameIsolationModeTask,
-                    GlobalLegacyEnableVersionIsolation = await globalLegacyVersionIsolationTask,
-                    GlobalCustomGameDirectoryPath = await globalCustomGameDirectoryTask,
-                }));
+                await _settingsQueryService.GetEffectiveLaunchSettingsSnapshotAsync(context, cancellationToken));
         }
         catch (Exception ex)
         {
             return AgentToolExecutionResult.FromMessage($"读取生效启动设置失败: {ex.Message}");
-        }
-    }
-
-    private async Task<VersionInfo?> GetVersionInfoWithFallbackAsync(ErrorAnalysisSessionContext context, CancellationToken cancellationToken)
-    {
-        try
-        {
-            return await _versionInfoManager.GetVersionInfoAsync(
-                context.VersionId,
-                context.MinecraftPath,
-                allowNetwork: false,
-                cancellationToken: cancellationToken);
-        }
-        catch
-        {
-            return await _versionInfoManager.GetVersionInfoAsync(
-                context.VersionId,
-                context.MinecraftPath,
-                allowNetwork: true,
-                cancellationToken: cancellationToken);
         }
     }
 }
