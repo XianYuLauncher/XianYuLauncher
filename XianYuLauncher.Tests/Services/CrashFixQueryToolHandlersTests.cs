@@ -124,4 +124,89 @@ public class CrashFixQueryToolHandlersTests
 
         return Task.CompletedTask;
     }
+
+    [Fact]
+    public Task BuildGlobalLaunchSettingsSnapshotJson_UsesLegacyGameDirFallbackAndSelectedJavaDetails()
+    {
+        var payload = JObject.Parse(AgentSettingsSnapshotJsonHelper.BuildGlobalLaunchSettingsSnapshotJson(new AgentGlobalSettingsSnapshotInput
+        {
+            AutoMemoryAllocation = true,
+            InitialHeapMemory = 6,
+            MaximumHeapMemory = 12,
+            CustomJvmArguments = "-Dglobal=true",
+            GarbageCollectorMode = "G1GC",
+            WindowWidth = 1920,
+            WindowHeight = 1080,
+            JavaSelectionMode = "Manual",
+            SelectedJavaPath = @"C:\Java\jdk-21\bin\javaw.exe",
+            KnownJavaVersions =
+            [
+                new JavaVersion { Path = @"C:\Java\jdk-21\bin\javaw.exe", FullVersion = "21.0.4", MajorVersion = 21, IsJDK = true, Is64Bit = true }
+            ],
+            GameIsolationModeKey = null,
+            LegacyEnableVersionIsolation = true,
+            CustomGameDirectoryPath = @"D:\CustomGameDir",
+            CurrentMinecraftPath = @"D:\Games\.minecraft"
+        }));
+
+        payload["java_settings"]!["selection_mode"]!.Value<string>().Should().Be("manual");
+        payload["java_settings"]!["selected_java_present_in_known_list"]!.Value<bool>().Should().BeTrue();
+        payload["java_settings"]!["selected_java"]!["major_version"]!.Value<int>().Should().Be(21);
+        payload["game_directory_settings"]!["mode_key"]!.Value<string>().Should().Be("VersionIsolation");
+        payload["game_directory_settings"]!["mode"]!.Value<string>().Should().Be("version_isolation");
+        payload["game_directory_settings"]!["legacy_enable_version_isolation"]!.Value<bool>().Should().BeTrue();
+
+        return Task.CompletedTask;
+    }
+
+    [Fact]
+    public Task BuildEffectiveLaunchSettingsSnapshotJson_ReportsEffectiveSources()
+    {
+        var payload = JObject.Parse(AgentSettingsSnapshotJsonHelper.BuildEffectiveLaunchSettingsSnapshotJson(new AgentEffectiveSettingsSnapshotInput
+        {
+            VersionId = "1.21.1-Fabric",
+            MinecraftRootPath = @"D:\Games\.minecraft",
+            VersionDirectoryPath = @"D:\Games\.minecraft\versions\1.21.1-Fabric",
+            Config = new VersionConfig
+            {
+                UseGlobalJavaSetting = false,
+                JavaPath = @"C:\Java\jdk-21\bin\javaw.exe",
+                OverrideMemory = false,
+                OverrideResolution = true,
+                CustomJvmArguments = "-Dlocal=true",
+                GarbageCollectorMode = "ZGC",
+                WindowWidth = 1720,
+                WindowHeight = 980,
+                GameDirMode = "Custom",
+                GameDirCustomPath = @"E:\Instances\GameDir"
+            },
+            EffectiveSettings = new EffectiveLaunchSettings
+            {
+                AutoMemoryAllocation = true,
+                InitialHeapMemory = 6,
+                MaximumHeapMemory = 12,
+                JavaPath = @"C:\Java\jdk-21\bin\javaw.exe",
+                WindowWidth = 1720,
+                WindowHeight = 980,
+                CustomJvmArguments = "-Dlocal=true",
+                GarbageCollectorMode = "ZGC"
+            },
+            RequiredJavaVersion = 21,
+            RequiredJavaVersionFromVersionInfo = true,
+            ResolvedGameDirectory = @"E:\Instances\GameDir",
+            GlobalGameIsolationModeKey = "VersionIsolation",
+            GlobalLegacyEnableVersionIsolation = true,
+            GlobalCustomGameDirectoryPath = @"D:\GlobalCustomDir"
+        }));
+
+        payload["required_java_version"]!.Value<int>().Should().Be(21);
+        payload["required_java_version_source"]!.Value<string>().Should().Be("version_manifest");
+        payload["java_settings"]!["effective_value_source"]!.Value<string>().Should().Be("local");
+        payload["memory_settings"]!["effective_value_source"]!.Value<string>().Should().Be("global");
+        payload["resolution_settings"]!["effective_value_source"]!.Value<string>().Should().Be("local");
+        payload["game_directory_settings"]!["effective_value_source"]!.Value<string>().Should().Be("local_custom");
+        payload["game_directory_settings"]!["effective_game_directory"]!.Value<string>().Should().Be(@"E:\Instances\GameDir");
+
+        return Task.CompletedTask;
+    }
 }

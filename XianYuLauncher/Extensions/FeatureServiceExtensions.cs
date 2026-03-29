@@ -30,6 +30,8 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentToolHandler, GetVersionConfigToolHandler>();
         services.AddSingleton<IAgentToolHandler, CheckJavaVersionsToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetMinecraftPathsToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetGlobalLaunchSettingsToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetEffectiveLaunchSettingsToolHandler>();
         services.AddSingleton<IAgentToolHandler, SearchKnowledgeBaseToolHandler>();
         services.AddSingleton<IAgentToolHandler, ReadModInfoToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetCurrentGameDirectoryToolHandler>();

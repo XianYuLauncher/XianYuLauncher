@@ -181,8 +181,6 @@ public sealed class CheckJavaVersionsToolHandler : IAgentToolHandler
 
 public sealed class GetMinecraftPathsToolHandler : IAgentToolHandler
 {
-    private const string CurrentPathFallbackName = "当前活动目录";
-
     private readonly IGameSettingsDomainService _gameSettingsDomainService;
 
     public GetMinecraftPathsToolHandler(IGameSettingsDomainService gameSettingsDomainService)
@@ -220,6 +218,191 @@ public sealed class GetMinecraftPathsToolHandler : IAgentToolHandler
         catch (Exception ex)
         {
             return AgentToolExecutionResult.FromMessage($"读取 Minecraft 目录列表失败: {ex.Message}");
+        }
+    }
+}
+
+public sealed class GetGlobalLaunchSettingsToolHandler : IAgentToolHandler
+{
+    private readonly IGameSettingsDomainService _gameSettingsDomainService;
+
+    public GetGlobalLaunchSettingsToolHandler(IGameSettingsDomainService gameSettingsDomainService)
+    {
+        _gameSettingsDomainService = gameSettingsDomainService;
+    }
+
+    public string ToolName => "getGlobalLaunchSettings";
+
+    public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
+        ToolName,
+        "返回启动器当前全局启动设置的 JSON 快照，包含 Java 选择方式、当前选中的 Java、全局 JVM/GC、内存、分辨率，以及当前全局游戏目录模式。",
+        new
+        {
+            type = "object",
+            properties = new { },
+            required = Array.Empty<string>()
+        });
+
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ReadOnly;
+
+    public bool IsAvailable(ErrorAnalysisSessionContext context) => true;
+
+    public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var globalLaunchSettingsTask = _gameSettingsDomainService.LoadGlobalLaunchSettingsAsync();
+            var javaSelectionModeTask = _gameSettingsDomainService.LoadJavaSelectionModeAsync();
+            var selectedJavaPathTask = _gameSettingsDomainService.LoadJavaPathAsync();
+            var knownJavaVersionsTask = _gameSettingsDomainService.LoadJavaVersionsAsync();
+            var gameIsolationModeTask = _gameSettingsDomainService.LoadGameIsolationModeAsync();
+            var legacyVersionIsolationTask = _gameSettingsDomainService.LoadEnableVersionIsolationAsync();
+            var customGameDirectoryPathTask = _gameSettingsDomainService.LoadCustomGameDirectoryAsync();
+            var currentMinecraftPathTask = _gameSettingsDomainService.ResolveCurrentMinecraftPathAsync();
+
+            await Task.WhenAll(
+                globalLaunchSettingsTask,
+                javaSelectionModeTask,
+                selectedJavaPathTask,
+                knownJavaVersionsTask,
+                gameIsolationModeTask,
+                legacyVersionIsolationTask,
+                customGameDirectoryPathTask,
+                currentMinecraftPathTask);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var globalLaunchSettings = await globalLaunchSettingsTask;
+            return AgentToolExecutionResult.FromMessage(
+                AgentSettingsSnapshotJsonHelper.BuildGlobalLaunchSettingsSnapshotJson(new AgentGlobalSettingsSnapshotInput
+                {
+                    AutoMemoryAllocation = globalLaunchSettings.AutoMemoryAllocation,
+                    InitialHeapMemory = globalLaunchSettings.InitialHeapMemory,
+                    MaximumHeapMemory = globalLaunchSettings.MaximumHeapMemory,
+                    CustomJvmArguments = globalLaunchSettings.CustomJvmArguments,
+                    GarbageCollectorMode = globalLaunchSettings.GarbageCollectorMode,
+                    WindowWidth = globalLaunchSettings.WindowWidth,
+                    WindowHeight = globalLaunchSettings.WindowHeight,
+                    JavaSelectionMode = await javaSelectionModeTask,
+                    SelectedJavaPath = await selectedJavaPathTask,
+                    KnownJavaVersions = await knownJavaVersionsTask ?? [],
+                    GameIsolationModeKey = await gameIsolationModeTask,
+                    LegacyEnableVersionIsolation = await legacyVersionIsolationTask,
+                    CustomGameDirectoryPath = await customGameDirectoryPathTask,
+                    CurrentMinecraftPath = await currentMinecraftPathTask,
+                }));
+        }
+        catch (Exception ex)
+        {
+            return AgentToolExecutionResult.FromMessage($"读取全局启动设置失败: {ex.Message}");
+        }
+    }
+}
+
+public sealed class GetEffectiveLaunchSettingsToolHandler : IAgentToolHandler
+{
+    private readonly IVersionInfoService _versionInfoService;
+    private readonly IVersionInfoManager _versionInfoManager;
+    private readonly ILaunchSettingsResolver _launchSettingsResolver;
+    private readonly IGameDirResolver _gameDirResolver;
+    private readonly IGameSettingsDomainService _gameSettingsDomainService;
+
+    public GetEffectiveLaunchSettingsToolHandler(
+        IVersionInfoService versionInfoService,
+        IVersionInfoManager versionInfoManager,
+        ILaunchSettingsResolver launchSettingsResolver,
+        IGameDirResolver gameDirResolver,
+        IGameSettingsDomainService gameSettingsDomainService)
+    {
+        _versionInfoService = versionInfoService;
+        _versionInfoManager = versionInfoManager;
+        _launchSettingsResolver = launchSettingsResolver;
+        _gameDirResolver = gameDirResolver;
+        _gameSettingsDomainService = gameSettingsDomainService;
+    }
+
+    public string ToolName => "getEffectiveLaunchSettings";
+
+    public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
+        ToolName,
+        "返回当前会话实例的最终生效启动设置 JSON 快照，包含 required_java_version、最终 Java/内存/JVM/GC/分辨率，以及最终生效的游戏目录。",
+        new
+        {
+            type = "object",
+            properties = new { },
+            required = Array.Empty<string>()
+        });
+
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ReadOnly;
+
+    public bool IsAvailable(ErrorAnalysisSessionContext context) =>
+        !string.IsNullOrWhiteSpace(context.VersionId) && !string.IsNullOrWhiteSpace(context.MinecraftPath);
+
+    public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var versionDirectory = Path.Combine(context.MinecraftPath, MinecraftPathConsts.Versions, context.VersionId);
+            var versionConfigTask = _versionInfoService.GetFullVersionInfoAsync(context.VersionId, versionDirectory, preferCache: true);
+            var versionInfoTask = GetVersionInfoWithFallbackAsync(context, cancellationToken);
+            var resolvedGameDirectoryTask = _gameDirResolver.GetGameDirForVersionAsync(context.VersionId);
+            var globalGameIsolationModeTask = _gameSettingsDomainService.LoadGameIsolationModeAsync();
+            var globalLegacyVersionIsolationTask = _gameSettingsDomainService.LoadEnableVersionIsolationAsync();
+            var globalCustomGameDirectoryTask = _gameSettingsDomainService.LoadCustomGameDirectoryAsync();
+
+            await Task.WhenAll(
+                versionConfigTask,
+                versionInfoTask,
+                resolvedGameDirectoryTask,
+                globalGameIsolationModeTask,
+                globalLegacyVersionIsolationTask,
+                globalCustomGameDirectoryTask);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var versionConfig = await versionConfigTask;
+            var versionInfo = await versionInfoTask;
+            var requiredJavaVersion = versionInfo?.JavaVersion?.MajorVersion ?? 8;
+            var effectiveSettings = await _launchSettingsResolver.ResolveAsync(versionConfig, requiredJavaVersion);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            return AgentToolExecutionResult.FromMessage(
+                AgentSettingsSnapshotJsonHelper.BuildEffectiveLaunchSettingsSnapshotJson(new AgentEffectiveSettingsSnapshotInput
+                {
+                    VersionId = context.VersionId,
+                    MinecraftRootPath = context.MinecraftPath,
+                    VersionDirectoryPath = versionDirectory,
+                    Config = versionConfig,
+                    EffectiveSettings = effectiveSettings,
+                    RequiredJavaVersion = requiredJavaVersion,
+                    RequiredJavaVersionFromVersionInfo = versionInfo?.JavaVersion?.MajorVersion is > 0,
+                    ResolvedGameDirectory = await resolvedGameDirectoryTask,
+                    GlobalGameIsolationModeKey = await globalGameIsolationModeTask,
+                    GlobalLegacyEnableVersionIsolation = await globalLegacyVersionIsolationTask,
+                    GlobalCustomGameDirectoryPath = await globalCustomGameDirectoryTask,
+                }));
+        }
+        catch (Exception ex)
+        {
+            return AgentToolExecutionResult.FromMessage($"读取生效启动设置失败: {ex.Message}");
+        }
+    }
+
+    private async Task<VersionInfo?> GetVersionInfoWithFallbackAsync(ErrorAnalysisSessionContext context, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await _versionInfoManager.GetVersionInfoAsync(
+                context.VersionId,
+                context.MinecraftPath,
+                allowNetwork: false,
+                cancellationToken: cancellationToken);
+        }
+        catch
+        {
+            return await _versionInfoManager.GetVersionInfoAsync(
+                context.VersionId,
+                context.MinecraftPath,
+                allowNetwork: true,
+                cancellationToken: cancellationToken);
         }
     }
 }
