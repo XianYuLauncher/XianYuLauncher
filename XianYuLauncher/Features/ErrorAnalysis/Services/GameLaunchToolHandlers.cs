@@ -166,7 +166,7 @@ public sealed class LaunchGameActionHandler : IAgentActionHandler
                     LaunchCommand = result.LaunchCommand ?? string.Empty,
                     VersionId = preparedLaunch.VersionName,
                     MinecraftPath = preparedLaunch.MinecraftPath,
-                    Origin = GameLaunchObservationOrigin.LauncherAi,
+                    Origin = GameLaunchObservationOrigin.LauncherAI,
                     EnableLiveErrorAnalysisStreaming = false,
                 });
                 _launchOperationTracker.CompleteOperation(operationId);

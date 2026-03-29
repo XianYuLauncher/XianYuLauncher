@@ -14,12 +14,12 @@ using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services
 {
-    public class OpenAiAnalysisService : IAIAnalysisService
+    public class OpenAIAnalysisService : IAIAnalysisService
     {
         private readonly HttpClient _httpClient;
-        private readonly ILogger<OpenAiAnalysisService> _logger;
+        private readonly ILogger<OpenAIAnalysisService> _logger;
 
-        public OpenAiAnalysisService(ILogger<OpenAiAnalysisService> logger)
+        public OpenAIAnalysisService(ILogger<OpenAIAnalysisService> logger)
         {
             _logger = logger;
             _httpClient = new HttpClient();

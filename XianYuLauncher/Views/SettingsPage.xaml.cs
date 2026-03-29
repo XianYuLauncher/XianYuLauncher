@@ -127,7 +127,7 @@ public sealed partial class SettingsPage : Page
             "game" => GameSectionHeader,
             "personalization" or "appearance" => PersonalizationSectionHeader,
             "network" => NetworkSectionHeader,
-            "ai" or "ai-analysis" => AiSectionHeader,
+            "launcher-ai" => AISectionHeader,
             "about" => AboutSectionHeader,
             _ => null,
         };

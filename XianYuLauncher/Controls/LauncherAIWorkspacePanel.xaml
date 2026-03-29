@@ -1,5 +1,5 @@
 <UserControl
-    x:Class="XianYuLauncher.Controls.LauncherAiWorkspacePanel"
+    x:Class="XianYuLauncher.Controls.LauncherAIWorkspacePanel"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:XianYuLauncher.Controls"
@@ -32,7 +32,7 @@
             </TabView.Resources>
         </TabView>
 
-        <controls:LauncherAiPanel
+        <controls:LauncherAIPanel
             x:Name="ChatPanel"
             Grid.Row="1"
             ViewModel="{Binding ChatViewModel, ElementName=Root}"

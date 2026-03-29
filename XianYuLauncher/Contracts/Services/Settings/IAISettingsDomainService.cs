@@ -3,7 +3,7 @@ using System.Threading.Tasks;
 
 namespace XianYuLauncher.Contracts.Services.Settings;
 
-public sealed class AiSettingsState
+public sealed class AISettingsState
 {
     public bool IsEnabled { get; init; }
 
@@ -16,13 +16,13 @@ public sealed class AiSettingsState
     public string SystemPrompt { get; init; } = string.Empty;
 }
 
-public interface IAiSettingsDomainService
+public interface IAISettingsDomainService
 {
     bool CurrentEnabled { get; }
 
     event EventHandler<bool>? EnabledChanged;
 
-    Task<AiSettingsState> LoadAsync();
+    Task<AISettingsState> LoadAsync();
 
     void PublishEnabledState(bool value);
 

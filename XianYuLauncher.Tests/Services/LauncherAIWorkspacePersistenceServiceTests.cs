@@ -6,17 +6,17 @@ using XianYuLauncher.Core.Services;
 
 namespace XianYuLauncher.Tests.Services;
 
-public sealed class LauncherAiWorkspacePersistenceServiceTests : IDisposable
+public sealed class LauncherAIWorkspacePersistenceServiceTests : IDisposable
 {
     private readonly string _workspaceRootPath;
-    private readonly LauncherAiWorkspacePersistenceService _service;
+    private readonly LauncherAIWorkspacePersistenceService _service;
 
-    public LauncherAiWorkspacePersistenceServiceTests()
+    public LauncherAIWorkspacePersistenceServiceTests()
     {
         _workspaceRootPath = Path.Combine(Path.GetTempPath(), "launcher-ai-persistence", Guid.NewGuid().ToString("N"));
-        _service = new LauncherAiWorkspacePersistenceService(
+        _service = new LauncherAIWorkspacePersistenceService(
             new FileService(),
-            new Mock<ILogger<LauncherAiWorkspacePersistenceService>>().Object,
+            new Mock<ILogger<LauncherAIWorkspacePersistenceService>>().Object,
             _workspaceRootPath);
     }
 
@@ -24,14 +24,14 @@ public sealed class LauncherAiWorkspacePersistenceServiceTests : IDisposable
     public async Task SaveWorkspaceAsync_ThenLoadWorkspaceAsync_ShouldRoundTrip()
     {
         var conversationId = Guid.NewGuid();
-        var workspace = new LauncherAiWorkspaceStorageModel
+        var workspace = new LauncherAIWorkspaceStorageModel
         {
             SelectedConversationId = conversationId,
             ActiveErrorAnalysisConversationId = conversationId,
             NextConversationNumber = 4,
             Conversations =
             [
-                new LauncherAiConversationIndexEntryStorageModel
+                new LauncherAIConversationIndexEntryStorageModel
                 {
                     ConversationId = conversationId,
                     IsErrorAnalysisConversation = true,
@@ -57,7 +57,7 @@ public sealed class LauncherAiWorkspacePersistenceServiceTests : IDisposable
     public async Task SaveConversationAsync_ThenLoadConversationAsync_ShouldRoundTrip()
     {
         var conversationId = Guid.NewGuid();
-        var conversation = new LauncherAiConversationStorageModel
+        var conversation = new LauncherAIConversationStorageModel
         {
             ConversationId = conversationId,
             IsErrorAnalysisConversation = false,
@@ -65,19 +65,19 @@ public sealed class LauncherAiWorkspacePersistenceServiceTests : IDisposable
             ToolTip = "测试对话",
             CreatedAtUtc = DateTimeOffset.UtcNow.AddHours(-1),
             LastUpdatedAtUtc = DateTimeOffset.UtcNow,
-            Interruption = new LauncherAiConversationInterruptionStorageModel
+            Interruption = new LauncherAIConversationInterruptionStorageModel
             {
                 Kind = "tool_continuation_pending",
                 InterruptedAtUtc = DateTimeOffset.UtcNow,
                 Message = "已中断"
             },
-            Session = new LauncherAiSessionStorageModel
+            Session = new LauncherAISessionStorageModel
             {
                 ChatInput = "草稿",
                 IsChatEnabled = true,
                 ChatMessages =
                 [
-                    new LauncherAiChatMessageStorageModel
+                    new LauncherAIChatMessageStorageModel
                     {
                         Role = "user",
                         Content = "你好",
@@ -87,7 +87,7 @@ public sealed class LauncherAiWorkspacePersistenceServiceTests : IDisposable
                 ],
                 ActionProposals =
                 [
-                    new LauncherAiActionProposalStorageModel
+                    new LauncherAIActionProposalStorageModel
                     {
                         ActionType = "launchGame",
                         ButtonText = "启动游戏",
@@ -165,12 +165,12 @@ public sealed class LauncherAiWorkspacePersistenceServiceTests : IDisposable
     public async Task DeleteConversationAsync_ShouldRemoveConversationFileAndAttachmentFolder()
     {
         var conversationId = Guid.NewGuid();
-        var conversation = new LauncherAiConversationStorageModel
+        var conversation = new LauncherAIConversationStorageModel
         {
             ConversationId = conversationId,
             CreatedAtUtc = DateTimeOffset.UtcNow,
             LastUpdatedAtUtc = DateTimeOffset.UtcNow,
-            Session = new LauncherAiSessionStorageModel()
+            Session = new LauncherAISessionStorageModel()
         };
         await _service.SaveConversationAsync(conversation);
 

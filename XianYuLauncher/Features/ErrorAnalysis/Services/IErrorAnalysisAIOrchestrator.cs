@@ -5,7 +5,7 @@ using XianYuLauncher.Features.ErrorAnalysis.Models;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 
-public interface IErrorAnalysisAiOrchestrator
+public interface IErrorAnalysisAIOrchestrator
 {
     Task AnalyzeCrashAsync(CancellationToken cancellationToken);
 

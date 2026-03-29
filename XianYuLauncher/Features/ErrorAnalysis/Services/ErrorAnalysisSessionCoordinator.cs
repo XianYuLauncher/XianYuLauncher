@@ -48,7 +48,7 @@ public sealed class ErrorAnalysisSessionCoordinator : IErrorAnalysisSessionCoord
     public void SetGameCrashStatus(bool isCrashed)
     {
         _sessionState.Context.IsGameCrashed = isCrashed;
-        _sessionState.IsAiAnalysisAvailable = isCrashed;
+        _sessionState.IsAIAnalysisAvailable = isCrashed;
 
         if (isCrashed)
         {
@@ -57,7 +57,7 @@ public sealed class ErrorAnalysisSessionCoordinator : IErrorAnalysisSessionCoord
 
         if (!isCrashed)
         {
-            _sessionState.IsAiAnalyzing = false;
+            _sessionState.IsAIAnalyzing = false;
         }
     }
 
@@ -74,7 +74,7 @@ public sealed class ErrorAnalysisSessionCoordinator : IErrorAnalysisSessionCoord
 
     public void ClearLogsOnly()
     {
-        _sessionState.CancelAiAnalysis();
+        _sessionState.CancelAIAnalysis();
         ResetAnalysisState();
         _logService.InitializeRealTimeLogs();
     }
@@ -92,9 +92,9 @@ public sealed class ErrorAnalysisSessionCoordinator : IErrorAnalysisSessionCoord
     private void ResetAnalysisState()
     {
         _sessionState.Context.IsGameCrashed = false;
-        _sessionState.IsAiAnalyzing = false;
-        _sessionState.IsAiAnalysisAvailable = false;
-        _sessionState.AiAnalysisResult = string.Empty;
+        _sessionState.IsAIAnalyzing = false;
+        _sessionState.IsAIAnalysisAvailable = false;
+        _sessionState.AIAnalysisResult = string.Empty;
         _sessionState.ResetFixActions();
     }
 }

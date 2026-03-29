@@ -28,7 +28,7 @@ namespace XianYuLauncher.ViewModels
     {
         private readonly ILanguageSelectorService _languageSelectorService;
         private readonly IErrorAnalysisLogService _logService;
-        private readonly IErrorAnalysisAiOrchestrator _aiOrchestrator;
+        private readonly IErrorAnalysisAIOrchestrator _aiOrchestrator;
         private readonly IErrorAnalysisSessionCoordinator _sessionCoordinator;
         private readonly IErrorAnalysisExportService _exportService;
         private readonly IFilePickerService _filePickerService;
@@ -63,10 +63,10 @@ namespace XianYuLauncher.ViewModels
         /// <summary>
         /// 独立 Launcher AI 窗口是否打开。
         /// </summary>
-        public bool IsLauncherAiWindowOpen
+        public bool IsLauncherAIWindowOpen
         {
-            get => _sessionState.IsLauncherAiWindowOpen;
-            set => _sessionState.IsLauncherAiWindowOpen = value;
+            get => _sessionState.IsLauncherAIWindowOpen;
+            set => _sessionState.IsLauncherAIWindowOpen = value;
         }
 
         /// <summary>
@@ -82,7 +82,7 @@ namespace XianYuLauncher.ViewModels
         public ErrorAnalysisViewModel(
             ILanguageSelectorService languageSelectorService, 
             IErrorAnalysisLogService logService,
-            IErrorAnalysisAiOrchestrator aiOrchestrator,
+            IErrorAnalysisAIOrchestrator aiOrchestrator,
             IErrorAnalysisSessionCoordinator sessionCoordinator,
             IErrorAnalysisExportService exportService,
             IFilePickerService filePickerService,
@@ -120,8 +120,8 @@ namespace XianYuLauncher.ViewModels
             {
                 OnPropertyChanged(e.PropertyName);
 
-                if (e.PropertyName == nameof(ErrorAnalysisSessionState.IsAiAnalyzing) ||
-                    e.PropertyName == nameof(ErrorAnalysisSessionState.IsAiAnalysisAvailable) ||
+                if (e.PropertyName == nameof(ErrorAnalysisSessionState.IsAIAnalyzing) ||
+                    e.PropertyName == nameof(ErrorAnalysisSessionState.IsAIAnalysisAvailable) ||
                     e.PropertyName == nameof(ErrorAnalysisSessionState.IsChatEnabled))
                 {
                     OnPropertyChanged(nameof(IsAnalyzeButtonEnabled));
@@ -163,15 +163,15 @@ namespace XianYuLauncher.ViewModels
         /// </summary>
         public async Task AnalyzeLogAsync()
         {
-            await AnalyzeWithAiAsync();
+            await AnalyzeWithAIAsync();
         }
 
         public string NoErrorInfoText => "ErrorAnalysis_NoErrorInfoText".GetLocalized();
 
-        public string AiAnalysisResult
+        public string AIAnalysisResult
         {
-            get => _sessionState.AiAnalysisResult;
-            set => _sessionState.AiAnalysisResult = value;
+            get => _sessionState.AIAnalysisResult;
+            set => _sessionState.AIAnalysisResult = value;
         }
 
         public async Task ClearChatStateAsync()
@@ -188,7 +188,7 @@ namespace XianYuLauncher.ViewModels
                 _sessionState.ClearPendingToolContinuation();
             });
 
-            IsAiAnalyzing = false;
+            IsAIAnalyzing = false;
             _sessionState.DisposeAiAnalysisToken();
         }
 
@@ -220,13 +220,13 @@ namespace XianYuLauncher.ViewModels
             set => _sessionState.IsChatEnabled = value;
         }
 
-        public bool CanComposeChat => IsChatEnabled || IsAiAnalyzing;
+        public bool CanComposeChat => IsChatEnabled || IsAIAnalyzing;
 
-        public ICommand CurrentChatActionCommand => IsAiAnalyzing
-            ? CancelAiAnalysisCommand
+        public ICommand CurrentChatActionCommand => IsAIAnalyzing
+            ? CancelAIAnalysisCommand
             : SendMessageCommand;
 
-        public string CurrentChatActionGlyph => IsAiAnalyzing ? "\uE71A" : "\uE724";
+        public string CurrentChatActionGlyph => IsAIAnalyzing ? "\uE71A" : "\uE724";
 
         // 新增：智能修复相关属性
         public bool HasFixAction
@@ -307,58 +307,58 @@ namespace XianYuLauncher.ViewModels
         private async Task RejectFixAction()
         {
             var rejectedText = FixButtonText;
-            var tokenSource = BeginAiAnalysisTokenSource();
+            var tokenSource = BeginAIAnalysisTokenSource();
             try
             {
                 await _aiOrchestrator.RejectPendingActionAsync(rejectedText, tokenSource.Token);
             }
             finally
             {
-                CompleteAiAnalysisToken(tokenSource);
+                CompleteAIAnalysisToken(tokenSource);
             }
         }
 
         private async Task ApproveActionProposalAsync(AgentActionProposal proposal)
         {
-            var tokenSource = BeginAiAnalysisTokenSource();
+            var tokenSource = BeginAIAnalysisTokenSource();
             try
             {
                 await _aiOrchestrator.ApproveActionAsync(proposal, tokenSource.Token);
             }
             finally
             {
-                CompleteAiAnalysisToken(tokenSource);
+                CompleteAIAnalysisToken(tokenSource);
             }
         }
         
-        public bool IsAiAnalyzing
+        public bool IsAIAnalyzing
         {
-            get => _sessionState.IsAiAnalyzing;
+            get => _sessionState.IsAIAnalyzing;
             set
             {
-                if (_sessionState.IsAiAnalyzing != value)
+                if (_sessionState.IsAIAnalyzing != value)
                 {
-                    _sessionState.IsAiAnalyzing = value;
+                    _sessionState.IsAIAnalyzing = value;
                 }
             }
         }
 
-        public bool IsAiAnalysisAvailable
+        public bool IsAIAnalysisAvailable
         {
-            get => _sessionState.IsAiAnalysisAvailable;
-            set => _sessionState.IsAiAnalysisAvailable = value;
+            get => _sessionState.IsAIAnalysisAvailable;
+            set => _sessionState.IsAIAnalysisAvailable = value;
         }
         
         // 计算属性，用于控制分析按钮的可见性
-        public Microsoft.UI.Xaml.Visibility AnalyzeButtonVisibility => IsAiAnalysisAvailable ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+        public Microsoft.UI.Xaml.Visibility AnalyzeButtonVisibility => IsAIAnalysisAvailable ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
         
         // 计算属性，用于控制分析按钮的启用状态
-        public bool IsAnalyzeButtonEnabled => IsAiAnalysisAvailable && !IsAiAnalyzing;
+        public bool IsAnalyzeButtonEnabled => IsAIAnalysisAvailable && !IsAIAnalyzing;
         
         // 计算属性，用于控制取消按钮的可见性
-    public Microsoft.UI.Xaml.Visibility CancelButtonVisibility => IsAiAnalyzing ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
-    
-    // 手动实现了属性，不再需要自动生成的 partial 方法
+        public Microsoft.UI.Xaml.Visibility CancelButtonVisibility => IsAIAnalyzing ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+        // 手动实现了属性，不再需要自动生成的 partial 方法
         
         // 原始日志数据
         private string _originalLog
@@ -404,25 +404,25 @@ namespace XianYuLauncher.ViewModels
         }
         
         // 用于存储当前崩溃分析的取消令牌
-        private CancellationTokenSource BeginAiAnalysisTokenSource()
+        private CancellationTokenSource BeginAIAnalysisTokenSource()
         {
-            IsAiAnalyzing = true;
-            return _sessionState.BeginAiAnalysisTokenSource();
+            IsAIAnalyzing = true;
+            return _sessionState.BeginAIAnalysisTokenSource();
         }
 
         private void CancelActiveAiAnalysis()
         {
-            _sessionState.CancelAiAnalysis();
+            _sessionState.CancelAIAnalysis();
         }
 
-        private void CompleteAiAnalysisToken(CancellationTokenSource tokenSource)
+        private void CompleteAIAnalysisToken(CancellationTokenSource tokenSource)
         {
             if (_sessionState.IsCurrentAiAnalysisTokenSource(tokenSource))
             {
-                IsAiAnalyzing = false;
+                IsAIAnalyzing = false;
             }
 
-            _sessionState.CompleteAiAnalysisTokenSource(tokenSource);
+            _sessionState.CompleteAIAnalysisTokenSource(tokenSource);
         }
 
         private void RemoveTrailingAssistantPlaceholderIfNeeded()
@@ -472,7 +472,7 @@ namespace XianYuLauncher.ViewModels
     {
         if (string.IsNullOrWhiteSpace(ChatInput) && PendingImageAttachments.Count == 0) return;
 
-        if (IsAiAnalyzing)
+        if (IsAIAnalyzing)
         {
             _sessionState.SuppressNextCancellationMessage();
             RemoveTrailingAssistantPlaceholderIfNeeded();
@@ -486,14 +486,14 @@ namespace XianYuLauncher.ViewModels
         ChatInput = string.Empty;
         PendingImageAttachments.Clear();
 
-        var tokenSource = BeginAiAnalysisTokenSource();
+        var tokenSource = BeginAIAnalysisTokenSource();
         try
         {
             await _aiOrchestrator.SendMessageAsync(userMsg, imageAttachments, tokenSource.Token);
         }
         finally
         {
-            CompleteAiAnalysisToken(tokenSource);
+            CompleteAIAnalysisToken(tokenSource);
         }
     }
 
@@ -504,7 +504,7 @@ namespace XianYuLauncher.ViewModels
             [".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"],
             PickerLocationId.PicturesLibrary,
             PickerViewMode.Thumbnail,
-            settingsIdentifier: "LauncherAiChatImages",
+            settingsIdentifier: "LauncherAIChatImages",
             commitButtonText: _languageSelectorService.Language == "zh-CN" ? "选择图片" : "Select images");
 
         if (selectedPaths.Count == 0)
@@ -561,7 +561,7 @@ namespace XianYuLauncher.ViewModels
     /// 使用本地知识库进行错误分析（流式输出）
     /// </summary>
     [RelayCommand]
-    private async Task AnalyzeWithAiAsync()
+    private async Task AnalyzeWithAIAsync()
     {
         await StartCrashAnalysisAsync(preemptCurrentAnalysis: false);
     }
@@ -573,24 +573,24 @@ namespace XianYuLauncher.ViewModels
             return;
         }
 
-        if (IsAiAnalyzing && !preemptCurrentAnalysis)
+        if (IsAIAnalyzing && !preemptCurrentAnalysis)
         {
             return;
         }
 
-        if (IsAiAnalyzing)
+        if (IsAIAnalyzing)
         {
             _sessionState.SuppressNextCancellationMessage();
         }
 
-        var tokenSource = BeginAiAnalysisTokenSource();
+        var tokenSource = BeginAIAnalysisTokenSource();
         try
         {
             await _aiOrchestrator.AnalyzeCrashAsync(tokenSource.Token);
         }
         finally
         {
-            CompleteAiAnalysisToken(tokenSource);
+            CompleteAIAnalysisToken(tokenSource);
         }
     }
     
@@ -598,10 +598,10 @@ namespace XianYuLauncher.ViewModels
     /// 取消分析
     /// </summary>
     [RelayCommand]
-    private void CancelAiAnalysis()
+    private void CancelAIAnalysis()
     {
         System.Diagnostics.Debug.WriteLine("崩溃分析: 收到取消分析请求");
-        if (IsAiAnalyzing)
+        if (IsAIAnalyzing)
         {
             System.Diagnostics.Debug.WriteLine("崩溃分析: 执行取消操作");
             CancelActiveAiAnalysis();
@@ -700,8 +700,8 @@ namespace XianYuLauncher.ViewModels
             LogLines.Add("日志已清空");
             
             // 同时重置崩溃分析结果为默认文字
-            AiAnalysisResult = NoErrorInfoText;
-            IsAiAnalysisAvailable = false;
+            AIAnalysisResult = NoErrorInfoText;
+            IsAIAnalysisAvailable = false;
         }
 
         public void Dispose()

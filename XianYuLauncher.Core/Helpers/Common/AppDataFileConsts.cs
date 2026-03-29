@@ -7,8 +7,8 @@ public static class AppDataFileConsts
     public const string LaunchHistoryJson = "launch_history.json";
     public const string FavoritesJson = "favorites.json";
     public const string LocalSettingsJson = "LocalSettings.json";
-    public const string LauncherAiFolder = "LauncherAi";
-    public const string LauncherAiWorkspaceJson = "workspace.json";
-    public const string LauncherAiConversationsFolder = "Conversations";
-    public const string LauncherAiAttachmentsFolder = "Attachments";
+    public const string LauncherAIFolder = "LauncherAI";
+    public const string LauncherAIWorkspaceJson = "workspace.json";
+    public const string LauncherAIConversationsFolder = "Conversations";
+    public const string LauncherAIAttachmentsFolder = "Attachments";
 }

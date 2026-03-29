@@ -11,7 +11,7 @@ public enum GameLaunchObservationOrigin
 {
     Unknown,
     LaunchPage,
-    LauncherAi,
+    LauncherAI,
 }
 
 public sealed class GameLaunchObservedProcessExitedEventArgs : EventArgs

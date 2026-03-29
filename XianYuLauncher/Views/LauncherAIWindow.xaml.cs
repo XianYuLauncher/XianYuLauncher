@@ -8,17 +8,17 @@ using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Views;
 
-public sealed partial class LauncherAiWindow : WindowEx
+public sealed partial class LauncherAIWindow : WindowEx
 {
-    private static LauncherAiWindow? _currentWindow;
+    private static LauncherAIWindow? _currentWindow;
 
     private readonly ErrorAnalysisSessionState _sessionState;
-    private readonly LauncherAiViewModel _launcherAiViewModel;
+    private readonly LauncherAIViewModel _launcherAIViewModel;
     private readonly MaterialService _materialService;
     private readonly IThemeSelectorService _themeSelectorService;
     private readonly IUiDispatcher _uiDispatcher;
 
-    public LauncherAiWindow()
+    public LauncherAIWindow()
     {
         InitializeComponent();
 
@@ -29,8 +29,8 @@ public sealed partial class LauncherAiWindow : WindowEx
         AppWindow.TitleBar.PreferredHeightOption = Microsoft.UI.Windowing.TitleBarHeightOption.Tall;
 
         _sessionState = App.GetService<ErrorAnalysisSessionState>();
-        _launcherAiViewModel = App.GetService<LauncherAiViewModel>();
-        _sessionState.IsLauncherAiWindowOpen = true;
+        _launcherAIViewModel = App.GetService<LauncherAIViewModel>();
+        _sessionState.IsLauncherAIWindowOpen = true;
         Closed += OnWindowClosed;
 
         _uiDispatcher = App.GetService<IUiDispatcher>();
@@ -42,7 +42,7 @@ public sealed partial class LauncherAiWindow : WindowEx
         ApplyTheme();
 
         LoadBackgroundAsync();
-        ContentFrame.Navigate(typeof(LauncherAiWindowPage));
+        ContentFrame.Navigate(typeof(LauncherAIWindowPage));
     }
 
     public static void ShowOrActivate()
@@ -53,7 +53,7 @@ public sealed partial class LauncherAiWindow : WindowEx
             return;
         }
 
-        _currentWindow = new LauncherAiWindow();
+        _currentWindow = new LauncherAIWindow();
         _currentWindow.Activate();
     }
 
@@ -67,8 +67,8 @@ public sealed partial class LauncherAiWindow : WindowEx
 
     private void OnWindowClosed(object sender, WindowEventArgs args)
     {
-        _sessionState.IsLauncherAiWindowOpen = false;
-        _launcherAiViewModel.CleanupTransientErrorAnalysisConversation();
+        _sessionState.IsLauncherAIWindowOpen = false;
+        _launcherAIViewModel.CleanupTransientErrorAnalysisConversation();
         _materialService.BackgroundChanged -= OnBackgroundChanged;
         _materialService.MotionSettingsChanged -= OnMotionSettingsChanged;
 

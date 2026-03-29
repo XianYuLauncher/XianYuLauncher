@@ -22,7 +22,7 @@ public partial class ShellViewModel : ObservableRecipient
 
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IDownloadTaskPresentationService _downloadTaskPresentationService;
-    private readonly IAiSettingsDomainService _aiSettingsDomainService;
+    private readonly IAISettingsDomainService _aiSettingsDomainService;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly Dictionary<ShellDownloadTipItem, CancellationTokenSource> _pendingTipCloseOperations = new();
 
@@ -33,14 +33,14 @@ public partial class ShellViewModel : ObservableRecipient
     private object? selected;
 
     [ObservableProperty]
-    private bool isLauncherAiVisible;
+    private bool isLauncherAIVisible;
 
     /// <summary>
     /// 右下角下载 TeachingTip 列表（可多任务同时展示）。
     /// </summary>
     public ObservableCollection<ShellDownloadTipItem> DownloadTeachingTips { get; } = new();
 
-    public Visibility LauncherAiNavigationVisibility => IsLauncherAiVisible ? Visibility.Visible : Visibility.Collapsed;
+    public Visibility LauncherAINavigationVisibility => IsLauncherAIVisible ? Visibility.Visible : Visibility.Collapsed;
 
     public INavigationService NavigationService
     {
@@ -57,7 +57,7 @@ public partial class ShellViewModel : ObservableRecipient
         INavigationViewService navigationViewService,
         IDownloadTaskManager downloadTaskManager,
         IDownloadTaskPresentationService downloadTaskPresentationService,
-        IAiSettingsDomainService aiSettingsDomainService)
+        IAISettingsDomainService aiSettingsDomainService)
     {
         NavigationService = navigationService;
         NavigationService.Navigated += OnNavigated;
@@ -71,38 +71,38 @@ public partial class ShellViewModel : ObservableRecipient
 
         _downloadTaskManager.TaskStateChanged += OnTaskStateChanged;
         _downloadTaskManager.TaskProgressChanged += OnTaskProgressChanged;
-        _aiSettingsDomainService.EnabledChanged += OnAiSettingsEnabledChanged;
+        _aiSettingsDomainService.EnabledChanged += OnAISettingsEnabledChanged;
 
-        _ = InitializeLauncherAiVisibilityAsync();
+        _ = InitializeLauncherAIVisibilityAsync();
     }
 
-    partial void OnIsLauncherAiVisibleChanged(bool value)
+    partial void OnIsLauncherAIVisibleChanged(bool value)
     {
-        OnPropertyChanged(nameof(LauncherAiNavigationVisibility));
+        OnPropertyChanged(nameof(LauncherAINavigationVisibility));
 
-        if (!value && NavigationService.Frame?.Content?.GetType() == typeof(LauncherAiPage))
+        if (!value && NavigationService.Frame?.Content?.GetType() == typeof(LauncherAIPage))
         {
             NavigationService.NavigateTo(typeof(LaunchViewModel).FullName!);
         }
     }
 
-    private async Task InitializeLauncherAiVisibilityAsync()
+    private async Task InitializeLauncherAIVisibilityAsync()
     {
         var state = await _aiSettingsDomainService.LoadAsync();
-        await EnqueueLauncherAiVisibilityAsync(state.IsEnabled);
+        await EnqueueLauncherAIVisibilityAsync(state.IsEnabled);
     }
 
-    private void OnAiSettingsEnabledChanged(object? sender, bool value)
+    private void OnAISettingsEnabledChanged(object? sender, bool value)
     {
-        _ = EnqueueLauncherAiVisibilityAsync(value);
+        _ = EnqueueLauncherAIVisibilityAsync(value);
     }
 
-    private Task EnqueueLauncherAiVisibilityAsync(bool value)
+    private Task EnqueueLauncherAIVisibilityAsync(bool value)
     {
         var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _dispatcherQueue.TryEnqueue(() =>
         {
-            IsLauncherAiVisible = value;
+            IsLauncherAIVisible = value;
             tcs.SetResult();
         });
         return tcs.Task;

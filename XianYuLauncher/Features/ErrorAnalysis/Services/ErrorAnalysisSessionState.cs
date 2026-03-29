@@ -34,16 +34,21 @@ public partial class ErrorAnalysisSessionState : ObservableObject
     private string _crashReason = string.Empty;
 
     [ObservableProperty]
-    private bool _isLauncherAiWindowOpen;
+    private bool _isLauncherAIWindowOpen;
 
-    [ObservableProperty]
     private string _aiAnalysisResult = string.Empty;
 
-    [ObservableProperty]
-    private bool _isAiAnalyzing;
+    public string AIAnalysisResult
+    {
+        get => _aiAnalysisResult;
+        set => SetProperty(ref _aiAnalysisResult, value);
+    }
 
     [ObservableProperty]
-    private bool _isAiAnalysisAvailable;
+    private bool _isAIAnalyzing;
+
+    [ObservableProperty]
+    private bool _isAIAnalysisAvailable;
 
     [ObservableProperty]
     private bool _hasChatMessages;
@@ -187,7 +192,7 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         OnPropertyChanged(nameof(HasPendingToolContinuation));
     }
 
-    public CancellationTokenSource BeginAiAnalysisTokenSource()
+    public CancellationTokenSource BeginAIAnalysisTokenSource()
     {
         if (_aiAnalysisCts != null)
         {
@@ -204,7 +209,7 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         return ReferenceEquals(_aiAnalysisCts, tokenSource);
     }
 
-    public void CompleteAiAnalysisTokenSource(CancellationTokenSource tokenSource)
+    public void CompleteAIAnalysisTokenSource(CancellationTokenSource tokenSource)
     {
         if (!ReferenceEquals(_aiAnalysisCts, tokenSource))
         {
@@ -231,12 +236,12 @@ public partial class ErrorAnalysisSessionState : ObservableObject
         return true;
     }
 
-    public CancellationToken BeginAiAnalysisToken()
+    public CancellationToken BeginAIAnalysisToken()
     {
-        return BeginAiAnalysisTokenSource().Token;
+        return BeginAIAnalysisTokenSource().Token;
     }
 
-    public void CancelAiAnalysis()
+    public void CancelAIAnalysis()
     {
         if (_aiAnalysisCts != null && !_aiAnalysisCts.IsCancellationRequested)
         {
@@ -335,12 +340,12 @@ public partial class ErrorAnalysisSessionState : ObservableObject
 
     private static List<UiChatMessage> CloneUiMessages(IEnumerable<UiChatMessage> messages)
     {
-        return messages.Select(message => new UiChatMessage(message.Role, message.Content, message.IncludeInAiHistory, message.ImageAttachments)
+        return messages.Select(message => new UiChatMessage(message.Role, message.Content, message.IncludeInAIHistory, message.ImageAttachments)
         {
             ShowRoleHeader = message.ShowRoleHeader,
             DisplayRoleText = message.DisplayRoleText,
-            AiHistoryContent = message.AiHistoryContent,
-            AiHistoryImageAttachments = CloneImageAttachments(message.AiHistoryImageAttachments),
+            AIHistoryContent = message.AIHistoryContent,
+            AIHistoryImageAttachments = CloneImageAttachments(message.AIHistoryImageAttachments),
             SuppressContentRendering = message.SuppressContentRendering,
             ToolCallId = message.ToolCallId,
             ToolCalls = CloneToolCalls(message.ToolCalls)
