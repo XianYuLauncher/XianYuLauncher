@@ -130,20 +130,64 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         private bool _isApplyingDownloadSourceState;
         private bool _disposed;
 
-    [ObservableProperty]
-    private bool _isAIAnalysisEnabled;
+        [ObservableProperty]
+        private bool _isAIAnalysisEnabled;
 
-    [ObservableProperty]
-    private string _aIApiEndpoint = "https://api.openai.com";
+        private string _aiApiEndpoint = "https://api.openai.com";
 
-    [ObservableProperty]
-    private string _aIApiKey = string.Empty;
+        public string AIApiEndpoint
+        {
+            get => _aiApiEndpoint;
+            set
+            {
+                if (SetProperty(ref _aiApiEndpoint, value))
+                {
+                    QueueSettingWrite("AI_Endpoint", () => _aiSettingsDomainService.SaveApiEndpointAsync(value));
+                }
+            }
+        }
 
-    [ObservableProperty]
-    private string _aIModel = "gpt-3.5-turbo";
+        private string _aiApiKey = string.Empty;
 
-    [ObservableProperty]
-    private string _aISystemPrompt = string.Empty;
+        public string AIApiKey
+        {
+            get => _aiApiKey;
+            set
+            {
+                if (SetProperty(ref _aiApiKey, value))
+                {
+                    QueueSettingWrite("AI_ApiKey", () => _aiSettingsDomainService.SaveApiKeyAsync(value), 400);
+                }
+            }
+        }
+
+        private string _aiModel = "gpt-3.5-turbo";
+
+        public string AIModel
+        {
+            get => _aiModel;
+            set
+            {
+                if (SetProperty(ref _aiModel, value))
+                {
+                    QueueSettingWrite("AI_Model", () => _aiSettingsDomainService.SaveModelAsync(value));
+                }
+            }
+        }
+
+        private string _aiSystemPrompt = string.Empty;
+
+        public string AISystemPrompt
+        {
+            get => _aiSystemPrompt;
+            set
+            {
+                if (SetProperty(ref _aiSystemPrompt, value))
+                {
+                    QueueSettingWrite("AI_SystemPrompt", () => _aiSettingsDomainService.SaveSystemPromptAsync(value), 400);
+                }
+            }
+        }
     
     /// <summary>
     /// 下载源项（用于下拉框显示）
@@ -1449,26 +1493,6 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         QueueSettingWrite("AI_Enable", () => _aiSettingsDomainService.SaveEnabledAsync(value));
     }
 
-    partial void OnAIApiEndpointChanged(string value)
-    {
-        QueueSettingWrite("AI_Endpoint", () => _aiSettingsDomainService.SaveApiEndpointAsync(value));
-    }
-
-    partial void OnAIApiKeyChanged(string value)
-    {
-        QueueSettingWrite("AI_ApiKey", () => _aiSettingsDomainService.SaveApiKeyAsync(value), 400);
-    }
-
-    partial void OnAIModelChanged(string value)
-    {
-        QueueSettingWrite("AI_Model", () => _aiSettingsDomainService.SaveModelAsync(value));
-    }
-
-    partial void OnAISystemPromptChanged(string value)
-    {
-        QueueSettingWrite("AI_SystemPrompt", () => _aiSettingsDomainService.SaveSystemPromptAsync(value), 400);
-    }
-    
     /// <summary>
     /// 刷新缓存大小信息
     /// </summary>

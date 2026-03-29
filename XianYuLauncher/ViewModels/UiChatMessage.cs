@@ -22,8 +22,13 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private string _displayRoleText = string.Empty;
 
-        [ObservableProperty]
-        private string? _aIHistoryContent;
+        private string? _aiHistoryContent;
+
+        public string? AIHistoryContent
+        {
+            get => _aiHistoryContent;
+            set => SetProperty(ref _aiHistoryContent, value);
+        }
 
         [ObservableProperty]
         private string? _toolCallId;
@@ -34,8 +39,13 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private List<ChatImageAttachment> _imageAttachments = [];
 
-        [ObservableProperty]
-        private List<ChatImageAttachment>? _aIHistoryImageAttachments;
+        private List<ChatImageAttachment>? _aiHistoryImageAttachments;
+
+        public List<ChatImageAttachment>? AIHistoryImageAttachments
+        {
+            get => _aiHistoryImageAttachments;
+            set => SetProperty(ref _aiHistoryImageAttachments, value);
+        }
 
         [ObservableProperty]
         private bool _suppressContentRendering;

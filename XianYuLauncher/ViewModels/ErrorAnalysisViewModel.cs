@@ -356,9 +356,9 @@ namespace XianYuLauncher.ViewModels
         public bool IsAnalyzeButtonEnabled => IsAIAnalysisAvailable && !IsAIAnalyzing;
         
         // 计算属性，用于控制取消按钮的可见性
-    public Microsoft.UI.Xaml.Visibility CancelButtonVisibility => IsAIAnalyzing ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
-    
-    // 手动实现了属性，不再需要自动生成的 partial 方法
+        public Microsoft.UI.Xaml.Visibility CancelButtonVisibility => IsAIAnalyzing ? Microsoft.UI.Xaml.Visibility.Visible : Microsoft.UI.Xaml.Visibility.Collapsed;
+
+        // 手动实现了属性，不再需要自动生成的 partial 方法
         
         // 原始日志数据
         private string _originalLog

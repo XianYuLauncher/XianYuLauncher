@@ -36,8 +36,13 @@ public partial class ErrorAnalysisSessionState : ObservableObject
     [ObservableProperty]
     private bool _isLauncherAIWindowOpen;
 
-    [ObservableProperty]
-    private string _aIAnalysisResult = string.Empty;
+    private string _aiAnalysisResult = string.Empty;
+
+    public string AIAnalysisResult
+    {
+        get => _aiAnalysisResult;
+        set => SetProperty(ref _aiAnalysisResult, value);
+    }
 
     [ObservableProperty]
     private bool _isAIAnalyzing;
