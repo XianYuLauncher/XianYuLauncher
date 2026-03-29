@@ -424,7 +424,7 @@ namespace XianYuLauncher.ViewModels
         if (isCrashed)
         {
             System.Diagnostics.Debug.WriteLine("崩溃分析: 游戏崩溃，自动触发崩溃分析");
-            _ = AnalyzeWithAiAsync();
+            _ = StartCrashAnalysisAsync(preemptCurrentAnalysis: true);
         }
         else
         {
@@ -528,9 +528,24 @@ namespace XianYuLauncher.ViewModels
     [RelayCommand]
     private async Task AnalyzeWithAiAsync()
     {
-        if (!_isGameCrashed || IsAiAnalyzing)
+        await StartCrashAnalysisAsync(preemptCurrentAnalysis: false);
+    }
+
+    private async Task StartCrashAnalysisAsync(bool preemptCurrentAnalysis)
+    {
+        if (!_isGameCrashed)
         {
             return;
+        }
+
+        if (IsAiAnalyzing && !preemptCurrentAnalysis)
+        {
+            return;
+        }
+
+        if (IsAiAnalyzing)
+        {
+            _sessionState.SuppressNextCancellationMessage();
         }
 
         var tokenSource = BeginAiAnalysisTokenSource();

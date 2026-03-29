@@ -7,6 +7,7 @@ using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
+using XianYuLauncher.Services;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 
@@ -119,12 +120,17 @@ public sealed class LaunchGameToolHandler : IAgentToolHandler
 public sealed class LaunchGameActionHandler : IAgentActionHandler
 {
     private readonly IVersionPathGameLaunchService _versionPathGameLaunchService;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly ILaunchOperationTracker _launchOperationTracker;
+    private readonly IGameLaunchObservationService _gameLaunchObservationService;
 
-    public LaunchGameActionHandler(IVersionPathGameLaunchService versionPathGameLaunchService, IServiceProvider serviceProvider)
+    public LaunchGameActionHandler(
+        IVersionPathGameLaunchService versionPathGameLaunchService,
+        ILaunchOperationTracker launchOperationTracker,
+        IGameLaunchObservationService gameLaunchObservationService)
     {
         _versionPathGameLaunchService = versionPathGameLaunchService;
-        _serviceProvider = serviceProvider;
+        _launchOperationTracker = launchOperationTracker;
+        _gameLaunchObservationService = gameLaunchObservationService;
     }
 
     public string ActionType => LaunchGameToolHandler.ToolNameValue;
@@ -141,34 +147,63 @@ public sealed class LaunchGameActionHandler : IAgentActionHandler
         proposal.Parameters.TryGetValue("profileId", out var profileId);
 
         var preparedLaunch = _versionPathGameLaunchService.PrepareLaunch(path);
-        var result = await _versionPathGameLaunchService.LaunchAsync(
-            preparedLaunch,
-            new VersionPathLaunchOptions
-            {
-                ProfileId = profileId,
-            },
-            cancellationToken: cancellationToken);
-        if (result.GameProcess != null)
+        var operationId = _launchOperationTracker.CreateOperation(preparedLaunch.VersionName, preparedLaunch.VersionPath);
+
+        try
         {
-            StartDetachedMonitoring(result.GameProcess, result.LaunchCommand);
-            return $"已开始启动 {preparedLaunch.VersionName}。实例路径：{preparedLaunch.VersionPath}。启动前已临时切换到 {preparedLaunch.MinecraftPath}，现在已恢复原游戏目录。";
+            var result = await _versionPathGameLaunchService.LaunchAsync(
+                preparedLaunch,
+                new VersionPathLaunchOptions
+                {
+                    ProfileId = profileId,
+                },
+                cancellationToken: cancellationToken);
+            if (result.GameProcess != null)
+            {
+                _gameLaunchObservationService.Observe(new GameLaunchObservationRequest
+                {
+                    GameProcess = result.GameProcess,
+                    LaunchCommand = result.LaunchCommand ?? string.Empty,
+                    VersionId = preparedLaunch.VersionName,
+                    MinecraftPath = preparedLaunch.MinecraftPath,
+                    Origin = GameLaunchObservationOrigin.LauncherAi,
+                    EnableLiveErrorAnalysisStreaming = false,
+                });
+                _launchOperationTracker.CompleteOperation(operationId);
+                return AppendOperationStatusHint(
+                    $"已开始启动 {preparedLaunch.VersionName}。实例路径：{preparedLaunch.VersionPath}。启动前已临时切换到 {preparedLaunch.MinecraftPath}，现在已恢复原游戏目录。",
+                    operationId);
+            }
+
+            var errorMessage = NormalizeLaunchErrorMessage(result.ErrorMessage);
+            _launchOperationTracker.FailOperation(operationId, errorMessage);
+            return AppendOperationStatusHint($"启动 {preparedLaunch.VersionName} 失败：{errorMessage}", operationId);
         }
 
-        return $"启动 {preparedLaunch.VersionName} 失败：{result.ErrorMessage ?? "游戏未能启动，请查看日志。"}";
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _launchOperationTracker.CancelOperation(operationId);
+            return AppendOperationStatusHint($"启动 {preparedLaunch.VersionName} 已取消。", operationId);
+        }
+
+        catch (Exception ex)
+        {
+            var errorMessage = NormalizeLaunchErrorMessage(ex.Message);
+            _launchOperationTracker.FailOperation(operationId, errorMessage);
+            return AppendOperationStatusHint($"启动 {preparedLaunch.VersionName} 失败：{errorMessage}", operationId);
+        }
     }
 
-    private void StartDetachedMonitoring(System.Diagnostics.Process gameProcess, string? launchCommand)
+    private static string AppendOperationStatusHint(string message, string operationId)
     {
-        var monitor = _serviceProvider.GetRequiredService<IGameProcessMonitor>();
-        _ = monitor.MonitorProcessAsync(gameProcess, launchCommand ?? string.Empty).ContinueWith(
-            task =>
-            {
-                if (task.Exception != null)
-                {
-                    Serilog.Log.Warning(task.Exception.GetBaseException(), "Launcher AI 启动后的进程监控失败");
-                }
-            },
-            TaskContinuationOptions.OnlyOnFaulted);
+        return $"{message}\noperation_id: {operationId}\n可继续使用 get_operation_status 查询本次启动请求状态。";
+    }
+
+    private static string NormalizeLaunchErrorMessage(string? errorMessage)
+    {
+        return string.IsNullOrWhiteSpace(errorMessage)
+            ? "游戏未能启动，请查看日志。"
+            : errorMessage.Trim();
     }
 }
 

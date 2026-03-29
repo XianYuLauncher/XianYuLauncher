@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
 using XianYuLauncher.Features.ModDownloadDetail.Services;
 using XianYuLauncher.Features.VersionManagement.Services;
@@ -15,9 +16,12 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<ErrorAnalysisSessionState>();
         services.AddSingleton<IErrorAnalysisSessionCoordinator, ErrorAnalysisSessionCoordinator>();
         services.AddSingleton<IErrorAnalysisLogService, ErrorAnalysisLogService>();
+        services.AddSingleton<IErrorAnalysisSessionContextQueryService, ErrorAnalysisSessionContextQueryService>();
         services.AddSingleton<IErrorAnalysisAiOrchestrator, ErrorAnalysisAiOrchestrator>();
         services.AddSingleton<IErrorAnalysisExportService, ErrorAnalysisExportService>();
         services.AddSingleton<IAgentToolSupportService, AgentToolSupportService>();
+        services.AddSingleton<ILaunchOperationTracker, LaunchOperationTracker>();
+        services.AddSingleton<IAgentOperationStatusService, AgentOperationStatusService>();
         services.AddSingleton<IAgentGameInstallService, AgentGameInstallService>();
         services.AddSingleton<IAgentCommunityResourceService, AgentCommunityResourceService>();
         services.AddSingleton<IAgentToolDispatcher, AgentToolDispatcher>();
@@ -28,6 +32,9 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentToolHandler, SearchKnowledgeBaseToolHandler>();
         services.AddSingleton<IAgentToolHandler, ReadModInfoToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetCurrentGameDirectoryToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetLaunchContextToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetLogTailToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetLogChunkToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetProfilesToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetGameManifestToolHandler>();
         services.AddSingleton<IAgentToolHandler, InstallGameToolHandler>();
