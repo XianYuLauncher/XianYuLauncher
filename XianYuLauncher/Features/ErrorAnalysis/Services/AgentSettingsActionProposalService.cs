@@ -57,6 +57,12 @@ public sealed class AgentSettingsActionProposalService : IAgentSettingsActionPro
     {
         payload = null;
 
+        if (!proposal.Parameters.TryGetValue(SchemaVersionKey, out var schemaVersion)
+            || !string.Equals(schemaVersion, SchemaVersionValue, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
         if (!proposal.Parameters.TryGetValue(ChangesJsonKey, out var changesJson)
             || string.IsNullOrWhiteSpace(changesJson))
         {

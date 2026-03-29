@@ -61,7 +61,13 @@ public sealed class SwitchMinecraftPathToolHandler : IAgentToolHandler
             return AgentToolExecutionResult.FromMessage(errorMessage);
         }
 
-        if (selection!.TargetAlreadyActive)
+        var targetPathValidationMessage = SwitchMinecraftPathValidationHelper.ValidateTargetPathExists(selection!.TargetPath);
+        if (!string.IsNullOrWhiteSpace(targetPathValidationMessage))
+        {
+            return AgentToolExecutionResult.FromMessage(targetPathValidationMessage);
+        }
+
+        if (selection.TargetAlreadyActive)
         {
             return AgentToolExecutionResult.FromMessage(
                 $"目标目录已经是当前活动 Minecraft 目录：{FormatPathSummary(selection.TargetPathName, selection.TargetPath)}");
@@ -165,7 +171,13 @@ public sealed class SwitchMinecraftPathActionHandler : IAgentActionHandler
             return $"切换 Minecraft 目录失败：{errorMessage}";
         }
 
-        if (selection!.TargetAlreadyActive)
+        var targetPathValidationMessage = SwitchMinecraftPathValidationHelper.ValidateTargetPathExists(selection!.TargetPath);
+        if (!string.IsNullOrWhiteSpace(targetPathValidationMessage))
+        {
+            return $"切换 Minecraft 目录失败：{targetPathValidationMessage}";
+        }
+
+        if (selection.TargetAlreadyActive)
         {
             _sessionState.Context.MinecraftPath = selection.TargetPath;
             return $"目标目录已经是当前活动 Minecraft 目录：{FormatPathSummary(selection.TargetPathName, selection.TargetPath)}";
@@ -214,5 +226,15 @@ public sealed class SwitchMinecraftPathActionHandler : IAgentActionHandler
     private static string FormatPathSummary(string pathName, string path)
     {
         return $"{pathName} ({path})";
+    }
+}
+
+internal static class SwitchMinecraftPathValidationHelper
+{
+    public static string? ValidateTargetPathExists(string targetPath)
+    {
+        return Directory.Exists(targetPath)
+            ? null
+            : $"目标 Minecraft 目录不存在或当前不可用：{targetPath}。请先调用 getMinecraftPaths 刷新目录列表。";
     }
 }

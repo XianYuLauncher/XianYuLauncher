@@ -57,5 +57,23 @@ public class AgentJavaInventoryHelperTests
 
         success.Should().BeFalse();
         errorMessage.Should().Contain("指向不同 Java");
+        errorMessage.Should().Contain("java_id / selected_java_id");
+        errorMessage.Should().Contain("java_path / selected_java_path");
+    }
+
+    [Fact]
+    public void TryResolveJava_WhenNoSelectorProvided_ReturnsGenericParameterGuidance()
+    {
+        var inventory = AgentJavaInventoryHelper.NormalizeJavaVersions(
+            null,
+            [
+                new JavaVersion { Path = @"C:\Java\jdk-21\bin\javaw.exe", FullVersion = "21.0.4", MajorVersion = 21, IsJDK = true, Is64Bit = true }
+            ]);
+
+        var success = AgentJavaInventoryHelper.TryResolveJava(null, null, inventory, out _, out var errorMessage);
+
+        success.Should().BeFalse();
+        errorMessage.Should().Contain("java_id / selected_java_id");
+        errorMessage.Should().Contain("java_path / selected_java_path");
     }
 }

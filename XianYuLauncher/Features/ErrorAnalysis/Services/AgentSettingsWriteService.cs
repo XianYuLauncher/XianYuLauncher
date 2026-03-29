@@ -1077,8 +1077,17 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             storedUseGlobalSettingsOverall = parsedUseGlobalSettingsOverall;
         }
 
-        var finalUseGlobalSettingsOverall = storedUseGlobalSettingsOverall
-            ?? UsesGlobalSettingsOverall(finalUseGlobalJavaSetting, finalOverrideMemory, finalOverrideResolution);
+        var derivedUseGlobalSettingsOverall = UsesGlobalSettingsOverall(
+            finalUseGlobalJavaSetting,
+            finalOverrideMemory,
+            finalOverrideResolution);
+        if (storedUseGlobalSettingsOverall.HasValue
+            && storedUseGlobalSettingsOverall.Value != derivedUseGlobalSettingsOverall)
+        {
+            return "参数不一致：use_global_settings_overall 与 use_global_java_setting / override_memory / override_resolution 不一致。";
+        }
+
+        var finalUseGlobalSettingsOverall = storedUseGlobalSettingsOverall ?? derivedUseGlobalSettingsOverall;
 
         var initialHeapValidationMessage = ValidateMemoryValue(InstanceInitialHeapMemoryParameterKey, finalInitialHeapMemory);
         if (!string.IsNullOrWhiteSpace(initialHeapValidationMessage))
@@ -1116,11 +1125,6 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             && !Path.IsPathFullyQualified(finalCustomGameDirectoryPath))
         {
             return "custom_game_directory_path 必须是绝对路径。若要清空已保存的自定义目录，请传空字符串。";
-        }
-
-        if (!finalUseGlobalJavaSetting && string.IsNullOrWhiteSpace(finalJavaPath) && finalUseGlobalSettingsOverall)
-        {
-            return "实例独立 Java 模式必须保留一个有效的 Java 路径。";
         }
 
         if (!finalUseGlobalJavaSetting && !string.IsNullOrWhiteSpace(finalJavaPath))

@@ -21,6 +21,9 @@ public sealed class AgentJavaInventoryEntry
 
 public static class AgentJavaInventoryHelper
 {
+    private const string JavaIdParameterNames = "java_id / selected_java_id";
+    private const string JavaPathParameterNames = "java_path / selected_java_path";
+
     public static IReadOnlyList<AgentJavaInventoryEntry> NormalizeJavaVersions(
         string? selectedJavaPath,
         IReadOnlyList<JavaVersion> javaVersions)
@@ -60,7 +63,7 @@ public static class AgentJavaInventoryHelper
         var normalizedRequestedJavaPath = NormalizePath(requestedJavaPath);
         if (string.IsNullOrWhiteSpace(normalizedRequestedJavaId) && string.IsNullOrWhiteSpace(normalizedRequestedJavaPath))
         {
-            errorMessage = "请提供 selected_java_id 或 selected_java_path。";
+            errorMessage = $"请提供 {JavaIdParameterNames} 或 {JavaPathParameterNames}。";
             return false;
         }
 
@@ -81,7 +84,7 @@ public static class AgentJavaInventoryHelper
         if (javaEntryById != null && javaEntryByPath != null
             && !string.Equals(javaEntryById.Path, javaEntryByPath.Path, StringComparison.OrdinalIgnoreCase))
         {
-            errorMessage = $"selected_java_id \"{normalizedRequestedJavaId}\" 与 selected_java_path \"{normalizedRequestedJavaPath}\" 指向不同 Java，请只保留一个，或确保两者一致。";
+            errorMessage = $"{JavaIdParameterNames} 中提供的值 \"{normalizedRequestedJavaId}\" 与 {JavaPathParameterNames} 中提供的值 \"{normalizedRequestedJavaPath}\" 指向不同 Java，请只保留一个，或确保两者一致。";
             return false;
         }
 
@@ -92,7 +95,7 @@ public static class AgentJavaInventoryHelper
         }
 
         errorMessage = !string.IsNullOrWhiteSpace(normalizedRequestedJavaId)
-            ? $"未找到 Java ID \"{normalizedRequestedJavaId}\"。请先调用 checkJavaVersions，并使用返回的 java_id。"
+            ? $"未找到 Java ID \"{normalizedRequestedJavaId}\"。请先调用 checkJavaVersions，并使用返回的 {JavaIdParameterNames}。"
             : $"未在当前 Java 清单中找到路径：{normalizedRequestedJavaPath}";
         return false;
     }
