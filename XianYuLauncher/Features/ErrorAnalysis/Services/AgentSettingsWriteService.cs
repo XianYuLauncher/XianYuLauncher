@@ -439,13 +439,18 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
 
     public async Task<string> ExecuteGlobalLaunchSettingsPatchAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
     {
-        if (!proposal.Parameters.TryGetValue(GlobalJavaSelectionModeParameterKey, out var finalMode)
-            || string.IsNullOrWhiteSpace(finalMode))
+        if (!proposal.Parameters.TryGetValue(GlobalJavaSelectionModeParameterKey, out var rawJavaSelectionMode)
+            || string.IsNullOrWhiteSpace(rawJavaSelectionMode))
         {
             return "缺少 java_selection_mode 参数。";
         }
 
-        finalMode = NormalizeJavaSelectionMode(finalMode);
+        var finalMode = NormalizeRequestedJavaSelectionMode(rawJavaSelectionMode, out var javaSelectionModeErrorMessage);
+        if (string.IsNullOrWhiteSpace(finalMode))
+        {
+            return javaSelectionModeErrorMessage;
+        }
+
         proposal.Parameters.TryGetValue(GlobalSelectedJavaPathParameterKey, out var rawSelectedJavaPath);
         var finalSelectedJavaPath = NullIfWhiteSpace(rawSelectedJavaPath);
         if (string.Equals(finalMode, JavaSelectionModeManual, StringComparison.Ordinal)
@@ -456,28 +461,81 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
 
         proposal.Parameters.TryGetValue(GlobalCustomJvmArgumentsParameterKey, out var rawCustomJvmArguments);
         var finalCustomJvmArguments = NormalizeJvmArguments(rawCustomJvmArguments);
-        proposal.Parameters.TryGetValue(GlobalGarbageCollectorModeParameterKey, out var rawGarbageCollectorMode);
-        var finalGarbageCollectorMode = GarbageCollectorModeHelper.Normalize(rawGarbageCollectorMode);
-        proposal.Parameters.TryGetValue(GlobalAutoMemoryAllocationParameterKey, out var rawAutoMemoryAllocation);
-        var finalAutoMemoryAllocation = bool.TryParse(rawAutoMemoryAllocation, out var parsedAutoMemoryAllocation)
-            && parsedAutoMemoryAllocation;
-        proposal.Parameters.TryGetValue(GlobalInitialHeapMemoryParameterKey, out var rawInitialHeapMemory);
-        var finalInitialHeapMemory = ParseStoredDouble(rawInitialHeapMemory);
-        proposal.Parameters.TryGetValue(GlobalMaximumHeapMemoryParameterKey, out var rawMaximumHeapMemory);
-        var finalMaximumHeapMemory = ParseStoredDouble(rawMaximumHeapMemory);
-        proposal.Parameters.TryGetValue(GlobalWindowWidthParameterKey, out var rawWindowWidth);
-        var finalWindowWidth = ParseStoredInt32(rawWindowWidth);
-        proposal.Parameters.TryGetValue(GlobalWindowHeightParameterKey, out var rawWindowHeight);
-        var finalWindowHeight = ParseStoredInt32(rawWindowHeight);
-        if (!proposal.Parameters.TryGetValue(GlobalGameDirectoryModeParameterKey, out var rawGameDirectoryMode)
-            || string.IsNullOrWhiteSpace(rawGameDirectoryMode))
+        if (!TryReadRequiredGarbageCollectorModeParameter(proposal.Parameters, GlobalGarbageCollectorModeParameterKey, out var finalGarbageCollectorMode, out var garbageCollectorModeErrorMessage))
         {
-            return "缺少 game_directory_mode 参数。";
+            return garbageCollectorModeErrorMessage;
         }
 
-        var finalGameDirectoryMode = ResolveEffectiveGlobalGameDirectoryMode(rawGameDirectoryMode, legacyEnableVersionIsolation: true);
+        if (!TryReadRequiredBooleanParameter(proposal.Parameters, GlobalAutoMemoryAllocationParameterKey, out var finalAutoMemoryAllocation, out var autoMemoryAllocationErrorMessage))
+        {
+            return autoMemoryAllocationErrorMessage;
+        }
+
+        if (!TryReadRequiredDoubleParameter(proposal.Parameters, GlobalInitialHeapMemoryParameterKey, out var finalInitialHeapMemory, out var initialHeapMemoryErrorMessage))
+        {
+            return initialHeapMemoryErrorMessage;
+        }
+
+        if (!TryReadRequiredDoubleParameter(proposal.Parameters, GlobalMaximumHeapMemoryParameterKey, out var finalMaximumHeapMemory, out var maximumHeapMemoryErrorMessage))
+        {
+            return maximumHeapMemoryErrorMessage;
+        }
+
+        if (!TryReadRequiredInt32Parameter(proposal.Parameters, GlobalWindowWidthParameterKey, out var finalWindowWidth, out var windowWidthErrorMessage))
+        {
+            return windowWidthErrorMessage;
+        }
+
+        if (!TryReadRequiredInt32Parameter(proposal.Parameters, GlobalWindowHeightParameterKey, out var finalWindowHeight, out var windowHeightErrorMessage))
+        {
+            return windowHeightErrorMessage;
+        }
+
+        if (!TryReadRequiredGlobalGameDirectoryModeParameter(proposal.Parameters, GlobalGameDirectoryModeParameterKey, out var finalGameDirectoryMode, out var gameDirectoryModeErrorMessage))
+        {
+            return gameDirectoryModeErrorMessage;
+        }
+
         proposal.Parameters.TryGetValue(GlobalCustomGameDirectoryPathParameterKey, out var rawCustomGameDirectoryPath);
         var finalCustomGameDirectoryPath = NullIfWhiteSpace(rawCustomGameDirectoryPath);
+
+        var initialHeapValidationMessage = ValidateMemoryValue(GlobalInitialHeapMemoryParameterKey, finalInitialHeapMemory);
+        if (!string.IsNullOrWhiteSpace(initialHeapValidationMessage))
+        {
+            return initialHeapValidationMessage;
+        }
+
+        var maximumHeapValidationMessage = ValidateMemoryValue(GlobalMaximumHeapMemoryParameterKey, finalMaximumHeapMemory);
+        if (!string.IsNullOrWhiteSpace(maximumHeapValidationMessage))
+        {
+            return maximumHeapValidationMessage;
+        }
+
+        var windowWidthValidationMessage = ValidateWindowWidth(finalWindowWidth);
+        if (!string.IsNullOrWhiteSpace(windowWidthValidationMessage))
+        {
+            return windowWidthValidationMessage;
+        }
+
+        var windowHeightValidationMessage = ValidateWindowHeight(finalWindowHeight);
+        if (!string.IsNullOrWhiteSpace(windowHeightValidationMessage))
+        {
+            return windowHeightValidationMessage;
+        }
+
+        if (string.Equals(finalGameDirectoryMode, GameDirectoryModeCustom, StringComparison.Ordinal))
+        {
+            if (string.IsNullOrWhiteSpace(finalCustomGameDirectoryPath)
+                || !Path.IsPathFullyQualified(finalCustomGameDirectoryPath))
+            {
+                return "当 game_directory_mode=custom 时，必须提供 custom_game_directory_path，且它必须是绝对路径。";
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(finalCustomGameDirectoryPath)
+            && !Path.IsPathFullyQualified(finalCustomGameDirectoryPath))
+        {
+            return "custom_game_directory_path 必须是绝对路径。若要清空已保存的自定义目录，请传空字符串。";
+        }
 
         if (string.Equals(finalMode, JavaSelectionModeManual, StringComparison.Ordinal))
         {
@@ -960,33 +1018,105 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         var finalJavaPath = NullIfWhiteSpace(rawJavaPath);
         proposal.Parameters.TryGetValue(InstanceCustomJvmArgumentsParameterKey, out var rawCustomJvmArguments);
         var finalCustomJvmArguments = NormalizeJvmArguments(rawCustomJvmArguments);
-        proposal.Parameters.TryGetValue(InstanceGarbageCollectorModeParameterKey, out var rawGarbageCollectorMode);
-        var finalGarbageCollectorMode = GarbageCollectorModeHelper.Normalize(rawGarbageCollectorMode);
-        proposal.Parameters.TryGetValue(InstanceOverrideMemoryParameterKey, out var rawOverrideMemory);
-        var finalOverrideMemory = bool.TryParse(rawOverrideMemory, out var parsedOverrideMemory)
-            && parsedOverrideMemory;
-        proposal.Parameters.TryGetValue(InstanceAutoMemoryAllocationParameterKey, out var rawAutoMemoryAllocation);
-        var finalAutoMemoryAllocation = bool.TryParse(rawAutoMemoryAllocation, out var parsedAutoMemoryAllocation)
-            && parsedAutoMemoryAllocation;
-        proposal.Parameters.TryGetValue(InstanceInitialHeapMemoryParameterKey, out var rawInitialHeapMemory);
-        var finalInitialHeapMemory = ParseStoredDouble(rawInitialHeapMemory);
-        proposal.Parameters.TryGetValue(InstanceMaximumHeapMemoryParameterKey, out var rawMaximumHeapMemory);
-        var finalMaximumHeapMemory = ParseStoredDouble(rawMaximumHeapMemory);
-        proposal.Parameters.TryGetValue(InstanceOverrideResolutionParameterKey, out var rawOverrideResolution);
-        var finalOverrideResolution = bool.TryParse(rawOverrideResolution, out var parsedOverrideResolution)
-            && parsedOverrideResolution;
-        proposal.Parameters.TryGetValue(InstanceWindowWidthParameterKey, out var rawWindowWidth);
-        var finalWindowWidth = ParseStoredInt32(rawWindowWidth);
-        proposal.Parameters.TryGetValue(InstanceWindowHeightParameterKey, out var rawWindowHeight);
-        var finalWindowHeight = ParseStoredInt32(rawWindowHeight);
-        proposal.Parameters.TryGetValue(InstanceGameDirectoryModeParameterKey, out var rawGameDirectoryMode);
-        var finalGameDirectoryMode = NullIfWhiteSpace(rawGameDirectoryMode);
+        if (!TryReadRequiredGarbageCollectorModeParameter(proposal.Parameters, InstanceGarbageCollectorModeParameterKey, out var finalGarbageCollectorMode, out var garbageCollectorModeErrorMessage))
+        {
+            return garbageCollectorModeErrorMessage;
+        }
+
+        if (!TryReadRequiredBooleanParameter(proposal.Parameters, InstanceOverrideMemoryParameterKey, out var finalOverrideMemory, out var overrideMemoryErrorMessage))
+        {
+            return overrideMemoryErrorMessage;
+        }
+
+        if (!TryReadRequiredBooleanParameter(proposal.Parameters, InstanceAutoMemoryAllocationParameterKey, out var finalAutoMemoryAllocation, out var autoMemoryAllocationErrorMessage))
+        {
+            return autoMemoryAllocationErrorMessage;
+        }
+
+        if (!TryReadRequiredDoubleParameter(proposal.Parameters, InstanceInitialHeapMemoryParameterKey, out var finalInitialHeapMemory, out var initialHeapMemoryErrorMessage))
+        {
+            return initialHeapMemoryErrorMessage;
+        }
+
+        if (!TryReadRequiredDoubleParameter(proposal.Parameters, InstanceMaximumHeapMemoryParameterKey, out var finalMaximumHeapMemory, out var maximumHeapMemoryErrorMessage))
+        {
+            return maximumHeapMemoryErrorMessage;
+        }
+
+        if (!TryReadRequiredBooleanParameter(proposal.Parameters, InstanceOverrideResolutionParameterKey, out var finalOverrideResolution, out var overrideResolutionErrorMessage))
+        {
+            return overrideResolutionErrorMessage;
+        }
+
+        if (!TryReadRequiredInt32Parameter(proposal.Parameters, InstanceWindowWidthParameterKey, out var finalWindowWidth, out var windowWidthErrorMessage))
+        {
+            return windowWidthErrorMessage;
+        }
+
+        if (!TryReadRequiredInt32Parameter(proposal.Parameters, InstanceWindowHeightParameterKey, out var finalWindowHeight, out var windowHeightErrorMessage))
+        {
+            return windowHeightErrorMessage;
+        }
+
+        if (!TryReadOptionalInstanceGameDirectoryModeParameter(proposal.Parameters, InstanceGameDirectoryModeParameterKey, out var finalGameDirectoryMode, out var gameDirectoryModeErrorMessage))
+        {
+            return gameDirectoryModeErrorMessage;
+        }
+
         proposal.Parameters.TryGetValue(InstanceCustomGameDirectoryPathParameterKey, out var rawCustomGameDirectoryPath);
         var finalCustomGameDirectoryPath = NullIfWhiteSpace(rawCustomGameDirectoryPath);
-        var finalUseGlobalSettingsOverall = proposal.Parameters.TryGetValue(InstanceUseGlobalSettingsOverallParameterKey, out var rawUseGlobalSettingsOverall)
-            && bool.TryParse(rawUseGlobalSettingsOverall, out var parsedUseGlobalSettingsOverall)
-                ? parsedUseGlobalSettingsOverall
-                : UsesGlobalSettingsOverall(finalUseGlobalJavaSetting, finalOverrideMemory, finalOverrideResolution);
+        bool? storedUseGlobalSettingsOverall = null;
+        if (proposal.Parameters.TryGetValue(InstanceUseGlobalSettingsOverallParameterKey, out var rawUseGlobalSettingsOverall)
+            && !string.IsNullOrWhiteSpace(rawUseGlobalSettingsOverall))
+        {
+            if (!bool.TryParse(rawUseGlobalSettingsOverall, out var parsedUseGlobalSettingsOverall))
+            {
+                return "use_global_settings_overall 参数格式无效。";
+            }
+
+            storedUseGlobalSettingsOverall = parsedUseGlobalSettingsOverall;
+        }
+
+        var finalUseGlobalSettingsOverall = storedUseGlobalSettingsOverall
+            ?? UsesGlobalSettingsOverall(finalUseGlobalJavaSetting, finalOverrideMemory, finalOverrideResolution);
+
+        var initialHeapValidationMessage = ValidateMemoryValue(InstanceInitialHeapMemoryParameterKey, finalInitialHeapMemory);
+        if (!string.IsNullOrWhiteSpace(initialHeapValidationMessage))
+        {
+            return initialHeapValidationMessage;
+        }
+
+        var maximumHeapValidationMessage = ValidateMemoryValue(InstanceMaximumHeapMemoryParameterKey, finalMaximumHeapMemory);
+        if (!string.IsNullOrWhiteSpace(maximumHeapValidationMessage))
+        {
+            return maximumHeapValidationMessage;
+        }
+
+        var windowWidthValidationMessage = ValidateWindowWidth(finalWindowWidth);
+        if (!string.IsNullOrWhiteSpace(windowWidthValidationMessage))
+        {
+            return windowWidthValidationMessage;
+        }
+
+        var windowHeightValidationMessage = ValidateWindowHeight(finalWindowHeight);
+        if (!string.IsNullOrWhiteSpace(windowHeightValidationMessage))
+        {
+            return windowHeightValidationMessage;
+        }
+
+        if (string.Equals(finalGameDirectoryMode, GameDirectoryModeCustom, StringComparison.Ordinal))
+        {
+            if (string.IsNullOrWhiteSpace(finalCustomGameDirectoryPath)
+                || !Path.IsPathFullyQualified(finalCustomGameDirectoryPath))
+            {
+                return "当 game_directory_mode=custom 时，必须提供 custom_game_directory_path，且它必须是绝对路径。";
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(finalCustomGameDirectoryPath)
+            && !Path.IsPathFullyQualified(finalCustomGameDirectoryPath))
+        {
+            return "custom_game_directory_path 必须是绝对路径。若要清空已保存的自定义目录，请传空字符串。";
+        }
 
         if (!finalUseGlobalJavaSetting && string.IsNullOrWhiteSpace(finalJavaPath) && finalUseGlobalSettingsOverall)
         {
@@ -1533,6 +1663,150 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         return string.Empty;
     }
 
+    private static bool TryReadRequiredBooleanParameter(
+        Dictionary<string, string> parameters,
+        string parameterKey,
+        out bool value,
+        out string errorMessage)
+    {
+        value = false;
+        if (!parameters.TryGetValue(parameterKey, out var rawValue) || string.IsNullOrWhiteSpace(rawValue))
+        {
+            errorMessage = $"缺少 {parameterKey} 参数。";
+            return false;
+        }
+
+        if (!bool.TryParse(rawValue, out value))
+        {
+            errorMessage = $"{parameterKey} 参数格式无效。";
+            return false;
+        }
+
+        errorMessage = string.Empty;
+        return true;
+    }
+
+    private static bool TryReadRequiredDoubleParameter(
+        Dictionary<string, string> parameters,
+        string parameterKey,
+        out double value,
+        out string errorMessage)
+    {
+        value = 0;
+        if (!parameters.TryGetValue(parameterKey, out var rawValue) || string.IsNullOrWhiteSpace(rawValue))
+        {
+            errorMessage = $"缺少 {parameterKey} 参数。";
+            return false;
+        }
+
+        if (!double.TryParse(rawValue, NumberStyles.Float, CultureInfo.InvariantCulture, out value))
+        {
+            errorMessage = $"{parameterKey} 参数格式无效。";
+            return false;
+        }
+
+        errorMessage = string.Empty;
+        return true;
+    }
+
+    private static bool TryReadRequiredInt32Parameter(
+        Dictionary<string, string> parameters,
+        string parameterKey,
+        out int value,
+        out string errorMessage)
+    {
+        value = 0;
+        if (!parameters.TryGetValue(parameterKey, out var rawValue) || string.IsNullOrWhiteSpace(rawValue))
+        {
+            errorMessage = $"缺少 {parameterKey} 参数。";
+            return false;
+        }
+
+        if (!int.TryParse(rawValue, NumberStyles.Integer, CultureInfo.InvariantCulture, out value))
+        {
+            errorMessage = $"{parameterKey} 参数格式无效。";
+            return false;
+        }
+
+        errorMessage = string.Empty;
+        return true;
+    }
+
+    private static bool TryReadRequiredGarbageCollectorModeParameter(
+        Dictionary<string, string> parameters,
+        string parameterKey,
+        out string value,
+        out string errorMessage)
+    {
+        value = string.Empty;
+        if (!parameters.TryGetValue(parameterKey, out var rawValue) || string.IsNullOrWhiteSpace(rawValue))
+        {
+            errorMessage = $"缺少 {parameterKey} 参数。";
+            return false;
+        }
+
+        var normalizedValue = NormalizeRequestedGarbageCollectorMode(rawValue, out errorMessage);
+        if (string.IsNullOrWhiteSpace(normalizedValue))
+        {
+            return false;
+        }
+
+        value = normalizedValue;
+        return true;
+    }
+
+    private static bool TryReadRequiredGlobalGameDirectoryModeParameter(
+        Dictionary<string, string> parameters,
+        string parameterKey,
+        out string value,
+        out string errorMessage)
+    {
+        value = string.Empty;
+        if (!parameters.TryGetValue(parameterKey, out var rawValue) || string.IsNullOrWhiteSpace(rawValue))
+        {
+            errorMessage = $"缺少 {parameterKey} 参数。";
+            return false;
+        }
+
+        var normalizedValue = NormalizeRequestedGlobalGameDirectoryMode(rawValue, out errorMessage);
+        if (string.IsNullOrWhiteSpace(normalizedValue))
+        {
+            return false;
+        }
+
+        value = normalizedValue;
+        return true;
+    }
+
+    private static bool TryReadOptionalInstanceGameDirectoryModeParameter(
+        Dictionary<string, string> parameters,
+        string parameterKey,
+        out string? value,
+        out string errorMessage)
+    {
+        value = null;
+        errorMessage = string.Empty;
+        if (!parameters.TryGetValue(parameterKey, out var rawValue) || string.IsNullOrWhiteSpace(rawValue))
+        {
+            return true;
+        }
+
+        var normalizedValue = NormalizeRequestedInstanceGameDirectoryMode(rawValue, out errorMessage);
+        if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            return false;
+        }
+
+        value = normalizedValue switch
+        {
+            null => null,
+            InstanceGameDirectoryFollowGlobalToken => null,
+            _ => normalizedValue,
+        };
+
+        return true;
+    }
+
     private static string ToStoredJavaSelectionMode(string mode)
     {
         return string.Equals(mode, JavaSelectionModeManual, StringComparison.Ordinal)
@@ -1548,20 +1822,6 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
     private static string NormalizeJvmArguments(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
-    }
-
-    private static double ParseStoredDouble(string? value)
-    {
-        return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedValue)
-            ? parsedValue
-            : 0;
-    }
-
-    private static int ParseStoredInt32(string? value)
-    {
-        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedValue)
-            ? parsedValue
-            : 0;
     }
 
     private static bool ShouldUseLegacyVersionIsolation(string mode)

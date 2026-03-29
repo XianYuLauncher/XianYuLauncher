@@ -189,7 +189,11 @@ public sealed class AgentSettingsQueryService : IAgentSettingsQueryService
                 allowNetwork: false,
                 cancellationToken: cancellationToken);
         }
-        catch
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
         {
             return await _versionInfoManager.GetVersionInfoAsync(
                 context.VersionId,

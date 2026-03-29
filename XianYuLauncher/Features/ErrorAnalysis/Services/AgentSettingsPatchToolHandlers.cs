@@ -72,10 +72,14 @@ public sealed class PatchGlobalLaunchSettingsToolHandler : IAgentToolHandler
     {
         foreach (var propertyName in propertyNames)
         {
-            var value = arguments[propertyName]?.ToString();
-            if (!string.IsNullOrWhiteSpace(value))
+            if (arguments.TryGetValue(propertyName, StringComparison.OrdinalIgnoreCase, out var token)
+                && token.Type != JTokenType.Null)
             {
-                return value;
+                var value = token.Type == JTokenType.String ? token.Value<string>() : token.ToString();
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value;
+                }
             }
         }
 
@@ -269,10 +273,14 @@ public sealed class PatchInstanceLaunchSettingsToolHandler : IAgentToolHandler
     {
         foreach (var propertyName in propertyNames)
         {
-            var value = arguments[propertyName]?.ToString();
-            if (!string.IsNullOrWhiteSpace(value))
+            if (arguments.TryGetValue(propertyName, StringComparison.OrdinalIgnoreCase, out var token)
+                && token.Type != JTokenType.Null)
             {
-                return value;
+                var value = token.Type == JTokenType.String ? token.Value<string>() : token.ToString();
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    return value;
+                }
             }
         }
 
