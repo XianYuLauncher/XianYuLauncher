@@ -177,6 +177,10 @@ public sealed class ErrorAnalysisSessionContextQueryService : IErrorAnalysisSess
             cancellationToken.ThrowIfCancellationRequested();
             return versionConfig;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch
         {
             return null;
@@ -190,6 +194,10 @@ public sealed class ErrorAnalysisSessionContextQueryService : IErrorAnalysisSess
             var effectiveLaunchSettings = await _launchSettingsResolver.ResolveAsync(versionConfig);
             cancellationToken.ThrowIfCancellationRequested();
             return effectiveLaunchSettings;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
         }
         catch
         {
