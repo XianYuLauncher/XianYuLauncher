@@ -1,3 +1,4 @@
+using System.Globalization;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 
@@ -18,7 +19,7 @@ public sealed class PatchGlobalLaunchSettingsToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "修改全局启动设置的 patch 工具。当前 Phase 5.3 支持 Java 与 JVM/GC 字段：java_selection_mode、selected_java_id、selected_java_path、clear_selected_java、custom_jvm_arguments、garbage_collector_mode。调用前建议先用 getGlobalLaunchSettings 和 checkJavaVersions。",
+        "修改全局启动设置的 patch 工具。当前 Phase 5.4 支持 Java、JVM/GC 与内存字段：java_selection_mode、selected_java_id、selected_java_path、clear_selected_java、custom_jvm_arguments、garbage_collector_mode、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb。调用前建议先用 getGlobalLaunchSettings 和 checkJavaVersions。",
         new
         {
             type = "object",
@@ -29,7 +30,10 @@ public sealed class PatchGlobalLaunchSettingsToolHandler : IAgentToolHandler
                 selected_java_path = new { type = "string", description = "可选。绝对 Java 路径；优先推荐使用 selected_java_id。" },
                 clear_selected_java = new { type = "boolean", description = "可选。清空当前保存的手动 Java 选择。若当前为 manual，工具会自动切回 auto。" },
                 custom_jvm_arguments = new { type = "string", description = "可选。全局自定义 JVM 参数；传空字符串表示清空。" },
-                garbage_collector_mode = new { type = "string", description = "可选。全局垃圾回收器模式。", @enum = new[] { "Auto", "G1GC", "ZGC", "ParallelGC", "SerialGC" } }
+                garbage_collector_mode = new { type = "string", description = "可选。全局垃圾回收器模式。", @enum = new[] { "Auto", "G1GC", "ZGC", "ParallelGC", "SerialGC" } },
+                auto_memory_allocation = new { type = "boolean", description = "可选。全局是否自动分配内存。true 为自动管理，false 为手动指定。" },
+                initial_heap_memory_gb = new { type = "number", description = "可选。全局初始堆内存，单位 GB，范围 1-64；仅当 auto_memory_allocation=false 时允许修改。" },
+                maximum_heap_memory_gb = new { type = "number", description = "可选。全局最大堆内存，单位 GB，范围 1-64；仅当 auto_memory_allocation=false 时允许修改。" }
             },
             required = Array.Empty<string>()
         });
@@ -49,6 +53,9 @@ public sealed class PatchGlobalLaunchSettingsToolHandler : IAgentToolHandler
             HasCustomJvmArguments = TryReadString(arguments, out var customJvmArguments, "custom_jvm_arguments", "customJvmArguments"),
             CustomJvmArguments = customJvmArguments,
             GarbageCollectorMode = ReadFirstNonEmpty(arguments, "garbage_collector_mode", "garbageCollectorMode", "gc_mode", "gcMode"),
+            AutoMemoryAllocation = ReadNullableBoolean(arguments, "auto_memory_allocation", "autoMemoryAllocation"),
+            InitialHeapMemoryGb = ReadNullableDouble(arguments, "initial_heap_memory_gb", "initialHeapMemoryGb"),
+            MaximumHeapMemoryGb = ReadNullableDouble(arguments, "maximum_heap_memory_gb", "maximumHeapMemoryGb"),
         }, cancellationToken);
     }
 
@@ -80,6 +87,20 @@ public sealed class PatchGlobalLaunchSettingsToolHandler : IAgentToolHandler
         return false;
     }
 
+    private static bool? ReadNullableBoolean(JObject arguments, params string[] propertyNames)
+    {
+        foreach (var propertyName in propertyNames)
+        {
+            if (arguments.TryGetValue(propertyName, StringComparison.OrdinalIgnoreCase, out var token)
+                && token.Type == JTokenType.Boolean)
+            {
+                return token.Value<bool>();
+            }
+        }
+
+        return null;
+    }
+
     private static bool TryReadString(JObject arguments, out string? value, params string[] propertyNames)
     {
         foreach (var propertyName in propertyNames)
@@ -94,6 +115,31 @@ public sealed class PatchGlobalLaunchSettingsToolHandler : IAgentToolHandler
 
         value = null;
         return false;
+    }
+
+    private static double? ReadNullableDouble(JObject arguments, params string[] propertyNames)
+    {
+        foreach (var propertyName in propertyNames)
+        {
+            if (!arguments.TryGetValue(propertyName, StringComparison.OrdinalIgnoreCase, out var token)
+                || token.Type == JTokenType.Null)
+            {
+                continue;
+            }
+
+            if (token.Type is JTokenType.Float or JTokenType.Integer)
+            {
+                return token.Value<double>();
+            }
+
+            if (double.TryParse(token.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var invariantValue)
+                || double.TryParse(token.ToString(), out invariantValue))
+            {
+                return invariantValue;
+            }
+        }
+
+        return null;
     }
 }
 
@@ -131,7 +177,7 @@ public sealed class PatchInstanceLaunchSettingsToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "修改实例启动设置的 patch 工具。当前 Phase 5.3 支持 Java 与 JVM/GC 字段：use_global_java_setting、java_id、java_path、custom_jvm_arguments、garbage_collector_mode。实例定位优先使用 get_instances 返回的 target_version_name，必要时再传 target_version_path。",
+        "修改实例启动设置的 patch 工具。当前 Phase 5.4 支持 Java、JVM/GC 与内存字段：use_global_java_setting、java_id、java_path、custom_jvm_arguments、garbage_collector_mode、override_memory、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb。实例定位优先使用 get_instances 返回的 target_version_name，必要时再传 target_version_path。",
         new
         {
             type = "object",
@@ -143,7 +189,11 @@ public sealed class PatchInstanceLaunchSettingsToolHandler : IAgentToolHandler
                 java_id = new { type = "string", description = "可选。checkJavaVersions 返回的 java_id，例如 java_2。设置后会自动切换为实例独立 Java。" },
                 java_path = new { type = "string", description = "可选。实例独立 Java 的绝对路径。优先推荐使用 java_id。" },
                 custom_jvm_arguments = new { type = "string", description = "可选。实例自定义 JVM 参数；传空字符串表示清空。若实例当前仍跟随全局，保存后会在脱离全局时生效。" },
-                garbage_collector_mode = new { type = "string", description = "可选。实例垃圾回收器模式。若实例当前仍跟随全局，保存后会在脱离全局时生效。", @enum = new[] { "Auto", "G1GC", "ZGC", "ParallelGC", "SerialGC" } }
+                garbage_collector_mode = new { type = "string", description = "可选。实例垃圾回收器模式。若实例当前仍跟随全局，保存后会在脱离全局时生效。", @enum = new[] { "Auto", "G1GC", "ZGC", "ParallelGC", "SerialGC" } },
+                override_memory = new { type = "boolean", description = "可选。true 表示实例使用独立内存设置；false 表示实例内存改为跟随全局。" },
+                auto_memory_allocation = new { type = "boolean", description = "可选。实例独立内存是否自动分配。仅当 override_memory=true 时允许修改。" },
+                initial_heap_memory_gb = new { type = "number", description = "可选。实例初始堆内存，单位 GB，范围 1-64；仅当 override_memory=true 且 auto_memory_allocation=false 时允许修改。" },
+                maximum_heap_memory_gb = new { type = "number", description = "可选。实例最大堆内存，单位 GB，范围 1-64；仅当 override_memory=true 且 auto_memory_allocation=false 时允许修改。" }
             },
             required = Array.Empty<string>()
         });
@@ -164,6 +214,10 @@ public sealed class PatchInstanceLaunchSettingsToolHandler : IAgentToolHandler
             HasCustomJvmArguments = TryReadString(arguments, out var customJvmArguments, "custom_jvm_arguments", "customJvmArguments"),
             CustomJvmArguments = customJvmArguments,
             GarbageCollectorMode = ReadFirstNonEmpty(arguments, "garbage_collector_mode", "garbageCollectorMode", "gc_mode", "gcMode"),
+            OverrideMemory = ReadNullableBoolean(arguments, "override_memory", "overrideMemory"),
+            AutoMemoryAllocation = ReadNullableBoolean(arguments, "auto_memory_allocation", "autoMemoryAllocation"),
+            InitialHeapMemoryGb = ReadNullableDouble(arguments, "initial_heap_memory_gb", "initialHeapMemoryGb"),
+            MaximumHeapMemoryGb = ReadNullableDouble(arguments, "maximum_heap_memory_gb", "maximumHeapMemoryGb"),
         }, cancellationToken);
     }
 
@@ -210,6 +264,31 @@ public sealed class PatchInstanceLaunchSettingsToolHandler : IAgentToolHandler
         value = null;
         return false;
     }
+
+    private static double? ReadNullableDouble(JObject arguments, params string[] propertyNames)
+    {
+        foreach (var propertyName in propertyNames)
+        {
+            if (!arguments.TryGetValue(propertyName, StringComparison.OrdinalIgnoreCase, out var token)
+                || token.Type == JTokenType.Null)
+            {
+                continue;
+            }
+
+            if (token.Type is JTokenType.Float or JTokenType.Integer)
+            {
+                return token.Value<double>();
+            }
+
+            if (double.TryParse(token.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var invariantValue)
+                || double.TryParse(token.ToString(), out invariantValue))
+            {
+                return invariantValue;
+            }
+        }
+
+        return null;
+    }
 }
 
 public sealed class PatchInstanceLaunchSettingsActionHandler : IAgentActionHandler
@@ -246,6 +325,12 @@ public sealed class AgentGlobalLaunchSettingsPatchRequest
     public string? CustomJvmArguments { get; init; }
 
     public string? GarbageCollectorMode { get; init; }
+
+    public bool? AutoMemoryAllocation { get; init; }
+
+    public double? InitialHeapMemoryGb { get; init; }
+
+    public double? MaximumHeapMemoryGb { get; init; }
 }
 
 public sealed class AgentInstanceLaunchSettingsPatchRequest
@@ -265,4 +350,12 @@ public sealed class AgentInstanceLaunchSettingsPatchRequest
     public string? CustomJvmArguments { get; init; }
 
     public string? GarbageCollectorMode { get; init; }
+
+    public bool? OverrideMemory { get; init; }
+
+    public bool? AutoMemoryAllocation { get; init; }
+
+    public double? InitialHeapMemoryGb { get; init; }
+
+    public double? MaximumHeapMemoryGb { get; init; }
 }

@@ -1,3 +1,4 @@
+using System.Globalization;
 using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
@@ -27,10 +28,17 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
     private const string GlobalSelectedJavaPathParameterKey = "selected_java_path";
     private const string GlobalCustomJvmArgumentsParameterKey = "custom_jvm_arguments";
     private const string GlobalGarbageCollectorModeParameterKey = "garbage_collector_mode";
+    private const string GlobalAutoMemoryAllocationParameterKey = "auto_memory_allocation";
+    private const string GlobalInitialHeapMemoryParameterKey = "initial_heap_memory_gb";
+    private const string GlobalMaximumHeapMemoryParameterKey = "maximum_heap_memory_gb";
     private const string InstanceUseGlobalJavaSettingParameterKey = "use_global_java_setting";
     private const string InstanceJavaPathParameterKey = "java_path";
     private const string InstanceCustomJvmArgumentsParameterKey = "custom_jvm_arguments";
     private const string InstanceGarbageCollectorModeParameterKey = "garbage_collector_mode";
+    private const string InstanceOverrideMemoryParameterKey = "override_memory";
+    private const string InstanceAutoMemoryAllocationParameterKey = "auto_memory_allocation";
+    private const string InstanceInitialHeapMemoryParameterKey = "initial_heap_memory_gb";
+    private const string InstanceMaximumHeapMemoryParameterKey = "maximum_heap_memory_gb";
 
     private readonly IGameSettingsDomainService _gameSettingsDomainService;
     private readonly IJavaRuntimeService _javaRuntimeService;
@@ -38,6 +46,9 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
     private readonly IVersionInfoService _versionInfoService;
     private readonly IVersionSettingsOrchestrator _versionSettingsOrchestrator;
     private readonly IAgentSettingsActionProposalService _proposalService;
+
+    private const double MinimumMemoryGb = 1;
+    private const double MaximumMemoryGb = 64;
 
     public AgentSettingsWriteService(
         IGameSettingsDomainService gameSettingsDomainService,
@@ -62,6 +73,9 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         var currentSelectedJavaPath = NullIfWhiteSpace(await _gameSettingsDomainService.LoadJavaPathAsync());
         var currentCustomJvmArguments = NormalizeJvmArguments(currentGlobalLaunchSettings.CustomJvmArguments);
         var currentGarbageCollectorMode = GarbageCollectorModeHelper.Normalize(currentGlobalLaunchSettings.GarbageCollectorMode);
+        var currentAutoMemoryAllocation = currentGlobalLaunchSettings.AutoMemoryAllocation;
+        var currentInitialHeapMemory = currentGlobalLaunchSettings.InitialHeapMemory;
+        var currentMaximumHeapMemory = currentGlobalLaunchSettings.MaximumHeapMemory;
         var explicitMode = NormalizeRequestedJavaSelectionMode(request.JavaSelectionMode, out var modeErrorMessage);
         if (!string.IsNullOrWhiteSpace(modeErrorMessage))
         {
@@ -114,6 +128,9 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             ? NormalizeJvmArguments(request.CustomJvmArguments)
             : currentCustomJvmArguments;
         var finalGarbageCollectorMode = explicitGarbageCollectorMode ?? currentGarbageCollectorMode;
+        var finalAutoMemoryAllocation = request.AutoMemoryAllocation ?? currentAutoMemoryAllocation;
+        var finalInitialHeapMemory = request.InitialHeapMemoryGb ?? currentInitialHeapMemory;
+        var finalMaximumHeapMemory = request.MaximumHeapMemoryGb ?? currentMaximumHeapMemory;
 
         if (requestedJava != null)
         {
@@ -148,6 +165,34 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             && string.IsNullOrWhiteSpace(finalSelectedJavaPath))
         {
             return AgentToolExecutionResult.FromMessage("手动模式下必须指定一个全局 Java。请提供 selected_java_id / selected_java_path，或改为 auto。");
+        }
+
+        if (request.InitialHeapMemoryGb.HasValue)
+        {
+            var validationMessage = ValidateMemoryValue("initial_heap_memory_gb", request.InitialHeapMemoryGb.Value);
+            if (!string.IsNullOrWhiteSpace(validationMessage))
+            {
+                return AgentToolExecutionResult.FromMessage(validationMessage);
+            }
+        }
+
+        if (request.MaximumHeapMemoryGb.HasValue)
+        {
+            var validationMessage = ValidateMemoryValue("maximum_heap_memory_gb", request.MaximumHeapMemoryGb.Value);
+            if (!string.IsNullOrWhiteSpace(validationMessage))
+            {
+                return AgentToolExecutionResult.FromMessage(validationMessage);
+            }
+        }
+
+        if (finalAutoMemoryAllocation && (request.InitialHeapMemoryGb.HasValue || request.MaximumHeapMemoryGb.HasValue))
+        {
+            return AgentToolExecutionResult.FromMessage("当 auto_memory_allocation=true 时，不能同时设置 initial_heap_memory_gb 或 maximum_heap_memory_gb。若要修改手动内存，请先将 auto_memory_allocation 设为 false。");
+        }
+
+        if (!finalAutoMemoryAllocation && finalInitialHeapMemory > finalMaximumHeapMemory)
+        {
+            return AgentToolExecutionResult.FromMessage("initial_heap_memory_gb 不能大于 maximum_heap_memory_gb。");
         }
 
         List<AgentSettingsFieldChange> changes = [];
@@ -195,9 +240,42 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             });
         }
 
+        if (currentAutoMemoryAllocation != finalAutoMemoryAllocation)
+        {
+            changes.Add(new AgentSettingsFieldChange
+            {
+                FieldKey = "auto_memory_allocation",
+                DisplayName = "内存分配方式",
+                OldValue = DescribeMemoryAllocationMode(currentAutoMemoryAllocation),
+                NewValue = DescribeMemoryAllocationMode(finalAutoMemoryAllocation),
+            });
+        }
+
+        if (!DoubleEquals(currentInitialHeapMemory, finalInitialHeapMemory))
+        {
+            changes.Add(new AgentSettingsFieldChange
+            {
+                FieldKey = "initial_heap_memory_gb",
+                DisplayName = "初始内存",
+                OldValue = DescribeMemoryAmount(currentInitialHeapMemory),
+                NewValue = DescribeMemoryAmount(finalInitialHeapMemory),
+            });
+        }
+
+        if (!DoubleEquals(currentMaximumHeapMemory, finalMaximumHeapMemory))
+        {
+            changes.Add(new AgentSettingsFieldChange
+            {
+                FieldKey = "maximum_heap_memory_gb",
+                DisplayName = "最大内存",
+                OldValue = DescribeMemoryAmount(currentMaximumHeapMemory),
+                NewValue = DescribeMemoryAmount(finalMaximumHeapMemory),
+            });
+        }
+
         if (changes.Count == 0)
         {
-            return AgentToolExecutionResult.FromMessage("全局 Java/JVM/GC 设置未发生变化。");
+            return AgentToolExecutionResult.FromMessage("全局 Java/JVM/GC/内存设置未发生变化。");
         }
 
         var proposal = _proposalService.CreateProposal(
@@ -213,6 +291,9 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         proposal.Parameters[GlobalSelectedJavaPathParameterKey] = finalSelectedJavaPath ?? string.Empty;
         proposal.Parameters[GlobalCustomJvmArgumentsParameterKey] = finalCustomJvmArguments;
         proposal.Parameters[GlobalGarbageCollectorModeParameterKey] = finalGarbageCollectorMode;
+        proposal.Parameters[GlobalAutoMemoryAllocationParameterKey] = finalAutoMemoryAllocation.ToString();
+        proposal.Parameters[GlobalInitialHeapMemoryParameterKey] = finalInitialHeapMemory.ToString(CultureInfo.InvariantCulture);
+        proposal.Parameters[GlobalMaximumHeapMemoryParameterKey] = finalMaximumHeapMemory.ToString(CultureInfo.InvariantCulture);
 
         return AgentToolExecutionResult.FromActionProposal(proposal.DisplayMessage, proposal);
     }
@@ -238,6 +319,13 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         var finalCustomJvmArguments = NormalizeJvmArguments(rawCustomJvmArguments);
         proposal.Parameters.TryGetValue(GlobalGarbageCollectorModeParameterKey, out var rawGarbageCollectorMode);
         var finalGarbageCollectorMode = GarbageCollectorModeHelper.Normalize(rawGarbageCollectorMode);
+        proposal.Parameters.TryGetValue(GlobalAutoMemoryAllocationParameterKey, out var rawAutoMemoryAllocation);
+        var finalAutoMemoryAllocation = bool.TryParse(rawAutoMemoryAllocation, out var parsedAutoMemoryAllocation)
+            && parsedAutoMemoryAllocation;
+        proposal.Parameters.TryGetValue(GlobalInitialHeapMemoryParameterKey, out var rawInitialHeapMemory);
+        var finalInitialHeapMemory = ParseStoredDouble(rawInitialHeapMemory);
+        proposal.Parameters.TryGetValue(GlobalMaximumHeapMemoryParameterKey, out var rawMaximumHeapMemory);
+        var finalMaximumHeapMemory = ParseStoredDouble(rawMaximumHeapMemory);
 
         if (string.Equals(finalMode, JavaSelectionModeManual, StringComparison.Ordinal))
         {
@@ -265,6 +353,9 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
 
         await _gameSettingsDomainService.SaveGlobalCustomJvmArgumentsAsync(finalCustomJvmArguments);
         await _gameSettingsDomainService.SaveGlobalGarbageCollectorModeAsync(finalGarbageCollectorMode);
+        await _gameSettingsDomainService.SaveGlobalAutoMemoryAllocationAsync(finalAutoMemoryAllocation);
+        await _gameSettingsDomainService.SaveGlobalInitialHeapMemoryAsync(finalInitialHeapMemory);
+        await _gameSettingsDomainService.SaveGlobalMaximumHeapMemoryAsync(finalMaximumHeapMemory);
 
         return $"已更新全局启动设置：{BuildChangeSummary(proposal)}。";
     }
@@ -286,9 +377,13 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         }
 
         var hasJvmSettingsRequest = request.HasCustomJvmArguments || explicitGarbageCollectorMode != null;
-        if (request.UseGlobalJavaSetting == null && !hasJavaRequest && !hasJvmSettingsRequest)
+        var hasMemorySettingsRequest = request.OverrideMemory != null
+            || request.AutoMemoryAllocation != null
+            || request.InitialHeapMemoryGb.HasValue
+            || request.MaximumHeapMemoryGb.HasValue;
+        if (request.UseGlobalJavaSetting == null && !hasJavaRequest && !hasJvmSettingsRequest && !hasMemorySettingsRequest)
         {
-            return AgentToolExecutionResult.FromMessage("至少需要提供一个实例级变更字段，例如 use_global_java_setting、java_id、java_path、custom_jvm_arguments 或 garbage_collector_mode。调用前建议先使用 get_instances、getVersionConfig 和 checkJavaVersions。");
+            return AgentToolExecutionResult.FromMessage("至少需要提供一个实例级变更字段，例如 use_global_java_setting、java_id、java_path、custom_jvm_arguments、garbage_collector_mode、override_memory、auto_memory_allocation、initial_heap_memory_gb 或 maximum_heap_memory_gb。调用前建议先使用 get_instances、getVersionConfig 和 checkJavaVersions。");
         }
 
         if (request.UseGlobalJavaSetting == true && hasJavaRequest)
@@ -306,6 +401,10 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         var currentJavaPath = NullIfWhiteSpace(currentConfig.JavaPath);
         var currentCustomJvmArguments = NormalizeJvmArguments(currentConfig.CustomJvmArguments);
         var currentGarbageCollectorMode = GarbageCollectorModeHelper.Normalize(currentConfig.GarbageCollectorMode);
+        var currentOverrideMemory = currentConfig.OverrideMemory;
+        var currentAutoMemoryAllocation = currentConfig.AutoMemoryAllocation;
+        var currentInitialHeapMemory = currentConfig.InitialHeapMemory;
+        var currentMaximumHeapMemory = currentConfig.MaximumHeapMemory;
         var knownJavaVersions = await LoadKnownJavaVersionsAsync(cancellationToken);
         ResolvedJavaSelection? requestedJava = null;
         if (hasJavaRequest)
@@ -331,6 +430,10 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             ? NormalizeJvmArguments(request.CustomJvmArguments)
             : currentCustomJvmArguments;
         var finalGarbageCollectorMode = explicitGarbageCollectorMode ?? currentGarbageCollectorMode;
+        var finalOverrideMemory = request.OverrideMemory ?? currentOverrideMemory;
+        var finalAutoMemoryAllocation = request.AutoMemoryAllocation ?? currentAutoMemoryAllocation;
+        var finalInitialHeapMemory = request.InitialHeapMemoryGb ?? currentInitialHeapMemory;
+        var finalMaximumHeapMemory = request.MaximumHeapMemoryGb ?? currentMaximumHeapMemory;
         if (requestedJava != null)
         {
             finalUseGlobalJavaSetting = false;
@@ -342,8 +445,41 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             return AgentToolExecutionResult.FromMessage("实例独立 Java 模式必须提供一个可用的 java_id 或 java_path；若要让实例继续跟随全局，请将 use_global_java_setting 设为 true。");
         }
 
+        if (request.InitialHeapMemoryGb.HasValue)
+        {
+            var validationMessage = ValidateMemoryValue("initial_heap_memory_gb", request.InitialHeapMemoryGb.Value);
+            if (!string.IsNullOrWhiteSpace(validationMessage))
+            {
+                return AgentToolExecutionResult.FromMessage(validationMessage);
+            }
+        }
+
+        if (request.MaximumHeapMemoryGb.HasValue)
+        {
+            var validationMessage = ValidateMemoryValue("maximum_heap_memory_gb", request.MaximumHeapMemoryGb.Value);
+            if (!string.IsNullOrWhiteSpace(validationMessage))
+            {
+                return AgentToolExecutionResult.FromMessage(validationMessage);
+            }
+        }
+
+        if (!finalOverrideMemory && (request.AutoMemoryAllocation != null || request.InitialHeapMemoryGb.HasValue || request.MaximumHeapMemoryGb.HasValue))
+        {
+            return AgentToolExecutionResult.FromMessage("当 override_memory=false 时，不能同时设置 auto_memory_allocation、initial_heap_memory_gb 或 maximum_heap_memory_gb。若要修改实例独立内存，请先将 override_memory 设为 true。");
+        }
+
+        if (finalOverrideMemory && finalAutoMemoryAllocation && (request.InitialHeapMemoryGb.HasValue || request.MaximumHeapMemoryGb.HasValue))
+        {
+            return AgentToolExecutionResult.FromMessage("当 auto_memory_allocation=true 时，不能同时设置 initial_heap_memory_gb 或 maximum_heap_memory_gb。若要修改手动内存，请先将 auto_memory_allocation 设为 false。");
+        }
+
+        if (finalOverrideMemory && !finalAutoMemoryAllocation && finalInitialHeapMemory > finalMaximumHeapMemory)
+        {
+            return AgentToolExecutionResult.FromMessage("initial_heap_memory_gb 不能大于 maximum_heap_memory_gb。");
+        }
+
         var currentJvmSettingsFollowGlobal = JvmSettingsFollowGlobal(currentUseGlobalJavaSetting, currentConfig.OverrideMemory, currentConfig.OverrideResolution);
-        var finalJvmSettingsFollowGlobal = JvmSettingsFollowGlobal(finalUseGlobalJavaSetting, currentConfig.OverrideMemory, currentConfig.OverrideResolution);
+        var finalJvmSettingsFollowGlobal = JvmSettingsFollowGlobal(finalUseGlobalJavaSetting, finalOverrideMemory, currentConfig.OverrideResolution);
 
         List<AgentSettingsFieldChange> changes = [];
         if (currentUseGlobalJavaSetting != finalUseGlobalJavaSetting)
@@ -407,9 +543,55 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             });
         }
 
+        if (currentOverrideMemory != finalOverrideMemory)
+        {
+            changes.Add(new AgentSettingsFieldChange
+            {
+                FieldKey = "override_memory",
+                DisplayName = "内存来源",
+                OldValue = DescribeMemorySource(!currentOverrideMemory),
+                NewValue = DescribeMemorySource(!finalOverrideMemory),
+                SwitchesToFollowGlobal = currentOverrideMemory && !finalOverrideMemory,
+                SwitchesToOverride = !currentOverrideMemory && finalOverrideMemory,
+            });
+        }
+
+        if (currentAutoMemoryAllocation != finalAutoMemoryAllocation)
+        {
+            changes.Add(new AgentSettingsFieldChange
+            {
+                FieldKey = "auto_memory_allocation",
+                DisplayName = "内存分配方式",
+                OldValue = DescribeMemoryAllocationMode(currentAutoMemoryAllocation),
+                NewValue = DescribeMemoryAllocationMode(finalAutoMemoryAllocation),
+            });
+        }
+
+        if (!DoubleEquals(currentInitialHeapMemory, finalInitialHeapMemory))
+        {
+            changes.Add(new AgentSettingsFieldChange
+            {
+                FieldKey = "initial_heap_memory_gb",
+                DisplayName = "初始内存",
+                OldValue = DescribeMemoryAmount(currentInitialHeapMemory),
+                NewValue = DescribeMemoryAmount(finalInitialHeapMemory),
+            });
+        }
+
+        if (!DoubleEquals(currentMaximumHeapMemory, finalMaximumHeapMemory))
+        {
+            changes.Add(new AgentSettingsFieldChange
+            {
+                FieldKey = "maximum_heap_memory_gb",
+                DisplayName = "最大内存",
+                OldValue = DescribeMemoryAmount(currentMaximumHeapMemory),
+                NewValue = DescribeMemoryAmount(finalMaximumHeapMemory),
+            });
+        }
+
         if (changes.Count == 0)
         {
-            return AgentToolExecutionResult.FromMessage($"实例 {targetVersion.VersionName} 的 Java/JVM/GC 设置未发生变化。");
+            return AgentToolExecutionResult.FromMessage($"实例 {targetVersion.VersionName} 的 Java/JVM/GC/内存设置未发生变化。");
         }
 
         var proposal = _proposalService.CreateProposal(
@@ -427,6 +609,10 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         proposal.Parameters[InstanceJavaPathParameterKey] = finalJavaPath ?? string.Empty;
         proposal.Parameters[InstanceCustomJvmArgumentsParameterKey] = finalCustomJvmArguments;
         proposal.Parameters[InstanceGarbageCollectorModeParameterKey] = finalGarbageCollectorMode;
+        proposal.Parameters[InstanceOverrideMemoryParameterKey] = finalOverrideMemory.ToString();
+        proposal.Parameters[InstanceAutoMemoryAllocationParameterKey] = finalAutoMemoryAllocation.ToString();
+        proposal.Parameters[InstanceInitialHeapMemoryParameterKey] = finalInitialHeapMemory.ToString(CultureInfo.InvariantCulture);
+        proposal.Parameters[InstanceMaximumHeapMemoryParameterKey] = finalMaximumHeapMemory.ToString(CultureInfo.InvariantCulture);
 
         return AgentToolExecutionResult.FromActionProposal(proposal.DisplayMessage, proposal);
     }
@@ -459,6 +645,16 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         var finalCustomJvmArguments = NormalizeJvmArguments(rawCustomJvmArguments);
         proposal.Parameters.TryGetValue(InstanceGarbageCollectorModeParameterKey, out var rawGarbageCollectorMode);
         var finalGarbageCollectorMode = GarbageCollectorModeHelper.Normalize(rawGarbageCollectorMode);
+        proposal.Parameters.TryGetValue(InstanceOverrideMemoryParameterKey, out var rawOverrideMemory);
+        var finalOverrideMemory = bool.TryParse(rawOverrideMemory, out var parsedOverrideMemory)
+            && parsedOverrideMemory;
+        proposal.Parameters.TryGetValue(InstanceAutoMemoryAllocationParameterKey, out var rawAutoMemoryAllocation);
+        var finalAutoMemoryAllocation = bool.TryParse(rawAutoMemoryAllocation, out var parsedAutoMemoryAllocation)
+            && parsedAutoMemoryAllocation;
+        proposal.Parameters.TryGetValue(InstanceInitialHeapMemoryParameterKey, out var rawInitialHeapMemory);
+        var finalInitialHeapMemory = ParseStoredDouble(rawInitialHeapMemory);
+        proposal.Parameters.TryGetValue(InstanceMaximumHeapMemoryParameterKey, out var rawMaximumHeapMemory);
+        var finalMaximumHeapMemory = ParseStoredDouble(rawMaximumHeapMemory);
 
         if (!finalUseGlobalJavaSetting)
         {
@@ -485,6 +681,10 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         settings.JavaPath = finalJavaPath ?? string.Empty;
         settings.CustomJvmArguments = finalCustomJvmArguments;
         settings.GarbageCollectorMode = finalGarbageCollectorMode;
+        settings.OverrideMemory = finalOverrideMemory;
+        settings.AutoMemoryAllocation = finalAutoMemoryAllocation;
+        settings.InitialHeapMemory = finalInitialHeapMemory;
+        settings.MaximumHeapMemory = finalMaximumHeapMemory;
 
         await _versionSettingsOrchestrator.SaveVersionSettingsAsync(
             new VersionListViewModel.VersionInfoItem
@@ -733,6 +933,21 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             : "跟随全局";
     }
 
+    private static string DescribeMemorySource(bool followsGlobal)
+    {
+        return followsGlobal ? "跟随全局" : "使用实例值";
+    }
+
+    private static string DescribeMemoryAllocationMode(bool autoMemoryAllocation)
+    {
+        return autoMemoryAllocation ? "自动管理" : "手动指定";
+    }
+
+    private static string DescribeMemoryAmount(double value)
+    {
+        return $"{value.ToString("0.##", CultureInfo.InvariantCulture)} GB";
+    }
+
     private static string BuildJavaDisplay(AgentJavaInventoryEntry javaEntry)
     {
         var javaType = javaEntry.IsJdk ? "JDK" : "JRE";
@@ -787,6 +1002,16 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         return normalized;
     }
 
+    private static string ValidateMemoryValue(string fieldName, double value)
+    {
+        if (value < MinimumMemoryGb || value > MaximumMemoryGb)
+        {
+            return $"{fieldName} 必须位于 {MinimumMemoryGb.ToString("0.##", CultureInfo.InvariantCulture)} 到 {MaximumMemoryGb.ToString("0.##", CultureInfo.InvariantCulture)} GB 之间。";
+        }
+
+        return string.Empty;
+    }
+
     private static string ToStoredJavaSelectionMode(string mode)
     {
         return string.Equals(mode, JavaSelectionModeManual, StringComparison.Ordinal)
@@ -802,6 +1027,13 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
     private static string NormalizeJvmArguments(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? string.Empty : value.Trim();
+    }
+
+    private static double ParseStoredDouble(string? value)
+    {
+        return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedValue)
+            ? parsedValue
+            : 0;
     }
 
     private static string? NormalizeText(string? value)
@@ -825,6 +1057,11 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
     private static bool PathEquals(string? left, string? right)
     {
         return string.Equals(NormalizeDirectoryPath(left), NormalizeDirectoryPath(right), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool DoubleEquals(double left, double right)
+    {
+        return Math.Abs(left - right) < 0.0001;
     }
 
     private static bool JvmSettingsFollowGlobal(bool useGlobalJavaSetting, bool overrideMemory, bool overrideResolution)
