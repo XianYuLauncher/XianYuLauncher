@@ -96,12 +96,12 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
                 createdDefaultConversation = true;
             }
 
+            EnsureActiveConversationLoaded();
+
             if (createdDefaultConversation)
             {
                 QueueWorkspacePersistenceSave(0);
             }
-
-            EnsureActiveConversationLoaded();
         }
         finally
         {
