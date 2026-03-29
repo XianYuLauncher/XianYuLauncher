@@ -34,6 +34,10 @@ public sealed class LauncherAiConversationStorageModel
 
     public bool IsErrorAnalysisConversation { get; init; }
 
+    public string Title { get; init; } = string.Empty;
+
+    public string ToolTip { get; init; } = string.Empty;
+
     public DateTimeOffset CreatedAtUtc { get; init; }
 
     public DateTimeOffset LastUpdatedAtUtc { get; init; }
