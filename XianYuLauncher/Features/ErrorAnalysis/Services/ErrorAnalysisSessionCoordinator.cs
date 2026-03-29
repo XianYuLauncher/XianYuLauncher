@@ -50,6 +50,11 @@ public sealed class ErrorAnalysisSessionCoordinator : IErrorAnalysisSessionCoord
         _sessionState.Context.IsGameCrashed = isCrashed;
         _sessionState.IsAiAnalysisAvailable = isCrashed;
 
+        if (isCrashed)
+        {
+            _sessionState.IsChatEnabled = true;
+        }
+
         if (!isCrashed)
         {
             _sessionState.IsAiAnalyzing = false;

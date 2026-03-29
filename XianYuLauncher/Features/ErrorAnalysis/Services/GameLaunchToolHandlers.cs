@@ -7,6 +7,7 @@ using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
+using XianYuLauncher.Services;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 
@@ -19,7 +20,7 @@ public sealed class GetCurrentGameDirectoryToolHandler : IAgentToolHandler
         _fileService = fileService;
     }
 
-    public string ToolName => "get_current_game_directory";
+    public string ToolName => "getCurrentGameDirectory";
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
@@ -53,7 +54,7 @@ public sealed class GetCurrentGameDirectoryToolHandler : IAgentToolHandler
 
 public sealed class LaunchGameToolHandler : IAgentToolHandler
 {
-    public const string ToolNameValue = "launch_game";
+    public const string ToolNameValue = "launchGame";
 
     private readonly IVersionPathGameLaunchService _versionPathGameLaunchService;
 
@@ -111,7 +112,7 @@ public sealed class LaunchGameToolHandler : IAgentToolHandler
         }
         catch (Exception ex)
         {
-            return Task.FromResult(AgentToolExecutionResult.FromMessage($"launch_game 无法执行: {ex.Message}"));
+            return Task.FromResult(AgentToolExecutionResult.FromMessage($"launchGame 无法执行: {ex.Message}"));
         }
     }
 }
@@ -119,12 +120,17 @@ public sealed class LaunchGameToolHandler : IAgentToolHandler
 public sealed class LaunchGameActionHandler : IAgentActionHandler
 {
     private readonly IVersionPathGameLaunchService _versionPathGameLaunchService;
-    private readonly IServiceProvider _serviceProvider;
+    private readonly ILaunchOperationTracker _launchOperationTracker;
+    private readonly IGameLaunchObservationService _gameLaunchObservationService;
 
-    public LaunchGameActionHandler(IVersionPathGameLaunchService versionPathGameLaunchService, IServiceProvider serviceProvider)
+    public LaunchGameActionHandler(
+        IVersionPathGameLaunchService versionPathGameLaunchService,
+        ILaunchOperationTracker launchOperationTracker,
+        IGameLaunchObservationService gameLaunchObservationService)
     {
         _versionPathGameLaunchService = versionPathGameLaunchService;
-        _serviceProvider = serviceProvider;
+        _launchOperationTracker = launchOperationTracker;
+        _gameLaunchObservationService = gameLaunchObservationService;
     }
 
     public string ActionType => LaunchGameToolHandler.ToolNameValue;
@@ -141,34 +147,63 @@ public sealed class LaunchGameActionHandler : IAgentActionHandler
         proposal.Parameters.TryGetValue("profileId", out var profileId);
 
         var preparedLaunch = _versionPathGameLaunchService.PrepareLaunch(path);
-        var result = await _versionPathGameLaunchService.LaunchAsync(
-            preparedLaunch,
-            new VersionPathLaunchOptions
-            {
-                ProfileId = profileId,
-            },
-            cancellationToken: cancellationToken);
-        if (result.GameProcess != null)
+        var operationId = _launchOperationTracker.CreateOperation(preparedLaunch.VersionName, preparedLaunch.VersionPath);
+
+        try
         {
-            StartDetachedMonitoring(result.GameProcess, result.LaunchCommand);
-            return $"已开始启动 {preparedLaunch.VersionName}。实例路径：{preparedLaunch.VersionPath}。启动前已临时切换到 {preparedLaunch.MinecraftPath}，现在已恢复原游戏目录。";
+            var result = await _versionPathGameLaunchService.LaunchAsync(
+                preparedLaunch,
+                new VersionPathLaunchOptions
+                {
+                    ProfileId = profileId,
+                },
+                cancellationToken: cancellationToken);
+            if (result.GameProcess != null)
+            {
+                _gameLaunchObservationService.Observe(new GameLaunchObservationRequest
+                {
+                    GameProcess = result.GameProcess,
+                    LaunchCommand = result.LaunchCommand ?? string.Empty,
+                    VersionId = preparedLaunch.VersionName,
+                    MinecraftPath = preparedLaunch.MinecraftPath,
+                    Origin = GameLaunchObservationOrigin.LauncherAi,
+                    EnableLiveErrorAnalysisStreaming = false,
+                });
+                _launchOperationTracker.CompleteOperation(operationId);
+                return AppendOperationStatusHint(
+                    $"已开始启动 {preparedLaunch.VersionName}。实例路径：{preparedLaunch.VersionPath}。启动前已临时切换到 {preparedLaunch.MinecraftPath}，现在已恢复原游戏目录。",
+                    operationId);
+            }
+
+            var errorMessage = NormalizeLaunchErrorMessage(result.ErrorMessage);
+            _launchOperationTracker.FailOperation(operationId, errorMessage);
+            return AppendOperationStatusHint($"启动 {preparedLaunch.VersionName} 失败：{errorMessage}", operationId);
         }
 
-        return $"启动 {preparedLaunch.VersionName} 失败：{result.ErrorMessage ?? "游戏未能启动，请查看日志。"}";
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            _launchOperationTracker.CancelOperation(operationId);
+            return AppendOperationStatusHint($"启动 {preparedLaunch.VersionName} 已取消。", operationId);
+        }
+
+        catch (Exception ex)
+        {
+            var errorMessage = NormalizeLaunchErrorMessage(ex.Message);
+            _launchOperationTracker.FailOperation(operationId, errorMessage);
+            return AppendOperationStatusHint($"启动 {preparedLaunch.VersionName} 失败：{errorMessage}", operationId);
+        }
     }
 
-    private void StartDetachedMonitoring(System.Diagnostics.Process gameProcess, string? launchCommand)
+    private static string AppendOperationStatusHint(string message, string operationId)
     {
-        var monitor = _serviceProvider.GetRequiredService<IGameProcessMonitor>();
-        _ = monitor.MonitorProcessAsync(gameProcess, launchCommand ?? string.Empty).ContinueWith(
-            task =>
-            {
-                if (task.Exception != null)
-                {
-                    Serilog.Log.Warning(task.Exception.GetBaseException(), "Launcher AI 启动后的进程监控失败");
-                }
-            },
-            TaskContinuationOptions.OnlyOnFaulted);
+        return $"{message}\noperation_id: {operationId}\n可继续使用 getOperationStatus 查询本次启动请求状态。";
+    }
+
+    private static string NormalizeLaunchErrorMessage(string? errorMessage)
+    {
+        return string.IsNullOrWhiteSpace(errorMessage)
+            ? "游戏未能启动，请查看日志。"
+            : errorMessage.Trim();
     }
 }
 
@@ -181,11 +216,11 @@ public sealed class GetProfilesToolHandler : IAgentToolHandler
         _profileManager = profileManager;
     }
 
-    public string ToolName => "get_profiles";
+    public string ToolName => "getProfiles";
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "返回当前启动器已保存的档案列表。每个档案包含玩家名、玩家 UUID、账户类型，以及是否为当前默认档案；其中 profileId 与 uuid 相同，可直接传给 launch_game。",
+        "返回当前启动器已保存的档案列表。每个档案包含玩家名、玩家 UUID、账户类型，以及是否为当前默认档案；其中 profileId 与 uuid 相同，可直接传给 launchGame。",
         new
         {
             type = "object",
@@ -246,7 +281,7 @@ public sealed class GetGameManifestToolHandler : IAgentToolHandler
         _gameManifestQueryService = gameManifestQueryService;
     }
 
-    public string ToolName => "get_game_manifest";
+    public string ToolName => "getGameManifest";
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
@@ -277,13 +312,13 @@ public sealed class GetGameManifestToolHandler : IAgentToolHandler
 
         if (queryType is not ("latest_release" or "latest_snapshot" or "list"))
         {
-            return AgentToolExecutionResult.FromMessage("get_game_manifest 参数无效：queryType 仅支持 latest_release、latest_snapshot、list。");
+            return AgentToolExecutionResult.FromMessage("getGameManifest 参数无效：queryType 仅支持 latest_release、latest_snapshot、list。");
         }
 
         if (queryType == "list" && !string.IsNullOrWhiteSpace(versionType)
             && versionType is not ("all" or "release" or "snapshot" or "old"))
         {
-            return AgentToolExecutionResult.FromMessage("get_game_manifest 参数无效：versionType 仅支持 all、release、snapshot、old。");
+            return AgentToolExecutionResult.FromMessage("getGameManifest 参数无效：versionType 仅支持 all、release、snapshot、old。");
         }
 
         var catalog = await _gameManifestQueryService.GetCatalogAsync(forceRefresh, cancellationToken);

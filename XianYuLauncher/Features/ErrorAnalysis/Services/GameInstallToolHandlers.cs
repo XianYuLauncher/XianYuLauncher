@@ -2,6 +2,7 @@ using System.Text.Json;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.ViewModels;
 
@@ -9,7 +10,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 
 public sealed class InstallGameToolHandler : IAgentToolHandler
 {
-    public const string ToolNameValue = "install_game";
+    public const string ToolNameValue = "installGame";
 
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
@@ -78,7 +79,7 @@ public sealed class InstallGameToolHandler : IAgentToolHandler
         }
         catch (Exception ex)
         {
-            return AgentToolExecutionResult.FromMessage($"install_game 参数无效: {ex.Message}");
+            return AgentToolExecutionResult.FromMessage($"installGame 参数无效: {ex.Message}");
         }
 
         try
@@ -111,7 +112,7 @@ public sealed class InstallGameToolHandler : IAgentToolHandler
         }
         catch (Exception ex)
         {
-            return AgentToolExecutionResult.FromMessage($"install_game 无法执行: {ex.Message}");
+            return AgentToolExecutionResult.FromMessage($"installGame 无法执行: {ex.Message}");
         }
     }
 
@@ -188,8 +189,8 @@ public sealed class InstallGameActionHandler : IAgentActionHandler
             cancellationToken);
 
         var message = loaderSelections.Count == 0
-            ? $"已开始安装原版 Minecraft {minecraftVersion}，版本名：{versionName}。\noperation_id: {operationId}\n可继续使用 get_operation_status 查询进度，下载队列 TeachingTip 也会同步显示。"
-            : $"已开始安装 Minecraft {minecraftVersion}，加载器：{loaderSummary}，版本名：{versionName}。\noperation_id: {operationId}\n可继续使用 get_operation_status 查询进度，下载队列 TeachingTip 也会同步显示。";
+            ? $"已开始安装原版 Minecraft {minecraftVersion}，版本名：{versionName}。\noperation_id: {operationId}\n可继续使用 getOperationStatus 查询进度，下载队列 TeachingTip 也会同步显示。"
+            : $"已开始安装 Minecraft {minecraftVersion}，加载器：{loaderSummary}，版本名：{versionName}。\noperation_id: {operationId}\n可继续使用 getOperationStatus 查询进度，下载队列 TeachingTip 也会同步显示。";
 
         return message;
     }
@@ -197,24 +198,24 @@ public sealed class InstallGameActionHandler : IAgentActionHandler
 
 public sealed class GetOperationStatusToolHandler : IAgentToolHandler
 {
-    private readonly IAgentGameInstallService _gameInstallService;
+    private readonly IAgentOperationStatusService _operationStatusService;
 
-    public GetOperationStatusToolHandler(IAgentGameInstallService gameInstallService)
+    public GetOperationStatusToolHandler(IAgentOperationStatusService operationStatusService)
     {
-        _gameInstallService = gameInstallService;
+        _operationStatusService = operationStatusService;
     }
 
-    public string ToolName => "get_operation_status";
+    public string ToolName => "getOperationStatus";
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "根据 operation_id 查询当前任务状态、进度、排队位置和错误信息。",
+        "根据 operation_id 查询 installGame、installCommunityResource 或 launchGame 返回的任务状态。",
         new
         {
             type = "object",
             properties = new
             {
-                operation_id = new { type = "string", description = "install_game 执行后返回的 operation_id" }
+                operation_id = new { type = "string", description = "installGame、installCommunityResource 或 launchGame 执行后返回的 operation_id" }
             },
             required = new[] { "operation_id" }
         });
@@ -233,6 +234,6 @@ public sealed class GetOperationStatusToolHandler : IAgentToolHandler
             return Task.FromResult(AgentToolExecutionResult.FromMessage("请提供 operation_id。"));
         }
 
-        return Task.FromResult(AgentToolExecutionResult.FromMessage(_gameInstallService.GetOperationStatusMessage(operationId)));
+        return Task.FromResult(AgentToolExecutionResult.FromMessage(_operationStatusService.GetOperationStatusMessage(operationId)));
     }
 }

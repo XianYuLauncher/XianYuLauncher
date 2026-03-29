@@ -119,6 +119,24 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         EnsureActiveConversationLoaded();
     }
 
+    public void ActivateConversationForEmbeddedSurface()
+    {
+        if (_sessionState.IsAiAnalyzing)
+        {
+            return;
+        }
+
+        PersistActiveConversationSnapshot();
+
+        if (CanReuseSelectedConversationForEmbeddedSurface())
+        {
+            EnsureActiveConversationLoaded();
+            return;
+        }
+
+        ActivateErrorAnalysisConversation(forceNewConversation: true);
+    }
+
     public void CleanupTransientErrorAnalysisConversation()
     {
         if (_workspaceState.IsErrorAnalysisPageOpen || _sessionState.IsLauncherAiWindowOpen)
@@ -527,5 +545,11 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
     private static bool HasUserMessages(ErrorAnalysisSessionSnapshot snapshot)
     {
         return snapshot.ChatMessages.Any(message => message.IsUser);
+    }
+
+    private bool CanReuseSelectedConversationForEmbeddedSurface()
+    {
+        var selectedConversation = SelectedConversation;
+        return selectedConversation != null && HasUserMessages(selectedConversation.Snapshot);
     }
 }

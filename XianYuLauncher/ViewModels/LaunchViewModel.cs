@@ -129,78 +129,6 @@ public partial class LaunchViewModel : ObservableRecipient
         });
     }
     
-    /// <summary>
-    /// 显示错误分析弹窗
-    /// </summary>
-    /// <param name="exitCode">进程退出代码</param>
-    /// <param name="launchCommand">启动命令</param>
-    /// <param name="gameOutput">游戏输出日志副本</param>
-    /// <param name="gameError">游戏错误日志副本</param>
-    private async Task ShowErrorAnalysisDialog(int exitCode, string launchCommand, List<string> gameOutput, List<string> gameError)
-    {
-        var crashResult = await AnalyzeCrash(gameOutput, gameError);
-        var errorTitle = crashResult.Title;
-        var errorAnalysis = crashResult.Analysis;
-
-        var allLogs = new List<string>
-        {
-            "=== 游戏崩溃报告 ===",
-            $"崩溃时间: {DateTime.Now:yyyy-MM-dd HH:mm:ss}",
-            $"退出代码: {exitCode}",
-            $"崩溃分析: {errorAnalysis}",
-            string.Empty,
-            "=== 游戏错误日志 ==="
-        };
-        allLogs.AddRange(gameError);
-        allLogs.Add(string.Empty);
-
-        var fullLog = string.Join(Environment.NewLine, allLogs);
-        var isEasterEggMode = await _localSettingsService.ReadSettingAsync<bool?>("EasterEggMode") ?? false;
-
-        var action = await _crashReportDialogService.ShowCrashReportDialogAsync(errorTitle, errorAnalysis, fullLog, isEasterEggMode);
-        if (action == CrashReportDialogAction.Close)
-        {
-            return;
-        }
-
-        var minecraftPath = _fileService.GetMinecraftDataPath();
-        _errorAnalysisSessionCoordinator.SetVersionInfo(SelectedVersion, minecraftPath);
-
-        if (_navigationService.Frame?.Content is Views.ErrorAnalysisPage)
-        {
-            _errorAnalysisSessionCoordinator.RefreshLogDataPreservingAnalysis(launchCommand, gameOutput, gameError);
-            App.GetService<ErrorAnalysisViewModel>().SetGameCrashStatus(true);
-
-            if (action == CrashReportDialogAction.ExportLogs)
-            {
-                await Task.Delay(500);
-                await _errorAnalysisExportService.ExportAsync();
-            }
-
-            return;
-        }
-
-        _navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!, Tuple.Create(launchCommand, gameOutput, gameError));
-
-        if (action == CrashReportDialogAction.ExportLogs)
-        {
-            await Task.Delay(500);
-            await _errorAnalysisExportService.ExportAsync();
-        }
-    }
-
-    /// <summary>
-    /// 分析崩溃原因
-    /// </summary>
-    /// <param name="gameOutput">游戏输出日志</param>
-    /// <param name="gameError">游戏错误日志</param>
-    private async Task<(string Title, string Analysis)> AnalyzeCrash(List<string> gameOutput, List<string> gameError)
-    {
-        // 使用 CrashAnalyzer 服务进行分析
-        var result = await _crashAnalyzer.AnalyzeCrashAsync(0, gameOutput, gameError);
-        return (result.Title, result.Analysis);
-    }
-    
     private string GetRequiredJavaVersionText()
     {
         if (string.IsNullOrEmpty(SelectedVersion)) return "8";
@@ -232,20 +160,15 @@ public partial class LaunchViewModel : ObservableRecipient
     private readonly IApplicationDialogService _dialogService;
     private readonly ICommonDialogService _commonDialogService;
     private readonly IProgressDialogService _progressDialogService;
-    private readonly ICrashReportDialogService _crashReportDialogService;
     private readonly IUiDispatcher _uiDispatcher;
     
     // 新增：Phase 5 重构服务
     private readonly IGameLaunchService _gameLaunchService;
-    private readonly IGameProcessMonitor _gameProcessMonitor;
-    private readonly ICrashAnalyzer _crashAnalyzer;
+    private readonly IGameLaunchObservationService _gameLaunchObservationService;
     private readonly IRegionValidator _regionValidator;
     private readonly ITokenRefreshService _tokenRefreshService;
     private readonly IVersionConfigService _versionConfigService;
-    
-    // 保存游戏输出日志
-    private List<string> _gameOutput = new List<string>();
-    private List<string> _gameError = new List<string>();
+
     private string _launchCommand = string.Empty;
     private string? _temporaryJavaOverridePath;
     
@@ -513,8 +436,6 @@ public partial class LaunchViewModel : ObservableRecipient
     }
 
     private readonly IVersionInfoManager _versionInfoManager; // Add this field
-    private readonly IErrorAnalysisSessionCoordinator _errorAnalysisSessionCoordinator;
-    private readonly IErrorAnalysisExportService _errorAnalysisExportService;
 
     public LaunchViewModel()
     {
@@ -533,19 +454,15 @@ public partial class LaunchViewModel : ObservableRecipient
         _dialogService = App.GetService<IApplicationDialogService>();
         _commonDialogService = App.GetService<ICommonDialogService>();
         _progressDialogService = App.GetService<IProgressDialogService>();
-        _crashReportDialogService = App.GetService<ICrashReportDialogService>();
         _uiDispatcher = App.GetService<IUiDispatcher>();
         
         // 新增：Phase 5 重构服务
         _gameLaunchService = App.GetService<IGameLaunchService>();
-        _gameProcessMonitor = App.GetService<IGameProcessMonitor>();
-        _crashAnalyzer = App.GetService<ICrashAnalyzer>();
+        _gameLaunchObservationService = App.GetService<IGameLaunchObservationService>();
         _regionValidator = App.GetService<IRegionValidator>();
         _tokenRefreshService = App.GetService<ITokenRefreshService>();
         _versionConfigService = App.GetService<IVersionConfigService>();
         _versionInfoManager = App.GetService<IVersionInfoManager>(); // Inject this service
-        _errorAnalysisSessionCoordinator = App.GetService<IErrorAnalysisSessionCoordinator>();
-        _errorAnalysisExportService = App.GetService<IErrorAnalysisExportService>();
 
         // ... existing code ...
         
@@ -554,11 +471,6 @@ public partial class LaunchViewModel : ObservableRecipient
         
         // 设置令牌刷新回调
         _tokenRefreshService.SetCallback(new TokenRefreshCallbackImpl(this));
-        
-        // 订阅进程监控事件
-        _gameProcessMonitor.ProcessExited += OnGameProcessExited;
-        _gameProcessMonitor.OutputReceived += OnGameOutputReceived;
-        _gameProcessMonitor.ErrorReceived += OnGameErrorReceived;
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -711,12 +623,16 @@ public partial class LaunchViewModel : ObservableRecipient
     /// <summary>
     /// 游戏进程退出事件处理
     /// </summary>
-    private async void OnGameProcessExited(object? sender, ProcessExitedEventArgs e)
+    private async Task HandleObservedGameProcessExitedAsync(GameLaunchObservedProcessExitedEventArgs observedArgs)
     {
-        LaunchStatus += $"\n游戏进程已退出，退出代码: {e.ExitCode}";
-        
-        // 更新游戏运行状态（这会自动关闭InfoBar）
-        IsGameRunning = false;
+        var e = observedArgs.ProcessExitedEventArgs;
+
+        await _uiDispatcher.RunOnUiThreadAsync(() =>
+        {
+            LaunchStatus += $"\n游戏进程已退出，退出代码: {e.ExitCode}";
+            IsGameRunning = false;
+            _currentGameProcess = null;
+        });
         
         // 计算并记录游戏时长
         if (!string.IsNullOrEmpty(_currentLaunchedVersion) && _gameStartTime != default)
@@ -779,71 +695,13 @@ public partial class LaunchViewModel : ObservableRecipient
         if (e.ExitCode != 0 && !e.IsUserTerminated)
         {
             Console.WriteLine($"游戏异常退出，退出代码: {e.ExitCode}");
-            
-            _uiDispatcher.EnqueueAsync(async () =>
-            {
-                await ShowErrorAnalysisDialog(e.ExitCode, e.LaunchCommand, e.OutputLogs, e.ErrorLogs);
-            }).Observe("LaunchViewModel.GameExited.ShowErrorAnalysis");
         }
         else if (e.IsUserTerminated)
         {
             Console.WriteLine("游戏被用户主动终止");
         }
-        
-        // 清空日志，准备下一次启动
-        _gameOutput.Clear();
-        _gameError.Clear();
+
         _launchCommand = string.Empty;
-    }
-    
-    /// <summary>
-    /// 游戏输出接收事件处理
-    /// </summary>
-    private void OnGameOutputReceived(object? sender, OutputReceivedEventArgs e)
-    {
-        lock (_gameOutput)
-        {
-            _gameOutput.Add(e.Line);
-        }
-        Console.WriteLine($"[Minecraft Output]: {e.Line}");
-        
-        // 只有在启用实时日志时才更新到ErrorAnalysisViewModel
-        if (_isRealTimeLogsEnabled)
-        {
-            try
-            {
-                _errorAnalysisSessionCoordinator.AddGameOutputLog(e.Line);
-            }
-            catch (Exception)
-            {
-                // 如果ErrorAnalysisViewModel不可用，忽略错误
-            }
-        }
-    }
-    
-    /// <summary>
-    /// 游戏错误接收事件处理
-    /// </summary>
-    private void OnGameErrorReceived(object? sender, ErrorReceivedEventArgs e)
-    {
-        lock (_gameError)
-        {
-            _gameError.Add(e.Line);
-        }
-        Console.WriteLine($"[Minecraft Error]: {e.Line}");
-        
-        // 只有在启用实时日志时才更新到ErrorAnalysisViewModel
-        if (_isRealTimeLogsEnabled)
-        {
-            try
-            {
-                _errorAnalysisSessionCoordinator.AddGameErrorLog(e.Line);
-            }
-            catch (Exception)
-            {
-                // 如果ErrorAnalysisViewModel不可用，忽略错误
-            }
-        }
     }
     
     /// <summary>
@@ -1407,8 +1265,7 @@ public partial class LaunchViewModel : ObservableRecipient
             {
                 try
                 {
-                    // 通过 GameProcessMonitor 终止进程，标记为用户主动终止
-                    _gameProcessMonitor.TerminateProcess(_currentGameProcess, isUserTerminated: true);
+                    _gameLaunchObservationService.TerminateProcess(_currentGameProcess, isUserTerminated: true);
                     LaunchStatus = "游戏进程已终止";
                     System.Diagnostics.Debug.WriteLine("[LaunchViewModel] 用户终止了游戏进程");
                 }
@@ -1520,9 +1377,6 @@ public partial class LaunchViewModel : ObservableRecipient
         _logger.LogInformation("选中版本: {Version}", SelectedVersion);
         _logger.LogInformation("选中角色: {Profile}", SelectedProfile?.Name ?? "null");
         
-        // 清空上次的日志，避免新游戏显示旧日志
-        _gameOutput.Clear();
-        _gameError.Clear();
         _launchCommand = string.Empty;
         
         if (string.IsNullOrEmpty(SelectedVersion))
@@ -1723,19 +1577,23 @@ public partial class LaunchViewModel : ObservableRecipient
                 // 更新启动成功消息
                 LaunchSuccessMessage = $"{SelectedVersion} {"LaunchPage_GameStartedSuccessfullyText".GetLocalized()}";
                 System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] LaunchSuccessMessage set to: {LaunchSuccessMessage}");
+
+                string minecraftPath = _fileService.GetMinecraftDataPath();
+                _gameLaunchObservationService.Observe(new GameLaunchObservationRequest
+                {
+                    GameProcess = result.GameProcess,
+                    LaunchCommand = _launchCommand,
+                    VersionId = SelectedVersion,
+                    MinecraftPath = minecraftPath,
+                    Origin = GameLaunchObservationOrigin.LaunchPage,
+                    EnableLiveErrorAnalysisStreaming = _isRealTimeLogsEnabled,
+                    ProcessExitedHandler = HandleObservedGameProcessExitedAsync,
+                });
                 
                 if (_isRealTimeLogsEnabled)
                 {
-                    string minecraftPath = _fileService.GetMinecraftDataPath();
-                    _errorAnalysisSessionCoordinator.ClearLogsOnly();
-                    _errorAnalysisSessionCoordinator.SetLaunchCommand(_launchCommand);
-                    _errorAnalysisSessionCoordinator.SetVersionInfo(SelectedVersion, minecraftPath);
-                    
                     _navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!);
                 }
-                
-                // 使用 GameProcessMonitor 监控进程
-                _ = _gameProcessMonitor.MonitorProcessAsync(result.GameProcess, _launchCommand);
                 
                 // 记录游戏启动时间和版本（用于计算游戏时长）
                 _gameStartTime = DateTime.Now;
