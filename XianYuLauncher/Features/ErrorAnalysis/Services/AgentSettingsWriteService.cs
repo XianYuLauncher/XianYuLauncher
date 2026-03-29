@@ -31,6 +31,8 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
     private const string GlobalAutoMemoryAllocationParameterKey = "auto_memory_allocation";
     private const string GlobalInitialHeapMemoryParameterKey = "initial_heap_memory_gb";
     private const string GlobalMaximumHeapMemoryParameterKey = "maximum_heap_memory_gb";
+    private const string GlobalWindowWidthParameterKey = "window_width";
+    private const string GlobalWindowHeightParameterKey = "window_height";
     private const string InstanceUseGlobalJavaSettingParameterKey = "use_global_java_setting";
     private const string InstanceJavaPathParameterKey = "java_path";
     private const string InstanceCustomJvmArgumentsParameterKey = "custom_jvm_arguments";
@@ -39,6 +41,9 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
     private const string InstanceAutoMemoryAllocationParameterKey = "auto_memory_allocation";
     private const string InstanceInitialHeapMemoryParameterKey = "initial_heap_memory_gb";
     private const string InstanceMaximumHeapMemoryParameterKey = "maximum_heap_memory_gb";
+    private const string InstanceOverrideResolutionParameterKey = "override_resolution";
+    private const string InstanceWindowWidthParameterKey = "window_width";
+    private const string InstanceWindowHeightParameterKey = "window_height";
 
     private readonly IGameSettingsDomainService _gameSettingsDomainService;
     private readonly IJavaRuntimeService _javaRuntimeService;
@@ -49,6 +54,10 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
 
     private const double MinimumMemoryGb = 1;
     private const double MaximumMemoryGb = 64;
+    private const int MinimumWindowWidth = 800;
+    private const int MaximumWindowWidth = 4096;
+    private const int MinimumWindowHeight = 600;
+    private const int MaximumWindowHeight = 2160;
 
     public AgentSettingsWriteService(
         IGameSettingsDomainService gameSettingsDomainService,
@@ -76,6 +85,8 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         var currentAutoMemoryAllocation = currentGlobalLaunchSettings.AutoMemoryAllocation;
         var currentInitialHeapMemory = currentGlobalLaunchSettings.InitialHeapMemory;
         var currentMaximumHeapMemory = currentGlobalLaunchSettings.MaximumHeapMemory;
+        var currentWindowWidth = currentGlobalLaunchSettings.WindowWidth;
+        var currentWindowHeight = currentGlobalLaunchSettings.WindowHeight;
         var explicitMode = NormalizeRequestedJavaSelectionMode(request.JavaSelectionMode, out var modeErrorMessage);
         if (!string.IsNullOrWhiteSpace(modeErrorMessage))
         {
@@ -98,9 +109,19 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         var hasSelectedJavaRequest = !string.IsNullOrWhiteSpace(request.SelectedJavaId)
             || !string.IsNullOrWhiteSpace(request.SelectedJavaPath);
         var hasJvmSettingsRequest = request.HasCustomJvmArguments || explicitGarbageCollectorMode != null;
-        if (explicitMode == null && !clearSelectedJava && !hasSelectedJavaRequest && !hasJvmSettingsRequest)
+        var hasMemorySettingsRequest = request.AutoMemoryAllocation != null
+            || request.InitialHeapMemoryGb.HasValue
+            || request.MaximumHeapMemoryGb.HasValue;
+        var hasResolutionSettingsRequest = request.WindowWidth.HasValue
+            || request.WindowHeight.HasValue;
+        if (explicitMode == null
+            && !clearSelectedJava
+            && !hasSelectedJavaRequest
+            && !hasJvmSettingsRequest
+            && !hasMemorySettingsRequest
+            && !hasResolutionSettingsRequest)
         {
-            return AgentToolExecutionResult.FromMessage("至少需要提供一个变更字段，例如 java_selection_mode、selected_java_id、selected_java_path、clear_selected_java、custom_jvm_arguments 或 garbage_collector_mode。调用前建议先使用 getGlobalLaunchSettings 和 checkJavaVersions。");
+            return AgentToolExecutionResult.FromMessage("至少需要提供一个变更字段，例如 java_selection_mode、selected_java_id、selected_java_path、clear_selected_java、custom_jvm_arguments、garbage_collector_mode、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、window_width 或 window_height。调用前建议先使用 getGlobalLaunchSettings 和 checkJavaVersions。");
         }
 
         var knownJavaVersions = await LoadKnownJavaVersionsAsync(cancellationToken);
@@ -131,6 +152,8 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         var finalAutoMemoryAllocation = request.AutoMemoryAllocation ?? currentAutoMemoryAllocation;
         var finalInitialHeapMemory = request.InitialHeapMemoryGb ?? currentInitialHeapMemory;
         var finalMaximumHeapMemory = request.MaximumHeapMemoryGb ?? currentMaximumHeapMemory;
+        var finalWindowWidth = request.WindowWidth ?? currentWindowWidth;
+        var finalWindowHeight = request.WindowHeight ?? currentWindowHeight;
 
         if (requestedJava != null)
         {
@@ -193,6 +216,24 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         if (!finalAutoMemoryAllocation && finalInitialHeapMemory > finalMaximumHeapMemory)
         {
             return AgentToolExecutionResult.FromMessage("initial_heap_memory_gb 不能大于 maximum_heap_memory_gb。");
+        }
+
+        if (request.WindowWidth.HasValue)
+        {
+            var validationMessage = ValidateWindowWidth(request.WindowWidth.Value);
+            if (!string.IsNullOrWhiteSpace(validationMessage))
+            {
+                return AgentToolExecutionResult.FromMessage(validationMessage);
+            }
+        }
+
+        if (request.WindowHeight.HasValue)
+        {
+            var validationMessage = ValidateWindowHeight(request.WindowHeight.Value);
+            if (!string.IsNullOrWhiteSpace(validationMessage))
+            {
+                return AgentToolExecutionResult.FromMessage(validationMessage);
+            }
         }
 
         List<AgentSettingsFieldChange> changes = [];
@@ -273,14 +314,36 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             });
         }
 
+        if (currentWindowWidth != finalWindowWidth)
+        {
+            changes.Add(new AgentSettingsFieldChange
+            {
+                FieldKey = "window_width",
+                DisplayName = "窗口宽度",
+                OldValue = DescribeWindowSize(currentWindowWidth),
+                NewValue = DescribeWindowSize(finalWindowWidth),
+            });
+        }
+
+        if (currentWindowHeight != finalWindowHeight)
+        {
+            changes.Add(new AgentSettingsFieldChange
+            {
+                FieldKey = "window_height",
+                DisplayName = "窗口高度",
+                OldValue = DescribeWindowSize(currentWindowHeight),
+                NewValue = DescribeWindowSize(finalWindowHeight),
+            });
+        }
+
         if (changes.Count == 0)
         {
-            return AgentToolExecutionResult.FromMessage("全局 Java/JVM/GC/内存设置未发生变化。");
+            return AgentToolExecutionResult.FromMessage("全局 Java/JVM/GC/内存/分辨率设置未发生变化。");
         }
 
         var proposal = _proposalService.CreateProposal(
             PatchGlobalLaunchSettingsToolHandler.ToolNameValue,
-            "应用全局 Java 设置",
+            "应用全局启动设置",
             new AgentSettingsActionProposalPayload
             {
                 Scope = AgentSettingsProposalScopes.Global,
@@ -294,6 +357,8 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         proposal.Parameters[GlobalAutoMemoryAllocationParameterKey] = finalAutoMemoryAllocation.ToString();
         proposal.Parameters[GlobalInitialHeapMemoryParameterKey] = finalInitialHeapMemory.ToString(CultureInfo.InvariantCulture);
         proposal.Parameters[GlobalMaximumHeapMemoryParameterKey] = finalMaximumHeapMemory.ToString(CultureInfo.InvariantCulture);
+        proposal.Parameters[GlobalWindowWidthParameterKey] = finalWindowWidth.ToString(CultureInfo.InvariantCulture);
+        proposal.Parameters[GlobalWindowHeightParameterKey] = finalWindowHeight.ToString(CultureInfo.InvariantCulture);
 
         return AgentToolExecutionResult.FromActionProposal(proposal.DisplayMessage, proposal);
     }
@@ -326,6 +391,10 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         var finalInitialHeapMemory = ParseStoredDouble(rawInitialHeapMemory);
         proposal.Parameters.TryGetValue(GlobalMaximumHeapMemoryParameterKey, out var rawMaximumHeapMemory);
         var finalMaximumHeapMemory = ParseStoredDouble(rawMaximumHeapMemory);
+        proposal.Parameters.TryGetValue(GlobalWindowWidthParameterKey, out var rawWindowWidth);
+        var finalWindowWidth = ParseStoredInt32(rawWindowWidth);
+        proposal.Parameters.TryGetValue(GlobalWindowHeightParameterKey, out var rawWindowHeight);
+        var finalWindowHeight = ParseStoredInt32(rawWindowHeight);
 
         if (string.Equals(finalMode, JavaSelectionModeManual, StringComparison.Ordinal))
         {
@@ -356,6 +425,8 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         await _gameSettingsDomainService.SaveGlobalAutoMemoryAllocationAsync(finalAutoMemoryAllocation);
         await _gameSettingsDomainService.SaveGlobalInitialHeapMemoryAsync(finalInitialHeapMemory);
         await _gameSettingsDomainService.SaveGlobalMaximumHeapMemoryAsync(finalMaximumHeapMemory);
+        await _gameSettingsDomainService.SaveGlobalWindowWidthAsync(finalWindowWidth);
+        await _gameSettingsDomainService.SaveGlobalWindowHeightAsync(finalWindowHeight);
 
         return $"已更新全局启动设置：{BuildChangeSummary(proposal)}。";
     }
@@ -381,9 +452,12 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             || request.AutoMemoryAllocation != null
             || request.InitialHeapMemoryGb.HasValue
             || request.MaximumHeapMemoryGb.HasValue;
-        if (request.UseGlobalJavaSetting == null && !hasJavaRequest && !hasJvmSettingsRequest && !hasMemorySettingsRequest)
+        var hasResolutionSettingsRequest = request.OverrideResolution != null
+            || request.WindowWidth.HasValue
+            || request.WindowHeight.HasValue;
+        if (request.UseGlobalJavaSetting == null && !hasJavaRequest && !hasJvmSettingsRequest && !hasMemorySettingsRequest && !hasResolutionSettingsRequest)
         {
-            return AgentToolExecutionResult.FromMessage("至少需要提供一个实例级变更字段，例如 use_global_java_setting、java_id、java_path、custom_jvm_arguments、garbage_collector_mode、override_memory、auto_memory_allocation、initial_heap_memory_gb 或 maximum_heap_memory_gb。调用前建议先使用 get_instances、getVersionConfig 和 checkJavaVersions。");
+            return AgentToolExecutionResult.FromMessage("至少需要提供一个实例级变更字段，例如 use_global_java_setting、java_id、java_path、custom_jvm_arguments、garbage_collector_mode、override_memory、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、override_resolution、window_width 或 window_height。调用前建议先使用 get_instances、getVersionConfig 和 checkJavaVersions。");
         }
 
         if (request.UseGlobalJavaSetting == true && hasJavaRequest)
@@ -405,6 +479,9 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         var currentAutoMemoryAllocation = currentConfig.AutoMemoryAllocation;
         var currentInitialHeapMemory = currentConfig.InitialHeapMemory;
         var currentMaximumHeapMemory = currentConfig.MaximumHeapMemory;
+        var currentOverrideResolution = currentConfig.OverrideResolution;
+        var currentWindowWidth = currentConfig.WindowWidth;
+        var currentWindowHeight = currentConfig.WindowHeight;
         var knownJavaVersions = await LoadKnownJavaVersionsAsync(cancellationToken);
         ResolvedJavaSelection? requestedJava = null;
         if (hasJavaRequest)
@@ -434,6 +511,9 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         var finalAutoMemoryAllocation = request.AutoMemoryAllocation ?? currentAutoMemoryAllocation;
         var finalInitialHeapMemory = request.InitialHeapMemoryGb ?? currentInitialHeapMemory;
         var finalMaximumHeapMemory = request.MaximumHeapMemoryGb ?? currentMaximumHeapMemory;
+        var finalOverrideResolution = request.OverrideResolution ?? currentOverrideResolution;
+        var finalWindowWidth = request.WindowWidth ?? currentWindowWidth;
+        var finalWindowHeight = request.WindowHeight ?? currentWindowHeight;
         if (requestedJava != null)
         {
             finalUseGlobalJavaSetting = false;
@@ -478,8 +558,31 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             return AgentToolExecutionResult.FromMessage("initial_heap_memory_gb 不能大于 maximum_heap_memory_gb。");
         }
 
+        if (request.WindowWidth.HasValue)
+        {
+            var validationMessage = ValidateWindowWidth(request.WindowWidth.Value);
+            if (!string.IsNullOrWhiteSpace(validationMessage))
+            {
+                return AgentToolExecutionResult.FromMessage(validationMessage);
+            }
+        }
+
+        if (request.WindowHeight.HasValue)
+        {
+            var validationMessage = ValidateWindowHeight(request.WindowHeight.Value);
+            if (!string.IsNullOrWhiteSpace(validationMessage))
+            {
+                return AgentToolExecutionResult.FromMessage(validationMessage);
+            }
+        }
+
+        if (!finalOverrideResolution && (request.WindowWidth.HasValue || request.WindowHeight.HasValue))
+        {
+            return AgentToolExecutionResult.FromMessage("当 override_resolution=false 时，不能同时设置 window_width 或 window_height。若要修改实例独立分辨率，请先将 override_resolution 设为 true。");
+        }
+
         var currentJvmSettingsFollowGlobal = JvmSettingsFollowGlobal(currentUseGlobalJavaSetting, currentConfig.OverrideMemory, currentConfig.OverrideResolution);
-        var finalJvmSettingsFollowGlobal = JvmSettingsFollowGlobal(finalUseGlobalJavaSetting, finalOverrideMemory, currentConfig.OverrideResolution);
+        var finalJvmSettingsFollowGlobal = JvmSettingsFollowGlobal(finalUseGlobalJavaSetting, finalOverrideMemory, finalOverrideResolution);
 
         List<AgentSettingsFieldChange> changes = [];
         if (currentUseGlobalJavaSetting != finalUseGlobalJavaSetting)
@@ -530,7 +633,7 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             });
         }
 
-        if (hasJvmSettingsRequest && (currentJvmSettingsFollowGlobal != finalJvmSettingsFollowGlobal || finalJvmSettingsFollowGlobal))
+        if (currentJvmSettingsFollowGlobal != finalJvmSettingsFollowGlobal || (hasJvmSettingsRequest && finalJvmSettingsFollowGlobal))
         {
             changes.Add(new AgentSettingsFieldChange
             {
@@ -589,14 +692,49 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             });
         }
 
+        if (currentOverrideResolution != finalOverrideResolution)
+        {
+            changes.Add(new AgentSettingsFieldChange
+            {
+                FieldKey = "override_resolution",
+                DisplayName = "分辨率来源",
+                OldValue = DescribeResolutionSource(!currentOverrideResolution),
+                NewValue = DescribeResolutionSource(!finalOverrideResolution),
+                SwitchesToFollowGlobal = currentOverrideResolution && !finalOverrideResolution,
+                SwitchesToOverride = !currentOverrideResolution && finalOverrideResolution,
+            });
+        }
+
+        if (currentWindowWidth != finalWindowWidth)
+        {
+            changes.Add(new AgentSettingsFieldChange
+            {
+                FieldKey = "window_width",
+                DisplayName = "窗口宽度",
+                OldValue = DescribeWindowSize(currentWindowWidth),
+                NewValue = DescribeWindowSize(finalWindowWidth),
+            });
+        }
+
+        if (currentWindowHeight != finalWindowHeight)
+        {
+            changes.Add(new AgentSettingsFieldChange
+            {
+                FieldKey = "window_height",
+                DisplayName = "窗口高度",
+                OldValue = DescribeWindowSize(currentWindowHeight),
+                NewValue = DescribeWindowSize(finalWindowHeight),
+            });
+        }
+
         if (changes.Count == 0)
         {
-            return AgentToolExecutionResult.FromMessage($"实例 {targetVersion.VersionName} 的 Java/JVM/GC/内存设置未发生变化。");
+            return AgentToolExecutionResult.FromMessage($"实例 {targetVersion.VersionName} 的 Java/JVM/GC/内存/分辨率设置未发生变化。");
         }
 
         var proposal = _proposalService.CreateProposal(
             PatchInstanceLaunchSettingsToolHandler.ToolNameValue,
-            $"更新 {targetVersion.VersionName} 的 Java 设置",
+            $"更新 {targetVersion.VersionName} 的启动设置",
             new AgentSettingsActionProposalPayload
             {
                 Scope = AgentSettingsProposalScopes.Instance,
@@ -613,6 +751,9 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         proposal.Parameters[InstanceAutoMemoryAllocationParameterKey] = finalAutoMemoryAllocation.ToString();
         proposal.Parameters[InstanceInitialHeapMemoryParameterKey] = finalInitialHeapMemory.ToString(CultureInfo.InvariantCulture);
         proposal.Parameters[InstanceMaximumHeapMemoryParameterKey] = finalMaximumHeapMemory.ToString(CultureInfo.InvariantCulture);
+        proposal.Parameters[InstanceOverrideResolutionParameterKey] = finalOverrideResolution.ToString();
+        proposal.Parameters[InstanceWindowWidthParameterKey] = finalWindowWidth.ToString(CultureInfo.InvariantCulture);
+        proposal.Parameters[InstanceWindowHeightParameterKey] = finalWindowHeight.ToString(CultureInfo.InvariantCulture);
 
         return AgentToolExecutionResult.FromActionProposal(proposal.DisplayMessage, proposal);
     }
@@ -655,6 +796,13 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         var finalInitialHeapMemory = ParseStoredDouble(rawInitialHeapMemory);
         proposal.Parameters.TryGetValue(InstanceMaximumHeapMemoryParameterKey, out var rawMaximumHeapMemory);
         var finalMaximumHeapMemory = ParseStoredDouble(rawMaximumHeapMemory);
+        proposal.Parameters.TryGetValue(InstanceOverrideResolutionParameterKey, out var rawOverrideResolution);
+        var finalOverrideResolution = bool.TryParse(rawOverrideResolution, out var parsedOverrideResolution)
+            && parsedOverrideResolution;
+        proposal.Parameters.TryGetValue(InstanceWindowWidthParameterKey, out var rawWindowWidth);
+        var finalWindowWidth = ParseStoredInt32(rawWindowWidth);
+        proposal.Parameters.TryGetValue(InstanceWindowHeightParameterKey, out var rawWindowHeight);
+        var finalWindowHeight = ParseStoredInt32(rawWindowHeight);
 
         if (!finalUseGlobalJavaSetting)
         {
@@ -685,6 +833,9 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         settings.AutoMemoryAllocation = finalAutoMemoryAllocation;
         settings.InitialHeapMemory = finalInitialHeapMemory;
         settings.MaximumHeapMemory = finalMaximumHeapMemory;
+        settings.OverrideResolution = finalOverrideResolution;
+        settings.WindowWidth = finalWindowWidth;
+        settings.WindowHeight = finalWindowHeight;
 
         await _versionSettingsOrchestrator.SaveVersionSettingsAsync(
             new VersionListViewModel.VersionInfoItem
@@ -948,6 +1099,16 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         return $"{value.ToString("0.##", CultureInfo.InvariantCulture)} GB";
     }
 
+    private static string DescribeResolutionSource(bool followsGlobal)
+    {
+        return followsGlobal ? "跟随全局" : "使用实例值";
+    }
+
+    private static string DescribeWindowSize(int value)
+    {
+        return $"{value.ToString(CultureInfo.InvariantCulture)} px";
+    }
+
     private static string BuildJavaDisplay(AgentJavaInventoryEntry javaEntry)
     {
         var javaType = javaEntry.IsJdk ? "JDK" : "JRE";
@@ -1012,6 +1173,26 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         return string.Empty;
     }
 
+    private static string ValidateWindowWidth(int value)
+    {
+        if (value < MinimumWindowWidth || value > MaximumWindowWidth)
+        {
+            return $"window_width 必须位于 {MinimumWindowWidth} 到 {MaximumWindowWidth} 之间。";
+        }
+
+        return string.Empty;
+    }
+
+    private static string ValidateWindowHeight(int value)
+    {
+        if (value < MinimumWindowHeight || value > MaximumWindowHeight)
+        {
+            return $"window_height 必须位于 {MinimumWindowHeight} 到 {MaximumWindowHeight} 之间。";
+        }
+
+        return string.Empty;
+    }
+
     private static string ToStoredJavaSelectionMode(string mode)
     {
         return string.Equals(mode, JavaSelectionModeManual, StringComparison.Ordinal)
@@ -1032,6 +1213,13 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
     private static double ParseStoredDouble(string? value)
     {
         return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedValue)
+            ? parsedValue
+            : 0;
+    }
+
+    private static int ParseStoredInt32(string? value)
+    {
+        return int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedValue)
             ? parsedValue
             : 0;
     }

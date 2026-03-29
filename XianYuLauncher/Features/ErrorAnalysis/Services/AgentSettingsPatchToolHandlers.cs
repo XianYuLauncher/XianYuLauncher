@@ -19,7 +19,7 @@ public sealed class PatchGlobalLaunchSettingsToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "修改全局启动设置的 patch 工具。当前 Phase 5.4 支持 Java、JVM/GC 与内存字段：java_selection_mode、selected_java_id、selected_java_path、clear_selected_java、custom_jvm_arguments、garbage_collector_mode、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb。调用前建议先用 getGlobalLaunchSettings 和 checkJavaVersions。",
+        "修改全局启动设置的 patch 工具。当前 Phase 5.5 支持 Java、JVM/GC、内存与分辨率字段：java_selection_mode、selected_java_id、selected_java_path、clear_selected_java、custom_jvm_arguments、garbage_collector_mode、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、window_width、window_height。调用前建议先用 getGlobalLaunchSettings 和 checkJavaVersions。",
         new
         {
             type = "object",
@@ -33,7 +33,9 @@ public sealed class PatchGlobalLaunchSettingsToolHandler : IAgentToolHandler
                 garbage_collector_mode = new { type = "string", description = "可选。全局垃圾回收器模式。", @enum = new[] { "Auto", "G1GC", "ZGC", "ParallelGC", "SerialGC" } },
                 auto_memory_allocation = new { type = "boolean", description = "可选。全局是否自动分配内存。true 为自动管理，false 为手动指定。" },
                 initial_heap_memory_gb = new { type = "number", description = "可选。全局初始堆内存，单位 GB，范围 1-64；仅当 auto_memory_allocation=false 时允许修改。" },
-                maximum_heap_memory_gb = new { type = "number", description = "可选。全局最大堆内存，单位 GB，范围 1-64；仅当 auto_memory_allocation=false 时允许修改。" }
+                maximum_heap_memory_gb = new { type = "number", description = "可选。全局最大堆内存，单位 GB，范围 1-64；仅当 auto_memory_allocation=false 时允许修改。" },
+                window_width = new { type = "integer", description = "可选。全局窗口宽度，范围 800-4096。" },
+                window_height = new { type = "integer", description = "可选。全局窗口高度，范围 600-2160。" }
             },
             required = Array.Empty<string>()
         });
@@ -56,6 +58,8 @@ public sealed class PatchGlobalLaunchSettingsToolHandler : IAgentToolHandler
             AutoMemoryAllocation = ReadNullableBoolean(arguments, "auto_memory_allocation", "autoMemoryAllocation"),
             InitialHeapMemoryGb = ReadNullableDouble(arguments, "initial_heap_memory_gb", "initialHeapMemoryGb"),
             MaximumHeapMemoryGb = ReadNullableDouble(arguments, "maximum_heap_memory_gb", "maximumHeapMemoryGb"),
+            WindowWidth = ReadNullableInt32(arguments, "window_width", "windowWidth"),
+            WindowHeight = ReadNullableInt32(arguments, "window_height", "windowHeight"),
         }, cancellationToken);
     }
 
@@ -141,6 +145,31 @@ public sealed class PatchGlobalLaunchSettingsToolHandler : IAgentToolHandler
 
         return null;
     }
+
+    private static int? ReadNullableInt32(JObject arguments, params string[] propertyNames)
+    {
+        foreach (var propertyName in propertyNames)
+        {
+            if (!arguments.TryGetValue(propertyName, StringComparison.OrdinalIgnoreCase, out var token)
+                || token.Type == JTokenType.Null)
+            {
+                continue;
+            }
+
+            if (token.Type == JTokenType.Integer)
+            {
+                return token.Value<int>();
+            }
+
+            if (int.TryParse(token.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var invariantValue)
+                || int.TryParse(token.ToString(), out invariantValue))
+            {
+                return invariantValue;
+            }
+        }
+
+        return null;
+    }
 }
 
 public sealed class PatchGlobalLaunchSettingsActionHandler : IAgentActionHandler
@@ -177,7 +206,7 @@ public sealed class PatchInstanceLaunchSettingsToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "修改实例启动设置的 patch 工具。当前 Phase 5.4 支持 Java、JVM/GC 与内存字段：use_global_java_setting、java_id、java_path、custom_jvm_arguments、garbage_collector_mode、override_memory、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb。实例定位优先使用 get_instances 返回的 target_version_name，必要时再传 target_version_path。",
+        "修改实例启动设置的 patch 工具。当前 Phase 5.5 支持 Java、JVM/GC、内存与分辨率字段：use_global_java_setting、java_id、java_path、custom_jvm_arguments、garbage_collector_mode、override_memory、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、override_resolution、window_width、window_height。实例定位优先使用 get_instances 返回的 target_version_name，必要时再传 target_version_path。",
         new
         {
             type = "object",
@@ -193,7 +222,10 @@ public sealed class PatchInstanceLaunchSettingsToolHandler : IAgentToolHandler
                 override_memory = new { type = "boolean", description = "可选。true 表示实例使用独立内存设置；false 表示实例内存改为跟随全局。" },
                 auto_memory_allocation = new { type = "boolean", description = "可选。实例独立内存是否自动分配。仅当 override_memory=true 时允许修改。" },
                 initial_heap_memory_gb = new { type = "number", description = "可选。实例初始堆内存，单位 GB，范围 1-64；仅当 override_memory=true 且 auto_memory_allocation=false 时允许修改。" },
-                maximum_heap_memory_gb = new { type = "number", description = "可选。实例最大堆内存，单位 GB，范围 1-64；仅当 override_memory=true 且 auto_memory_allocation=false 时允许修改。" }
+                maximum_heap_memory_gb = new { type = "number", description = "可选。实例最大堆内存，单位 GB，范围 1-64；仅当 override_memory=true 且 auto_memory_allocation=false 时允许修改。" },
+                override_resolution = new { type = "boolean", description = "可选。true 表示实例使用独立分辨率；false 表示实例分辨率改为跟随全局。" },
+                window_width = new { type = "integer", description = "可选。实例窗口宽度，范围 800-4096；仅当 override_resolution=true 时允许修改。" },
+                window_height = new { type = "integer", description = "可选。实例窗口高度，范围 600-2160；仅当 override_resolution=true 时允许修改。" }
             },
             required = Array.Empty<string>()
         });
@@ -218,6 +250,9 @@ public sealed class PatchInstanceLaunchSettingsToolHandler : IAgentToolHandler
             AutoMemoryAllocation = ReadNullableBoolean(arguments, "auto_memory_allocation", "autoMemoryAllocation"),
             InitialHeapMemoryGb = ReadNullableDouble(arguments, "initial_heap_memory_gb", "initialHeapMemoryGb"),
             MaximumHeapMemoryGb = ReadNullableDouble(arguments, "maximum_heap_memory_gb", "maximumHeapMemoryGb"),
+            OverrideResolution = ReadNullableBoolean(arguments, "override_resolution", "overrideResolution"),
+            WindowWidth = ReadNullableInt32(arguments, "window_width", "windowWidth"),
+            WindowHeight = ReadNullableInt32(arguments, "window_height", "windowHeight"),
         }, cancellationToken);
     }
 
@@ -289,6 +324,31 @@ public sealed class PatchInstanceLaunchSettingsToolHandler : IAgentToolHandler
 
         return null;
     }
+
+    private static int? ReadNullableInt32(JObject arguments, params string[] propertyNames)
+    {
+        foreach (var propertyName in propertyNames)
+        {
+            if (!arguments.TryGetValue(propertyName, StringComparison.OrdinalIgnoreCase, out var token)
+                || token.Type == JTokenType.Null)
+            {
+                continue;
+            }
+
+            if (token.Type == JTokenType.Integer)
+            {
+                return token.Value<int>();
+            }
+
+            if (int.TryParse(token.ToString(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var invariantValue)
+                || int.TryParse(token.ToString(), out invariantValue))
+            {
+                return invariantValue;
+            }
+        }
+
+        return null;
+    }
 }
 
 public sealed class PatchInstanceLaunchSettingsActionHandler : IAgentActionHandler
@@ -331,6 +391,10 @@ public sealed class AgentGlobalLaunchSettingsPatchRequest
     public double? InitialHeapMemoryGb { get; init; }
 
     public double? MaximumHeapMemoryGb { get; init; }
+
+    public int? WindowWidth { get; init; }
+
+    public int? WindowHeight { get; init; }
 }
 
 public sealed class AgentInstanceLaunchSettingsPatchRequest
@@ -358,4 +422,10 @@ public sealed class AgentInstanceLaunchSettingsPatchRequest
     public double? InitialHeapMemoryGb { get; init; }
 
     public double? MaximumHeapMemoryGb { get; init; }
+
+    public bool? OverrideResolution { get; init; }
+
+    public int? WindowWidth { get; init; }
+
+    public int? WindowHeight { get; init; }
 }
