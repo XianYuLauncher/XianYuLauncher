@@ -133,21 +133,16 @@ public static class AgentSettingsSnapshotJsonHelper
         bool fromSettingsCache)
     {
         var normalizedSelectedPath = NullIfWhiteSpace(selectedJavaPath);
-        var orderedJavaVersions = javaVersions
-            .OrderByDescending(javaVersion => IsSelectedJavaPath(normalizedSelectedPath, javaVersion.Path))
-            .ThenByDescending(javaVersion => javaVersion.MajorVersion)
-            .ThenByDescending(javaVersion => javaVersion.IsJDK)
-            .ThenBy(javaVersion => javaVersion.FullVersion, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(javaVersion => javaVersion.Path, StringComparer.OrdinalIgnoreCase)
-            .Select((javaVersion, index) => new
+        var orderedJavaVersions = AgentJavaInventoryHelper.NormalizeJavaVersions(normalizedSelectedPath, javaVersions)
+            .Select(javaVersion => new
             {
-                java_id = $"java_{index + 1}",
+                java_id = javaVersion.JavaId,
                 path = javaVersion.Path,
                 major_version = javaVersion.MajorVersion,
                 full_version = javaVersion.FullVersion,
-                is_jdk = javaVersion.IsJDK,
+                is_jdk = javaVersion.IsJdk,
                 is_64_bit = javaVersion.Is64Bit,
-                matches_selected_java_path = IsSelectedJavaPath(normalizedSelectedPath, javaVersion.Path)
+                matches_selected_java_path = javaVersion.MatchesSelectedJavaPath
             })
             .ToList();
         var payload = new
@@ -189,8 +184,8 @@ public static class AgentSettingsSnapshotJsonHelper
     public static string BuildGlobalLaunchSettingsSnapshotJson(AgentGlobalSettingsSnapshotInput input)
     {
         var normalizedSelectedPath = NullIfWhiteSpace(input.SelectedJavaPath);
-        var matchedSelectedJava = input.KnownJavaVersions.FirstOrDefault(javaVersion =>
-            IsSelectedJavaPath(normalizedSelectedPath, javaVersion.Path));
+        var matchedSelectedJava = AgentJavaInventoryHelper.NormalizeJavaVersions(normalizedSelectedPath, input.KnownJavaVersions)
+            .FirstOrDefault(javaVersion => javaVersion.MatchesSelectedJavaPath);
         var effectiveGameIsolationModeKey = ResolveEffectiveGlobalGameDirModeKey(input.GameIsolationModeKey, input.LegacyEnableVersionIsolation);
 
         var payload = new
@@ -207,7 +202,7 @@ public static class AgentSettingsSnapshotJsonHelper
                         path = matchedSelectedJava.Path,
                         major_version = matchedSelectedJava.MajorVersion,
                         full_version = matchedSelectedJava.FullVersion,
-                        is_jdk = matchedSelectedJava.IsJDK,
+                        is_jdk = matchedSelectedJava.IsJdk,
                         is_64_bit = matchedSelectedJava.Is64Bit,
                     },
                 known_java_versions_count = input.KnownJavaVersions.Count,
@@ -363,12 +358,6 @@ public static class AgentSettingsSnapshotJsonHelper
         }
 
         return $"local_{NormalizeGameIsolationMode(localMode)}";
-    }
-
-    private static bool IsSelectedJavaPath(string? selectedJavaPath, string javaPath)
-    {
-        return !string.IsNullOrWhiteSpace(selectedJavaPath)
-            && string.Equals(selectedJavaPath, javaPath, StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? NullIfWhiteSpace(string? value)
