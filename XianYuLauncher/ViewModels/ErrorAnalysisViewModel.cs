@@ -2,6 +2,8 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -31,6 +33,7 @@ namespace XianYuLauncher.ViewModels
         private readonly IErrorAnalysisExportService _exportService;
         private readonly IFilePickerService _filePickerService;
         private readonly IUiDispatcher _uiDispatcher;
+        private readonly IAgentSettingsActionProposalService _settingsActionProposalService;
         private readonly ErrorAnalysisSessionState _sessionState;
 
         private static readonly IReadOnlyDictionary<string, string> SupportedImageContentTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
@@ -84,6 +87,7 @@ namespace XianYuLauncher.ViewModels
             IErrorAnalysisExportService exportService,
             IFilePickerService filePickerService,
             IUiDispatcher uiDispatcher,
+            IAgentSettingsActionProposalService settingsActionProposalService,
             ErrorAnalysisSessionState sessionState)
         {
             _languageSelectorService = languageSelectorService;
@@ -93,9 +97,16 @@ namespace XianYuLauncher.ViewModels
             _exportService = exportService;
             _filePickerService = filePickerService;
             _uiDispatcher = uiDispatcher;
+            _settingsActionProposalService = settingsActionProposalService;
             _sessionState = sessionState;
 
             _sessionState.PropertyChanged += SessionState_PropertyChanged;
+            CurrentFixActionChanges.CollectionChanged += (_, _) =>
+            {
+                OnPropertyChanged(nameof(HasCurrentFixActionChanges));
+                OnPropertyChanged(nameof(ShouldShowCurrentFixActionSummary));
+            };
+            RefreshCurrentFixActionCard();
         }
 
         private void SessionState_PropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -119,6 +130,14 @@ namespace XianYuLauncher.ViewModels
                     OnPropertyChanged(nameof(CanComposeChat));
                     OnPropertyChanged(nameof(CurrentChatActionCommand));
                     OnPropertyChanged(nameof(CurrentChatActionGlyph));
+                }
+
+                if (e.PropertyName == nameof(ErrorAnalysisSessionState.CurrentFixAction)
+                    || e.PropertyName == nameof(ErrorAnalysisSessionState.PendingActionProposalCount)
+                    || e.PropertyName == nameof(ErrorAnalysisSessionState.HasFixAction)
+                    || e.PropertyName == nameof(ErrorAnalysisSessionState.FixButtonText))
+                {
+                    RefreshCurrentFixActionCard();
                 }
 
                 if (e.PropertyName == nameof(ErrorAnalysisSessionState.HasPendingImageAttachments))
@@ -221,6 +240,22 @@ namespace XianYuLauncher.ViewModels
             get => _sessionState.FixButtonText;
             set => _sessionState.FixButtonText = value;
         }
+
+        public ObservableCollection<ActionProposalChangeItem> CurrentFixActionChanges { get; } = [];
+
+        public bool HasCurrentFixActionChanges => CurrentFixActionChanges.Count > 0;
+
+        public string CurrentFixActionSummary => _currentFixAction == null
+            ? string.Empty
+            : ExtractDisplayMessage(_currentFixAction.DisplayMessage);
+
+        public bool ShouldShowCurrentFixActionSummary => !HasCurrentFixActionChanges && !string.IsNullOrWhiteSpace(CurrentFixActionSummary);
+
+        public string PendingProposalQueueText => _sessionState.PendingActionProposalCount > 1
+            ? $"当前操作处理后，还会继续逐项确认剩余 {_sessionState.PendingActionProposalCount - 1} 个操作。"
+            : string.Empty;
+
+        public bool HasPendingProposalQueueText => !string.IsNullOrWhiteSpace(PendingProposalQueueText);
 
         public bool HasSecondaryFixAction
         {
@@ -672,6 +707,78 @@ namespace XianYuLauncher.ViewModels
         public void Dispose()
         {
             _sessionState.PropertyChanged -= SessionState_PropertyChanged;
+        }
+
+        private void RefreshCurrentFixActionCard()
+        {
+            CurrentFixActionChanges.Clear();
+
+            if (_currentFixAction != null
+                && _settingsActionProposalService.TryParsePayload(_currentFixAction, out var payload)
+                && payload != null)
+            {
+                foreach (var change in payload.Changes)
+                {
+                    CurrentFixActionChanges.Add(new ActionProposalChangeItem
+                    {
+                        DisplayName = change.DisplayName,
+                        OldValue = change.OldValue,
+                        NewValue = change.NewValue,
+                        Hint = BuildChangeHint(change)
+                    });
+                }
+            }
+
+            OnPropertyChanged(nameof(CurrentFixActionSummary));
+            OnPropertyChanged(nameof(ShouldShowCurrentFixActionSummary));
+            OnPropertyChanged(nameof(PendingProposalQueueText));
+            OnPropertyChanged(nameof(HasPendingProposalQueueText));
+        }
+
+        private static string ExtractDisplayMessage(string message)
+        {
+            var trimmed = message?.Trim() ?? string.Empty;
+            if (trimmed.Length == 0)
+            {
+                return trimmed;
+            }
+
+            if (trimmed[0] is not '{' and not '[')
+            {
+                return trimmed;
+            }
+
+            try
+            {
+                if (JToken.Parse(trimmed) is JObject obj)
+                {
+                    var displayMessage = obj["message"]?.ToString();
+                    if (!string.IsNullOrWhiteSpace(displayMessage))
+                    {
+                        return displayMessage.Trim();
+                    }
+                }
+            }
+            catch (JsonException)
+            {
+            }
+
+            return trimmed;
+        }
+
+        private static string? BuildChangeHint(AgentSettingsFieldChange change)
+        {
+            if (change.SwitchesToFollowGlobal)
+            {
+                return "将改为跟随全局设置";
+            }
+
+            if (change.SwitchesToOverride)
+            {
+                return "将改为使用独立设置";
+            }
+
+            return null;
         }
 
         private static ChatImageAttachment CloneAttachment(ChatImageAttachment attachment)

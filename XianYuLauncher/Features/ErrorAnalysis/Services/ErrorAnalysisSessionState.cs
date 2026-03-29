@@ -69,15 +69,18 @@ public partial class ErrorAnalysisSessionState : ObservableObject
     [ObservableProperty]
     private string _secondaryFixButtonText = string.Empty;
 
-    public AgentActionProposal? CurrentFixAction { get; set; }
+    [ObservableProperty]
+    private AgentActionProposal? _currentFixAction;
 
-    public AgentActionProposal? SecondaryFixAction { get; set; }
+    [ObservableProperty]
+    private AgentActionProposal? _secondaryFixAction;
+
+    [ObservableProperty]
+    private int _pendingActionProposalCount;
 
     public AgentConversationContinuation? PendingToolContinuation { get; private set; }
 
     public bool HasPendingToolContinuation => PendingToolContinuation != null;
-
-    public int PendingActionProposalCount => _pendingActionProposals.Count;
 
     private CancellationTokenSource? _aiAnalysisCts;
     private bool _suppressNextCancellationMessage;
@@ -301,6 +304,7 @@ public partial class ErrorAnalysisSessionState : ObservableObject
 
     private void UpdateVisibleFixActions()
     {
+        PendingActionProposalCount = _pendingActionProposals.Count;
         CurrentFixAction = _pendingActionProposals.FirstOrDefault();
         FixButtonText = CurrentFixAction?.ButtonText ?? string.Empty;
         HasFixAction = !string.IsNullOrWhiteSpace(FixButtonText);
@@ -337,6 +341,7 @@ public partial class ErrorAnalysisSessionState : ObservableObject
             DisplayRoleText = message.DisplayRoleText,
             AiHistoryContent = message.AiHistoryContent,
             AiHistoryImageAttachments = CloneImageAttachments(message.AiHistoryImageAttachments),
+            SuppressContentRendering = message.SuppressContentRendering,
             ToolCallId = message.ToolCallId,
             ToolCalls = CloneToolCalls(message.ToolCalls)
         }).ToList();

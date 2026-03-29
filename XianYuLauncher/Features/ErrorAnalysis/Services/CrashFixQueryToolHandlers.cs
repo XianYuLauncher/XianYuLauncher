@@ -57,18 +57,18 @@ public sealed class ListInstalledModsToolHandler : IAgentToolHandler
 
 public sealed class GetVersionConfigToolHandler : IAgentToolHandler
 {
-    private readonly IVersionInfoService _versionInfoService;
+    private readonly IAgentSettingsQueryService _settingsQueryService;
 
-    public GetVersionConfigToolHandler(IVersionInfoService versionInfoService)
+    public GetVersionConfigToolHandler(IAgentSettingsQueryService settingsQueryService)
     {
-        _versionInfoService = versionInfoService;
+        _settingsQueryService = settingsQueryService;
     }
 
     public string ToolName => "getVersionConfig";
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "获取当前游戏版本的配置信息，包括 Minecraft 版本号、ModLoader 类型和版本、Java 路径、内存设置等",
+        "获取当前会话实例的版本配置快照，返回 JSON，包含 uses_global_settings_overall，以及 Java/JVM/GC/内存/分辨率/版本隔离的局部配置与 follows_global 状态。它描述的是实例局部设置，不是最终生效值；需要最终结果时改用 getEffectiveLaunchSettings。",
         new
         {
             type = "object",
@@ -85,17 +85,8 @@ public sealed class GetVersionConfigToolHandler : IAgentToolHandler
     {
         try
         {
-            var versionDirectory = Path.Combine(context.MinecraftPath, MinecraftPathConsts.Versions, context.VersionId);
-            var config = await _versionInfoService.GetFullVersionInfoAsync(context.VersionId, versionDirectory, preferCache: true);
-            cancellationToken.ThrowIfCancellationRequested();
-
-            var sb = new StringBuilder();
-            sb.AppendLine($"版本 ID: {context.VersionId}");
-            sb.AppendLine($"Minecraft 版本: {config.MinecraftVersion}");
-            sb.AppendLine($"ModLoader: {config.ModLoaderType ?? "vanilla"} {config.ModLoaderVersion ?? string.Empty}");
-            sb.AppendLine($"Java 路径: {(string.IsNullOrEmpty(config.JavaPath) ? "使用全局设置" : config.JavaPath)}");
-            sb.AppendLine($"内存设置: 自动={config.AutoMemoryAllocation}, 初始={config.InitialHeapMemory}GB, 最大={config.MaximumHeapMemory}GB");
-            return AgentToolExecutionResult.FromMessage(sb.ToString());
+            return AgentToolExecutionResult.FromMessage(
+                await _settingsQueryService.GetVersionConfigSnapshotAsync(context, cancellationToken));
         }
         catch (Exception ex)
         {
@@ -106,18 +97,64 @@ public sealed class GetVersionConfigToolHandler : IAgentToolHandler
 
 public sealed class CheckJavaVersionsToolHandler : IAgentToolHandler
 {
-    private readonly IJavaRuntimeService _javaRuntimeService;
+    private readonly IAgentSettingsQueryService _settingsQueryService;
 
-    public CheckJavaVersionsToolHandler(IJavaRuntimeService javaRuntimeService)
+    public CheckJavaVersionsToolHandler(IAgentSettingsQueryService settingsQueryService)
     {
-        _javaRuntimeService = javaRuntimeService;
+        _settingsQueryService = settingsQueryService;
     }
 
     public string ToolName => "checkJavaVersions";
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "列出本机已安装的所有 Java 版本，返回版本号和路径",
+        "列出启动器当前可见的 Java 版本清单。默认优先返回已缓存列表；refresh=true 时重新扫描。返回 JSON，包含 java_selection_mode、selected_java_path、ignore_selected_java_path_for_changes、selected_java_path_guidance 和 java_versions。若 java_selection_mode=auto，则 selected_java_path 仅表示当前自动匹配结果，不代表用户手动选择。修改 Java 设置前应先调用本工具，并优先使用返回的 java_id。",
+        new
+        {
+            type = "object",
+            properties = new
+            {
+                refresh = new { type = "boolean", description = "可选。true 表示重新扫描本机 Java 版本；默认 false 优先读取已缓存列表。" }
+            },
+            required = Array.Empty<string>()
+        });
+
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ReadOnly;
+
+    public bool IsAvailable(ErrorAnalysisSessionContext context) => true;
+
+    public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var refresh = arguments["refresh"]?.Value<bool>()
+                ?? arguments["forceRefresh"]?.Value<bool>()
+                ?? false;
+
+            return AgentToolExecutionResult.FromMessage(
+                await _settingsQueryService.GetJavaVersionsSnapshotAsync(refresh, cancellationToken));
+        }
+        catch (Exception ex)
+        {
+            return AgentToolExecutionResult.FromMessage($"检测 Java 版本失败: {ex.Message}");
+        }
+    }
+}
+
+public sealed class GetMinecraftPathsToolHandler : IAgentToolHandler
+{
+    private readonly IAgentSettingsQueryService _settingsQueryService;
+
+    public GetMinecraftPathsToolHandler(IAgentSettingsQueryService settingsQueryService)
+    {
+        _settingsQueryService = settingsQueryService;
+    }
+
+    public string ToolName => "getMinecraftPaths";
+
+    public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
+        ToolName,
+        "返回启动器已保存的 Minecraft 根目录列表和当前活动目录。结果包含短 ID。调用 switchMinecraftPath 前应先读取本工具，并优先使用 path_id。",
         new
         {
             type = "object",
@@ -133,25 +170,91 @@ public sealed class CheckJavaVersionsToolHandler : IAgentToolHandler
     {
         try
         {
-            var javaVersions = await _javaRuntimeService.DetectJavaVersionsAsync(true);
-            cancellationToken.ThrowIfCancellationRequested();
-            if (javaVersions.Count == 0)
-            {
-                return AgentToolExecutionResult.FromMessage("未检测到任何已安装的 Java 版本。");
-            }
-
-            var sb = new StringBuilder();
-            sb.AppendLine($"检测到 {javaVersions.Count} 个 Java 版本：");
-            foreach (var javaVersion in javaVersions)
-            {
-                sb.AppendLine($"- Java {javaVersion.MajorVersion} ({javaVersion.FullVersion}) - {javaVersion.Path}");
-            }
-
-            return AgentToolExecutionResult.FromMessage(sb.ToString());
+            return AgentToolExecutionResult.FromMessage(
+                await _settingsQueryService.GetMinecraftPathsSnapshotAsync(cancellationToken));
         }
         catch (Exception ex)
         {
-            return AgentToolExecutionResult.FromMessage($"检测 Java 版本失败: {ex.Message}");
+            return AgentToolExecutionResult.FromMessage($"读取 Minecraft 目录列表失败: {ex.Message}");
+        }
+    }
+}
+
+public sealed class GetGlobalLaunchSettingsToolHandler : IAgentToolHandler
+{
+    private readonly IAgentSettingsQueryService _settingsQueryService;
+
+    public GetGlobalLaunchSettingsToolHandler(IAgentSettingsQueryService settingsQueryService)
+    {
+        _settingsQueryService = settingsQueryService;
+    }
+
+    public string ToolName => "getGlobalLaunchSettings";
+
+    public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
+        ToolName,
+        "返回启动器当前全局启动设置的 JSON 快照，包含 Java 选择方式、当前选中的 Java、全局 JVM/GC、内存、分辨率，以及当前全局游戏目录模式。结果中的 java_settings 会额外给出 ignore_selected_java_path_for_changes 和 selected_java_path_guidance；若 selection_mode=auto，则 selected_java_path 仅表示当前自动匹配结果，不代表用户手动选择。修改全局启动设置前应先调用本工具；它返回的是全局默认值，不是实例最终生效值。",
+        new
+        {
+            type = "object",
+            properties = new { },
+            required = Array.Empty<string>()
+        });
+
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ReadOnly;
+
+    public bool IsAvailable(ErrorAnalysisSessionContext context) => true;
+
+    public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return AgentToolExecutionResult.FromMessage(
+                await _settingsQueryService.GetGlobalLaunchSettingsSnapshotAsync(cancellationToken));
+        }
+        catch (Exception ex)
+        {
+            return AgentToolExecutionResult.FromMessage($"读取全局启动设置失败: {ex.Message}");
+        }
+    }
+}
+
+public sealed class GetEffectiveLaunchSettingsToolHandler : IAgentToolHandler
+{
+    private readonly IAgentSettingsQueryService _settingsQueryService;
+
+    public GetEffectiveLaunchSettingsToolHandler(IAgentSettingsQueryService settingsQueryService)
+    {
+        _settingsQueryService = settingsQueryService;
+    }
+
+    public string ToolName => "getEffectiveLaunchSettings";
+
+    public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
+        ToolName,
+        "返回当前会话实例的最终生效启动设置 JSON 快照，包含 required_java_version、最终 Java/内存/JVM/GC/分辨率，以及最终生效的游戏目录。仅在需要解释实际启动使用了什么值或来源时调用。",
+        new
+        {
+            type = "object",
+            properties = new { },
+            required = Array.Empty<string>()
+        });
+
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ReadOnly;
+
+    public bool IsAvailable(ErrorAnalysisSessionContext context) =>
+        !string.IsNullOrWhiteSpace(context.VersionId) && !string.IsNullOrWhiteSpace(context.MinecraftPath);
+
+    public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return AgentToolExecutionResult.FromMessage(
+                await _settingsQueryService.GetEffectiveLaunchSettingsSnapshotAsync(context, cancellationToken));
+        }
+        catch (Exception ex)
+        {
+            return AgentToolExecutionResult.FromMessage($"读取生效启动设置失败: {ex.Message}");
         }
     }
 }

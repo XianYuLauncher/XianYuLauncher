@@ -20,6 +20,9 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IErrorAnalysisAiOrchestrator, ErrorAnalysisAiOrchestrator>();
         services.AddSingleton<IErrorAnalysisExportService, ErrorAnalysisExportService>();
         services.AddSingleton<IAgentToolSupportService, AgentToolSupportService>();
+        services.AddSingleton<IAgentSettingsQueryService, AgentSettingsQueryService>();
+        services.AddSingleton<IAgentSettingsActionProposalService, AgentSettingsActionProposalService>();
+        services.AddSingleton<IAgentSettingsWriteService, AgentSettingsWriteService>();
         services.AddSingleton<ILaunchOperationTracker, LaunchOperationTracker>();
         services.AddSingleton<IAgentOperationStatusService, AgentOperationStatusService>();
         services.AddSingleton<IAgentGameInstallService, AgentGameInstallService>();
@@ -29,6 +32,12 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentToolHandler, ListInstalledModsToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetVersionConfigToolHandler>();
         services.AddSingleton<IAgentToolHandler, CheckJavaVersionsToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetMinecraftPathsToolHandler>();
+        services.AddSingleton<IAgentToolHandler, SwitchMinecraftPathToolHandler>();
+        services.AddSingleton<IAgentToolHandler, PatchGlobalLaunchSettingsToolHandler>();
+        services.AddSingleton<IAgentToolHandler, PatchInstanceLaunchSettingsToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetGlobalLaunchSettingsToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetEffectiveLaunchSettingsToolHandler>();
         services.AddSingleton<IAgentToolHandler, SearchKnowledgeBaseToolHandler>();
         services.AddSingleton<IAgentToolHandler, ReadModInfoToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetCurrentGameDirectoryToolHandler>();
@@ -54,6 +63,9 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentActionHandler, SearchModrinthProjectActionHandler>();
         services.AddSingleton<IAgentActionHandler, DeleteModActionHandler>();
         services.AddSingleton<IAgentActionHandler, ToggleModActionHandler>();
+        services.AddSingleton<IAgentActionHandler, SwitchMinecraftPathActionHandler>();
+        services.AddSingleton<IAgentActionHandler, PatchGlobalLaunchSettingsActionHandler>();
+        services.AddSingleton<IAgentActionHandler, PatchInstanceLaunchSettingsActionHandler>();
         services.AddSingleton<IAgentActionHandler, SwitchJavaForVersionActionHandler>();
         services.AddSingleton<IIconMetadataPipelineService, IconMetadataPipelineService>();
         services.AddSingleton<IVersionSettingsOrchestrator, VersionSettingsOrchestrator>();

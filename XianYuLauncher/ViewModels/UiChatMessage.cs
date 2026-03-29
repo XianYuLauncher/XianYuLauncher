@@ -37,11 +37,16 @@ namespace XianYuLauncher.ViewModels
         [ObservableProperty]
         private List<ChatImageAttachment>? _aiHistoryImageAttachments;
 
+        [ObservableProperty]
+        private bool _suppressContentRendering;
+
         public bool IsUser => Role == "user";
         public bool IsAssistant => Role == "assistant";
         public bool IsTool => Role == "tool";
         public bool HasImageAttachments => ImageAttachments.Count > 0;
         public bool ShowUserText => IsUser && !string.IsNullOrWhiteSpace(Content);
+        public bool ShowAssistantText => IsAssistant && !SuppressContentRendering && !string.IsNullOrWhiteSpace(Content);
+        public bool ShouldShowMessageContainer => ShowUserText || HasImageAttachments || ShowAssistantText || IsTool;
         
         public UiChatMessage(string role, string content, bool includeInAiHistory = true, IEnumerable<ChatImageAttachment>? imageAttachments = null)
         {
@@ -57,6 +62,8 @@ namespace XianYuLauncher.ViewModels
         partial void OnContentChanged(string value)
         {
             OnPropertyChanged(nameof(ShowUserText));
+            OnPropertyChanged(nameof(ShowAssistantText));
+            OnPropertyChanged(nameof(ShouldShowMessageContainer));
         }
 
         partial void OnRoleChanged(string value)
@@ -65,11 +72,20 @@ namespace XianYuLauncher.ViewModels
             OnPropertyChanged(nameof(IsAssistant));
             OnPropertyChanged(nameof(IsTool));
             OnPropertyChanged(nameof(ShowUserText));
+            OnPropertyChanged(nameof(ShowAssistantText));
+            OnPropertyChanged(nameof(ShouldShowMessageContainer));
         }
 
         partial void OnImageAttachmentsChanged(List<ChatImageAttachment> value)
         {
             OnPropertyChanged(nameof(HasImageAttachments));
+            OnPropertyChanged(nameof(ShouldShowMessageContainer));
+        }
+
+        partial void OnSuppressContentRenderingChanged(bool value)
+        {
+            OnPropertyChanged(nameof(ShowAssistantText));
+            OnPropertyChanged(nameof(ShouldShowMessageContainer));
         }
 
         private static List<ChatImageAttachment> CloneImageAttachments(IEnumerable<ChatImageAttachment>? attachments)

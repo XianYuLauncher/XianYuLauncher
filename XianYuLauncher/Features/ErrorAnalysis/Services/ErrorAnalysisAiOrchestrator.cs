@@ -830,6 +830,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         lastMessage.Content = string.IsNullOrWhiteSpace(pendingActionMessage)
             ? "已创建待确认操作，等待用户确认。"
             : pendingActionMessage;
+        lastMessage.SuppressContentRendering = true;
         lastMessage.IncludeInAiHistory = false;
 
         if (_sessionState.ChatMessages.Count <= 3)
@@ -1212,6 +1213,9 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             "6. If the user explicitly asks to install a specific Minecraft version, call 'get_game_manifest' with queryType='list' and searchText set to that version string before 'install_game'. Use latest_release/latest_snapshot only when the user explicitly asks for latest release or latest snapshot.\n" +
             "7. 'install_community_resource' V1 only supports mod, resourcepack, and shader. Datapack / world / modpack installs are out of scope until dedicated selection tools exist.\n" +
             "8. If you cannot fix the issue via tools, provide clear manual instructions. If the problem persists, advise the user to click the 'Contact Author' (联系作者) button at the top.\n" +
-            "9. Never fabricate tool calls, tool execution, or tool results. Only describe a tool as executed, succeeded, failed, rejected, cancelled, or completed when you have the real tool result for that exact tool call; otherwise say you do not have the result yet.";
+            "9. Never fabricate tool calls, tool execution, or tool results. Only describe a tool as executed, succeeded, failed, rejected, cancelled, or completed when you have the real tool result for that exact tool call; otherwise say you do not have the result yet.\n" +
+            "10. Before changing launch settings, read the relevant snapshot first: use 'getGlobalLaunchSettings' for global settings; use 'get_instances' and 'getVersionConfig' for instance settings; use 'getEffectiveLaunchSettings' only when you need the final applied values or source.\n" +
+            "11. For settings tools, prefer stable IDs over raw paths whenever available: use java_id, path_id, and target_version_name before absolute paths.\n" +
+            "12. 'switchMinecraftPath', 'patchGlobalLaunchSettings', and 'patchInstanceLaunchSettings' only create confirmation proposals. After one of these tools returns a proposal, stop requesting further confirmation-required changes until the user approves or rejects it.";
     }
 }
