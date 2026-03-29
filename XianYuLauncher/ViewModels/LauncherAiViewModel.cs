@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
+using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
@@ -919,7 +920,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
             ActionType = proposal.ActionType,
             ButtonText = proposal.ButtonText,
             DisplayMessage = proposal.DisplayMessage,
-            PermissionLevel = proposal.PermissionLevel,
+            PermissionLevel = proposal.PermissionLevel.ToString(),
             Parameters = new Dictionary<string, string>(proposal.Parameters, StringComparer.OrdinalIgnoreCase)
         };
     }
@@ -931,9 +932,16 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
             ActionType = storage.ActionType,
             ButtonText = storage.ButtonText,
             DisplayMessage = storage.DisplayMessage,
-            PermissionLevel = storage.PermissionLevel,
+            PermissionLevel = ParsePermissionLevel(storage.PermissionLevel),
             Parameters = new Dictionary<string, string>(storage.Parameters, StringComparer.OrdinalIgnoreCase)
         };
+    }
+
+    private static AgentToolPermissionLevel ParsePermissionLevel(string? permissionLevel)
+    {
+        return Enum.TryParse<AgentToolPermissionLevel>(permissionLevel, ignoreCase: true, out var parsed)
+            ? parsed
+            : AgentToolPermissionLevel.ConfirmationRequired;
     }
 
     private static List<ToolCallInfo>? CloneToolCalls(IEnumerable<ToolCallInfo>? toolCalls)

@@ -2,28 +2,8 @@ using Microsoft.Extensions.Logging;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
-using XianYuLauncher.Features.ErrorAnalysis.Models;
 
-namespace XianYuLauncher.Features.ErrorAnalysis.Services;
-
-public interface ILauncherAiWorkspacePersistenceService
-{
-    Task<LauncherAiWorkspaceStorageModel?> LoadWorkspaceAsync(CancellationToken cancellationToken = default);
-
-    Task SaveWorkspaceAsync(LauncherAiWorkspaceStorageModel workspace, CancellationToken cancellationToken = default);
-
-    Task<LauncherAiConversationStorageModel?> LoadConversationAsync(Guid conversationId, CancellationToken cancellationToken = default);
-
-    Task SaveConversationAsync(LauncherAiConversationStorageModel conversation, CancellationToken cancellationToken = default);
-
-    Task DeleteConversationAsync(Guid conversationId, CancellationToken cancellationToken = default);
-
-    Task<LauncherAiAttachmentStorageModel?> PersistAttachmentAsync(Guid conversationId, ChatImageAttachment attachment, CancellationToken cancellationToken = default);
-
-    bool TryCreateStoredAttachmentModel(Guid conversationId, ChatImageAttachment attachment, out LauncherAiAttachmentStorageModel attachmentModel);
-
-    ChatImageAttachment? RestoreAttachment(LauncherAiAttachmentStorageModel attachment);
-}
+namespace XianYuLauncher.Core.Services;
 
 public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspacePersistenceService
 {
@@ -38,11 +18,14 @@ public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspace
 
     public LauncherAiWorkspacePersistenceService(
         IFileService fileService,
-        ILogger<LauncherAiWorkspacePersistenceService> logger)
+        ILogger<LauncherAiWorkspacePersistenceService> logger,
+        string? workspaceRootPath = null)
     {
         _fileService = fileService;
         _logger = logger;
-        _workspaceRootPath = Path.Combine(AppEnvironment.SafeAppDataPath, AppDataFileConsts.LauncherAiFolder);
+        _workspaceRootPath = string.IsNullOrWhiteSpace(workspaceRootPath)
+            ? Path.Combine(AppEnvironment.SafeAppDataPath, AppDataFileConsts.LauncherAiFolder)
+            : workspaceRootPath;
         _conversationsPath = Path.Combine(_workspaceRootPath, AppDataFileConsts.LauncherAiConversationsFolder);
         _attachmentsPath = Path.Combine(_workspaceRootPath, AppDataFileConsts.LauncherAiAttachmentsFolder);
     }

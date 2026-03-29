@@ -1,4 +1,4 @@
-namespace XianYuLauncher.Features.ErrorAnalysis.Models;
+namespace XianYuLauncher.Core.Models;
 
 public sealed class LauncherAiWorkspaceStorageModel
 {
@@ -111,7 +111,7 @@ public sealed class LauncherAiActionProposalStorageModel
 
     public string DisplayMessage { get; init; } = string.Empty;
 
-    public AgentToolPermissionLevel PermissionLevel { get; init; } = AgentToolPermissionLevel.ConfirmationRequired;
+    public string PermissionLevel { get; init; } = "ConfirmationRequired";
 
     public Dictionary<string, string> Parameters { get; init; } = [];
 }
