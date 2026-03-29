@@ -32,6 +32,7 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentToolHandler, GetVersionConfigToolHandler>();
         services.AddSingleton<IAgentToolHandler, CheckJavaVersionsToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetMinecraftPathsToolHandler>();
+        services.AddSingleton<IAgentToolHandler, SwitchMinecraftPathToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetGlobalLaunchSettingsToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetEffectiveLaunchSettingsToolHandler>();
         services.AddSingleton<IAgentToolHandler, SearchKnowledgeBaseToolHandler>();
@@ -59,6 +60,7 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentActionHandler, SearchModrinthProjectActionHandler>();
         services.AddSingleton<IAgentActionHandler, DeleteModActionHandler>();
         services.AddSingleton<IAgentActionHandler, ToggleModActionHandler>();
+        services.AddSingleton<IAgentActionHandler, SwitchMinecraftPathActionHandler>();
         services.AddSingleton<IAgentActionHandler, SwitchJavaForVersionActionHandler>();
         services.AddSingleton<IIconMetadataPipelineService, IconMetadataPipelineService>();
         services.AddSingleton<IVersionSettingsOrchestrator, VersionSettingsOrchestrator>();

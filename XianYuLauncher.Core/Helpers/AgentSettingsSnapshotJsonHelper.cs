@@ -1,5 +1,4 @@
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Helpers;
@@ -62,8 +61,6 @@ public sealed class AgentEffectiveSettingsSnapshotInput
 
 public static class AgentSettingsSnapshotJsonHelper
 {
-    private const string CurrentPathFallbackName = "当前活动目录";
-
     public static string BuildVersionConfigSnapshotJson(
         string versionId,
         string minecraftRootPath,
@@ -169,16 +166,21 @@ public static class AgentSettingsSnapshotJsonHelper
 
     public static string BuildMinecraftPathsSnapshotJson(string currentMinecraftPath, string? pathsJson)
     {
-        var storedPaths = TryDeserializeMinecraftPaths(pathsJson);
-        var normalizedPaths = NormalizeMinecraftPaths(storedPaths, currentMinecraftPath);
-        var activePath = normalizedPaths.First(path => path.is_active);
+        var normalizedPaths = AgentMinecraftPathHelper.NormalizePaths(currentMinecraftPath, pathsJson);
+        var activePath = normalizedPaths.First(path => path.IsActive);
         var payload = new
         {
             current_minecraft_path = currentMinecraftPath,
-            active_path_id = activePath.path_id,
-            active_path = activePath.path,
+            active_path_id = activePath.PathId,
+            active_path = activePath.Path,
             total_count = normalizedPaths.Count,
-            minecraft_paths = normalizedPaths
+            minecraft_paths = normalizedPaths.Select(path => new
+            {
+                path_id = path.PathId,
+                name = path.Name,
+                path = path.Path,
+                is_active = path.IsActive,
+            })
         };
 
         return JsonConvert.SerializeObject(payload, Formatting.Indented);
@@ -374,86 +376,4 @@ public static class AgentSettingsSnapshotJsonHelper
         return string.IsNullOrWhiteSpace(value) ? null : value;
     }
 
-    private static List<MinecraftPathSnapshot> NormalizeMinecraftPaths(
-        IReadOnlyList<StoredMinecraftPath> storedPaths,
-        string currentMinecraftPath)
-    {
-        var paths = storedPaths
-            .Where(path => !string.IsNullOrWhiteSpace(path.Path))
-            .ToList();
-
-        if (paths.Count == 0)
-        {
-            paths.Add(new StoredMinecraftPath
-            {
-                Name = CurrentPathFallbackName,
-                Path = currentMinecraftPath,
-                IsActive = true
-            });
-        }
-
-        var activePath = paths.FirstOrDefault(path => path.IsActive)
-            ?? paths.FirstOrDefault(path => string.Equals(path.Path, currentMinecraftPath, StringComparison.OrdinalIgnoreCase));
-
-        if (activePath is null)
-        {
-            paths.Insert(0, new StoredMinecraftPath
-            {
-                Name = CurrentPathFallbackName,
-                Path = currentMinecraftPath,
-                IsActive = true
-            });
-            activePath = paths[0];
-        }
-
-        return paths
-            .Select((path, index) => new MinecraftPathSnapshot(
-                $"mcdir_{index + 1}",
-                string.IsNullOrWhiteSpace(path.Name) ? $"Minecraft 目录 {index + 1}" : path.Name,
-                path.Path,
-                string.Equals(path.Path, activePath.Path, StringComparison.OrdinalIgnoreCase)))
-            .ToList();
-    }
-
-    private static IReadOnlyList<StoredMinecraftPath> TryDeserializeMinecraftPaths(string? pathsJson)
-    {
-        if (string.IsNullOrWhiteSpace(pathsJson))
-        {
-            return [];
-        }
-
-        try
-        {
-            var token = JToken.Parse(pathsJson);
-            if (token.Type == JTokenType.String)
-            {
-                var nestedJson = token.Value<string>();
-                if (string.IsNullOrWhiteSpace(nestedJson))
-                {
-                    return [];
-                }
-
-                token = JToken.Parse(nestedJson);
-            }
-
-            return token.Type == JTokenType.Array
-                ? token.ToObject<List<StoredMinecraftPath>>() ?? []
-                : [];
-        }
-        catch (JsonException)
-        {
-            return [];
-        }
-    }
-
-    private sealed class StoredMinecraftPath
-    {
-        public string Name { get; set; } = string.Empty;
-
-        public string Path { get; set; } = string.Empty;
-
-        public bool IsActive { get; set; }
-    }
-
-    private sealed record MinecraftPathSnapshot(string path_id, string name, string path, bool is_active);
 }
