@@ -19,6 +19,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
     private readonly ILanguageSelectorService _languageSelectorService;
     private readonly ILogSanitizerService _logSanitizerService;
+    private readonly IErrorAnalysisSessionContextQueryService _sessionContextQueryService;
     private readonly IAIAnalysisService _aiAnalysisService;
     private readonly IAiSettingsDomainService _aiSettingsDomainService;
     private readonly ICrashAnalyzer _crashAnalyzer;
@@ -30,6 +31,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     public ErrorAnalysisAiOrchestrator(
         ILanguageSelectorService languageSelectorService,
         ILogSanitizerService logSanitizerService,
+        IErrorAnalysisSessionContextQueryService sessionContextQueryService,
         IAIAnalysisService aiAnalysisService,
         IAiSettingsDomainService aiSettingsDomainService,
         ICrashAnalyzer crashAnalyzer,
@@ -40,6 +42,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
     {
         _languageSelectorService = languageSelectorService;
         _logSanitizerService = logSanitizerService;
+        _sessionContextQueryService = sessionContextQueryService;
         _aiAnalysisService = aiAnalysisService;
         _aiSettingsDomainService = aiSettingsDomainService;
         _crashAnalyzer = crashAnalyzer;
@@ -77,11 +80,11 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             var settings = await _aiSettingsDomainService.LoadAsync();
             if (settings.IsEnabled)
             {
-                await AnalyzeWithExternalAiAsync(settings, preserveExistingConversation, cancellationToken);
+                await AnalyzeWithExternalAiAsync(settings, cancellationToken);
                 return;
             }
 
-            await AnalyzeWithKnowledgeBaseAsync(preserveExistingConversation, cancellationToken);
+            await AnalyzeWithKnowledgeBaseAsync(cancellationToken);
         }
         catch (OperationCanceledException)
         {
@@ -184,7 +187,6 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
 
     private async Task AnalyzeWithExternalAiAsync(
         AiSettingsState settings,
-        bool preserveExistingConversation,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(settings.ApiKey))
@@ -198,30 +200,14 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             return;
         }
 
+        var crashPrompt = await _sessionContextQueryService.BuildCrashPromptAsync(_sessionState.Context, cancellationToken);
+
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
             _sessionState.AiAnalysisResult = "正在进行外部 AI 分析...\n\n";
             _sessionState.ResetFixActions();
             _sessionState.ClearPendingToolContinuation();
-        });
-
-        var sanitizedLog = await BuildSanitizedCrashLogAsync();
-
-        await _uiDispatcher.RunOnUiThreadAsync(() =>
-        {
-            if (preserveExistingConversation)
-            {
-                var crashPrompt = new UiChatMessage("user", "游戏刚刚崩溃了，请结合新的崩溃日志继续分析。")
-                {
-                    AiHistoryContent = BuildCrashContinuationPrompt(sanitizedLog)
-                };
-                _sessionState.ChatMessages.Add(crashPrompt);
-            }
-            else
-            {
-                _sessionState.ChatMessages.Add(new UiChatMessage("user", sanitizedLog));
-            }
-
+            _sessionState.ChatMessages.Add(new UiChatMessage("user", crashPrompt));
             _sessionState.ChatMessages.Add(new UiChatMessage("assistant", "..."));
         });
 
@@ -229,17 +215,14 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         await StreamResponseToLastMessageAsync(settings, cancellationToken);
     }
 
-    private async Task AnalyzeWithKnowledgeBaseAsync(bool preserveExistingConversation, CancellationToken cancellationToken)
+    private async Task AnalyzeWithKnowledgeBaseAsync(CancellationToken cancellationToken)
     {
         var (gameOutput, gameError) = _sessionState.CreateLogSnapshot();
+        var crashPrompt = await _sessionContextQueryService.BuildCrashPromptAsync(_sessionState.Context, cancellationToken);
 
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
-            if (preserveExistingConversation)
-            {
-                _sessionState.ChatMessages.Add(new UiChatMessage("user", "游戏刚刚崩溃了，请继续分析原因。"));
-            }
-
+            _sessionState.ChatMessages.Add(new UiChatMessage("user", crashPrompt));
             _sessionState.ChatMessages.Add(new UiChatMessage("assistant", "..."));
         });
 
@@ -281,7 +264,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                     }
 
                     AppendAssistantMessageContent(lastMsg, text);
-                    if (_sessionState.ChatMessages.Count <= 1)
+                    if (_sessionState.ChatMessages.Count <= 2)
                     {
                         _sessionState.AiAnalysisResult = lastMsg.Content;
                     }
@@ -301,7 +284,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                 }
 
                 AppendAssistantMessageContent(lastMsg, remaining);
-                if (_sessionState.ChatMessages.Count <= 1)
+                if (_sessionState.ChatMessages.Count <= 2)
                 {
                     _sessionState.AiAnalysisResult = lastMsg.Content;
                 }
@@ -324,38 +307,6 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
                 .ToList();
             _sessionState.ApplyActionProposals(proposals);
         });
-    }
-
-    private async Task<string> BuildSanitizedCrashLogAsync()
-    {
-        var sanitizedLog = await _logSanitizerService.SanitizeAsync(_sessionState.FullLog);
-        if (!string.IsNullOrWhiteSpace(_sessionState.Context.LaunchCommand))
-        {
-            var sanitizedCmd = await _logSanitizerService.SanitizeAsync(_sessionState.Context.LaunchCommand);
-            sanitizedLog = $"=== Launch Command ===\n{sanitizedCmd}\n\n=== Game Log ===\n{sanitizedLog}";
-        }
-
-        if (sanitizedLog.Length <= 15000)
-        {
-            return sanitizedLog;
-        }
-
-        const int keepHeadResponse = 2000;
-        const int keepTailResponse = 13000;
-        if (sanitizedLog.Length > keepHeadResponse + keepTailResponse)
-        {
-            string head = sanitizedLog[..keepHeadResponse];
-            string tail = sanitizedLog[^keepTailResponse..];
-            return head + "\n\n[...Log Truncated (Middle)...]\n\n" + tail;
-        }
-
-        sanitizedLog = sanitizedLog[^15000..];
-        return "[...Log Truncated...] " + sanitizedLog;
-    }
-
-    private static string BuildCrashContinuationPrompt(string sanitizedLog)
-    {
-        return $"游戏刚刚崩溃了。请结合当前对话上下文与以下新的崩溃日志继续分析，并在需要时重新给出下一步修复建议。\n\n{sanitizedLog}";
     }
 
     private async Task StreamResponseToLastMessageAsync(
@@ -1253,13 +1204,14 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             "\n\n" +
             "You may use the provided tools when helpful.\n\n" +
             "CRITICAL RULES:\n" +
-            "1. CHECK THE LAUNCH COMMAND FIRST! If the user has set invalid JVM arguments (e.g., nonsense in -Djava.library.path or -Xmx), TELL THEM TO FIX IT MANUALLY in the settings. Do NOT switch Java versions for bad arguments.\n" +
-            "2. ONLY use the 'switchJava' tool if the crash log explicitly indicates a Java version mismatch or runtime error. Do not guess.\n" +
-            "3. For AI-driven community resource installation, prefer the read-only tool chain 'search_community_resources' -> 'get_community_resource_files' -> 'get_instances' -> 'install_community_resource'. Only use 'searchModrinthProject' when the goal is to open the UI detail page, not when preparing a silent install.\n" +
-            "4. The 'searchModrinthProject' tool is stricterly for opening MOD / SHADER / RESOURCE PACK detail pages. It CANNOT search for Mod Loaders (Forge, Fabric, NeoForge, Quilt). Explain manual installation for loaders if needed.\n" +
-            "5. If the user explicitly asks to install a specific Minecraft version, call 'get_game_manifest' with queryType='list' and searchText set to that version string before 'install_game'. Use latest_release/latest_snapshot only when the user explicitly asks for latest release or latest snapshot.\n" +
-            "6. 'install_community_resource' V1 only supports mod, resourcepack, and shader. Datapack / world / modpack installs are out of scope until dedicated selection tools exist.\n" +
-            "7. If you cannot fix the issue via tools, provide clear manual instructions. If the problem persists, advise the user to click the 'Contact Author' (联系作者) button at the top.\n" +
-            "8. Never fabricate tool calls, tool execution, or tool results. Only describe a tool as executed, succeeded, failed, rejected, cancelled, or completed when you have the real tool result for that exact tool call; otherwise say you do not have the result yet.";
+            "1. Start from the provided launch summary and truncated log tail. Call 'get_launch_context' only when launch parameters are needed. Its include_classpath parameter defaults to false and should only be set true when the log clearly points to class-loading or missing-dependency issues.\n" +
+            "2. If the current log excerpt is insufficient, call 'get_log_tail' or 'get_log_chunk' before concluding. Do not pretend to have seen the full log if you have not requested it.\n" +
+            "3. ONLY use the 'switchJava' tool if the crash log explicitly indicates a Java version mismatch or runtime error. Do not guess.\n" +
+            "4. For AI-driven community resource installation, prefer the read-only tool chain 'search_community_resources' -> 'get_community_resource_files' -> 'get_instances' -> 'install_community_resource'. Only use 'searchModrinthProject' when the goal is to open the UI detail page, not when preparing a silent install.\n" +
+            "5. The 'searchModrinthProject' tool is stricterly for opening MOD / SHADER / RESOURCE PACK detail pages. It CANNOT search for Mod Loaders (Forge, Fabric, NeoForge, Quilt). Explain manual installation for loaders if needed.\n" +
+            "6. If the user explicitly asks to install a specific Minecraft version, call 'get_game_manifest' with queryType='list' and searchText set to that version string before 'install_game'. Use latest_release/latest_snapshot only when the user explicitly asks for latest release or latest snapshot.\n" +
+            "7. 'install_community_resource' V1 only supports mod, resourcepack, and shader. Datapack / world / modpack installs are out of scope until dedicated selection tools exist.\n" +
+            "8. If you cannot fix the issue via tools, provide clear manual instructions. If the problem persists, advise the user to click the 'Contact Author' (联系作者) button at the top.\n" +
+            "9. Never fabricate tool calls, tool execution, or tool results. Only describe a tool as executed, succeeded, failed, rejected, cancelled, or completed when you have the real tool result for that exact tool call; otherwise say you do not have the result yet.";
     }
 }

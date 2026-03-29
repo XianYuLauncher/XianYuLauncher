@@ -16,6 +16,7 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<ErrorAnalysisSessionState>();
         services.AddSingleton<IErrorAnalysisSessionCoordinator, ErrorAnalysisSessionCoordinator>();
         services.AddSingleton<IErrorAnalysisLogService, ErrorAnalysisLogService>();
+        services.AddSingleton<IErrorAnalysisSessionContextQueryService, ErrorAnalysisSessionContextQueryService>();
         services.AddSingleton<IErrorAnalysisAiOrchestrator, ErrorAnalysisAiOrchestrator>();
         services.AddSingleton<IErrorAnalysisExportService, ErrorAnalysisExportService>();
         services.AddSingleton<IAgentToolSupportService, AgentToolSupportService>();
@@ -31,6 +32,9 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentToolHandler, SearchKnowledgeBaseToolHandler>();
         services.AddSingleton<IAgentToolHandler, ReadModInfoToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetCurrentGameDirectoryToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetLaunchContextToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetLogTailToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetLogChunkToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetProfilesToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetGameManifestToolHandler>();
         services.AddSingleton<IAgentToolHandler, InstallGameToolHandler>();

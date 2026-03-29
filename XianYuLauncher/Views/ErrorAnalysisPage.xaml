@@ -85,7 +85,6 @@
             Margin="16,16,16,16"
             x:Uid="ErrorAnalysis_AiPanel"
             ViewModel="{x:Bind ViewModel}"
-            IsComposerEnabled="False"
             MessagesMaxHeight="300"
             ShowEmptyPlaceholder="True"
             EmptyPlaceholderText="{x:Bind ViewModel.NoErrorInfoText, Mode=OneWay}"
