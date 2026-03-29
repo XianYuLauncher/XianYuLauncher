@@ -94,12 +94,36 @@ public class CrashFixQueryToolHandlersTests
 
         payload["data_source"]!.Value<string>().Should().Be("settings_cache");
         payload["java_selection_mode"]!.Value<string>().Should().Be("manual");
+        payload["selected_java_path_interpretation"]!.Value<string>().Should().Be("manual_selection");
+        payload["ignore_selected_java_path_for_changes"]!.Value<bool>().Should().BeFalse();
         payload["selected_java_present_in_list"]!.Value<bool>().Should().BeTrue();
 
         var javaVersions = (JArray)payload["java_versions"]!;
         javaVersions.Should().HaveCount(2);
         javaVersions[0]!["path"]!.Value<string>().Should().Be(@"C:\Java\jdk-21\bin\javaw.exe");
         javaVersions[0]!["matches_selected_java_path"]!.Value<bool>().Should().BeTrue();
+
+        return Task.CompletedTask;
+    }
+
+    [Fact]
+    public Task BuildJavaVersionsSnapshotJson_AutoModeMarksSelectedPathAsInformational()
+    {
+        var payload = JObject.Parse(AgentSettingsSnapshotJsonHelper.BuildJavaVersionsSnapshotJson(
+            refresh: false,
+            selectionMode: "Auto",
+            selectedJavaPath: @"C:\Java\jdk-21\bin\javaw.exe",
+            javaVersions:
+            [
+                new() { Path = @"C:\Java\jdk-21\bin\javaw.exe", FullVersion = "21.0.4", MajorVersion = 21, IsJDK = true, Is64Bit = true }
+            ],
+            fromSettingsCache: true));
+
+        payload["java_selection_mode"]!.Value<string>().Should().Be("auto");
+        payload["selected_java_path_interpretation"]!.Value<string>().Should().Be("auto_detected_result");
+        payload["ignore_selected_java_path_for_changes"]!.Value<bool>().Should().BeTrue();
+        payload["selected_java_path_guidance"]!.Value<string>().Should().Contain("不代表用户手动选择");
+        payload["selected_java_path_guidance"]!.Value<string>().Should().Contain("应忽略该路径");
 
         return Task.CompletedTask;
     }
@@ -150,11 +174,36 @@ public class CrashFixQueryToolHandlersTests
         }));
 
         payload["java_settings"]!["selection_mode"]!.Value<string>().Should().Be("manual");
+        payload["java_settings"]!["selected_java_path_interpretation"]!.Value<string>().Should().Be("manual_selection");
+        payload["java_settings"]!["ignore_selected_java_path_for_changes"]!.Value<bool>().Should().BeFalse();
         payload["java_settings"]!["selected_java_present_in_known_list"]!.Value<bool>().Should().BeTrue();
         payload["java_settings"]!["selected_java"]!["major_version"]!.Value<int>().Should().Be(21);
         payload["game_directory_settings"]!["mode_key"]!.Value<string>().Should().Be("VersionIsolation");
         payload["game_directory_settings"]!["mode"]!.Value<string>().Should().Be("version_isolation");
         payload["game_directory_settings"]!["legacy_enable_version_isolation"]!.Value<bool>().Should().BeTrue();
+
+        return Task.CompletedTask;
+    }
+
+    [Fact]
+    public Task BuildGlobalLaunchSettingsSnapshotJson_AutoModeExplainsSelectedJavaPathShouldBeIgnored()
+    {
+        var payload = JObject.Parse(AgentSettingsSnapshotJsonHelper.BuildGlobalLaunchSettingsSnapshotJson(new AgentGlobalSettingsSnapshotInput
+        {
+            JavaSelectionMode = "Auto",
+            SelectedJavaPath = @"C:\Java\jdk-21\bin\javaw.exe",
+            KnownJavaVersions =
+            [
+                new JavaVersion { Path = @"C:\Java\jdk-21\bin\javaw.exe", FullVersion = "21.0.4", MajorVersion = 21, IsJDK = true, Is64Bit = true }
+            ],
+            CurrentMinecraftPath = @"D:\Games\.minecraft"
+        }));
+
+        payload["java_settings"]!["selection_mode"]!.Value<string>().Should().Be("auto");
+        payload["java_settings"]!["selected_java_path_interpretation"]!.Value<string>().Should().Be("auto_detected_result");
+        payload["java_settings"]!["ignore_selected_java_path_for_changes"]!.Value<bool>().Should().BeTrue();
+        payload["java_settings"]!["selected_java_path_guidance"]!.Value<string>().Should().Contain("不代表用户手动选择");
+        payload["java_settings"]!["selected_java_path_guidance"]!.Value<string>().Should().Contain("应忽略该路径");
 
         return Task.CompletedTask;
     }

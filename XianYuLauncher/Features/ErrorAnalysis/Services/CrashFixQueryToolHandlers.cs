@@ -108,7 +108,7 @@ public sealed class CheckJavaVersionsToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "列出启动器当前可见的 Java 版本清单。默认优先返回已缓存列表；refresh=true 时重新扫描。返回 JSON，包含 java_selection_mode、selected_java_path 和 java_versions。修改 Java 设置前应先调用本工具，并优先使用返回的 java_id。",
+        "列出启动器当前可见的 Java 版本清单。默认优先返回已缓存列表；refresh=true 时重新扫描。返回 JSON，包含 java_selection_mode、selected_java_path、ignore_selected_java_path_for_changes、selected_java_path_guidance 和 java_versions。若 java_selection_mode=auto，则 selected_java_path 仅表示当前自动匹配结果，不代表用户手动选择。修改 Java 设置前应先调用本工具，并优先使用返回的 java_id。",
         new
         {
             type = "object",
@@ -193,7 +193,7 @@ public sealed class GetGlobalLaunchSettingsToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "返回启动器当前全局启动设置的 JSON 快照，包含 Java 选择方式、当前选中的 Java、全局 JVM/GC、内存、分辨率，以及当前全局游戏目录模式。修改全局启动设置前应先调用本工具；它返回的是全局默认值，不是实例最终生效值。",
+        "返回启动器当前全局启动设置的 JSON 快照，包含 Java 选择方式、当前选中的 Java、全局 JVM/GC、内存、分辨率，以及当前全局游戏目录模式。结果中的 java_settings 会额外给出 ignore_selected_java_path_for_changes 和 selected_java_path_guidance；若 selection_mode=auto，则 selected_java_path 仅表示当前自动匹配结果，不代表用户手动选择。修改全局启动设置前应先调用本工具；它返回的是全局默认值，不是实例最终生效值。",
         new
         {
             type = "object",

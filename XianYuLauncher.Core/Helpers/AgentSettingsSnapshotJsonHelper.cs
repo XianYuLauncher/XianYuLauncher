@@ -132,7 +132,9 @@ public static class AgentSettingsSnapshotJsonHelper
         IReadOnlyList<JavaVersion> javaVersions,
         bool fromSettingsCache)
     {
+        var normalizedSelectionMode = NormalizeJavaSelectionMode(selectionMode);
         var normalizedSelectedPath = NullIfWhiteSpace(selectedJavaPath);
+        var ignoreSelectedJavaPathForChanges = ShouldIgnoreSelectedJavaPathForChanges(normalizedSelectionMode);
         var orderedJavaVersions = AgentJavaInventoryHelper.NormalizeJavaVersions(normalizedSelectedPath, javaVersions)
             .Select(javaVersion => new
             {
@@ -149,8 +151,11 @@ public static class AgentSettingsSnapshotJsonHelper
         {
             refresh_requested = refresh,
             data_source = fromSettingsCache ? "settings_cache" : "runtime_scan",
-            java_selection_mode = NormalizeJavaSelectionMode(selectionMode),
+            java_selection_mode = normalizedSelectionMode,
             selected_java_path = normalizedSelectedPath,
+            selected_java_path_interpretation = DescribeSelectedJavaPathInterpretation(normalizedSelectionMode),
+            ignore_selected_java_path_for_changes = ignoreSelectedJavaPathForChanges,
+            selected_java_path_guidance = DescribeSelectedJavaPathGuidance(normalizedSelectionMode, normalizedSelectedPath),
             selected_java_present_in_list = orderedJavaVersions.Any(javaVersion => javaVersion.matches_selected_java_path),
             total_count = orderedJavaVersions.Count,
             java_versions = orderedJavaVersions
@@ -183,7 +188,9 @@ public static class AgentSettingsSnapshotJsonHelper
 
     public static string BuildGlobalLaunchSettingsSnapshotJson(AgentGlobalSettingsSnapshotInput input)
     {
+        var normalizedSelectionMode = NormalizeJavaSelectionMode(input.JavaSelectionMode);
         var normalizedSelectedPath = NullIfWhiteSpace(input.SelectedJavaPath);
+        var ignoreSelectedJavaPathForChanges = ShouldIgnoreSelectedJavaPathForChanges(normalizedSelectionMode);
         var matchedSelectedJava = AgentJavaInventoryHelper.NormalizeJavaVersions(normalizedSelectedPath, input.KnownJavaVersions)
             .FirstOrDefault(javaVersion => javaVersion.MatchesSelectedJavaPath);
         var effectiveGameIsolationModeKey = ResolveEffectiveGlobalGameDirModeKey(input.GameIsolationModeKey, input.LegacyEnableVersionIsolation);
@@ -192,8 +199,11 @@ public static class AgentSettingsSnapshotJsonHelper
         {
             java_settings = new
             {
-                selection_mode = NormalizeJavaSelectionMode(input.JavaSelectionMode),
+                selection_mode = normalizedSelectionMode,
                 selected_java_path = normalizedSelectedPath,
+                selected_java_path_interpretation = DescribeSelectedJavaPathInterpretation(normalizedSelectionMode),
+                ignore_selected_java_path_for_changes = ignoreSelectedJavaPathForChanges,
+                selected_java_path_guidance = DescribeSelectedJavaPathGuidance(normalizedSelectionMode, normalizedSelectedPath),
                 selected_java_present_in_known_list = matchedSelectedJava != null,
                 selected_java = matchedSelectedJava == null
                     ? null
@@ -308,6 +318,32 @@ public static class AgentSettingsSnapshotJsonHelper
     private static string NormalizeJavaSelectionMode(string? rawValue)
     {
         return string.Equals(rawValue, "Manual", StringComparison.OrdinalIgnoreCase) ? "manual" : "auto";
+    }
+
+    private static bool ShouldIgnoreSelectedJavaPathForChanges(string normalizedSelectionMode)
+    {
+        return string.Equals(normalizedSelectionMode, "auto", StringComparison.Ordinal);
+    }
+
+    private static string DescribeSelectedJavaPathInterpretation(string normalizedSelectionMode)
+    {
+        return ShouldIgnoreSelectedJavaPathForChanges(normalizedSelectionMode)
+            ? "auto_detected_result"
+            : "manual_selection";
+    }
+
+    private static string DescribeSelectedJavaPathGuidance(string normalizedSelectionMode, string? selectedJavaPath)
+    {
+        if (ShouldIgnoreSelectedJavaPathForChanges(normalizedSelectionMode))
+        {
+            return string.IsNullOrWhiteSpace(selectedJavaPath)
+                ? "java_selection_mode=auto。当前没有暴露可复用的 selected_java_path；修改 Java 设置时应忽略路径，直接使用 java_selection_mode，或先调用 checkJavaVersions 后使用 java_id。"
+                : "java_selection_mode=auto。selected_java_path 仅表示当前自动匹配结果，不代表用户手动选择；修改 Java 设置时应忽略该路径，直接使用 java_selection_mode，或先调用 checkJavaVersions 后使用 java_id。";
+        }
+
+        return string.IsNullOrWhiteSpace(selectedJavaPath)
+            ? "java_selection_mode=manual，但当前尚未保存有效的 selected_java_path。"
+            : "java_selection_mode=manual。selected_java_path 表示用户当前保存的手动 Java 选择。";
     }
 
     private static string NormalizeGameIsolationMode(string? modeKey)
