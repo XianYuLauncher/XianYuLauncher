@@ -1,3 +1,5 @@
+using System.Globalization;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
@@ -113,7 +115,14 @@ public sealed class GetLogChunkToolHandler : IAgentToolHandler
             return AgentToolExecutionResult.FromMessage("缺少 start_offset 参数。");
         }
 
-        var startOffset = startOffsetToken.Value<int>();
+        var startOffsetRaw = startOffsetToken.Type == JTokenType.String
+            ? startOffsetToken.Value<string>()
+            : startOffsetToken.ToString(Formatting.None);
+        if (!int.TryParse(startOffsetRaw, NumberStyles.Integer, CultureInfo.InvariantCulture, out var startOffset))
+        {
+            return AgentToolExecutionResult.FromMessage("start_offset 必须为整数。");
+        }
+
         if (startOffset < 0)
         {
             return AgentToolExecutionResult.FromMessage("start_offset 不能小于 0。");
