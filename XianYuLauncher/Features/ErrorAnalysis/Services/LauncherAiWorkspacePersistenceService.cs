@@ -29,6 +29,8 @@ public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspace
 {
     private readonly IFileService _fileService;
     private readonly ILogger<LauncherAiWorkspacePersistenceService> _logger;
+    private readonly Lock _attachmentMapLock = new();
+    private readonly Dictionary<string, LauncherAiAttachmentStorageModel> _attachmentSourceMap = new(StringComparer.OrdinalIgnoreCase);
 
     private readonly string _workspaceRootPath;
     private readonly string _conversationsPath;
@@ -115,6 +117,8 @@ public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspace
                 {
                     Directory.Delete(conversationAttachmentPath, recursive: true);
                 }
+
+                RemoveConversationAttachmentMappings(conversationId);
             }
             catch (Exception ex)
             {
@@ -139,6 +143,11 @@ public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspace
                     return storedAttachment;
                 }
 
+                if (TryGetCachedAttachment(conversationId, attachment.FilePath, out storedAttachment))
+                {
+                    return storedAttachment;
+                }
+
                 if (string.IsNullOrWhiteSpace(attachment.FilePath) || !File.Exists(attachment.FilePath))
                 {
                     return null;
@@ -152,12 +161,15 @@ public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspace
                 var targetPath = Path.Combine(conversationAttachmentPath, storedFileName);
                 File.Copy(attachment.FilePath, targetPath, overwrite: false);
 
-                return new LauncherAiAttachmentStorageModel
+                storedAttachment = new LauncherAiAttachmentStorageModel
                 {
                     FileName = string.IsNullOrWhiteSpace(attachment.FileName) ? Path.GetFileName(targetPath) : attachment.FileName,
                     RelativeFilePath = CreateRelativeAttachmentPath(conversationId, storedFileName),
                     ContentType = string.IsNullOrWhiteSpace(attachment.ContentType) ? "image/png" : attachment.ContentType
                 };
+
+                CacheAttachment(conversationId, attachment.FilePath, storedAttachment);
+                return storedAttachment;
             }
             catch (Exception ex)
             {
@@ -187,6 +199,8 @@ public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspace
             RelativeFilePath = relativePath,
             ContentType = string.IsNullOrWhiteSpace(attachment.ContentType) ? "image/png" : attachment.ContentType
         };
+
+        CacheAttachment(conversationId, attachment.FilePath, attachmentModel);
 
         return true;
     }
@@ -310,5 +324,68 @@ public sealed class LauncherAiWorkspacePersistenceService : ILauncherAiWorkspace
             "image/bmp" => ".bmp",
             _ => ".png"
         };
+    }
+
+    private bool TryGetCachedAttachment(Guid conversationId, string sourceFilePath, out LauncherAiAttachmentStorageModel attachmentModel)
+    {
+        attachmentModel = null!;
+
+        if (string.IsNullOrWhiteSpace(sourceFilePath))
+        {
+            return false;
+        }
+
+        var cacheKey = BuildAttachmentCacheKey(conversationId, sourceFilePath);
+        lock (_attachmentMapLock)
+        {
+            if (!_attachmentSourceMap.TryGetValue(cacheKey, out var cachedAttachment))
+            {
+                return false;
+            }
+
+            if (RestoreAttachment(cachedAttachment) == null)
+            {
+                _attachmentSourceMap.Remove(cacheKey);
+                return false;
+            }
+
+            attachmentModel = cachedAttachment;
+            return true;
+        }
+    }
+
+    private void CacheAttachment(Guid conversationId, string sourceFilePath, LauncherAiAttachmentStorageModel attachmentModel)
+    {
+        if (string.IsNullOrWhiteSpace(sourceFilePath))
+        {
+            return;
+        }
+
+        var cacheKey = BuildAttachmentCacheKey(conversationId, sourceFilePath);
+        lock (_attachmentMapLock)
+        {
+            _attachmentSourceMap[cacheKey] = attachmentModel;
+        }
+    }
+
+    private void RemoveConversationAttachmentMappings(Guid conversationId)
+    {
+        var conversationPrefix = conversationId.ToString("N") + "|";
+        lock (_attachmentMapLock)
+        {
+            var keysToRemove = _attachmentSourceMap.Keys
+                .Where(key => key.StartsWith(conversationPrefix, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            foreach (var key in keysToRemove)
+            {
+                _attachmentSourceMap.Remove(key);
+            }
+        }
+    }
+
+    private static string BuildAttachmentCacheKey(Guid conversationId, string sourceFilePath)
+    {
+        return $"{conversationId:N}|{Path.GetFullPath(sourceFilePath)}";
     }
 }

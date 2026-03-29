@@ -722,7 +722,49 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             }
         });
 
+        await EnsureImageDataUrlsAsync(apiMessages);
+
         return apiMessages;
+    }
+
+    private static async Task EnsureImageDataUrlsAsync(IEnumerable<ChatMessage> apiMessages)
+    {
+        foreach (var message in apiMessages)
+        {
+            if (message.ImageAttachments == null || message.ImageAttachments.Count == 0)
+            {
+                continue;
+            }
+
+            foreach (var attachment in message.ImageAttachments)
+            {
+                if (!string.IsNullOrWhiteSpace(attachment.DataUrl)
+                    || string.IsNullOrWhiteSpace(attachment.FilePath)
+                    || !File.Exists(attachment.FilePath))
+                {
+                    continue;
+                }
+
+                var bytes = await File.ReadAllBytesAsync(attachment.FilePath);
+                var contentType = string.IsNullOrWhiteSpace(attachment.ContentType)
+                    ? GetImageContentTypeFromPath(attachment.FilePath)
+                    : attachment.ContentType;
+                attachment.ContentType = contentType;
+                attachment.DataUrl = $"data:{contentType};base64,{Convert.ToBase64String(bytes)}";
+            }
+        }
+    }
+
+    private static string GetImageContentTypeFromPath(string filePath)
+    {
+        return Path.GetExtension(filePath).ToLowerInvariant() switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".webp" => "image/webp",
+            ".gif" => "image/gif",
+            ".bmp" => "image/bmp",
+            _ => "image/png"
+        };
     }
 
     private static HashSet<int> GetTrimmedToolTraceMessageIndices(IReadOnlyList<UiChatMessage> historyMessages)

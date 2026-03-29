@@ -718,7 +718,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
             ToolTip = conversation.ToolTip,
             CreatedAtUtc = conversation.CreatedAtUtc,
             LastUpdatedAtUtc = conversation.LastUpdatedAtUtc,
-            Interruption = conversation.Interruption,
+            Interruption = CreateConversationInterruption(conversation),
             Session = await CreateSessionStorageModelAsync(conversation.Id, conversation.Snapshot, cancellationToken)
         };
     }
@@ -813,14 +813,14 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
                     continue;
                 }
 
-                var snapshot = CreateSnapshotFromStorage(conversationStorage.Session);
+                var snapshot = CreateSnapshotFromStorage(conversationStorage);
                 var conversation = new LauncherAiConversationTab
                 {
                     Id = conversationStorage.ConversationId,
                     IsErrorAnalysisConversation = conversationStorage.IsErrorAnalysisConversation,
                     CreatedAtUtc = conversationStorage.CreatedAtUtc == default ? conversationIndex.CreatedAtUtc : conversationStorage.CreatedAtUtc,
                     LastUpdatedAtUtc = conversationStorage.LastUpdatedAtUtc == default ? conversationIndex.LastUpdatedAtUtc : conversationStorage.LastUpdatedAtUtc,
-                    Interruption = conversationStorage.Interruption,
+                    Interruption = null,
                     Snapshot = snapshot,
                     Title = conversationStorage.Title,
                     ToolTip = conversationStorage.ToolTip,
@@ -855,15 +855,22 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
             : null;
     }
 
-    private ErrorAnalysisSessionSnapshot CreateSnapshotFromStorage(LauncherAiSessionStorageModel storage)
+    private ErrorAnalysisSessionSnapshot CreateSnapshotFromStorage(LauncherAiConversationStorageModel conversationStorage)
     {
+        var storage = conversationStorage.Session;
+        var chatMessages = storage.ChatMessages.Select(CreateUiChatMessage).ToList();
+        if (conversationStorage.Interruption != null)
+        {
+            chatMessages.Add(CreateInterruptedConversationMessage(conversationStorage.Interruption));
+        }
+
         return new ErrorAnalysisSessionSnapshot
         {
             ChatInput = storage.ChatInput,
             PendingImageAttachments = RestoreAttachments(storage.PendingImageAttachments),
             IsChatEnabled = storage.IsChatEnabled,
-            HasChatMessages = storage.ChatMessages.Count > 0,
-            ChatMessages = storage.ChatMessages.Select(CreateUiChatMessage).ToList(),
+            HasChatMessages = chatMessages.Count > 0,
+            ChatMessages = chatMessages,
             ActionProposals = storage.ActionProposals.Select(CreateActionProposal).ToList(),
         };
     }
@@ -937,6 +944,55 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
             FunctionName = toolCall.FunctionName,
             Arguments = toolCall.Arguments,
         }).ToList();
+    }
+
+    private LauncherAiConversationInterruptionStorageModel? CreateConversationInterruption(LauncherAiConversationTab conversation)
+    {
+        if (SelectedConversation?.Id != conversation.Id)
+        {
+            return conversation.Interruption;
+        }
+
+        if (_sessionState.IsAiAnalyzing)
+        {
+            return new LauncherAiConversationInterruptionStorageModel
+            {
+                Kind = "ai_analysis_in_progress",
+                InterruptedAtUtc = DateTimeOffset.UtcNow,
+                Message = _languageSelectorService.Language == "zh-CN"
+                    ? "上次应用退出时，此对话中的 AI 处理已中断。聊天历史已恢复，但不会自动继续，请根据需要重新发起请求。"
+                    : "The previous AI run in this conversation was interrupted when the app exited. History has been restored, but it will not resume automatically."
+            };
+        }
+
+        if (_sessionState.HasPendingToolContinuation)
+        {
+            return new LauncherAiConversationInterruptionStorageModel
+            {
+                Kind = "tool_continuation_pending",
+                InterruptedAtUtc = DateTimeOffset.UtcNow,
+                Message = _languageSelectorService.Language == "zh-CN"
+                    ? "上次应用退出时，此对话中的待继续工具流程已中断。聊天历史和待确认操作已恢复，但不会自动继续，请根据需要重新发起请求。"
+                    : "The pending tool flow in this conversation was interrupted when the app exited. History and pending actions were restored, but the flow will not resume automatically."
+            };
+        }
+
+        return conversation.Interruption;
+    }
+
+    private UiChatMessage CreateInterruptedConversationMessage(LauncherAiConversationInterruptionStorageModel interruption)
+    {
+        var content = string.IsNullOrWhiteSpace(interruption.Message)
+            ? (_languageSelectorService.Language == "zh-CN"
+                ? "上次应用退出时，此对话已中断。聊天历史已恢复，但不会自动继续。"
+                : "This conversation was interrupted when the app exited. History has been restored, but it will not resume automatically.")
+            : interruption.Message!;
+
+        return new UiChatMessage("assistant", content, includeInAiHistory: false)
+        {
+            ShowRoleHeader = false,
+            AiHistoryContent = null,
+        };
     }
 
     private void QueueConversationDeletion(Guid conversationId)
