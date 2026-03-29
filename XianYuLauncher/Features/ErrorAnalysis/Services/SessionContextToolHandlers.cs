@@ -15,7 +15,7 @@ public sealed class GetLaunchContextToolHandler : IAgentToolHandler
         _sessionContextQueryService = sessionContextQueryService;
     }
 
-    public string ToolName => "get_launch_context";
+    public string ToolName => "getLaunchContext";
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
@@ -51,7 +51,7 @@ public sealed class GetLogTailToolHandler : IAgentToolHandler
         _sessionContextQueryService = sessionContextQueryService;
     }
 
-    public string ToolName => "get_log_tail";
+    public string ToolName => "getLogTail";
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
@@ -87,7 +87,7 @@ public sealed class GetLogChunkToolHandler : IAgentToolHandler
         _sessionContextQueryService = sessionContextQueryService;
     }
 
-    public string ToolName => "get_log_chunk";
+    public string ToolName => "getLogChunk";
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,

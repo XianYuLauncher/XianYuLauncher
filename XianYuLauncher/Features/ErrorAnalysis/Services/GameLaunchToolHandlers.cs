@@ -20,7 +20,7 @@ public sealed class GetCurrentGameDirectoryToolHandler : IAgentToolHandler
         _fileService = fileService;
     }
 
-    public string ToolName => "get_current_game_directory";
+    public string ToolName => "getCurrentGameDirectory";
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
@@ -54,7 +54,7 @@ public sealed class GetCurrentGameDirectoryToolHandler : IAgentToolHandler
 
 public sealed class LaunchGameToolHandler : IAgentToolHandler
 {
-    public const string ToolNameValue = "launch_game";
+    public const string ToolNameValue = "launchGame";
 
     private readonly IVersionPathGameLaunchService _versionPathGameLaunchService;
 
@@ -112,7 +112,7 @@ public sealed class LaunchGameToolHandler : IAgentToolHandler
         }
         catch (Exception ex)
         {
-            return Task.FromResult(AgentToolExecutionResult.FromMessage($"launch_game 无法执行: {ex.Message}"));
+            return Task.FromResult(AgentToolExecutionResult.FromMessage($"launchGame 无法执行: {ex.Message}"));
         }
     }
 }
@@ -196,7 +196,7 @@ public sealed class LaunchGameActionHandler : IAgentActionHandler
 
     private static string AppendOperationStatusHint(string message, string operationId)
     {
-        return $"{message}\noperation_id: {operationId}\n可继续使用 get_operation_status 查询本次启动请求状态。";
+        return $"{message}\noperation_id: {operationId}\n可继续使用 getOperationStatus 查询本次启动请求状态。";
     }
 
     private static string NormalizeLaunchErrorMessage(string? errorMessage)
@@ -216,11 +216,11 @@ public sealed class GetProfilesToolHandler : IAgentToolHandler
         _profileManager = profileManager;
     }
 
-    public string ToolName => "get_profiles";
+    public string ToolName => "getProfiles";
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "返回当前启动器已保存的档案列表。每个档案包含玩家名、玩家 UUID、账户类型，以及是否为当前默认档案；其中 profileId 与 uuid 相同，可直接传给 launch_game。",
+        "返回当前启动器已保存的档案列表。每个档案包含玩家名、玩家 UUID、账户类型，以及是否为当前默认档案；其中 profileId 与 uuid 相同，可直接传给 launchGame。",
         new
         {
             type = "object",
@@ -281,7 +281,7 @@ public sealed class GetGameManifestToolHandler : IAgentToolHandler
         _gameManifestQueryService = gameManifestQueryService;
     }
 
-    public string ToolName => "get_game_manifest";
+    public string ToolName => "getGameManifest";
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
@@ -312,13 +312,13 @@ public sealed class GetGameManifestToolHandler : IAgentToolHandler
 
         if (queryType is not ("latest_release" or "latest_snapshot" or "list"))
         {
-            return AgentToolExecutionResult.FromMessage("get_game_manifest 参数无效：queryType 仅支持 latest_release、latest_snapshot、list。");
+            return AgentToolExecutionResult.FromMessage("getGameManifest 参数无效：queryType 仅支持 latest_release、latest_snapshot、list。");
         }
 
         if (queryType == "list" && !string.IsNullOrWhiteSpace(versionType)
             && versionType is not ("all" or "release" or "snapshot" or "old"))
         {
-            return AgentToolExecutionResult.FromMessage("get_game_manifest 参数无效：versionType 仅支持 all、release、snapshot、old。");
+            return AgentToolExecutionResult.FromMessage("getGameManifest 参数无效：versionType 仅支持 all、release、snapshot、old。");
         }
 
         var catalog = await _gameManifestQueryService.GetCatalogAsync(forceRefresh, cancellationToken);

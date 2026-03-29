@@ -12,7 +12,7 @@ public sealed class SearchCommunityResourcesToolHandler : IAgentToolHandler
         _communityResourceService = communityResourceService;
     }
 
-    public string ToolName => "search_community_resources";
+    public string ToolName => "searchCommunityResources";
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
@@ -95,7 +95,7 @@ public sealed class GetCommunityResourceFilesToolHandler : IAgentToolHandler
         _communityResourceService = communityResourceService;
     }
 
-    public string ToolName => "get_community_resource_files";
+    public string ToolName => "getCommunityResourceFiles";
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
@@ -146,11 +146,11 @@ public sealed class GetInstancesToolHandler : IAgentToolHandler
         _communityResourceService = communityResourceService;
     }
 
-    public string ToolName => "get_instances";
+    public string ToolName => "getInstances";
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "返回当前启动器已安装的可用实例列表。结果会包含 target_version_name、version_directory_path 和 resolved_game_directory；安装社区资源时优先把 target_version_name 传给 install_community_resource。",
+        "返回当前启动器已安装的可用实例列表。结果会包含 target_version_name、version_directory_path 和 resolved_game_directory；安装社区资源时优先把 target_version_name 传给 installCommunityResource。",
         new
         {
             type = "object",
@@ -171,7 +171,7 @@ public sealed class GetInstancesToolHandler : IAgentToolHandler
 
 public sealed class InstallCommunityResourceToolHandler : IAgentToolHandler
 {
-    public const string ToolNameValue = "install_community_resource";
+    public const string ToolNameValue = "installCommunityResource";
 
     private readonly IAgentCommunityResourceService _communityResourceService;
 
@@ -184,7 +184,7 @@ public sealed class InstallCommunityResourceToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "安装社区资源到指定实例。V1 仅支持 mod、resourcepack、shader；datapack / world / modpack 仍超出当前 AI 安装范围。调用前建议先用 get_community_resource_files 选定 resource_file_id，并用 get_instances 获取 target_version_name。",
+        "安装社区资源到指定实例。V1 仅支持 mod、resourcepack、shader；datapack / world / modpack 仍超出当前 AI 安装范围。调用前建议先用 getCommunityResourceFiles 选定 resource_file_id，并用 getInstances 获取 target_version_name。",
         new
         {
             type = "object",
@@ -192,7 +192,7 @@ public sealed class InstallCommunityResourceToolHandler : IAgentToolHandler
             {
                 project_id = new { type = "string", description = "资源项目 ID。CurseForge 必须是 curseforge-<id>；Modrinth 直接使用 project_id。" },
                 resource_file_id = new { type = "string", description = "要安装的文件 ID。Modrinth 这里传版本 ID；CurseForge 这里传文件 ID。" },
-                target_version_name = new { type = "string", description = "目标实例名，优先从 get_instances 的 target_version_name 中选择。" },
+                target_version_name = new { type = "string", description = "目标实例名，优先从 getInstances 的 target_version_name 中选择。" },
                 target_version_path = new { type = "string", description = "可选。若传实例目录路径，启动器会自动推导出 target_version_name。" },
                 resource_type = new { type = "string", description = "可选。辅助识别资源类型。", @enum = new[] { "mod", "resourcepack", "shader", "datapack" } },
                 download_dependencies = new { type = "boolean", description = "可选。是否自动下载前置依赖；默认 false。" }

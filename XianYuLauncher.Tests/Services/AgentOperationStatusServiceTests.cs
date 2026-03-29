@@ -50,7 +50,7 @@ public sealed class AgentOperationStatusServiceTests
         message.Should().Contain($"operation_id: {operationId}");
         message.Should().Contain("state: completed");
         message.Should().Contain("status_message: 游戏进程已成功启动。");
-        message.Should().Contain("operation_kind: launch_game");
+        message.Should().Contain("operation_kind: launchGame");
         message.Should().Contain("task_name: 启动 1.21.10");
         message.Should().Contain("version_name: 1.21.10");
         message.Should().NotContain("progress_percent:");

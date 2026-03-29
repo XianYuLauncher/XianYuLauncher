@@ -216,7 +216,7 @@ public sealed class SwitchMinecraftPathActionHandler : IAgentActionHandler
             if (!Directory.Exists(targetVersionDirectory))
             {
                 _sessionState.Context.VersionId = string.Empty;
-                return $"已切换活动 Minecraft 目录：{FormatPathSummary(selection.CurrentPathName, selection.CurrentPath)} -> {FormatPathSummary(selection.TargetPathName, selection.TargetPath)}。当前会话原版本 {currentVersionId} 在新目录下不存在，已清空当前版本上下文；如需继续针对新目录中的实例操作，请先调用 get_instances。";
+                return $"已切换活动 Minecraft 目录：{FormatPathSummary(selection.CurrentPathName, selection.CurrentPath)} -> {FormatPathSummary(selection.TargetPathName, selection.TargetPath)}。当前会话原版本 {currentVersionId} 在新目录下不存在，已清空当前版本上下文；如需继续针对新目录中的实例操作，请先调用 getInstances。";
             }
         }
 
