@@ -48,6 +48,7 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
     private const string InstanceWindowHeightParameterKey = "window_height";
     private const string InstanceGameDirectoryModeParameterKey = "game_directory_mode";
     private const string InstanceCustomGameDirectoryPathParameterKey = "custom_game_directory_path";
+    private const string InstanceUseGlobalSettingsOverallParameterKey = "use_global_settings_overall";
 
     private readonly IGameSettingsDomainService _gameSettingsDomainService;
     private readonly IJavaRuntimeService _javaRuntimeService;
@@ -533,12 +534,10 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         }
 
         var hasJvmSettingsRequest = request.HasCustomJvmArguments || explicitGarbageCollectorMode != null;
-        var hasMemorySettingsRequest = request.OverrideMemory != null
-            || request.AutoMemoryAllocation != null
+        var hasMemorySettingsRequest = request.AutoMemoryAllocation != null
             || request.InitialHeapMemoryGb.HasValue
             || request.MaximumHeapMemoryGb.HasValue;
-        var hasResolutionSettingsRequest = request.OverrideResolution != null
-            || request.WindowWidth.HasValue
+        var hasResolutionSettingsRequest = request.WindowWidth.HasValue
             || request.WindowHeight.HasValue;
         var explicitGameDirectoryModeToken = NormalizeRequestedInstanceGameDirectoryMode(request.GameDirectoryMode, out var gameDirectoryModeErrorMessage);
         if (!string.IsNullOrWhiteSpace(gameDirectoryModeErrorMessage))
@@ -547,19 +546,63 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         }
 
         var hasGameDirectorySettingsRequest = explicitGameDirectoryModeToken != null || request.HasCustomGameDirectoryPath;
-        if (request.UseGlobalJavaSetting == null
+        var hasLocalGameDirectoryValueRequest = HasLocalGameDirectoryValueRequest(explicitGameDirectoryModeToken, request.HasCustomGameDirectoryPath);
+        var legacyRequestedUseGlobalSettingsOverall = InferUseGlobalSettingsOverallFromLegacyInstanceFlags(
+            request.UseGlobalJavaSetting,
+            request.OverrideMemory,
+            request.OverrideResolution,
+            out var legacyGlobalSettingsErrorMessage);
+        if (!string.IsNullOrWhiteSpace(legacyGlobalSettingsErrorMessage))
+        {
+            return AgentToolExecutionResult.FromMessage(legacyGlobalSettingsErrorMessage);
+        }
+
+        var requestedUseGlobalSettingsOverall = request.UseGlobalSettingsOverall;
+        if (requestedUseGlobalSettingsOverall.HasValue
+            && legacyRequestedUseGlobalSettingsOverall.HasValue
+            && requestedUseGlobalSettingsOverall.Value != legacyRequestedUseGlobalSettingsOverall.Value)
+        {
+            return AgentToolExecutionResult.FromMessage("use_global_java_setting / override_memory / override_resolution 已废弃，且与 use_global_settings_overall 冲突。请仅使用 use_global_settings_overall 表达实例是否跟随全局。");
+        }
+
+        var effectiveRequestedUseGlobalSettingsOverall = requestedUseGlobalSettingsOverall ?? legacyRequestedUseGlobalSettingsOverall;
+        if (!effectiveRequestedUseGlobalSettingsOverall.HasValue
+            && (hasJavaRequest || hasJvmSettingsRequest || hasMemorySettingsRequest || hasResolutionSettingsRequest || hasLocalGameDirectoryValueRequest))
+        {
+            effectiveRequestedUseGlobalSettingsOverall = false;
+        }
+
+        if (!effectiveRequestedUseGlobalSettingsOverall.HasValue
             && !hasJavaRequest
             && !hasJvmSettingsRequest
             && !hasMemorySettingsRequest
             && !hasResolutionSettingsRequest
             && !hasGameDirectorySettingsRequest)
         {
-            return AgentToolExecutionResult.FromMessage("至少需要提供一个实例级变更字段，例如 use_global_java_setting、java_id、java_path、custom_jvm_arguments、garbage_collector_mode、override_memory、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、override_resolution、window_width、window_height、game_directory_mode 或 custom_game_directory_path。调用前建议先使用 get_instances、getVersionConfig 和 checkJavaVersions。");
+            return AgentToolExecutionResult.FromMessage("至少需要提供一个实例级变更字段，例如 use_global_settings_overall、java_id、java_path、custom_jvm_arguments、garbage_collector_mode、auto_memory_allocation、initial_heap_memory_gb、maximum_heap_memory_gb、window_width、window_height、game_directory_mode 或 custom_game_directory_path。调用前建议先使用 get_instances、getVersionConfig 和 checkJavaVersions。");
         }
 
-        if (request.UseGlobalJavaSetting == true && hasJavaRequest)
+        if (effectiveRequestedUseGlobalSettingsOverall == true)
         {
-            return AgentToolExecutionResult.FromMessage("当 use_global_java_setting=true 时，不能同时指定 java_id 或 java_path。若要设置实例独立 Java，请将 use_global_java_setting 设为 false，或直接省略该字段让工具自动切到实例独立模式。");
+            if (hasJavaRequest || hasJvmSettingsRequest)
+            {
+                return AgentToolExecutionResult.FromMessage("当 use_global_settings_overall=true 时，不能同时设置 java_id、java_path、custom_jvm_arguments 或 garbage_collector_mode。若要修改实例本地 Java/JVM/GC，请将 use_global_settings_overall 设为 false，或直接省略该字段让工具自动关闭总开关。");
+            }
+
+            if (hasMemorySettingsRequest)
+            {
+                return AgentToolExecutionResult.FromMessage("当 use_global_settings_overall=true 时，不能同时设置 auto_memory_allocation、initial_heap_memory_gb 或 maximum_heap_memory_gb。若要修改实例本地内存，请将 use_global_settings_overall 设为 false，或直接省略该字段让工具自动关闭总开关。");
+            }
+
+            if (hasResolutionSettingsRequest)
+            {
+                return AgentToolExecutionResult.FromMessage("当 use_global_settings_overall=true 时，不能同时设置 window_width 或 window_height。若要修改实例本地分辨率，请将 use_global_settings_overall 设为 false，或直接省略该字段让工具自动关闭总开关。");
+            }
+
+            if (hasGameDirectorySettingsRequest)
+            {
+                return AgentToolExecutionResult.FromMessage("当 use_global_settings_overall=true 时，不能同时修改 game_directory_mode 或 custom_game_directory_path。若要调整实例游戏目录，请先关闭总开关。");
+            }
         }
 
         var currentConfig = await _versionInfoService.GetFullVersionInfoAsync(
@@ -600,17 +643,23 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             requestedJava = resolution.Selection;
         }
 
-        var finalUseGlobalJavaSetting = request.UseGlobalJavaSetting ?? currentUseGlobalJavaSetting;
+        var finalUseGlobalJavaSetting = effectiveRequestedUseGlobalSettingsOverall.HasValue
+            ? effectiveRequestedUseGlobalSettingsOverall.Value
+            : currentUseGlobalJavaSetting;
         var finalJavaPath = currentJavaPath;
         var finalCustomJvmArguments = request.HasCustomJvmArguments
             ? NormalizeJvmArguments(request.CustomJvmArguments)
             : currentCustomJvmArguments;
         var finalGarbageCollectorMode = explicitGarbageCollectorMode ?? currentGarbageCollectorMode;
-        var finalOverrideMemory = request.OverrideMemory ?? currentOverrideMemory;
+        var finalOverrideMemory = effectiveRequestedUseGlobalSettingsOverall.HasValue
+            ? !effectiveRequestedUseGlobalSettingsOverall.Value
+            : currentOverrideMemory;
         var finalAutoMemoryAllocation = request.AutoMemoryAllocation ?? currentAutoMemoryAllocation;
         var finalInitialHeapMemory = request.InitialHeapMemoryGb ?? currentInitialHeapMemory;
         var finalMaximumHeapMemory = request.MaximumHeapMemoryGb ?? currentMaximumHeapMemory;
-        var finalOverrideResolution = request.OverrideResolution ?? currentOverrideResolution;
+        var finalOverrideResolution = effectiveRequestedUseGlobalSettingsOverall.HasValue
+            ? !effectiveRequestedUseGlobalSettingsOverall.Value
+            : currentOverrideResolution;
         var finalWindowWidth = request.WindowWidth ?? currentWindowWidth;
         var finalWindowHeight = request.WindowHeight ?? currentWindowHeight;
         var finalGameDirectoryMode = explicitGameDirectoryModeToken switch
@@ -628,9 +677,11 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             finalJavaPath = requestedJava.Path;
         }
 
-        if (!finalUseGlobalJavaSetting && string.IsNullOrWhiteSpace(finalJavaPath))
+        var allowEmptyIndependentJavaPath = !hasJavaRequest
+            && !UsesGlobalSettingsOverall(finalUseGlobalJavaSetting, finalOverrideMemory, finalOverrideResolution);
+        if (!finalUseGlobalJavaSetting && string.IsNullOrWhiteSpace(finalJavaPath) && !allowEmptyIndependentJavaPath)
         {
-            return AgentToolExecutionResult.FromMessage("实例独立 Java 模式必须提供一个可用的 java_id 或 java_path；若要让实例继续跟随全局，请将 use_global_java_setting 设为 true。");
+            return AgentToolExecutionResult.FromMessage("当前实例将改为使用本地设置，但本地 Java 仍未配置。请提供 java_id 或 java_path，或将 use_global_settings_overall 设为 true。");
         }
 
         if (request.InitialHeapMemoryGb.HasValue)
@@ -653,7 +704,7 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
 
         if (!finalOverrideMemory && (request.AutoMemoryAllocation != null || request.InitialHeapMemoryGb.HasValue || request.MaximumHeapMemoryGb.HasValue))
         {
-            return AgentToolExecutionResult.FromMessage("当 override_memory=false 时，不能同时设置 auto_memory_allocation、initial_heap_memory_gb 或 maximum_heap_memory_gb。若要修改实例独立内存，请先将 override_memory 设为 true。");
+            return AgentToolExecutionResult.FromMessage("当前实例仍使用全局设置，不能同时设置 auto_memory_allocation、initial_heap_memory_gb 或 maximum_heap_memory_gb。若要修改实例本地内存，可将 use_global_settings_overall 设为 false，或直接省略该字段让工具自动关闭总开关。");
         }
 
         if (finalOverrideMemory && finalAutoMemoryAllocation && (request.InitialHeapMemoryGb.HasValue || request.MaximumHeapMemoryGb.HasValue))
@@ -686,7 +737,7 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
 
         if (!finalOverrideResolution && (request.WindowWidth.HasValue || request.WindowHeight.HasValue))
         {
-            return AgentToolExecutionResult.FromMessage("当 override_resolution=false 时，不能同时设置 window_width 或 window_height。若要修改实例独立分辨率，请先将 override_resolution 设为 true。");
+            return AgentToolExecutionResult.FromMessage("当前实例仍使用全局设置，不能同时设置 window_width 或 window_height。若要修改实例本地分辨率，可将 use_global_settings_overall 设为 false，或直接省略该字段让工具自动关闭总开关。");
         }
 
         if (hasGameDirectorySettingsRequest)
@@ -726,27 +777,22 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
 
         var currentUsesGlobalSettingsOverall = UsesGlobalSettingsOverall(currentUseGlobalJavaSetting, currentConfig.OverrideMemory, currentConfig.OverrideResolution);
         var finalUsesGlobalSettingsOverall = UsesGlobalSettingsOverall(finalUseGlobalJavaSetting, finalOverrideMemory, finalOverrideResolution);
-        var currentJvmSettingsFollowGlobal = currentUsesGlobalSettingsOverall;
-        var finalJvmSettingsFollowGlobal = finalUsesGlobalSettingsOverall;
-        var currentGameDirectoryFollowsGlobal = GameDirectoryFollowsGlobal(currentUsesGlobalSettingsOverall, currentGameDirectoryMode);
-        var finalGameDirectoryFollowsGlobal = GameDirectoryFollowsGlobal(finalUsesGlobalSettingsOverall, finalGameDirectoryMode);
-
         List<AgentSettingsFieldChange> changes = [];
-        if (currentUseGlobalJavaSetting != finalUseGlobalJavaSetting)
+        if (currentUsesGlobalSettingsOverall != finalUsesGlobalSettingsOverall)
         {
             changes.Add(new AgentSettingsFieldChange
             {
-                FieldKey = "use_global_java_setting",
-                DisplayName = "Java 设置模式",
-                OldValue = DescribeInstanceJavaMode(currentUseGlobalJavaSetting),
-                NewValue = DescribeInstanceJavaMode(finalUseGlobalJavaSetting),
-                SwitchesToFollowGlobal = finalUseGlobalJavaSetting,
-                SwitchesToOverride = !finalUseGlobalJavaSetting,
+                FieldKey = "uses_global_settings_overall",
+                DisplayName = "使用全局设置",
+                OldValue = DescribeUseGlobalSettingsOverall(currentUsesGlobalSettingsOverall),
+                NewValue = DescribeUseGlobalSettingsOverall(finalUsesGlobalSettingsOverall),
+                SwitchesToFollowGlobal = finalUsesGlobalSettingsOverall,
+                SwitchesToOverride = !finalUsesGlobalSettingsOverall,
             });
         }
 
-        var oldJavaDisplay = DescribeInstanceJavaValue(currentUseGlobalJavaSetting, currentJavaPath, knownJavaVersions);
-        var newJavaDisplay = DescribeInstanceJavaValue(finalUseGlobalJavaSetting, finalJavaPath, knownJavaVersions);
+        var oldJavaDisplay = DescribeSelectedJava(currentJavaPath, knownJavaVersions);
+        var newJavaDisplay = DescribeSelectedJava(finalJavaPath, knownJavaVersions);
         if (!string.Equals(oldJavaDisplay, newJavaDisplay, StringComparison.Ordinal))
         {
             changes.Add(new AgentSettingsFieldChange
@@ -780,32 +826,6 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             });
         }
 
-        if (currentJvmSettingsFollowGlobal != finalJvmSettingsFollowGlobal || (hasJvmSettingsRequest && finalJvmSettingsFollowGlobal))
-        {
-            changes.Add(new AgentSettingsFieldChange
-            {
-                FieldKey = "jvm_gc_effective_source",
-                DisplayName = "JVM/GC 生效方式",
-                OldValue = DescribeJvmGcSource(currentJvmSettingsFollowGlobal),
-                NewValue = DescribeJvmGcSourceAfterPatch(finalJvmSettingsFollowGlobal, hasJvmSettingsRequest),
-                SwitchesToFollowGlobal = !currentJvmSettingsFollowGlobal && finalJvmSettingsFollowGlobal,
-                SwitchesToOverride = currentJvmSettingsFollowGlobal && !finalJvmSettingsFollowGlobal,
-            });
-        }
-
-        if (currentOverrideMemory != finalOverrideMemory)
-        {
-            changes.Add(new AgentSettingsFieldChange
-            {
-                FieldKey = "override_memory",
-                DisplayName = "内存来源",
-                OldValue = DescribeMemorySource(!currentOverrideMemory),
-                NewValue = DescribeMemorySource(!finalOverrideMemory),
-                SwitchesToFollowGlobal = currentOverrideMemory && !finalOverrideMemory,
-                SwitchesToOverride = !currentOverrideMemory && finalOverrideMemory,
-            });
-        }
-
         if (currentAutoMemoryAllocation != finalAutoMemoryAllocation)
         {
             changes.Add(new AgentSettingsFieldChange
@@ -836,19 +856,6 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
                 DisplayName = "最大内存",
                 OldValue = DescribeMemoryAmount(currentMaximumHeapMemory),
                 NewValue = DescribeMemoryAmount(finalMaximumHeapMemory),
-            });
-        }
-
-        if (currentOverrideResolution != finalOverrideResolution)
-        {
-            changes.Add(new AgentSettingsFieldChange
-            {
-                FieldKey = "override_resolution",
-                DisplayName = "分辨率来源",
-                OldValue = DescribeResolutionSource(!currentOverrideResolution),
-                NewValue = DescribeResolutionSource(!finalOverrideResolution),
-                SwitchesToFollowGlobal = currentOverrideResolution && !finalOverrideResolution,
-                SwitchesToOverride = !currentOverrideResolution && finalOverrideResolution,
             });
         }
 
@@ -898,20 +905,6 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
             });
         }
 
-        if (currentGameDirectoryFollowsGlobal != finalGameDirectoryFollowsGlobal
-            || (hasGameDirectorySettingsRequest && finalGameDirectoryFollowsGlobal && !string.IsNullOrWhiteSpace(finalGameDirectoryMode)))
-        {
-            changes.Add(new AgentSettingsFieldChange
-            {
-                FieldKey = "game_directory_effective_source",
-                DisplayName = "游戏目录生效方式",
-                OldValue = DescribeGameDirectorySource(currentGameDirectoryFollowsGlobal),
-                NewValue = DescribeGameDirectorySourceAfterPatch(finalGameDirectoryFollowsGlobal, finalUsesGlobalSettingsOverall, finalGameDirectoryMode, hasGameDirectorySettingsRequest),
-                SwitchesToFollowGlobal = !currentGameDirectoryFollowsGlobal && finalGameDirectoryFollowsGlobal,
-                SwitchesToOverride = currentGameDirectoryFollowsGlobal && !finalGameDirectoryFollowsGlobal,
-            });
-        }
-
         if (changes.Count == 0)
         {
             return AgentToolExecutionResult.FromMessage($"实例 {targetVersion.VersionName} 的 Java/JVM/GC/内存/分辨率/游戏目录设置未发生变化。");
@@ -941,6 +934,7 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         proposal.Parameters[InstanceWindowHeightParameterKey] = finalWindowHeight.ToString(CultureInfo.InvariantCulture);
         proposal.Parameters[InstanceGameDirectoryModeParameterKey] = finalGameDirectoryMode ?? string.Empty;
         proposal.Parameters[InstanceCustomGameDirectoryPathParameterKey] = finalCustomGameDirectoryPath ?? string.Empty;
+        proposal.Parameters[InstanceUseGlobalSettingsOverallParameterKey] = finalUsesGlobalSettingsOverall.ToString();
 
         return AgentToolExecutionResult.FromActionProposal(proposal.DisplayMessage, proposal);
     }
@@ -964,11 +958,6 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
 
         proposal.Parameters.TryGetValue(InstanceJavaPathParameterKey, out var rawJavaPath);
         var finalJavaPath = NullIfWhiteSpace(rawJavaPath);
-        if (!finalUseGlobalJavaSetting && string.IsNullOrWhiteSpace(finalJavaPath))
-        {
-            return "实例独立 Java 模式必须保留一个有效的 Java 路径。";
-        }
-
         proposal.Parameters.TryGetValue(InstanceCustomJvmArgumentsParameterKey, out var rawCustomJvmArguments);
         var finalCustomJvmArguments = NormalizeJvmArguments(rawCustomJvmArguments);
         proposal.Parameters.TryGetValue(InstanceGarbageCollectorModeParameterKey, out var rawGarbageCollectorMode);
@@ -994,8 +983,17 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         var finalGameDirectoryMode = NullIfWhiteSpace(rawGameDirectoryMode);
         proposal.Parameters.TryGetValue(InstanceCustomGameDirectoryPathParameterKey, out var rawCustomGameDirectoryPath);
         var finalCustomGameDirectoryPath = NullIfWhiteSpace(rawCustomGameDirectoryPath);
+        var finalUseGlobalSettingsOverall = proposal.Parameters.TryGetValue(InstanceUseGlobalSettingsOverallParameterKey, out var rawUseGlobalSettingsOverall)
+            && bool.TryParse(rawUseGlobalSettingsOverall, out var parsedUseGlobalSettingsOverall)
+                ? parsedUseGlobalSettingsOverall
+                : UsesGlobalSettingsOverall(finalUseGlobalJavaSetting, finalOverrideMemory, finalOverrideResolution);
 
-        if (!finalUseGlobalJavaSetting)
+        if (!finalUseGlobalJavaSetting && string.IsNullOrWhiteSpace(finalJavaPath) && finalUseGlobalSettingsOverall)
+        {
+            return "实例独立 Java 模式必须保留一个有效的 Java 路径。";
+        }
+
+        if (!finalUseGlobalJavaSetting && !string.IsNullOrWhiteSpace(finalJavaPath))
         {
             var ensureResult = await EnsureJavaPresentInKnownListAsync(finalJavaPath!, cancellationToken);
             if (!ensureResult.Success)
@@ -1265,6 +1263,11 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
         return followsGlobal ? "跟随全局" : "使用实例值";
     }
 
+    private static string DescribeUseGlobalSettingsOverall(bool usesGlobalSettingsOverall)
+    {
+        return usesGlobalSettingsOverall ? "是" : "否";
+    }
+
     private static string DescribeJvmGcSourceAfterPatch(bool followsGlobal, bool hasJvmSettingsRequest)
     {
         if (!followsGlobal)
@@ -1449,6 +1452,55 @@ public sealed class AgentSettingsWriteService : IAgentSettingsWriteService
     {
         errorMessage = error;
         return null;
+    }
+
+    private static bool HasLocalGameDirectoryValueRequest(string? explicitGameDirectoryModeToken, bool hasCustomGameDirectoryPath)
+    {
+        return hasCustomGameDirectoryPath
+            || (!string.IsNullOrWhiteSpace(explicitGameDirectoryModeToken)
+                && !string.Equals(explicitGameDirectoryModeToken, InstanceGameDirectoryFollowGlobalToken, StringComparison.Ordinal));
+    }
+
+    private static bool? InferUseGlobalSettingsOverallFromLegacyInstanceFlags(
+        bool? useGlobalJavaSetting,
+        bool? overrideMemory,
+        bool? overrideResolution,
+        out string errorMessage)
+    {
+        errorMessage = string.Empty;
+        var requestsGlobal = false;
+        var requestsLocal = false;
+
+        if (useGlobalJavaSetting.HasValue)
+        {
+            requestsGlobal |= useGlobalJavaSetting.Value;
+            requestsLocal |= !useGlobalJavaSetting.Value;
+        }
+
+        if (overrideMemory.HasValue)
+        {
+            requestsGlobal |= !overrideMemory.Value;
+            requestsLocal |= overrideMemory.Value;
+        }
+
+        if (overrideResolution.HasValue)
+        {
+            requestsGlobal |= !overrideResolution.Value;
+            requestsLocal |= overrideResolution.Value;
+        }
+
+        if (!requestsGlobal && !requestsLocal)
+        {
+            return null;
+        }
+
+        if (requestsGlobal && requestsLocal)
+        {
+            errorMessage = "use_global_java_setting / override_memory / override_resolution 已废弃，且当前组合不符合 UI 的单一“使用全局设置”语义。请改用 use_global_settings_overall。";
+            return null;
+        }
+
+        return requestsGlobal;
     }
 
     private static string ValidateMemoryValue(string fieldName, double value)
