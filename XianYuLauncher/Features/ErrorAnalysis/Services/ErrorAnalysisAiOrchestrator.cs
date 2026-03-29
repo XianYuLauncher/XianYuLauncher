@@ -315,7 +315,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         List<ChatMessage>? initialApiMessages = null,
         bool hasRetriedWithoutImages = false)
     {
-        var apiMessages = initialApiMessages ?? await BuildApiMessagesAsync();
+        var apiMessages = initialApiMessages ?? await BuildApiMessagesAsync(cancellationToken);
         var tools = _toolDispatcher.GetAvailableTools();
         try
         {
@@ -636,7 +636,7 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
         await StreamResponseToLastMessageAsync(settings, cancellationToken, pendingContinuation.ApiMessages);
     }
 
-    private async Task<List<ChatMessage>> BuildApiMessagesAsync()
+    private async Task<List<ChatMessage>> BuildApiMessagesAsync(CancellationToken cancellationToken)
     {
         List<ChatMessage> apiMessages = [];
         string languageForAi = _languageSelectorService.Language == "zh-CN" ? "Simplified Chinese" : "English";
@@ -722,7 +722,62 @@ public class ErrorAnalysisAiOrchestrator : IErrorAnalysisAiOrchestrator
             }
         });
 
+        await EnsureImageDataUrlsAsync(apiMessages, cancellationToken);
+
         return apiMessages;
+    }
+
+    private static async Task EnsureImageDataUrlsAsync(IEnumerable<ChatMessage> apiMessages, CancellationToken cancellationToken)
+    {
+        foreach (var message in apiMessages)
+        {
+            if (message.ImageAttachments == null || message.ImageAttachments.Count == 0)
+            {
+                continue;
+            }
+
+            foreach (var attachment in message.ImageAttachments)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (!string.IsNullOrWhiteSpace(attachment.DataUrl)
+                    || string.IsNullOrWhiteSpace(attachment.FilePath)
+                    || !File.Exists(attachment.FilePath))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var bytes = await File.ReadAllBytesAsync(attachment.FilePath, cancellationToken);
+                    var contentType = string.IsNullOrWhiteSpace(attachment.ContentType)
+                        ? GetImageContentTypeFromPath(attachment.FilePath)
+                        : attachment.ContentType;
+                    attachment.ContentType = contentType;
+                    attachment.DataUrl = $"data:{contentType};base64,{Convert.ToBase64String(bytes)}";
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LauncherAiPersistence] 读取图片附件失败: {attachment.FilePath}, {ex.Message}");
+                }
+            }
+        }
+    }
+
+    private static string GetImageContentTypeFromPath(string filePath)
+    {
+        return Path.GetExtension(filePath).ToLowerInvariant() switch
+        {
+            ".jpg" or ".jpeg" => "image/jpeg",
+            ".webp" => "image/webp",
+            ".gif" => "image/gif",
+            ".bmp" => "image/bmp",
+            _ => "image/png"
+        };
     }
 
     private static HashSet<int> GetTrimmedToolTraceMessageIndices(IReadOnlyList<UiChatMessage> historyMessages)

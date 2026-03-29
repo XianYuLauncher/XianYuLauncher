@@ -2,6 +2,8 @@ using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
+using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
 
@@ -11,21 +13,33 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
 {
     private readonly IAiSettingsDomainService _aiSettingsDomainService;
     private readonly ILanguageSelectorService _languageSelectorService;
+    private readonly ILauncherAiWorkspacePersistenceService _workspacePersistenceService;
     private readonly ErrorAnalysisSessionState _sessionState;
     private readonly LauncherAiWorkspaceState _workspaceState;
+    private readonly CancellationTokenSource _lifecycleCts = new();
+    private readonly SemaphoreSlim _initializationSemaphore = new(1, 1);
+    private readonly SemaphoreSlim _persistenceSemaphore = new(1, 1);
+    private readonly Lock _dirtyStateLock = new();
     private readonly HashSet<UiChatMessage> _trackedSessionMessages = [];
+    private readonly Dictionary<Guid, long> _dirtyConversationStamps = [];
+    private CancellationTokenSource? _saveWorkspaceCts;
     private bool _isApplyingConversationSnapshot;
+    private bool _isRestoringWorkspace;
+    private long _dirtyWorkspaceStamp;
+    private long _nextDirtyStamp;
 
     public LauncherAiViewModel(
         ErrorAnalysisViewModel chatViewModel,
         IAiSettingsDomainService aiSettingsDomainService,
         ILanguageSelectorService languageSelectorService,
+        ILauncherAiWorkspacePersistenceService workspacePersistenceService,
         ErrorAnalysisSessionState sessionState,
         LauncherAiWorkspaceState workspaceState)
     {
         ChatViewModel = chatViewModel;
         _aiSettingsDomainService = aiSettingsDomainService;
         _languageSelectorService = languageSelectorService;
+        _workspacePersistenceService = workspacePersistenceService;
         _sessionState = sessionState;
         _workspaceState = workspaceState;
 
@@ -50,35 +64,55 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
 
     public async Task InitializeAsync(bool ensureDefaultConversation = true)
     {
-        var state = await _aiSettingsDomainService.LoadAsync();
-
-        _workspaceState.DefaultChatEnabled = state.IsEnabled;
-
-        if (ensureDefaultConversation && _workspaceState.Conversations.Count == 0)
+        await _initializationSemaphore.WaitAsync();
+        try
         {
-            var initialSnapshot = BuildInitialSnapshot(state.IsEnabled);
-            var initialConversation = new LauncherAiConversationTab
-            {
-                Id = Guid.NewGuid(),
-                Snapshot = initialSnapshot,
-            };
-            ApplyConversationMetadata(initialConversation, initialSnapshot, _workspaceState.NextConversationNumber++);
-            _workspaceState.Conversations.Add(initialConversation);
-            _workspaceState.SelectedConversationId = initialConversation.Id;
-        }
+            var state = await _aiSettingsDomainService.LoadAsync();
 
-        if (!_workspaceState.IsInitialized)
-        {
-            if (_workspaceState.SelectedConversationId == null
-                && _workspaceState.Conversations.FirstOrDefault() is LauncherAiConversationTab conversation)
+            _workspaceState.DefaultChatEnabled = state.IsEnabled;
+
+            if (!_workspaceState.IsInitialized)
             {
-                _workspaceState.SelectedConversationId = conversation.Id;
+                await RestoreWorkspaceAsync();
+
+                if (_workspaceState.SelectedConversationId == null
+                    && _workspaceState.Conversations.FirstOrDefault() is LauncherAiConversationTab conversation)
+                {
+                    _workspaceState.SelectedConversationId = conversation.Id;
+                }
+
+                _workspaceState.IsInitialized = true;
             }
 
-            _workspaceState.IsInitialized = true;
-        }
+            var createdDefaultConversation = false;
+            if (ensureDefaultConversation && _workspaceState.Conversations.Count == 0)
+            {
+                var initialSnapshot = BuildInitialSnapshot(state.IsEnabled);
+                var initialConversation = new LauncherAiConversationTab
+                {
+                    Id = Guid.NewGuid(),
+                    CreatedAtUtc = DateTimeOffset.UtcNow,
+                    LastUpdatedAtUtc = DateTimeOffset.UtcNow,
+                    Snapshot = initialSnapshot,
+                };
+                ApplyConversationMetadata(initialConversation, initialSnapshot, _workspaceState.NextConversationNumber++);
+                _workspaceState.Conversations.Add(initialConversation);
+                _workspaceState.SelectedConversationId = initialConversation.Id;
+                MarkConversationDirty(initialConversation.Id);
+                createdDefaultConversation = true;
+            }
 
-        EnsureActiveConversationLoaded();
+            EnsureActiveConversationLoaded();
+
+            if (createdDefaultConversation)
+            {
+                QueueWorkspacePersistenceSave(0);
+            }
+        }
+        finally
+        {
+            _initializationSemaphore.Release();
+        }
     }
 
     public void SetErrorAnalysisPageOpen(bool isOpen)
@@ -231,7 +265,14 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
 
     public void Dispose()
     {
-        PersistActiveConversationSnapshot();
+        if (_lifecycleCts.IsCancellationRequested)
+        {
+            return;
+        }
+
+        PersistActiveConversationSnapshot(schedulePersistenceSave: false);
+        CancelPendingWorkspaceSave();
+        _lifecycleCts.Cancel();
         _workspaceState.PropertyChanged -= WorkspaceState_PropertyChanged;
         _workspaceState.Conversations.CollectionChanged -= Conversations_CollectionChanged;
         _sessionState.PropertyChanged -= SessionState_PropertyChanged;
@@ -403,7 +444,7 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(SelectedConversation));
     }
 
-    private void PersistActiveConversationSnapshot()
+    private void PersistActiveConversationSnapshot(bool schedulePersistenceSave = true)
     {
         var activeConversation = SelectedConversation;
         if (activeConversation == null)
@@ -413,7 +454,14 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
 
         var snapshot = _sessionState.CreateSnapshot();
         activeConversation.Snapshot = snapshot;
+        activeConversation.LastUpdatedAtUtc = DateTimeOffset.UtcNow;
         ApplyConversationMetadata(activeConversation, snapshot, 0);
+        MarkConversationDirty(activeConversation.Id);
+
+        if (schedulePersistenceSave)
+        {
+            QueueWorkspacePersistenceSave();
+        }
     }
 
     private void AttachSessionMessageHandlers(IEnumerable<UiChatMessage> messages)
@@ -500,25 +548,34 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
 
     private LauncherAiConversationTab CreateConversationCore(ErrorAnalysisSessionSnapshot snapshot, bool isErrorAnalysisConversation)
     {
+        var now = DateTimeOffset.UtcNow;
         var conversation = new LauncherAiConversationTab
         {
             Id = Guid.NewGuid(),
             IsErrorAnalysisConversation = isErrorAnalysisConversation,
+            CreatedAtUtc = now,
+            LastUpdatedAtUtc = now,
             Snapshot = snapshot,
         };
 
         var fallbackNumber = isErrorAnalysisConversation ? 0 : _workspaceState.NextConversationNumber++;
         ApplyConversationMetadata(conversation, snapshot, fallbackNumber);
         _workspaceState.Conversations.Add(conversation);
+        MarkConversationDirty(conversation.Id);
+        QueueWorkspacePersistenceSave(0);
         return conversation;
     }
 
     private void RemoveConversation(LauncherAiConversationTab conversation, bool ensureReplacement)
     {
+        var removedConversationId = conversation.Id;
         var closingIndex = _workspaceState.Conversations.IndexOf(conversation);
         var wasSelected = _workspaceState.SelectedConversationId == conversation.Id;
 
         _workspaceState.Conversations.Remove(conversation);
+        ForgetDirtyConversation(removedConversationId);
+        MarkWorkspaceDirty();
+        QueueConversationDeletion(removedConversationId);
 
         if (_workspaceState.Conversations.Count == 0)
         {
@@ -540,6 +597,8 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
             var nextIndex = Math.Clamp(closingIndex - 1, 0, _workspaceState.Conversations.Count - 1);
             _workspaceState.SelectedConversationId = _workspaceState.Conversations[nextIndex].Id;
         }
+
+        QueueWorkspacePersistenceSave(0);
     }
 
     private static bool HasUserMessages(ErrorAnalysisSessionSnapshot snapshot)
@@ -551,5 +610,523 @@ public sealed partial class LauncherAiViewModel : ObservableObject, IDisposable
     {
         var selectedConversation = SelectedConversation;
         return selectedConversation != null && HasUserMessages(selectedConversation.Snapshot);
+    }
+
+    private void QueueWorkspacePersistenceSave(int debounceMilliseconds = 150)
+    {
+        if (_isRestoringWorkspace || !_workspaceState.IsInitialized || _lifecycleCts.IsCancellationRequested)
+        {
+            return;
+        }
+
+        CancelPendingWorkspaceSave();
+
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifecycleCts.Token);
+        _saveWorkspaceCts = cts;
+        _ = PersistWorkspaceDebouncedAsync(cts, debounceMilliseconds);
+    }
+
+    private void CancelPendingWorkspaceSave()
+    {
+        if (_saveWorkspaceCts == null)
+        {
+            return;
+        }
+
+        _saveWorkspaceCts.Cancel();
+        _saveWorkspaceCts.Dispose();
+        _saveWorkspaceCts = null;
+    }
+
+    private async Task PersistWorkspaceDebouncedAsync(CancellationTokenSource cts, int debounceMilliseconds)
+    {
+        try
+        {
+            if (debounceMilliseconds > 0)
+            {
+                await Task.Delay(debounceMilliseconds, cts.Token);
+            }
+
+            await PersistWorkspaceToStorageAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LauncherAiPersistence] 保存工作区失败: {ex.Message}");
+        }
+        finally
+        {
+            if (ReferenceEquals(_saveWorkspaceCts, cts))
+            {
+                _saveWorkspaceCts = null;
+            }
+
+            cts.Dispose();
+        }
+    }
+
+    private async Task PersistWorkspaceToStorageAsync(CancellationToken cancellationToken)
+    {
+        if (_isRestoringWorkspace || _lifecycleCts.IsCancellationRequested)
+        {
+            return;
+        }
+
+        await _persistenceSemaphore.WaitAsync(cancellationToken);
+        try
+        {
+            PersistActiveConversationSnapshot(schedulePersistenceSave: false);
+
+            var (workspaceStamp, dirtyConversationStamps) = CaptureDirtyState();
+            if (workspaceStamp == 0 && dirtyConversationStamps.Count == 0)
+            {
+                return;
+            }
+
+            var workspaceStorage = CreateWorkspaceStorageModel();
+            var conversations = _workspaceState.Conversations.ToList();
+            var conversationsById = conversations.ToDictionary(conversation => conversation.Id);
+            List<LauncherAiConversationStorageModel> conversationStorages = [];
+            Dictionary<Guid, long> savedConversationStamps = [];
+            foreach (var dirtyConversation in dirtyConversationStamps)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!conversationsById.TryGetValue(dirtyConversation.Key, out var conversation))
+                {
+                    continue;
+                }
+
+                conversationStorages.Add(await CreateConversationStorageModelAsync(conversation, cancellationToken));
+                savedConversationStamps[dirtyConversation.Key] = dirtyConversation.Value;
+            }
+
+            foreach (var conversationStorage in conversationStorages)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await _workspacePersistenceService.SaveConversationAsync(conversationStorage, cancellationToken);
+            }
+
+            await _workspacePersistenceService.SaveWorkspaceAsync(workspaceStorage, cancellationToken);
+            AcknowledgeSavedDirtyState(workspaceStamp, savedConversationStamps);
+        }
+        finally
+        {
+            _persistenceSemaphore.Release();
+        }
+    }
+
+    private void MarkConversationDirty(Guid conversationId)
+    {
+        long stamp = Interlocked.Increment(ref _nextDirtyStamp);
+        lock (_dirtyStateLock)
+        {
+            _dirtyConversationStamps[conversationId] = stamp;
+            _dirtyWorkspaceStamp = stamp;
+        }
+    }
+
+    private void MarkWorkspaceDirty()
+    {
+        long stamp = Interlocked.Increment(ref _nextDirtyStamp);
+        lock (_dirtyStateLock)
+        {
+            _dirtyWorkspaceStamp = stamp;
+        }
+    }
+
+    private (long WorkspaceStamp, Dictionary<Guid, long> ConversationStamps) CaptureDirtyState()
+    {
+        lock (_dirtyStateLock)
+        {
+            return (_dirtyWorkspaceStamp, new Dictionary<Guid, long>(_dirtyConversationStamps));
+        }
+    }
+
+    private void AcknowledgeSavedDirtyState(long workspaceStamp, IReadOnlyDictionary<Guid, long> savedConversationStamps)
+    {
+        lock (_dirtyStateLock)
+        {
+            if (_dirtyWorkspaceStamp == workspaceStamp)
+            {
+                _dirtyWorkspaceStamp = 0;
+            }
+
+            foreach (var savedConversation in savedConversationStamps)
+            {
+                if (_dirtyConversationStamps.TryGetValue(savedConversation.Key, out long currentStamp)
+                    && currentStamp == savedConversation.Value)
+                {
+                    _dirtyConversationStamps.Remove(savedConversation.Key);
+                }
+            }
+        }
+    }
+
+    private void ForgetDirtyConversation(Guid conversationId)
+    {
+        lock (_dirtyStateLock)
+        {
+            _dirtyConversationStamps.Remove(conversationId);
+        }
+    }
+
+    private LauncherAiWorkspaceStorageModel CreateWorkspaceStorageModel()
+    {
+        return new LauncherAiWorkspaceStorageModel
+        {
+            SelectedConversationId = _workspaceState.SelectedConversationId,
+            ActiveErrorAnalysisConversationId = _workspaceState.ActiveErrorAnalysisConversationId,
+            NextConversationNumber = Math.Max(1, _workspaceState.NextConversationNumber),
+            Conversations = _workspaceState.Conversations
+                .Select(conversation => new LauncherAiConversationIndexEntryStorageModel
+                {
+                    ConversationId = conversation.Id,
+                    IsErrorAnalysisConversation = conversation.IsErrorAnalysisConversation,
+                    CreatedAtUtc = conversation.CreatedAtUtc,
+                    LastUpdatedAtUtc = conversation.LastUpdatedAtUtc,
+                })
+                .ToList(),
+        };
+    }
+
+    private async Task<LauncherAiConversationStorageModel> CreateConversationStorageModelAsync(
+        LauncherAiConversationTab conversation,
+        CancellationToken cancellationToken)
+    {
+        return new LauncherAiConversationStorageModel
+        {
+            ConversationId = conversation.Id,
+            IsErrorAnalysisConversation = conversation.IsErrorAnalysisConversation,
+            Title = conversation.Title,
+            ToolTip = conversation.ToolTip,
+            CreatedAtUtc = conversation.CreatedAtUtc,
+            LastUpdatedAtUtc = conversation.LastUpdatedAtUtc,
+            Interruption = CreateConversationInterruption(conversation),
+            Session = await CreateSessionStorageModelAsync(conversation.Id, conversation.Snapshot, cancellationToken)
+        };
+    }
+
+    private async Task<LauncherAiSessionStorageModel> CreateSessionStorageModelAsync(
+        Guid conversationId,
+        ErrorAnalysisSessionSnapshot snapshot,
+        CancellationToken cancellationToken)
+    {
+        return new LauncherAiSessionStorageModel
+        {
+            ChatInput = snapshot.ChatInput,
+            IsChatEnabled = snapshot.IsChatEnabled,
+            PendingImageAttachments = await CreateAttachmentStorageModelsAsync(conversationId, snapshot.PendingImageAttachments, cancellationToken),
+            ChatMessages = await CreateMessageStorageModelsAsync(conversationId, snapshot.ChatMessages, cancellationToken),
+            ActionProposals = snapshot.ActionProposals.Select(CreateActionProposalStorageModel).ToList(),
+        };
+    }
+
+    private async Task<List<LauncherAiChatMessageStorageModel>> CreateMessageStorageModelsAsync(
+        Guid conversationId,
+        IEnumerable<UiChatMessage> messages,
+        CancellationToken cancellationToken)
+    {
+        List<LauncherAiChatMessageStorageModel> results = [];
+        foreach (var message in messages)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            results.Add(new LauncherAiChatMessageStorageModel
+            {
+                Role = message.Role,
+                Content = message.Content,
+                IncludeInAiHistory = message.IncludeInAiHistory,
+                ShowRoleHeader = message.ShowRoleHeader,
+                DisplayRoleText = message.DisplayRoleText,
+                AiHistoryContent = message.AiHistoryContent,
+                ToolCallId = message.ToolCallId,
+                ToolCalls = CloneToolCalls(message.ToolCalls),
+                ImageAttachments = await CreateAttachmentStorageModelsAsync(conversationId, message.ImageAttachments, cancellationToken),
+                AiHistoryImageAttachments = message.AiHistoryImageAttachments == null
+                    ? null
+                    : await CreateAttachmentStorageModelsAsync(conversationId, message.AiHistoryImageAttachments, cancellationToken),
+                SuppressContentRendering = message.SuppressContentRendering,
+            });
+        }
+
+        return results;
+    }
+
+    private async Task<List<LauncherAiAttachmentStorageModel>> CreateAttachmentStorageModelsAsync(
+        Guid conversationId,
+        IEnumerable<ChatImageAttachment> attachments,
+        CancellationToken cancellationToken)
+    {
+        List<LauncherAiAttachmentStorageModel> results = [];
+        foreach (var attachment in attachments)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var storedAttachment = await _workspacePersistenceService.PersistAttachmentAsync(conversationId, attachment, cancellationToken);
+            if (storedAttachment != null)
+            {
+                results.Add(storedAttachment);
+            }
+        }
+
+        return results;
+    }
+
+    private async Task RestoreWorkspaceAsync()
+    {
+        _isRestoringWorkspace = true;
+        try
+        {
+            _workspaceState.Conversations.Clear();
+            _workspaceState.SelectedConversationId = null;
+            _workspaceState.ActiveErrorAnalysisConversationId = null;
+            _workspaceState.NextConversationNumber = 1;
+
+            var workspaceStorage = await _workspacePersistenceService.LoadWorkspaceAsync();
+            if (workspaceStorage == null)
+            {
+                return;
+            }
+
+            _workspaceState.NextConversationNumber = Math.Max(1, workspaceStorage.NextConversationNumber);
+
+            foreach (var conversationIndex in workspaceStorage.Conversations ?? [])
+            {
+                try
+                {
+                    var conversationStorage = await _workspacePersistenceService.LoadConversationAsync(conversationIndex.ConversationId);
+                    if (conversationStorage == null)
+                    {
+                        continue;
+                    }
+
+                    var snapshot = CreateSnapshotFromStorage(conversationStorage);
+                    var conversation = new LauncherAiConversationTab
+                    {
+                        Id = conversationStorage.ConversationId,
+                        IsErrorAnalysisConversation = conversationStorage.IsErrorAnalysisConversation,
+                        CreatedAtUtc = conversationStorage.CreatedAtUtc == default ? conversationIndex.CreatedAtUtc : conversationStorage.CreatedAtUtc,
+                        LastUpdatedAtUtc = conversationStorage.LastUpdatedAtUtc == default ? conversationIndex.LastUpdatedAtUtc : conversationStorage.LastUpdatedAtUtc,
+                        Interruption = null,
+                        Snapshot = snapshot,
+                        Title = conversationStorage.Title ?? string.Empty,
+                        ToolTip = conversationStorage.ToolTip ?? string.Empty,
+                    };
+
+                    if (string.IsNullOrWhiteSpace(conversation.Title))
+                    {
+                        ApplyConversationMetadata(conversation, snapshot, 0);
+                    }
+
+                    _workspaceState.Conversations.Add(conversation);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[LauncherAiPersistence] 恢复会话失败: {conversationIndex.ConversationId}, {ex.Message}");
+                }
+            }
+
+            _workspaceState.SelectedConversationId = ResolveConversationId(workspaceStorage.SelectedConversationId);
+            _workspaceState.ActiveErrorAnalysisConversationId = ResolveConversationId(workspaceStorage.ActiveErrorAnalysisConversationId);
+        }
+        finally
+        {
+            _isRestoringWorkspace = false;
+        }
+    }
+
+    private Guid? ResolveConversationId(Guid? conversationId)
+    {
+        if (conversationId == null)
+        {
+            return null;
+        }
+
+        return _workspaceState.Conversations.Any(conversation => conversation.Id == conversationId.Value)
+            ? conversationId
+            : null;
+    }
+
+    private ErrorAnalysisSessionSnapshot CreateSnapshotFromStorage(LauncherAiConversationStorageModel conversationStorage)
+    {
+        var storage = conversationStorage.Session ?? new LauncherAiSessionStorageModel();
+        var chatMessages = (storage.ChatMessages ?? []).Select(CreateUiChatMessage).ToList();
+        if (conversationStorage.Interruption != null)
+        {
+            chatMessages.Add(CreateInterruptedConversationMessage(conversationStorage.Interruption));
+        }
+
+        return new ErrorAnalysisSessionSnapshot
+        {
+            ChatInput = storage.ChatInput ?? string.Empty,
+            PendingImageAttachments = RestoreAttachments(storage.PendingImageAttachments),
+            IsChatEnabled = storage.IsChatEnabled,
+            HasChatMessages = chatMessages.Count > 0,
+            ChatMessages = chatMessages,
+            ActionProposals = (storage.ActionProposals ?? []).Select(CreateActionProposal).ToList(),
+        };
+    }
+
+    private UiChatMessage CreateUiChatMessage(LauncherAiChatMessageStorageModel storage)
+    {
+        var role = storage.Role ?? string.Empty;
+        var content = storage.Content ?? string.Empty;
+        var message = new UiChatMessage(
+            role,
+            content,
+            storage.IncludeInAiHistory,
+            RestoreAttachments(storage.ImageAttachments))
+        {
+            ShowRoleHeader = storage.ShowRoleHeader,
+            DisplayRoleText = string.IsNullOrWhiteSpace(storage.DisplayRoleText) ? role : storage.DisplayRoleText,
+            AiHistoryContent = storage.AiHistoryContent,
+            ToolCallId = storage.ToolCallId,
+            ToolCalls = CloneToolCalls(storage.ToolCalls),
+            AiHistoryImageAttachments = storage.AiHistoryImageAttachments == null
+                ? null
+                : RestoreAttachments(storage.AiHistoryImageAttachments),
+            SuppressContentRendering = storage.SuppressContentRendering,
+        };
+
+        return message;
+    }
+
+    private List<ChatImageAttachment> RestoreAttachments(IEnumerable<LauncherAiAttachmentStorageModel>? attachments)
+    {
+        List<ChatImageAttachment> results = [];
+        foreach (var attachment in attachments ?? [])
+        {
+            var restored = _workspacePersistenceService.RestoreAttachment(attachment);
+            if (restored != null)
+            {
+                results.Add(restored);
+            }
+        }
+
+        return results;
+    }
+
+    private static LauncherAiActionProposalStorageModel CreateActionProposalStorageModel(AgentActionProposal proposal)
+    {
+        return new LauncherAiActionProposalStorageModel
+        {
+            ActionType = proposal.ActionType,
+            ButtonText = proposal.ButtonText,
+            DisplayMessage = proposal.DisplayMessage,
+            PermissionLevel = proposal.PermissionLevel.ToString(),
+            Parameters = new Dictionary<string, string>(proposal.Parameters, StringComparer.OrdinalIgnoreCase)
+        };
+    }
+
+    private static AgentActionProposal CreateActionProposal(LauncherAiActionProposalStorageModel storage)
+    {
+        return new AgentActionProposal
+        {
+            ActionType = storage.ActionType ?? string.Empty,
+            ButtonText = storage.ButtonText ?? string.Empty,
+            DisplayMessage = storage.DisplayMessage ?? string.Empty,
+            PermissionLevel = ParsePermissionLevel(storage.PermissionLevel),
+            Parameters = new Dictionary<string, string>(storage.Parameters ?? [], StringComparer.OrdinalIgnoreCase)
+        };
+    }
+
+    private static AgentToolPermissionLevel ParsePermissionLevel(string? permissionLevel)
+    {
+        return Enum.TryParse<AgentToolPermissionLevel>(permissionLevel, ignoreCase: true, out var parsed)
+            ? parsed
+            : AgentToolPermissionLevel.ConfirmationRequired;
+    }
+
+    private static List<ToolCallInfo>? CloneToolCalls(IEnumerable<ToolCallInfo>? toolCalls)
+    {
+        return toolCalls?.Select(toolCall => new ToolCallInfo
+        {
+            Id = toolCall.Id,
+            FunctionName = toolCall.FunctionName,
+            Arguments = toolCall.Arguments,
+        }).ToList();
+    }
+
+    private LauncherAiConversationInterruptionStorageModel? CreateConversationInterruption(LauncherAiConversationTab conversation)
+    {
+        if (SelectedConversation?.Id != conversation.Id)
+        {
+            return conversation.Interruption;
+        }
+
+        if (_sessionState.IsAiAnalyzing)
+        {
+            return new LauncherAiConversationInterruptionStorageModel
+            {
+                Kind = "ai_analysis_in_progress",
+                InterruptedAtUtc = DateTimeOffset.UtcNow,
+                Message = _languageSelectorService.Language == "zh-CN"
+                    ? "上次应用退出时，此对话中的 AI 处理已中断。聊天历史已恢复，但不会自动继续，请根据需要重新发起请求。"
+                    : "The previous AI run in this conversation was interrupted when the app exited. History has been restored, but it will not resume automatically."
+            };
+        }
+
+        if (_sessionState.HasPendingToolContinuation)
+        {
+            return new LauncherAiConversationInterruptionStorageModel
+            {
+                Kind = "tool_continuation_pending",
+                InterruptedAtUtc = DateTimeOffset.UtcNow,
+                Message = _languageSelectorService.Language == "zh-CN"
+                    ? "上次应用退出时，此对话中的待继续工具流程已中断。聊天历史和待确认操作已恢复，但不会自动继续，请根据需要重新发起请求。"
+                    : "The pending tool flow in this conversation was interrupted when the app exited. History and pending actions were restored, but the flow will not resume automatically."
+            };
+        }
+
+        return conversation.Interruption;
+    }
+
+    private UiChatMessage CreateInterruptedConversationMessage(LauncherAiConversationInterruptionStorageModel interruption)
+    {
+        var content = string.IsNullOrWhiteSpace(interruption.Message)
+            ? (_languageSelectorService.Language == "zh-CN"
+                ? "上次应用退出时，此对话已中断。聊天历史已恢复，但不会自动继续。"
+                : "This conversation was interrupted when the app exited. History has been restored, but it will not resume automatically.")
+            : interruption.Message!;
+
+        return new UiChatMessage("assistant", content, includeInAiHistory: false)
+        {
+            ShowRoleHeader = false,
+            AiHistoryContent = null,
+        };
+    }
+
+    private void QueueConversationDeletion(Guid conversationId)
+    {
+        if (_lifecycleCts.IsCancellationRequested)
+        {
+            return;
+        }
+
+        _ = DeleteConversationFromPersistenceAsync(conversationId, _lifecycleCts.Token);
+    }
+
+    private async Task DeleteConversationFromPersistenceAsync(Guid conversationId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await _persistenceSemaphore.WaitAsync(cancellationToken);
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await _workspacePersistenceService.DeleteConversationAsync(conversationId, cancellationToken);
+            }
+            finally
+            {
+                _persistenceSemaphore.Release();
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[LauncherAiPersistence] 删除会话失败: {conversationId}, {ex.Message}");
+        }
     }
 }

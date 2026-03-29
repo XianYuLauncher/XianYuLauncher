@@ -9,6 +9,12 @@ public sealed partial class LauncherAiConversationTab : ObservableObject
 
     public bool IsErrorAnalysisConversation { get; init; }
 
+    public DateTimeOffset CreatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+
+    public DateTimeOffset LastUpdatedAtUtc { get; set; } = DateTimeOffset.UtcNow;
+
+    public LauncherAiConversationInterruptionStorageModel? Interruption { get; set; }
+
     [ObservableProperty]
     private string _title = string.Empty;
 
