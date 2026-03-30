@@ -284,6 +284,43 @@ public sealed class CommunityResourceUpdateCheckServiceTests : IDisposable
         _hashLookupCenter.RequestedModrinthScopes.Should().Contain("modrinth:version_files:update:sha1:loaders=neoforge:gameVersions=1.21.1");
     }
 
+    [Fact]
+    public async Task CheckAsync_FallsBackToVersionNameStringInferenceForNeoForge()
+    {
+        const string targetVersionName = "NeoForge-1.21.1";
+        CreateVersionDirectory(targetVersionName);
+
+        string modFile = CreateFile(Path.Combine(_gameDirectory, "mods", "neoforge.jar"), "neoforge-mod-content");
+        string modHash = ComputeSha1(modFile);
+
+        ConfigureVersionInfo(
+            string.Empty,
+            string.Empty,
+            extractedVersionConfigFactory: _ => new VersionConfig
+            {
+                MinecraftVersion = "1.21.1",
+                ModLoaderType = string.Empty,
+            });
+
+        _hashLookupCenter.SetModrinthVersions(
+            "modrinth:version_files:sha1",
+            (modHash, BuildModrinthVersion("neo-v1", "neo-project", "2.0.0", "neoforge.jar", modHash)));
+        _hashLookupCenter.SetModrinthVersions(
+            "modrinth:version_files:update:sha1:loaders=neoforge:gameVersions=1.21.1",
+            (modHash, BuildModrinthVersion("neo-v2", "neo-project", "2.1.0", "neoforge.jar", new string('c', 40))));
+
+        CommunityResourceUpdateCheckResult result = await _service.CheckAsync(new CommunityResourceUpdateCheckRequest
+        {
+            TargetVersionName = targetVersionName,
+            ResolvedGameDirectory = _gameDirectory,
+        });
+
+        result.MinecraftVersion.Should().Be("1.21.1");
+        result.ModLoaderType.Should().Be("neoforge");
+        _hashLookupCenter.RequestedModrinthScopes.Should().Contain("modrinth:version_files:update:sha1:loaders=neoforge:gameVersions=1.21.1");
+        _hashLookupCenter.RequestedModrinthScopes.Should().NotContain("modrinth:version_files:update:sha1:loaders=forge:gameVersions=1.21.1");
+    }
+
     private void ConfigureVersionInfo(
         string minecraftVersion,
         string modLoaderType,

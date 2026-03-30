@@ -364,9 +364,10 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
         RemoveStaleTaskItems(snapshot);
         RemoveStaleGroupItems(batchSummaries.Select(task => task.TaskId));
 
-        RunningCount = snapshot.Count(task => task.State == DownloadTaskState.Downloading && !IsCommunityUpdateBatchSummary(task));
-        QueuedCount = snapshot.Count(task => task.State == DownloadTaskState.Queued && !IsCommunityUpdateBatchSummary(task));
-        FailedCount = snapshot.Count(task => task.State == DownloadTaskState.Failed && !IsCommunityUpdateBatchSummary(task));
+        RunningCount = runningGroups.Count + runningTasks.Count;
+        QueuedCount = queuedGroups.Count + queuedTasks.Count;
+        FailedCount = recentGroups.Count(group => string.Equals(group.SummaryTask.State, DownloadTaskState.Failed.ToString(), StringComparison.Ordinal))
+            + recentTasks.Count(task => string.Equals(task.State, DownloadTaskState.Failed.ToString(), StringComparison.Ordinal));
         HasRunningTasks = runningGroups.Count > 0 || runningTasks.Count > 0;
         HasQueuedTasks = queuedGroups.Count > 0 || queuedTasks.Count > 0;
         HasRecentTasks = recentGroups.Count > 0 || recentTasks.Count > 0;

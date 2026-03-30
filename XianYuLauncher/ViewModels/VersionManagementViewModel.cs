@@ -816,6 +816,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private string? _currentOperationQueueScopeKey;
     private int _currentOperationQueuePendingCount;
     private bool _isOperationQueueEventsSubscribed;
+    private bool _isDownloadTaskEventsSubscribed;
     
     /// <summary>
     /// 用于取消页面异步操作的令牌源
@@ -925,7 +926,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         ExtensionInstallDialogTitle = "VersionManagerPage_SaveConfigDialog_Title".GetLocalized();
         ResourceTransferState = new ResourceTransferStateViewModel(resourceTransferInfrastructureService);
         ResourceTransferState.PropertyChanged += ResourceTransferState_PropertyChanged;
-        _downloadTaskManager.TaskStateChanged += DownloadTaskManager_TaskStateChanged;
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -1298,6 +1298,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     public void OnNavigatedTo(object parameter)
     {
         SubscribeOperationQueueEvents();
+        SubscribeDownloadTaskEvents();
         _isPageReady = false;
         if (parameter is VersionListViewModel.VersionInfoItem version)
         {
@@ -1315,6 +1316,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     public void OnNavigatedFrom()
     {
         UnsubscribeOperationQueueEvents();
+        UnsubscribeDownloadTaskEvents();
+        _isPageReady = false;
 
         // 极速退出策略：直接放弃清理，让 GC 处理
         // 标记为 null，防止后续访问
@@ -2308,6 +2311,28 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _operationQueueService.TaskStateChanged -= OperationQueueService_TaskStateChanged;
         _operationQueueService.TaskProgressChanged -= OperationQueueService_TaskProgressChanged;
         _isOperationQueueEventsSubscribed = false;
+    }
+
+    private void SubscribeDownloadTaskEvents()
+    {
+        if (_isDownloadTaskEventsSubscribed)
+        {
+            return;
+        }
+
+        _downloadTaskManager.TaskStateChanged += DownloadTaskManager_TaskStateChanged;
+        _isDownloadTaskEventsSubscribed = true;
+    }
+
+    private void UnsubscribeDownloadTaskEvents()
+    {
+        if (!_isDownloadTaskEventsSubscribed)
+        {
+            return;
+        }
+
+        _downloadTaskManager.TaskStateChanged -= DownloadTaskManager_TaskStateChanged;
+        _isDownloadTaskEventsSubscribed = false;
     }
 
     private void OperationQueueService_TaskStateChanged(object? sender, OperationTaskInfo e)
@@ -3436,12 +3461,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             return;
         }
 
-        if (!_isPageReady || _pageCancellationTokenSource?.IsCancellationRequested == true || SelectedVersion == null)
-        {
-            return;
-        }
-
-        if (!string.Equals(taskInfo.VersionName, SelectedVersion.Name, StringComparison.OrdinalIgnoreCase))
+        if (!CanRefreshCommunityResources(taskInfo.VersionName))
         {
             return;
         }
@@ -3455,18 +3475,18 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         try
         {
-            if (!_isPageReady || _pageCancellationTokenSource?.IsCancellationRequested == true || SelectedVersion == null)
-            {
-                return;
-            }
-
-            if (!string.Equals(taskInfo.VersionName, SelectedVersion.Name, StringComparison.OrdinalIgnoreCase))
+            if (!CanRefreshCommunityResources(taskInfo.VersionName))
             {
                 return;
             }
 
             await _uiDispatcher.RunOnUiThreadAsync(async () =>
             {
+                if (!CanRefreshCommunityResources(taskInfo.VersionName))
+                {
+                    return;
+                }
+
                 await ModsModule.ReloadModsWithIconsAsync();
                 await ShadersModule.ReloadShadersWithIconsAsync();
                 await ResourcePacksModule.ReloadResourcePacksWithIconsAsync();
@@ -3478,6 +3498,16 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         {
             _communityResourceRefreshSemaphore.Release();
         }
+    }
+
+    private bool CanRefreshCommunityResources(string? versionName)
+    {
+        if (!_isPageReady || _pageCancellationTokenSource == null || _pageCancellationTokenSource.IsCancellationRequested || SelectedVersion == null)
+        {
+            return false;
+        }
+
+        return string.Equals(versionName, SelectedVersion.Name, StringComparison.OrdinalIgnoreCase);
     }
 
     [RelayCommand]

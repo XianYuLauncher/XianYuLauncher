@@ -527,14 +527,14 @@ public sealed class CommunityResourceUpdateCheckService : ICommunityResourceUpda
             return "fabric";
         }
 
-        if (versionName.Contains("forge", StringComparison.OrdinalIgnoreCase))
-        {
-            return "forge";
-        }
-
         if (versionName.Contains("neoforge", StringComparison.OrdinalIgnoreCase))
         {
             return "neoforge";
+        }
+
+        if (versionName.Contains("forge", StringComparison.OrdinalIgnoreCase))
+        {
+            return "forge";
         }
 
         if (versionName.Contains("quilt", StringComparison.OrdinalIgnoreCase))
