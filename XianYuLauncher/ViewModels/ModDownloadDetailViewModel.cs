@@ -276,9 +276,6 @@ namespace XianYuLauncher.ViewModels
             }
         }
 
-        // 安装取消令牌源
-        private CancellationTokenSource? _installCancellationTokenSource;
-        
         // CurseForge文件加载取消令牌源
         private CancellationTokenSource? _curseForgeLoadCancellationTokenSource;
 
@@ -1787,15 +1784,7 @@ namespace XianYuLauncher.ViewModels
         [RelayCommand]
         public void CancelInstall()
         {
-            if (_installCancellationTokenSource == null)
-            {
-                InstallStatus = "整合包安装已交给下载队列，请在下载队列中取消任务。";
-                return;
-            }
-
-            _installCancellationTokenSource?.Cancel();
-            IsInstalling = false;
-            InstallStatus = "安装已取消";
+            InstallStatus = "整合包安装已交给下载队列，请在下载队列中取消任务。";
         }
 
         [RelayCommand]
@@ -2036,8 +2025,6 @@ namespace XianYuLauncher.ViewModels
             InstallProgress = 0;
             InstallProgressText = "0%";
             InstallSpeed = string.Empty;
-            _installCancellationTokenSource = new CancellationTokenSource();
-            var installCancellationTokenSource = _installCancellationTokenSource;
 
             try
             {
@@ -2059,8 +2046,9 @@ namespace XianYuLauncher.ViewModels
                         ModpackIconSource = ModIconUrl,
                         SourceProjectId = ModId,
                         SourceVersionId = ResolveSourceVersionId(modVersion),
+                        ShowInTeachingTip = true,
                     },
-                    installCancellationTokenSource.Token);
+                    CancellationToken.None);
 
                 WriteInformationLog($"整合包安装已加入下载队列，TaskId: {taskId}");
                 InstallStatus = "整合包安装已加入下载队列，请查看下载提示。";
@@ -2082,8 +2070,6 @@ namespace XianYuLauncher.ViewModels
             finally
             {
                 IsInstalling = false;
-                _installCancellationTokenSource?.Dispose();
-                _installCancellationTokenSource = null;
             }
         }
 
@@ -2219,13 +2205,6 @@ namespace XianYuLauncher.ViewModels
                 _downloadCancellationTokenSource = null;
             }
 
-            // 取消安装任务
-            if (_installCancellationTokenSource != null)
-            {
-                _installCancellationTokenSource.Cancel();
-                _installCancellationTokenSource.Dispose();
-                _installCancellationTokenSource = null;
-            }
         }
         
         /// <summary>

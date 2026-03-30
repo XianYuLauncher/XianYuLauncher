@@ -632,6 +632,46 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
+    public async Task StartCustomManagedTaskWithTaskIdAsync_WhenModpackTaskCancelled_ShouldUseCancelledTerminalState()
+    {
+        // Arrange
+        var runningObserved = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _downloadTaskManager.TaskStateChanged += (_, task) =>
+        {
+            if (task.TaskCategory == DownloadTaskCategory.ModpackDownload
+                && task.State == DownloadTaskState.Downloading)
+            {
+                runningObserved.TrySetResult(task.TaskId);
+            }
+        };
+
+        // Act
+        var taskId = await _downloadTaskManager.StartCustomManagedTaskWithTaskIdAsync(
+            "Create Arcane Colony",
+            "Create Arcane Colony",
+            DownloadTaskCategory.ModpackDownload,
+            async executionContext => await Task.Delay(TimeSpan.FromSeconds(5), executionContext.CancellationToken),
+            showInTeachingTip: true,
+            allowRetry: false,
+            displayNameResourceKey: "DownloadQueue_DisplayName_ModpackInstall",
+            displayNameResourceArguments: ["Create Arcane Colony"],
+            taskTypeResourceKey: "DownloadQueue_TaskType_ModpackDownload");
+
+        await runningObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        _downloadTaskManager.CancelTask(taskId);
+        await Task.Delay(150);
+
+        // Assert
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.TaskCategory == DownloadTaskCategory.ModpackDownload
+            && task.State == DownloadTaskState.Cancelled
+            && task.StatusResourceKey == "DownloadQueue_Status_ModpackInstallCancelled"
+            && task.ShowInTeachingTip
+            && !task.CanRetry);
+    }
+
+    [Fact]
     public async Task StartFileDownloadAsync_WhenDisplayMetadataProvided_ShouldPreservePresentationMetadata()
     {
         // Arrange
@@ -710,8 +750,14 @@ public class DownloadTaskManagerTests
     public async Task CancelTask_WhenTaskIsRunning_ShouldSetCancelledState()
     {
         // Arrange
-        DownloadTaskInfo? finalTask = null;
-        _downloadTaskManager.TaskStateChanged += (_, task) => finalTask = task;
+        var cancelledObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _downloadTaskManager.TaskStateChanged += (_, task) =>
+        {
+            if (task.State == DownloadTaskState.Cancelled)
+            {
+                cancelledObserved.TrySetResult(task);
+            }
+        };
 
         _minecraftVersionServiceMock
             .Setup(m => m.DownloadVersionAsync(
@@ -729,10 +775,10 @@ public class DownloadTaskManagerTests
 
         // Act
         _downloadTaskManager.CancelTask(runningTask.TaskId);
+        var finalTask = await cancelledObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         // Assert
-        finalTask.Should().NotBeNull();
-        finalTask!.State.Should().Be(DownloadTaskState.Cancelled);
+        finalTask.State.Should().Be(DownloadTaskState.Cancelled);
     }
 
     [Fact]

@@ -294,6 +294,8 @@ public class DownloadTaskManager : IDownloadTaskManager
         ManagedDownloadTask? managedTask;
         ExternalDownloadTask? externalTask = null;
         Action? externalCancelAction = null;
+        bool shouldMarkManagedTaskCancelled = false;
+        bool shouldNotifyManagedTaskProgress = false;
 
         lock (_lock)
         {
@@ -335,20 +337,37 @@ public class DownloadTaskManager : IDownloadTaskManager
             else
             {
                 _logger.LogInformation("正在取消下载任务: {TaskName}", managedTask.Info.TaskName);
-                managedTask.Info.State = DownloadTaskState.Cancelled;
-                ResetTaskSpeed(managedTask.Info);
-                UpdateTaskStatus(managedTask.Info, "下载已取消", "DownloadQueue_Status_Cancelled");
-                UpdateQueuePositionsLocked();
-
                 if (managedTask.IsRunning)
                 {
+                    managedTask.Info.AllowCancel = false;
+                    UpdateTaskStatus(managedTask.Info, "正在取消...", "DownloadQueue_Status_Cancelling");
+                    managedTask.Info.QueuePosition = null;
+                    shouldNotifyManagedTaskProgress = true;
                     managedTask.CancellationTokenSource.Cancel();
                 }
+                else
+                {
+                    shouldMarkManagedTaskCancelled = true;
+                }
+
+                UpdateQueuePositionsLocked();
             }
         }
 
         if (managedTask != null)
         {
+            if (shouldMarkManagedTaskCancelled)
+            {
+                MarkTaskCancelled(managedTask.Info);
+                return;
+            }
+
+            if (shouldNotifyManagedTaskProgress)
+            {
+                OnTaskProgressChanged(managedTask.Info);
+                return;
+            }
+
             OnTaskStateChanged(managedTask.Info);
             return;
         }
