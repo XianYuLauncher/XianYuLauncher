@@ -123,7 +123,7 @@ public partial class DownloadQueueTaskGroupViewModel : ObservableObject
     private string _aggregateSpeedText = string.Empty;
 
     [ObservableProperty]
-    private bool _isExpanded = true;
+    private bool _isExpanded = false;
 
     [ObservableProperty]
     private bool _hasChildTasks;
