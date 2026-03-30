@@ -23,7 +23,6 @@
                                    Stretch="UniformToFill"
                                    Visibility="{x:Bind HasCustomIcon, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
                             <FontIcon Glyph="{x:Bind IconGlyph, Mode=OneWay}"
-                                      Foreground="{ThemeResource AccentFillColorDefaultBrush}"
                                       HorizontalAlignment="Center"
                                       VerticalAlignment="Center"
                                       Visibility="{x:Bind HasCustomIcon, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
@@ -79,7 +78,6 @@
                                    Stretch="UniformToFill"
                                    Visibility="{x:Bind HasCustomIcon, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
                             <FontIcon Glyph="{x:Bind IconGlyph, Mode=OneWay}"
-                                      Foreground="{ThemeResource AccentFillColorDefaultBrush}"
                                       HorizontalAlignment="Center"
                                       VerticalAlignment="Center"
                                       Visibility="{x:Bind HasCustomIcon, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
@@ -148,8 +146,7 @@
                     </StackPanel>
                 </controls:SettingsExpander.Header>
                 <controls:SettingsExpander.HeaderIcon>
-                    <FontIcon Glyph="{x:Bind SummaryTask.IconGlyph, Mode=OneWay}"
-                              Foreground="{ThemeResource AccentFillColorDefaultBrush}" />
+                    <FontIcon Glyph="{x:Bind SummaryTask.IconGlyph, Mode=OneWay}" />
                 </controls:SettingsExpander.HeaderIcon>
                 <controls:SettingsExpander.Content>
                     <StackPanel Orientation="Horizontal" Spacing="16" HorizontalAlignment="Right" VerticalAlignment="Center">
