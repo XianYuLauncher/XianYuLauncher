@@ -17,6 +17,7 @@ internal static class ResourceCenterServiceExtensions
         services.AddSingleton<ICommunityResourceInstallPlanner, CommunityResourceInstallPlanner>();
         services.AddSingleton<ICommunityResourceMetadataService, CommunityResourceMetadataService>();
         services.AddSingleton<ICommunityResourceInventoryService, CommunityResourceInventoryService>();
+        services.AddSingleton<ICommunityResourceUpdateCheckService, CommunityResourceUpdateCheckService>();
 
         services.AddHttpClient(nameof(ModrinthService));
         services.AddSingleton<ModrinthService>(sp =>
