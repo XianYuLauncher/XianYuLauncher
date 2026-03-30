@@ -32,9 +32,8 @@ namespace XianYuLauncher.ViewModels
         private readonly IDownloadTaskManager _downloadTaskManager;
         private readonly IResourceDialogService _resourceDialogService;
         private readonly ICommonDialogService _commonDialogService;
-        private readonly IProgressDialogService _progressDialogService;
         private readonly INavigationService _navigationService;
-        private readonly IModpackInstallationService _modpackInstallationService;
+        private readonly IModpackDownloadQueueService _modpackDownloadQueueService;
         private readonly IModResourceDownloadOrchestrator _modResourceDownloadOrchestrator;
         private readonly IModDetailLoadOrchestrator _modDetailLoadOrchestrator;
         private readonly IVersionInfoService _versionInfoService;
@@ -517,9 +516,8 @@ namespace XianYuLauncher.ViewModels
             IDownloadTaskManager downloadTaskManager,
             IResourceDialogService resourceDialogService,
             ICommonDialogService commonDialogService,
-            IProgressDialogService progressDialogService,
             INavigationService navigationService,
-            IModpackInstallationService modpackInstallationService,
+            IModpackDownloadQueueService modpackDownloadQueueService,
             IModResourceDownloadOrchestrator modResourceDownloadOrchestrator,
             IModDetailLoadOrchestrator modDetailLoadOrchestrator,
             IVersionInfoService versionInfoService,
@@ -536,9 +534,8 @@ namespace XianYuLauncher.ViewModels
             _downloadTaskManager = downloadTaskManager;
             _resourceDialogService = resourceDialogService;
             _commonDialogService = commonDialogService;
-            _progressDialogService = progressDialogService;
             _navigationService = navigationService;
-            _modpackInstallationService = modpackInstallationService;
+            _modpackDownloadQueueService = modpackDownloadQueueService;
             _modResourceDownloadOrchestrator = modResourceDownloadOrchestrator;
             _modDetailLoadOrchestrator = modDetailLoadOrchestrator;
             _versionInfoService = versionInfoService;
@@ -1790,6 +1787,12 @@ namespace XianYuLauncher.ViewModels
         [RelayCommand]
         public void CancelInstall()
         {
+            if (_installCancellationTokenSource == null)
+            {
+                InstallStatus = "整合包安装已交给下载队列，请在下载队列中取消任务。";
+                return;
+            }
+
             _installCancellationTokenSource?.Cancel();
             IsInstalling = false;
             InstallStatus = "安装已取消";
@@ -2032,29 +2035,9 @@ namespace XianYuLauncher.ViewModels
             InstallStatus = "正在准备整合包安装...";
             InstallProgress = 0;
             InstallProgressText = "0%";
+            InstallSpeed = string.Empty;
             _installCancellationTokenSource = new CancellationTokenSource();
             var installCancellationTokenSource = _installCancellationTokenSource;
-
-            var dialogCloseTcs = new TaskCompletionSource<bool>();
-
-            var dialogTask = _progressDialogService.ShowObservableProgressDialogAsync(
-                "ModDownloadDetailPage_ModpackInstallDialog_Title".GetLocalized(),
-                () => InstallStatus,
-                () => InstallProgress,
-                () => InstallProgressText,
-                this,
-                primaryButtonText: null,
-                closeButtonText: "ModDownloadDetailPage_ModpackInstallDialog_CloseButtonText".GetLocalized(),
-                autoCloseWhen: dialogCloseTcs.Task,
-                getSpeed: () => InstallSpeed);
-            
-            _ = dialogTask.ContinueWith(t =>
-            {
-                if (t.Result == ContentDialogResult.None)
-                {
-                    _installCancellationTokenSource?.Cancel();
-                }
-            }, TaskScheduler.Default);
 
             try
             {
@@ -2064,66 +2047,34 @@ namespace XianYuLauncher.ViewModels
 
                 string minecraftPath = _fileService.GetMinecraftDataPath();
 
-                var progress = new Progress<ModpackInstallProgress>(p =>
-                {
-                    _uiDispatcher.TryEnqueue(() =>
+                string taskId = await _modpackDownloadQueueService.StartInstallAsync(
+                    new ModpackDownloadQueueRequest
                     {
-                        InstallProgress = p.Progress;
-                        InstallProgressText = p.ProgressText;
-                        InstallStatus = p.Status;
-                        if (!string.IsNullOrEmpty(p.Speed))
-                            InstallSpeed = p.Speed;
-                    });
-                });
-
-                var result = await _modpackInstallationService.InstallModpackAsync(
-                    resolvedDownloadUrl,
-                    modVersion.FileName,
-                    ModName,
-                    targetVersionName,
-                    minecraftPath,
-                    modVersion.IsCurseForge,
-                    progress,
-                    ModIconUrl,
-                    ModId,
-                    ResolveSourceVersionId(modVersion),
+                        DownloadUrl = resolvedDownloadUrl,
+                        FileName = modVersion.FileName,
+                        ModpackDisplayName = ModName,
+                        TargetVersionName = targetVersionName,
+                        MinecraftPath = minecraftPath,
+                        IsFromCurseForge = modVersion.IsCurseForge,
+                        ModpackIconSource = ModIconUrl,
+                        SourceProjectId = ModId,
+                        SourceVersionId = ResolveSourceVersionId(modVersion),
+                    },
                     installCancellationTokenSource.Token);
 
-                if (result.Success)
-                {
-                    await Task.Delay(500);
-                    dialogCloseTcs.TrySetResult(true);
-                    await ShowMessageAsync(string.Format(
-                        "ModDownloadDetailPage_ModpackInstall_Success".GetLocalized(),
-                        result.ModpackName));
-                }
-                else
-                {
-                    dialogCloseTcs.TrySetResult(true);
-                    if (result.ErrorMessage != "安装已取消")
-                    {
-                        ErrorMessage = result.ErrorMessage ?? string.Empty;
-                        InstallStatus = "安装失败！";
-                        await ShowMessageAsync(string.Format(
-                            "ModDownloadDetailPage_ModpackInstall_Failed".GetLocalized(),
-                            result.ErrorMessage ?? "ModDownloadDetailPage_ModpackInstall_UnknownError".GetLocalized()));
-                    }
-                    else
-                    {
-                        InstallStatus = "安装已取消";
-                    }
-                }
+                WriteInformationLog($"整合包安装已加入下载队列，TaskId: {taskId}");
+                InstallStatus = "整合包安装已加入下载队列，请查看下载提示。";
+                InstallProgress = 0;
+                InstallProgressText = "0%";
             }
             catch (OperationCanceledException)
             {
                 InstallStatus = "安装已取消";
-                dialogCloseTcs.TrySetResult(true);
             }
             catch (Exception ex)
             {
                 ErrorMessage = ex.Message;
                 InstallStatus = "安装失败！";
-                dialogCloseTcs.TrySetResult(true);
                 await ShowMessageAsync(string.Format(
                     "ModDownloadDetailPage_ModpackInstall_Failed".GetLocalized(),
                     ex.Message));
