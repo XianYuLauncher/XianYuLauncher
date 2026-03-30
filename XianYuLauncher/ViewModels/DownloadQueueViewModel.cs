@@ -290,13 +290,14 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
 
         var snapshot = _downloadTaskManager.TasksSnapshot;
         var groupedTaskIds = new HashSet<string>(StringComparer.Ordinal);
+        var groupedSummaryTaskIds = new HashSet<string>(StringComparer.Ordinal);
 
         var runningGroups = new List<DownloadQueueTaskGroupViewModel>();
         var queuedGroups = new List<DownloadQueueTaskGroupViewModel>();
         var recentGroups = new List<DownloadQueueTaskGroupViewModel>();
 
         var batchSummaries = snapshot
-            .Where(IsCommunityUpdateBatchSummary)
+            .Where(IsPotentialGroupSummaryTask)
             .OrderBy(task => task.State == DownloadTaskState.Completed || task.State == DownloadTaskState.Failed || task.State == DownloadTaskState.Cancelled
                 ? task.LastUpdatedAtUtc
                 : task.CreatedAtUtc)
@@ -310,6 +311,12 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
                 .ThenBy(task => task.CreatedAtUtc)
                 .ToList();
 
+            if (childTasks.Count == 0)
+            {
+                continue;
+            }
+
+            groupedSummaryTaskIds.Add(summaryTask.TaskId);
             groupedTaskIds.Add(summaryTask.TaskId);
             foreach (var childTask in childTasks)
             {
@@ -375,7 +382,7 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
 
         var totalBytesPerSecond = snapshot
             .Where(task => task.State == DownloadTaskState.Downloading)
-            .Where(task => !IsCommunityUpdateBatchSummary(task))
+            .Where(task => !groupedSummaryTaskIds.Contains(task.TaskId))
             .Sum(task => Math.Max(0, task.SpeedBytesPerSecond));
 
         TotalSpeed = FormatSpeedText(totalBytesPerSecond);
@@ -438,14 +445,16 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
         }
     }
 
-    private static bool IsCommunityUpdateBatchSummary(DownloadTaskInfo task)
+    private static bool IsPotentialGroupSummaryTask(DownloadTaskInfo task)
     {
-        return task.TaskCategory == DownloadTaskCategory.CommunityResourceUpdateBatch;
+        return !string.IsNullOrWhiteSpace(task.BatchGroupKey)
+            && GetGroupedChildTaskCategory(task.TaskCategory).HasValue;
     }
 
     private static bool IsGroupChildTask(DownloadTaskInfo candidate, DownloadTaskInfo summary)
     {
-        if (candidate.TaskCategory != DownloadTaskCategory.CommunityResourceUpdateFile)
+        var groupedChildTaskCategory = GetGroupedChildTaskCategory(summary.TaskCategory);
+        if (groupedChildTaskCategory is null || candidate.TaskCategory != groupedChildTaskCategory.Value)
         {
             return false;
         }
@@ -458,6 +467,16 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
 
         return !string.IsNullOrWhiteSpace(summary.BatchGroupKey) &&
                string.Equals(candidate.BatchGroupKey, summary.BatchGroupKey, StringComparison.Ordinal);
+    }
+
+    private static DownloadTaskCategory? GetGroupedChildTaskCategory(DownloadTaskCategory summaryTaskCategory)
+    {
+        return summaryTaskCategory switch
+        {
+            DownloadTaskCategory.CommunityResourceUpdateBatch => DownloadTaskCategory.CommunityResourceUpdateFile,
+            DownloadTaskCategory.ModpackDownload => DownloadTaskCategory.ModpackInstallFile,
+            _ => null
+        };
     }
 
     private static int GetChildTaskSortOrder(DownloadTaskInfo task)
