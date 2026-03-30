@@ -39,6 +39,8 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
             iconSource: request.ModpackIconSource,
             allowCancel: true,
             allowRetry: false,
+            displayNameResourceKey: "DownloadQueue_DisplayName_ModpackInstall",
+            displayNameResourceArguments: [request.TargetVersionName.Trim()],
             taskTypeResourceKey: "DownloadQueue_TaskType_ModpackDownload");
     }
 
@@ -46,7 +48,10 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
         ModpackDownloadQueueRequest request,
         DownloadTaskExecutionContext context)
     {
-        context.ReportStatus(0, "正在准备整合包安装...");
+        context.ReportStatus(
+            0,
+            "正在准备整合包安装...",
+            "DownloadQueue_Status_PreparingModpackInstall");
 
         Progress<ModpackInstallProgress> progress = new(installProgress => ReportInstallProgress(context, installProgress));
 
@@ -81,14 +86,28 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
         var statusMessage = string.IsNullOrWhiteSpace(progress.Status)
             ? "正在处理整合包安装..."
             : progress.Status.Trim();
+        var (statusResourceKey, statusResourceArguments) = ResolveStatusPresentation(statusMessage);
 
         if (TryCreateDownloadProgressStatus(normalizedProgress, progress.Speed, out DownloadProgressStatus downloadStatus))
         {
-            context.ReportDownloadProgress(normalizedProgress, downloadStatus, statusMessage);
+            context.ReportDownloadProgress(normalizedProgress, downloadStatus, statusMessage, statusResourceKey, statusResourceArguments);
             return;
         }
 
-        context.ReportStatus(normalizedProgress, statusMessage);
+        context.ReportStatus(normalizedProgress, statusMessage, statusResourceKey, statusResourceArguments);
+    }
+
+    private static (string? StatusResourceKey, IReadOnlyList<string>? StatusResourceArguments) ResolveStatusPresentation(string statusMessage)
+    {
+        return statusMessage switch
+        {
+            "正在准备整合包安装..." => ("DownloadQueue_Status_PreparingModpackInstall", null),
+            "下载完成，正在解压整合包..." => ("DownloadQueue_Status_ModpackExtractingPackage", null),
+            "解压完成，正在解析整合包信息..." => ("DownloadQueue_Status_ModpackParsingManifest", null),
+            "版本下载完成，正在部署整合包文件..." => ("DownloadQueue_Status_ModpackDeployingFiles", null),
+            "正在下载整合包文件..." => ("DownloadQueue_Status_ModpackDownloadingFiles", null),
+            _ => (null, null)
+        };
     }
 
     private static bool TryCreateDownloadProgressStatus(

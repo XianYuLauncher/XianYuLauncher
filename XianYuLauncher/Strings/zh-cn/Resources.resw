@@ -267,6 +267,30 @@
   <data name="DownloadQueue_Status_Cancelling" xml:space="preserve">
     <value>正在取消...</value>
   </data>
+  <data name="DownloadQueue_Status_PreparingModpackInstall" xml:space="preserve">
+    <value>正在准备整合包安装...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackExtractingPackage" xml:space="preserve">
+    <value>正在解压整合包...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackParsingManifest" xml:space="preserve">
+    <value>正在解析整合包信息...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDeployingFiles" xml:space="preserve">
+    <value>版本下载完成，正在部署整合包文件...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingFiles" xml:space="preserve">
+    <value>正在下载整合包文件...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackInstallCompleted" xml:space="preserve">
+    <value>整合包安装完成</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackInstallFailedWithError" xml:space="preserve">
+    <value>整合包安装失败: {0}</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackInstallCancelled" xml:space="preserve">
+    <value>整合包安装已取消</value>
+  </data>
   <data name="DownloadQueue_Status_ValidatingFile" xml:space="preserve">
     <value>正在校验 {0}...</value>
   </data>
@@ -329,6 +353,9 @@
   </data>
   <data name="DownloadQueue_DisplayName_Server" xml:space="preserve">
     <value>服务端 {0}</value>
+  </data>
+  <data name="DownloadQueue_DisplayName_ModpackInstall" xml:space="preserve">
+    <value>整合包安装 · {0}</value>
   </data>
   <data name="SettingsPage_Title.Text" xml:space="preserve">
     <value>设置</value>

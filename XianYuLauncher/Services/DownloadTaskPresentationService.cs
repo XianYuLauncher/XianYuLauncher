@@ -132,6 +132,7 @@ public sealed class DownloadTaskPresentationService : IDownloadTaskPresentationS
         return taskTypeResourceKey switch
         {
             "DownloadQueue_TaskType_GameInstall" => "\xE7FC",
+            "DownloadQueue_TaskType_ModpackDownload" => "\xE7B8",
             "DownloadQueue_TaskType_CommunityResourceUpdateBatch" => "\xE72C",
             "DownloadQueue_TaskType_CommunityResourceUpdateFile" => "\xE8A5",
             _ => DefaultIconGlyph

@@ -1485,7 +1485,8 @@ public class DownloadTaskManager : IDownloadTaskManager
             task.State = DownloadTaskState.Completed;
             task.Progress = 100;
             ResetTaskSpeed(task);
-            UpdateTaskStatus(task, "下载完成", "DownloadQueue_Status_Completed");
+            var (statusMessage, statusResourceKey, statusResourceArguments) = GetCompletedStatusPresentation(task);
+            UpdateTaskStatus(task, statusMessage, statusResourceKey, statusResourceArguments);
             UpdateQueuePositionsLocked();
             shouldNotify = true;
         }
@@ -1510,7 +1511,8 @@ public class DownloadTaskManager : IDownloadTaskManager
             task.State = DownloadTaskState.Failed;
             task.ErrorMessage = errorMessage;
             ResetTaskSpeed(task);
-            UpdateTaskStatus(task, $"下载失败: {errorMessage}", "DownloadQueue_Status_FailedWithError", [errorMessage]);
+            var (statusMessage, statusResourceKey, statusResourceArguments) = GetFailedStatusPresentation(task, errorMessage);
+            UpdateTaskStatus(task, statusMessage, statusResourceKey, statusResourceArguments);
             UpdateQueuePositionsLocked();
             shouldNotify = true;
         }
@@ -1539,7 +1541,8 @@ public class DownloadTaskManager : IDownloadTaskManager
 
             task.State = DownloadTaskState.Cancelled;
             ResetTaskSpeed(task);
-            UpdateTaskStatus(task, "下载已取消", "DownloadQueue_Status_Cancelled");
+            var (statusMessage, statusResourceKey, statusResourceArguments) = GetCancelledStatusPresentation(task);
+            UpdateTaskStatus(task, statusMessage, statusResourceKey, statusResourceArguments);
             UpdateQueuePositionsLocked();
             shouldNotify = true;
         }
@@ -1586,6 +1589,35 @@ public class DownloadTaskManager : IDownloadTaskManager
             ? [.. statusResourceArguments]
             : [];
         task.LastUpdatedAtUtc = DateTimeOffset.UtcNow;
+    }
+
+    private static (string StatusMessage, string StatusResourceKey, IReadOnlyList<string>? StatusResourceArguments) GetCompletedStatusPresentation(DownloadTaskInfo task)
+    {
+        return task.TaskCategory switch
+        {
+            DownloadTaskCategory.ModpackDownload => ("整合包安装完成！", "DownloadQueue_Status_ModpackInstallCompleted", null),
+            _ => ("下载完成", "DownloadQueue_Status_Completed", null)
+        };
+    }
+
+    private static (string StatusMessage, string StatusResourceKey, IReadOnlyList<string>? StatusResourceArguments) GetFailedStatusPresentation(
+        DownloadTaskInfo task,
+        string errorMessage)
+    {
+        return task.TaskCategory switch
+        {
+            DownloadTaskCategory.ModpackDownload => ($"整合包安装失败: {errorMessage}", "DownloadQueue_Status_ModpackInstallFailedWithError", [errorMessage]),
+            _ => ($"下载失败: {errorMessage}", "DownloadQueue_Status_FailedWithError", [errorMessage])
+        };
+    }
+
+    private static (string StatusMessage, string StatusResourceKey, IReadOnlyList<string>? StatusResourceArguments) GetCancelledStatusPresentation(DownloadTaskInfo task)
+    {
+        return task.TaskCategory switch
+        {
+            DownloadTaskCategory.ModpackDownload => ("整合包安装已取消", "DownloadQueue_Status_ModpackInstallCancelled", null),
+            _ => ("下载已取消", "DownloadQueue_Status_Cancelled", null)
+        };
     }
 
     private static string? NormalizeTaskIconSource(string? iconSource)
