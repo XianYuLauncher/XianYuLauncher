@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Models.VersionManagement;
 
 namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 
@@ -100,6 +101,18 @@ public interface IVersionManagementResourceContext : IVersionManagementContext
 
     /// <summary>是否显示结果弹窗</summary>
     bool IsResultDialogVisible { get; set; }
+
+    #endregion
+
+    #region 社区资源更新
+
+    /// <summary>
+    /// 将选中的社区资源更新任务加入后台下载队列。
+    /// </summary>
+    Task<ResourceUpdateBatchResult> StartCommunityResourceUpdateAsync(
+        IEnumerable<IVersionManagementResourceInfo> resources,
+        string emptySelectionMessage,
+        bool suppressUiFeedback = false);
 
     #endregion
 

@@ -264,6 +264,27 @@
   <data name="DownloadQueue_Status_BackgroundDownloading" xml:space="preserve">
     <value>Downloading in background...</value>
   </data>
+  <data name="DownloadQueue_Status_Cancelling" xml:space="preserve">
+    <value>Cancelling...</value>
+  </data>
+  <data name="DownloadQueue_Status_ValidatingFile" xml:space="preserve">
+    <value>Validating {0}...</value>
+  </data>
+  <data name="DownloadQueue_Status_ApplyingFileUpdate" xml:space="preserve">
+    <value>Replacing {0}...</value>
+  </data>
+  <data name="DownloadQueue_Status_CommunityUpdateProgress" xml:space="preserve">
+    <value>Updated {0}/{1}, failed {2}</value>
+  </data>
+  <data name="DownloadQueue_Status_CommunityUpdateCompleted" xml:space="preserve">
+    <value>Batch complete: updated {0}/{1}, failed {2}</value>
+  </data>
+  <data name="DownloadQueue_Status_CommunityUpdateFailed" xml:space="preserve">
+    <value>Batch failed: updated {0}/{1}, failed {2}</value>
+  </data>
+  <data name="DownloadQueue_Status_CommunityUpdateCancelled" xml:space="preserve">
+    <value>Batch cancelled: updated {0}/{1}, failed {2}</value>
+  </data>
   <data name="DownloadQueue_TaskType_GameInstall" xml:space="preserve">
     <value>Game Install</value>
   </data>
@@ -285,11 +306,20 @@
   <data name="DownloadQueue_TaskType_ModpackDownload" xml:space="preserve">
     <value>Modpack Download</value>
   </data>
+  <data name="DownloadQueue_TaskType_CommunityResourceUpdateBatch" xml:space="preserve">
+    <value>Community Resource Update</value>
+  </data>
+  <data name="DownloadQueue_TaskType_CommunityResourceUpdateFile" xml:space="preserve">
+    <value>Update File</value>
+  </data>
   <data name="DownloadQueue_TaskType_FileDownload" xml:space="preserve">
     <value>File Download</value>
   </data>
   <data name="DownloadQueue_TaskType_Generic" xml:space="preserve">
     <value>Download Task</value>
+  </data>
+  <data name="DownloadQueue_DisplayName_CommunityResourceUpdateBatch" xml:space="preserve">
+    <value>Community Resource Update · {0}</value>
   </data>
   <data name="DownloadQueue_DisplayName_FavoriteImport" xml:space="preserve">
     <value>Favorites Import</value>

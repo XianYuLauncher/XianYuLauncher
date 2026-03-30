@@ -7,10 +7,16 @@ public class OperationTaskExecutionContext
 {
     private readonly Action<string, double> _reportProgress;
 
-    public OperationTaskExecutionContext(Action<string, double> reportProgress)
+    public OperationTaskExecutionContext(string taskId, Action<string, double> reportProgress)
     {
+        TaskId = taskId;
         _reportProgress = reportProgress;
     }
+
+    /// <summary>
+    /// 当前操作任务 ID。
+    /// </summary>
+    public string TaskId { get; }
 
     /// <summary>
     /// 上报进度与状态。

@@ -13,6 +13,7 @@ using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Models.VersionManagement;
@@ -32,8 +33,9 @@ public partial class ResourcePacksViewModel : ResourceManagementViewModelBase<Re
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
         ModInfoService modInfoService,
-        IUiDispatcher uiDispatcher)
-        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher)
+        IUiDispatcher uiDispatcher,
+        ICommunityResourceUpdateCheckService communityResourceUpdateCheckService)
+        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher, communityResourceUpdateCheckService)
     {
     }
 
@@ -84,6 +86,7 @@ public partial class ResourcePacksViewModel : ResourceManagementViewModelBase<Re
     protected override string GetSubFolder() => "resourcepacks";
     protected override string GetIconType() => "resourcepack";
     protected override bool GetIconFromRemote() => false;
+    protected override string GetUpdateCheckResourceType() => "resourcepack";
     protected override void ExecuteFilter() => FilterResourcePacks();
     protected override void NotifyUpdatableCountChanged() => OnPropertyChanged(nameof(UpdatableResourcePackCount));
     protected override bool IsSelectionModeEnabled { get => IsResourcePackSelectionModeEnabled; set => IsResourcePackSelectionModeEnabled = value; }
@@ -373,129 +376,7 @@ public partial class ResourcePacksViewModel : ResourceManagementViewModelBase<Re
         bool showResultDialog = true,
         bool suppressUiFeedback = false)
     {
-        var result = new ResourceUpdateBatchResult();
-
-        try
-        {
-            if (selectedPacks == null || selectedPacks.Count == 0)
-            {
-                var emptyMessage = "请先选择要更新的资源包";
-                if (!suppressUiFeedback)
-                {
-                    _context.StatusMessage = emptyMessage;
-                }
-                result.IsSuccess = false;
-                result.Message = emptyMessage;
-                return result;
-            }
-
-            var updateTargets = selectedPacks.ToList();
-
-            if (!suppressUiFeedback)
-            {
-                _context.DownloadProgressDialogTitle = "正在更新资源包...";
-                _context.IsDownloading = true;
-                _context.DownloadProgress = 0;
-                _context.CurrentDownloadItem = string.Empty;
-            }
-
-            var packHashIndex = VersionManagementUpdateOps.BuildHashIndex(
-                updateTargets,
-                pack => pack.FilePath,
-                _context.CalculateSHA1,
-                shouldSkip: pack => Directory.Exists(pack.FilePath),
-                onHashFailed: (pack, exception) =>
-                    System.Diagnostics.Debug.WriteLine($"资源包哈希计算失败: {pack.Name}, 错误: {exception.Message}"));
-            var packHashes = packHashIndex.Hashes;
-            var packFilePathMap = packHashIndex.FilePathMap;
-
-            if (packHashes.Count == 0)
-            {
-                var noZipMessage = "没有可更新的资源包文件（仅支持.zip文件更新）";
-                if (!suppressUiFeedback)
-                {
-                    _context.StatusMessage = noZipMessage;
-                    _context.IsDownloading = false;
-                }
-                result.IsSuccess = false;
-                result.Message = noZipMessage;
-                return result;
-            }
-
-            var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
-            string gameVersion = await VersionManagementUpdateOps.ResolveGameVersionAsync(
-                _context.SelectedVersion, versionInfoService);
-
-            string packsPath = _context.GetVersionSpecificPath("resourcepacks");
-
-            int updatedCount = 0;
-            int upToDateCount = 0;
-
-            var modrinthResult = await VersionManagementResourceUpdateOps.TryUpdateResourcePacksViaModrinthAsync(
-                _modrinthService, packHashes, packFilePathMap, gameVersion, packsPath,
-                _context.DownloadModAsync, _context.CalculateSHA1);
-            updatedCount += modrinthResult.UpdatedCount;
-            upToDateCount += modrinthResult.UpToDateCount;
-
-            var failedPacks = updateTargets
-                .Where(p => !Directory.Exists(p.FilePath) && !modrinthResult.ProcessedMods.Contains(p.FilePath))
-                .ToList();
-
-            if (failedPacks.Count > 0)
-            {
-                var curseForgeResult = await VersionManagementResourceUpdateOps.TryUpdateResourcePacksViaCurseForgeAsync(
-                    _curseForgeService, failedPacks, gameVersion, packsPath,
-                    _context.DownloadModAsync);
-                updatedCount += curseForgeResult.UpdatedCount;
-                upToDateCount += curseForgeResult.UpToDateCount;
-            }
-
-            await ReloadResourcePacksWithIconsAsync();
-
-            var statusMessage = $"{updatedCount} 个资源包已更新，{upToDateCount} 个资源包已是最新";
-            if (!suppressUiFeedback)
-            {
-                _context.StatusMessage = statusMessage;
-                if (showResultDialog)
-                {
-                    _context.UpdateResults = statusMessage;
-                    _context.IsResultDialogVisible = true;
-                }
-            }
-
-            result.IsSuccess = true;
-            result.UpdatedCount = updatedCount;
-            result.UpToDateCount = upToDateCount;
-            result.FailedCount = Math.Max(0, updateTargets.Count - updatedCount - upToDateCount);
-            result.Message = statusMessage;
-        }
-        catch (Exception ex)
-        {
-            var errorMessage = $"更新资源包失败: {ex.Message}";
-            if (!suppressUiFeedback)
-            {
-                _context.StatusMessage = errorMessage;
-                if (showResultDialog)
-                {
-                    _context.IsResultDialogVisible = true;
-                    _context.UpdateResults = $"更新失败: {ex.Message}";
-                }
-            }
-
-            result.IsSuccess = false;
-            result.Message = errorMessage;
-            result.Errors.Add(ex.Message);
-        }
-        finally
-        {
-            if (!suppressUiFeedback)
-            {
-                _context.IsDownloading = false;
-                _context.DownloadProgress = 0;
-            }
-        }
-
-        return result;
+        return await _context.StartCommunityResourceUpdateAsync(selectedPacks, "请先选择要更新的资源包", suppressUiFeedback);
     }
 
     [RelayCommand]

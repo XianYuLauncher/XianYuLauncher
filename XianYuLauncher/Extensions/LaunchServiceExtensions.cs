@@ -19,6 +19,7 @@ internal static class LaunchServiceExtensions
         services.AddSingleton<IVersionConfigService, VersionConfigService>();
         services.AddSingleton<ILaunchSettingsResolver, LaunchSettingsResolver>();
         services.AddSingleton<IRegionValidator, RegionValidator>();
+        services.AddSingleton<WorldDataService>();
         services.AddSingleton<TerracottaService>();
         services.AddTransient<IGameProcessMonitor, GameProcessMonitor>();
 

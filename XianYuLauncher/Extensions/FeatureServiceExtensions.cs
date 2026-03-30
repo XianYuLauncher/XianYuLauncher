@@ -54,6 +54,9 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentToolHandler, SearchCommunityResourcesToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetCommunityResourceFilesToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetInstancesToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetInstanceCommunityResourcesToolHandler>();
+        services.AddSingleton<IAgentToolHandler, CheckInstanceCommunityResourceUpdatesToolHandler>();
+        services.AddSingleton<IAgentToolHandler, UpdateInstanceCommunityResourcesToolHandler>();
         services.AddSingleton<IAgentToolHandler, InstallCommunityResourceToolHandler>();
         services.AddSingleton<IAgentToolHandler, SearchModrinthProjectToolHandler>();
         services.AddSingleton<IAgentToolHandler, DeleteModToolHandler>();
@@ -61,6 +64,7 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentToolHandler, SwitchJavaForVersionToolHandler>();
         services.AddSingleton<IAgentActionHandler, InstallGameActionHandler>();
         services.AddSingleton<IAgentActionHandler, LaunchGameActionHandler>();
+        services.AddSingleton<IAgentActionHandler, UpdateInstanceCommunityResourcesActionHandler>();
         services.AddSingleton<IAgentActionHandler, InstallCommunityResourceActionHandler>();
         services.AddSingleton<IAgentActionHandler, SearchModrinthProjectActionHandler>();
         services.AddSingleton<IAgentActionHandler, DeleteModActionHandler>();

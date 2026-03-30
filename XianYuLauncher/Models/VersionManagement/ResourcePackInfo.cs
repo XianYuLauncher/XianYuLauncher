@@ -58,6 +58,12 @@ public partial class ResourcePackInfo : ObservableObject, IVersionManagementReso
     /// </summary>
     [ObservableProperty]
     private string? _projectId;
+
+    /// <summary>
+    /// 稳定的社区资源实例标识。
+    /// </summary>
+    [ObservableProperty]
+    private string _resourceInstanceId = string.Empty;
     
     /// <summary>
     /// 资源包来源（Modrinth/CurseForge）
@@ -134,5 +140,6 @@ public partial class ResourcePackInfo : ObservableObject, IVersionManagementReso
         CurrentVersion = string.Empty;
         LatestVersion = string.Empty;
         Source = null;
+        ResourceInstanceId = string.Empty;
     }
 }

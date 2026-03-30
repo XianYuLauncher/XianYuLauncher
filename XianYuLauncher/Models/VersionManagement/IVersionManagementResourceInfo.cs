@@ -26,6 +26,9 @@ public interface IVersionManagementResourceInfo
     /// <summary>项目ID</summary>
     string? ProjectId { get; set; }
 
+    /// <summary>稳定的社区资源实例标识</summary>
+    string ResourceInstanceId { get; set; }
+
     /// <summary>是否有可更新版本</summary>
     bool HasUpdate { get; set; }
 

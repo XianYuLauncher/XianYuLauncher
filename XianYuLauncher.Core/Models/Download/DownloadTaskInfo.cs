@@ -101,6 +101,16 @@ public class DownloadTaskInfo
     public bool IsQueueManaged { get; set; } = true;
 
     /// <summary>
+    /// 当前任务是否允许取消。
+    /// </summary>
+    public bool AllowCancel { get; set; } = true;
+
+    /// <summary>
+    /// 当前任务是否允许重试。
+    /// </summary>
+    public bool AllowRetry { get; set; } = true;
+
+    /// <summary>
     /// 是否应在 Shell TeachingTip 中展示
     /// </summary>
     public bool ShowInTeachingTip { get; set; }
@@ -111,13 +121,23 @@ public class DownloadTaskInfo
     public string TeachingTipGroupKey { get; set; } = string.Empty;
 
     /// <summary>
+    /// 下载队列中的批次分组键。与 TeachingTip 合并语义分离。
+    /// </summary>
+    public string BatchGroupKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 父任务 ID。批次子任务指向批次摘要任务。
+    /// </summary>
+    public string? ParentTaskId { get; set; }
+
+    /// <summary>
     /// 排队位置（仅排队状态下有值）
     /// </summary>
     public int? QueuePosition { get; set; }
 
-    public bool CanCancel => IsQueueManaged && (State == DownloadTaskState.Queued || State == DownloadTaskState.Downloading);
+    public bool CanCancel => AllowCancel && (State == DownloadTaskState.Queued || State == DownloadTaskState.Downloading);
 
-    public bool CanRetry => IsQueueManaged && State == DownloadTaskState.Failed;
+    public bool CanRetry => AllowRetry && State == DownloadTaskState.Failed;
 
     public DownloadTaskInfo Clone()
     {
@@ -142,8 +162,12 @@ public class DownloadTaskInfo
             SpeedText = SpeedText,
             SpeedBytesPerSecond = SpeedBytesPerSecond,
             IsQueueManaged = IsQueueManaged,
+            AllowCancel = AllowCancel,
+            AllowRetry = AllowRetry,
             ShowInTeachingTip = ShowInTeachingTip,
             TeachingTipGroupKey = TeachingTipGroupKey,
+            BatchGroupKey = BatchGroupKey,
+            ParentTaskId = ParentTaskId,
             QueuePosition = QueuePosition
         };
     }

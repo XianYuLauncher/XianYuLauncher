@@ -59,6 +59,12 @@ public partial class ShaderInfo : ObservableObject, IVersionManagementResourceIn
     private string? _projectId;
 
     /// <summary>
+    /// 稳定的社区资源实例标识。
+    /// </summary>
+    [ObservableProperty]
+    private string _resourceInstanceId = string.Empty;
+
+    /// <summary>
     /// 来源平台 (Modrinth/CurseForge)
     /// </summary>
     [ObservableProperty]
@@ -107,5 +113,6 @@ public partial class ShaderInfo : ObservableObject, IVersionManagementResourceIn
         HasUpdate = false;
         CurrentVersion = string.Empty;
         LatestVersion = string.Empty;
+        ResourceInstanceId = string.Empty;
     }
 }

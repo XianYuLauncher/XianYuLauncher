@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Models.VersionManagement;
@@ -31,8 +32,9 @@ public partial class ShadersViewModel : ResourceManagementViewModelBase<ShaderIn
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
         ModInfoService modInfoService,
-        IUiDispatcher uiDispatcher)
-        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher)
+        IUiDispatcher uiDispatcher,
+        ICommunityResourceUpdateCheckService communityResourceUpdateCheckService)
+        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher, communityResourceUpdateCheckService)
     {
     }
 
@@ -89,6 +91,7 @@ public partial class ShadersViewModel : ResourceManagementViewModelBase<ShaderIn
     protected override string GetSubFolder() => "shaderpacks";
     protected override string GetIconType() => "shader";
     protected override bool GetIconFromRemote() => true;
+    protected override string GetUpdateCheckResourceType() => "shader";
     protected override void ExecuteFilter() => FilterShaders();
     protected override void NotifyUpdatableCountChanged() => OnPropertyChanged(nameof(UpdatableShaderCount));
 
@@ -279,131 +282,7 @@ public partial class ShadersViewModel : ResourceManagementViewModelBase<ShaderIn
         bool showResultDialog = true,
         bool suppressUiFeedback = false)
     {
-        var result = new ResourceUpdateBatchResult();
-
-        try
-        {
-            if (selectedShaders == null || selectedShaders.Count == 0)
-            {
-                var emptyMessage = "请先选择要更新的光影";
-                if (!suppressUiFeedback)
-                {
-                    _context.StatusMessage = emptyMessage;
-                }
-                result.IsSuccess = false;
-                result.Message = emptyMessage;
-                return result;
-            }
-
-            var updateTargets = selectedShaders.ToList();
-
-            if (!suppressUiFeedback)
-            {
-                _context.DownloadProgressDialogTitle = "正在更新光影...";
-                _context.IsDownloading = true;
-                _context.DownloadProgress = 0;
-                _context.CurrentDownloadItem = string.Empty;
-            }
-
-            var shaderHashIndex = VersionManagementUpdateOps.BuildHashIndex(
-                updateTargets,
-                shader => shader.FilePath,
-                _context.CalculateSHA1,
-                shouldSkip: shader => Directory.Exists(shader.FilePath),
-                onSkipped: shader =>
-                    System.Diagnostics.Debug.WriteLine($"跳过文件夹光影: {shader.Name}"),
-                onHashFailed: (shader, exception) =>
-                    System.Diagnostics.Debug.WriteLine($"光影哈希计算失败: {shader.Name}, 错误: {exception.Message}"));
-            var shaderHashes = shaderHashIndex.Hashes;
-            var shaderFilePathMap = shaderHashIndex.FilePathMap;
-
-            if (shaderHashes.Count == 0)
-            {
-                var noZipMessage = "没有可更新的光影文件（仅支持.zip文件更新）";
-                if (!suppressUiFeedback)
-                {
-                    _context.StatusMessage = noZipMessage;
-                    _context.IsDownloading = false;
-                }
-                result.IsSuccess = false;
-                result.Message = noZipMessage;
-                return result;
-            }
-
-            var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
-            string gameVersion = await VersionManagementUpdateOps.ResolveGameVersionAsync(
-                _context.SelectedVersion, versionInfoService);
-
-            string shadersPath = _context.GetVersionSpecificPath("shaderpacks");
-
-            int updatedCount = 0;
-            int upToDateCount = 0;
-
-            var modrinthResult = await VersionManagementResourceUpdateOps.TryUpdateShadersViaModrinthAsync(
-                _modrinthService, shaderHashes, shaderFilePathMap, gameVersion, shadersPath,
-                _context.DownloadModAsync, _context.CalculateSHA1);
-            updatedCount += modrinthResult.UpdatedCount;
-            upToDateCount += modrinthResult.UpToDateCount;
-
-            var failedShaders = updateTargets
-                .Where(s => !Directory.Exists(s.FilePath) && !modrinthResult.ProcessedMods.Contains(s.FilePath))
-                .ToList();
-
-            if (failedShaders.Count > 0)
-            {
-                var curseForgeResult = await VersionManagementResourceUpdateOps.TryUpdateShadersViaCurseForgeAsync(
-                    _curseForgeService, failedShaders, gameVersion, shadersPath,
-                    _context.DownloadModAsync);
-                updatedCount += curseForgeResult.UpdatedCount;
-                upToDateCount += curseForgeResult.UpToDateCount;
-            }
-
-            await ReloadShadersWithIconsAsync();
-
-            var statusMessage = $"{updatedCount} 个光影已更新，{upToDateCount} 个光影已是最新";
-            if (!suppressUiFeedback)
-            {
-                _context.StatusMessage = statusMessage;
-                if (showResultDialog)
-                {
-                    _context.UpdateResults = statusMessage;
-                    _context.IsResultDialogVisible = true;
-                }
-            }
-
-            result.IsSuccess = true;
-            result.UpdatedCount = updatedCount;
-            result.UpToDateCount = upToDateCount;
-            result.FailedCount = Math.Max(0, updateTargets.Count - updatedCount - upToDateCount);
-            result.Message = statusMessage;
-        }
-        catch (Exception ex)
-        {
-            var errorMessage = $"更新光影失败: {ex.Message}";
-            if (!suppressUiFeedback)
-            {
-                _context.StatusMessage = errorMessage;
-                if (showResultDialog)
-                {
-                    _context.IsResultDialogVisible = true;
-                    _context.UpdateResults = $"更新失败: {ex.Message}";
-                }
-            }
-
-            result.IsSuccess = false;
-            result.Message = errorMessage;
-            result.Errors.Add(ex.Message);
-        }
-        finally
-        {
-            if (!suppressUiFeedback)
-            {
-                _context.IsDownloading = false;
-                _context.DownloadProgress = 0;
-            }
-        }
-
-        return result;
+        return await _context.StartCommunityResourceUpdateAsync(selectedShaders, "请先选择要更新的光影", suppressUiFeedback);
     }
 
     [RelayCommand]
