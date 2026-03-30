@@ -25,6 +25,7 @@ public class DownloadManager : IDownloadManager
     private readonly HttpClient _httpClient;
     private readonly ILogger<DownloadManager> _logger;
     private readonly ILocalSettingsService _localSettingsService;
+    private readonly TimeSpan _shardedProgressStallTimeout;
     private readonly ConcurrentDictionary<string, bool> _rangeSupportCache = new(StringComparer.OrdinalIgnoreCase);
 
     // 默认分片下载阈值 (10MB)
@@ -35,11 +36,12 @@ public class DownloadManager : IDownloadManager
     private const int DefaultMaxRetries = 3;
     private const int DefaultRetryBaseDelayMs = 1000;
     private const string DownloadThreadCountKey = "DownloadThreadCount";
+    private static readonly TimeSpan DefaultShardedProgressStallTimeout = TimeSpan.FromSeconds(30);
 
     public DownloadManager(
         ILogger<DownloadManager> logger,
         ILocalSettingsService localSettingsService)
-        : this(logger, localSettingsService, CreateHttpClient())
+        : this(logger, localSettingsService, CreateHttpClient(), null)
     {
     }
 
@@ -47,18 +49,33 @@ public class DownloadManager : IDownloadManager
         ILogger<DownloadManager> logger,
         ILocalSettingsService localSettingsService,
         HttpMessageHandler httpMessageHandler)
-        : this(logger, localSettingsService, CreateHttpClient(httpMessageHandler))
+        : this(logger, localSettingsService, CreateHttpClient(httpMessageHandler), null)
+    {
+    }
+
+    internal DownloadManager(
+        ILogger<DownloadManager> logger,
+        ILocalSettingsService localSettingsService,
+        HttpMessageHandler httpMessageHandler,
+        TimeSpan shardedProgressStallTimeout)
+        : this(logger, localSettingsService, CreateHttpClient(httpMessageHandler), shardedProgressStallTimeout)
     {
     }
 
     private DownloadManager(
         ILogger<DownloadManager> logger,
         ILocalSettingsService localSettingsService,
-        HttpClient httpClient)
+        HttpClient httpClient,
+        TimeSpan? shardedProgressStallTimeout)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _localSettingsService = localSettingsService ?? throw new ArgumentNullException(nameof(localSettingsService));
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _shardedProgressStallTimeout = shardedProgressStallTimeout is null
+            ? DefaultShardedProgressStallTimeout
+            : shardedProgressStallTimeout.Value > TimeSpan.Zero
+                ? shardedProgressStallTimeout.Value
+                : throw new ArgumentOutOfRangeException(nameof(shardedProgressStallTimeout));
 
         if (!_httpClient.DefaultRequestHeaders.UserAgent.Any())
         {
@@ -145,7 +162,21 @@ public class DownloadManager : IDownloadManager
                 
                 if (useShardedDownload && contentLength is long resolvedContentLength)
                 {
-                    await DownloadFileShardedAsync(url, targetPath, resolvedContentLength, threadCount, trackedProgressCallback, cancellationToken);
+                    try
+                    {
+                        await DownloadFileShardedAsync(url, targetPath, resolvedContentLength, threadCount, trackedProgressCallback, cancellationToken);
+                    }
+                    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        useShardedDownload = false;
+                        MarkHostRangeSupport(url, false, GetShardedFallbackReason(ex));
+                        _logger.LogWarning(ex, "分片下载失败，回退为直连重试: {Url}", url);
+                        await DownloadFileDirectAsync(url, targetPath, contentLength, trackedProgressCallback, cancellationToken);
+                    }
                 }
                 else
                 {
@@ -571,6 +602,17 @@ public class DownloadManager : IDownloadManager
         return Uri.TryCreate(url, UriKind.Absolute, out var uri) ? uri.Host : null;
     }
 
+    private static string GetShardedFallbackReason(Exception exception)
+    {
+        return exception switch
+        {
+            TimeoutException => "分片下载长时间无进度，回退直连",
+            HttpRequestException httpRequestException when httpRequestException.StatusCode.HasValue =>
+                $"分片下载失败，HTTP {(int)httpRequestException.StatusCode.Value}",
+            _ => $"分片下载失败: {exception.GetType().Name}"
+        };
+    }
+
     private async Task DownloadFileDirectAsync(string url, string targetPath, long? knownTotalBytes, Action<DownloadProgressStatus>? progress, CancellationToken ct)
     {
         var tempPath = targetPath + ".tmp";
@@ -621,6 +663,21 @@ public class DownloadManager : IDownloadManager
     {
         var tempPath = targetPath + ".tmp";
         EnsureDirectory(targetPath);
+        int stalled = 0;
+        long lastProgressTick = Environment.TickCount64;
+        using var shardedCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        Task watchdogTask = MonitorShardedDownloadProgressAsync(
+            url,
+            () => Interlocked.Read(ref lastProgressTick),
+            () =>
+            {
+                if (Interlocked.Exchange(ref stalled, 1) == 0)
+                {
+                    shardedCts.Cancel();
+                }
+            },
+            shardedCts.Token);
+
         try {
             using (var fs = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.ReadWrite)) {
                 fs.SetLength(totalBytes);
@@ -643,8 +700,9 @@ public class DownloadManager : IDownloadManager
             long emaSpeedBits = BitConverter.DoubleToInt64Bits(0); // EMA 速度，用 long 存储支持 Interlocked
             const double Alpha = 0.3; // EMA 平滑系数
             
-            await Parallel.ForEachAsync(chunks, new ParallelOptions { MaxDegreeOfParallelism = maxThreads, CancellationToken = ct }, async (chunk, token) => {
+            await Parallel.ForEachAsync(chunks, new ParallelOptions { MaxDegreeOfParallelism = maxThreads, CancellationToken = shardedCts.Token }, async (chunk, token) => {
                 await DownloadChunkAsync(url, tempPath, chunk.Start, chunk.End, bytesRead => {
+                    Interlocked.Exchange(ref lastProgressTick, Environment.TickCount64);
                     var newTotal = Interlocked.Add(ref totalDownloaded, bytesRead);
                     if (progress != null) {
                         long currentTick = Environment.TickCount64;
@@ -676,8 +734,56 @@ public class DownloadManager : IDownloadManager
                     }
                 }, token);
             });
+        } catch (OperationCanceledException ex) when (Volatile.Read(ref stalled) == 1 && !ct.IsCancellationRequested) {
+            throw new TimeoutException($"分片下载在 {_shardedProgressStallTimeout.TotalSeconds:F0} 秒内无进度", ex);
         } catch { CleanupFile(tempPath); throw; }
+        finally
+        {
+            shardedCts.Cancel();
+            try
+            {
+                await watchdogTask;
+            }
+            catch (OperationCanceledException) when (shardedCts.IsCancellationRequested || ct.IsCancellationRequested)
+            {
+            }
+        }
         MoveFile(tempPath, targetPath);
+    }
+
+    private async Task MonitorShardedDownloadProgressAsync(
+        string url,
+        Func<long> getLastProgressTick,
+        Action onStalled,
+        CancellationToken cancellationToken)
+    {
+        long stallTimeoutMs = (long)_shardedProgressStallTimeout.TotalMilliseconds;
+        int checkIntervalMs = (int)Math.Clamp(stallTimeoutMs / 4, 50L, 1000L);
+
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                await Task.Delay(checkIntervalMs, cancellationToken);
+
+                long idleMs = Environment.TickCount64 - getLastProgressTick();
+                if (idleMs < stallTimeoutMs)
+                {
+                    continue;
+                }
+
+                _logger.LogWarning(
+                    "分片下载长时间无进度，准备停止分片并回退直连: {Url}, IdleMs={IdleMs}, TimeoutMs={TimeoutMs}",
+                    url,
+                    idleMs,
+                    stallTimeoutMs);
+                onStalled();
+                return;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
     }
     
     private async Task DownloadChunkAsync(string url, string filePath, long start, long end, Action<int> onBytesRead, CancellationToken ct)
