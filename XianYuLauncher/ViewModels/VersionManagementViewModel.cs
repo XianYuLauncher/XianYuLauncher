@@ -799,8 +799,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly IVersionConfigService _versionConfigService;
     private readonly IModpackUpdateService _modpackUpdateService;
     private readonly IModpackInstallationService _modpackInstallationService;
+    private readonly ICommunityResourceUpdateService _communityResourceUpdateService;
+    private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IOperationQueueService _operationQueueService;
     private readonly IUiDispatcher _uiDispatcher;
+    private readonly SemaphoreSlim _communityResourceRefreshSemaphore = new(1, 1);
     private ObservableCollection<ModInfo>? _observedMods;
     private ObservableCollection<ShaderInfo>? _observedShaders;
     private ObservableCollection<ResourcePackInfo>? _observedResourcePacks;
@@ -884,6 +887,8 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         IVersionConfigService versionConfigService,
         IModpackUpdateService modpackUpdateService,
         IModpackInstallationService modpackInstallationService,
+        ICommunityResourceUpdateService communityResourceUpdateService,
+        IDownloadTaskManager downloadTaskManager,
         IOperationQueueService operationQueueService,
         IUiDispatcher uiDispatcher)
     {
@@ -913,11 +918,14 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _versionConfigService = versionConfigService;
         _modpackUpdateService = modpackUpdateService;
         _modpackInstallationService = modpackInstallationService;
+        _communityResourceUpdateService = communityResourceUpdateService;
+        _downloadTaskManager = downloadTaskManager;
         _operationQueueService = operationQueueService;
         _uiDispatcher = uiDispatcher;
         ExtensionInstallDialogTitle = "VersionManagerPage_SaveConfigDialog_Title".GetLocalized();
         ResourceTransferState = new ResourceTransferStateViewModel(resourceTransferInfrastructureService);
         ResourceTransferState.PropertyChanged += ResourceTransferState_PropertyChanged;
+        _downloadTaskManager.TaskStateChanged += DownloadTaskManager_TaskStateChanged;
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
@@ -3258,7 +3266,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         var updatableItems = BuildUpdatableResourceItems();
         if (updatableItems.Count == 0)
         {
-            StatusMessage = "当前没有可更新的资源。";
+            const string noUpdatesMessage = "当前没有可更新的资源。";
+            StatusMessage = noUpdatesMessage;
+            await ShowResourceUpdateInfoDialogAsync(noUpdatesMessage);
             return;
         }
 
@@ -3270,92 +3280,194 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             return;
         }
 
-        var selectedMods = selectedItems
+        List<IVersionManagementResourceInfo> selectedResources = selectedItems
             .Select(item => item.OriginalResource)
-            .OfType<ModInfo>()
-            .DistinctBy(mod => mod.FilePath)
-            .ToList();
-        var selectedShaders = selectedItems
-            .Select(item => item.OriginalResource)
-            .OfType<ShaderInfo>()
-            .DistinctBy(shader => shader.FilePath)
-            .ToList();
-        var selectedResourcePacks = selectedItems
-            .Select(item => item.OriginalResource)
-            .OfType<ResourcePackInfo>()
-            .DistinctBy(pack => pack.FilePath)
+            .OfType<IVersionManagementResourceInfo>()
+            .DistinctBy(resource => resource.FilePath)
             .ToList();
 
-        var batchResults = new List<ResourceUpdateBatchResult>();
+        await StartCommunityResourceUpdateAsync(selectedResources, "未识别到可更新的目标资源。");
+    }
 
-        DownloadProgressDialogTitle = "正在更新资源...";
-        IsDownloading = true;
-        DownloadProgress = 0;
-        CurrentDownloadItem = string.Empty;
+    public async Task<ResourceUpdateBatchResult> StartCommunityResourceUpdateAsync(
+        IEnumerable<IVersionManagementResourceInfo> resources,
+        string emptySelectionMessage,
+        bool suppressUiFeedback = false)
+    {
+        ResourceUpdateBatchResult result = new();
 
         try
         {
-            if (selectedMods.Count > 0)
+            List<IVersionManagementResourceInfo> selectedResources = resources?
+                .Where(resource => resource != null)
+                .DistinctBy(resource => resource.FilePath)
+                .ToList() ?? [];
+
+            if (selectedResources.Count == 0)
             {
-                DownloadProgressDialogTitle = "正在更新 Mod...";
-                var modResult = await ModsModule.UpdateSelectedModsAsync(
-                    selectedMods,
-                    showResultDialog: false,
-                    suppressUiFeedback: true);
-                batchResults.Add(modResult);
+                if (!suppressUiFeedback)
+                {
+                    StatusMessage = emptySelectionMessage;
+                }
+
+                result.IsSuccess = false;
+                result.Message = emptySelectionMessage;
+                return result;
             }
 
-            if (selectedShaders.Count > 0)
+            if (SelectedVersion == null)
             {
-                DownloadProgressDialogTitle = "正在更新光影...";
-                var shaderResult = await ShadersModule.UpdateSelectedShadersAsync(
-                    selectedShaders,
-                    showResultDialog: false,
-                    suppressUiFeedback: true);
-                batchResults.Add(shaderResult);
+                const string noVersionMessage = "未选择版本。";
+                if (!suppressUiFeedback)
+                {
+                    StatusMessage = noVersionMessage;
+                }
+
+                result.IsSuccess = false;
+                result.Message = noVersionMessage;
+                return result;
             }
 
-            if (selectedResourcePacks.Count > 0)
+            List<IVersionManagementResourceInfo> updatableResources = selectedResources
+                .Where(resource => resource.HasUpdate)
+                .ToList();
+
+            if (updatableResources.Count == 0)
             {
-                DownloadProgressDialogTitle = "正在更新资源包...";
-                var resourcePackResult = await ResourcePacksModule.UpdateSelectedResourcePacksAsync(
-                    selectedResourcePacks,
-                    showResultDialog: false,
-                    suppressUiFeedback: true);
-                batchResults.Add(resourcePackResult);
+                const string upToDateMessage = "当前选中的资源已是最新。";
+                if (!suppressUiFeedback)
+                {
+                    StatusMessage = upToDateMessage;
+                    await ShowResourceUpdateInfoDialogAsync(upToDateMessage);
+                }
+
+                result.IsSuccess = true;
+                result.Message = upToDateMessage;
+                return result;
             }
+
+            List<string> resourceInstanceIds = updatableResources
+                .Select(resource => resource.ResourceInstanceId?.Trim())
+                .Where(resourceInstanceId => !string.IsNullOrWhiteSpace(resourceInstanceId))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Cast<string>()
+                .ToList();
+
+            if (resourceInstanceIds.Count == 0)
+            {
+                const string unresolvedMessage = "选中的资源尚未完成更新检测，请稍后重试。";
+                if (!suppressUiFeedback)
+                {
+                    StatusMessage = unresolvedMessage;
+                }
+
+                result.IsSuccess = false;
+                result.Message = unresolvedMessage;
+                return result;
+            }
+
+            await _communityResourceUpdateService.StartUpdateAsync(
+                new CommunityResourceUpdateRequest
+                {
+                    TargetVersionName = SelectedVersion.Name,
+                    ResolvedGameDirectory = string.IsNullOrWhiteSpace(CurrentGameDir) ? null : CurrentGameDir,
+                    ResourceInstanceIds = resourceInstanceIds,
+                    SelectionMode = CommunityResourceUpdateRequest.ExplicitSelectionMode,
+                },
+                CancellationToken.None);
+
+            string queuedMessage = $"已将 {resourceInstanceIds.Count} 项资源更新加入下载队列。";
+            if (!suppressUiFeedback)
+            {
+                StatusMessage = queuedMessage;
+            }
+
+            result.IsSuccess = true;
+            result.Message = queuedMessage;
+            return result;
         }
-        finally
+        catch (Exception ex)
         {
-            IsDownloading = false;
-            DownloadProgress = 0;
-        }
+            string errorMessage = $"启动资源更新失败：{ex.Message}";
+            if (!suppressUiFeedback)
+            {
+                StatusMessage = errorMessage;
+            }
 
-        if (batchResults.Count == 0)
+            result.IsSuccess = false;
+            result.Message = errorMessage;
+            result.Errors.Add(ex.Message);
+            return result;
+        }
+    }
+
+    private async Task ShowResourceUpdateInfoDialogAsync(string message)
+    {
+        try
         {
-            StatusMessage = "未识别到可更新的目标资源。";
+            await _uiDispatcher.RunOnUiThreadAsync(() =>
+                _commonDialogService.ShowMessageDialogAsync("提示", message));
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"显示资源更新提示失败: {ex.Message}");
+        }
+    }
+
+    private void DownloadTaskManager_TaskStateChanged(object? sender, DownloadTaskInfo taskInfo)
+    {
+        if (taskInfo.TaskCategory != DownloadTaskCategory.CommunityResourceUpdateBatch)
+        {
             return;
         }
 
-        int updatedCount = batchResults.Sum(result => result.UpdatedCount);
-        int upToDateCount = batchResults.Sum(result => result.UpToDateCount);
-        int failedCount = batchResults.Sum(result => result.FailedCount);
-        var errors = batchResults.SelectMany(result => result.Errors).Where(error => !string.IsNullOrWhiteSpace(error)).ToList();
-
-        var summaryMessage = $"已更新 {updatedCount} 项，已是最新 {upToDateCount} 项";
-        if (failedCount > 0)
+        if (taskInfo.State is not DownloadTaskState.Completed and not DownloadTaskState.Failed and not DownloadTaskState.Cancelled)
         {
-            summaryMessage += $"，失败 {failedCount} 项";
+            return;
         }
 
-        if (errors.Count > 0)
+        if (!_isPageReady || _pageCancellationTokenSource?.IsCancellationRequested == true || SelectedVersion == null)
         {
-            summaryMessage += $"。错误：{string.Join("；", errors)}";
+            return;
         }
 
-        StatusMessage = summaryMessage;
-        UpdateResults = summaryMessage;
-        IsResultDialogVisible = true;
+        if (!string.Equals(taskInfo.VersionName, SelectedVersion.Name, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        _ = RefreshCommunityResourcesAfterUpdateAsync(taskInfo);
+    }
+
+    private async Task RefreshCommunityResourcesAfterUpdateAsync(DownloadTaskInfo taskInfo)
+    {
+        await _communityResourceRefreshSemaphore.WaitAsync();
+
+        try
+        {
+            if (!_isPageReady || _pageCancellationTokenSource?.IsCancellationRequested == true || SelectedVersion == null)
+            {
+                return;
+            }
+
+            if (!string.Equals(taskInfo.VersionName, SelectedVersion.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            await _uiDispatcher.RunOnUiThreadAsync(async () =>
+            {
+                await ModsModule.ReloadModsWithIconsAsync();
+                await ShadersModule.ReloadShadersWithIconsAsync();
+                await ResourcePacksModule.ReloadResourcePacksWithIconsAsync();
+                RefreshUpdatableResourceSummary();
+                StatusMessage = taskInfo.StatusMessage;
+            });
+        }
+        finally
+        {
+            _communityResourceRefreshSemaphore.Release();
+        }
     }
 
     [RelayCommand]
@@ -3543,7 +3655,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         result.AddRange(ModsModule.GetUpdatableModsSnapshot().Select(mod => new UpdatableResourceItem
         {
-            Id = mod.FilePath,
+            Id = string.IsNullOrWhiteSpace(mod.ResourceInstanceId) ? mod.FilePath : mod.ResourceInstanceId,
             DisplayName = mod.Name,
             ResourceType = "Mod",
             CurrentVersion = NormalizeVersionText(mod.CurrentVersion, mod.FileName),
@@ -3555,7 +3667,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         result.AddRange(ShadersModule.GetUpdatableShadersSnapshot().Select(shader => new UpdatableResourceItem
         {
-            Id = shader.FilePath,
+            Id = string.IsNullOrWhiteSpace(shader.ResourceInstanceId) ? shader.FilePath : shader.ResourceInstanceId,
             DisplayName = shader.Name,
             ResourceType = "Shader",
             CurrentVersion = NormalizeVersionText(shader.CurrentVersion, shader.FileName),
@@ -3567,7 +3679,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         result.AddRange(ResourcePacksModule.GetUpdatableResourcePacksSnapshot().Select(pack => new UpdatableResourceItem
         {
-            Id = pack.FilePath,
+            Id = string.IsNullOrWhiteSpace(pack.ResourceInstanceId) ? pack.FilePath : pack.ResourceInstanceId,
             DisplayName = pack.Name,
             ResourceType = "ResourcePack",
             CurrentVersion = NormalizeVersionText(pack.CurrentVersion, pack.FileName),

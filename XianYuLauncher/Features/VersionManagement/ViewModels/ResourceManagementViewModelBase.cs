@@ -185,6 +185,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
                     new Dictionary<string, (string? Source, string? ProjectId)>(StringComparer.OrdinalIgnoreCase),
                     new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
                     new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
                     generation);
                 return;
             }
@@ -195,6 +196,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
                 ApplyUpdateFlags(
                     new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase),
                     new Dictionary<string, (string? Source, string? ProjectId)>(StringComparer.OrdinalIgnoreCase),
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
                     new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
                     new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
                     generation);
@@ -211,6 +213,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
 
             Dictionary<string, bool> updatableByFile = new(StringComparer.OrdinalIgnoreCase);
             Dictionary<string, (string? Source, string? ProjectId)> projectIdentityByFile = new(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, string> resourceInstanceIdByFile = new(StringComparer.OrdinalIgnoreCase);
             Dictionary<string, string> currentVersionByFile = new(StringComparer.OrdinalIgnoreCase);
             Dictionary<string, string> latestVersionByFile = new(StringComparer.OrdinalIgnoreCase);
 
@@ -230,6 +233,11 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
                     NormalizeOptionalText(item.ProjectId)
                 );
 
+                if (!string.IsNullOrWhiteSpace(item.ResourceInstanceId))
+                {
+                    resourceInstanceIdByFile[item.FilePath] = item.ResourceInstanceId;
+                }
+
                 if (!string.IsNullOrWhiteSpace(item.CurrentVersion))
                 {
                     currentVersionByFile[item.FilePath] = item.CurrentVersion;
@@ -241,7 +249,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
                 }
             }
 
-            ApplyUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
+            ApplyUpdateFlags(updatableByFile, projectIdentityByFile, resourceInstanceIdByFile, currentVersionByFile, latestVersionByFile, generation);
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
@@ -446,6 +454,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
     protected void ApplyUpdateFlags(
         Dictionary<string, bool> updatableByFile,
         Dictionary<string, (string? Source, string? ProjectId)> projectIdentityByFile,
+        Dictionary<string, string> resourceInstanceIdByFile,
         Dictionary<string, string> currentVersionByFile,
         Dictionary<string, string> latestVersionByFile,
         int generation)
@@ -461,6 +470,9 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
             foreach (var item in allItems)
             {
                 item.HasUpdate = updatableByFile.TryGetValue(item.FilePath, out var hasUpdate) && hasUpdate;
+                item.ResourceInstanceId = resourceInstanceIdByFile.TryGetValue(item.FilePath, out var resourceInstanceId)
+                    ? resourceInstanceId
+                    : string.Empty;
                 item.CurrentVersion = currentVersionByFile.TryGetValue(item.FilePath, out var cv) ? cv : string.Empty;
                 item.LatestVersion = latestVersionByFile.TryGetValue(item.FilePath, out var lv) ? lv : string.Empty;
                 if (projectIdentityByFile.TryGetValue(item.FilePath, out var identity))
@@ -509,6 +521,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
                 if (!string.IsNullOrEmpty(existing.Description)) item.Description = existing.Description;
                 if (!string.IsNullOrEmpty(existing.Source)) item.Source = existing.Source;
                 if (!string.IsNullOrEmpty(existing.ProjectId)) item.ProjectId = existing.ProjectId;
+                if (!string.IsNullOrEmpty(existing.ResourceInstanceId)) item.ResourceInstanceId = existing.ResourceInstanceId;
                 item.HasUpdate = existing.HasUpdate;
                 item.CurrentVersion = existing.CurrentVersion;
                 item.LatestVersion = existing.LatestVersion;
@@ -526,6 +539,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
             foreach (var item in _allItems)
             {
                 item.HasUpdate = false;
+                item.ResourceInstanceId = string.Empty;
                 item.CurrentVersion = string.Empty;
                 item.LatestVersion = string.Empty;
             }

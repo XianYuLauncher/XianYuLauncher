@@ -82,7 +82,12 @@ public sealed class CommunityResourceUpdateServiceTests : IDisposable
         RecordingDownloadManager downloadManager = new();
         downloadManager.ConfigureSuccess("alpha-new.jar", newFileContent);
 
-        CommunityResourceUpdateService service = CreateService(checkService, metadataHandler, downloadManager, out OperationQueueService operationQueueService);
+        CommunityResourceUpdateService service = CreateService(
+            checkService,
+            metadataHandler,
+            downloadManager,
+            out OperationQueueService operationQueueService,
+            out DownloadTaskManager downloadTaskManager);
 
         string operationId = await service.StartUpdateAsync(new CommunityResourceUpdateRequest
         {
@@ -107,6 +112,16 @@ public sealed class CommunityResourceUpdateServiceTests : IDisposable
         string statusMessage = statusService.GetOperationStatusMessage(operationId);
         statusMessage.Should().Contain("operation_kind: community_resource_update");
         statusMessage.Should().Contain("state: completed");
+
+        downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskCategory == DownloadTaskCategory.CommunityResourceUpdateBatch
+            && task.State == DownloadTaskState.Completed
+            && task.DisplayNameResourceKey == "DownloadQueue_DisplayName_CommunityResourceUpdateBatch");
+        downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskCategory == DownloadTaskCategory.CommunityResourceUpdateFile
+            && task.ParentTaskId != null
+            && task.BatchGroupKey == $"community-resource-update:{operationId}"
+            && task.State == DownloadTaskState.Completed);
     }
 
     [Fact]
@@ -188,7 +203,12 @@ public sealed class CommunityResourceUpdateServiceTests : IDisposable
         downloadManager.ConfigureSuccess("Faithful-4.0.zip", "new-pack");
         downloadManager.ConfigureFailure("Cinematic-2.0.zip", "network failure");
 
-        CommunityResourceUpdateService service = CreateService(checkService, metadataHandler, downloadManager, out OperationQueueService operationQueueService);
+        CommunityResourceUpdateService service = CreateService(
+            checkService,
+            metadataHandler,
+            downloadManager,
+            out OperationQueueService operationQueueService,
+            out DownloadTaskManager downloadTaskManager);
 
         string operationId = await service.StartUpdateAsync(new CommunityResourceUpdateRequest
         {
@@ -208,6 +228,16 @@ public sealed class CommunityResourceUpdateServiceTests : IDisposable
         File.Exists(shaderFilePath).Should().BeTrue();
         File.Exists(shaderConfigPath).Should().BeTrue();
 
+        downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskCategory == DownloadTaskCategory.CommunityResourceUpdateBatch
+            && task.State == DownloadTaskState.Completed);
+        downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskCategory == DownloadTaskCategory.CommunityResourceUpdateFile
+            && task.State == DownloadTaskState.Completed);
+        downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskCategory == DownloadTaskCategory.CommunityResourceUpdateFile
+            && task.State == DownloadTaskState.Failed);
+
         checkService.LastRequest.Should().NotBeNull();
         checkService.LastRequest!.ResourceInstanceIds.Should().BeNull();
     }
@@ -216,7 +246,8 @@ public sealed class CommunityResourceUpdateServiceTests : IDisposable
         FakeCommunityResourceUpdateCheckService checkService,
         MetadataHttpMessageHandler metadataHandler,
         RecordingDownloadManager downloadManager,
-        out OperationQueueService operationQueueService)
+        out OperationQueueService operationQueueService,
+        out DownloadTaskManager downloadTaskManager)
     {
         operationQueueService = new OperationQueueService(_operationQueueLogger.Object);
         ModrinthService modrinthService = new(new HttpClient(metadataHandler), new DownloadSourceFactory());
@@ -228,8 +259,21 @@ public sealed class CommunityResourceUpdateServiceTests : IDisposable
         fallbackDownloadManager.AutoFallbackEnabled = false;
         fallbackDownloadManager.MaxRetriesPerSource = 0;
 
+        Mock<ILocalSettingsService> localSettingsService = new();
+        localSettingsService
+            .Setup(service => service.ReadSettingAsync<int?>(It.IsAny<string>()))
+            .ReturnsAsync((int?)null);
+
+        downloadTaskManager = new DownloadTaskManager(
+            Mock.Of<IMinecraftVersionService>(),
+            Mock.Of<IFileService>(),
+            Mock.Of<ILogger<DownloadTaskManager>>(),
+            downloadManager,
+            localSettingsService.Object);
+
         return new CommunityResourceUpdateService(
             checkService,
+            downloadTaskManager,
             operationQueueService,
             modrinthService,
             curseForgeService,

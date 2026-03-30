@@ -13,6 +13,7 @@ public class OperationQueueService : IOperationQueueService
     private readonly SemaphoreSlim _globalConcurrencyGate;
     private readonly Dictionary<string, ScopeLockEntry> _scopeLocks = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, OperationTaskInfo> _taskSnapshots = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, ManagedOperationTask> _managedTasks = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _syncRoot = new();
     private int _activeOperationCount;
 
@@ -21,6 +22,19 @@ public class OperationQueueService : IOperationQueueService
         public SemaphoreSlim Semaphore { get; } = new(1, 1);
 
         public int RefCount;
+    }
+
+    private sealed class ManagedOperationTask
+    {
+        public ManagedOperationTask(OperationTaskInfo info, CancellationTokenSource cancellationTokenSource)
+        {
+            Info = info;
+            CancellationTokenSource = cancellationTokenSource;
+        }
+
+        public OperationTaskInfo Info { get; }
+
+        public CancellationTokenSource CancellationTokenSource { get; }
     }
 
     public OperationQueueService(ILogger<OperationQueueService> logger)
@@ -50,29 +64,41 @@ public class OperationQueueService : IOperationQueueService
 
     public async Task<OperationExecutionResult> EnqueueAsync(OperationTaskRequest request, CancellationToken cancellationToken = default)
     {
-        OperationTaskInfo taskInfo = CreateTaskInfo(request);
-        return await ExecuteTaskAsync(request, taskInfo, cancellationToken);
+        ManagedOperationTask managedTask = CreateManagedTask(request, cancellationToken);
+
+        try
+        {
+            return await ExecuteTaskAsync(request, managedTask);
+        }
+        finally
+        {
+            CleanupManagedTask(managedTask.Info.TaskId);
+        }
     }
 
     public Task<string> EnqueueBackgroundAsync(OperationTaskRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        OperationTaskInfo taskInfo = CreateTaskInfo(request);
+        ManagedOperationTask managedTask = CreateManagedTask(request, CancellationToken.None, linkCallerCancellation: false);
 
         _ = Task.Run(async () =>
         {
             try
             {
-                await ExecuteTaskAsync(request, taskInfo, CancellationToken.None);
+                await ExecuteTaskAsync(request, managedTask);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "后台操作任务异常: {TaskName}({TaskId})", taskInfo.TaskName, taskInfo.TaskId);
+                _logger.LogError(ex, "后台操作任务异常: {TaskName}({TaskId})", managedTask.Info.TaskName, managedTask.Info.TaskId);
+            }
+            finally
+            {
+                CleanupManagedTask(managedTask.Info.TaskId);
             }
         }, CancellationToken.None);
 
-        return Task.FromResult(taskInfo.TaskId);
+        return Task.FromResult(managedTask.Info.TaskId);
     }
 
     public bool TryGetSnapshot(string taskId, out OperationTaskInfo? taskInfo)
@@ -91,12 +117,45 @@ public class OperationQueueService : IOperationQueueService
         return false;
     }
 
+    public void CancelTask(string taskId)
+    {
+        string normalizedTaskId = taskId?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalizedTaskId))
+        {
+            return;
+        }
+
+        ManagedOperationTask? managedTask;
+        lock (_syncRoot)
+        {
+            if (!_managedTasks.TryGetValue(normalizedTaskId, out managedTask))
+            {
+                return;
+            }
+
+            if (managedTask.Info.State is OperationTaskState.Completed or OperationTaskState.Failed or OperationTaskState.Cancelled)
+            {
+                return;
+            }
+        }
+
+        try
+        {
+            managedTask.CancellationTokenSource.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+    }
+
     private async Task<OperationExecutionResult> ExecuteTaskAsync(
         OperationTaskRequest request,
-        OperationTaskInfo taskInfo,
-        CancellationToken cancellationToken)
+        ManagedOperationTask managedTask)
     {
         ArgumentNullException.ThrowIfNull(request);
+
+        OperationTaskInfo taskInfo = managedTask.Info;
+        CancellationToken cancellationToken = managedTask.CancellationTokenSource.Token;
 
         var globalLockAcquired = false;
         ScopeLockEntry? scopeLockEntry = null;
@@ -118,7 +177,7 @@ public class OperationQueueService : IOperationQueueService
 
             UpdateTaskState(taskInfo, OperationTaskState.Running, "任务开始执行", null);
 
-            var executionContext = new OperationTaskExecutionContext((status, progress) =>
+            var executionContext = new OperationTaskExecutionContext(taskInfo.TaskId, (status, progress) =>
             {
                 taskInfo.StatusMessage = string.IsNullOrWhiteSpace(status) ? taskInfo.StatusMessage : status;
                 taskInfo.Progress = Math.Clamp(progress, 0, 100);
@@ -144,7 +203,7 @@ public class OperationQueueService : IOperationQueueService
         catch (OperationCanceledException)
         {
             _logger.LogWarning("操作任务已取消: {TaskName}({TaskId})", taskInfo.TaskName, taskInfo.TaskId);
-            UpdateTaskState(taskInfo, OperationTaskState.Cancelled, "任务已取消", null);
+            UpdateTaskState(taskInfo, OperationTaskState.Cancelled, ResolveCancelledStatusMessage(taskInfo), null);
             return new OperationExecutionResult
             {
                 TaskInfo = Clone(taskInfo),
@@ -184,7 +243,10 @@ public class OperationQueueService : IOperationQueueService
         }
     }
 
-    private OperationTaskInfo CreateTaskInfo(OperationTaskRequest request)
+    private ManagedOperationTask CreateManagedTask(
+        OperationTaskRequest request,
+        CancellationToken cancellationToken,
+        bool linkCallerCancellation = true)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -203,8 +265,34 @@ public class OperationQueueService : IOperationQueueService
             StatusMessage = "已加入任务队列"
         };
 
+        CancellationTokenSource cancellationTokenSource = linkCallerCancellation
+            ? CancellationTokenSource.CreateLinkedTokenSource(cancellationToken)
+            : new CancellationTokenSource();
+
+        ManagedOperationTask managedTask = new(taskInfo, cancellationTokenSource);
+
+        lock (_syncRoot)
+        {
+            _managedTasks[taskInfo.TaskId] = managedTask;
+        }
+
         UpdateTaskState(taskInfo, OperationTaskState.Queued, taskInfo.StatusMessage, null);
-        return taskInfo;
+        return managedTask;
+    }
+
+    private void CleanupManagedTask(string taskId)
+    {
+        ManagedOperationTask? managedTask = null;
+
+        lock (_syncRoot)
+        {
+            if (_managedTasks.Remove(taskId, out var removedTask))
+            {
+                managedTask = removedTask;
+            }
+        }
+
+        managedTask?.CancellationTokenSource.Dispose();
     }
 
     private ScopeLockEntry AcquireScopeLock(string scopeKey)
@@ -274,6 +362,18 @@ public class OperationQueueService : IOperationQueueService
         }
 
         return "任务完成";
+    }
+
+    private static string ResolveCancelledStatusMessage(OperationTaskInfo taskInfo)
+    {
+        if (!string.IsNullOrWhiteSpace(taskInfo.StatusMessage) &&
+            !string.Equals(taskInfo.StatusMessage, "已加入任务队列", StringComparison.Ordinal) &&
+            !string.Equals(taskInfo.StatusMessage, "任务开始执行", StringComparison.Ordinal))
+        {
+            return taskInfo.StatusMessage;
+        }
+
+        return "任务已取消";
     }
 
     private static OperationTaskInfo Clone(OperationTaskInfo source)

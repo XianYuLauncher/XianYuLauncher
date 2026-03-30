@@ -164,5 +164,9 @@ public sealed class AgentOperationStatusServiceTests
             taskInfo = Tasks.FirstOrDefault(task => string.Equals(task.TaskId, taskId, StringComparison.OrdinalIgnoreCase));
             return taskInfo != null;
         }
+
+        public void CancelTask(string taskId)
+        {
+        }
     }
 }

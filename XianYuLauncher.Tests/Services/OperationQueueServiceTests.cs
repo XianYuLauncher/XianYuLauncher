@@ -115,6 +115,38 @@ public class OperationQueueServiceTests
         finalSnapshot.StatusMessage.Should().Be("社区资源更新完成：已更新 2，失败 0。");
     }
 
+    [Fact]
+    public async Task EnqueueBackgroundAsync_CallerCancellationAfterEnqueue_ShouldNotCancelRunningTask()
+    {
+        var service = new OperationQueueService(_loggerMock.Object);
+        using CancellationTokenSource callerCts = new();
+        TaskCompletionSource<bool> startedSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> finishSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        string taskId = await service.EnqueueBackgroundAsync(new OperationTaskRequest
+        {
+            TaskName = "background-caller-cancel-task",
+            TaskType = OperationTaskType.CommunityResourceUpdate,
+            ScopeKey = "scope-background-caller-cancel",
+            AllowParallel = true,
+            ExecuteAsync = async (context, token) =>
+            {
+                context.ReportProgress("处理中", 25);
+                startedSource.TrySetResult(true);
+                await finishSource.Task.WaitAsync(token);
+                context.ReportProgress("后台任务完成", 100);
+            }
+        }, callerCts.Token);
+
+        await startedSource.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        callerCts.Cancel();
+        finishSource.TrySetResult(true);
+
+        OperationTaskInfo finalSnapshot = await WaitForTerminalSnapshotAsync(service, taskId);
+        finalSnapshot.State.Should().Be(OperationTaskState.Completed);
+        finalSnapshot.StatusMessage.Should().Be("后台任务完成");
+    }
+
     private static OperationTaskRequest CreateRequest(string scopeKey, bool allowParallel, ConcurrencyCounter counter)
     {
         async Task ExecuteAsync(CancellationToken token)

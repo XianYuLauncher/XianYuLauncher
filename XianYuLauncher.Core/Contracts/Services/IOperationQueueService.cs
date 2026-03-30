@@ -33,7 +33,8 @@ public interface IOperationQueueService
     Task<OperationExecutionResult> EnqueueAsync(OperationTaskRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// 入队后台执行并立即返回任务 ID。
+    /// 入队后台执行并立即返回任务 ID。调用方的 cancellationToken 仅在任务入队前生效；
+    /// 任务入队后应通过 CancelTask 主动取消，而不是依赖调用方生命周期。
     /// </summary>
     Task<string> EnqueueBackgroundAsync(OperationTaskRequest request, CancellationToken cancellationToken = default);
 
@@ -41,4 +42,9 @@ public interface IOperationQueueService
     /// 尝试获取任务快照。
     /// </summary>
     bool TryGetSnapshot(string taskId, out OperationTaskInfo? taskInfo);
+
+    /// <summary>
+    /// 取消指定操作任务。
+    /// </summary>
+    void CancelTask(string taskId);
 }

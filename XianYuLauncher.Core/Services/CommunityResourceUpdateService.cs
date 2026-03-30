@@ -14,6 +14,7 @@ namespace XianYuLauncher.Core.Services;
 public sealed class CommunityResourceUpdateService : ICommunityResourceUpdateService
 {
     private readonly ICommunityResourceUpdateCheckService _updateCheckService;
+    private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IOperationQueueService _operationQueueService;
     private readonly ModrinthService _modrinthService;
     private readonly CurseForgeService _curseForgeService;
@@ -21,12 +22,14 @@ public sealed class CommunityResourceUpdateService : ICommunityResourceUpdateSer
 
     public CommunityResourceUpdateService(
         ICommunityResourceUpdateCheckService updateCheckService,
+        IDownloadTaskManager downloadTaskManager,
         IOperationQueueService operationQueueService,
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
         FallbackDownloadManager fallbackDownloadManager)
     {
         _updateCheckService = updateCheckService;
+        _downloadTaskManager = downloadTaskManager;
         _operationQueueService = operationQueueService;
         _modrinthService = modrinthService;
         _curseForgeService = curseForgeService;
@@ -81,31 +84,14 @@ public sealed class CommunityResourceUpdateService : ICommunityResourceUpdateSer
             Missing = CalculateMissingCount(requestedIds, selectedItems),
         };
 
-        if (selectedItems.Count == 0)
+        List<CommunityResourceUpdateCheckItem> itemsToUpdate = [];
+
+        foreach (CommunityResourceUpdateCheckItem item in selectedItems)
         {
-            context.ReportProgress(BuildSummaryMessage(summary), 100);
-            return;
-        }
-
-        for (int index = 0; index < selectedItems.Count; index++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-
-            CommunityResourceUpdateCheckItem item = selectedItems[index];
-            string normalizedStatus = NormalizeStatus(item.Status);
-
-            switch (normalizedStatus)
+            switch (NormalizeStatus(item.Status))
             {
                 case "update_available":
-                    bool updated = await TryUpdateItemAsync(item, index, selectedItems.Count, context, cancellationToken);
-                    if (updated)
-                    {
-                        summary.Updated++;
-                    }
-                    else
-                    {
-                        summary.Failed++;
-                    }
+                    itemsToUpdate.Add(item);
                     break;
                 case "up_to_date":
                     summary.UpToDate++;
@@ -120,32 +106,129 @@ public sealed class CommunityResourceUpdateService : ICommunityResourceUpdateSer
                     summary.Failed++;
                     break;
             }
-
-            context.ReportProgress(
-                BuildProgressMessage(summary, item.DisplayName, index + 1, selectedItems.Count),
-                ComputeProgress(index + 1, selectedItems.Count));
         }
 
-        context.ReportProgress(BuildSummaryMessage(summary), 100);
+        if (selectedItems.Count == 0 || itemsToUpdate.Count == 0)
+        {
+            context.ReportProgress(BuildSummaryMessage(summary), 100);
+            return;
+        }
+
+        string batchGroupKey = BuildBatchGroupKey(context.TaskId);
+        string summaryTaskId = _downloadTaskManager.CreateExternalTask(
+            $"社区资源更新 ({request.TargetVersionName.Trim()})",
+            request.TargetVersionName.Trim(),
+            showInTeachingTip: true,
+            teachingTipGroupKey: batchGroupKey,
+            taskCategory: DownloadTaskCategory.CommunityResourceUpdateBatch,
+            batchGroupKey: batchGroupKey,
+            allowCancel: true,
+            cancelAction: () => _operationQueueService.CancelTask(context.TaskId),
+            displayNameResourceKey: "DownloadQueue_DisplayName_CommunityResourceUpdateBatch",
+            displayNameResourceArguments: [request.TargetVersionName.Trim()],
+            taskTypeResourceKey: "DownloadQueue_TaskType_CommunityResourceUpdateBatch");
+
+        UpdateBatchCoordinator coordinator = new(batchGroupKey, summaryTaskId, itemsToUpdate.Count);
+        EventHandler<DownloadTaskInfo> taskStateHandler = (_, taskInfo) => HandleChildTaskUpdate(coordinator, taskInfo, context);
+        EventHandler<DownloadTaskInfo> taskProgressHandler = (_, taskInfo) => HandleChildTaskUpdate(coordinator, taskInfo, context);
+
+        _downloadTaskManager.TaskStateChanged += taskStateHandler;
+        _downloadTaskManager.TaskProgressChanged += taskProgressHandler;
+
+        PublishBatchProgress(context, coordinator, coordinator.CaptureSnapshot());
+
+        try
+        {
+            foreach (CommunityResourceUpdateCheckItem item in itemsToUpdate)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                string childTaskId = await _downloadTaskManager.StartCustomManagedTaskWithTaskIdAsync(
+                    item.DisplayName,
+                    item.ResourceType,
+                    DownloadTaskCategory.CommunityResourceUpdateFile,
+                    executionContext => ExecuteUpdateItemAsync(item, executionContext),
+                    showInTeachingTip: false,
+                    batchGroupKey: batchGroupKey,
+                    parentTaskId: summaryTaskId,
+                    allowCancel: false,
+                    allowRetry: false,
+                    taskTypeResourceKey: "DownloadQueue_TaskType_CommunityResourceUpdateFile").ConfigureAwait(false);
+
+                coordinator.RegisterChildTask(childTaskId);
+            }
+
+            using CancellationTokenRegistration cancellationRegistration = cancellationToken.Register(() => CancelChildTasks(coordinator));
+
+            await coordinator.CompletionSource.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+
+            UpdateBatchSnapshot finalBatchSnapshot = coordinator.CaptureSnapshot();
+            summary.Updated += finalBatchSnapshot.CompletedCount;
+            summary.Failed += finalBatchSnapshot.FailedCount;
+
+            _downloadTaskManager.CompleteExternalTask(
+                summaryTaskId,
+                BuildBatchCompletedStatusMessage(finalBatchSnapshot),
+                "DownloadQueue_Status_CommunityUpdateCompleted",
+                BuildBatchStatusArguments(finalBatchSnapshot));
+
+            context.ReportProgress(BuildSummaryMessage(summary), 100);
+        }
+        catch (OperationCanceledException)
+        {
+            CancelChildTasks(coordinator);
+            await WaitForCoordinatorSettledAsync(coordinator.CompletionSource.Task).ConfigureAwait(false);
+
+            UpdateBatchSnapshot cancelledSnapshot = coordinator.CaptureSnapshot();
+            summary.Updated += cancelledSnapshot.CompletedCount;
+            summary.Failed += cancelledSnapshot.FailedCount;
+
+            _downloadTaskManager.CancelExternalTask(
+                summaryTaskId,
+                BuildBatchCancelledStatusMessage(cancelledSnapshot),
+                "DownloadQueue_Status_CommunityUpdateCancelled",
+                BuildBatchStatusArguments(cancelledSnapshot));
+
+            context.ReportProgress(BuildCancelledSummaryMessage(summary), 100);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            CancelChildTasks(coordinator);
+            await WaitForCoordinatorSettledAsync(coordinator.CompletionSource.Task).ConfigureAwait(false);
+
+            UpdateBatchSnapshot failureSnapshot = coordinator.CaptureSnapshot();
+
+            _downloadTaskManager.FailExternalTask(
+                summaryTaskId,
+                ex.Message,
+                BuildBatchFailedStatusMessage(failureSnapshot),
+                "DownloadQueue_Status_CommunityUpdateFailed",
+                BuildBatchStatusArguments(failureSnapshot));
+
+            throw;
+        }
+        finally
+        {
+            _downloadTaskManager.TaskStateChanged -= taskStateHandler;
+            _downloadTaskManager.TaskProgressChanged -= taskProgressHandler;
+        }
     }
 
-    private async Task<bool> TryUpdateItemAsync(
+    private async Task ExecuteUpdateItemAsync(
         CommunityResourceUpdateCheckItem item,
-        int completedCount,
-        int totalCount,
-        OperationTaskExecutionContext context,
-        CancellationToken cancellationToken)
+        DownloadTaskExecutionContext context)
     {
-        DownloadCandidate? candidate = await ResolveDownloadCandidateAsync(item, cancellationToken);
+        DownloadCandidate? candidate = await ResolveDownloadCandidateAsync(item, context.CancellationToken).ConfigureAwait(false);
         if (candidate == null)
         {
-            return false;
+            throw new InvalidOperationException("无法解析更新文件信息。");
         }
 
         string targetDirectory = Path.GetDirectoryName(item.FilePath) ?? string.Empty;
         if (string.IsNullOrWhiteSpace(targetDirectory))
         {
-            return false;
+            throw new InvalidOperationException("无法确定更新目标目录。");
         }
 
         Directory.CreateDirectory(targetDirectory);
@@ -158,40 +241,103 @@ public sealed class CommunityResourceUpdateService : ICommunityResourceUpdateSer
                 NormalizeCommunityDownloadUrl(candidate.DownloadUrl, candidate.Provider),
                 tempFilePath,
                 GetCommunityFallbackResourceType(candidate.Provider),
-                status => context.ReportProgress(
-                    $"正在下载 {item.DisplayName} ({completedCount + 1}/{totalCount})",
-                    ComputeProgress(completedCount, totalCount, status.Percent)),
-                cancellationToken);
+                status =>
+                {
+                    if (context.CancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
 
-            cancellationToken.ThrowIfCancellationRequested();
+                    context.ReportDownloadProgress(
+                        Math.Min(90, status.Percent * 0.9),
+                        status,
+                        $"正在下载 {item.DisplayName}... {status.Percent:F0}%",
+                        "DownloadQueue_Status_DownloadingNamedWithProgress",
+                        [item.DisplayName, $"{status.Percent:F0}%"]);
+                },
+                context.CancellationToken).ConfigureAwait(false);
+
+            context.CancellationToken.ThrowIfCancellationRequested();
 
             if (!downloadResult.Success)
             {
-                SafeDelete(tempFilePath);
-                return false;
+                throw new InvalidOperationException(downloadResult.ErrorMessage ?? "社区资源下载失败");
             }
 
-            if (!await ValidateDownloadedFileAsync(tempFilePath, candidate.ExpectedSha1, cancellationToken))
+            context.ReportStatus(
+                95,
+                $"正在校验 {item.DisplayName}...",
+                "DownloadQueue_Status_ValidatingFile",
+                [item.DisplayName]);
+
+            if (!await ValidateDownloadedFileAsync(tempFilePath, candidate.ExpectedSha1, context.CancellationToken).ConfigureAwait(false))
             {
-                SafeDelete(tempFilePath);
-                return false;
+                throw new InvalidOperationException("下载文件校验失败");
             }
 
             string finalPath = BuildFinalPath(item, candidate.FileName);
+            context.ReportStatus(
+                98,
+                $"正在替换 {item.DisplayName}...",
+                "DownloadQueue_Status_ApplyingFileUpdate",
+                [item.DisplayName]);
+
             ReplaceDownloadedFile(item, tempFilePath, finalPath);
-            return true;
         }
-        catch (OperationCanceledException)
+        catch
         {
             SafeDelete(tempFilePath);
             throw;
         }
-        catch (Exception ex)
+    }
+
+    private void HandleChildTaskUpdate(
+        UpdateBatchCoordinator coordinator,
+        DownloadTaskInfo taskInfo,
+        OperationTaskExecutionContext context)
+    {
+        if (taskInfo.TaskCategory != DownloadTaskCategory.CommunityResourceUpdateFile ||
+            !string.Equals(taskInfo.BatchGroupKey, coordinator.BatchGroupKey, StringComparison.Ordinal))
         {
-            System.Diagnostics.Debug.WriteLine($"[CommunityResourceUpdate] 更新失败: {item.ResourceInstanceId}, {ex.Message}");
-            SafeDelete(tempFilePath);
-            return false;
+            return;
         }
+
+        UpdateBatchSnapshot snapshot = coordinator.UpdateTaskSnapshot(taskInfo);
+        PublishBatchProgress(context, coordinator, snapshot);
+    }
+
+    private void PublishBatchProgress(
+        OperationTaskExecutionContext context,
+        UpdateBatchCoordinator coordinator,
+        UpdateBatchSnapshot snapshot)
+    {
+        _downloadTaskManager.UpdateExternalTask(
+            coordinator.SummaryTaskId,
+            snapshot.Progress,
+            BuildBatchProgressStatusMessage(snapshot),
+            "DownloadQueue_Status_CommunityUpdateProgress",
+            BuildBatchStatusArguments(snapshot));
+
+        context.ReportProgress(BuildOperationProgressMessage(snapshot), snapshot.Progress);
+    }
+
+    private void CancelChildTasks(UpdateBatchCoordinator coordinator)
+    {
+        foreach (string childTaskId in coordinator.GetChildTaskIds())
+        {
+            _downloadTaskManager.CancelTask(childTaskId);
+        }
+    }
+
+    private static async Task WaitForCoordinatorSettledAsync(Task completionTask)
+    {
+        if (completionTask.IsCompleted)
+        {
+            await completionTask.ConfigureAwait(false);
+            return;
+        }
+
+        await Task.WhenAny(completionTask, Task.Delay(TimeSpan.FromSeconds(5))).ConfigureAwait(false);
     }
 
     private async Task<DownloadCandidate?> ResolveDownloadCandidateAsync(
@@ -345,9 +491,9 @@ public sealed class CommunityResourceUpdateService : ICommunityResourceUpdateSer
             : status.Trim().ToLowerInvariant();
     }
 
-    private static string BuildProgressMessage(UpdateExecutionSummary summary, string displayName, int completedItems, int totalItems)
+    private static string BuildOperationProgressMessage(UpdateBatchSnapshot snapshot)
     {
-        return $"已处理 {completedItems}/{totalItems} 项，当前资源：{displayName}。已更新 {summary.Updated}，失败 {summary.Failed}，已是最新 {summary.UpToDate}。";
+        return $"社区资源更新进行中：已更新 {snapshot.CompletedCount}/{snapshot.TotalCount}，失败 {snapshot.FailedCount}，排队 {snapshot.QueuedCount}。";
     }
 
     private static string BuildSummaryMessage(UpdateExecutionSummary summary)
@@ -355,16 +501,44 @@ public sealed class CommunityResourceUpdateService : ICommunityResourceUpdateSer
         return $"社区资源更新完成：已更新 {summary.Updated}，失败 {summary.Failed}，已是最新 {summary.UpToDate}，不支持 {summary.Unsupported}，未识别 {summary.NotIdentified}，未找到 {summary.Missing}。";
     }
 
-    private static double ComputeProgress(int completedItems, int totalItems, double itemProgress = 0)
+    private static string BuildCancelledSummaryMessage(UpdateExecutionSummary summary)
     {
-        if (totalItems <= 0)
-        {
-            return 100;
-        }
+        return $"社区资源更新已取消：已更新 {summary.Updated}，失败 {summary.Failed}，已是最新 {summary.UpToDate}，不支持 {summary.Unsupported}，未识别 {summary.NotIdentified}，未找到 {summary.Missing}。";
+    }
 
-        double completedProgress = completedItems / (double)totalItems * 100;
-        double partialProgress = Math.Clamp(itemProgress, 0, 100) / totalItems;
-        return Math.Min(99.9, completedProgress + partialProgress);
+    private static string BuildBatchGroupKey(string operationId)
+    {
+        return $"community-resource-update:{operationId}";
+    }
+
+    private static string BuildBatchProgressStatusMessage(UpdateBatchSnapshot snapshot)
+    {
+        return $"已更新 {snapshot.CompletedCount}/{snapshot.TotalCount}，失败 {snapshot.FailedCount}";
+    }
+
+    private static string BuildBatchCompletedStatusMessage(UpdateBatchSnapshot snapshot)
+    {
+        return $"批次完成：已更新 {snapshot.CompletedCount}/{snapshot.TotalCount}，失败 {snapshot.FailedCount}";
+    }
+
+    private static string BuildBatchCancelledStatusMessage(UpdateBatchSnapshot snapshot)
+    {
+        return $"批次已取消：已更新 {snapshot.CompletedCount}/{snapshot.TotalCount}，失败 {snapshot.FailedCount}";
+    }
+
+    private static string BuildBatchFailedStatusMessage(UpdateBatchSnapshot snapshot)
+    {
+        return $"批次失败：已更新 {snapshot.CompletedCount}/{snapshot.TotalCount}，失败 {snapshot.FailedCount}";
+    }
+
+    private static IReadOnlyList<string> BuildBatchStatusArguments(UpdateBatchSnapshot snapshot)
+    {
+        return
+        [
+            snapshot.CompletedCount.ToString(),
+            snapshot.TotalCount.ToString(),
+            snapshot.FailedCount.ToString()
+        ];
     }
 
     private static CommunityResourceProvider ResolveProvider(string? provider)
@@ -500,4 +674,145 @@ public sealed class CommunityResourceUpdateService : ICommunityResourceUpdateSer
 
         public int Missing { get; set; }
     }
+
+    private sealed class UpdateBatchCoordinator
+    {
+        private readonly Lock _lock = new();
+        private readonly HashSet<string> _childTaskIds = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, DownloadTaskInfo> _childSnapshots = new(StringComparer.Ordinal);
+
+        public UpdateBatchCoordinator(string batchGroupKey, string summaryTaskId, int totalCount)
+        {
+            BatchGroupKey = batchGroupKey;
+            SummaryTaskId = summaryTaskId;
+            TotalCount = totalCount;
+        }
+
+        public string BatchGroupKey { get; }
+
+        public string SummaryTaskId { get; }
+
+        public int TotalCount { get; }
+
+        public TaskCompletionSource<bool> CompletionSource { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public void RegisterChildTask(string taskId)
+        {
+            lock (_lock)
+            {
+                _childTaskIds.Add(taskId);
+                TryCompleteLocked();
+            }
+        }
+
+        public UpdateBatchSnapshot UpdateTaskSnapshot(DownloadTaskInfo taskInfo)
+        {
+            lock (_lock)
+            {
+                _childTaskIds.Add(taskInfo.TaskId);
+                _childSnapshots[taskInfo.TaskId] = taskInfo;
+                TryCompleteLocked();
+                return CreateSnapshotLocked();
+            }
+        }
+
+        public UpdateBatchSnapshot CaptureSnapshot()
+        {
+            lock (_lock)
+            {
+                return CreateSnapshotLocked();
+            }
+        }
+
+        public IReadOnlyList<string> GetChildTaskIds()
+        {
+            lock (_lock)
+            {
+                return [.. _childTaskIds];
+            }
+        }
+
+        private void TryCompleteLocked()
+        {
+            if (TotalCount == 0 || _childTaskIds.Count < TotalCount)
+            {
+                return;
+            }
+
+            if (_childTaskIds.All(taskId =>
+                    _childSnapshots.TryGetValue(taskId, out DownloadTaskInfo? snapshot) &&
+                    snapshot.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled))
+            {
+                CompletionSource.TrySetResult(true);
+            }
+        }
+
+        private UpdateBatchSnapshot CreateSnapshotLocked()
+        {
+            int completedCount = 0;
+            int failedCount = 0;
+            int queuedCount = 0;
+            int downloadingCount = 0;
+            int cancelledCount = 0;
+            double aggregateProgress = 0;
+            double aggregateSpeedBytesPerSecond = 0;
+
+            foreach (string childTaskId in _childTaskIds)
+            {
+                if (!_childSnapshots.TryGetValue(childTaskId, out DownloadTaskInfo? taskInfo))
+                {
+                    queuedCount++;
+                    continue;
+                }
+
+                switch (taskInfo.State)
+                {
+                    case DownloadTaskState.Completed:
+                        completedCount++;
+                        break;
+                    case DownloadTaskState.Failed:
+                        failedCount++;
+                        break;
+                    case DownloadTaskState.Cancelled:
+                        cancelledCount++;
+                        break;
+                    case DownloadTaskState.Downloading:
+                        downloadingCount++;
+                        aggregateSpeedBytesPerSecond += Math.Max(0, taskInfo.SpeedBytesPerSecond);
+                        break;
+                    case DownloadTaskState.Queued:
+                        queuedCount++;
+                        break;
+                }
+
+                aggregateProgress += taskInfo.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled
+                    ? 100
+                    : Math.Clamp(taskInfo.Progress, 0, 100);
+            }
+
+            double progress = TotalCount <= 0
+                ? 100
+                : Math.Clamp(aggregateProgress / TotalCount, 0, 100);
+
+            return new UpdateBatchSnapshot(
+                TotalCount,
+                completedCount,
+                failedCount,
+                queuedCount,
+                downloadingCount,
+                cancelledCount,
+                progress,
+                aggregateSpeedBytesPerSecond);
+        }
+    }
+
+    private sealed record UpdateBatchSnapshot(
+        int TotalCount,
+        int CompletedCount,
+        int FailedCount,
+        int QueuedCount,
+        int DownloadingCount,
+        int CancelledCount,
+        double Progress,
+        double AggregateSpeedBytesPerSecond);
 }
