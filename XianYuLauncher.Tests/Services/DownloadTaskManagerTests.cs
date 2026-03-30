@@ -573,6 +573,65 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
+    public void CancelTask_WhenExternalTaskSupportsCancellation_ShouldInvokeCancelActionAndUpdateStatus()
+    {
+        // Arrange
+        var cancelled = false;
+        var taskId = _downloadTaskManager.CreateExternalTask(
+            "社区资源更新",
+            "Fabric-1.20.1",
+            showInTeachingTip: true,
+            taskCategory: DownloadTaskCategory.CommunityResourceUpdateBatch,
+            batchGroupKey: "batch-1",
+            allowCancel: true,
+            cancelAction: () => cancelled = true,
+            taskTypeResourceKey: "DownloadQueue_TaskType_CommunityResourceUpdateBatch");
+
+        // Act
+        _downloadTaskManager.CancelTask(taskId);
+
+        // Assert
+        cancelled.Should().BeTrue();
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.StatusResourceKey == "DownloadQueue_Status_Cancelling"
+            && !task.CanCancel
+            && task.BatchGroupKey == "batch-1");
+    }
+
+    [Fact]
+    public async Task StartCustomManagedTaskWithTaskIdAsync_WhenRetryDisabled_ShouldFailWithoutRetryCapability()
+    {
+        // Act
+        var taskId = await _downloadTaskManager.StartCustomManagedTaskWithTaskIdAsync(
+            "更新 Alpha",
+            "mod",
+            DownloadTaskCategory.CommunityResourceUpdateFile,
+            executionContext =>
+            {
+                executionContext.ReportStatus(35, "正在校验 Alpha...", "DownloadQueue_Status_ValidatingFile", ["Alpha"]);
+                throw new InvalidOperationException("校验失败");
+            },
+            batchGroupKey: "batch-1",
+            parentTaskId: "summary-1",
+            allowCancel: false,
+            allowRetry: false,
+            taskTypeResourceKey: "DownloadQueue_TaskType_CommunityResourceUpdateFile");
+
+        await Task.Delay(100);
+
+        // Assert
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.TaskCategory == DownloadTaskCategory.CommunityResourceUpdateFile
+            && task.State == DownloadTaskState.Failed
+            && task.BatchGroupKey == "batch-1"
+            && task.ParentTaskId == "summary-1"
+            && !task.CanCancel
+            && !task.CanRetry);
+    }
+
+    [Fact]
     public async Task StartFileDownloadAsync_WhenDisplayMetadataProvided_ShouldPreservePresentationMetadata()
     {
         // Arrange

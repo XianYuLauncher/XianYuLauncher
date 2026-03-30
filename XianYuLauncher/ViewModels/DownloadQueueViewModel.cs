@@ -63,6 +63,9 @@ public partial class DownloadQueueTaskItemViewModel : ObservableObject
     [ObservableProperty]
     private bool _canRetry;
 
+    [ObservableProperty]
+    private bool _showProgressBar;
+
     public bool HasCustomIcon => !string.IsNullOrWhiteSpace(IconSource);
 
     public void UpdateFrom(DownloadTaskInfo taskInfo)
@@ -79,6 +82,7 @@ public partial class DownloadQueueTaskItemViewModel : ObservableObject
         IconSource = taskInfo.IconSource;
         CanCancel = taskInfo.CanCancel;
         CanRetry = taskInfo.CanRetry;
+        ShowProgressBar = taskInfo.State == DownloadTaskState.Downloading || taskInfo.Progress > 0;
     }
 
     [RelayCommand]
@@ -104,12 +108,107 @@ public partial class DownloadQueueTaskItemViewModel : ObservableObject
     }
 }
 
+public partial class DownloadQueueTaskGroupViewModel : ObservableObject
+{
+    public DownloadQueueTaskGroupViewModel(DownloadQueueTaskItemViewModel summaryTask)
+    {
+        SummaryTask = summaryTask;
+    }
+
+    public DownloadQueueTaskItemViewModel SummaryTask { get; }
+
+    public ObservableCollection<DownloadQueueTaskItemViewModel> ChildTasks { get; } = new();
+
+    [ObservableProperty]
+    private string _aggregateSpeedText = string.Empty;
+
+    [ObservableProperty]
+    private bool _isExpanded = false;
+
+    [ObservableProperty]
+    private bool _hasChildTasks;
+
+    public void UpdateFrom(
+        DownloadTaskInfo summaryTask,
+        IReadOnlyList<DownloadTaskInfo> childTaskInfos,
+        IReadOnlyList<DownloadQueueTaskItemViewModel> childTaskItems)
+    {
+        SummaryTask.UpdateFrom(summaryTask);
+        SyncCollection(ChildTasks, childTaskItems);
+        HasChildTasks = childTaskItems.Count > 0;
+
+        var aggregateSpeedBytesPerSecond = childTaskInfos
+            .Where(task => task.State == DownloadTaskState.Downloading)
+            .Sum(task => Math.Max(0, task.SpeedBytesPerSecond));
+
+        AggregateSpeedText = aggregateSpeedBytesPerSecond > 0
+            ? FormatSpeedText(aggregateSpeedBytesPerSecond)
+            : string.Empty;
+    }
+
+    private static void SyncCollection<T>(ObservableCollection<T> collection, IReadOnlyList<T> items)
+        where T : class
+    {
+        for (var index = collection.Count - 1; index >= 0; index--)
+        {
+            if (!items.Contains(collection[index]))
+            {
+                collection.RemoveAt(index);
+            }
+        }
+
+        for (var index = 0; index < items.Count; index++)
+        {
+            var item = items[index];
+            if (index < collection.Count && ReferenceEquals(collection[index], item))
+            {
+                continue;
+            }
+
+            var existingIndex = collection.IndexOf(item);
+            if (existingIndex >= 0)
+            {
+                collection.Move(existingIndex, index);
+                continue;
+            }
+
+            if (index <= collection.Count)
+            {
+                collection.Insert(index, item);
+            }
+        }
+    }
+
+    private static string FormatSpeedText(double bytesPerSecond)
+    {
+        if (bytesPerSecond <= 0)
+        {
+            return string.Empty;
+        }
+
+        var megaBytesPerSecond = bytesPerSecond / (1024 * 1024);
+        if (megaBytesPerSecond >= 1)
+        {
+            return $"{megaBytesPerSecond:F2} MB/s";
+        }
+
+        var kiloBytesPerSecond = bytesPerSecond / 1024;
+        if (kiloBytesPerSecond >= 1)
+        {
+            return $"{kiloBytesPerSecond:F2} KB/s";
+        }
+
+        return $"{bytesPerSecond:F0} B/s";
+    }
+}
+
 public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
 {
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IDownloadTaskPresentationService _downloadTaskPresentationService;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly Dictionary<string, DownloadQueueTaskItemViewModel> _taskItems = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, DownloadQueueTaskGroupViewModel> _groupItems = new(StringComparer.Ordinal);
     private bool _disposed;
 
     [ObservableProperty]
@@ -136,8 +235,11 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
     [ObservableProperty]
     private bool _hasRecentTasks;
 
+    public ObservableCollection<DownloadQueueTaskGroupViewModel> RunningGroups { get; } = new();
     public ObservableCollection<DownloadQueueTaskItemViewModel> RunningTasks { get; } = new();
+    public ObservableCollection<DownloadQueueTaskGroupViewModel> QueuedGroups { get; } = new();
     public ObservableCollection<DownloadQueueTaskItemViewModel> QueuedTasks { get; } = new();
+    public ObservableCollection<DownloadQueueTaskGroupViewModel> RecentGroups { get; } = new();
     public ObservableCollection<DownloadQueueTaskItemViewModel> RecentTasks { get; } = new();
 
     public DownloadQueueViewModel(
@@ -187,36 +289,93 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
         }
 
         var snapshot = _downloadTaskManager.TasksSnapshot;
+        var groupedTaskIds = new HashSet<string>(StringComparer.Ordinal);
+
+        var runningGroups = new List<DownloadQueueTaskGroupViewModel>();
+        var queuedGroups = new List<DownloadQueueTaskGroupViewModel>();
+        var recentGroups = new List<DownloadQueueTaskGroupViewModel>();
+
+        var batchSummaries = snapshot
+            .Where(IsCommunityUpdateBatchSummary)
+            .OrderBy(task => task.State == DownloadTaskState.Completed || task.State == DownloadTaskState.Failed || task.State == DownloadTaskState.Cancelled
+                ? task.LastUpdatedAtUtc
+                : task.CreatedAtUtc)
+            .ToList();
+
+        foreach (var summaryTask in batchSummaries)
+        {
+            var childTasks = snapshot
+                .Where(task => IsGroupChildTask(task, summaryTask))
+                .OrderBy(GetChildTaskSortOrder)
+                .ThenBy(task => task.CreatedAtUtc)
+                .ToList();
+
+            groupedTaskIds.Add(summaryTask.TaskId);
+            foreach (var childTask in childTasks)
+            {
+                groupedTaskIds.Add(childTask.TaskId);
+            }
+
+            var groupItem = GetOrCreateGroupItem(summaryTask.TaskId, GetOrCreateTaskItem(summaryTask));
+            groupItem.UpdateFrom(summaryTask, childTasks, childTasks.Select(GetOrCreateTaskItem).ToList());
+
+            switch (summaryTask.State)
+            {
+                case DownloadTaskState.Queued:
+                    queuedGroups.Add(groupItem);
+                    break;
+                case DownloadTaskState.Completed:
+                case DownloadTaskState.Failed:
+                case DownloadTaskState.Cancelled:
+                    recentGroups.Add(groupItem);
+                    break;
+                default:
+                    runningGroups.Add(groupItem);
+                    break;
+            }
+        }
+
         var runningTasks = snapshot
             .Where(task => task.State == DownloadTaskState.Downloading)
+            .Where(task => !groupedTaskIds.Contains(task.TaskId))
+            .OrderBy(task => task.CreatedAtUtc)
             .Select(GetOrCreateTaskItem)
             .ToList();
         var queuedTasks = snapshot
             .Where(task => task.State == DownloadTaskState.Queued)
+            .Where(task => !groupedTaskIds.Contains(task.TaskId))
             .OrderBy(task => task.QueuePosition ?? int.MaxValue)
+            .ThenBy(task => task.CreatedAtUtc)
             .Select(GetOrCreateTaskItem)
             .ToList();
         var recentTasks = snapshot
             .Where(task => task.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled)
+            .Where(task => !groupedTaskIds.Contains(task.TaskId))
             .OrderByDescending(task => task.LastUpdatedAtUtc)
             .Select(GetOrCreateTaskItem)
             .ToList();
 
+        SyncCollection(RunningGroups, runningGroups);
         SyncCollection(RunningTasks, runningTasks);
+        SyncCollection(QueuedGroups, queuedGroups);
         SyncCollection(QueuedTasks, queuedTasks);
+        SyncCollection(RecentGroups, recentGroups);
         SyncCollection(RecentTasks, recentTasks);
         RemoveStaleTaskItems(snapshot);
+        RemoveStaleGroupItems(batchSummaries.Select(task => task.TaskId));
 
-        RunningCount = runningTasks.Count;
-        QueuedCount = queuedTasks.Count;
-        FailedCount = snapshot.Count(task => task.State == DownloadTaskState.Failed);
-        HasRunningTasks = runningTasks.Count > 0;
-        HasQueuedTasks = queuedTasks.Count > 0;
-        HasRecentTasks = recentTasks.Count > 0;
-        IsEmptyStateVisible = runningTasks.Count == 0 && queuedTasks.Count == 0 && recentTasks.Count == 0;
+        RunningCount = runningGroups.Count + runningTasks.Count;
+        QueuedCount = queuedGroups.Count + queuedTasks.Count;
+        FailedCount = recentGroups.Count(group => string.Equals(group.SummaryTask.State, DownloadTaskState.Failed.ToString(), StringComparison.Ordinal))
+            + recentTasks.Count(task => string.Equals(task.State, DownloadTaskState.Failed.ToString(), StringComparison.Ordinal));
+        HasRunningTasks = runningGroups.Count > 0 || runningTasks.Count > 0;
+        HasQueuedTasks = queuedGroups.Count > 0 || queuedTasks.Count > 0;
+        HasRecentTasks = recentGroups.Count > 0 || recentTasks.Count > 0;
+        IsEmptyStateVisible = !HasRunningTasks && !HasQueuedTasks && !HasRecentTasks;
 
         var totalBytesPerSecond = snapshot
             .Where(task => task.State == DownloadTaskState.Downloading)
+            .Where(task => !IsCommunityUpdateBatchSummary(task))
             .Sum(task => Math.Max(0, task.SpeedBytesPerSecond));
 
         TotalSpeed = FormatSpeedText(totalBytesPerSecond);
@@ -233,6 +392,18 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
         var newItem = new DownloadQueueTaskItemViewModel(taskInfo, CancelTask, RetryTaskAsync, _downloadTaskPresentationService);
         _taskItems[taskInfo.TaskId] = newItem;
         return newItem;
+    }
+
+    private DownloadQueueTaskGroupViewModel GetOrCreateGroupItem(string summaryTaskId, DownloadQueueTaskItemViewModel summaryTask)
+    {
+        if (_groupItems.TryGetValue(summaryTaskId, out var existingGroup))
+        {
+            return existingGroup;
+        }
+
+        var newGroup = new DownloadQueueTaskGroupViewModel(summaryTask);
+        _groupItems[summaryTaskId] = newGroup;
+        return newGroup;
     }
 
     private void CancelTask(string taskId)
@@ -254,6 +425,52 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
         {
             _taskItems.Remove(staleTaskId);
         }
+    }
+
+    private void RemoveStaleGroupItems(IEnumerable<string> activeSummaryTaskIds)
+    {
+        var activeIds = activeSummaryTaskIds.ToHashSet(StringComparer.Ordinal);
+        var staleGroupIds = _groupItems.Keys.Where(taskId => !activeIds.Contains(taskId)).ToList();
+
+        foreach (var staleGroupId in staleGroupIds)
+        {
+            _groupItems.Remove(staleGroupId);
+        }
+    }
+
+    private static bool IsCommunityUpdateBatchSummary(DownloadTaskInfo task)
+    {
+        return task.TaskCategory == DownloadTaskCategory.CommunityResourceUpdateBatch;
+    }
+
+    private static bool IsGroupChildTask(DownloadTaskInfo candidate, DownloadTaskInfo summary)
+    {
+        if (candidate.TaskCategory != DownloadTaskCategory.CommunityResourceUpdateFile)
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(candidate.ParentTaskId) &&
+            string.Equals(candidate.ParentTaskId, summary.TaskId, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return !string.IsNullOrWhiteSpace(summary.BatchGroupKey) &&
+               string.Equals(candidate.BatchGroupKey, summary.BatchGroupKey, StringComparison.Ordinal);
+    }
+
+    private static int GetChildTaskSortOrder(DownloadTaskInfo task)
+    {
+        return task.State switch
+        {
+            DownloadTaskState.Downloading => 0,
+            DownloadTaskState.Queued => 1,
+            DownloadTaskState.Failed => 2,
+            DownloadTaskState.Cancelled => 3,
+            DownloadTaskState.Completed => 4,
+            _ => 5
+        };
     }
 
     private static void SyncCollection<T>(ObservableCollection<T> collection, IReadOnlyList<T> items)

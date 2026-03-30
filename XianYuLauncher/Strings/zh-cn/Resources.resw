@@ -264,6 +264,27 @@
   <data name="DownloadQueue_Status_BackgroundDownloading" xml:space="preserve">
     <value>正在后台下载...</value>
   </data>
+  <data name="DownloadQueue_Status_Cancelling" xml:space="preserve">
+    <value>正在取消...</value>
+  </data>
+  <data name="DownloadQueue_Status_ValidatingFile" xml:space="preserve">
+    <value>正在校验 {0}...</value>
+  </data>
+  <data name="DownloadQueue_Status_ApplyingFileUpdate" xml:space="preserve">
+    <value>正在替换 {0}...</value>
+  </data>
+  <data name="DownloadQueue_Status_CommunityUpdateProgress" xml:space="preserve">
+    <value>已更新 {0}/{1}，失败 {2}</value>
+  </data>
+  <data name="DownloadQueue_Status_CommunityUpdateCompleted" xml:space="preserve">
+    <value>批次完成：已更新 {0}/{1}，失败 {2}</value>
+  </data>
+  <data name="DownloadQueue_Status_CommunityUpdateFailed" xml:space="preserve">
+    <value>批次失败：已更新 {0}/{1}，失败 {2}</value>
+  </data>
+  <data name="DownloadQueue_Status_CommunityUpdateCancelled" xml:space="preserve">
+    <value>批次已取消：已更新 {0}/{1}，失败 {2}</value>
+  </data>
   <data name="DownloadQueue_TaskType_GameInstall" xml:space="preserve">
     <value>游戏安装</value>
   </data>
@@ -285,11 +306,20 @@
   <data name="DownloadQueue_TaskType_ModpackDownload" xml:space="preserve">
     <value>整合包下载</value>
   </data>
+  <data name="DownloadQueue_TaskType_CommunityResourceUpdateBatch" xml:space="preserve">
+    <value>社区资源更新</value>
+  </data>
+  <data name="DownloadQueue_TaskType_CommunityResourceUpdateFile" xml:space="preserve">
+    <value>更新文件</value>
+  </data>
   <data name="DownloadQueue_TaskType_FileDownload" xml:space="preserve">
     <value>文件下载</value>
   </data>
   <data name="DownloadQueue_TaskType_Generic" xml:space="preserve">
     <value>下载任务</value>
+  </data>
+  <data name="DownloadQueue_DisplayName_CommunityResourceUpdateBatch" xml:space="preserve">
+    <value>社区资源更新 · {0}</value>
   </data>
   <data name="DownloadQueue_DisplayName_FavoriteImport" xml:space="preserve">
     <value>收藏夹导入</value>

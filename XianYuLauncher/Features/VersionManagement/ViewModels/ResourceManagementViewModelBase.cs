@@ -10,6 +10,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
@@ -41,6 +42,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
     protected readonly ModrinthService _modrinthService;
     protected readonly CurseForgeService _curseForgeService;
     protected readonly ModInfoService _modInfoService;
+    protected readonly ICommunityResourceUpdateCheckService _communityResourceUpdateCheckService;
 
     protected List<T> _allItems = new();
     protected List<T>? _selectedItemsForMove;
@@ -58,7 +60,8 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
         ModInfoService modInfoService,
-        IUiDispatcher uiDispatcher)
+        IUiDispatcher uiDispatcher,
+        ICommunityResourceUpdateCheckService communityResourceUpdateCheckService)
     {
         _context = context;
         _navigationService = navigationService;
@@ -67,6 +70,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
         _curseForgeService = curseForgeService;
         _modInfoService = modInfoService;
         _uiDispatcher = uiDispatcher;
+        _communityResourceUpdateCheckService = communityResourceUpdateCheckService;
     }
 
     partial void OnItemsChanged(ObservableCollection<T> value)
@@ -136,6 +140,9 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
     /// <summary>从磁盘加载资源列表（子类实现各自文件发现逻辑）</summary>
     protected abstract Task<List<T>> LoadItemsFromDiskAsync(string folderPath, CancellationToken ct);
 
+    /// <summary>对应无头更新检查服务的资源类型（mod / shader / resourcepack）</summary>
+    protected abstract string GetUpdateCheckResourceType();
+
     /// <summary>是否跳过哈希计算（Mods: 非文件；ResourcePacks/Shaders: 目录）</summary>
     protected abstract bool ShouldSkipForHash(T item);
 
@@ -171,79 +178,78 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
         var logPrefix = GetUpdateDetectLogPrefix();
         try
         {
-            var updatableByFile = items
-                .Where(x => !string.IsNullOrWhiteSpace(x.FilePath))
-                .ToDictionary(x => x.FilePath, _ => false, StringComparer.OrdinalIgnoreCase);
-            var projectIdentityByFile = new Dictionary<string, (string Source, string ProjectId)>(StringComparer.OrdinalIgnoreCase);
-            var currentVersionByFile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            var latestVersionByFile = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-
-            if (updatableByFile.Count == 0)
+            if (items.Count == 0)
             {
-                ApplyUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
+                ApplyUpdateFlags(
+                    new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase),
+                    new Dictionary<string, (string? Source, string? ProjectId)>(StringComparer.OrdinalIgnoreCase),
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                    generation);
                 return;
             }
 
-            var hashIndex = await Task.Run(() => VersionManagementUpdateOps.BuildHashIndex(
-                items,
-                x => x.FilePath,
-                _context.CalculateSHA1,
-                shouldSkip: ShouldSkipForHash,
-                onHashFailed: (item, ex) =>
-                    System.Diagnostics.Debug.WriteLine($"{logPrefix} SHA1计算失败: {item.Name}, {ex.Message}")), cancellationToken);
-
-            var hashes = hashIndex.Hashes;
-            var filePathMap = hashIndex.FilePathMap;
-
-            if (hashes.Count == 0)
+            var targetVersionName = _context.SelectedVersion?.Name;
+            if (string.IsNullOrWhiteSpace(targetVersionName))
             {
-                ApplyUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
+                ApplyUpdateFlags(
+                    new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase),
+                    new Dictionary<string, (string? Source, string? ProjectId)>(StringComparer.OrdinalIgnoreCase),
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                    new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase),
+                    generation);
                 return;
             }
 
-            var currentVersionInfo = await _modrinthService.GetVersionFilesByHashesAsync(hashes, "sha1")
-                ?? new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
+            CommunityResourceUpdateCheckResult result = await _communityResourceUpdateCheckService.CheckAsync(
+                new CommunityResourceUpdateCheckRequest
+                {
+                    TargetVersionName = targetVersionName,
+                    ResourceTypes = [GetUpdateCheckResourceType()],
+                },
+                cancellationToken);
 
-            var (loaders, gameVersions) = await GetModrinthParamsAsync(cancellationToken);
-            cancellationToken.ThrowIfCancellationRequested();
+            Dictionary<string, bool> updatableByFile = new(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, (string? Source, string? ProjectId)> projectIdentityByFile = new(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, string> resourceInstanceIdByFile = new(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, string> currentVersionByFile = new(StringComparer.OrdinalIgnoreCase);
+            Dictionary<string, string> latestVersionByFile = new(StringComparer.OrdinalIgnoreCase);
 
-            var updateInfo = await _modrinthService.UpdateVersionFilesAsync(hashes, loaders, gameVersions)
-                ?? new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
-
-            var processedFilePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var hash in hashes)
+            foreach (CommunityResourceUpdateCheckItem item in result.Items)
             {
-                if (!filePathMap.TryGetValue(hash, out var filePath)) continue;
+                cancellationToken.ThrowIfCancellationRequested();
 
-                if (currentVersionInfo.TryGetValue(hash, out var currentVersion))
-                    currentVersionByFile[filePath] = VersionDisplayHelper.BuildModrinthVersionDisplay(currentVersion);
-
-                if (!updateInfo.TryGetValue(hash, out var version) || version?.Files == null || version.Files.Count == 0)
+                if (string.IsNullOrWhiteSpace(item.FilePath))
+                {
                     continue;
+                }
 
-                latestVersionByFile[filePath] = VersionDisplayHelper.BuildModrinthVersionDisplay(version);
+                updatableByFile[item.FilePath] = item.HasUpdate;
+                projectIdentityByFile[item.FilePath] =
+                (
+                    NormalizeOptionalText(item.Source) ?? NormalizeOptionalText(item.Provider),
+                    NormalizeOptionalText(item.ProjectId)
+                );
 
-                var primaryFile = version.Files.FirstOrDefault(f => f.Primary) ?? version.Files[0];
-                var hasUpdate = true;
-                if (primaryFile.Hashes.TryGetValue("sha1", out var remoteSha1) && !string.IsNullOrWhiteSpace(remoteSha1))
-                    hasUpdate = !hash.Equals(remoteSha1, StringComparison.OrdinalIgnoreCase);
+                if (!string.IsNullOrWhiteSpace(item.ResourceInstanceId))
+                {
+                    resourceInstanceIdByFile[item.FilePath] = item.ResourceInstanceId;
+                }
 
-                updatableByFile[filePath] = hasUpdate;
-                processedFilePaths.Add(filePath);
-                if (!string.IsNullOrWhiteSpace(version.ProjectId))
-                    projectIdentityByFile[filePath] = ("Modrinth", version.ProjectId);
+                if (!string.IsNullOrWhiteSpace(item.CurrentVersion))
+                {
+                    currentVersionByFile[item.FilePath] = item.CurrentVersion;
+                }
+
+                if (!string.IsNullOrWhiteSpace(item.LatestVersion))
+                {
+                    latestVersionByFile[item.FilePath] = item.LatestVersion;
+                }
             }
 
-            var unresolved = items.Where(x => IsUnresolvedForCurseForge(x, processedFilePaths)).ToList();
-            if (unresolved.Count > 0)
-            {
-                var (curseForgeLoader, gameVersion) = await GetCurseForgeParamsAsync(cancellationToken);
-                await DetectUpdatesViaCurseForgeAsync(unresolved, gameVersion, curseForgeLoader,
-                    updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, cancellationToken);
-            }
-
-            ApplyUpdateFlags(updatableByFile, projectIdentityByFile, currentVersionByFile, latestVersionByFile, generation);
+            ApplyUpdateFlags(updatableByFile, projectIdentityByFile, resourceInstanceIdByFile, currentVersionByFile, latestVersionByFile, generation);
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
@@ -447,7 +453,8 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
     /// <summary>应用更新标志到 UI</summary>
     protected void ApplyUpdateFlags(
         Dictionary<string, bool> updatableByFile,
-        Dictionary<string, (string Source, string ProjectId)> projectIdentityByFile,
+        Dictionary<string, (string? Source, string? ProjectId)> projectIdentityByFile,
+        Dictionary<string, string> resourceInstanceIdByFile,
         Dictionary<string, string> currentVersionByFile,
         Dictionary<string, string> latestVersionByFile,
         int generation)
@@ -463,12 +470,20 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
             foreach (var item in allItems)
             {
                 item.HasUpdate = updatableByFile.TryGetValue(item.FilePath, out var hasUpdate) && hasUpdate;
+                item.ResourceInstanceId = resourceInstanceIdByFile.TryGetValue(item.FilePath, out var resourceInstanceId)
+                    ? resourceInstanceId
+                    : string.Empty;
                 item.CurrentVersion = currentVersionByFile.TryGetValue(item.FilePath, out var cv) ? cv : string.Empty;
                 item.LatestVersion = latestVersionByFile.TryGetValue(item.FilePath, out var lv) ? lv : string.Empty;
                 if (projectIdentityByFile.TryGetValue(item.FilePath, out var identity))
                 {
                     item.Source = identity.Source;
                     item.ProjectId = identity.ProjectId;
+                }
+                else
+                {
+                    item.Source = null;
+                    item.ProjectId = null;
                 }
             }
 
@@ -506,6 +521,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
                 if (!string.IsNullOrEmpty(existing.Description)) item.Description = existing.Description;
                 if (!string.IsNullOrEmpty(existing.Source)) item.Source = existing.Source;
                 if (!string.IsNullOrEmpty(existing.ProjectId)) item.ProjectId = existing.ProjectId;
+                if (!string.IsNullOrEmpty(existing.ResourceInstanceId)) item.ResourceInstanceId = existing.ResourceInstanceId;
                 item.HasUpdate = existing.HasUpdate;
                 item.CurrentVersion = existing.CurrentVersion;
                 item.LatestVersion = existing.LatestVersion;
@@ -523,6 +539,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
             foreach (var item in _allItems)
             {
                 item.HasUpdate = false;
+                item.ResourceInstanceId = string.Empty;
                 item.CurrentVersion = string.Empty;
                 item.LatestVersion = string.Empty;
             }
@@ -634,6 +651,11 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
         return filteredSource.Where(item => duplicateKeys.Contains(duplicateKeySelector(item)));
+    }
+
+    protected static string? NormalizeOptionalText(string? value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
     }
 
     #endregion

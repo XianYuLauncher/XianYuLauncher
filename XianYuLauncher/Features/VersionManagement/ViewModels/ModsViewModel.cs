@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
@@ -33,8 +34,9 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
         ModInfoService modInfoService,
-        IUiDispatcher uiDispatcher)
-        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher)
+        IUiDispatcher uiDispatcher,
+        ICommunityResourceUpdateCheckService communityResourceUpdateCheckService)
+        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher, communityResourceUpdateCheckService)
     {
     }
 
@@ -85,6 +87,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
     protected override string GetSubFolder() => "mods";
     protected override string GetIconType() => "mod";
     protected override bool GetIconFromRemote() => true;
+    protected override string GetUpdateCheckResourceType() => "mod";
     protected override void ExecuteFilter() => FilterMods();
     protected override void NotifyUpdatableCountChanged() => OnPropertyChanged(nameof(UpdatableModCount));
     protected override bool IsSelectionModeEnabled { get => IsModSelectionModeEnabled; set => IsModSelectionModeEnabled = value; }
@@ -485,149 +488,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
         bool showResultDialog = true,
         bool suppressUiFeedback = false)
     {
-        var result = new ResourceUpdateBatchResult();
-
-        try
-        {
-            if (selectedMods == null || selectedMods.Count == 0)
-            {
-                var emptyMessage = "请先选择要更新的Mod";
-                if (!suppressUiFeedback)
-                {
-                    _context.StatusMessage = emptyMessage;
-                }
-                result.IsSuccess = false;
-                result.Message = emptyMessage;
-                return result;
-            }
-
-            if (!suppressUiFeedback)
-            {
-                _context.DownloadProgressDialogTitle = "VersionManagerPage_UpdatingModsText".GetLocalized();
-                _context.IsDownloading = true;
-                _context.DownloadProgress = 0;
-                _context.CurrentDownloadItem = string.Empty;
-            }
-
-            var updateTargets = selectedMods.ToList();
-
-            // 计算选中 Mod 的 SHA1 哈希值（用于 Modrinth）
-            var modHashIndex = VersionManagementUpdateOps.BuildHashIndex(
-                updateTargets,
-                mod => mod.FilePath,
-                _context.CalculateSHA1,
-                onHashed: (mod, sha1Hash) =>
-                    System.Diagnostics.Debug.WriteLine($"Mod {mod.Name} 的SHA1哈希值: {sha1Hash}"));
-            var modHashes = modHashIndex.Hashes;
-            var modFilePathMap = modHashIndex.FilePathMap;
-
-            // 获取当前版本的 ModLoader 和游戏版本
-            string modLoader = "fabric";
-            string gameVersion = _context.SelectedVersion?.VersionNumber ?? "1.19.2";
-
-            var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
-            if (versionInfoService != null && _context.SelectedVersion != null)
-            {
-                string versionDir = _context.SelectedVersion.Path;
-                Core.Models.VersionConfig versionConfig = await versionInfoService.GetFullVersionInfoAsync(
-                    _context.SelectedVersion.Name, versionDir);
-
-                if (versionConfig != null)
-                {
-                    modLoader = VersionManagementViewModel.DetermineModLoaderType(versionConfig, _context.SelectedVersion.Name);
-
-                    if (!string.IsNullOrEmpty(versionConfig.MinecraftVersion))
-                    {
-                        gameVersion = versionConfig.MinecraftVersion;
-                    }
-                }
-            }
-
-            System.Diagnostics.Debug.WriteLine($"当前版本信息：ModLoader={modLoader}, GameVersion={gameVersion}");
-
-            string modsPath = _context.GetVersionSpecificPath("mods");
-
-            int updatedCount = 0;
-            int upToDateCount = 0;
-
-            // 第一步：尝试通过 Modrinth 更新
-            System.Diagnostics.Debug.WriteLine($"[UpdateMods] 第一步：尝试通过 Modrinth 更新 {updateTargets.Count} 个Mod");
-            var modrinthResult = await TryUpdateModsViaModrinthAsync(
-                modHashes,
-                modFilePathMap,
-                modLoader,
-                gameVersion,
-                modsPath);
-
-            updatedCount += modrinthResult.UpdatedCount;
-            upToDateCount += modrinthResult.UpToDateCount;
-
-            // 第二步：对于 Modrinth 未找到的 Mod，尝试通过 CurseForge 更新
-            var modrinthFailedMods = updateTargets
-                .Where(mod => !modrinthResult.ProcessedMods.Contains(mod.FilePath))
-                .ToList();
-
-            if (modrinthFailedMods.Count > 0)
-            {
-                System.Diagnostics.Debug.WriteLine($"[UpdateMods] 第二步：尝试通过 CurseForge 更新 {modrinthFailedMods.Count} 个Mod");
-                var curseForgeResult = await TryUpdateModsViaCurseForgeAsync(
-                    modrinthFailedMods,
-                    modLoader,
-                    gameVersion,
-                    modsPath);
-
-                updatedCount += curseForgeResult.UpdatedCount;
-                upToDateCount += curseForgeResult.UpToDateCount;
-            }
-
-            // 重新加载 Mod 列表，刷新 UI（含图标）
-            await ReloadModsWithIconsAsync();
-
-            // 显示结果
-            var statusMessage = $"{updatedCount}{"VersionManagerPage_VersionsUpdatedText".GetLocalized()}，{upToDateCount}{"VersionManagerPage_VersionsUpToDateText".GetLocalized()}";
-            if (!suppressUiFeedback)
-            {
-                _context.StatusMessage = statusMessage;
-                if (showResultDialog)
-                {
-                    _context.UpdateResults = statusMessage;
-                    _context.IsResultDialogVisible = true;
-                }
-            }
-
-            result.IsSuccess = true;
-            result.UpdatedCount = updatedCount;
-            result.UpToDateCount = upToDateCount;
-            result.FailedCount = Math.Max(0, updateTargets.Count - updatedCount - upToDateCount);
-            result.Message = statusMessage;
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"更新Mod失败: {ex.Message}");
-            var errorMessage = $"更新Mod失败: {ex.Message}";
-            if (!suppressUiFeedback)
-            {
-                _context.StatusMessage = errorMessage;
-                if (showResultDialog)
-                {
-                    _context.UpdateResults = errorMessage;
-                    _context.IsResultDialogVisible = true;
-                }
-            }
-            result.IsSuccess = false;
-            result.Message = errorMessage;
-            result.Errors.Add(ex.Message);
-        }
-        finally
-        {
-            if (!suppressUiFeedback)
-            {
-                _context.IsDownloading = false;
-                _context.DownloadProgress = 0;
-            }
-        }
-
-        return result;
+        return await _context.StartCommunityResourceUpdateAsync(selectedMods, "请先选择要更新的Mod", suppressUiFeedback);
     }
 
     [RelayCommand]

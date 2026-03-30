@@ -119,6 +119,25 @@ public interface IDownloadTaskManager
     Task RetryTaskAsync(string taskId);
 
     /// <summary>
+    /// 启动一个由业务层提供执行逻辑的托管任务，并返回任务 ID。
+    /// </summary>
+    Task<string> StartCustomManagedTaskWithTaskIdAsync(
+        string taskName,
+        string versionName,
+        DownloadTaskCategory taskCategory,
+        Func<DownloadTaskExecutionContext, Task> executor,
+        bool showInTeachingTip = false,
+        string? iconSource = null,
+        string? teachingTipGroupKey = null,
+        string? batchGroupKey = null,
+        string? parentTaskId = null,
+        bool allowCancel = true,
+        bool allowRetry = true,
+        string? displayNameResourceKey = null,
+        IReadOnlyList<string>? displayNameResourceArguments = null,
+        string? taskTypeResourceKey = null);
+
+    /// <summary>
     /// 创建一个由业务层主动驱动的外部任务（如依赖解析、收藏夹批量导入）。
     /// </summary>
     string CreateExternalTask(
@@ -128,6 +147,10 @@ public interface IDownloadTaskManager
         string? teachingTipGroupKey = null,
         DownloadTaskCategory taskCategory = DownloadTaskCategory.Unknown,
         bool retainInRecentWhenFinished = true,
+        string? batchGroupKey = null,
+        string? parentTaskId = null,
+        bool allowCancel = false,
+        Action? cancelAction = null,
         string? displayNameResourceKey = null,
         IReadOnlyList<string>? displayNameResourceArguments = null,
         string? taskTypeResourceKey = null);

@@ -30,6 +30,22 @@ public interface IAgentCommunityResourceService
 
     Task<string> GetInstallableInstancesAsync(ErrorAnalysisSessionContext context, CancellationToken cancellationToken);
 
+    Task<string> GetInstanceCommunityResourcesAsync(
+        AgentInstanceCommunityResourceInventoryCommand command,
+        CancellationToken cancellationToken);
+
+    Task<string> CheckInstanceCommunityResourceUpdatesAsync(
+        AgentInstanceCommunityResourceUpdateCheckCommand command,
+        CancellationToken cancellationToken);
+
+    Task<AgentCommunityResourceUpdatePreparation> PrepareUpdateAsync(
+        AgentInstanceCommunityResourceUpdateCommand command,
+        CancellationToken cancellationToken);
+
+    Task<string> StartUpdateAsync(
+        AgentInstanceCommunityResourceUpdateCommand command,
+        CancellationToken cancellationToken);
+
     Task<AgentCommunityResourceInstallPreparation> PrepareInstallAsync(
         AgentCommunityResourceInstallCommand command,
         CancellationToken cancellationToken);
@@ -37,6 +53,48 @@ public interface IAgentCommunityResourceService
     Task<string> StartInstallAsync(
         AgentCommunityResourceInstallCommand command,
         CancellationToken cancellationToken);
+}
+
+public sealed class AgentInstanceCommunityResourceInventoryCommand
+{
+    public string? TargetVersionName { get; init; }
+
+    public string? TargetVersionPath { get; init; }
+
+    public IReadOnlyCollection<string>? ResourceTypes { get; init; }
+}
+
+public sealed class AgentInstanceCommunityResourceUpdateCheckCommand
+{
+    public string? TargetVersionName { get; init; }
+
+    public string? TargetVersionPath { get; init; }
+
+    public IReadOnlyCollection<string>? ResourceInstanceIds { get; init; }
+
+    public string? CheckScope { get; init; }
+}
+
+public sealed class AgentInstanceCommunityResourceUpdateCommand
+{
+    public string? TargetVersionName { get; init; }
+
+    public string? TargetVersionPath { get; init; }
+
+    public IReadOnlyCollection<string>? ResourceInstanceIds { get; init; }
+
+    public string? SelectionMode { get; init; }
+}
+
+public sealed class AgentCommunityResourceUpdatePreparation
+{
+    public required string Message { get; init; }
+
+    public bool IsReadyForConfirmation { get; init; }
+
+    public string ButtonText { get; init; } = string.Empty;
+
+    public Dictionary<string, string> ProposalParameters { get; init; } = [];
 }
 
 public sealed class AgentCommunityResourceInstallCommand
@@ -84,6 +142,9 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
     private readonly IVersionInfoService _versionInfoService;
     private readonly IFileService _fileService;
     private readonly IGameDirResolver _gameDirResolver;
+    private readonly ICommunityResourceInventoryService _communityResourceInventoryService;
+    private readonly ICommunityResourceUpdateCheckService _communityResourceUpdateCheckService;
+    private readonly ICommunityResourceUpdateService _communityResourceUpdateService;
     private readonly ICommunityResourceInstallPlanner _communityResourceInstallPlanner;
     private readonly ICommunityResourceInstallService _communityResourceInstallService;
     private readonly ITranslationService _translationService;
@@ -95,6 +156,9 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         IVersionInfoService versionInfoService,
         IFileService fileService,
         IGameDirResolver gameDirResolver,
+        ICommunityResourceInventoryService communityResourceInventoryService,
+        ICommunityResourceUpdateCheckService communityResourceUpdateCheckService,
+        ICommunityResourceUpdateService communityResourceUpdateService,
         ICommunityResourceInstallPlanner communityResourceInstallPlanner,
         ICommunityResourceInstallService communityResourceInstallService,
         ITranslationService translationService)
@@ -105,6 +169,9 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         _versionInfoService = versionInfoService;
         _fileService = fileService;
         _gameDirResolver = gameDirResolver;
+        _communityResourceInventoryService = communityResourceInventoryService;
+        _communityResourceUpdateCheckService = communityResourceUpdateCheckService;
+        _communityResourceUpdateService = communityResourceUpdateService;
         _communityResourceInstallPlanner = communityResourceInstallPlanner;
         _communityResourceInstallService = communityResourceInstallService;
         _translationService = translationService;
@@ -295,6 +362,234 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             total_count = instances.Count,
             current_session_version = context.VersionId,
             instances
+        });
+    }
+
+    public async Task<string> GetInstanceCommunityResourcesAsync(
+        AgentInstanceCommunityResourceInventoryCommand command,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        ResolvedTargetVersionContext targetVersion = await ResolveTargetVersionAsync(
+            command.TargetVersionName,
+            command.TargetVersionPath,
+            cancellationToken);
+        if (!targetVersion.IsReady)
+        {
+            return targetVersion.Message;
+        }
+
+        string? invalidResourceType;
+        IReadOnlyCollection<string>? resourceTypes = NormalizeInventoryResourceTypes(command.ResourceTypes, out invalidResourceType);
+        if (!string.IsNullOrWhiteSpace(invalidResourceType))
+        {
+            return SerializePayload(new
+            {
+                status = "invalid_request",
+                message = $"resource_types 包含不支持的类型: {invalidResourceType}。仅支持 mod、shader、resourcepack、world、datapack。"
+            });
+        }
+
+        CommunityResourceInventoryResult result = await _communityResourceInventoryService.ListAsync(
+            new CommunityResourceInventoryRequest
+            {
+                TargetVersionName = targetVersion.TargetVersionName,
+                ResolvedGameDirectory = targetVersion.ResolvedGameDirectory,
+                ResourceTypes = resourceTypes,
+            },
+            cancellationToken);
+
+        return SerializePayload(new
+        {
+            status = "ok",
+            target_version_name = result.TargetVersionName,
+            version_directory_path = targetVersion.VersionDirectoryPath,
+            resolved_game_directory = result.ResolvedGameDirectory,
+            total_count = result.Resources.Count,
+            requested_resource_types = resourceTypes,
+            resources = result.Resources.Select(SerializeInventoryItem).ToList()
+        });
+    }
+
+    public async Task<string> CheckInstanceCommunityResourceUpdatesAsync(
+        AgentInstanceCommunityResourceUpdateCheckCommand command,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        ResolvedTargetVersionContext targetVersion = await ResolveTargetVersionAsync(
+            command.TargetVersionName,
+            command.TargetVersionPath,
+            cancellationToken);
+        if (!targetVersion.IsReady)
+        {
+            return targetVersion.Message;
+        }
+
+        HashSet<string>? requestedIds = NormalizeStringSet(command.ResourceInstanceIds);
+        string effectiveScope = ResolveEffectiveCheckScope(command.CheckScope, requestedIds);
+        if (requestedIds == null && !string.Equals(effectiveScope, "all_installed", StringComparison.OrdinalIgnoreCase))
+        {
+            return SerializePayload(new
+            {
+                status = "missing_requirements",
+                missing_requirements = new[]
+                {
+                    new
+                    {
+                        field = "resource_instance_ids",
+                        message = "请提供 resource_instance_ids，或显式传 check_scope=all_installed。"
+                    }
+                }
+            });
+        }
+
+        CommunityResourceUpdateCheckResult result = await _communityResourceUpdateCheckService.CheckAsync(
+            new CommunityResourceUpdateCheckRequest
+            {
+                TargetVersionName = targetVersion.TargetVersionName,
+                ResolvedGameDirectory = targetVersion.ResolvedGameDirectory,
+                ResourceInstanceIds = requestedIds,
+            },
+            cancellationToken);
+
+        UpdateCheckSummary summary = BuildUpdateCheckSummary(result.Items, requestedIds);
+
+        return SerializePayload(new
+        {
+            status = "ok",
+            check_scope = requestedIds == null ? "all_installed" : "selected",
+            target_version_name = result.TargetVersionName,
+            version_directory_path = targetVersion.VersionDirectoryPath,
+            resolved_game_directory = result.ResolvedGameDirectory,
+            minecraft_version = result.MinecraftVersion,
+            loader = NormalizeLoader(result.ModLoaderType),
+            checked_at = result.CheckedAt,
+            total_count = result.Items.Count,
+            summary = new
+            {
+                update_available = summary.UpdateAvailable,
+                up_to_date = summary.UpToDate,
+                unsupported = summary.Unsupported,
+                not_identified = summary.NotIdentified,
+                failed = summary.Failed,
+                missing = summary.Missing,
+            },
+            items = result.Items.Select(SerializeUpdateCheckItem).ToList()
+        });
+    }
+
+    public async Task<AgentCommunityResourceUpdatePreparation> PrepareUpdateAsync(
+        AgentInstanceCommunityResourceUpdateCommand command,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        UpdatePreparationContext context = await BuildUpdatePreparationContextAsync(command, cancellationToken);
+        if (!context.IsReady)
+        {
+            return new AgentCommunityResourceUpdatePreparation
+            {
+                Message = context.Message
+            };
+        }
+
+        Dictionary<string, string> proposalParameters = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["target_version_name"] = context.TargetVersionName,
+            ["selection_mode"] = context.SelectionMode,
+        };
+
+        if (context.ResourceInstanceIds != null && context.ResourceInstanceIds.Count > 0)
+        {
+            proposalParameters["resource_instance_ids"] = JsonConvert.SerializeObject(
+                context.ResourceInstanceIds.OrderBy(id => id, StringComparer.OrdinalIgnoreCase).ToList(),
+                Formatting.None);
+        }
+
+        return new AgentCommunityResourceUpdatePreparation
+        {
+            Message = context.Message,
+            IsReadyForConfirmation = true,
+            ButtonText = context.ButtonText,
+            ProposalParameters = proposalParameters,
+        };
+    }
+
+    public async Task<string> StartUpdateAsync(
+        AgentInstanceCommunityResourceUpdateCommand command,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        ResolvedTargetVersionContext targetVersion = await ResolveTargetVersionAsync(
+            command.TargetVersionName,
+            command.TargetVersionPath,
+            cancellationToken);
+        if (!targetVersion.IsReady)
+        {
+            return targetVersion.Message;
+        }
+
+        string? selectionMode = NormalizeSelectionMode(command.SelectionMode, command.ResourceInstanceIds);
+        if (selectionMode == null)
+        {
+            return SerializePayload(new
+            {
+                status = "missing_requirements",
+                missing_requirements = new[]
+                {
+                    new
+                    {
+                        field = "selection_mode",
+                        message = "请提供 resource_instance_ids，或传 selection_mode=all_updatable。"
+                    }
+                }
+            });
+        }
+
+        HashSet<string>? requestedIds = string.Equals(selectionMode, CommunityResourceUpdateRequest.ExplicitSelectionMode, StringComparison.Ordinal)
+            ? NormalizeStringSet(command.ResourceInstanceIds)
+            : null;
+
+        if (string.Equals(selectionMode, CommunityResourceUpdateRequest.ExplicitSelectionMode, StringComparison.Ordinal) &&
+            requestedIds == null)
+        {
+            return SerializePayload(new
+            {
+                status = "missing_requirements",
+                missing_requirements = new[]
+                {
+                    new
+                    {
+                        field = "resource_instance_ids",
+                        message = "显式更新至少需要一个 resource_instance_id。"
+                    }
+                }
+            });
+        }
+
+        string operationId = await _communityResourceUpdateService.StartUpdateAsync(
+            new CommunityResourceUpdateRequest
+            {
+                TargetVersionName = targetVersion.TargetVersionName,
+                ResolvedGameDirectory = targetVersion.ResolvedGameDirectory,
+                ResourceInstanceIds = requestedIds,
+                SelectionMode = selectionMode,
+            },
+            cancellationToken);
+
+        return SerializePayload(new
+        {
+            status = "started",
+            operation_id = operationId,
+            target_version_name = targetVersion.TargetVersionName,
+            version_directory_path = targetVersion.VersionDirectoryPath,
+            resolved_game_directory = targetVersion.ResolvedGameDirectory,
+            selection_mode = selectionMode,
+            resource_instance_ids = requestedIds,
+            message = $"已开始在 {targetVersion.TargetVersionName} 中批量更新社区资源。可继续使用 getOperationStatus 查询进度。"
         });
     }
 
@@ -986,6 +1281,220 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         }));
     }
 
+    private async Task<ResolvedTargetVersionContext> ResolveTargetVersionAsync(
+        string? targetVersionName,
+        string? targetVersionPath,
+        CancellationToken cancellationToken)
+    {
+        string? normalizedTargetVersionName = NormalizeText(targetVersionName);
+        string derivedTargetVersionName = ResolveTargetVersionName(null, targetVersionPath);
+
+        if (!string.IsNullOrWhiteSpace(normalizedTargetVersionName) &&
+            !string.IsNullOrWhiteSpace(derivedTargetVersionName) &&
+            !string.Equals(normalizedTargetVersionName, derivedTargetVersionName, StringComparison.OrdinalIgnoreCase))
+        {
+            return ResolvedTargetVersionContext.FromMessage(SerializePayload(new
+            {
+                status = "invalid_request",
+                message = "target_version_name 与 target_version_path 指向的实例不一致。请优先使用 getInstances 返回的 target_version_name / version_directory_path。"
+            }));
+        }
+
+        string effectiveTargetVersionName = string.IsNullOrWhiteSpace(normalizedTargetVersionName)
+            ? derivedTargetVersionName
+            : normalizedTargetVersionName;
+
+        if (string.IsNullOrWhiteSpace(effectiveTargetVersionName))
+        {
+            return ResolvedTargetVersionContext.FromMessage(SerializePayload(new
+            {
+                status = "missing_requirements",
+                missing_requirements = new[]
+                {
+                    new
+                    {
+                        field = "target_version_name",
+                        message = "必须提供 target_version_name，或提供 target_version_path 让启动器推导目标实例。建议先调用 getInstances。"
+                    }
+                }
+            }));
+        }
+
+        IReadOnlyList<string> installedVersions = await _minecraftVersionService.GetInstalledVersionsAsync();
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (!installedVersions.Any(version => string.Equals(version, effectiveTargetVersionName, StringComparison.OrdinalIgnoreCase)))
+        {
+            return ResolvedTargetVersionContext.FromMessage(SerializePayload(new
+            {
+                status = "invalid_request",
+                message = $"目标实例 {effectiveTargetVersionName} 不存在，请先调用 getInstances 获取可用实例。",
+                available_instances = installedVersions.OrderBy(version => version, StringComparer.OrdinalIgnoreCase).ToList()
+            }));
+        }
+
+        string versionDirectoryPath = Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftPathConsts.Versions, effectiveTargetVersionName);
+
+        string resolvedGameDirectory;
+        try
+        {
+            resolvedGameDirectory = await _gameDirResolver.GetGameDirForVersionAsync(effectiveTargetVersionName);
+            cancellationToken.ThrowIfCancellationRequested();
+        }
+        catch (Exception ex)
+        {
+            return ResolvedTargetVersionContext.FromMessage(SerializePayload(new
+            {
+                status = "invalid_request",
+                message = $"无法解析目标实例 {effectiveTargetVersionName} 的游戏目录：{ex.Message}"
+            }));
+        }
+
+        if (string.IsNullOrWhiteSpace(resolvedGameDirectory))
+        {
+            return ResolvedTargetVersionContext.FromMessage(SerializePayload(new
+            {
+                status = "invalid_request",
+                message = $"无法解析目标实例 {effectiveTargetVersionName} 的游戏目录。"
+            }));
+        }
+
+        return new ResolvedTargetVersionContext
+        {
+            IsReady = true,
+            TargetVersionName = effectiveTargetVersionName,
+            VersionDirectoryPath = versionDirectoryPath,
+            ResolvedGameDirectory = resolvedGameDirectory,
+        };
+    }
+
+    private async Task<UpdatePreparationContext> BuildUpdatePreparationContextAsync(
+        AgentInstanceCommunityResourceUpdateCommand command,
+        CancellationToken cancellationToken)
+    {
+        ResolvedTargetVersionContext targetVersion = await ResolveTargetVersionAsync(
+            command.TargetVersionName,
+            command.TargetVersionPath,
+            cancellationToken);
+        if (!targetVersion.IsReady)
+        {
+            return UpdatePreparationContext.FromMessage(targetVersion.Message);
+        }
+
+        string? selectionMode = NormalizeSelectionMode(command.SelectionMode, command.ResourceInstanceIds);
+        if (selectionMode == null)
+        {
+            return UpdatePreparationContext.FromMessage(SerializePayload(new
+            {
+                status = "missing_requirements",
+                missing_requirements = new[]
+                {
+                    new
+                    {
+                        field = "selection_mode",
+                        message = "请提供 resource_instance_ids，或传 selection_mode=all_updatable。"
+                    }
+                }
+            }));
+        }
+
+        HashSet<string>? requestedIds = string.Equals(selectionMode, CommunityResourceUpdateRequest.ExplicitSelectionMode, StringComparison.Ordinal)
+            ? NormalizeStringSet(command.ResourceInstanceIds)
+            : null;
+
+        if (string.Equals(selectionMode, CommunityResourceUpdateRequest.ExplicitSelectionMode, StringComparison.Ordinal) &&
+            requestedIds == null)
+        {
+            return UpdatePreparationContext.FromMessage(SerializePayload(new
+            {
+                status = "missing_requirements",
+                missing_requirements = new[]
+                {
+                    new
+                    {
+                        field = "resource_instance_ids",
+                        message = "显式更新至少需要一个 resource_instance_id。"
+                    }
+                }
+            }));
+        }
+
+        CommunityResourceUpdateCheckResult checkResult = await _communityResourceUpdateCheckService.CheckAsync(
+            new CommunityResourceUpdateCheckRequest
+            {
+                TargetVersionName = targetVersion.TargetVersionName,
+                ResolvedGameDirectory = targetVersion.ResolvedGameDirectory,
+                ResourceInstanceIds = requestedIds,
+            },
+            cancellationToken);
+
+        List<CommunityResourceUpdateCheckItem> selectedItems = SelectUpdateItems(checkResult.Items, selectionMode, requestedIds);
+        List<CommunityResourceUpdateCheckItem> updateCandidates = selectedItems
+            .Where(item => string.Equals(item.Status, "update_available", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        UpdateCheckSummary summary = BuildUpdateCheckSummary(selectedItems, requestedIds);
+
+        if (updateCandidates.Count == 0)
+        {
+            return UpdatePreparationContext.FromMessage(SerializePayload(new
+            {
+                status = "no_updates",
+                target_version_name = targetVersion.TargetVersionName,
+                resolved_game_directory = targetVersion.ResolvedGameDirectory,
+                selection_mode = selectionMode,
+                summary = new
+                {
+                    update_available = summary.UpdateAvailable,
+                    up_to_date = summary.UpToDate,
+                    unsupported = summary.Unsupported,
+                    not_identified = summary.NotIdentified,
+                    failed = summary.Failed,
+                    missing = summary.Missing,
+                },
+                selected_items = selectedItems.Select(SerializeUpdateCheckItem).ToList(),
+                message = string.Equals(selectionMode, CommunityResourceUpdateRequest.AllUpdatableSelectionMode, StringComparison.Ordinal)
+                    ? "当前实例没有可更新的社区资源。"
+                    : "所选资源里没有可直接执行的更新项。"
+            }));
+        }
+
+        string buttonText = updateCandidates.Count == 1
+            ? $"更新 {updateCandidates[0].DisplayName}"
+            : $"更新 {updateCandidates.Count} 项资源";
+
+        return new UpdatePreparationContext
+        {
+            IsReady = true,
+            Message = SerializePayload(new
+            {
+                status = "ready_for_confirmation",
+                target_version_name = targetVersion.TargetVersionName,
+                version_directory_path = targetVersion.VersionDirectoryPath,
+                resolved_game_directory = targetVersion.ResolvedGameDirectory,
+                selection_mode = selectionMode,
+                summary = new
+                {
+                    update_available = summary.UpdateAvailable,
+                    up_to_date = summary.UpToDate,
+                    unsupported = summary.Unsupported,
+                    not_identified = summary.NotIdentified,
+                    failed = summary.Failed,
+                    missing = summary.Missing,
+                },
+                update_candidates = updateCandidates.Select(SerializeUpdateCandidate).ToList(),
+                skipped_items = selectedItems
+                    .Where(item => !string.Equals(item.Status, "update_available", StringComparison.OrdinalIgnoreCase))
+                    .Select(SerializeUpdateCheckItem)
+                    .ToList(),
+                message = $"已准备在 {targetVersion.TargetVersionName} 中更新 {updateCandidates.Count} 项社区资源。等待用户确认。"
+            }),
+            ButtonText = buttonText,
+            TargetVersionName = targetVersion.TargetVersionName,
+            SelectionMode = selectionMode,
+            ResourceInstanceIds = requestedIds,
+        };
+    }
+
     private static string ResolveTargetVersionName(string? targetVersionName, string? targetVersionPath)
     {
         var normalizedTargetVersionName = NormalizeText(targetVersionName);
@@ -1001,6 +1510,210 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         }
 
         return Path.GetFileName(normalizedTargetVersionPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+    }
+
+    private static object SerializeInventoryItem(CommunityResourceInventoryItem item)
+    {
+        return new
+        {
+            resource_type = item.ResourceType,
+            resource_instance_id = item.ResourceInstanceId,
+            display_name = item.DisplayName,
+            file_path = item.FilePath,
+            relative_path = item.RelativePath,
+            is_directory = item.IsDirectory,
+            source = item.Source,
+            project_id = item.ProjectId,
+            description = item.Description,
+            current_version_hint = item.CurrentVersionHint,
+            world_name = item.WorldName,
+            pack_format = item.PackFormat,
+            update_support = item.UpdateSupport,
+            unsupported_reason = item.UpdateUnsupportedReason,
+        };
+    }
+
+    private static object SerializeUpdateCheckItem(CommunityResourceUpdateCheckItem item)
+    {
+        return new
+        {
+            resource_type = item.ResourceType,
+            resource_instance_id = item.ResourceInstanceId,
+            display_name = item.DisplayName,
+            file_path = item.FilePath,
+            relative_path = item.RelativePath,
+            is_directory = item.IsDirectory,
+            world_name = item.WorldName,
+            pack_format = item.PackFormat,
+            source = item.Source,
+            project_id = item.ProjectId,
+            status = NormalizeText(item.Status)?.ToLowerInvariant() ?? string.Empty,
+            has_update = item.HasUpdate,
+            current_version = item.CurrentVersion,
+            latest_version = item.LatestVersion,
+            provider = item.Provider,
+            latest_resource_file_id = item.LatestResourceFileId,
+            unsupported_reason = item.UnsupportedReason,
+        };
+    }
+
+    private static object SerializeUpdateCandidate(CommunityResourceUpdateCheckItem item)
+    {
+        return new
+        {
+            resource_type = item.ResourceType,
+            resource_instance_id = item.ResourceInstanceId,
+            display_name = item.DisplayName,
+            current_version = item.CurrentVersion,
+            latest_version = item.LatestVersion,
+            provider = item.Provider,
+            project_id = item.ProjectId,
+            latest_resource_file_id = item.LatestResourceFileId,
+        };
+    }
+
+    private static IReadOnlyCollection<string>? NormalizeInventoryResourceTypes(
+        IReadOnlyCollection<string>? resourceTypes,
+        out string? invalidResourceType)
+    {
+        invalidResourceType = null;
+        if (resourceTypes == null || resourceTypes.Count == 0)
+        {
+            return null;
+        }
+
+        HashSet<string> normalized = new(StringComparer.OrdinalIgnoreCase);
+        foreach (string resourceType in resourceTypes)
+        {
+            string? value = NormalizeText(resourceType)?.ToLowerInvariant();
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                continue;
+            }
+
+            value = ModResourcePathHelper.NormalizeProjectType(value);
+            if (value is not ("mod" or "shader" or "resourcepack" or "world" or "datapack"))
+            {
+                invalidResourceType = resourceType;
+                return null;
+            }
+
+            normalized.Add(value);
+        }
+
+        return normalized.Count == 0 ? null : normalized.ToList();
+    }
+
+    private static HashSet<string>? NormalizeStringSet(IReadOnlyCollection<string>? values)
+    {
+        if (values == null || values.Count == 0)
+        {
+            return null;
+        }
+
+        HashSet<string> normalized = new(StringComparer.OrdinalIgnoreCase);
+        foreach (string value in values)
+        {
+            string? text = NormalizeText(value);
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                normalized.Add(text);
+            }
+        }
+
+        return normalized.Count == 0 ? null : normalized;
+    }
+
+    private static string ResolveEffectiveCheckScope(string? checkScope, HashSet<string>? requestedIds)
+    {
+        if (requestedIds != null)
+        {
+            return "selected";
+        }
+
+        string? normalized = NormalizeText(checkScope)?.ToLowerInvariant();
+        return normalized == "all_installed" ? normalized : string.Empty;
+    }
+
+    private static string? NormalizeSelectionMode(string? selectionMode, IReadOnlyCollection<string>? resourceInstanceIds)
+    {
+        HashSet<string>? normalizedIds = NormalizeStringSet(resourceInstanceIds);
+        string? normalizedSelectionMode = NormalizeText(selectionMode)?.ToLowerInvariant();
+
+        if (string.IsNullOrWhiteSpace(normalizedSelectionMode))
+        {
+            return normalizedIds == null
+                ? null
+                : CommunityResourceUpdateRequest.ExplicitSelectionMode;
+        }
+
+        return normalizedSelectionMode switch
+        {
+            CommunityResourceUpdateRequest.ExplicitSelectionMode => CommunityResourceUpdateRequest.ExplicitSelectionMode,
+            CommunityResourceUpdateRequest.AllUpdatableSelectionMode => CommunityResourceUpdateRequest.AllUpdatableSelectionMode,
+            _ => null,
+        };
+    }
+
+    private static List<CommunityResourceUpdateCheckItem> SelectUpdateItems(
+        IReadOnlyList<CommunityResourceUpdateCheckItem> items,
+        string selectionMode,
+        HashSet<string>? requestedIds)
+    {
+        if (string.Equals(selectionMode, CommunityResourceUpdateRequest.AllUpdatableSelectionMode, StringComparison.Ordinal))
+        {
+            return items
+                .Where(item => string.Equals(item.Status, "update_available", StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        if (requestedIds == null || requestedIds.Count == 0)
+        {
+            return [];
+        }
+
+        return items
+            .Where(item => requestedIds.Contains(item.ResourceInstanceId))
+            .ToList();
+    }
+
+    private static UpdateCheckSummary BuildUpdateCheckSummary(
+        IReadOnlyList<CommunityResourceUpdateCheckItem> items,
+        HashSet<string>? requestedIds)
+    {
+        UpdateCheckSummary summary = new();
+        HashSet<string> matchedIds = new(StringComparer.OrdinalIgnoreCase);
+
+        foreach (CommunityResourceUpdateCheckItem item in items)
+        {
+            matchedIds.Add(item.ResourceInstanceId);
+
+            switch (NormalizeText(item.Status)?.ToLowerInvariant())
+            {
+                case "update_available":
+                    summary.UpdateAvailable++;
+                    break;
+                case "up_to_date":
+                    summary.UpToDate++;
+                    break;
+                case "unsupported":
+                    summary.Unsupported++;
+                    break;
+                case "not_identified":
+                    summary.NotIdentified++;
+                    break;
+                default:
+                    summary.Failed++;
+                    break;
+            }
+        }
+
+        if (requestedIds != null)
+        {
+            summary.Missing = requestedIds.Count(id => !matchedIds.Contains(id));
+        }
+
+        return summary;
     }
 
     private static ParsedProjectIdentity? TryParseProjectIdentity(string projectId)
@@ -1142,6 +1855,65 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
     }
 
     private sealed record ParsedProjectIdentity(CommunityResourceProvider Provider, string RawProjectId);
+
+    private sealed class ResolvedTargetVersionContext
+    {
+        public bool IsReady { get; init; }
+
+        public string Message { get; init; } = string.Empty;
+
+        public string TargetVersionName { get; init; } = string.Empty;
+
+        public string VersionDirectoryPath { get; init; } = string.Empty;
+
+        public string ResolvedGameDirectory { get; init; } = string.Empty;
+
+        public static ResolvedTargetVersionContext FromMessage(string message)
+        {
+            return new ResolvedTargetVersionContext
+            {
+                Message = message
+            };
+        }
+    }
+
+    private sealed class UpdatePreparationContext
+    {
+        public bool IsReady { get; init; }
+
+        public string Message { get; init; } = string.Empty;
+
+        public string ButtonText { get; init; } = string.Empty;
+
+        public string TargetVersionName { get; init; } = string.Empty;
+
+        public string SelectionMode { get; init; } = string.Empty;
+
+        public HashSet<string>? ResourceInstanceIds { get; init; }
+
+        public static UpdatePreparationContext FromMessage(string message)
+        {
+            return new UpdatePreparationContext
+            {
+                Message = message
+            };
+        }
+    }
+
+    private sealed class UpdateCheckSummary
+    {
+        public int UpdateAvailable { get; set; }
+
+        public int UpToDate { get; set; }
+
+        public int Unsupported { get; set; }
+
+        public int NotIdentified { get; set; }
+
+        public int Failed { get; set; }
+
+        public int Missing { get; set; }
+    }
 
     private sealed class CommunityResourceInstallExecutionContext
     {
