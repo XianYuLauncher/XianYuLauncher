@@ -205,17 +205,102 @@ public sealed class DownloadManagerTests : IDisposable
         rangeRequests.Should().ContainSingle().Which.Should().BeNull();
     }
 
-    private static DownloadManager CreateDownloadManager(HttpMessageHandler handler, int shardCount)
+    [Fact]
+    public async Task DownloadFileAsync_ShardedChunkStalls_ShouldFallbackToDirectAndDisableRangeForHost()
+    {
+        byte[] content = CreatePayload(12 * 1024 * 1024);
+        string expectedSha1 = ComputeSha1(content);
+        var rangeRequests = new ConcurrentQueue<string?>();
+        int stalledChunkResponseCount = 0;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            string? rangeHeader = request.Headers.Range?.ToString();
+            rangeRequests.Enqueue(rangeHeader);
+
+            if (request.Method == HttpMethod.Head)
+            {
+                return Task.FromResult(CreateHeadResponse(content.Length));
+            }
+
+            if (rangeHeader == "bytes=0-1023")
+            {
+                return Task.FromResult(CreatePartialResponse(content, 0, 1023));
+            }
+
+            if (rangeHeader == "bytes=6291456-12582911" && Interlocked.Exchange(ref stalledChunkResponseCount, 1) == 0)
+            {
+                return Task.FromResult(CreateStalledPartialResponse(content.Length, 6291456, 12582911));
+            }
+
+            if (rangeHeader is not null)
+            {
+                (long start, long end) = ParseRange(rangeHeader);
+                return Task.FromResult(CreatePartialResponse(content, (int)start, (int)end));
+            }
+
+            return Task.FromResult(CreateDirectResponse(content));
+        });
+
+        var downloadManager = CreateDownloadManager(handler, shardCount: 2, shardedProgressStallTimeout: TimeSpan.FromMilliseconds(100));
+        string firstTargetPath = Path.Combine(_testDirectory, "range-stall-first.jar");
+        string secondTargetPath = Path.Combine(_testDirectory, "range-stall-second.jar");
+
+        DownloadResult firstResult = await downloadManager.DownloadFileAsync(
+            "https://downloads.example.com/assets/library.jar",
+            firstTargetPath,
+            expectedSha1);
+
+        DownloadResult secondResult = await downloadManager.DownloadFileAsync(
+            "https://downloads.example.com/assets/library.jar",
+            secondTargetPath,
+            expectedSha1);
+
+        firstResult.Success.Should().BeTrue();
+        secondResult.Success.Should().BeTrue();
+        File.ReadAllBytes(firstTargetPath).Should().Equal(content);
+        File.ReadAllBytes(secondTargetPath).Should().Equal(content);
+        rangeRequests.Count(range => range == "bytes=0-1023").Should().Be(1);
+        rangeRequests.Count(range => range is not null).Should().Be(3);
+    }
+
+    [Fact]
+    public void ShouldDisableHostRangeSupportOnShardedFailure_OnlyForRangeRelatedFailures()
+    {
+        DownloadManager.ShouldDisableHostRangeSupportOnShardedFailure(new TimeoutException(), CancellationToken.None)
+            .Should().BeTrue();
+        DownloadManager.ShouldDisableHostRangeSupportOnShardedFailure(new HttpRequestException("range failed"), CancellationToken.None)
+            .Should().BeTrue();
+        DownloadManager.ShouldDisableHostRangeSupportOnShardedFailure(new TaskCanceledException("request timed out"), CancellationToken.None)
+            .Should().BeTrue();
+        DownloadManager.ShouldDisableHostRangeSupportOnShardedFailure(new IOException("disk full"), CancellationToken.None)
+            .Should().BeFalse();
+
+        using var callerCancellation = new CancellationTokenSource();
+        callerCancellation.Cancel();
+
+        DownloadManager.ShouldDisableHostRangeSupportOnShardedFailure(
+                new OperationCanceledException(callerCancellation.Token),
+                callerCancellation.Token)
+            .Should().BeFalse();
+    }
+
+    private static DownloadManager CreateDownloadManager(HttpMessageHandler handler, int shardCount, TimeSpan? shardedProgressStallTimeout = null)
     {
         var localSettingsServiceMock = new Mock<ILocalSettingsService>();
         localSettingsServiceMock
             .Setup(service => service.ReadSettingAsync<int?>("DownloadShardCount"))
             .ReturnsAsync(shardCount);
 
-        return new DownloadManager(
-            NullLogger<DownloadManager>.Instance,
-            localSettingsServiceMock.Object,
-            handler);
+        return shardedProgressStallTimeout.HasValue
+            ? new DownloadManager(
+                NullLogger<DownloadManager>.Instance,
+                localSettingsServiceMock.Object,
+                handler,
+                shardedProgressStallTimeout.Value)
+            : new DownloadManager(
+                NullLogger<DownloadManager>.Instance,
+                localSettingsServiceMock.Object,
+                handler);
     }
 
     private static HttpResponseMessage CreateHeadResponse(long contentLength)
@@ -254,6 +339,23 @@ public sealed class DownloadManagerTests : IDisposable
         return response;
     }
 
+    private static HttpResponseMessage CreateStalledPartialResponse(long totalLength, long start, long end)
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.PartialContent)
+        {
+            Content = new StreamContent(new StalledReadStream())
+        };
+        response.Content.Headers.ContentLength = end - start + 1;
+        response.Content.Headers.ContentRange = new ContentRangeHeaderValue(start, end, totalLength);
+        return response;
+    }
+
+    private static (long Start, long End) ParseRange(string rangeHeader)
+    {
+        string[] parts = rangeHeader["bytes=".Length..].Split('-');
+        return (long.Parse(parts[0]), long.Parse(parts[1]));
+    }
+
     private static byte[] CreatePayload(int size)
     {
         var content = new byte[size];
@@ -268,5 +370,63 @@ public sealed class DownloadManagerTests : IDisposable
     private static string ComputeSha1(byte[] content)
     {
         return Convert.ToHexString(SHA1.HashData(content)).ToLowerInvariant();
+    }
+
+    private sealed class StalledReadStream : Stream
+    {
+        public override bool CanRead => true;
+
+        public override bool CanSeek => false;
+
+        public override bool CanWrite => false;
+
+        public override long Length => throw new NotSupportedException();
+
+        public override long Position
+        {
+            get => throw new NotSupportedException();
+            set => throw new NotSupportedException();
+        }
+
+        public override void Flush()
+        {
+            throw new NotSupportedException();
+        }
+
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override Task<int> ReadAsync(byte[] buffer, int offset, int count, CancellationToken cancellationToken)
+        {
+            return WaitForCancellationAsync(cancellationToken).AsTask();
+        }
+
+        public override ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            return WaitForCancellationAsync(cancellationToken);
+        }
+
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void SetLength(long value)
+        {
+            throw new NotSupportedException();
+        }
+
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            throw new NotSupportedException();
+        }
+
+        private static async ValueTask<int> WaitForCancellationAsync(CancellationToken cancellationToken)
+        {
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return 0;
+        }
     }
 }
