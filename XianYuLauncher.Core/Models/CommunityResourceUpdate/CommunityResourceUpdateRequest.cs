@@ -13,5 +13,7 @@ public sealed class CommunityResourceUpdateRequest
 
     public IReadOnlyCollection<string>? ResourceInstanceIds { get; init; }
 
+    public IReadOnlyDictionary<string, string>? ResourceIconSources { get; init; }
+
     public string SelectionMode { get; init; } = ExplicitSelectionMode;
 }

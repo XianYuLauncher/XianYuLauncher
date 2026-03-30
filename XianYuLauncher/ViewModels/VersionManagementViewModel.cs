@@ -3353,6 +3353,15 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 .Cast<string>()
                 .ToList();
 
+            Dictionary<string, string> resourceIconSources = updatableResources
+                .Where(resource => !string.IsNullOrWhiteSpace(resource.ResourceInstanceId))
+                .Where(resource => !string.IsNullOrWhiteSpace(resource.Icon))
+                .GroupBy(resource => resource.ResourceInstanceId.Trim(), StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => group.Select(resource => resource.Icon.Trim()).First(),
+                    StringComparer.OrdinalIgnoreCase);
+
             if (resourceInstanceIds.Count == 0)
             {
                 const string unresolvedMessage = "选中的资源尚未完成更新检测，请稍后重试。";
@@ -3372,6 +3381,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     TargetVersionName = SelectedVersion.Name,
                     ResolvedGameDirectory = string.IsNullOrWhiteSpace(CurrentGameDir) ? null : CurrentGameDir,
                     ResourceInstanceIds = resourceInstanceIds,
+                    ResourceIconSources = resourceIconSources,
                     SelectionMode = CommunityResourceUpdateRequest.ExplicitSelectionMode,
                 },
                 CancellationToken.None);

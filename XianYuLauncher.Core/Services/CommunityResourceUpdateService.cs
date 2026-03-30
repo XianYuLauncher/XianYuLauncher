@@ -149,6 +149,7 @@ public sealed class CommunityResourceUpdateService : ICommunityResourceUpdateSer
                     DownloadTaskCategory.CommunityResourceUpdateFile,
                     executionContext => ExecuteUpdateItemAsync(item, executionContext),
                     showInTeachingTip: false,
+                    iconSource: ResolveResourceIconSource(request, item.ResourceInstanceId),
                     batchGroupKey: batchGroupKey,
                     parentTaskId: summaryTaskId,
                     allowCancel: false,
@@ -402,6 +403,19 @@ public sealed class CommunityResourceUpdateService : ICommunityResourceUpdateSer
             FileName = curseForgeFile.FileName,
             ExpectedSha1 = expectedSha1,
         };
+    }
+
+    private static string? ResolveResourceIconSource(CommunityResourceUpdateRequest request, string resourceInstanceId)
+    {
+        if (request.ResourceIconSources == null ||
+            string.IsNullOrWhiteSpace(resourceInstanceId) ||
+            !request.ResourceIconSources.TryGetValue(resourceInstanceId, out string? iconSource) ||
+            string.IsNullOrWhiteSpace(iconSource))
+        {
+            return null;
+        }
+
+        return iconSource.Trim();
     }
 
     private static List<CommunityResourceUpdateCheckItem> SelectItems(

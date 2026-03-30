@@ -43,6 +43,9 @@ public sealed class CommunityResourceUpdateServiceTests : IDisposable
     {
         string modsDirectory = Path.Combine(_rootDirectory, "mods");
         Directory.CreateDirectory(modsDirectory);
+        string iconPath = Path.Combine(_rootDirectory, "icons", "alpha.png");
+        Directory.CreateDirectory(Path.GetDirectoryName(iconPath)!);
+        await File.WriteAllBytesAsync(iconPath, [1, 2, 3]);
 
         string currentFilePath = Path.Combine(modsDirectory, "alpha.jar.disabled");
         await File.WriteAllTextAsync(currentFilePath, "old-alpha");
@@ -93,6 +96,10 @@ public sealed class CommunityResourceUpdateServiceTests : IDisposable
         {
             TargetVersionName = "Fabric-1.20.1",
             ResourceInstanceIds = ["mod:mods/alpha.jar.disabled"],
+            ResourceIconSources = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["mod:mods/alpha.jar.disabled"] = iconPath,
+            },
         });
 
         OperationTaskInfo finalSnapshot = await WaitForTerminalSnapshotAsync(operationQueueService, operationId);
@@ -121,7 +128,8 @@ public sealed class CommunityResourceUpdateServiceTests : IDisposable
             task.TaskCategory == DownloadTaskCategory.CommunityResourceUpdateFile
             && task.ParentTaskId != null
             && task.BatchGroupKey == $"community-resource-update:{operationId}"
-            && task.State == DownloadTaskState.Completed);
+            && task.State == DownloadTaskState.Completed
+            && task.IconSource == iconPath);
     }
 
     [Fact]
