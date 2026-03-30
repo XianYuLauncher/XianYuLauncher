@@ -13,6 +13,11 @@ public interface IOperationQueueService
     bool HasActiveOperation { get; }
 
     /// <summary>
+    /// 当前任务快照（包含排队中、执行中与历史任务）。
+    /// </summary>
+    IReadOnlyList<OperationTaskInfo> TasksSnapshot { get; }
+
+    /// <summary>
     /// 任务状态变化事件。
     /// </summary>
     event EventHandler<OperationTaskInfo>? TaskStateChanged;
@@ -26,4 +31,14 @@ public interface IOperationQueueService
     /// 入队并等待任务完成。
     /// </summary>
     Task<OperationExecutionResult> EnqueueAsync(OperationTaskRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 入队后台执行并立即返回任务 ID。
+    /// </summary>
+    Task<string> EnqueueBackgroundAsync(OperationTaskRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 尝试获取任务快照。
+    /// </summary>
+    bool TryGetSnapshot(string taskId, out OperationTaskInfo? taskInfo);
 }

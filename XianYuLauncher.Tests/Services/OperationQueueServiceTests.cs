@@ -63,6 +63,58 @@ public class OperationQueueServiceTests
         results[1].Success.Should().BeTrue();
     }
 
+    [Fact]
+    public async Task EnqueueBackgroundAsync_ShouldReturnTaskIdAndExposeCompletedSnapshot()
+    {
+        var service = new OperationQueueService(_loggerMock.Object);
+
+        string taskId = await service.EnqueueBackgroundAsync(new OperationTaskRequest
+        {
+            TaskName = "background-task",
+            TaskType = OperationTaskType.CommunityResourceUpdate,
+            ScopeKey = "scope-background",
+            AllowParallel = true,
+            ExecuteAsync = async (context, token) =>
+            {
+                context.ReportProgress("处理中", 25);
+                await Task.Delay(50, token);
+                context.ReportProgress("即将完成", 90);
+            }
+        });
+
+        service.TryGetSnapshot(taskId, out var queuedSnapshot).Should().BeTrue();
+        queuedSnapshot.Should().NotBeNull();
+
+        OperationTaskInfo finalSnapshot = await WaitForTerminalSnapshotAsync(service, taskId);
+        finalSnapshot.State.Should().Be(OperationTaskState.Completed);
+        finalSnapshot.Progress.Should().Be(100);
+        finalSnapshot.StatusMessage.Should().Be("任务完成");
+        service.TasksSnapshot.Should().Contain(task => task.TaskId == taskId && task.State == OperationTaskState.Completed);
+    }
+
+    [Fact]
+    public async Task EnqueueBackgroundAsync_WhenTaskReportsCompletionSummary_ShouldPreserveSummaryMessage()
+    {
+        var service = new OperationQueueService(_loggerMock.Object);
+
+        string taskId = await service.EnqueueBackgroundAsync(new OperationTaskRequest
+        {
+            TaskName = "background-summary-task",
+            TaskType = OperationTaskType.CommunityResourceUpdate,
+            ScopeKey = "scope-background-summary",
+            AllowParallel = true,
+            ExecuteAsync = (context, _) =>
+            {
+                context.ReportProgress("社区资源更新完成：已更新 2，失败 0。", 100);
+                return Task.CompletedTask;
+            }
+        });
+
+        OperationTaskInfo finalSnapshot = await WaitForTerminalSnapshotAsync(service, taskId);
+        finalSnapshot.State.Should().Be(OperationTaskState.Completed);
+        finalSnapshot.StatusMessage.Should().Be("社区资源更新完成：已更新 2，失败 0。");
+    }
+
     private static OperationTaskRequest CreateRequest(string scopeKey, bool allowParallel, ConcurrencyCounter counter)
     {
         async Task ExecuteAsync(CancellationToken token)
@@ -105,5 +157,23 @@ public class OperationQueueServiceTests
                 return;
             }
         }
+    }
+
+    private static async Task<OperationTaskInfo> WaitForTerminalSnapshotAsync(OperationQueueService service, string taskId)
+    {
+        DateTimeOffset deadline = DateTimeOffset.UtcNow.AddSeconds(5);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            if (service.TryGetSnapshot(taskId, out OperationTaskInfo? snapshot) &&
+                snapshot != null &&
+                snapshot.State is OperationTaskState.Completed or OperationTaskState.Failed or OperationTaskState.Cancelled)
+            {
+                return snapshot;
+            }
+
+            await Task.Delay(20);
+        }
+
+        throw new TimeoutException($"任务 {taskId} 未在预期时间内结束。");
     }
 }

@@ -36,13 +36,16 @@ public sealed class AgentOperationStatusService : IAgentOperationStatusService
 {
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly ILaunchOperationTracker _launchOperationTracker;
+    private readonly IOperationQueueService _operationQueueService;
 
     public AgentOperationStatusService(
         IDownloadTaskManager downloadTaskManager,
-        ILaunchOperationTracker launchOperationTracker)
+        ILaunchOperationTracker launchOperationTracker,
+        IOperationQueueService operationQueueService)
     {
         _downloadTaskManager = downloadTaskManager;
         _launchOperationTracker = launchOperationTracker;
+        _operationQueueService = operationQueueService;
     }
 
     public string GetOperationStatusMessage(string operationId)
@@ -57,6 +60,12 @@ public sealed class AgentOperationStatusService : IAgentOperationStatusService
             && launchSnapshot != null)
         {
             return FormatSnapshot(launchSnapshot);
+        }
+
+        if (_operationQueueService.TryGetSnapshot(normalizedOperationId, out var operationSnapshot)
+            && operationSnapshot != null)
+        {
+            return FormatSnapshot(CreateOperationQueueSnapshot(operationSnapshot, _operationQueueService.TasksSnapshot));
         }
 
         var task = _downloadTaskManager.TasksSnapshot.FirstOrDefault(
@@ -173,5 +182,70 @@ public sealed class AgentOperationStatusService : IAgentOperationStatusService
             DownloadTaskState.Cancelled => "cancelled",
             _ => "unknown"
         };
+    }
+
+    private static AgentOperationSnapshot CreateOperationQueueSnapshot(
+        OperationTaskInfo task,
+        IReadOnlyList<OperationTaskInfo> allTasks)
+    {
+        return new AgentOperationSnapshot
+        {
+            OperationId = task.TaskId,
+            State = MapOperationState(task.State),
+            StatusMessage = string.IsNullOrWhiteSpace(task.StatusMessage) ? "任务执行中" : task.StatusMessage,
+            IsTerminal = task.State is OperationTaskState.Completed or OperationTaskState.Failed or OperationTaskState.Cancelled,
+            OperationKind = ResolveOperationKind(task.TaskType),
+            ProgressPercent = task.Progress,
+            TaskName = string.IsNullOrWhiteSpace(task.TaskName) ? null : task.TaskName,
+            VersionName = ExtractVersionName(task.ScopeKey),
+            QueuePosition = task.State == OperationTaskState.Queued ? ResolveQueuePosition(task, allTasks) : null,
+            ErrorMessage = string.IsNullOrWhiteSpace(task.ErrorMessage) ? null : task.ErrorMessage
+        };
+    }
+
+    private static string MapOperationState(OperationTaskState state)
+    {
+        return state switch
+        {
+            OperationTaskState.Queued => "queued",
+            OperationTaskState.Running => "running",
+            OperationTaskState.Completed => "completed",
+            OperationTaskState.Failed => "failed",
+            OperationTaskState.Cancelled => "cancelled",
+            _ => "unknown"
+        };
+    }
+
+    private static string? ResolveOperationKind(OperationTaskType taskType)
+    {
+        return taskType switch
+        {
+            OperationTaskType.LoaderInstall => "loader_install",
+            OperationTaskType.ModpackUpdate => "modpack_update",
+            OperationTaskType.CommunityResourceUpdate => "community_resource_update",
+            _ => null
+        };
+    }
+
+    private static string? ExtractVersionName(string? scopeKey)
+    {
+        if (string.IsNullOrWhiteSpace(scopeKey) ||
+            !scopeKey.StartsWith("version:", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return scopeKey.Substring("version:".Length);
+    }
+
+    private static int? ResolveQueuePosition(OperationTaskInfo task, IReadOnlyList<OperationTaskInfo> allTasks)
+    {
+        List<OperationTaskInfo> queuedTasks = allTasks
+            .Where(candidate => candidate.State == OperationTaskState.Queued)
+            .OrderBy(candidate => candidate.CreatedAtUtc)
+            .ToList();
+
+        int index = queuedTasks.FindIndex(candidate => string.Equals(candidate.TaskId, task.TaskId, StringComparison.OrdinalIgnoreCase));
+        return index >= 0 ? index + 1 : null;
     }
 }

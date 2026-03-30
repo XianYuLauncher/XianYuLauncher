@@ -12,6 +12,7 @@ public class OperationQueueService : IOperationQueueService
     private readonly ILogger<OperationQueueService> _logger;
     private readonly SemaphoreSlim _globalConcurrencyGate;
     private readonly Dictionary<string, ScopeLockEntry> _scopeLocks = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, OperationTaskInfo> _taskSnapshots = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _syncRoot = new();
     private int _activeOperationCount;
 
@@ -30,29 +31,72 @@ public class OperationQueueService : IOperationQueueService
 
     public bool HasActiveOperation => Volatile.Read(ref _activeOperationCount) > 0;
 
+    public IReadOnlyList<OperationTaskInfo> TasksSnapshot
+    {
+        get
+        {
+            lock (_syncRoot)
+            {
+                return _taskSnapshots.Values
+                    .OrderBy(task => task.CreatedAtUtc)
+                    .Select(Clone)
+                    .ToList();
+            }
+        }
+    }
+
     public event EventHandler<OperationTaskInfo>? TaskStateChanged;
     public event EventHandler<OperationTaskInfo>? TaskProgressChanged;
 
     public async Task<OperationExecutionResult> EnqueueAsync(OperationTaskRequest request, CancellationToken cancellationToken = default)
     {
-        ArgumentNullException.ThrowIfNull(request);
+        OperationTaskInfo taskInfo = CreateTaskInfo(request);
+        return await ExecuteTaskAsync(request, taskInfo, cancellationToken);
+    }
 
-        var normalizedScopeKey = string.IsNullOrWhiteSpace(request.ScopeKey)
-            ? "global"
-            : request.ScopeKey.Trim();
+    public Task<string> EnqueueBackgroundAsync(OperationTaskRequest request, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
 
-        var taskInfo = new OperationTaskInfo
+        OperationTaskInfo taskInfo = CreateTaskInfo(request);
+
+        _ = Task.Run(async () =>
         {
-            TaskId = Guid.NewGuid().ToString(),
-            TaskName = request.TaskName,
-            TaskType = request.TaskType,
-            ScopeKey = normalizedScopeKey,
-            State = OperationTaskState.Queued,
-            Progress = 0,
-            StatusMessage = "已加入任务队列"
-        };
+            try
+            {
+                await ExecuteTaskAsync(request, taskInfo, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "后台操作任务异常: {TaskName}({TaskId})", taskInfo.TaskName, taskInfo.TaskId);
+            }
+        }, CancellationToken.None);
 
-        UpdateTaskState(taskInfo, OperationTaskState.Queued, taskInfo.StatusMessage, null);
+        return Task.FromResult(taskInfo.TaskId);
+    }
+
+    public bool TryGetSnapshot(string taskId, out OperationTaskInfo? taskInfo)
+    {
+        string normalizedTaskId = taskId?.Trim() ?? string.Empty;
+        lock (_syncRoot)
+        {
+            if (_taskSnapshots.TryGetValue(normalizedTaskId, out OperationTaskInfo? snapshot))
+            {
+                taskInfo = Clone(snapshot);
+                return true;
+            }
+        }
+
+        taskInfo = null;
+        return false;
+    }
+
+    private async Task<OperationExecutionResult> ExecuteTaskAsync(
+        OperationTaskRequest request,
+        OperationTaskInfo taskInfo,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(request);
 
         var globalLockAcquired = false;
         ScopeLockEntry? scopeLockEntry = null;
@@ -79,14 +123,16 @@ public class OperationQueueService : IOperationQueueService
                 taskInfo.StatusMessage = string.IsNullOrWhiteSpace(status) ? taskInfo.StatusMessage : status;
                 taskInfo.Progress = Math.Clamp(progress, 0, 100);
                 taskInfo.LastUpdatedAtUtc = DateTimeOffset.UtcNow;
+                StoreSnapshot(taskInfo);
                 TaskProgressChanged?.Invoke(this, Clone(taskInfo));
             });
 
             await request.ExecuteAsync(executionContext, cancellationToken);
 
-            UpdateTaskState(taskInfo, OperationTaskState.Completed, "任务完成", null);
+            UpdateTaskState(taskInfo, OperationTaskState.Completed, ResolveCompletedStatusMessage(taskInfo), null);
             taskInfo.Progress = 100;
             taskInfo.LastUpdatedAtUtc = DateTimeOffset.UtcNow;
+            StoreSnapshot(taskInfo);
             TaskProgressChanged?.Invoke(this, Clone(taskInfo));
 
             return new OperationExecutionResult
@@ -138,6 +184,29 @@ public class OperationQueueService : IOperationQueueService
         }
     }
 
+    private OperationTaskInfo CreateTaskInfo(OperationTaskRequest request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        string normalizedScopeKey = string.IsNullOrWhiteSpace(request.ScopeKey)
+            ? "global"
+            : request.ScopeKey.Trim();
+
+        OperationTaskInfo taskInfo = new()
+        {
+            TaskId = Guid.NewGuid().ToString("N"),
+            TaskName = request.TaskName,
+            TaskType = request.TaskType,
+            ScopeKey = normalizedScopeKey,
+            State = OperationTaskState.Queued,
+            Progress = 0,
+            StatusMessage = "已加入任务队列"
+        };
+
+        UpdateTaskState(taskInfo, OperationTaskState.Queued, taskInfo.StatusMessage, null);
+        return taskInfo;
+    }
+
     private ScopeLockEntry AcquireScopeLock(string scopeKey)
     {
         lock (_syncRoot)
@@ -182,7 +251,29 @@ public class OperationQueueService : IOperationQueueService
         taskInfo.StatusMessage = statusMessage;
         taskInfo.ErrorMessage = errorMessage;
         taskInfo.LastUpdatedAtUtc = DateTimeOffset.UtcNow;
+        StoreSnapshot(taskInfo);
         TaskStateChanged?.Invoke(this, Clone(taskInfo));
+    }
+
+    private void StoreSnapshot(OperationTaskInfo taskInfo)
+    {
+        lock (_syncRoot)
+        {
+            _taskSnapshots[taskInfo.TaskId] = Clone(taskInfo);
+        }
+    }
+
+    private static string ResolveCompletedStatusMessage(OperationTaskInfo taskInfo)
+    {
+        if (taskInfo.Progress >= 100 &&
+            !string.IsNullOrWhiteSpace(taskInfo.StatusMessage) &&
+            !string.Equals(taskInfo.StatusMessage, "已加入任务队列", StringComparison.Ordinal) &&
+            !string.Equals(taskInfo.StatusMessage, "任务开始执行", StringComparison.Ordinal))
+        {
+            return taskInfo.StatusMessage;
+        }
+
+        return "任务完成";
     }
 
     private static OperationTaskInfo Clone(OperationTaskInfo source)

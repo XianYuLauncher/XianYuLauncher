@@ -6,5 +6,6 @@ namespace XianYuLauncher.Core.Models;
 public enum OperationTaskType
 {
     LoaderInstall,
-    ModpackUpdate
+    ModpackUpdate,
+    CommunityResourceUpdate
 }
