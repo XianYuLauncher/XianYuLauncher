@@ -263,6 +263,27 @@ public sealed class DownloadManagerTests : IDisposable
         rangeRequests.Count(range => range is not null).Should().Be(3);
     }
 
+    [Fact]
+    public void ShouldDisableHostRangeSupportOnShardedFailure_OnlyForRangeRelatedFailures()
+    {
+        DownloadManager.ShouldDisableHostRangeSupportOnShardedFailure(new TimeoutException(), CancellationToken.None)
+            .Should().BeTrue();
+        DownloadManager.ShouldDisableHostRangeSupportOnShardedFailure(new HttpRequestException("range failed"), CancellationToken.None)
+            .Should().BeTrue();
+        DownloadManager.ShouldDisableHostRangeSupportOnShardedFailure(new TaskCanceledException("request timed out"), CancellationToken.None)
+            .Should().BeTrue();
+        DownloadManager.ShouldDisableHostRangeSupportOnShardedFailure(new IOException("disk full"), CancellationToken.None)
+            .Should().BeFalse();
+
+        using var callerCancellation = new CancellationTokenSource();
+        callerCancellation.Cancel();
+
+        DownloadManager.ShouldDisableHostRangeSupportOnShardedFailure(
+                new OperationCanceledException(callerCancellation.Token),
+                callerCancellation.Token)
+            .Should().BeFalse();
+    }
+
     private static DownloadManager CreateDownloadManager(HttpMessageHandler handler, int shardCount, TimeSpan? shardedProgressStallTimeout = null)
     {
         var localSettingsServiceMock = new Mock<ILocalSettingsService>();

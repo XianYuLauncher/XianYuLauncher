@@ -173,7 +173,11 @@ public class DownloadManager : IDownloadManager
                     catch (Exception ex)
                     {
                         useShardedDownload = false;
-                        MarkHostRangeSupport(url, false, GetShardedFallbackReason(ex));
+                        if (ShouldDisableHostRangeSupportOnShardedFailure(ex, cancellationToken))
+                        {
+                            MarkHostRangeSupport(url, false, GetShardedFallbackReason(ex));
+                        }
+
                         _logger.LogWarning(ex, "分片下载失败，回退为直连重试: {Url}", url);
                         await DownloadFileDirectAsync(url, targetPath, contentLength, trackedProgressCallback, cancellationToken);
                     }
@@ -609,7 +613,24 @@ public class DownloadManager : IDownloadManager
             TimeoutException => "分片下载长时间无进度，回退直连",
             HttpRequestException httpRequestException when httpRequestException.StatusCode.HasValue =>
                 $"分片下载失败，HTTP {(int)httpRequestException.StatusCode.Value}",
+            OperationCanceledException => "分片下载请求超时或被中止",
             _ => $"分片下载失败: {exception.GetType().Name}"
+        };
+    }
+
+    internal static bool ShouldDisableHostRangeSupportOnShardedFailure(Exception exception, CancellationToken callerCancellationToken)
+    {
+        if (callerCancellationToken.IsCancellationRequested)
+        {
+            return false;
+        }
+
+        return exception switch
+        {
+            TimeoutException => true,
+            HttpRequestException => true,
+            OperationCanceledException operationCanceledException when !operationCanceledException.CancellationToken.IsCancellationRequested => true,
+            _ => false
         };
     }
 
@@ -735,6 +756,7 @@ public class DownloadManager : IDownloadManager
                 }, token);
             });
         } catch (OperationCanceledException ex) when (Volatile.Read(ref stalled) == 1 && !ct.IsCancellationRequested) {
+            CleanupFile(tempPath);
             throw new TimeoutException($"分片下载在 {_shardedProgressStallTimeout.TotalSeconds:F0} 秒内无进度", ex);
         } catch { CleanupFile(tempPath); throw; }
         finally
