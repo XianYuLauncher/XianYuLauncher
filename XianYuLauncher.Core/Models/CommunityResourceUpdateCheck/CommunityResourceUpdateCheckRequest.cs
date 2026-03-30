@@ -8,5 +8,7 @@ public sealed class CommunityResourceUpdateCheckRequest
 
     public string? ResolvedGameDirectory { get; init; }
 
+    public IReadOnlyCollection<string>? ResourceTypes { get; init; }
+
     public IReadOnlyCollection<string>? ResourceInstanceIds { get; init; }
 }

@@ -220,6 +220,38 @@ public sealed class CommunityResourceUpdateCheckServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task CheckAsync_ResourceTypeFilter_OnlyReturnsRequestedType()
+    {
+        CreateVersionDirectory("Fabric-1.20.1");
+
+        string modFile = CreateFile(Path.Combine(_gameDirectory, "mods", "alpha.jar"), "alpha-mod-content");
+        CreateZip(
+            Path.Combine(_gameDirectory, "resourcepacks", "Faithful.zip"),
+            ("pack.mcmeta", "{\"pack\":{\"description\":\"Faithful\",\"pack_format\":22}}"));
+
+        string modHash = ComputeSha1(modFile);
+        _hashLookupCenter.SetModrinthVersions(
+            "modrinth:version_files:sha1",
+            (modHash, BuildModrinthVersion("alpha-v1", "alpha-project", "1.0.0", "alpha.jar", modHash)));
+        _hashLookupCenter.SetModrinthVersions(
+            "modrinth:version_files:update:sha1:loaders=fabric:gameVersions=1.20.1",
+            (modHash, BuildModrinthVersion("alpha-v2", "alpha-project", "1.1.0", "alpha.jar", new string('b', 40))));
+
+        CommunityResourceUpdateCheckResult result = await _service.CheckAsync(new CommunityResourceUpdateCheckRequest
+        {
+            TargetVersionName = "Fabric-1.20.1",
+            ResourceTypes = ["mod"],
+        });
+
+        result.Items.Should().ContainSingle();
+
+        CommunityResourceUpdateCheckItem item = result.Items[0];
+        item.ResourceType.Should().Be("mod");
+        item.ResourceInstanceId.Should().Be("mod:mods/alpha.jar");
+        item.Status.Should().Be("update_available");
+    }
+
+    [Fact]
     public async Task CheckAsync_FallsBackToExtractedVersionConfigWhenCachedInfoIsEmpty()
     {
         const string targetVersionName = "NeoForge-1.21.1";

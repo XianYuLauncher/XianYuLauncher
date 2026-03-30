@@ -13,6 +13,7 @@ using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Models.VersionManagement;
@@ -32,8 +33,9 @@ public partial class ResourcePacksViewModel : ResourceManagementViewModelBase<Re
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
         ModInfoService modInfoService,
-        IUiDispatcher uiDispatcher)
-        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher)
+        IUiDispatcher uiDispatcher,
+        ICommunityResourceUpdateCheckService communityResourceUpdateCheckService)
+        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher, communityResourceUpdateCheckService)
     {
     }
 
@@ -84,6 +86,7 @@ public partial class ResourcePacksViewModel : ResourceManagementViewModelBase<Re
     protected override string GetSubFolder() => "resourcepacks";
     protected override string GetIconType() => "resourcepack";
     protected override bool GetIconFromRemote() => false;
+    protected override string GetUpdateCheckResourceType() => "resourcepack";
     protected override void ExecuteFilter() => FilterResourcePacks();
     protected override void NotifyUpdatableCountChanged() => OnPropertyChanged(nameof(UpdatableResourcePackCount));
     protected override bool IsSelectionModeEnabled { get => IsResourcePackSelectionModeEnabled; set => IsResourcePackSelectionModeEnabled = value; }

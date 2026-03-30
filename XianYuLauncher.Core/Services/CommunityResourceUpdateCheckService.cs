@@ -23,6 +23,15 @@ public sealed class CommunityResourceUpdateCheckService : ICommunityResourceUpda
         "datapack",
     };
 
+    private static readonly HashSet<string> InventoryResourceTypeSet = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "mod",
+        "shader",
+        "resourcepack",
+        "world",
+        "datapack",
+    };
+
     private static readonly HashSet<string> SupportedResourceTypes = new(StringComparer.OrdinalIgnoreCase)
     {
         "mod",
@@ -63,13 +72,14 @@ public sealed class CommunityResourceUpdateCheckService : ICommunityResourceUpda
         VersionConfig versionConfig = await ResolveVersionConfigAsync(request.TargetVersionName, cancellationToken);
         string minecraftVersion = ResolveMinecraftVersion(versionConfig, request.TargetVersionName);
         string modLoaderType = DetermineModLoaderType(versionConfig, request.TargetVersionName);
+        IReadOnlyCollection<string> requestedResourceTypes = ResolveRequestedResourceTypes(request.ResourceTypes);
 
         CommunityResourceInventoryResult inventoryResult = await _inventoryService.ListAsync(
             new CommunityResourceInventoryRequest
             {
                 TargetVersionName = request.TargetVersionName,
                 ResolvedGameDirectory = resolvedGameDirectory,
-                ResourceTypes = InventoryResourceTypes,
+                ResourceTypes = requestedResourceTypes,
             },
             cancellationToken);
 
@@ -116,6 +126,43 @@ public sealed class CommunityResourceUpdateCheckService : ICommunityResourceUpda
             CheckedAt = DateTimeOffset.UtcNow,
             Items = items,
         };
+    }
+
+    private static IReadOnlyCollection<string> ResolveRequestedResourceTypes(IReadOnlyCollection<string>? resourceTypes)
+    {
+        if (resourceTypes == null || resourceTypes.Count == 0)
+        {
+            return InventoryResourceTypes;
+        }
+
+        HashSet<string> normalized = new(StringComparer.OrdinalIgnoreCase);
+        foreach (string resourceType in resourceTypes)
+        {
+            string? value = NormalizeRequestedResourceType(resourceType);
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                continue;
+            }
+
+            if (!InventoryResourceTypeSet.Contains(value))
+            {
+                throw new ArgumentException($"不支持的资源类型: {resourceType}", nameof(resourceTypes));
+            }
+
+            normalized.Add(value);
+        }
+
+        return normalized.Count == 0 ? InventoryResourceTypes : normalized.ToList();
+    }
+
+    private static string? NormalizeRequestedResourceType(string? resourceType)
+    {
+        if (string.IsNullOrWhiteSpace(resourceType))
+        {
+            return null;
+        }
+
+        return ModResourcePathHelper.NormalizeProjectType(resourceType.Trim().ToLowerInvariant());
     }
 
     private async Task<string> ResolveGameDirectoryAsync(

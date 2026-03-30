@@ -856,6 +856,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         INavigationService navigationService, 
         ModrinthService modrinthService, 
         CurseForgeService curseForgeService, 
+        ICommunityResourceUpdateCheckService communityResourceUpdateCheckService,
         XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory downloadSourceFactory,
         IModLoaderInstallerFactory modLoaderInstallerFactory,
         IVersionInfoManager versionInfoManager,
@@ -924,9 +925,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         // 初始化子 ViewModels
         MapsModule = new MapsViewModel(this, navigationService, commonDialogService, profileDialogService, profileManager, uiDispatcher);
         ServersModule = new ServersViewModel(this, navigationService, commonDialogService, profileDialogService, profileManager, selectionDialogService, uiDispatcher);
-        ShadersModule = new ShadersViewModel(this, navigationService, commonDialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher);
-        ResourcePacksModule = new ResourcePacksViewModel(this, navigationService, commonDialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher);
-        ModsModule = new ModsViewModel(this, navigationService, commonDialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher);
+        ShadersModule = new ShadersViewModel(this, navigationService, commonDialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher, communityResourceUpdateCheckService);
+        ResourcePacksModule = new ResourcePacksViewModel(this, navigationService, commonDialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher, communityResourceUpdateCheckService);
+        ModsModule = new ModsViewModel(this, navigationService, commonDialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher, communityResourceUpdateCheckService);
 
         InitializeVersionIcons();
 

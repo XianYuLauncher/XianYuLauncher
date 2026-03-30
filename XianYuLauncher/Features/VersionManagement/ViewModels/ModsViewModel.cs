@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
@@ -33,8 +34,9 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
         ModInfoService modInfoService,
-        IUiDispatcher uiDispatcher)
-        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher)
+        IUiDispatcher uiDispatcher,
+        ICommunityResourceUpdateCheckService communityResourceUpdateCheckService)
+        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher, communityResourceUpdateCheckService)
     {
     }
 
@@ -85,6 +87,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
     protected override string GetSubFolder() => "mods";
     protected override string GetIconType() => "mod";
     protected override bool GetIconFromRemote() => true;
+    protected override string GetUpdateCheckResourceType() => "mod";
     protected override void ExecuteFilter() => FilterMods();
     protected override void NotifyUpdatableCountChanged() => OnPropertyChanged(nameof(UpdatableModCount));
     protected override bool IsSelectionModeEnabled { get => IsModSelectionModeEnabled; set => IsModSelectionModeEnabled = value; }

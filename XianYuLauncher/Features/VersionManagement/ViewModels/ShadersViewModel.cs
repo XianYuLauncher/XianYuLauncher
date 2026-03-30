@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Models.VersionManagement;
@@ -31,8 +32,9 @@ public partial class ShadersViewModel : ResourceManagementViewModelBase<ShaderIn
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
         ModInfoService modInfoService,
-        IUiDispatcher uiDispatcher)
-        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher)
+        IUiDispatcher uiDispatcher,
+        ICommunityResourceUpdateCheckService communityResourceUpdateCheckService)
+        : base(context, navigationService, dialogService, modrinthService, curseForgeService, modInfoService, uiDispatcher, communityResourceUpdateCheckService)
     {
     }
 
@@ -89,6 +91,7 @@ public partial class ShadersViewModel : ResourceManagementViewModelBase<ShaderIn
     protected override string GetSubFolder() => "shaderpacks";
     protected override string GetIconType() => "shader";
     protected override bool GetIconFromRemote() => true;
+    protected override string GetUpdateCheckResourceType() => "shader";
     protected override void ExecuteFilter() => FilterShaders();
     protected override void NotifyUpdatableCountChanged() => OnPropertyChanged(nameof(UpdatableShaderCount));
 
