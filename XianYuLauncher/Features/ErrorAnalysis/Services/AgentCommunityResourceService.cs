@@ -6,6 +6,7 @@ using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.ModDownloadDetail.Services;
+using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 
@@ -24,6 +25,13 @@ public interface IAgentCommunityResourceService
     Task<string> GetCommunityResourceTagsAsync(
         string resourceType,
         IReadOnlyList<string>? platforms,
+        CancellationToken cancellationToken);
+
+    Task<string> GetProjectDetailAsync(
+        string projectId,
+        string? resourceType,
+        bool includeBody,
+        int bodyMaxChars,
         CancellationToken cancellationToken);
 
     Task<string> GetProjectFilesAsync(
@@ -323,6 +331,57 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                 note = "将 categories[*].token 直接传给 searchCommunityResources.category_tokens。非数字 token 会作用于 Modrinth，纯数字 token 会作用于 CurseForge；这与资源下载页当前筛选行为保持一致。"
             }
         });
+    }
+
+    public async Task<string> GetProjectDetailAsync(
+        string projectId,
+        string? resourceType,
+        bool includeBody,
+        int bodyMaxChars,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(projectId))
+        {
+            return SerializePayload(new
+            {
+                status = "invalid_request",
+                message = "project_id 不能为空。"
+            });
+        }
+
+        var identity = TryParseProjectIdentity(projectId);
+        if (identity == null)
+        {
+            return SerializePayload(new
+            {
+                status = "invalid_request",
+                message = "project_id 无法识别，CurseForge 项目请传 curseforge-<id>。"
+            });
+        }
+
+        var normalizedResourceType = NormalizeOptionalQueryableResourceType(resourceType);
+        var effectiveBodyMaxChars = Math.Clamp(bodyMaxChars <= 0 ? 4000 : bodyMaxChars, 500, 12000);
+
+        return identity.Provider switch
+        {
+            CommunityResourceProvider.Modrinth => await GetModrinthProjectDetailAsync(
+                identity.RawProjectId,
+                normalizedResourceType,
+                includeBody,
+                effectiveBodyMaxChars,
+                cancellationToken),
+            CommunityResourceProvider.CurseForge => await GetCurseForgeProjectDetailAsync(
+                identity.RawProjectId,
+                normalizedResourceType,
+                includeBody,
+                effectiveBodyMaxChars,
+                cancellationToken),
+            _ => SerializePayload(new
+            {
+                status = "invalid_request",
+                message = "暂不支持的资源平台。"
+            })
+        };
     }
 
     public async Task<string> GetProjectFilesAsync(
@@ -821,6 +880,169 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                 icon_url = project.Logo?.Url
             })
             .ToList();
+    }
+
+    private async Task<string> GetModrinthProjectDetailAsync(
+        string rawProjectId,
+        string? requestedResourceType,
+        bool includeBody,
+        int bodyMaxChars,
+        CancellationToken cancellationToken)
+    {
+        var detail = await _modrinthService.GetProjectDetailAsync(rawProjectId);
+        if (detail == null)
+        {
+            return SerializePayload(new
+            {
+                status = "not_found",
+                message = "未找到对应的 Modrinth 项目。"
+            });
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var detectedResourceType = DetectModrinthProjectDetailResourceType(requestedResourceType, detail);
+        var supportedLoaders = ModDetailLoadHelper.BuildModrinthSupportedLoaders(
+            detail.Loaders,
+            detail.Categories,
+            detectedResourceType,
+            detectedResourceType is "mod" or "datapack" ? detectedResourceType : null);
+        var gameVersions = ModrinthVersionPresentationHelper.SelectRepresentativeGameVersions(detail.GameVersions, 20);
+        var body = CreateProjectDetailBody(detail.Body, includeBody, bodyMaxChars);
+
+        return SerializePayload(new
+        {
+            status = "ok",
+            platform = "modrinth",
+            project = new
+            {
+                project_id = detail.Id,
+                resource_type = detectedResourceType,
+                title = detail.Title,
+                slug = detail.Slug,
+                summary = detail.Description,
+                author = detail.Author,
+                downloads = detail.Downloads,
+                followers = detail.Followers,
+                license = detail.License?.Name,
+                icon_url = detail.IconUrl?.ToString(),
+                project_url = ModResourcePathHelper.GenerateModrinthUrl(detectedResourceType, detail.Slug),
+                published_at = detail.Published,
+                updated_at = detail.Updated,
+                status = detail.Status,
+                client_side = NormalizeText(detail.ClientSide),
+                server_side = NormalizeText(detail.ServerSide),
+                team_id = detail.Team
+            },
+            categories = BuildModrinthCategoryDetails(detail.Categories),
+            additional_categories = BuildModrinthCategoryDetails(detail.AdditionalCategories),
+            supported_loaders = supportedLoaders,
+            game_versions = gameVersions,
+            links = new
+            {
+                issues_url = detail.IssuesUrl?.ToString(),
+                source_url = detail.SourceUrl?.ToString(),
+                wiki_url = detail.WikiUrl?.ToString(),
+                discord_url = detail.DiscordUrl?.ToString()
+            },
+            body = new
+            {
+                has_body = body.HasBody,
+                preview = body.Preview,
+                preview_truncated = body.PreviewTruncated,
+                content = body.Content,
+                content_included = includeBody && body.HasBody,
+                content_truncated = body.ContentTruncated,
+                original_length = body.OriginalLength
+            }
+        });
+    }
+
+    private async Task<string> GetCurseForgeProjectDetailAsync(
+        string rawProjectId,
+        string? requestedResourceType,
+        bool includeBody,
+        int bodyMaxChars,
+        CancellationToken cancellationToken)
+    {
+        if (!int.TryParse(rawProjectId, out var modId))
+        {
+            return SerializePayload(new
+            {
+                status = "invalid_request",
+                message = "CurseForge project_id 必须是 curseforge-<数字 id>。"
+            });
+        }
+
+        var detail = await _curseForgeService.GetModDetailAsync(modId);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var detectedResourceType = ModDetailLoadHelper.ResolveCurseForgeProjectType(detail.ClassId, requestedResourceType);
+        var supportedLoaders = ModDetailLoadHelper.BuildCurseForgeSupportedLoaders(detail.LatestFilesIndexes);
+        var gameVersions = ModrinthVersionPresentationHelper.SelectRepresentativeGameVersions(
+            detail.LatestFilesIndexes
+                .Select(index => index.GameVersion)
+                .Where(version => !string.IsNullOrWhiteSpace(version))
+                .ToList(),
+            20);
+        var body = CreateProjectDetailBody(detail.Description, includeBody, bodyMaxChars);
+
+        return SerializePayload(new
+        {
+            status = "ok",
+            platform = "curseforge",
+            project = new
+            {
+                project_id = $"curseforge-{detail.Id}",
+                resource_type = detectedResourceType,
+                title = detail.Name,
+                slug = detail.Slug,
+                summary = detail.Summary,
+                author = detail.Authors?.FirstOrDefault()?.Name,
+                downloads = detail.DownloadCount,
+                followers = (int?)null,
+                license = (string?)null,
+                icon_url = detail.Logo?.Url,
+                project_url = NormalizeText(detail.Links?.WebsiteUrl),
+                published_at = detail.DateReleased == default ? null : detail.DateReleased.ToString("O"),
+                updated_at = detail.DateModified == default ? null : detail.DateModified.ToString("O"),
+                status = detail.Status.ToString(),
+                client_side = (string?)null,
+                server_side = (string?)null,
+                team_id = (string?)null,
+                allow_mod_distribution = detail.AllowModDistribution,
+                game_popularity_rank = detail.GamePopularityRank
+            },
+            categories = BuildCurseForgeCategoryDetails(detail.Categories, detail.PrimaryCategoryId),
+            additional_categories = Array.Empty<object>(),
+            supported_loaders = supportedLoaders,
+            game_versions = gameVersions,
+            links = new
+            {
+                issues_url = NormalizeText(detail.Links?.IssuesUrl),
+                source_url = NormalizeText(detail.Links?.SourceUrl),
+                wiki_url = NormalizeText(detail.Links?.WikiUrl),
+                discord_url = (string?)null
+            },
+            authors = detail.Authors?
+                .Where(author => !string.IsNullOrWhiteSpace(author.Name))
+                .Select(author => new
+                {
+                    name = author.Name,
+                    url = NormalizeText(author.Url)
+                })
+                .ToList(),
+            body = new
+            {
+                has_body = body.HasBody,
+                preview = body.Preview,
+                preview_truncated = body.PreviewTruncated,
+                content = body.Content,
+                content_included = includeBody && body.HasBody,
+                content_truncated = body.ContentTruncated,
+                original_length = body.OriginalLength
+            }
+        });
     }
 
     private async Task<List<CurseForgeMod>> SearchCurseForgeProjectsAsync(
@@ -1945,6 +2167,105 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             .Distinct()
             .ToList();
 
+    private static string DetectModrinthProjectDetailResourceType(string? requestedResourceType, ModrinthProjectDetail detail)
+    {
+        var normalizedRequested = NormalizeOptionalQueryableResourceType(requestedResourceType);
+        if (!string.IsNullOrWhiteSpace(normalizedRequested))
+        {
+            return normalizedRequested;
+        }
+
+        if ((detail.Loaders?.Any(loader => string.Equals(loader, "datapack", StringComparison.OrdinalIgnoreCase)) ?? false)
+            || (detail.Categories?.Any(category => string.Equals(category, "datapack", StringComparison.OrdinalIgnoreCase)) ?? false))
+        {
+            return "datapack";
+        }
+
+        return ModResourcePathHelper.NormalizeProjectType(detail.ProjectType);
+    }
+
+    private static List<object> BuildModrinthCategoryDetails(IEnumerable<string>? categories) =>
+        (categories ?? [])
+            .Where(category => !string.IsNullOrWhiteSpace(category))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(category => (object)new
+            {
+                token = category,
+                display_name = CategoryLocalizationHelper.GetModrinthCategoryName(category),
+                source = "modrinth"
+            })
+            .ToList();
+
+    private static List<object> BuildCurseForgeCategoryDetails(IEnumerable<CurseForgeCategory>? categories, int primaryCategoryId)
+    {
+        var categoryList = (categories ?? [])
+            .Where(category => category != null)
+            .ToList();
+        var filteredCategories = categoryList
+            .Where(category => !(category.IsClass ?? false))
+            .ToList();
+
+        if (filteredCategories.Count == 0)
+        {
+            filteredCategories = categoryList;
+        }
+
+        return filteredCategories
+            .Where(category => !string.IsNullOrWhiteSpace(category.Name))
+            .GroupBy(category => category.Id)
+            .Select(group => group.First())
+            .Select(category => (object)new
+            {
+                token = category.Id.ToString(),
+                display_name = CategoryLocalizationHelper.GetLocalizedCategoryName(category.Name),
+                raw_name = category.Name,
+                category_id = category.Id,
+                slug = category.Slug,
+                source = "curseforge",
+                is_primary = category.Id == primaryCategoryId
+            })
+            .ToList();
+    }
+
+    private static ProjectDetailBody CreateProjectDetailBody(string? rawBody, bool includeBody, int bodyMaxChars)
+    {
+        var normalizedBody = ModDescriptionMarkdownHelper.Preprocess(rawBody ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalizedBody))
+        {
+            return new ProjectDetailBody();
+        }
+
+        var preview = TruncateText(normalizedBody, 600, out var previewTruncated);
+        string? content = null;
+        var contentTruncated = false;
+        if (includeBody)
+        {
+            content = TruncateText(normalizedBody, bodyMaxChars, out contentTruncated);
+        }
+
+        return new ProjectDetailBody
+        {
+            HasBody = true,
+            Preview = preview,
+            PreviewTruncated = previewTruncated,
+            Content = content,
+            ContentTruncated = contentTruncated,
+            OriginalLength = normalizedBody.Length
+        };
+    }
+
+    private static string TruncateText(string value, int maxChars, out bool truncated)
+    {
+        if (value.Length <= maxChars)
+        {
+            truncated = false;
+            return value;
+        }
+
+        truncated = true;
+        return value[..Math.Max(0, maxChars)].TrimEnd() + "...";
+    }
+
     private static int MapCurseForgeClassId(string resourceType) =>
         resourceType switch
         {
@@ -2015,6 +2336,21 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
     private static string SerializePayload(object payload)
     {
         return JsonConvert.SerializeObject(payload, Formatting.Indented);
+    }
+
+    private sealed class ProjectDetailBody
+    {
+        public bool HasBody { get; init; }
+
+        public string Preview { get; init; } = string.Empty;
+
+        public bool PreviewTruncated { get; init; }
+
+        public string? Content { get; init; }
+
+        public bool ContentTruncated { get; init; }
+
+        public int OriginalLength { get; init; }
     }
 
     private sealed record ParsedProjectIdentity(CommunityResourceProvider Provider, string RawProjectId);

@@ -136,6 +136,54 @@ public sealed class GetCommunityResourceTagsToolHandler : IAgentToolHandler
     }
 }
 
+public sealed class GetCommunityResourceProjectDetailToolHandler : IAgentToolHandler
+{
+    private readonly IAgentCommunityResourceService _communityResourceService;
+
+    public GetCommunityResourceProjectDetailToolHandler(IAgentCommunityResourceService communityResourceService)
+    {
+        _communityResourceService = communityResourceService;
+    }
+
+    public string ToolName => "getCommunityResourceProjectDetail";
+
+    public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
+        ToolName,
+        "获取某个社区资源项目的细粒度详情，包括更具体的类别、兼容加载器、支持版本、平台链接和可选正文内容。project_id 必填；若要读取正文，请把 include_body 设为 true。",
+        new
+        {
+            type = "object",
+            properties = new
+            {
+                project_id = new { type = "string", description = "资源项目 ID。CurseForge 必须是 curseforge-<id>；Modrinth 直接使用 project_id。" },
+                resource_type = new { type = "string", description = "可选。辅助识别资源类型，尤其是 Modrinth datapack。", @enum = new[] { "mod", "resourcepack", "shader", "datapack" } },
+                include_body = new { type = "boolean", description = "可选。是否返回项目正文内容；默认 false，只返回预览。" },
+                body_max_chars = new { type = "integer", description = "可选。正文最多返回多少字符；默认 4000，最大 12000。仅在 include_body=true 时生效。" }
+            },
+            required = new[] { "project_id" }
+        });
+
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ReadOnly;
+
+    public bool IsAvailable(ErrorAnalysisSessionContext context) => true;
+
+    public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    {
+        var projectId = arguments["project_id"]?.ToString() ?? arguments["projectId"]?.ToString() ?? string.Empty;
+        var resourceType = arguments["resource_type"]?.ToString() ?? arguments["resourceType"]?.ToString();
+        var includeBody = arguments["include_body"]?.Value<bool>() ?? arguments["includeBody"]?.Value<bool>() ?? false;
+        var bodyMaxChars = arguments["body_max_chars"]?.Value<int>() ?? arguments["bodyMaxChars"]?.Value<int>() ?? 4000;
+
+        var message = await _communityResourceService.GetProjectDetailAsync(
+            projectId,
+            resourceType,
+            includeBody,
+            bodyMaxChars,
+            cancellationToken);
+        return AgentToolExecutionResult.FromMessage(message);
+    }
+}
+
 public sealed class GetCommunityResourceFilesToolHandler : IAgentToolHandler
 {
     private readonly IAgentCommunityResourceService _communityResourceService;

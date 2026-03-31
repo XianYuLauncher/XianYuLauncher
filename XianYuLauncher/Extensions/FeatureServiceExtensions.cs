@@ -56,6 +56,7 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentToolHandler, GetOperationStatusToolHandler>();
         services.AddSingleton<IAgentToolHandler, SearchCommunityResourcesToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetCommunityResourceTagsToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetCommunityResourceProjectDetailToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetCommunityResourceFilesToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetInstancesToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetInstanceCommunityResourcesToolHandler>();
