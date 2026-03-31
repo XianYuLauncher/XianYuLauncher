@@ -20,7 +20,7 @@ public class ModpackInstallationService : IModpackInstallationService
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IVersionInfoManager _versionInfoManager;
     private readonly CurseForgeService _curseForgeService;
-    private readonly ILocalSettingsService _localSettingsService;
+    private readonly IDownloadTaskManager _downloadTaskManager;
 
     public ModpackInstallationService(
         IDownloadManager downloadManager,
@@ -28,14 +28,14 @@ public class ModpackInstallationService : IModpackInstallationService
         IMinecraftVersionService minecraftVersionService,
         IVersionInfoManager versionInfoManager,
         CurseForgeService curseForgeService,
-        ILocalSettingsService localSettingsService)
+        IDownloadTaskManager downloadTaskManager)
     {
         _downloadManager = downloadManager;
         _fallbackDownloadManager = fallbackDownloadManager;
         _minecraftVersionService = minecraftVersionService;
         _versionInfoManager = versionInfoManager;
         _curseForgeService = curseForgeService;
-        _localSettingsService = localSettingsService;
+        _downloadTaskManager = downloadTaskManager;
     }
 
     public async Task<ModpackInstallResult> InstallModpackAsync(
@@ -50,6 +50,36 @@ public class ModpackInstallationService : IModpackInstallationService
         string? sourceProjectId = null,
         string? sourceVersionId = null,
         CancellationToken cancellationToken = default)
+    {
+        return await InstallModpackAsync(
+            downloadUrl,
+            fileName,
+            modpackDisplayName,
+            targetVersionName,
+            minecraftPath,
+            isFromCurseForge,
+            progress,
+            modpackIconUrl,
+            sourceProjectId,
+            sourceVersionId,
+            contentFileProgress: null,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<ModpackInstallResult> InstallModpackAsync(
+        string downloadUrl,
+        string fileName,
+        string modpackDisplayName,
+        string targetVersionName,
+        string minecraftPath,
+        bool isFromCurseForge,
+        IProgress<ModpackInstallProgress> progress,
+        string? modpackIconUrl,
+        string? sourceProjectId,
+        string? sourceVersionId,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        CancellationToken cancellationToken = default,
+        string? concurrencyOwnerTaskId = null)
     {
         string tempDir = string.Empty;
 
@@ -69,7 +99,7 @@ public class ModpackInstallationService : IModpackInstallationService
 
             await DownloadModpackFileAsync(downloadUrl, mrpackPath, isFromCurseForge, progress, cancellationToken);
 
-            Report(progress, 30, "30%", "下载完成，正在解压整合包...");
+            Report(progress, 30, "30%", "下载完成，正在解压整合包...", statusResourceKey: "DownloadQueue_Status_ModpackExtractingPackage");
 
             var resolvedVersionIconPath = await ResolveAndPersistModpackIconAsync(
                 modpackIconUrl,
@@ -87,7 +117,7 @@ public class ModpackInstallationService : IModpackInstallationService
                 archive.ExtractToDirectory(extractDir);
             }, cancellationToken);
 
-            Report(progress, 40, "40%", "解压完成，正在解析整合包信息...");
+            Report(progress, 40, "40%", "解压完成，正在解析整合包信息...", statusResourceKey: "DownloadQueue_Status_ModpackParsingManifest");
 
             // 3. 检测格式并分派
             string curseForgeManifestPath = Path.Combine(extractDir, MinecraftFileConsts.ManifestJson);
@@ -97,21 +127,21 @@ public class ModpackInstallationService : IModpackInstallationService
             {
                 Debug.WriteLine("[整合包安装] 检测到CurseForge整合包格式");
                 return await InstallCurseForgeModpackCoreAsync(
-                    extractDir, curseForgeManifestPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, cancellationToken);
+                    extractDir, curseForgeManifestPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
             }
 
             if (File.Exists(modrinthIndexPath))
             {
                 Debug.WriteLine("[整合包安装] 检测到Modrinth整合包格式");
                 return await InstallModrinthModpackCoreAsync(
-                    extractDir, modrinthIndexPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, cancellationToken);
+                    extractDir, modrinthIndexPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
             }
 
             return ModpackInstallResult.Failed($"整合包格式不支持：未找到{MinecraftFileConsts.ManifestJson}（CurseForge）或{MinecraftFileConsts.ModrinthIndexJson}（Modrinth）");
         }
         catch (OperationCanceledException)
         {
-            Report(progress, 0, "0%", "安装已取消");
+            Report(progress, 0, "0%", "安装已取消", statusResourceKey: "DownloadQueue_Status_ModpackInstallCancelled");
             return ModpackInstallResult.Failed("安装已取消");
         }
         catch (Exception ex)
@@ -138,6 +168,36 @@ public class ModpackInstallationService : IModpackInstallationService
         string? sourceVersionId = null,
         CancellationToken cancellationToken = default)
     {
+        return await UpdateModpackInPlaceAsync(
+            downloadUrl,
+            fileName,
+            modpackDisplayName,
+            minecraftPath,
+            targetVersionId,
+            isFromCurseForge,
+            progress,
+            versionIconPath,
+            sourceProjectId,
+            sourceVersionId,
+            contentFileProgress: null,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<ModpackInstallResult> UpdateModpackInPlaceAsync(
+        string downloadUrl,
+        string fileName,
+        string modpackDisplayName,
+        string minecraftPath,
+        string targetVersionId,
+        bool isFromCurseForge,
+        IProgress<ModpackInstallProgress> progress,
+        string? versionIconPath,
+        string? sourceProjectId,
+        string? sourceVersionId,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        CancellationToken cancellationToken = default,
+        string? concurrencyOwnerTaskId = null)
+    {
         string tempDir = string.Empty;
 
         try
@@ -158,7 +218,7 @@ public class ModpackInstallationService : IModpackInstallationService
             Directory.CreateDirectory(tempDir);
 
             await DownloadModpackFileAsync(downloadUrl, modpackPath, isFromCurseForge, progress, cancellationToken);
-            Report(progress, 30, "30%", "下载完成，正在解压整合包...");
+            Report(progress, 30, "30%", "下载完成，正在解压整合包...", statusResourceKey: "DownloadQueue_Status_ModpackExtractingPackage");
 
             string extractDir = Path.Combine(tempDir, "extract");
             Directory.CreateDirectory(extractDir);
@@ -168,7 +228,7 @@ public class ModpackInstallationService : IModpackInstallationService
                 archive.ExtractToDirectory(extractDir);
             }, cancellationToken);
 
-            Report(progress, 40, "40%", "解压完成，正在解析整合包信息...");
+            Report(progress, 40, "40%", "解压完成，正在解析整合包信息...", statusResourceKey: "DownloadQueue_Status_ModpackParsingManifest");
 
             string curseForgeManifestPath = Path.Combine(extractDir, MinecraftFileConsts.ManifestJson);
             string modrinthIndexPath = Path.Combine(extractDir, MinecraftFileConsts.ModrinthIndexJson);
@@ -185,6 +245,8 @@ public class ModpackInstallationService : IModpackInstallationService
                     versionIconPath,
                     sourceProjectId,
                     sourceVersionId,
+                    contentFileProgress,
+                    concurrencyOwnerTaskId,
                     cancellationToken);
             }
 
@@ -199,7 +261,9 @@ public class ModpackInstallationService : IModpackInstallationService
                     progress,
                     versionIconPath,
                     sourceProjectId,
-                    sourceVersionId,
+                        sourceVersionId,
+                        contentFileProgress,
+                        concurrencyOwnerTaskId,
                     cancellationToken);
             }
 
@@ -207,7 +271,7 @@ public class ModpackInstallationService : IModpackInstallationService
         }
         catch (OperationCanceledException)
         {
-            Report(progress, 0, "0%", "更新已取消");
+            Report(progress, 0, "0%", "更新已取消", statusResourceKey: "DownloadQueue_Status_ModpackInstallCancelled");
             return ModpackInstallResult.Failed("更新已取消");
         }
         catch (Exception ex)
@@ -233,6 +297,8 @@ public class ModpackInstallationService : IModpackInstallationService
         string? versionIconPath,
         string? sourceProjectId,
         string? sourceVersionId,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
         string indexJson = await File.ReadAllTextAsync(indexPath, cancellationToken);
@@ -243,7 +309,13 @@ public class ModpackInstallationService : IModpackInstallationService
 
         var (modLoaderType, _, modLoaderVersion) = ParseModrinthDependencies(indexData);
 
-        Report(progress, 50, "50%", $"正在更新实例核心文件（Minecraft {minecraftVersion} / {modLoaderType} {modLoaderVersion}）...");
+        Report(
+            progress,
+            50,
+            "50%",
+            $"正在更新实例核心文件（Minecraft {minecraftVersion} / {modLoaderType} {modLoaderVersion}）...",
+            statusResourceKey: "DownloadQueue_Status_ModpackUpdatingCoreFiles",
+            statusResourceArguments: [minecraftVersion, modLoaderType, modLoaderVersion]);
 
         await _minecraftVersionService.DownloadModLoaderVersionAsync(
             minecraftVersion,
@@ -253,27 +325,34 @@ public class ModpackInstallationService : IModpackInstallationService
             status =>
             {
                 double p = 50 + (status.Percent / 100) * 20;
-                Report(progress, p, $"{p:F1}%", $"正在更新实例核心文件（Minecraft {minecraftVersion} / {modLoaderType} {modLoaderVersion}）...", status.SpeedText);
+                Report(
+                    progress,
+                    p,
+                    $"{p:F1}%",
+                    $"正在更新实例核心文件（Minecraft {minecraftVersion} / {modLoaderType} {modLoaderVersion}）...",
+                    status.SpeedText,
+                    "DownloadQueue_Status_ModpackUpdatingCoreFiles",
+                    [minecraftVersion, modLoaderType, modLoaderVersion]);
             },
             cancellationToken,
             targetVersionId,
             versionIconPath);
 
         var targetVersionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, targetVersionId);
-        Report(progress, 72, "72%", "正在清理旧整合包文件...");
+        Report(progress, 72, "72%", "正在清理旧整合包文件...", statusResourceKey: "DownloadQueue_Status_ModpackCleaningFiles");
         await Task.Run(() => CleanManagedDirectories(targetVersionDir), cancellationToken);
 
         string overridesDir = Path.Combine(extractDir, "overrides");
         if (Directory.Exists(overridesDir))
         {
-            Report(progress, 78, "78%", "正在覆盖整合包配置文件...");
+            Report(progress, 78, "78%", "正在覆盖整合包配置文件...", statusResourceKey: "DownloadQueue_Status_ModpackApplyingOverrides");
             await Task.Run(() => CopyDirectory(overridesDir, targetVersionDir), cancellationToken);
         }
 
         var files = indexData["files"] as JArray;
         if (files != null && files.Count > 0)
         {
-            await DownloadModrinthFilesAsync(files, targetVersionDir, progress, cancellationToken);
+            await DownloadModrinthFilesAsync(files, targetVersionDir, progress, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
         }
 
         var modpackManifestVersionId = NormalizeModpackVersionId(indexData["versionId"]?.ToString())
@@ -281,7 +360,7 @@ public class ModpackInstallationService : IModpackInstallationService
         var normalizedProjectId = NormalizeExternalProjectId("modrinth", sourceProjectId);
         await SaveModpackMetadataAsync(targetVersionId, minecraftPath, "modrinth", normalizedProjectId, modpackManifestVersionId);
 
-        Report(progress, 100, "100%", "整合包更新完成！");
+        Report(progress, 100, "100%", "整合包更新完成！", statusResourceKey: "DownloadQueue_Status_ModpackInstallCompleted");
         return ModpackInstallResult.Succeeded(modpackDisplayName, targetVersionId);
     }
 
@@ -295,6 +374,8 @@ public class ModpackInstallationService : IModpackInstallationService
         string? versionIconPath,
         string? sourceProjectId,
         string? sourceVersionId,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
         string indexJson = await File.ReadAllTextAsync(indexPath, cancellationToken);
@@ -306,7 +387,13 @@ public class ModpackInstallationService : IModpackInstallationService
 
         var (modLoaderType, _, modLoaderVersion) = ParseModrinthDependencies(indexData);
 
-        Report(progress, 50, "50%", $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...");
+        Report(
+            progress,
+            50,
+            "50%",
+            $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...",
+            statusResourceKey: "DownloadQueue_Status_ModpackDownloadingCoreVersion",
+            statusResourceArguments: [minecraftVersion, modLoaderType, modLoaderVersion]);
 
         // 下载 MC + Mod Loader
         await _minecraftVersionService.DownloadModLoaderVersionAsync(
@@ -314,11 +401,18 @@ public class ModpackInstallationService : IModpackInstallationService
             status =>
             {
                 double p = 50 + (status.Percent / 100) * 30;
-                Report(progress, p, $"{p:F1}%", $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...", status.SpeedText);
+                Report(
+                    progress,
+                    p,
+                    $"{p:F1}%",
+                    $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...",
+                    status.SpeedText,
+                    "DownloadQueue_Status_ModpackDownloadingCoreVersion",
+                    [minecraftVersion, modLoaderType, modLoaderVersion]);
             },
             cancellationToken, targetVersionName, versionIconPath);
 
-        Report(progress, 80, "80%", "版本下载完成，正在部署整合包文件...");
+        Report(progress, 80, "80%", "版本下载完成，正在部署整合包文件...", statusResourceKey: "DownloadQueue_Status_ModpackDeployingFiles");
 
         string modpackVersionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, targetVersionName);
 
@@ -333,7 +427,7 @@ public class ModpackInstallationService : IModpackInstallationService
         var files = indexData["files"] as JArray;
         if (files != null && files.Count > 0)
         {
-            await DownloadModrinthFilesAsync(files, modpackVersionDir, progress, cancellationToken);
+            await DownloadModrinthFilesAsync(files, modpackVersionDir, progress, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
         }
 
         var modpackManifestVersionId = NormalizeModpackVersionId(indexData["versionId"]?.ToString())
@@ -341,7 +435,7 @@ public class ModpackInstallationService : IModpackInstallationService
         var normalizedProjectId = NormalizeExternalProjectId("modrinth", sourceProjectId);
         await SaveModpackMetadataAsync(targetVersionName, minecraftPath, "modrinth", normalizedProjectId, modpackManifestVersionId);
 
-        Report(progress, 100, "100%", "整合包安装完成！");
+        Report(progress, 100, "100%", "整合包安装完成！", statusResourceKey: "DownloadQueue_Status_ModpackInstallCompleted");
         return ModpackInstallResult.Succeeded(targetVersionName, targetVersionName);
     }
 
@@ -369,29 +463,13 @@ public class ModpackInstallationService : IModpackInstallationService
         JArray files,
         string modpackVersionDir,
         IProgress<ModpackInstallProgress> progress,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
-        Report(progress, 80, "80%", "正在下载整合包文件...");
+        Report(progress, 80, "80%", "正在下载整合包文件...", statusResourceKey: "DownloadQueue_Status_ModpackDownloadingFiles");
 
-        int totalFiles = files.Count;
-        int downloadedFiles = 0;
-
-        var threadCount = await _localSettingsService.ReadSettingAsync<int?>("DownloadThreadCount") ?? 32;
-        Debug.WriteLine($"[Modrinth整合包] 开始多线程下载，线程数: {threadCount}，文件总数: {totalFiles}");
-
-        using var semaphore = new SemaphoreSlim(threadCount);
-        var downloadTasks = new List<Task>();
-
-        // 预先创建目录
-        foreach (var fileItem in files)
-        {
-            var path = fileItem["path"]?.ToString();
-            if (!string.IsNullOrEmpty(path))
-            {
-                string targetPath = Path.Combine(modpackVersionDir, path.Replace('/', Path.DirectorySeparatorChar));
-                Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
-            }
-        }
+        List<(string FileKey, string FileDisplayName, string DownloadUrl, string TargetPath)> downloadEntries = [];
 
         foreach (var fileItem in files)
         {
@@ -399,29 +477,83 @@ public class ModpackInstallationService : IModpackInstallationService
             var path = fileItem["path"]?.ToString();
 
             if (downloads == null || downloads.Count == 0 || string.IsNullOrEmpty(path))
+            {
                 continue;
+            }
 
-            string downloadUrl = downloads[0]!.ToString();
-            string targetPath = Path.Combine(modpackVersionDir, path.Replace('/', Path.DirectorySeparatorChar));
-            string fileDisplayName = Path.GetFileName(path);
+            string targetPath = GetValidatedContentPathUnderRoot(modpackVersionDir, path, "Modrinth 整合包文件路径");
+            Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
 
+            string normalizedPath = Path.GetRelativePath(modpackVersionDir, targetPath);
+            string fileDisplayName = Path.GetFileName(targetPath);
+
+            downloadEntries.Add((
+                NormalizeContentFileKey(normalizedPath),
+                fileDisplayName,
+                downloads[0]!.ToString(),
+                targetPath));
+        }
+
+        int totalFiles = downloadEntries.Count;
+        if (totalFiles == 0)
+        {
+            return;
+        }
+
+        int downloadedFiles = 0;
+        Debug.WriteLine($"[Modrinth整合包] 开始共享 DownloadQueue 并发下载，文件总数: {totalFiles}");
+
+        var downloadTasks = new List<Task>(totalFiles);
+
+        foreach (var file in downloadEntries)
+        {
             var downloadTask = Task.Run(async () =>
             {
-                await semaphore.WaitAsync(cancellationToken);
                 try
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    Debug.WriteLine($"[Modrinth整合包] 开始下载: {fileDisplayName}");
+                    Debug.WriteLine($"[Modrinth整合包] 开始下载: {file.FileDisplayName}");
 
-                    await _downloadManager.DownloadFileAsync(downloadUrl, targetPath, null, null, cancellationToken);
+                    await using IAsyncDisposable concurrencyLease = await _downloadTaskManager
+                        .AcquireNestedDownloadSlotAsync(concurrencyOwnerTaskId, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    await _downloadManager.DownloadFileAsync(
+                        file.DownloadUrl,
+                        file.TargetPath,
+                        null,
+                        status =>
+                        {
+                            if (cancellationToken.IsCancellationRequested)
+                            {
+                                return;
+                            }
+
+                            ReportContentFileDownloading(contentFileProgress, file.FileKey, file.FileDisplayName, status);
+                        },
+                        cancellationToken);
+
+                    ReportContentFileCompleted(contentFileProgress, file.FileKey, file.FileDisplayName);
 
                     var completed = Interlocked.Increment(ref downloadedFiles);
                     double p = 80 + ((double)completed / totalFiles) * 20;
-                    Report(progress, p, $"{p:F1}%", $"正在下载整合包文件 ({completed}/{totalFiles})...");
+                    Report(
+                        progress,
+                        p,
+                        $"{p:F1}%",
+                        $"正在下载整合包文件 ({completed}/{totalFiles})...",
+                        statusResourceKey: "DownloadQueue_Status_ModpackDownloadingFilesWithCount",
+                        statusResourceArguments: [completed.ToString(), totalFiles.ToString()]);
                 }
-                finally
+                catch (OperationCanceledException)
                 {
-                    semaphore.Release();
+                    ReportContentFileCancelled(contentFileProgress, file.FileKey, file.FileDisplayName);
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    ReportContentFileFailed(contentFileProgress, file.FileKey, file.FileDisplayName, ex.Message);
+                    throw;
                 }
             }, cancellationToken);
 
@@ -446,6 +578,8 @@ public class ModpackInstallationService : IModpackInstallationService
         string? versionIconPath,
         string? sourceProjectId,
         string? sourceVersionId,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
         string manifestJson = await File.ReadAllTextAsync(manifestPath, cancellationToken);
@@ -458,7 +592,13 @@ public class ModpackInstallationService : IModpackInstallationService
 
         var (modLoaderType, _, modLoaderVersion) = ParseCurseForgeDependencies(manifest);
 
-        Report(progress, 50, "50%", $"正在更新实例核心文件（Minecraft {minecraftVersion} / {modLoaderType} {modLoaderVersion}）...");
+        Report(
+            progress,
+            50,
+            "50%",
+            $"正在更新实例核心文件（Minecraft {minecraftVersion} / {modLoaderType} {modLoaderVersion}）...",
+            statusResourceKey: "DownloadQueue_Status_ModpackUpdatingCoreFiles",
+            statusResourceArguments: [minecraftVersion, modLoaderType, modLoaderVersion]);
 
         await _minecraftVersionService.DownloadModLoaderVersionAsync(
             minecraftVersion,
@@ -468,27 +608,34 @@ public class ModpackInstallationService : IModpackInstallationService
             status =>
             {
                 double p = 50 + (status.Percent / 100) * 15;
-                Report(progress, p, $"{p:F1}%", $"正在更新实例核心文件（Minecraft {minecraftVersion} / {modLoaderType} {modLoaderVersion}）...", status.SpeedText);
+                Report(
+                    progress,
+                    p,
+                    $"{p:F1}%",
+                    $"正在更新实例核心文件（Minecraft {minecraftVersion} / {modLoaderType} {modLoaderVersion}）...",
+                    status.SpeedText,
+                    "DownloadQueue_Status_ModpackUpdatingCoreFiles",
+                    [minecraftVersion, modLoaderType, modLoaderVersion]);
             },
             cancellationToken,
             targetVersionId,
             versionIconPath);
 
         string targetVersionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, targetVersionId);
-        Report(progress, 66, "66%", "正在清理旧整合包文件...");
+        Report(progress, 66, "66%", "正在清理旧整合包文件...", statusResourceKey: "DownloadQueue_Status_ModpackCleaningFiles");
         await Task.Run(() => CleanManagedDirectories(targetVersionDir), cancellationToken);
 
         string overridesFolderName = manifest.Overrides ?? "overrides";
         string overridesDir = Path.Combine(extractDir, overridesFolderName);
         if (Directory.Exists(overridesDir))
         {
-            Report(progress, 70, "70%", "正在覆盖整合包配置文件...");
+            Report(progress, 70, "70%", "正在覆盖整合包配置文件...", statusResourceKey: "DownloadQueue_Status_ModpackApplyingOverrides");
             await Task.Run(() => CopyDirectory(overridesDir, targetVersionDir), cancellationToken);
         }
 
         if (manifest.Files != null && manifest.Files.Count > 0)
         {
-            await DownloadCurseForgeFilesAsync(manifest, targetVersionDir, progress, cancellationToken);
+            await DownloadCurseForgeFilesAsync(manifest, targetVersionDir, progress, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
         }
 
         var modpackManifestVersionId = NormalizeModpackVersionId(manifest.Version)
@@ -496,7 +643,7 @@ public class ModpackInstallationService : IModpackInstallationService
         var normalizedProjectId = NormalizeExternalProjectId("curseforge", sourceProjectId);
         await SaveModpackMetadataAsync(targetVersionId, minecraftPath, "curseforge", normalizedProjectId, modpackManifestVersionId);
 
-        Report(progress, 100, "100%", "整合包更新完成！");
+        Report(progress, 100, "100%", "整合包更新完成！", statusResourceKey: "DownloadQueue_Status_ModpackInstallCompleted");
         return ModpackInstallResult.Succeeded(manifest.Name ?? modpackDisplayName, targetVersionId);
     }
 
@@ -510,6 +657,8 @@ public class ModpackInstallationService : IModpackInstallationService
         string? versionIconPath,
         string? sourceProjectId,
         string? sourceVersionId,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
         string manifestJson = await File.ReadAllTextAsync(manifestPath, cancellationToken);
@@ -524,7 +673,13 @@ public class ModpackInstallationService : IModpackInstallationService
 
         var (modLoaderType, _, modLoaderVersion) = ParseCurseForgeDependencies(manifest);
 
-        Report(progress, 45, "45%", $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...");
+        Report(
+            progress,
+            45,
+            "45%",
+            $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...",
+            statusResourceKey: "DownloadQueue_Status_ModpackDownloadingCoreVersion",
+            statusResourceArguments: [minecraftVersion, modLoaderType, modLoaderVersion]);
 
         // 下载 MC + Mod Loader
         await _minecraftVersionService.DownloadModLoaderVersionAsync(
@@ -532,11 +687,18 @@ public class ModpackInstallationService : IModpackInstallationService
             status =>
             {
                 double p = 45 + (status.Percent / 100) * 15;
-                Report(progress, p, $"{p:F1}%", $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...", status.SpeedText);
+                Report(
+                    progress,
+                    p,
+                    $"{p:F1}%",
+                    $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...",
+                    status.SpeedText,
+                    "DownloadQueue_Status_ModpackDownloadingCoreVersion",
+                    [minecraftVersion, modLoaderType, modLoaderVersion]);
             },
             cancellationToken, targetVersionName, versionIconPath);
 
-        Report(progress, 60, "60%", "版本下载完成，正在部署整合包文件...");
+        Report(progress, 60, "60%", "版本下载完成，正在部署整合包文件...", statusResourceKey: "DownloadQueue_Status_ModpackDeployingFiles");
 
         string modpackVersionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, targetVersionName);
 
@@ -545,16 +707,16 @@ public class ModpackInstallationService : IModpackInstallationService
         string overridesDir = Path.Combine(extractDir, overridesFolderName);
         if (Directory.Exists(overridesDir))
         {
-            Report(progress, 60, "60%", "正在复制覆盖文件...");
+            Report(progress, 60, "60%", "正在复制覆盖文件...", statusResourceKey: "DownloadQueue_Status_ModpackCopyingOverrides");
             await Task.Run(() => CopyDirectory(overridesDir, modpackVersionDir), cancellationToken);
         }
 
-        Report(progress, 65, "65%", "正在获取资源信息...");
+        Report(progress, 65, "65%", "正在获取资源信息...", statusResourceKey: "DownloadQueue_Status_ModpackFetchingResourceInfo");
 
         // 下载整合包中的文件
         if (manifest.Files != null && manifest.Files.Count > 0)
         {
-            await DownloadCurseForgeFilesAsync(manifest, modpackVersionDir, progress, cancellationToken);
+            await DownloadCurseForgeFilesAsync(manifest, modpackVersionDir, progress, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
         }
 
         var modpackManifestVersionId = NormalizeModpackVersionId(manifest.Version)
@@ -562,7 +724,7 @@ public class ModpackInstallationService : IModpackInstallationService
         var normalizedProjectId = NormalizeExternalProjectId("curseforge", sourceProjectId);
         await SaveModpackMetadataAsync(targetVersionName, minecraftPath, "curseforge", normalizedProjectId, modpackManifestVersionId);
 
-        Report(progress, 100, "100%", "整合包安装完成！");
+        Report(progress, 100, "100%", "整合包安装完成！", statusResourceKey: "DownloadQueue_Status_ModpackInstallCompleted");
         return ModpackInstallResult.Succeeded(targetVersionName, targetVersionName);
     }
 
@@ -824,6 +986,8 @@ public class ModpackInstallationService : IModpackInstallationService
         CurseForgeManifest manifest,
         string modpackVersionDir,
         IProgress<ModpackInstallProgress> progress,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
         // 获取项目 classId 信息
@@ -866,7 +1030,7 @@ public class ModpackInstallationService : IModpackInstallationService
             }
         }
 
-        Report(progress, 70, "70%", "正在下载整合包文件...");
+        Report(progress, 70, "70%", "正在下载整合包文件...", statusResourceKey: "DownloadQueue_Status_ModpackDownloadingFiles");
 
         // 预先创建目录
         string modsDir = Path.Combine(modpackVersionDir, MinecraftPathConsts.Mods);
@@ -878,44 +1042,100 @@ public class ModpackInstallationService : IModpackInstallationService
         Directory.CreateDirectory(shaderPacksDir);
         Directory.CreateDirectory(dataPacksDir);
 
-        int totalFiles = fileDetails.Count;
-        int downloadedFiles = 0;
-
-        var threadCount = await _localSettingsService.ReadSettingAsync<int?>("DownloadThreadCount") ?? 32;
-        Debug.WriteLine($"[CurseForge整合包] 开始多线程下载，线程数: {threadCount}，文件总数: {totalFiles}");
-
-        using var semaphore = new SemaphoreSlim(threadCount);
-        var downloadTasks = new List<Task>();
+        List<(string FileKey, string FileDisplayName, string TargetPath, string DownloadUrl)> downloadEntries = [];
 
         foreach (var file in fileDetails)
         {
-            string fileDisplayName = file.FileName ?? $"file_{file.Id}";
+            string fileDisplayName = SanitizeExternalFileName(
+                file.FileName,
+                $"file_{file.Id}",
+                "CurseForge 整合包文件名");
 
             if (string.IsNullOrEmpty(file.DownloadUrl))
+            {
                 continue;
+            }
 
             string targetDir = ResolveTargetDir(file.ModId, projectClassIdMap,
                 modsDir, resourcePacksDir, shaderPacksDir, dataPacksDir);
-            string targetPath = Path.Combine(targetDir, fileDisplayName);
-            string downloadUrl = file.DownloadUrl;
+            string relativeTargetDir = Path.GetRelativePath(modpackVersionDir, targetDir);
+            string targetPath = GetValidatedContentPathUnderRoot(
+                modpackVersionDir,
+                Path.Combine(relativeTargetDir, fileDisplayName),
+                "CurseForge 整合包文件路径");
 
+            downloadEntries.Add((
+                NormalizeContentFileKey(Path.GetRelativePath(modpackVersionDir, targetPath)),
+                fileDisplayName,
+                targetPath,
+                file.DownloadUrl));
+        }
+
+        int totalFiles = downloadEntries.Count;
+        if (totalFiles == 0)
+        {
+            return;
+        }
+
+        int downloadedFiles = 0;
+        Debug.WriteLine($"[CurseForge整合包] 开始共享 DownloadQueue 并发下载，文件总数: {totalFiles}");
+
+        var downloadTasks = new List<Task>(totalFiles);
+
+        foreach (var file in downloadEntries)
+        {
             var downloadTask = Task.Run(async () =>
             {
-                await semaphore.WaitAsync(cancellationToken);
                 try
                 {
                     cancellationToken.ThrowIfCancellationRequested();
-                    Debug.WriteLine($"[CurseForge整合包] 开始下载: {fileDisplayName}");
+                    Debug.WriteLine($"[CurseForge整合包] 开始下载: {file.FileDisplayName}");
 
-                    await _curseForgeService.DownloadFileAsync(downloadUrl, targetPath, null, cancellationToken);
+                    await using IAsyncDisposable concurrencyLease = await _downloadTaskManager
+                        .AcquireNestedDownloadSlotAsync(concurrencyOwnerTaskId, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    bool downloadSucceeded = await _curseForgeService.DownloadFileAsync(
+                        file.DownloadUrl,
+                        file.TargetPath,
+                        progressCallback: null,
+                        downloadStatusCallback: status =>
+                        {
+                            if (cancellationToken.IsCancellationRequested)
+                            {
+                                return;
+                            }
+
+                            ReportContentFileDownloading(contentFileProgress, file.FileKey, file.FileDisplayName, status);
+                        },
+                        cancellationToken);
+
+                    if (!downloadSucceeded)
+                    {
+                        throw new InvalidOperationException($"下载 {file.FileDisplayName} 失败");
+                    }
+
+                    ReportContentFileCompleted(contentFileProgress, file.FileKey, file.FileDisplayName);
 
                     var completed = Interlocked.Increment(ref downloadedFiles);
                     double p = 70 + ((double)completed / totalFiles) * 30;
-                    Report(progress, p, $"{p:F1}%", $"正在下载整合包文件 ({completed}/{totalFiles})...");
+                    Report(
+                        progress,
+                        p,
+                        $"{p:F1}%",
+                        $"正在下载整合包文件 ({completed}/{totalFiles})...",
+                        statusResourceKey: "DownloadQueue_Status_ModpackDownloadingFilesWithCount",
+                        statusResourceArguments: [completed.ToString(), totalFiles.ToString()]);
                 }
-                finally
+                catch (OperationCanceledException)
                 {
-                    semaphore.Release();
+                    ReportContentFileCancelled(contentFileProgress, file.FileKey, file.FileDisplayName);
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    ReportContentFileFailed(contentFileProgress, file.FileKey, file.FileDisplayName, ex.Message);
+                    throw;
                 }
             }, cancellationToken);
 
@@ -972,7 +1192,7 @@ public class ModpackInstallationService : IModpackInstallationService
                 percent =>
                 {
                     double p = percent * 0.3;
-                    Report(progress, p, $"{p:F1}%", "正在下载整合包...");
+                    Report(progress, p, $"{p:F1}%", "正在下载整合包...", statusResourceKey: "DownloadQueue_Status_ModpackDownloadingPackage");
                 },
                 cancellationToken);
 
@@ -986,7 +1206,7 @@ public class ModpackInstallationService : IModpackInstallationService
         else
         {
             // 本地文件复制
-            Report(progress, 0, "0%", "正在复制本地整合包文件...");
+            Report(progress, 0, "0%", "正在复制本地整合包文件...", statusResourceKey: "DownloadQueue_Status_ModpackCopyingLocalPackage");
             long totalBytes = new FileInfo(downloadUrl).Length;
             long totalRead = 0;
 
@@ -1001,20 +1221,135 @@ public class ModpackInstallationService : IModpackInstallationService
                 totalRead += bytesRead;
 
                 double p = (double)totalRead / totalBytes * 30;
-                Report(progress, p, $"{p:F1}%", "正在复制本地整合包文件...");
+                Report(progress, p, $"{p:F1}%", "正在复制本地整合包文件...", statusResourceKey: "DownloadQueue_Status_ModpackCopyingLocalPackage");
             }
         }
     }
 
-    private static void Report(IProgress<ModpackInstallProgress> progress, double percent, string percentText, string status, string speed = "")
+    private static void Report(
+        IProgress<ModpackInstallProgress> progress,
+        double percent,
+        string percentText,
+        string status,
+        string speed = "",
+        string? statusResourceKey = null,
+        IReadOnlyList<string>? statusResourceArguments = null)
     {
         progress.Report(new ModpackInstallProgress
         {
             Progress = percent,
             ProgressText = percentText,
             Status = status,
-            Speed = speed
+            Speed = speed,
+            StatusResourceKey = statusResourceKey,
+            StatusResourceArguments = statusResourceArguments is { Count: > 0 }
+                ? [.. statusResourceArguments]
+                : []
         });
+    }
+
+    private static string NormalizeContentFileKey(string path)
+    {
+        return path.Replace('\\', '/');
+    }
+
+    internal static string GetValidatedContentPathUnderRoot(string rootDirectory, string relativePath, string pathDescription)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(rootDirectory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
+
+        string trimmedPath = relativePath.Trim();
+        if (Path.IsPathRooted(trimmedPath) ||
+            trimmedPath.StartsWith(Path.DirectorySeparatorChar) ||
+            trimmedPath.StartsWith(Path.AltDirectorySeparatorChar))
+        {
+            throw new InvalidOperationException($"{pathDescription} 无效：禁止使用绝对路径");
+        }
+
+        string[] segments = trimmedPath.Split(
+            [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (segments.Length == 0 || segments.Any(segment => segment is "." or ".."))
+        {
+            throw new InvalidOperationException($"{pathDescription} 无效：包含非法路径段");
+        }
+
+        if (segments.Any(segment => segment.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0))
+        {
+            throw new InvalidOperationException($"{pathDescription} 无效：包含非法字符");
+        }
+
+        string normalizedRelativePath = Path.Combine(segments);
+        string normalizedRootDirectory = EnsureTrailingDirectorySeparator(Path.GetFullPath(rootDirectory));
+        string fullPath = Path.GetFullPath(Path.Combine(normalizedRootDirectory, normalizedRelativePath));
+
+        if (!fullPath.StartsWith(normalizedRootDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"{pathDescription} 无效：超出实例目录范围");
+        }
+
+        return fullPath;
+    }
+
+    internal static string SanitizeExternalFileName(string? fileName, string fallbackFileName, string fileDescription)
+    {
+        string candidateFileName = string.IsNullOrWhiteSpace(fileName)
+            ? fallbackFileName
+            : Path.GetFileName(fileName.Trim());
+
+        if (string.IsNullOrWhiteSpace(candidateFileName) || candidateFileName is "." or "..")
+        {
+            throw new InvalidOperationException($"{fileDescription} 无效：无法解析文件名");
+        }
+
+        if (candidateFileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            throw new InvalidOperationException($"{fileDescription} 无效：包含非法字符");
+        }
+
+        return candidateFileName;
+    }
+
+    private static string EnsureTrailingDirectorySeparator(string path)
+    {
+        return path.EndsWith(Path.DirectorySeparatorChar) || path.EndsWith(Path.AltDirectorySeparatorChar)
+            ? path
+            : path + Path.DirectorySeparatorChar;
+    }
+
+    private static void ReportContentFileDownloading(
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string fileKey,
+        string fileName,
+        DownloadProgressStatus downloadStatus)
+    {
+        contentFileProgress?.Report(ModpackContentFileProgress.Downloading(fileKey, fileName, downloadStatus));
+    }
+
+    private static void ReportContentFileCompleted(
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string fileKey,
+        string fileName)
+    {
+        contentFileProgress?.Report(ModpackContentFileProgress.Completed(fileKey, fileName));
+    }
+
+    private static void ReportContentFileFailed(
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string fileKey,
+        string fileName,
+        string errorMessage)
+    {
+        contentFileProgress?.Report(ModpackContentFileProgress.Failed(fileKey, fileName, errorMessage));
+    }
+
+    private static void ReportContentFileCancelled(
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string fileKey,
+        string fileName)
+    {
+        contentFileProgress?.Report(ModpackContentFileProgress.Cancelled(fileKey, fileName));
     }
 
     private static void CopyDirectory(string sourceDir, string destinationDir)

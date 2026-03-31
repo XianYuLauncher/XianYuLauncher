@@ -267,6 +267,57 @@
   <data name="DownloadQueue_Status_Cancelling" xml:space="preserve">
     <value>Cancelling...</value>
   </data>
+  <data name="DownloadQueue_Status_PreparingModpackInstall" xml:space="preserve">
+    <value>Preparing modpack install...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackExtractingPackage" xml:space="preserve">
+    <value>Extracting modpack...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackParsingManifest" xml:space="preserve">
+    <value>Parsing modpack manifest...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDeployingFiles" xml:space="preserve">
+    <value>Version download complete, deploying modpack files...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingFiles" xml:space="preserve">
+    <value>Downloading modpack files...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackUpdatingCoreFiles" xml:space="preserve">
+    <value>Updating core instance files (Minecraft {0} / {1} {2})...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingCoreVersion" xml:space="preserve">
+    <value>Downloading Minecraft {0} and {1} {2}...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackCleaningFiles" xml:space="preserve">
+    <value>Cleaning old modpack files...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackApplyingOverrides" xml:space="preserve">
+    <value>Applying modpack override files...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackCopyingOverrides" xml:space="preserve">
+    <value>Copying override files...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackFetchingResourceInfo" xml:space="preserve">
+    <value>Fetching resource metadata...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingFilesWithCount" xml:space="preserve">
+    <value>Downloading modpack files ({0}/{1})...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingPackage" xml:space="preserve">
+    <value>Downloading modpack package...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackCopyingLocalPackage" xml:space="preserve">
+    <value>Copying local modpack package...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackInstallCompleted" xml:space="preserve">
+    <value>Modpack install completed</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackInstallFailedWithError" xml:space="preserve">
+    <value>Modpack install failed: {0}</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackInstallCancelled" xml:space="preserve">
+    <value>Modpack install cancelled</value>
+  </data>
   <data name="DownloadQueue_Status_ValidatingFile" xml:space="preserve">
     <value>Validating {0}...</value>
   </data>
@@ -306,6 +357,9 @@
   <data name="DownloadQueue_TaskType_ModpackDownload" xml:space="preserve">
     <value>Modpack Download</value>
   </data>
+  <data name="DownloadQueue_TaskType_ModpackInstallFile" xml:space="preserve">
+    <value>Modpack File</value>
+  </data>
   <data name="DownloadQueue_TaskType_CommunityResourceUpdateBatch" xml:space="preserve">
     <value>Community Resource Update</value>
   </data>
@@ -329,6 +383,9 @@
   </data>
   <data name="DownloadQueue_DisplayName_Server" xml:space="preserve">
     <value>Server {0}</value>
+  </data>
+  <data name="DownloadQueue_DisplayName_ModpackInstall" xml:space="preserve">
+    <value>Modpack Install · {0}</value>
   </data>
   <data name="SettingsPage_Title.Text" xml:space="preserve">
     <value>Settings</value>

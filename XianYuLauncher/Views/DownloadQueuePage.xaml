@@ -128,26 +128,34 @@
             <controls:SettingsExpander Margin="0,0,0,8"
                                        IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}">
                 <controls:SettingsExpander.Header>
-                    <StackPanel Spacing="4" Margin="0,4,0,4">
-                        <TextBlock Text="{x:Bind SummaryTask.DisplayName, Mode=OneWay}"
-                                   Style="{ThemeResource BodyTextBlockStyle}"
-                                   TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{x:Bind SummaryTask.StatusMessage, Mode=OneWay}"
-                                   Style="{ThemeResource CaptionTextBlockStyle}"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   TextTrimming="CharacterEllipsis" />
-                        <ProgressBar Value="{x:Bind SummaryTask.Progress, Mode=OneWay}"
-                                     Maximum="100"
-                                     Height="4"
-                                     CornerRadius="2"
-                                     Width="220"
-                                     HorizontalAlignment="Left"
-                                     Visibility="{x:Bind SummaryTask.ShowProgressBar, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,4" VerticalAlignment="Center">
+                        <Grid Width="24" Height="24" VerticalAlignment="Center">
+                            <Image Source="{x:Bind SummaryTask.IconSource, Mode=OneWay, Converter={StaticResource PathToImageSourceConverter}}"
+                                   Stretch="UniformToFill"
+                                   Visibility="{x:Bind SummaryTask.HasCustomIcon, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <FontIcon Glyph="{x:Bind SummaryTask.IconGlyph, Mode=OneWay}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Visibility="{x:Bind SummaryTask.HasCustomIcon, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                        </Grid>
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{x:Bind SummaryTask.DisplayName, Mode=OneWay}"
+                                       Style="{ThemeResource BodyTextBlockStyle}"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{x:Bind SummaryTask.StatusMessage, Mode=OneWay}"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextTrimming="CharacterEllipsis" />
+                            <ProgressBar Value="{x:Bind SummaryTask.Progress, Mode=OneWay}"
+                                         Maximum="100"
+                                         Height="4"
+                                         CornerRadius="2"
+                                         Width="220"
+                                         HorizontalAlignment="Left"
+                                         Visibility="{x:Bind SummaryTask.ShowProgressBar, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        </StackPanel>
                     </StackPanel>
                 </controls:SettingsExpander.Header>
-                <controls:SettingsExpander.HeaderIcon>
-                    <FontIcon Glyph="{x:Bind SummaryTask.IconGlyph, Mode=OneWay}" />
-                </controls:SettingsExpander.HeaderIcon>
                 <controls:SettingsExpander.Content>
                     <StackPanel Orientation="Horizontal" Spacing="16" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <TextBlock Text="{x:Bind SummaryTask.TaskType, Mode=OneWay}"

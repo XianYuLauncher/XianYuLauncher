@@ -120,6 +120,7 @@ public sealed class DownloadTaskPresentationService : IDownloadTaskPresentationS
             DownloadTaskCategory.DataPackDownload => "DownloadQueue_TaskType_DataPackDownload",
             DownloadTaskCategory.WorldDownload => "DownloadQueue_TaskType_WorldDownload",
             DownloadTaskCategory.ModpackDownload => "DownloadQueue_TaskType_ModpackDownload",
+            DownloadTaskCategory.ModpackInstallFile => "DownloadQueue_TaskType_ModpackInstallFile",
             DownloadTaskCategory.CommunityResourceUpdateBatch => "DownloadQueue_TaskType_CommunityResourceUpdateBatch",
             DownloadTaskCategory.CommunityResourceUpdateFile => "DownloadQueue_TaskType_CommunityResourceUpdateFile",
             DownloadTaskCategory.FileDownload => "DownloadQueue_TaskType_FileDownload",
@@ -132,6 +133,8 @@ public sealed class DownloadTaskPresentationService : IDownloadTaskPresentationS
         return taskTypeResourceKey switch
         {
             "DownloadQueue_TaskType_GameInstall" => "\xE7FC",
+            "DownloadQueue_TaskType_ModpackDownload" => "\xE7B8",
+            "DownloadQueue_TaskType_ModpackInstallFile" => "\xE8A5",
             "DownloadQueue_TaskType_CommunityResourceUpdateBatch" => "\xE72C",
             "DownloadQueue_TaskType_CommunityResourceUpdateFile" => "\xE8A5",
             _ => DefaultIconGlyph

@@ -32,6 +32,8 @@ public class DownloadTaskManager : IDownloadTaskManager
     private readonly List<ManagedDownloadTask> _tasks = new();
     private readonly Dictionary<string, ExternalDownloadTask> _externalTasks = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _schedulerGate = new(1, 1);
+    private int _activeNestedDownloadSlots;
+    private TaskCompletionSource<object?> _nestedDownloadSlotChanged = CreateNestedDownloadSlotChangedSource();
 
     private sealed class ManagedDownloadTask
     {
@@ -294,6 +296,8 @@ public class DownloadTaskManager : IDownloadTaskManager
         ManagedDownloadTask? managedTask;
         ExternalDownloadTask? externalTask = null;
         Action? externalCancelAction = null;
+        bool shouldMarkManagedTaskCancelled = false;
+        bool shouldNotifyManagedTaskProgress = false;
 
         lock (_lock)
         {
@@ -335,20 +339,37 @@ public class DownloadTaskManager : IDownloadTaskManager
             else
             {
                 _logger.LogInformation("正在取消下载任务: {TaskName}", managedTask.Info.TaskName);
-                managedTask.Info.State = DownloadTaskState.Cancelled;
-                ResetTaskSpeed(managedTask.Info);
-                UpdateTaskStatus(managedTask.Info, "下载已取消", "DownloadQueue_Status_Cancelled");
-                UpdateQueuePositionsLocked();
-
                 if (managedTask.IsRunning)
                 {
+                    managedTask.Info.AllowCancel = false;
+                    UpdateTaskStatus(managedTask.Info, "正在取消...", "DownloadQueue_Status_Cancelling");
+                    managedTask.Info.QueuePosition = null;
+                    shouldNotifyManagedTaskProgress = true;
                     managedTask.CancellationTokenSource.Cancel();
                 }
+                else
+                {
+                    shouldMarkManagedTaskCancelled = true;
+                }
+
+                UpdateQueuePositionsLocked();
             }
         }
 
         if (managedTask != null)
         {
+            if (shouldMarkManagedTaskCancelled)
+            {
+                MarkTaskCancelled(managedTask.Info);
+                return;
+            }
+
+            if (shouldNotifyManagedTaskProgress)
+            {
+                OnTaskProgressChanged(managedTask.Info);
+                return;
+            }
+
             OnTaskStateChanged(managedTask.Info);
             return;
         }
@@ -538,6 +559,76 @@ public class DownloadTaskManager : IDownloadTaskManager
 
         OnTaskStateChanged(taskInfo);
         OnTaskProgressChanged(taskInfo);
+    }
+
+    public void UpdateExternalTaskDownloadProgress(
+        string taskId,
+        double progress,
+        DownloadProgressStatus downloadStatus,
+        string statusMessage,
+        string? statusResourceKey = null,
+        IReadOnlyList<string>? statusResourceArguments = null)
+    {
+        DownloadTaskInfo? taskInfo;
+        bool shouldRaiseStateChanged;
+
+        lock (_lock)
+        {
+            if (!_externalTasks.TryGetValue(taskId, out var externalTask))
+            {
+                _logger.LogWarning("未找到要更新下载进度的外部下载任务: {TaskId}", taskId);
+                return;
+            }
+
+            taskInfo = externalTask.Info;
+
+            if (taskInfo.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled)
+            {
+                _logger.LogWarning("外部下载任务已结束，忽略下载进度更新请求: {TaskId}", taskId);
+                return;
+            }
+
+            var previousState = taskInfo.State;
+            taskInfo.Progress = Math.Clamp(progress, 0, 100);
+            UpdateTaskStatus(taskInfo, statusMessage, statusResourceKey, statusResourceArguments);
+            UpdateTaskSpeed(taskInfo, downloadStatus);
+            taskInfo.State = DownloadTaskState.Downloading;
+            taskInfo.QueuePosition = null;
+
+            shouldRaiseStateChanged = previousState != taskInfo.State;
+        }
+
+        if (shouldRaiseStateChanged)
+        {
+            OnTaskStateChanged(taskInfo);
+        }
+
+        OnTaskProgressChanged(taskInfo);
+    }
+
+    public async Task<IAsyncDisposable> AcquireNestedDownloadSlotAsync(
+        string? ownerTaskId = null,
+        CancellationToken cancellationToken = default)
+    {
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            int maxConcurrentTasks = await GetMaxConcurrentTasksAsync().ConfigureAwait(false);
+            Task waitTask;
+
+            lock (_lock)
+            {
+                if (CanAcquireNestedDownloadSlotLocked(ownerTaskId, maxConcurrentTasks))
+                {
+                    _activeNestedDownloadSlots++;
+                    return new NestedDownloadSlotLease(this);
+                }
+
+                waitTask = _nestedDownloadSlotChanged.Task;
+            }
+
+            await waitTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     public void CompleteExternalTask(
@@ -911,6 +1002,7 @@ public class DownloadTaskManager : IDownloadTaskManager
                         }
                     }
 
+                    SignalNestedDownloadSlotChangedLocked();
                     UpdateQueuePositionsLocked();
                 }
 
@@ -973,6 +1065,7 @@ public class DownloadTaskManager : IDownloadTaskManager
             lock (_lock)
             {
                 managedTask.IsRunning = false;
+                SignalNestedDownloadSlotChangedLocked();
                 UpdateQueuePositionsLocked();
             }
 
@@ -987,6 +1080,65 @@ public class DownloadTaskManager : IDownloadTaskManager
             managedTask.Info.TaskId,
             managedTask.CancellationTokenSource.Token,
             update => ApplyExecutionUpdate(managedTask.Info, update));
+    }
+
+    private static TaskCompletionSource<object?> CreateNestedDownloadSlotChangedSource()
+    {
+        return new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    private bool CanAcquireNestedDownloadSlotLocked(string? ownerTaskId, int maxConcurrentTasks)
+    {
+        int runningManagedTasks = _tasks.Count(task => task.IsRunning);
+        if (!string.IsNullOrWhiteSpace(ownerTaskId) &&
+            _tasks.Any(task => task.IsRunning && string.Equals(task.Info.TaskId, ownerTaskId, StringComparison.Ordinal)))
+        {
+            runningManagedTasks = Math.Max(0, runningManagedTasks - 1);
+        }
+
+        return runningManagedTasks + _activeNestedDownloadSlots < maxConcurrentTasks;
+    }
+
+    private void ReleaseNestedDownloadSlot()
+    {
+        lock (_lock)
+        {
+            if (_activeNestedDownloadSlots <= 0)
+            {
+                return;
+            }
+
+            _activeNestedDownloadSlots--;
+            SignalNestedDownloadSlotChangedLocked();
+        }
+    }
+
+    private void SignalNestedDownloadSlotChangedLocked()
+    {
+        TaskCompletionSource<object?> current = _nestedDownloadSlotChanged;
+        _nestedDownloadSlotChanged = CreateNestedDownloadSlotChangedSource();
+        current.TrySetResult(null);
+    }
+
+    private sealed class NestedDownloadSlotLease : IAsyncDisposable
+    {
+        private readonly DownloadTaskManager _owner;
+        private int _disposed;
+
+        public NestedDownloadSlotLease(DownloadTaskManager owner)
+        {
+            _owner = owner;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0)
+            {
+                _owner.ReleaseNestedDownloadSlot();
+            }
+
+            return ValueTask.CompletedTask;
+        }
     }
 
     private void ApplyExecutionUpdate(DownloadTaskInfo task, DownloadTaskExecutionUpdate update)
@@ -1485,7 +1637,8 @@ public class DownloadTaskManager : IDownloadTaskManager
             task.State = DownloadTaskState.Completed;
             task.Progress = 100;
             ResetTaskSpeed(task);
-            UpdateTaskStatus(task, "下载完成", "DownloadQueue_Status_Completed");
+            var (statusMessage, statusResourceKey, statusResourceArguments) = GetCompletedStatusPresentation(task);
+            UpdateTaskStatus(task, statusMessage, statusResourceKey, statusResourceArguments);
             UpdateQueuePositionsLocked();
             shouldNotify = true;
         }
@@ -1510,7 +1663,8 @@ public class DownloadTaskManager : IDownloadTaskManager
             task.State = DownloadTaskState.Failed;
             task.ErrorMessage = errorMessage;
             ResetTaskSpeed(task);
-            UpdateTaskStatus(task, $"下载失败: {errorMessage}", "DownloadQueue_Status_FailedWithError", [errorMessage]);
+            var (statusMessage, statusResourceKey, statusResourceArguments) = GetFailedStatusPresentation(task, errorMessage);
+            UpdateTaskStatus(task, statusMessage, statusResourceKey, statusResourceArguments);
             UpdateQueuePositionsLocked();
             shouldNotify = true;
         }
@@ -1539,7 +1693,8 @@ public class DownloadTaskManager : IDownloadTaskManager
 
             task.State = DownloadTaskState.Cancelled;
             ResetTaskSpeed(task);
-            UpdateTaskStatus(task, "下载已取消", "DownloadQueue_Status_Cancelled");
+            var (statusMessage, statusResourceKey, statusResourceArguments) = GetCancelledStatusPresentation(task);
+            UpdateTaskStatus(task, statusMessage, statusResourceKey, statusResourceArguments);
             UpdateQueuePositionsLocked();
             shouldNotify = true;
         }
@@ -1586,6 +1741,35 @@ public class DownloadTaskManager : IDownloadTaskManager
             ? [.. statusResourceArguments]
             : [];
         task.LastUpdatedAtUtc = DateTimeOffset.UtcNow;
+    }
+
+    private static (string StatusMessage, string StatusResourceKey, IReadOnlyList<string>? StatusResourceArguments) GetCompletedStatusPresentation(DownloadTaskInfo task)
+    {
+        return task.TaskCategory switch
+        {
+            DownloadTaskCategory.ModpackDownload => ("整合包安装完成！", "DownloadQueue_Status_ModpackInstallCompleted", null),
+            _ => ("下载完成", "DownloadQueue_Status_Completed", null)
+        };
+    }
+
+    private static (string StatusMessage, string StatusResourceKey, IReadOnlyList<string>? StatusResourceArguments) GetFailedStatusPresentation(
+        DownloadTaskInfo task,
+        string errorMessage)
+    {
+        return task.TaskCategory switch
+        {
+            DownloadTaskCategory.ModpackDownload => ($"整合包安装失败: {errorMessage}", "DownloadQueue_Status_ModpackInstallFailedWithError", [errorMessage]),
+            _ => ($"下载失败: {errorMessage}", "DownloadQueue_Status_FailedWithError", [errorMessage])
+        };
+    }
+
+    private static (string StatusMessage, string StatusResourceKey, IReadOnlyList<string>? StatusResourceArguments) GetCancelledStatusPresentation(DownloadTaskInfo task)
+    {
+        return task.TaskCategory switch
+        {
+            DownloadTaskCategory.ModpackDownload => ("整合包安装已取消", "DownloadQueue_Status_ModpackInstallCancelled", null),
+            _ => ("下载已取消", "DownloadQueue_Status_Cancelled", null)
+        };
     }
 
     private static string? NormalizeTaskIconSource(string? iconSource)

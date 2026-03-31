@@ -84,6 +84,7 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IScreenshotInteractionService, ScreenshotInteractionService>();
         services.AddSingleton<IResourceIconLoadCoordinator, ResourceIconLoadCoordinator>();
         services.AddSingleton<ICommunityResourceInstallService, CommunityResourceInstallService>();
+        services.AddSingleton<IModpackDownloadQueueService, ModpackDownloadQueueService>();
         services.AddSingleton<IModResourceDownloadOrchestrator, ModResourceDownloadOrchestrator>();
         services.AddSingleton<IModDetailLoadOrchestrator, ModDetailLoadOrchestrator>();
 

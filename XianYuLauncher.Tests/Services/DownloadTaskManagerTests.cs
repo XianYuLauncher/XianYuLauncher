@@ -525,6 +525,44 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
+    public void UpdateExternalTaskDownloadProgress_WhenStateUnchanged_ShouldOnlyRaiseProgressAndSingleSnapshot()
+    {
+        // Arrange
+        var stateChanges = new List<DownloadTaskInfo>();
+        var progressChanges = new List<DownloadTaskInfo>();
+        var snapshotChangedCount = 0;
+
+        var taskId = _downloadTaskManager.CreateExternalTask(
+            "整合包文件",
+            "modpack-file",
+            taskCategory: DownloadTaskCategory.ModpackInstallFile,
+            retainInRecentWhenFinished: true);
+
+        _downloadTaskManager.TaskStateChanged += (_, task) => stateChanges.Add(task);
+        _downloadTaskManager.TaskProgressChanged += (_, task) => progressChanges.Add(task);
+        _downloadTaskManager.TasksSnapshotChanged += (_, _) => snapshotChangedCount++;
+
+        // Act
+        _downloadTaskManager.UpdateExternalTaskDownloadProgress(
+            taskId,
+            25,
+            new DownloadProgressStatus(256, 1024, 25, 2048),
+            "正在下载 file.jar... 25%",
+            statusResourceKey: "DownloadQueue_Status_DownloadingNamedWithProgress",
+            statusResourceArguments: ["file.jar", "25%"]);
+
+        // Assert
+        stateChanges.Should().BeEmpty();
+        progressChanges.Should().ContainSingle(task =>
+            task.TaskId == taskId
+            && task.Progress == 25
+            && task.SpeedBytesPerSecond == 2048
+            && task.StatusResourceKey == "DownloadQueue_Status_DownloadingNamedWithProgress"
+            && task.State == DownloadTaskState.Downloading);
+        snapshotChangedCount.Should().Be(1);
+    }
+
+    [Fact]
     public void CompleteExternalTask_WhenConfiguredNotToRetain_ShouldRemoveTaskFromSnapshot()
     {
         // Arrange
@@ -632,6 +670,160 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
+    public async Task StartCustomManagedTaskWithTaskIdAsync_WhenModpackTaskCancelled_ShouldUseCancelledTerminalState()
+    {
+        // Arrange
+        var runningObserved = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cancelledObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+        string? modpackTaskId = null;
+        _downloadTaskManager.TaskStateChanged += (_, task) =>
+        {
+            if (task.TaskCategory == DownloadTaskCategory.ModpackDownload
+                && task.State == DownloadTaskState.Downloading)
+            {
+                runningObserved.TrySetResult(task.TaskId);
+            }
+
+            if (task.TaskId == modpackTaskId
+                && task.State == DownloadTaskState.Cancelled)
+            {
+                cancelledObserved.TrySetResult(task);
+            }
+        };
+
+        // Act
+        var taskId = await _downloadTaskManager.StartCustomManagedTaskWithTaskIdAsync(
+            "Create Arcane Colony",
+            "Create Arcane Colony",
+            DownloadTaskCategory.ModpackDownload,
+            async executionContext => await Task.Delay(TimeSpan.FromSeconds(5), executionContext.CancellationToken),
+            showInTeachingTip: true,
+            allowRetry: false,
+            displayNameResourceKey: "DownloadQueue_DisplayName_ModpackInstall",
+            displayNameResourceArguments: ["Create Arcane Colony"],
+            taskTypeResourceKey: "DownloadQueue_TaskType_ModpackDownload");
+        modpackTaskId = taskId;
+
+        await runningObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        _downloadTaskManager.CancelTask(taskId);
+        await cancelledObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Assert
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.TaskCategory == DownloadTaskCategory.ModpackDownload
+            && task.State == DownloadTaskState.Cancelled
+            && task.StatusResourceKey == "DownloadQueue_Status_ModpackInstallCancelled"
+            && task.ShowInTeachingTip
+            && !task.CanRetry);
+    }
+
+    [Fact]
+    public async Task AcquireNestedDownloadSlotAsync_WhenOwnerTaskIsOnlyRunningTaskAndQueueLimitIsOne_ShouldSucceed()
+    {
+        _localSettingsServiceMock
+            .Setup(service => service.ReadSettingAsync<int?>(It.IsAny<string>()))
+            .ReturnsAsync(1);
+
+        var leaseAcquired = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var executionRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completedObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        _downloadTaskManager.TaskStateChanged += (_, task) =>
+        {
+            if (task.TaskName == "NestedLeaseOwner" && task.State == DownloadTaskState.Completed)
+            {
+                completedObserved.TrySetResult(task);
+            }
+        };
+
+        await _downloadTaskManager.StartCustomManagedTaskWithTaskIdAsync(
+            "NestedLeaseOwner",
+            "NestedLeaseOwner",
+            DownloadTaskCategory.ModpackDownload,
+            async context =>
+            {
+                await using IAsyncDisposable nestedLease = await _downloadTaskManager
+                    .AcquireNestedDownloadSlotAsync(context.TaskId, context.CancellationToken)
+                    .ConfigureAwait(false);
+
+                leaseAcquired.TrySetResult(true);
+                await executionRelease.Task.WaitAsync(context.CancellationToken).ConfigureAwait(false);
+            },
+            allowRetry: false);
+
+        await leaseAcquired.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        executionRelease.TrySetResult(true);
+        await completedObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task AcquireNestedDownloadSlotAsync_WhenRemainingBudgetIsExhausted_ShouldWaitForRelease()
+    {
+        _localSettingsServiceMock
+            .Setup(service => service.ReadSettingAsync<int?>(It.IsAny<string>()))
+            .ReturnsAsync(2);
+
+        var blockingTaskStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var blockingTaskRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondLeaseTaskObserved = new TaskCompletionSource<Task<IAsyncDisposable>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var allowFirstLeaseRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var parentCompletedObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        _downloadTaskManager.TaskStateChanged += (_, task) =>
+        {
+            if (task.TaskName == "BlockingTask" && task.State == DownloadTaskState.Downloading)
+            {
+                blockingTaskStarted.TrySetResult(true);
+            }
+
+            if (task.TaskName == "ParentTask" && task.State == DownloadTaskState.Completed)
+            {
+                parentCompletedObserved.TrySetResult(task);
+            }
+        };
+
+        await _downloadTaskManager.StartCustomManagedTaskWithTaskIdAsync(
+            "BlockingTask",
+            "BlockingTask",
+            DownloadTaskCategory.FileDownload,
+            async context => await blockingTaskRelease.Task.WaitAsync(context.CancellationToken).ConfigureAwait(false),
+            allowRetry: false);
+
+        await blockingTaskStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        await _downloadTaskManager.StartCustomManagedTaskWithTaskIdAsync(
+            "ParentTask",
+            "ParentTask",
+            DownloadTaskCategory.ModpackDownload,
+            async context =>
+            {
+                IAsyncDisposable firstLease = await _downloadTaskManager
+                    .AcquireNestedDownloadSlotAsync(context.TaskId, context.CancellationToken)
+                    .ConfigureAwait(false);
+
+                Task<IAsyncDisposable> secondLeaseTask = _downloadTaskManager
+                    .AcquireNestedDownloadSlotAsync(context.TaskId, context.CancellationToken);
+                secondLeaseTaskObserved.TrySetResult(secondLeaseTask);
+
+                await allowFirstLeaseRelease.Task.WaitAsync(context.CancellationToken).ConfigureAwait(false);
+                await firstLease.DisposeAsync().ConfigureAwait(false);
+
+                await using IAsyncDisposable secondLease = await secondLeaseTask.WaitAsync(context.CancellationToken).ConfigureAwait(false);
+            },
+            allowRetry: false);
+
+        Task<IAsyncDisposable> observedSecondLeaseTask = await secondLeaseTaskObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await Task.Delay(150);
+        observedSecondLeaseTask.IsCompleted.Should().BeFalse();
+
+        allowFirstLeaseRelease.TrySetResult(true);
+        await parentCompletedObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        blockingTaskRelease.TrySetResult(true);
+    }
+
+    [Fact]
     public async Task StartFileDownloadAsync_WhenDisplayMetadataProvided_ShouldPreservePresentationMetadata()
     {
         // Arrange
@@ -710,8 +902,20 @@ public class DownloadTaskManagerTests
     public async Task CancelTask_WhenTaskIsRunning_ShouldSetCancelledState()
     {
         // Arrange
-        DownloadTaskInfo? finalTask = null;
-        _downloadTaskManager.TaskStateChanged += (_, task) => finalTask = task;
+        var cancelledObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+        string? runningTaskId = null;
+        _downloadTaskManager.TaskStateChanged += (_, task) =>
+        {
+            if (task.TaskName == "MyVersion" && task.State == DownloadTaskState.Downloading)
+            {
+                runningTaskId = task.TaskId;
+            }
+
+            if (task.TaskId == runningTaskId && task.State == DownloadTaskState.Cancelled)
+            {
+                cancelledObserved.TrySetResult(task);
+            }
+        };
 
         _minecraftVersionServiceMock
             .Setup(m => m.DownloadVersionAsync(
@@ -726,13 +930,14 @@ public class DownloadTaskManagerTests
         await Task.Delay(100);
 
         var runningTask = _downloadTaskManager.TasksSnapshot.First(task => task.TaskName == "MyVersion");
+    runningTaskId = runningTask.TaskId;
 
         // Act
         _downloadTaskManager.CancelTask(runningTask.TaskId);
+        var finalTask = await cancelledObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         // Assert
-        finalTask.Should().NotBeNull();
-        finalTask!.State.Should().Be(DownloadTaskState.Cancelled);
+        finalTask.State.Should().Be(DownloadTaskState.Cancelled);
     }
 
     [Fact]

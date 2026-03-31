@@ -474,6 +474,21 @@ public class CurseForgeService
         Action<string, double>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
+        return await DownloadFileAsync(
+            downloadUrl,
+            destinationPath,
+            progressCallback,
+            downloadStatusCallback: null,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<bool> DownloadFileAsync(
+        string downloadUrl,
+        string destinationPath,
+        Action<string, double>? progressCallback,
+        Action<DownloadProgressStatus>? downloadStatusCallback,
+        CancellationToken cancellationToken = default)
+    {
         try
         {
             string fileName = Path.GetFileName(destinationPath);
@@ -501,11 +516,15 @@ public class CurseForgeService
             // 使用 FallbackDownloadManager 社区资源下载（支持自动回退）
             if (_fallbackDownloadManager != null)
             {
-                var result = await _fallbackDownloadManager.DownloadFileForCommunityAsync(
+                var result = await _fallbackDownloadManager.DownloadFileForCommunityWithStatusAsync(
                     originalUrl,
                     destinationPath,
                     "curseforge_cdn",
-                    progressCallback: progress => progressCallback?.Invoke(fileName, progress),
+                    progressCallback: status =>
+                    {
+                        progressCallback?.Invoke(fileName, status.Percent);
+                        downloadStatusCallback?.Invoke(status);
+                    },
                     cancellationToken: cancellationToken);
                 
                 if (result.Success)
@@ -537,6 +556,7 @@ public class CurseForgeService
             
             long totalBytes = response.Content.Headers.ContentLength ?? 0;
             long downloadedBytes = 0;
+            var downloadStopwatch = System.Diagnostics.Stopwatch.StartNew();
             
             using (var contentStream = await response.Content.ReadAsStreamAsync(cancellationToken))
             using (var fileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None, 8192, true))
@@ -553,7 +573,15 @@ public class CurseForgeService
                     if (totalBytes > 0)
                     {
                         double progress = (double)downloadedBytes / totalBytes * 100;
-                        progressCallback?.Invoke(fileName, Math.Round(progress, 2));
+                        var downloadStatus = new DownloadProgressStatus(
+                            downloadedBytes,
+                            totalBytes,
+                            Math.Round(progress, 2),
+                            downloadStopwatch.Elapsed.TotalSeconds > 0
+                                ? downloadedBytes / downloadStopwatch.Elapsed.TotalSeconds
+                                : 0);
+                        progressCallback?.Invoke(fileName, downloadStatus.Percent);
+                        downloadStatusCallback?.Invoke(downloadStatus);
                     }
                 }
             }

@@ -166,6 +166,25 @@ public interface IDownloadTaskManager
         IReadOnlyList<string>? statusResourceArguments = null);
 
     /// <summary>
+    /// 以下载阶段语义更新外部任务，保留速度与瞬时进度信息。
+    /// </summary>
+    void UpdateExternalTaskDownloadProgress(
+        string taskId,
+        double progress,
+        DownloadProgressStatus downloadStatus,
+        string statusMessage,
+        string? statusResourceKey = null,
+        IReadOnlyList<string>? statusResourceArguments = null);
+
+    /// <summary>
+    /// 为嵌套下载操作申请一个与 DownloadQueue 全局并发预算共享的租约。
+    /// ownerTaskId 可指定所属的父队列任务，以避免父任务本身占满唯一并发槽位时出现死锁。
+    /// </summary>
+    Task<IAsyncDisposable> AcquireNestedDownloadSlotAsync(
+        string? ownerTaskId = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 将外部任务标记为完成。
     /// </summary>
     void CompleteExternalTask(
