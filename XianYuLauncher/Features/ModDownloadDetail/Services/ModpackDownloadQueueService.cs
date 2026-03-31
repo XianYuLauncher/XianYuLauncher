@@ -125,7 +125,12 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
         var statusMessage = string.IsNullOrWhiteSpace(progress.Status)
             ? "正在处理整合包安装..."
             : progress.Status.Trim();
-        var (statusResourceKey, statusResourceArguments) = ResolveStatusPresentation(statusMessage);
+        string? statusResourceKey = string.IsNullOrWhiteSpace(progress.StatusResourceKey)
+            ? null
+            : progress.StatusResourceKey;
+        IReadOnlyList<string>? statusResourceArguments = progress.StatusResourceArguments.Length > 0
+            ? progress.StatusResourceArguments
+            : null;
 
         if (TryCreateDownloadProgressStatus(normalizedProgress, progress.Speed, out DownloadProgressStatus downloadStatus))
         {
@@ -176,19 +181,6 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
                 coordinator.Cancel(progress.FileKey, progress.FileName);
                 break;
         }
-    }
-
-    private static (string? StatusResourceKey, IReadOnlyList<string>? StatusResourceArguments) ResolveStatusPresentation(string statusMessage)
-    {
-        return statusMessage switch
-        {
-            "正在准备整合包安装..." => ("DownloadQueue_Status_PreparingModpackInstall", null),
-            "下载完成，正在解压整合包..." => ("DownloadQueue_Status_ModpackExtractingPackage", null),
-            "解压完成，正在解析整合包信息..." => ("DownloadQueue_Status_ModpackParsingManifest", null),
-            "版本下载完成，正在部署整合包文件..." => ("DownloadQueue_Status_ModpackDeployingFiles", null),
-            "正在下载整合包文件..." => ("DownloadQueue_Status_ModpackDownloadingFiles", null),
-            _ => (null, null)
-        };
     }
 
     private static bool TryCreateDownloadProgressStatus(

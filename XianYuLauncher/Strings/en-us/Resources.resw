@@ -282,6 +282,33 @@
   <data name="DownloadQueue_Status_ModpackDownloadingFiles" xml:space="preserve">
     <value>Downloading modpack files...</value>
   </data>
+  <data name="DownloadQueue_Status_ModpackUpdatingCoreFiles" xml:space="preserve">
+    <value>Updating core instance files (Minecraft {0} / {1} {2})...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingCoreVersion" xml:space="preserve">
+    <value>Downloading Minecraft {0} and {1} {2}...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackCleaningFiles" xml:space="preserve">
+    <value>Cleaning old modpack files...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackApplyingOverrides" xml:space="preserve">
+    <value>Applying modpack override files...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackCopyingOverrides" xml:space="preserve">
+    <value>Copying override files...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackFetchingResourceInfo" xml:space="preserve">
+    <value>Fetching resource metadata...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingFilesWithCount" xml:space="preserve">
+    <value>Downloading modpack files ({0}/{1})...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingPackage" xml:space="preserve">
+    <value>Downloading modpack package...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackCopyingLocalPackage" xml:space="preserve">
+    <value>Copying local modpack package...</value>
+  </data>
   <data name="DownloadQueue_Status_ModpackInstallCompleted" xml:space="preserve">
     <value>Modpack install completed</value>
   </data>

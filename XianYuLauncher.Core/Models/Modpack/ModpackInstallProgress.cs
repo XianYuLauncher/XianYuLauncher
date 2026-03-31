@@ -11,6 +11,8 @@ public class ModpackInstallProgress
     public string ProgressText { get; set; } = "0%";
     public string Status { get; set; } = string.Empty;
     public string Speed { get; set; } = string.Empty;
+    public string? StatusResourceKey { get; set; }
+    public string[] StatusResourceArguments { get; set; } = [];
 }
 
 public enum ModpackContentFileProgressState

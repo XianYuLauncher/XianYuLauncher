@@ -282,6 +282,33 @@
   <data name="DownloadQueue_Status_ModpackDownloadingFiles" xml:space="preserve">
     <value>正在下载整合包文件...</value>
   </data>
+  <data name="DownloadQueue_Status_ModpackUpdatingCoreFiles" xml:space="preserve">
+    <value>正在更新实例核心文件（Minecraft {0} / {1} {2}）...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingCoreVersion" xml:space="preserve">
+    <value>正在下载Minecraft {0} 和 {1} {2}...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackCleaningFiles" xml:space="preserve">
+    <value>正在清理旧整合包文件...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackApplyingOverrides" xml:space="preserve">
+    <value>正在覆盖整合包配置文件...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackCopyingOverrides" xml:space="preserve">
+    <value>正在复制覆盖文件...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackFetchingResourceInfo" xml:space="preserve">
+    <value>正在获取资源信息...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingFilesWithCount" xml:space="preserve">
+    <value>正在下载整合包文件 ({0}/{1})...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingPackage" xml:space="preserve">
+    <value>正在下载整合包...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackCopyingLocalPackage" xml:space="preserve">
+    <value>正在复制本地整合包文件...</value>
+  </data>
   <data name="DownloadQueue_Status_ModpackInstallCompleted" xml:space="preserve">
     <value>整合包安装完成</value>
   </data>
