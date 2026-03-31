@@ -681,6 +681,111 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
+    public async Task AcquireNestedDownloadSlotAsync_WhenOwnerTaskIsOnlyRunningTaskAndQueueLimitIsOne_ShouldSucceed()
+    {
+        _localSettingsServiceMock
+            .Setup(service => service.ReadSettingAsync<int?>(It.IsAny<string>()))
+            .ReturnsAsync(1);
+
+        var leaseAcquired = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var executionRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var completedObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        _downloadTaskManager.TaskStateChanged += (_, task) =>
+        {
+            if (task.TaskName == "NestedLeaseOwner" && task.State == DownloadTaskState.Completed)
+            {
+                completedObserved.TrySetResult(task);
+            }
+        };
+
+        await _downloadTaskManager.StartCustomManagedTaskWithTaskIdAsync(
+            "NestedLeaseOwner",
+            "NestedLeaseOwner",
+            DownloadTaskCategory.ModpackDownload,
+            async context =>
+            {
+                await using IAsyncDisposable nestedLease = await _downloadTaskManager
+                    .AcquireNestedDownloadSlotAsync(context.TaskId, context.CancellationToken)
+                    .ConfigureAwait(false);
+
+                leaseAcquired.TrySetResult(true);
+                await executionRelease.Task.WaitAsync(context.CancellationToken).ConfigureAwait(false);
+            },
+            allowRetry: false);
+
+        await leaseAcquired.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        executionRelease.TrySetResult(true);
+        await completedObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    }
+
+    [Fact]
+    public async Task AcquireNestedDownloadSlotAsync_WhenRemainingBudgetIsExhausted_ShouldWaitForRelease()
+    {
+        _localSettingsServiceMock
+            .Setup(service => service.ReadSettingAsync<int?>(It.IsAny<string>()))
+            .ReturnsAsync(2);
+
+        var blockingTaskStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var blockingTaskRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var secondLeaseTaskObserved = new TaskCompletionSource<Task<IAsyncDisposable>>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var allowFirstLeaseRelease = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var parentCompletedObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        _downloadTaskManager.TaskStateChanged += (_, task) =>
+        {
+            if (task.TaskName == "BlockingTask" && task.State == DownloadTaskState.Downloading)
+            {
+                blockingTaskStarted.TrySetResult(true);
+            }
+
+            if (task.TaskName == "ParentTask" && task.State == DownloadTaskState.Completed)
+            {
+                parentCompletedObserved.TrySetResult(task);
+            }
+        };
+
+        await _downloadTaskManager.StartCustomManagedTaskWithTaskIdAsync(
+            "BlockingTask",
+            "BlockingTask",
+            DownloadTaskCategory.FileDownload,
+            async context => await blockingTaskRelease.Task.WaitAsync(context.CancellationToken).ConfigureAwait(false),
+            allowRetry: false);
+
+        await blockingTaskStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        await _downloadTaskManager.StartCustomManagedTaskWithTaskIdAsync(
+            "ParentTask",
+            "ParentTask",
+            DownloadTaskCategory.ModpackDownload,
+            async context =>
+            {
+                IAsyncDisposable firstLease = await _downloadTaskManager
+                    .AcquireNestedDownloadSlotAsync(context.TaskId, context.CancellationToken)
+                    .ConfigureAwait(false);
+
+                Task<IAsyncDisposable> secondLeaseTask = _downloadTaskManager
+                    .AcquireNestedDownloadSlotAsync(context.TaskId, context.CancellationToken);
+                secondLeaseTaskObserved.TrySetResult(secondLeaseTask);
+
+                await allowFirstLeaseRelease.Task.WaitAsync(context.CancellationToken).ConfigureAwait(false);
+                await firstLease.DisposeAsync().ConfigureAwait(false);
+
+                await using IAsyncDisposable secondLease = await secondLeaseTask.WaitAsync(context.CancellationToken).ConfigureAwait(false);
+            },
+            allowRetry: false);
+
+        Task<IAsyncDisposable> observedSecondLeaseTask = await secondLeaseTaskObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await Task.Delay(150);
+        observedSecondLeaseTask.IsCompleted.Should().BeFalse();
+
+        allowFirstLeaseRelease.TrySetResult(true);
+        await parentCompletedObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        blockingTaskRelease.TrySetResult(true);
+    }
+
+    [Fact]
     public async Task StartFileDownloadAsync_WhenDisplayMetadataProvided_ShouldPreservePresentationMetadata()
     {
         // Arrange

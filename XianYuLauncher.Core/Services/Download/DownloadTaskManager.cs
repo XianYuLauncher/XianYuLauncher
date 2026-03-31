@@ -32,6 +32,8 @@ public class DownloadTaskManager : IDownloadTaskManager
     private readonly List<ManagedDownloadTask> _tasks = new();
     private readonly Dictionary<string, ExternalDownloadTask> _externalTasks = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _schedulerGate = new(1, 1);
+    private int _activeNestedDownloadSlots;
+    private TaskCompletionSource<object?> _nestedDownloadSlotChanged = CreateNestedDownloadSlotChangedSource();
 
     private sealed class ManagedDownloadTask
     {
@@ -596,6 +598,31 @@ public class DownloadTaskManager : IDownloadTaskManager
         OnTaskProgressChanged(taskInfo);
     }
 
+    public async Task<IAsyncDisposable> AcquireNestedDownloadSlotAsync(
+        string? ownerTaskId = null,
+        CancellationToken cancellationToken = default)
+    {
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            int maxConcurrentTasks = await GetMaxConcurrentTasksAsync().ConfigureAwait(false);
+            Task waitTask;
+
+            lock (_lock)
+            {
+                if (CanAcquireNestedDownloadSlotLocked(ownerTaskId, maxConcurrentTasks))
+                {
+                    _activeNestedDownloadSlots++;
+                    return new NestedDownloadSlotLease(this);
+                }
+
+                waitTask = _nestedDownloadSlotChanged.Task;
+            }
+
+            await waitTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     public void CompleteExternalTask(
         string taskId,
         string statusMessage = "下载完成",
@@ -967,6 +994,7 @@ public class DownloadTaskManager : IDownloadTaskManager
                         }
                     }
 
+                    SignalNestedDownloadSlotChangedLocked();
                     UpdateQueuePositionsLocked();
                 }
 
@@ -1029,6 +1057,7 @@ public class DownloadTaskManager : IDownloadTaskManager
             lock (_lock)
             {
                 managedTask.IsRunning = false;
+                SignalNestedDownloadSlotChangedLocked();
                 UpdateQueuePositionsLocked();
             }
 
@@ -1043,6 +1072,65 @@ public class DownloadTaskManager : IDownloadTaskManager
             managedTask.Info.TaskId,
             managedTask.CancellationTokenSource.Token,
             update => ApplyExecutionUpdate(managedTask.Info, update));
+    }
+
+    private static TaskCompletionSource<object?> CreateNestedDownloadSlotChangedSource()
+    {
+        return new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    private bool CanAcquireNestedDownloadSlotLocked(string? ownerTaskId, int maxConcurrentTasks)
+    {
+        int runningManagedTasks = _tasks.Count(task => task.IsRunning);
+        if (!string.IsNullOrWhiteSpace(ownerTaskId) &&
+            _tasks.Any(task => task.IsRunning && string.Equals(task.Info.TaskId, ownerTaskId, StringComparison.Ordinal)))
+        {
+            runningManagedTasks = Math.Max(0, runningManagedTasks - 1);
+        }
+
+        return runningManagedTasks + _activeNestedDownloadSlots < maxConcurrentTasks;
+    }
+
+    private void ReleaseNestedDownloadSlot()
+    {
+        lock (_lock)
+        {
+            if (_activeNestedDownloadSlots <= 0)
+            {
+                return;
+            }
+
+            _activeNestedDownloadSlots--;
+            SignalNestedDownloadSlotChangedLocked();
+        }
+    }
+
+    private void SignalNestedDownloadSlotChangedLocked()
+    {
+        TaskCompletionSource<object?> current = _nestedDownloadSlotChanged;
+        _nestedDownloadSlotChanged = CreateNestedDownloadSlotChangedSource();
+        current.TrySetResult(null);
+    }
+
+    private sealed class NestedDownloadSlotLease : IAsyncDisposable
+    {
+        private readonly DownloadTaskManager _owner;
+        private int _disposed;
+
+        public NestedDownloadSlotLease(DownloadTaskManager owner)
+        {
+            _owner = owner;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0)
+            {
+                _owner.ReleaseNestedDownloadSlot();
+            }
+
+            return ValueTask.CompletedTask;
+        }
     }
 
     private void ApplyExecutionUpdate(DownloadTaskInfo task, DownloadTaskExecutionUpdate update)

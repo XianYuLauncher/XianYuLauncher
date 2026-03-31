@@ -81,7 +81,8 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
                 request.SourceProjectId,
                 request.SourceVersionId,
                 contentFileProgress,
-                context.CancellationToken);
+                context.CancellationToken,
+                concurrencyOwnerTaskId: context.TaskId);
 
             context.CancellationToken.ThrowIfCancellationRequested();
 

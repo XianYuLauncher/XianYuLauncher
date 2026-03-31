@@ -20,7 +20,7 @@ public class ModpackInstallationService : IModpackInstallationService
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IVersionInfoManager _versionInfoManager;
     private readonly CurseForgeService _curseForgeService;
-    private readonly ILocalSettingsService _localSettingsService;
+    private readonly IDownloadTaskManager _downloadTaskManager;
 
     public ModpackInstallationService(
         IDownloadManager downloadManager,
@@ -28,14 +28,14 @@ public class ModpackInstallationService : IModpackInstallationService
         IMinecraftVersionService minecraftVersionService,
         IVersionInfoManager versionInfoManager,
         CurseForgeService curseForgeService,
-        ILocalSettingsService localSettingsService)
+        IDownloadTaskManager downloadTaskManager)
     {
         _downloadManager = downloadManager;
         _fallbackDownloadManager = fallbackDownloadManager;
         _minecraftVersionService = minecraftVersionService;
         _versionInfoManager = versionInfoManager;
         _curseForgeService = curseForgeService;
-        _localSettingsService = localSettingsService;
+        _downloadTaskManager = downloadTaskManager;
     }
 
     public async Task<ModpackInstallResult> InstallModpackAsync(
@@ -78,7 +78,8 @@ public class ModpackInstallationService : IModpackInstallationService
         string? sourceProjectId,
         string? sourceVersionId,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? concurrencyOwnerTaskId = null)
     {
         string tempDir = string.Empty;
 
@@ -126,14 +127,14 @@ public class ModpackInstallationService : IModpackInstallationService
             {
                 Debug.WriteLine("[整合包安装] 检测到CurseForge整合包格式");
                 return await InstallCurseForgeModpackCoreAsync(
-                    extractDir, curseForgeManifestPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, contentFileProgress, cancellationToken);
+                    extractDir, curseForgeManifestPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
             }
 
             if (File.Exists(modrinthIndexPath))
             {
                 Debug.WriteLine("[整合包安装] 检测到Modrinth整合包格式");
                 return await InstallModrinthModpackCoreAsync(
-                    extractDir, modrinthIndexPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, contentFileProgress, cancellationToken);
+                    extractDir, modrinthIndexPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
             }
 
             return ModpackInstallResult.Failed($"整合包格式不支持：未找到{MinecraftFileConsts.ManifestJson}（CurseForge）或{MinecraftFileConsts.ModrinthIndexJson}（Modrinth）");
@@ -194,7 +195,8 @@ public class ModpackInstallationService : IModpackInstallationService
         string? sourceProjectId,
         string? sourceVersionId,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? concurrencyOwnerTaskId = null)
     {
         string tempDir = string.Empty;
 
@@ -243,7 +245,8 @@ public class ModpackInstallationService : IModpackInstallationService
                     versionIconPath,
                     sourceProjectId,
                     sourceVersionId,
-                        contentFileProgress,
+                    contentFileProgress,
+                    concurrencyOwnerTaskId,
                     cancellationToken);
             }
 
@@ -258,8 +261,9 @@ public class ModpackInstallationService : IModpackInstallationService
                     progress,
                     versionIconPath,
                     sourceProjectId,
-                    sourceVersionId,
+                        sourceVersionId,
                         contentFileProgress,
+                        concurrencyOwnerTaskId,
                     cancellationToken);
             }
 
@@ -294,6 +298,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string? sourceProjectId,
         string? sourceVersionId,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
         string indexJson = await File.ReadAllTextAsync(indexPath, cancellationToken);
@@ -347,7 +352,7 @@ public class ModpackInstallationService : IModpackInstallationService
         var files = indexData["files"] as JArray;
         if (files != null && files.Count > 0)
         {
-            await DownloadModrinthFilesAsync(files, targetVersionDir, progress, contentFileProgress, cancellationToken);
+            await DownloadModrinthFilesAsync(files, targetVersionDir, progress, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
         }
 
         var modpackManifestVersionId = NormalizeModpackVersionId(indexData["versionId"]?.ToString())
@@ -370,6 +375,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string? sourceProjectId,
         string? sourceVersionId,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
         string indexJson = await File.ReadAllTextAsync(indexPath, cancellationToken);
@@ -421,7 +427,7 @@ public class ModpackInstallationService : IModpackInstallationService
         var files = indexData["files"] as JArray;
         if (files != null && files.Count > 0)
         {
-            await DownloadModrinthFilesAsync(files, modpackVersionDir, progress, contentFileProgress, cancellationToken);
+            await DownloadModrinthFilesAsync(files, modpackVersionDir, progress, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
         }
 
         var modpackManifestVersionId = NormalizeModpackVersionId(indexData["versionId"]?.ToString())
@@ -458,6 +464,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string modpackVersionDir,
         IProgress<ModpackInstallProgress> progress,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
         Report(progress, 80, "80%", "正在下载整合包文件...", statusResourceKey: "DownloadQueue_Status_ModpackDownloadingFiles");
@@ -494,24 +501,22 @@ public class ModpackInstallationService : IModpackInstallationService
         }
 
         int downloadedFiles = 0;
+        Debug.WriteLine($"[Modrinth整合包] 开始共享 DownloadQueue 并发下载，文件总数: {totalFiles}");
 
-        var threadCount = await _localSettingsService.ReadSettingAsync<int?>("DownloadThreadCount") ?? 32;
-        Debug.WriteLine($"[Modrinth整合包] 开始多线程下载，线程数: {threadCount}，文件总数: {totalFiles}");
-
-        using var semaphore = new SemaphoreSlim(threadCount);
-        var downloadTasks = new List<Task>();
+        var downloadTasks = new List<Task>(totalFiles);
 
         foreach (var file in downloadEntries)
         {
             var downloadTask = Task.Run(async () =>
             {
-                bool semaphoreAcquired = false;
                 try
                 {
-                    await semaphore.WaitAsync(cancellationToken);
-                    semaphoreAcquired = true;
                     cancellationToken.ThrowIfCancellationRequested();
                     Debug.WriteLine($"[Modrinth整合包] 开始下载: {file.FileDisplayName}");
+
+                    await using IAsyncDisposable concurrencyLease = await _downloadTaskManager
+                        .AcquireNestedDownloadSlotAsync(concurrencyOwnerTaskId, cancellationToken)
+                        .ConfigureAwait(false);
 
                     await _downloadManager.DownloadFileAsync(
                         file.DownloadUrl,
@@ -550,13 +555,6 @@ public class ModpackInstallationService : IModpackInstallationService
                     ReportContentFileFailed(contentFileProgress, file.FileKey, file.FileDisplayName, ex.Message);
                     throw;
                 }
-                finally
-                {
-                    if (semaphoreAcquired)
-                    {
-                        semaphore.Release();
-                    }
-                }
             }, cancellationToken);
 
             downloadTasks.Add(downloadTask);
@@ -581,6 +579,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string? sourceProjectId,
         string? sourceVersionId,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
         string manifestJson = await File.ReadAllTextAsync(manifestPath, cancellationToken);
@@ -636,7 +635,7 @@ public class ModpackInstallationService : IModpackInstallationService
 
         if (manifest.Files != null && manifest.Files.Count > 0)
         {
-            await DownloadCurseForgeFilesAsync(manifest, targetVersionDir, progress, contentFileProgress, cancellationToken);
+            await DownloadCurseForgeFilesAsync(manifest, targetVersionDir, progress, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
         }
 
         var modpackManifestVersionId = NormalizeModpackVersionId(manifest.Version)
@@ -659,6 +658,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string? sourceProjectId,
         string? sourceVersionId,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
         string manifestJson = await File.ReadAllTextAsync(manifestPath, cancellationToken);
@@ -716,7 +716,7 @@ public class ModpackInstallationService : IModpackInstallationService
         // 下载整合包中的文件
         if (manifest.Files != null && manifest.Files.Count > 0)
         {
-            await DownloadCurseForgeFilesAsync(manifest, modpackVersionDir, progress, contentFileProgress, cancellationToken);
+            await DownloadCurseForgeFilesAsync(manifest, modpackVersionDir, progress, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
         }
 
         var modpackManifestVersionId = NormalizeModpackVersionId(manifest.Version)
@@ -987,6 +987,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string modpackVersionDir,
         IProgress<ModpackInstallProgress> progress,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
         // 获取项目 classId 信息
@@ -1077,24 +1078,22 @@ public class ModpackInstallationService : IModpackInstallationService
         }
 
         int downloadedFiles = 0;
+        Debug.WriteLine($"[CurseForge整合包] 开始共享 DownloadQueue 并发下载，文件总数: {totalFiles}");
 
-        var threadCount = await _localSettingsService.ReadSettingAsync<int?>("DownloadThreadCount") ?? 32;
-        Debug.WriteLine($"[CurseForge整合包] 开始多线程下载，线程数: {threadCount}，文件总数: {totalFiles}");
-
-        using var semaphore = new SemaphoreSlim(threadCount);
-        var downloadTasks = new List<Task>();
+        var downloadTasks = new List<Task>(totalFiles);
 
         foreach (var file in downloadEntries)
         {
             var downloadTask = Task.Run(async () =>
             {
-                bool semaphoreAcquired = false;
                 try
                 {
-                    await semaphore.WaitAsync(cancellationToken);
-                    semaphoreAcquired = true;
                     cancellationToken.ThrowIfCancellationRequested();
                     Debug.WriteLine($"[CurseForge整合包] 开始下载: {file.FileDisplayName}");
+
+                    await using IAsyncDisposable concurrencyLease = await _downloadTaskManager
+                        .AcquireNestedDownloadSlotAsync(concurrencyOwnerTaskId, cancellationToken)
+                        .ConfigureAwait(false);
 
                     bool downloadSucceeded = await _curseForgeService.DownloadFileAsync(
                         file.DownloadUrl,
@@ -1137,13 +1136,6 @@ public class ModpackInstallationService : IModpackInstallationService
                 {
                     ReportContentFileFailed(contentFileProgress, file.FileKey, file.FileDisplayName, ex.Message);
                     throw;
-                }
-                finally
-                {
-                    if (semaphoreAcquired)
-                    {
-                        semaphore.Release();
-                    }
                 }
             }, cancellationToken);
 
