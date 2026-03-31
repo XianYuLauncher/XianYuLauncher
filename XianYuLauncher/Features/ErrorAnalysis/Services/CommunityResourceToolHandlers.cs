@@ -23,7 +23,7 @@ public sealed class SearchCommunityResourcesToolHandler : IAgentToolHandler
             type = "object",
             properties = new
             {
-                query = new { type = "string", description = "搜索关键词，例如 Iris" },
+                query = new { type = "string", description = "可选。搜索关键词，例如 Iris；省略时返回当前更热门的资源，适合先了解热度最高的内容。" },
                 resource_type = new { type = "string", description = "资源类型", @enum = new[] { "mod", "resourcepack", "shader", "datapack" } },
                 platforms = new
                 {
@@ -31,11 +31,17 @@ public sealed class SearchCommunityResourcesToolHandler : IAgentToolHandler
                     description = "可选。搜索平台数组；省略时默认同时搜索 Modrinth 和 CurseForge。",
                     items = new { type = "string", @enum = new[] { "modrinth", "curseforge" } }
                 },
+                category_tokens = new
+                {
+                    type = "array",
+                    description = "可选。按类别 token 过滤；建议先调用 getCommunityResourceTags 获取可用值，再把 categories[*].token 直接传进来。",
+                    items = new { type = "string" }
+                },
                 game_version = new { type = "string", description = "可选。按 Minecraft 版本过滤，例如 1.21.1" },
                 loader = new { type = "string", description = "可选。按加载器过滤，例如 fabric、forge、neoforge、quilt" },
                 limit = new { type = "integer", description = "可选。每个平台最多返回多少条，默认 5，最大 10。" }
             },
-            required = new[] { "query", "resource_type" }
+            required = new[] { "resource_type" }
         });
 
     public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ReadOnly;
@@ -52,18 +58,127 @@ public sealed class SearchCommunityResourcesToolHandler : IAgentToolHandler
         var loader = arguments["loader"]?.ToString();
         var limit = arguments["limit"]?.Value<int>() ?? 5;
         var platforms = CommunityResourceToolArgumentParser.ParseStringArray(arguments["platforms"]);
+        var categoryTokensToken = arguments["category_tokens"] ?? arguments["categoryTokens"] ?? arguments["categories"];
+        var categoryTokens = CommunityResourceToolArgumentParser.ParseStringArray(categoryTokensToken);
         if (platforms == null && arguments["platforms"] != null)
         {
             return AgentToolExecutionResult.FromMessage("platforms 必须是字符串数组。");
+        }
+
+        if (categoryTokens == null && categoryTokensToken != null)
+        {
+            return AgentToolExecutionResult.FromMessage("category_tokens 必须是字符串数组。");
         }
 
         var message = await _communityResourceService.SearchAsync(
             query,
             resourceType,
             platforms,
+            categoryTokens,
             gameVersion,
             loader,
             limit,
+            cancellationToken);
+        return AgentToolExecutionResult.FromMessage(message);
+    }
+}
+
+public sealed class GetCommunityResourceTagsToolHandler : IAgentToolHandler
+{
+    private readonly IAgentCommunityResourceService _communityResourceService;
+
+    public GetCommunityResourceTagsToolHandler(IAgentCommunityResourceService communityResourceService)
+    {
+        _communityResourceService = communityResourceService;
+    }
+
+    public string ToolName => "getCommunityResourceTags";
+
+    public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
+        ToolName,
+        "返回社区资源搜索可用的类别 token 和加载器值。categories[*].token 可直接传给 searchCommunityResources.category_tokens。V1 支持 mod、resourcepack、shader、datapack。",
+        new
+        {
+            type = "object",
+            properties = new
+            {
+                resource_type = new { type = "string", description = "资源类型", @enum = new[] { "mod", "resourcepack", "shader", "datapack" } },
+                platforms = new
+                {
+                    type = "array",
+                    description = "可选。查询平台数组；省略时默认同时返回 Modrinth 和 CurseForge 的标签。",
+                    items = new { type = "string", @enum = new[] { "modrinth", "curseforge" } }
+                }
+            },
+            required = new[] { "resource_type" }
+        });
+
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ReadOnly;
+
+    public bool IsAvailable(ErrorAnalysisSessionContext context) => true;
+
+    public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    {
+        var resourceType = arguments["resource_type"]?.ToString()
+            ?? arguments["resourceType"]?.ToString()
+            ?? string.Empty;
+        var platforms = CommunityResourceToolArgumentParser.ParseStringArray(arguments["platforms"]);
+        if (platforms == null && arguments["platforms"] != null)
+        {
+            return AgentToolExecutionResult.FromMessage("platforms 必须是字符串数组。");
+        }
+
+        var message = await _communityResourceService.GetCommunityResourceTagsAsync(
+            resourceType,
+            platforms,
+            cancellationToken);
+        return AgentToolExecutionResult.FromMessage(message);
+    }
+}
+
+public sealed class GetCommunityResourceProjectDetailToolHandler : IAgentToolHandler
+{
+    private readonly IAgentCommunityResourceService _communityResourceService;
+
+    public GetCommunityResourceProjectDetailToolHandler(IAgentCommunityResourceService communityResourceService)
+    {
+        _communityResourceService = communityResourceService;
+    }
+
+    public string ToolName => "getCommunityResourceProjectDetail";
+
+    public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
+        ToolName,
+        "获取某个社区资源项目的细粒度详情，包括更具体的类别、兼容加载器、支持版本、平台链接和可选正文内容。project_id 必填；若要读取正文，请把 include_body 设为 true。",
+        new
+        {
+            type = "object",
+            properties = new
+            {
+                project_id = new { type = "string", description = "资源项目 ID。CurseForge 必须是 curseforge-<id>；Modrinth 直接使用 project_id。" },
+                resource_type = new { type = "string", description = "可选。辅助识别资源类型，尤其是 Modrinth datapack。", @enum = new[] { "mod", "resourcepack", "shader", "datapack" } },
+                include_body = new { type = "boolean", description = "可选。是否返回项目正文内容；默认 false，只返回预览。" },
+                body_max_chars = new { type = "integer", description = "可选。正文最多返回多少字符；默认 4000，最大 12000。仅在 include_body=true 时生效。" }
+            },
+            required = new[] { "project_id" }
+        });
+
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ReadOnly;
+
+    public bool IsAvailable(ErrorAnalysisSessionContext context) => true;
+
+    public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    {
+        var projectId = arguments["project_id"]?.ToString() ?? arguments["projectId"]?.ToString() ?? string.Empty;
+        var resourceType = arguments["resource_type"]?.ToString() ?? arguments["resourceType"]?.ToString();
+        var includeBody = arguments["include_body"]?.Value<bool>() ?? arguments["includeBody"]?.Value<bool>() ?? false;
+        var bodyMaxChars = arguments["body_max_chars"]?.Value<int>() ?? arguments["bodyMaxChars"]?.Value<int>() ?? 4000;
+
+        var message = await _communityResourceService.GetProjectDetailAsync(
+            projectId,
+            resourceType,
+            includeBody,
+            bodyMaxChars,
             cancellationToken);
         return AgentToolExecutionResult.FromMessage(message);
     }
