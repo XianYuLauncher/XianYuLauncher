@@ -636,12 +636,20 @@ public class DownloadTaskManagerTests
     {
         // Arrange
         var runningObserved = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var cancelledObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+        string? modpackTaskId = null;
         _downloadTaskManager.TaskStateChanged += (_, task) =>
         {
             if (task.TaskCategory == DownloadTaskCategory.ModpackDownload
                 && task.State == DownloadTaskState.Downloading)
             {
                 runningObserved.TrySetResult(task.TaskId);
+            }
+
+            if (task.TaskId == modpackTaskId
+                && task.State == DownloadTaskState.Cancelled)
+            {
+                cancelledObserved.TrySetResult(task);
             }
         };
 
@@ -656,10 +664,11 @@ public class DownloadTaskManagerTests
             displayNameResourceKey: "DownloadQueue_DisplayName_ModpackInstall",
             displayNameResourceArguments: ["Create Arcane Colony"],
             taskTypeResourceKey: "DownloadQueue_TaskType_ModpackDownload");
+        modpackTaskId = taskId;
 
         await runningObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
         _downloadTaskManager.CancelTask(taskId);
-        await Task.Delay(150);
+        await cancelledObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         // Assert
         _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
@@ -751,9 +760,15 @@ public class DownloadTaskManagerTests
     {
         // Arrange
         var cancelledObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+        string? runningTaskId = null;
         _downloadTaskManager.TaskStateChanged += (_, task) =>
         {
-            if (task.State == DownloadTaskState.Cancelled)
+            if (task.TaskName == "MyVersion" && task.State == DownloadTaskState.Downloading)
+            {
+                runningTaskId = task.TaskId;
+            }
+
+            if (task.TaskId == runningTaskId && task.State == DownloadTaskState.Cancelled)
             {
                 cancelledObserved.TrySetResult(task);
             }
@@ -772,6 +787,7 @@ public class DownloadTaskManagerTests
         await Task.Delay(100);
 
         var runningTask = _downloadTaskManager.TasksSnapshot.First(task => task.TaskName == "MyVersion");
+    runningTaskId = runningTask.TaskId;
 
         // Act
         _downloadTaskManager.CancelTask(runningTask.TaskId);

@@ -448,18 +448,14 @@ public class ModpackInstallationService : IModpackInstallationService
                 continue;
             }
 
-            string normalizedPath = path.Replace('/', Path.DirectorySeparatorChar);
-            string targetPath = Path.Combine(modpackVersionDir, normalizedPath);
+            string targetPath = GetValidatedContentPathUnderRoot(modpackVersionDir, path, "Modrinth 整合包文件路径");
             Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
 
-            string fileDisplayName = Path.GetFileName(normalizedPath.TrimEnd(Path.DirectorySeparatorChar));
-            if (string.IsNullOrWhiteSpace(fileDisplayName))
-            {
-                fileDisplayName = path;
-            }
+            string normalizedPath = Path.GetRelativePath(modpackVersionDir, targetPath);
+            string fileDisplayName = Path.GetFileName(targetPath);
 
             downloadEntries.Add((
-                NormalizeContentFileKey(path),
+                NormalizeContentFileKey(normalizedPath),
                 fileDisplayName,
                 downloads[0]!.ToString(),
                 targetPath));
@@ -991,7 +987,10 @@ public class ModpackInstallationService : IModpackInstallationService
 
         foreach (var file in fileDetails)
         {
-            string fileDisplayName = file.FileName ?? $"file_{file.Id}";
+            string fileDisplayName = SanitizeExternalFileName(
+                file.FileName,
+                $"file_{file.Id}",
+                "CurseForge 整合包文件名");
 
             if (string.IsNullOrEmpty(file.DownloadUrl))
             {
@@ -1000,7 +999,11 @@ public class ModpackInstallationService : IModpackInstallationService
 
             string targetDir = ResolveTargetDir(file.ModId, projectClassIdMap,
                 modsDir, resourcePacksDir, shaderPacksDir, dataPacksDir);
-            string targetPath = Path.Combine(targetDir, fileDisplayName);
+            string relativeTargetDir = Path.GetRelativePath(modpackVersionDir, targetDir);
+            string targetPath = GetValidatedContentPathUnderRoot(
+                modpackVersionDir,
+                Path.Combine(relativeTargetDir, fileDisplayName),
+                "CurseForge 整合包文件路径");
 
             downloadEntries.Add((
                 NormalizeContentFileKey(Path.GetRelativePath(modpackVersionDir, targetPath)),
@@ -1181,6 +1184,71 @@ public class ModpackInstallationService : IModpackInstallationService
     private static string NormalizeContentFileKey(string path)
     {
         return path.Replace('\\', '/');
+    }
+
+    internal static string GetValidatedContentPathUnderRoot(string rootDirectory, string relativePath, string pathDescription)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(rootDirectory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
+
+        string trimmedPath = relativePath.Trim();
+        if (Path.IsPathRooted(trimmedPath) ||
+            trimmedPath.StartsWith(Path.DirectorySeparatorChar) ||
+            trimmedPath.StartsWith(Path.AltDirectorySeparatorChar))
+        {
+            throw new InvalidOperationException($"{pathDescription} 无效：禁止使用绝对路径");
+        }
+
+        string[] segments = trimmedPath.Split(
+            [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar],
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        if (segments.Length == 0 || segments.Any(segment => segment is "." or ".."))
+        {
+            throw new InvalidOperationException($"{pathDescription} 无效：包含非法路径段");
+        }
+
+        if (segments.Any(segment => segment.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0))
+        {
+            throw new InvalidOperationException($"{pathDescription} 无效：包含非法字符");
+        }
+
+        string normalizedRelativePath = Path.Combine(segments);
+        string normalizedRootDirectory = EnsureTrailingDirectorySeparator(Path.GetFullPath(rootDirectory));
+        string fullPath = Path.GetFullPath(Path.Combine(normalizedRootDirectory, normalizedRelativePath));
+
+        if (!fullPath.StartsWith(normalizedRootDirectory, StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException($"{pathDescription} 无效：超出实例目录范围");
+        }
+
+        return fullPath;
+    }
+
+    internal static string SanitizeExternalFileName(string? fileName, string fallbackFileName, string fileDescription)
+    {
+        string candidateFileName = string.IsNullOrWhiteSpace(fileName)
+            ? fallbackFileName
+            : Path.GetFileName(fileName.Trim());
+
+        if (string.IsNullOrWhiteSpace(candidateFileName) || candidateFileName is "." or "..")
+        {
+            throw new InvalidOperationException($"{fileDescription} 无效：无法解析文件名");
+        }
+
+        if (candidateFileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            throw new InvalidOperationException($"{fileDescription} 无效：包含非法字符");
+        }
+
+        return candidateFileName;
+    }
+
+    private static string EnsureTrailingDirectorySeparator(string path)
+    {
+        return path.EndsWith(Path.DirectorySeparatorChar) || path.EndsWith(Path.AltDirectorySeparatorChar)
+            ? path
+            : path + Path.DirectorySeparatorChar;
     }
 
     private static void ReportContentFileDownloading(

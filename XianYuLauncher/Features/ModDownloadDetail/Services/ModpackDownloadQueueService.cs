@@ -87,7 +87,9 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
 
             if (!result.Success)
             {
-                string errorMessage = result.ErrorMessage ?? "整合包安装失败";
+                string errorMessage = string.IsNullOrWhiteSpace(result.ErrorMessage)
+                    ? "未知错误"
+                    : result.ErrorMessage.Trim();
                 contentFileCoordinator.FailPending(errorMessage);
                 finalizedPendingContentTasks = true;
                 throw new InvalidOperationException(errorMessage);
