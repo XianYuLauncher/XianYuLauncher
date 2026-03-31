@@ -2269,7 +2269,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     break;
             }
 
-                    ApplyAvailableLoaders(resourceType, metadata.Loaders);
+            ApplyAvailableLoaders(resourceType, metadata.Loaders);
             
             System.Diagnostics.Debug.WriteLine($"[类别加载] {resourceType}: 加载了 {uniqueCategories.Count} 个类别");
         }
