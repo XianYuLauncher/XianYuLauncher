@@ -42,6 +42,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private readonly IUiDispatcher _uiDispatcher;
     private readonly IGameDirResolver _gameDirResolver;
     private readonly ICommunityResourceInstallPlanner _communityResourceInstallPlanner;
+    private readonly ICommunityResourceFilterMetadataService _communityResourceFilterMetadataService;
 
     // 版本下载相关属性和命令
     [ObservableProperty]
@@ -419,9 +420,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
     [ObservableProperty]
     private ObservableCollection<string> _worldAvailableLoaders = new();
-    
-    // CurseForge 类别缓存（内存缓存，避免每次都请求 API）
-    private static Dictionary<int, List<CurseForgeCategory>> _curseForgeCategoryCache = new();
     
     [ObservableProperty]
     private string _selectedVersion = string.Empty;
@@ -1806,7 +1804,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         IDownloadTaskManager downloadTaskManager,
         IUiDispatcher uiDispatcher,
         IGameDirResolver gameDirResolver,
-        ICommunityResourceInstallPlanner communityResourceInstallPlanner)
+        ICommunityResourceInstallPlanner communityResourceInstallPlanner,
+        ICommunityResourceFilterMetadataService communityResourceFilterMetadataService)
     {
         _minecraftVersionService = minecraftVersionService;
         _gameManifestQueryService = gameManifestQueryService;
@@ -1827,6 +1826,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         _uiDispatcher = uiDispatcher;
         _gameDirResolver = gameDirResolver;
         _communityResourceInstallPlanner = communityResourceInstallPlanner;
+        _communityResourceFilterMetadataService = communityResourceFilterMetadataService;
 
         // Load saved favorites
         foreach (var item in _favoritesService.Load())
@@ -2222,40 +2222,22 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
 
         try
         {
-            var categories = new List<Models.CategoryItem>();
-            
-            // 添加"所有类别"选项
-            categories.Add(new Models.CategoryItem
+            var enabledPlatforms = new List<string>(2);
+            if (IsModrinthEnabled)
             {
-                Tag = "all",
-                DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName("all"),
-                Source = "common"
-            });
-            
-            // 根据启用的平台加载类别；双平台时合并后去重
-            if (IsModrinthEnabled || IsCurseForgeEnabled)
-            {
-                if (IsModrinthEnabled)
-                {
-                    // 仅从 Modrinth tag API 加载类别，当前不做本地兜底
-                    var modrinthCategories = await GetModrinthCategoriesAsync(resourceType);
-                    categories.AddRange(modrinthCategories);
-                }
-                
-                if (IsCurseForgeEnabled)
-                {
-                    // 从 CurseForge API 加载类别
-                    var curseForgeCategories = await GetCurseForgeCategoriesAsync(resourceType);
-                    categories.AddRange(curseForgeCategories);
-                }
+                enabledPlatforms.Add("modrinth");
             }
-            
-            // 去重（基于Tag）
-            var uniqueCategories = categories
-                .GroupBy(c => c.Tag)
-                .Select(g => g.First())
-                .OrderBy(c => c.Tag == "all" ? "" : c.DisplayName)
-                .ToList();
+
+            if (IsCurseForgeEnabled)
+            {
+                enabledPlatforms.Add("curseforge");
+            }
+
+            var metadata = await _communityResourceFilterMetadataService.GetFilterMetadataAsync(
+                resourceType,
+                enabledPlatforms,
+                includeAllCategory: true);
+            var uniqueCategories = metadata.Categories.ToList();
             
             // 更新对应的类别集合并重置选中的类别为"all"
             switch (resourceType)
@@ -2287,7 +2269,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                     break;
             }
 
-                    await LoadAvailableLoadersAsync(resourceType);
+                    ApplyAvailableLoaders(resourceType, metadata.Loaders);
             
             System.Diagnostics.Debug.WriteLine($"[类别加载] {resourceType}: 加载了 {uniqueCategories.Count} 个类别");
         }
@@ -2300,74 +2282,11 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
             SetCategoryLoadingState(resourceType, false);
         }
     }
-    
-    /// <summary>
-    /// 获取 Modrinth 类别（仅 API 来源）
-    /// </summary>
-    private async Task<List<Models.CategoryItem>> GetModrinthCategoriesAsync(string resourceType)
+
+    private void ApplyAvailableLoaders(string resourceType, IReadOnlyList<string> loaders)
     {
-        try
-        {
-            var projectType = resourceType.ToLower() switch
-            {
-                "shader" => "shader",
-                "resourcepack" => "resourcepack",
-                // 数据包类别按 mod 类别体系展示，避免 datapack 维度类别过窄
-                "datapack" => "mod",
-                "modpack" => "modpack",
-                "mod" => "mod",
-                // world 暂无稳定 project_type 归属，当前不返回 Modrinth 类别
-                _ => string.Empty
-            };
-
-            if (string.IsNullOrEmpty(projectType))
-            {
-                return new List<Models.CategoryItem>();
-            }
-
-            var tagItems = await _modrinthService.GetCategoryTagsAsync(projectType);
-            return tagItems
-                .Where(x => !string.IsNullOrWhiteSpace(x.Name))
-                .Select(x => x.Name.Trim())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .Select(tag => new Models.CategoryItem
-                {
-                    Tag = tag,
-                    DisplayName = Helpers.CategoryLocalizationHelper.GetModrinthCategoryName(tag),
-                    Source = "modrinth"
-                })
-                .ToList();
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Modrinth类别] API获取失败: {ex.Message}");
-            return new List<Models.CategoryItem>();
-        }
-    }
-
-    private async Task LoadAvailableLoadersAsync(string resourceType)
-    {
-        var loaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        if (IsModrinthEnabled)
-        {
-            var modrinthLoaders = await GetModrinthLoadersAsync(resourceType);
-            foreach (var loader in modrinthLoaders)
-            {
-                loaders.Add(loader);
-            }
-        }
-
-        if (IsCurseForgeEnabled)
-        {
-            foreach (var loader in GetCurseForgeLoaderFallbacks())
-            {
-                loaders.Add(loader);
-            }
-        }
-
         var ordered = loaders
-            .OrderBy(l => l, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(loader => loader, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         switch (resourceType.ToLower())
@@ -2391,124 +2310,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
                 WorldAvailableLoaders = new ObservableCollection<string>(ordered);
                 break;
         }
-    }
-
-    private async Task<List<string>> GetModrinthLoadersAsync(string resourceType)
-    {
-        var projectType = resourceType.ToLower() switch
-        {
-            "shader" => "shader",
-            "resourcepack" => "resourcepack",
-            "datapack" => "datapack",
-            "modpack" => "modpack",
-            "mod" => "mod",
-            // world 使用 mod 的加载器集合作为筛选来源
-            "world" => "mod",
-            _ => string.Empty
-        };
-
-        if (string.IsNullOrEmpty(projectType))
-        {
-            return new List<string>();
-        }
-
-        try
-        {
-            var tags = await _modrinthService.GetLoaderTagsAsync(projectType);
-            return tags
-                .Where(t => !string.IsNullOrWhiteSpace(t.Name))
-                .Where(t => !(t.SupportedProjectTypes?.Any(p => string.Equals(p, "plugin", StringComparison.OrdinalIgnoreCase)) ?? false))
-                .Select(t => t.Name.Trim().ToLowerInvariant())
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[Modrinth加载器] 获取失败: {ex.Message}");
-            return new List<string>();
-        }
-    }
-
-    private static List<string> GetCurseForgeLoaderFallbacks()
-    {
-        return new List<string>
-        {
-            "forge",
-            "liteloader",
-            "fabric",
-            "quilt",
-            "neoforge"
-        };
-    }
-
-    /// <summary>
-    /// 获取CurseForge类别（持久化缓存 + 内存缓存）
-    /// </summary>
-    private async Task<List<Models.CategoryItem>> GetCurseForgeCategoriesAsync(string resourceType)
-    {
-        var categories = new List<Models.CategoryItem>();
-        
-        try
-        {
-            // 根据资源类型确定classId
-            int classId = resourceType.ToLower() switch
-            {
-                "mod" => 6,
-                "shader" => 6552,
-                "resourcepack" => 12,
-                "datapack" => 6945,
-                "modpack" => 4471,
-                "world" => 17,
-                _ => 6
-            };
-            
-            List<CurseForgeCategory>? curseForgeCategories = null;
-
-            // 一级：内存缓存
-            if (_curseForgeCategoryCache.TryGetValue(classId, out var memoryCachedCategories))
-            {
-                curseForgeCategories = memoryCachedCategories;
-                System.Diagnostics.Debug.WriteLine($"[CurseForge类别] 从内存缓存加载 {resourceType} 类别: {curseForgeCategories.Count} 个");
-            }
-
-            // 二级：磁盘缓存
-            if (curseForgeCategories == null)
-            {
-                var diskCachedCategories = await _curseForgeCacheService.GetCachedCategoriesAsync(classId);
-                if (diskCachedCategories != null && diskCachedCategories.Count > 0)
-                {
-                    curseForgeCategories = diskCachedCategories;
-                    _curseForgeCategoryCache[classId] = diskCachedCategories;
-                    System.Diagnostics.Debug.WriteLine($"[CurseForge类别] 从磁盘缓存加载 {resourceType} 类别: {curseForgeCategories.Count} 个");
-                }
-            }
-
-            // 三级：API
-            if (curseForgeCategories == null)
-            {
-                curseForgeCategories = await _curseForgeService.GetCategoriesAsync(classId);
-                _curseForgeCategoryCache[classId] = curseForgeCategories;
-                await _curseForgeCacheService.SaveCategoriesAsync(classId, curseForgeCategories);
-                System.Diagnostics.Debug.WriteLine($"[CurseForge类别] 从API获取 {resourceType} 类别: {curseForgeCategories.Count} 个，已写入内存+磁盘缓存");
-            }
-            
-            foreach (var category in curseForgeCategories)
-            {
-                categories.Add(new Models.CategoryItem
-                {
-                    Id = category.Id,
-                    Tag = category.Id.ToString(),
-                    DisplayName = Helpers.CategoryLocalizationHelper.GetLocalizedCategoryName(category.Name),
-                    Source = "curseforge"
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[CurseForge类别] 获取失败: {ex.Message}");
-        }
-        
-        return categories;
     }
     
     /// <summary>

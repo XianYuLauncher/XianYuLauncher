@@ -1,9 +1,11 @@
 using Microsoft.Extensions.DependencyInjection;
+using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
 using XianYuLauncher.Features.ModDownloadDetail.Services;
 using XianYuLauncher.Features.VersionManagement.Services;
+using XianYuLauncher.Services;
 
 namespace XianYuLauncher.Extensions;
 
@@ -27,6 +29,7 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<ILaunchOperationTracker, LaunchOperationTracker>();
         services.AddSingleton<IAgentOperationStatusService, AgentOperationStatusService>();
         services.AddSingleton<IAgentGameInstallService, AgentGameInstallService>();
+        services.AddSingleton<ICommunityResourceFilterMetadataService, CommunityResourceFilterMetadataService>();
         services.AddSingleton<IAgentCommunityResourceService, AgentCommunityResourceService>();
         services.AddSingleton<ILauncherAIWorkspacePersistenceService, LauncherAIWorkspacePersistenceService>();
         services.AddSingleton<IAgentToolDispatcher, AgentToolDispatcher>();
@@ -52,6 +55,7 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentToolHandler, LaunchGameToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetOperationStatusToolHandler>();
         services.AddSingleton<IAgentToolHandler, SearchCommunityResourcesToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetCommunityResourceTagsToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetCommunityResourceFilesToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetInstancesToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetInstanceCommunityResourcesToolHandler>();

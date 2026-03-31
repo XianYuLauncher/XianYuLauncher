@@ -15,9 +15,15 @@ public interface IAgentCommunityResourceService
         string query,
         string resourceType,
         IReadOnlyList<string>? platforms,
+        IReadOnlyList<string>? categoryTokens,
         string? gameVersion,
         string? loader,
         int limit,
+        CancellationToken cancellationToken);
+
+    Task<string> GetCommunityResourceTagsAsync(
+        string resourceType,
+        IReadOnlyList<string>? platforms,
         CancellationToken cancellationToken);
 
     Task<string> GetProjectFilesAsync(
@@ -148,6 +154,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
     private readonly ICommunityResourceInstallPlanner _communityResourceInstallPlanner;
     private readonly ICommunityResourceInstallService _communityResourceInstallService;
     private readonly ITranslationService _translationService;
+    private readonly ICommunityResourceFilterMetadataService _communityResourceFilterMetadataService;
 
     public AgentCommunityResourceService(
         ModrinthService modrinthService,
@@ -161,7 +168,8 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         ICommunityResourceUpdateService communityResourceUpdateService,
         ICommunityResourceInstallPlanner communityResourceInstallPlanner,
         ICommunityResourceInstallService communityResourceInstallService,
-        ITranslationService translationService)
+        ITranslationService translationService,
+        ICommunityResourceFilterMetadataService communityResourceFilterMetadataService)
     {
         _modrinthService = modrinthService;
         _curseForgeService = curseForgeService;
@@ -175,12 +183,14 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         _communityResourceInstallPlanner = communityResourceInstallPlanner;
         _communityResourceInstallService = communityResourceInstallService;
         _translationService = translationService;
+        _communityResourceFilterMetadataService = communityResourceFilterMetadataService;
     }
 
     public async Task<string> SearchAsync(
         string query,
         string resourceType,
         IReadOnlyList<string>? platforms,
+        IReadOnlyList<string>? categoryTokens,
         string? gameVersion,
         string? loader,
         int limit,
@@ -212,6 +222,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         }
 
         var normalizedLoader = NormalizeLoader(loader);
+        var normalizedCategoryTokens = NormalizeCategoryTokens(categoryTokens);
         var normalizedGameVersion = NormalizeText(gameVersion);
         var effectiveLimit = Math.Clamp(limit, 1, 10);
         var effectiveQuery = _translationService.GetEnglishKeywordForSearch(query.Trim());
@@ -226,6 +237,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                     results.AddRange(await SearchModrinthAsync(
                         effectiveQuery,
                         normalizedResourceType,
+                        normalizedCategoryTokens,
                         normalizedGameVersion,
                         normalizedLoader,
                         effectiveLimit,
@@ -235,6 +247,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                     results.AddRange(await SearchCurseForgeAsync(
                         effectiveQuery,
                         normalizedResourceType,
+                        normalizedCategoryTokens,
                         normalizedGameVersion,
                         normalizedLoader,
                         effectiveLimit,
@@ -250,8 +263,65 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             effective_query = effectiveQuery,
             resource_type = normalizedResourceType,
             platforms = normalizedPlatforms,
+            category_tokens = normalizedCategoryTokens,
             total_returned = results.Count,
             results
+        });
+    }
+
+    public async Task<string> GetCommunityResourceTagsAsync(
+        string resourceType,
+        IReadOnlyList<string>? platforms,
+        CancellationToken cancellationToken)
+    {
+        var normalizedResourceType = NormalizeQueryableResourceType(resourceType);
+        if (normalizedResourceType == null)
+        {
+            return SerializePayload(new
+            {
+                status = "invalid_request",
+                message = "resource_type 仅支持 mod、resourcepack、shader、datapack。"
+            });
+        }
+
+        var normalizedPlatforms = NormalizePlatforms(platforms);
+        if (normalizedPlatforms.Count == 0)
+        {
+            normalizedPlatforms = ["modrinth", "curseforge"];
+        }
+
+        var metadata = await _communityResourceFilterMetadataService.GetFilterMetadataAsync(
+            normalizedResourceType,
+            normalizedPlatforms,
+            includeAllCategory: false,
+            cancellationToken: cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var categories = metadata.Categories
+            .Select(category => new
+            {
+                token = category.Tag,
+                display_name = category.DisplayName,
+                source = category.Source,
+                category_id = category.Id
+            })
+            .ToList();
+
+        return SerializePayload(new
+        {
+            status = "ok",
+            resource_type = normalizedResourceType,
+            platforms = metadata.Platforms,
+            category_count = categories.Count,
+            loader_count = metadata.Loaders.Count,
+            categories,
+            loaders = metadata.Loaders,
+            usage = new
+            {
+                search_argument = "category_tokens",
+                search_loader_argument = "loader",
+                note = "将 categories[*].token 直接传给 searchCommunityResources.category_tokens。非数字 token 会作用于 Modrinth，纯数字 token 会作用于 CurseForge；这与资源下载页当前筛选行为保持一致。"
+            }
         });
     }
 
@@ -660,12 +730,20 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
     private async Task<List<object>> SearchModrinthAsync(
         string query,
         string resourceType,
+        IReadOnlyList<string> categoryTokens,
         string? gameVersion,
         string? loader,
         int limit,
         CancellationToken cancellationToken)
     {
         var facets = new List<List<string>>();
+        var modrinthCategoryTokens = GetModrinthCategoryTokens(categoryTokens);
+
+        if (modrinthCategoryTokens.Count > 0)
+        {
+            facets.Add(modrinthCategoryTokens.Select(tag => $"categories:{tag}").ToList());
+        }
+
         if (!string.IsNullOrWhiteSpace(loader))
         {
             facets.Add([ $"categories:{loader}" ]);
@@ -710,6 +788,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
     private async Task<List<object>> SearchCurseForgeAsync(
         string query,
         string resourceType,
+        IReadOnlyList<string> categoryTokens,
         string? gameVersion,
         string? loader,
         int limit,
@@ -717,13 +796,10 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
     {
         var loaderType = MapCurseForgeLoaderType(loader);
         var classId = MapCurseForgeClassId(resourceType);
+        var categoryIds = GetCurseForgeCategoryIds(categoryTokens);
+        var projects = await SearchCurseForgeProjectsAsync(classId, query, gameVersion, loaderType, categoryIds, limit, cancellationToken);
 
-        CurseForgeSearchResult result = classId == 6
-            ? await _curseForgeService.SearchModsAsync(query, gameVersion, loaderType, null, 0, limit)
-            : await _curseForgeService.SearchResourcesAsync(classId, query, gameVersion, loaderType, null, 0, limit);
-        cancellationToken.ThrowIfCancellationRequested();
-
-        return result.Data
+        return projects
             .Take(limit)
             .Select(project => (object)new
             {
@@ -745,6 +821,53 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                 icon_url = project.Logo?.Url
             })
             .ToList();
+    }
+
+    private async Task<List<CurseForgeMod>> SearchCurseForgeProjectsAsync(
+        int classId,
+        string query,
+        string? gameVersion,
+        int? loaderType,
+        IReadOnlyList<int> categoryIds,
+        int limit,
+        CancellationToken cancellationToken)
+    {
+        using var semaphore = new SemaphoreSlim(4);
+        var effectiveCategoryIds = categoryIds.Count > 0 ? categoryIds : [0];
+        var results = new List<CurseForgeMod>();
+        var deduplicated = new HashSet<int>();
+
+        async Task<List<CurseForgeMod>> RunSearchAsync(int categoryId)
+        {
+            await semaphore.WaitAsync(cancellationToken);
+            try
+            {
+                var effectiveCategoryId = categoryId == 0 ? (int?)null : categoryId;
+                var result = classId == 6
+                    ? await _curseForgeService.SearchModsAsync(query, gameVersion, loaderType, effectiveCategoryId, 0, limit)
+                    : await _curseForgeService.SearchResourcesAsync(classId, query, gameVersion, loaderType, effectiveCategoryId, 0, limit);
+                cancellationToken.ThrowIfCancellationRequested();
+                return result.Data;
+            }
+            finally
+            {
+                semaphore.Release();
+            }
+        }
+
+        var searchResults = await Task.WhenAll(effectiveCategoryIds.Select(RunSearchAsync));
+        foreach (var batch in searchResults)
+        {
+            foreach (var project in batch)
+            {
+                if (deduplicated.Add(project.Id))
+                {
+                    results.Add(project);
+                }
+            }
+        }
+
+        return results;
     }
 
     private async Task<string> GetModrinthProjectFilesAsync(
@@ -1781,6 +1904,46 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
 
         return normalizedPlatforms;
     }
+
+    private static List<string> NormalizeCategoryTokens(IReadOnlyList<string>? categoryTokens)
+    {
+        var normalizedTokens = new List<string>();
+        if (categoryTokens == null)
+        {
+            return normalizedTokens;
+        }
+
+        foreach (var categoryToken in categoryTokens)
+        {
+            var normalized = NormalizeText(categoryToken);
+            if (string.IsNullOrWhiteSpace(normalized)
+                || string.Equals(normalized, "all", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            if (!normalizedTokens.Contains(normalized, StringComparer.OrdinalIgnoreCase))
+            {
+                normalizedTokens.Add(normalized);
+            }
+        }
+
+        return normalizedTokens;
+    }
+
+    private static List<string> GetModrinthCategoryTokens(IReadOnlyList<string> categoryTokens) =>
+        categoryTokens
+            .Where(token => !int.TryParse(token, out _))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private static List<int> GetCurseForgeCategoryIds(IReadOnlyList<string> categoryTokens) =>
+        categoryTokens
+            .Select(token => int.TryParse(token, out var categoryId) ? categoryId : (int?)null)
+            .Where(categoryId => categoryId.HasValue)
+            .Select(categoryId => categoryId!.Value)
+            .Distinct()
+            .ToList();
 
     private static int MapCurseForgeClassId(string resourceType) =>
         resourceType switch
