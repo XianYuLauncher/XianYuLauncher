@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 
@@ -159,6 +160,80 @@ public sealed class LauncherAIWorkspacePersistenceServiceTests : IDisposable
 
         secondStored.Should().NotBeNull();
         secondStored!.RelativeFilePath.Should().Be(firstStored!.RelativeFilePath);
+    }
+
+    [Fact]
+    public void RestoreAttachment_WhenFileNameContainsDoubleDots_ShouldAllowStoredAttachment()
+    {
+        var conversationId = Guid.NewGuid();
+        var attachmentDirectory = Path.Combine(_workspaceRootPath, AppDataFileConsts.LauncherAIAttachmentsFolder, conversationId.ToString("N"));
+        Directory.CreateDirectory(attachmentDirectory);
+
+        var fileName = "screen..shot.png";
+        var filePath = Path.Combine(attachmentDirectory, fileName);
+        File.WriteAllBytes(filePath, [1, 2, 3]);
+
+        var restored = _service.RestoreAttachment(new LauncherAIAttachmentStorageModel
+        {
+            FileName = fileName,
+            RelativeFilePath = $"{conversationId:N}/{fileName}",
+            ContentType = "image/png"
+        });
+
+        restored.Should().NotBeNull();
+        restored!.FilePath.Should().Be(filePath);
+    }
+
+    [Fact]
+    public void RestoreAttachment_WhenRelativePathContainsTraversalSegment_ShouldRejectAttachment()
+    {
+        var conversationId = Guid.NewGuid();
+
+        var restored = _service.RestoreAttachment(new LauncherAIAttachmentStorageModel
+        {
+            FileName = "evil.png",
+            RelativeFilePath = $"{conversationId:N}/../evil.png",
+            ContentType = "image/png"
+        });
+
+        restored.Should().BeNull();
+    }
+
+    [Fact]
+    public void RestoreAttachment_WhenRelativePathContainsInvalidCharacters_ShouldRejectAttachment()
+    {
+        var conversationId = Guid.NewGuid();
+
+        var restored = _service.RestoreAttachment(new LauncherAIAttachmentStorageModel
+        {
+            FileName = "bad?.png",
+            RelativeFilePath = $"{conversationId:N}/bad?.png",
+            ContentType = "image/png"
+        });
+
+        restored.Should().BeNull();
+    }
+
+    [Fact]
+    public void RestoreAttachment_WhenRelativePathContainsCurrentDirectorySegment_ShouldResolveCanonicalFile()
+    {
+        var conversationId = Guid.NewGuid();
+        var attachmentDirectory = Path.Combine(_workspaceRootPath, AppDataFileConsts.LauncherAIAttachmentsFolder, conversationId.ToString("N"));
+        Directory.CreateDirectory(attachmentDirectory);
+
+        var fileName = "sample.png";
+        var filePath = Path.Combine(attachmentDirectory, fileName);
+        File.WriteAllBytes(filePath, [1, 2, 3]);
+
+        var restored = _service.RestoreAttachment(new LauncherAIAttachmentStorageModel
+        {
+            FileName = fileName,
+            RelativeFilePath = $"{conversationId:N}/./{fileName}",
+            ContentType = "image/png"
+        });
+
+        restored.Should().NotBeNull();
+        restored!.FilePath.Should().Be(filePath);
     }
 
     [Fact]

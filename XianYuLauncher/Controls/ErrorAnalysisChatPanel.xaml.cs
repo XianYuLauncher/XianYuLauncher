@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Serilog;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Models;
@@ -51,6 +52,7 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
     private ScrollViewer? _chatScrollViewer;
     private UiChatMessage? _lastChatMessage;
     private ErrorAnalysisViewModel? _attachedViewModel;
+    private CancellationTokenSource? _scrollLifecycleCts;
 
     public ErrorAnalysisViewModel? ViewModel
     {
@@ -121,6 +123,7 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
 
     private void OnLoaded(object sender, RoutedEventArgs e)
     {
+        ResetScrollLifecycleToken();
         AttachViewModelHandlers(ViewModel);
         UpdatePlaceholderState();
         UpdateComposerState();
@@ -130,6 +133,7 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
 
     private void OnUnloaded(object sender, RoutedEventArgs e)
     {
+        CancelScrollLifecycleToken();
         DetachViewModelHandlers(ViewModel);
 
         if (_chatScrollViewer != null)
@@ -339,11 +343,24 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
 
     private async Task ScrollChatToBottomAsync()
     {
+        var cancellationToken = _scrollLifecycleCts?.Token ?? CancellationToken.None;
+
         try
         {
-            await Task.Delay(50);
+            await Task.Delay(50, cancellationToken);
+
+            if (cancellationToken.IsCancellationRequested || !IsLoaded || ViewModel == null)
+            {
+                return;
+            }
+
             await _uiDispatcher.RunOnUiThreadAsync(() =>
             {
+                if (!IsLoaded)
+                {
+                    return;
+                }
+
                 if (_chatScrollViewer != null)
                 {
                     _chatScrollViewer.ChangeView(null, _chatScrollViewer.ScrollableHeight, null, true);
@@ -354,13 +371,35 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
                 }
             });
         }
-        catch
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+        }
+        catch (Exception ex)
+        {
+            Log.Debug(ex, "[ErrorAnalysisChatPanel] 自动滚动到底部失败。");
         }
         finally
         {
             _isChatScrollPending = false;
         }
+    }
+
+    private void ResetScrollLifecycleToken()
+    {
+        CancelScrollLifecycleToken();
+        _scrollLifecycleCts = new CancellationTokenSource();
+    }
+
+    private void CancelScrollLifecycleToken()
+    {
+        if (_scrollLifecycleCts == null)
+        {
+            return;
+        }
+
+        _scrollLifecycleCts.Cancel();
+        _scrollLifecycleCts.Dispose();
+        _scrollLifecycleCts = null;
     }
 
     private void UpdatePlaceholderState()

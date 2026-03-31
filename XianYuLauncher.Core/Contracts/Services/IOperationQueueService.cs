@@ -13,7 +13,7 @@ public interface IOperationQueueService
     bool HasActiveOperation { get; }
 
     /// <summary>
-    /// 当前任务快照（包含排队中、执行中与历史任务）。
+    /// 当前任务快照（包含排队中、执行中，以及最近保留的历史任务）。当前仅保留最近 5 条已结束任务。
     /// </summary>
     IReadOnlyList<OperationTaskInfo> TasksSnapshot { get; }
 

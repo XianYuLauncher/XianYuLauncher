@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using XianYuLauncher.Core.Contracts.Services;
@@ -26,7 +27,10 @@ internal static class MiscServiceExtensions
         services.AddSingleton<IAnnouncementService, AnnouncementService>();
         services.AddSingleton<LaunchNewsCardService>();
 
-        services.AddSingleton<IAIAnalysisService, OpenAIAnalysisService>();
+        services.AddHttpClient<IAIAnalysisService, OpenAIAnalysisService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(60);
+        });
 
         services.AddSingleton<IAfdianService, LocalAfdianService>();
 

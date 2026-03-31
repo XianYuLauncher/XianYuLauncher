@@ -18,7 +18,7 @@ public sealed class AgentActionProposal
 
     public AgentToolPermissionLevel PermissionLevel { get; init; } = AgentToolPermissionLevel.ConfirmationRequired;
 
-    public Dictionary<string, string> Parameters { get; init; } = [];
+    public Dictionary<string, string> Parameters { get; init; } = new(StringComparer.OrdinalIgnoreCase);
 
     public static AgentActionProposal FromCrashFixAction(CrashFixAction action)
     {

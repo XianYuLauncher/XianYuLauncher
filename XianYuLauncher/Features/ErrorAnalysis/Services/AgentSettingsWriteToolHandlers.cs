@@ -158,6 +158,7 @@ public sealed class SwitchMinecraftPathActionHandler : IAgentActionHandler
 
         var currentMinecraftPath = await _gameSettingsDomainService.ResolveCurrentMinecraftPathAsync();
         var pathsJson = await _gameSettingsDomainService.LoadMinecraftPathsJsonAsync();
+        var originalPathsJson = pathsJson ?? string.Empty;
         cancellationToken.ThrowIfCancellationRequested();
 
         if (!AgentMinecraftPathHelper.TryResolveSelection(
@@ -196,15 +197,12 @@ public sealed class SwitchMinecraftPathActionHandler : IAgentActionHandler
         }
         catch (Exception ex)
         {
-            try
-            {
-                await _gameSettingsDomainService.SaveMinecraftPathAsync(selection.CurrentPath);
-            }
-            catch
-            {
-            }
+            var currentPathRolledBack = await TryRollbackAsync(() => _gameSettingsDomainService.SaveMinecraftPathAsync(selection.CurrentPath));
+            var pathsJsonRolledBack = await TryRollbackAsync(() => _gameSettingsDomainService.SaveMinecraftPathsJsonAsync(originalPathsJson));
 
-            return $"切换 Minecraft 目录失败：{ex.Message}";
+            return currentPathRolledBack && pathsJsonRolledBack
+                ? $"切换 Minecraft 目录失败：{ex.Message}"
+                : $"切换 Minecraft 目录失败：{ex.Message}。已尝试回滚目录设置，但未能完全恢复，请在设置页检查 Minecraft 目录列表。";
         }
 
         _sessionState.Context.MinecraftPath = selection.TargetPath;
@@ -226,6 +224,19 @@ public sealed class SwitchMinecraftPathActionHandler : IAgentActionHandler
     private static string FormatPathSummary(string pathName, string path)
     {
         return $"{pathName} ({path})";
+    }
+
+    private static async Task<bool> TryRollbackAsync(Func<Task> rollbackAction)
+    {
+        try
+        {
+            await rollbackAction();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
 

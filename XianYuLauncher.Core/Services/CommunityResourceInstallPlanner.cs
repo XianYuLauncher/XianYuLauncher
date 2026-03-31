@@ -40,6 +40,16 @@ public sealed class CommunityResourceInstallPlanner : ICommunityResourceInstallP
             });
         }
 
+        if (!TryNormalizeLeafFileName(request.FileName, out var normalizedFileName))
+        {
+            return CommunityResourceInstallPlanningResult.Missing(new CommunityResourceInstallRequirement
+            {
+                Type = CommunityResourceInstallRequirementType.FileName,
+                Key = "file_name",
+                Message = "文件名无效：必须是单个文件名，不能包含目录或非法路径片段。"
+            });
+        }
+
         bool downloadDependencies = await ReadDownloadDependenciesAsync().ConfigureAwait(false);
         if (request.UseCustomDownloadPath)
         {
@@ -63,7 +73,7 @@ public sealed class CommunityResourceInstallPlanner : ICommunityResourceInstallP
                 TargetSaveName = request.TargetSaveName?.Trim(),
                 PrimaryTargetDirectory = customDownloadPath,
                 DependencyTargetDirectory = customDownloadPath,
-                SavePath = Path.Combine(customDownloadPath, request.FileName),
+                SavePath = Path.Combine(customDownloadPath, normalizedFileName),
                 UseTargetDirectoryForAllDependencies = true,
                 DownloadDependencies = downloadDependencies,
                 UseCustomDownloadPath = true
@@ -104,11 +114,34 @@ public sealed class CommunityResourceInstallPlanner : ICommunityResourceInstallP
             TargetSaveName = request.TargetSaveName?.Trim(),
             PrimaryTargetDirectory = primaryTargetDirectory,
             DependencyTargetDirectory = primaryTargetDirectory,
-            SavePath = Path.Combine(primaryTargetDirectory, request.FileName),
+            SavePath = Path.Combine(primaryTargetDirectory, normalizedFileName),
             UseTargetDirectoryForAllDependencies = false,
             DownloadDependencies = downloadDependencies,
             UseCustomDownloadPath = false
         });
+    }
+
+    private static bool TryNormalizeLeafFileName(string fileName, out string normalizedFileName)
+    {
+        normalizedFileName = string.Empty;
+
+        string trimmedFileName = fileName.Trim();
+        if (string.IsNullOrWhiteSpace(trimmedFileName) || Path.IsPathRooted(trimmedFileName))
+        {
+            return false;
+        }
+
+        string leafFileName = Path.GetFileName(trimmedFileName);
+        if (!string.Equals(leafFileName, trimmedFileName, StringComparison.Ordinal) ||
+            string.IsNullOrWhiteSpace(leafFileName) ||
+            leafFileName is "." or ".." ||
+            leafFileName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            return false;
+        }
+
+        normalizedFileName = leafFileName;
+        return true;
     }
 
     private async Task<bool> ReadDownloadDependenciesAsync()

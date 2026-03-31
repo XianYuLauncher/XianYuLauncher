@@ -52,6 +52,122 @@ public class CurseForgeService
     /// 数据包分类ID
     /// </summary>
     private const int DatapacksClassId = 6945;
+    private const int DownloadCallbackThrottleMilliseconds = 100;
+    private const double DownloadCallbackMinimumPercentDelta = 1;
+
+    private sealed class DownloadProgressReporter
+    {
+        private readonly string _fileName;
+        private readonly Action<string, double>? _progressCallback;
+        private readonly Action<DownloadProgressStatus>? _downloadStatusCallback;
+        private readonly System.Diagnostics.Stopwatch _stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        private DownloadProgressStatus _lastObservedStatus;
+        private bool _hasObservedStatus;
+        private double _lastReportedPercent = double.NaN;
+        private long _lastReportAtMilliseconds = long.MinValue;
+
+        public DownloadProgressReporter(
+            string fileName,
+            Action<string, double>? progressCallback,
+            Action<DownloadProgressStatus>? downloadStatusCallback)
+        {
+            _fileName = fileName;
+            _progressCallback = progressCallback;
+            _downloadStatusCallback = downloadStatusCallback;
+        }
+
+        public void ReportInitial()
+        {
+            var totalBytes = _hasObservedStatus ? _lastObservedStatus.TotalBytes : 0;
+            var initialStatus = new DownloadProgressStatus(0, totalBytes, 0, 0);
+            Report(initialStatus, force: true);
+        }
+
+        public void Report(DownloadProgressStatus status, bool force = false)
+        {
+            var normalizedStatus = Normalize(status);
+            _lastObservedStatus = normalizedStatus;
+            _hasObservedStatus = true;
+
+            if ((_progressCallback == null && _downloadStatusCallback == null)
+                || (!force && !ShouldReport(normalizedStatus)))
+            {
+                return;
+            }
+
+            _lastReportedPercent = normalizedStatus.Percent;
+            _lastReportAtMilliseconds = _stopwatch.ElapsedMilliseconds;
+            _progressCallback?.Invoke(_fileName, normalizedStatus.Percent);
+            _downloadStatusCallback?.Invoke(normalizedStatus);
+        }
+
+        public void ReportCompletion()
+        {
+            if ((_progressCallback == null && _downloadStatusCallback == null)
+                || (!double.IsNaN(_lastReportedPercent) && _lastReportedPercent >= 100))
+            {
+                return;
+            }
+
+            long totalBytes = _hasObservedStatus ? _lastObservedStatus.TotalBytes : 0;
+            double bytesPerSecond = _hasObservedStatus ? _lastObservedStatus.BytesPerSecond : 0;
+            var completedStatus = new DownloadProgressStatus(
+                totalBytes > 0 ? totalBytes : (_hasObservedStatus ? _lastObservedStatus.DownloadedBytes : 0),
+                totalBytes,
+                100,
+                bytesPerSecond);
+            Report(completedStatus, force: true);
+        }
+
+        private bool ShouldReport(DownloadProgressStatus status)
+        {
+            if (double.IsNaN(_lastReportedPercent))
+            {
+                return true;
+            }
+
+            if (status.Percent >= 100)
+            {
+                return true;
+            }
+
+            if (status.TotalBytes > 0)
+            {
+                if (status.Percent <= 0)
+                {
+                    return true;
+                }
+
+                if (status.DownloadedBytes >= status.TotalBytes)
+                {
+                    return true;
+                }
+
+                if (status.Percent - _lastReportedPercent >= DownloadCallbackMinimumPercentDelta)
+                {
+                    return true;
+                }
+            }
+
+            return _stopwatch.ElapsedMilliseconds - _lastReportAtMilliseconds >= DownloadCallbackThrottleMilliseconds;
+        }
+
+        private static DownloadProgressStatus Normalize(DownloadProgressStatus status)
+        {
+            var totalBytes = status.TotalBytes;
+            var downloadedBytes = status.DownloadedBytes;
+            if (totalBytes > 0)
+            {
+                downloadedBytes = Math.Min(downloadedBytes, totalBytes);
+            }
+
+            return new DownloadProgressStatus(
+                downloadedBytes,
+                totalBytes,
+                Math.Clamp(status.Percent, 0, 100),
+                status.BytesPerSecond);
+        }
+    }
 
     public CurseForgeService(
         HttpClient httpClient, 
@@ -492,6 +608,7 @@ public class CurseForgeService
         try
         {
             string fileName = Path.GetFileName(destinationPath);
+            var progressReporter = new DownloadProgressReporter(fileName, progressCallback, downloadStatusCallback);
             
             // 还原为官方CDN URL（FallbackDownloadManager 会自动转换）
             string originalUrl = downloadUrl;
@@ -504,7 +621,7 @@ public class CurseForgeService
             System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 开始下载文件: {originalUrl}");
             System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 目标路径: {destinationPath}");
             
-            progressCallback?.Invoke(fileName, 0);
+            progressReporter.ReportInitial();
             
             // 创建父目录
             string? parentDir = Path.GetDirectoryName(destinationPath);
@@ -520,17 +637,13 @@ public class CurseForgeService
                     originalUrl,
                     destinationPath,
                     "curseforge_cdn",
-                    progressCallback: status =>
-                    {
-                        progressCallback?.Invoke(fileName, status.Percent);
-                        downloadStatusCallback?.Invoke(status);
-                    },
+                    progressCallback: status => progressReporter.Report(status),
                     cancellationToken: cancellationToken);
                 
                 if (result.Success)
                 {
                     System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 文件下载完成: {destinationPath} (使用源: {result.UsedSourceKey})");
-                    progressCallback?.Invoke(fileName, 100);
+                    progressReporter.ReportCompletion();
                     return true;
                 }
                 else
@@ -580,14 +693,24 @@ public class CurseForgeService
                             downloadStopwatch.Elapsed.TotalSeconds > 0
                                 ? downloadedBytes / downloadStopwatch.Elapsed.TotalSeconds
                                 : 0);
-                        progressCallback?.Invoke(fileName, downloadStatus.Percent);
-                        downloadStatusCallback?.Invoke(downloadStatus);
+                        progressReporter.Report(downloadStatus);
+                    }
+                    else
+                    {
+                        var downloadStatus = new DownloadProgressStatus(
+                            downloadedBytes,
+                            0,
+                            0,
+                            downloadStopwatch.Elapsed.TotalSeconds > 0
+                                ? downloadedBytes / downloadStopwatch.Elapsed.TotalSeconds
+                                : 0);
+                        progressReporter.Report(downloadStatus);
                     }
                 }
             }
             
             response.Dispose();
-            progressCallback?.Invoke(fileName, 100);
+            progressReporter.ReportCompletion();
             return true;
         }
         catch (OperationCanceledException)

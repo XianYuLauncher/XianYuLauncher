@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
@@ -110,7 +111,7 @@ public sealed class AgentOperationStatusService : IAgentOperationStatusService
 
         if (snapshot.ProgressPercent.HasValue)
         {
-            builder.AppendLine($"progress_percent: {snapshot.ProgressPercent.Value:0.##}");
+            builder.AppendLine($"progress_percent: {snapshot.ProgressPercent.Value.ToString("0.##", CultureInfo.InvariantCulture)}");
         }
 
         if (!string.IsNullOrWhiteSpace(snapshot.TaskName))

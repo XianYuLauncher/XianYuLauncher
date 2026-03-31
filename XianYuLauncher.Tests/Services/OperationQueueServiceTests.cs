@@ -147,6 +147,88 @@ public class OperationQueueServiceTests
         finalSnapshot.StatusMessage.Should().Be("后台任务完成");
     }
 
+    [Fact]
+    public async Task EnqueueAsync_WhenCallerCancellationRequested_ShouldMarkTaskCancelled()
+    {
+        var service = new OperationQueueService(_loggerMock.Object);
+        using CancellationTokenSource callerCts = new();
+        TaskCompletionSource<bool> startedSource = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var executionTask = service.EnqueueAsync(new OperationTaskRequest
+        {
+            TaskName = "cancelled-task",
+            TaskType = OperationTaskType.LoaderInstall,
+            ScopeKey = "scope-cancelled-task",
+            AllowParallel = true,
+            ExecuteAsync = async (_, token) =>
+            {
+                startedSource.TrySetResult(true);
+                await Task.Delay(Timeout.InfiniteTimeSpan, token);
+            }
+        }, callerCts.Token);
+
+        await startedSource.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        callerCts.Cancel();
+
+        var result = await executionTask;
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Be("任务已取消");
+        result.TaskInfo.State.Should().Be(OperationTaskState.Cancelled);
+        result.TaskInfo.StatusMessage.Should().Be("任务已取消");
+    }
+
+    [Fact]
+    public async Task EnqueueAsync_WhenExecuteThrowsOperationCanceledWithoutRequestedCancellation_ShouldMarkTaskFailed()
+    {
+        var service = new OperationQueueService(_loggerMock.Object);
+
+        var result = await service.EnqueueAsync(new OperationTaskRequest
+        {
+            TaskName = "failed-oce-task",
+            TaskType = OperationTaskType.LoaderInstall,
+            ScopeKey = "scope-failed-oce-task",
+            AllowParallel = true,
+            ExecuteAsync = (_, _) => throw new OperationCanceledException("内部步骤取消")
+        });
+
+        result.Success.Should().BeFalse();
+        result.ErrorMessage.Should().Be("内部步骤取消");
+        result.TaskInfo.State.Should().Be(OperationTaskState.Failed);
+        result.TaskInfo.StatusMessage.Should().Be("任务失败：内部步骤取消");
+    }
+
+    [Fact]
+    public async Task EnqueueAsync_WhenTerminalSnapshotsExceedLimit_ShouldRetainLatestFive()
+    {
+        var service = new OperationQueueService(_loggerMock.Object);
+        List<string> taskIds = [];
+
+        for (var index = 0; index < 6; index++)
+        {
+            var result = await service.EnqueueAsync(new OperationTaskRequest
+            {
+                TaskName = $"retention-task-{index}",
+                TaskType = OperationTaskType.LoaderInstall,
+                ScopeKey = $"retention-scope-{index}",
+                AllowParallel = true,
+                ExecuteAsync = (_, _) => Task.CompletedTask
+            });
+
+            taskIds.Add(result.TaskInfo.TaskId);
+            await Task.Delay(2);
+        }
+
+        service.TasksSnapshot.Should().HaveCount(5);
+        service.TryGetSnapshot(taskIds[0], out _).Should().BeFalse();
+
+        foreach (var taskId in taskIds.Skip(1))
+        {
+            service.TryGetSnapshot(taskId, out var snapshot).Should().BeTrue();
+            snapshot!.State.Should().Be(OperationTaskState.Completed);
+        }
+    }
+
     private static OperationTaskRequest CreateRequest(string scopeKey, bool allowParallel, ConcurrencyCounter counter)
     {
         async Task ExecuteAsync(CancellationToken token)

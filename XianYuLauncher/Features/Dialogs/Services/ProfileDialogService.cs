@@ -107,16 +107,10 @@ public sealed class ProfileDialogService : IProfileDialogService
 
                             _uiDispatcher.EnqueueAsync(async () =>
                             {
-                                try
+                                var processedAvatar = await ProcessAvatarBytesAsync(skinBytes);
+                                if (processedAvatar != null)
                                 {
-                                    var processedAvatar = await ProcessAvatarBytesAsync(skinBytes);
-                                    if (processedAvatar != null)
-                                    {
-                                        item.Avatar = processedAvatar;
-                                    }
-                                }
-                                catch
-                                {
+                                    item.Avatar = processedAvatar;
                                 }
                             }).Observe("ProfileDialogService.LoadProfileAvatar");
                         }
@@ -310,6 +304,14 @@ public sealed class ProfileDialogService : IProfileDialogService
 
     private static async Task<BitmapImage?> ProcessAvatarBytesAsync(byte[] skinBytes)
     {
-        return await ProfileAvatarImageHelper.CreateProfileAvatarFromSkinAsync(skinBytes, outputSize: 32, includeOverlay: true);
+        try
+        {
+            return await ProfileAvatarImageHelper.CreateProfileAvatarFromSkinAsync(skinBytes, outputSize: 32, includeOverlay: true);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "[Avatar.ProfileDialogService] 处理皮肤头像失败，将回退到默认头像。");
+            return null;
+        }
     }
 }

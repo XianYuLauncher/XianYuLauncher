@@ -717,7 +717,7 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
 
                 apiMessages.Add(new ChatMessage(msg.Role, historyContent)
                 {
-                    ImageAttachments = historyAttachments.Count > 0 ? historyAttachments : null
+                    ImageAttachments = historyAttachments
                 });
             }
         });
@@ -731,7 +731,7 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
     {
         foreach (var message in apiMessages)
         {
-            if (message.ImageAttachments == null || message.ImageAttachments.Count == 0)
+            if (message.ImageAttachments.Count == 0)
             {
                 continue;
             }
@@ -1127,7 +1127,7 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
 
     private static bool ContainsImageAttachments(IEnumerable<ChatMessage> apiMessages)
     {
-        return apiMessages.Any(message => message.ImageAttachments != null && message.ImageAttachments.Count > 0);
+        return apiMessages.Any(message => message.ImageAttachments.Count > 0);
     }
 
     private static bool IsImageInputUnsupportedError(AiAnalysisRequestException exception)
@@ -1162,7 +1162,7 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
 
             if (message.Role == "user")
             {
-                cloned.ImageAttachments = null;
+                cloned.ImageAttachments = [];
                 if (string.IsNullOrWhiteSpace(cloned.Content))
                 {
                     continue;

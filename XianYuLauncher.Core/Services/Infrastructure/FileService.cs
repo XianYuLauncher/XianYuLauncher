@@ -3,6 +3,7 @@ using System.Text;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using Newtonsoft.Json;
+using Serilog;
 
 namespace XianYuLauncher.Core.Services;
 
@@ -159,9 +160,21 @@ public class FileService : IFileService
         if (File.Exists(filePath))
         {
             var json = File.ReadAllText(filePath);
-            return JsonConvert.DeserializeObject<T>(json);
+            return TryDeserialize<T>(json, filePath);
         }
         return default;
+    }
+
+    public async Task<T?> ReadAsync<T>(string folderPath, string fileName, CancellationToken cancellationToken = default)
+    {
+        var filePath = Path.Combine(folderPath, fileName);
+        if (!File.Exists(filePath))
+        {
+            return default;
+        }
+
+        var json = await File.ReadAllTextAsync(filePath, cancellationToken).ConfigureAwait(false);
+        return TryDeserialize<T>(json, filePath);
     }
 
     public void Save<T>(string folderPath, string fileName, T content)
@@ -175,11 +188,37 @@ public class FileService : IFileService
         File.WriteAllText(filePath, json);
     }
 
+    public async Task SaveAsync<T>(string folderPath, string fileName, T content, CancellationToken cancellationToken = default)
+    {
+        if (!Directory.Exists(folderPath))
+        {
+            Directory.CreateDirectory(folderPath);
+        }
+
+        var filePath = Path.Combine(folderPath, fileName);
+        var json = JsonConvert.SerializeObject(content);
+        await File.WriteAllTextAsync(filePath, json, cancellationToken).ConfigureAwait(false);
+    }
+
     public void Delete(string folderPath, string fileName)
     {
         if (fileName != null && File.Exists(Path.Combine(folderPath, fileName)))
         {
             File.Delete(Path.Combine(folderPath, fileName));
+        }
+    }
+
+    private static T? TryDeserialize<T>(string json, string filePath)
+    {
+        try
+        {
+            return JsonConvert.DeserializeObject<T>(json);
+        }
+        catch (JsonException ex)
+        {
+            var fileName = Path.GetFileName(filePath);
+            Log.Warning(ex, "读取 JSON 文件失败: {FileName}", string.IsNullOrWhiteSpace(fileName) ? "<unknown>" : fileName);
+            return default;
         }
     }
 }

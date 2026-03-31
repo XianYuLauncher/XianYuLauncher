@@ -209,11 +209,54 @@ public sealed class AgentSettingsQueryService : IAgentSettingsQueryService
         {
             throw new InvalidOperationException("当前会话缺少版本信息。");
         }
+
+        ValidateVersionIdForPath(context.VersionId);
     }
 
     private static string GetVersionDirectory(ErrorAnalysisSessionContext context)
     {
-        return Path.Combine(context.MinecraftPath, MinecraftPathConsts.Versions, context.VersionId);
+        try
+        {
+            var versionsRoot = Path.GetFullPath(Path.Combine(context.MinecraftPath, MinecraftPathConsts.Versions));
+            var versionDirectory = Path.GetFullPath(Path.Combine(versionsRoot, context.VersionId));
+            var normalizedVersionsRoot = EnsureTrailingDirectorySeparator(versionsRoot);
+
+            if (!versionDirectory.StartsWith(normalizedVersionsRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("版本目录解析结果不在 Minecraft versions 目录内，已拒绝访问。");
+            }
+
+            return versionDirectory;
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            throw new InvalidOperationException("版本 ID 非法：无法解析版本目录。", ex);
+        }
+    }
+
+    private static void ValidateVersionIdForPath(string versionId)
+    {
+        if (Path.IsPathRooted(versionId))
+        {
+            throw new InvalidOperationException("版本 ID 非法：不允许为绝对路径。");
+        }
+
+        if (!string.Equals(Path.GetFileName(versionId), versionId, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("版本 ID 非法：不允许包含目录分隔符。");
+        }
+
+        if (versionId.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+        {
+            throw new InvalidOperationException("版本 ID 非法：包含非法字符。");
+        }
+    }
+
+    private static string EnsureTrailingDirectorySeparator(string path)
+    {
+        return path.EndsWith(Path.DirectorySeparatorChar)
+            ? path
+            : path + Path.DirectorySeparatorChar;
     }
 
     private static string? NullIfWhiteSpace(string? value)

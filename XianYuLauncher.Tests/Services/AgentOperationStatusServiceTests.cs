@@ -1,3 +1,4 @@
+using System.Globalization;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
@@ -87,6 +88,39 @@ public sealed class AgentOperationStatusServiceTests
         message.Should().NotContain("progress_percent:");
         message.Should().NotContain("queue_position:");
         message.Should().NotContain("error_message:");
+    }
+
+    [Fact]
+    public void GetOperationStatusMessage_ShouldFormatProgressUsingInvariantCulture()
+    {
+        var originalCulture = CultureInfo.CurrentCulture;
+        var originalUiCulture = CultureInfo.CurrentUICulture;
+
+        try
+        {
+            CultureInfo.CurrentCulture = new CultureInfo("fr-FR");
+            CultureInfo.CurrentUICulture = new CultureInfo("fr-FR");
+
+            var task = new DownloadTaskInfo
+            {
+                TaskId = "download-op-invariant",
+                State = DownloadTaskState.Downloading,
+                Progress = 42.5,
+                StatusMessage = "正在下载资源...",
+                TaskCategory = DownloadTaskCategory.GameInstall
+            };
+            _downloadTaskManager.SetupGet(manager => manager.TasksSnapshot).Returns([task]);
+
+            var message = CreateService().GetOperationStatusMessage("download-op-invariant");
+
+            message.Should().Contain("progress_percent: 42.5");
+            message.Should().NotContain("progress_percent: 42,5");
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+            CultureInfo.CurrentUICulture = originalUiCulture;
+        }
     }
 
     [Fact]

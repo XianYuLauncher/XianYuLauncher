@@ -22,11 +22,11 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable
     private readonly Lock _dirtyStateLock = new();
     private readonly HashSet<UiChatMessage> _trackedSessionMessages = [];
     private readonly Dictionary<Guid, long> _dirtyConversationStamps = [];
-    private CancellationTokenSource? _saveWorkspaceCts;
     private bool _isApplyingConversationSnapshot;
     private bool _isRestoringWorkspace;
     private long _dirtyWorkspaceStamp;
     private long _nextDirtyStamp;
+    private long _workspaceSaveRequestVersion;
 
     public LauncherAIViewModel(
         ErrorAnalysisViewModel chatViewModel,
@@ -619,51 +619,38 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable
             return;
         }
 
-        CancelPendingWorkspaceSave();
-
-        var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifecycleCts.Token);
-        _saveWorkspaceCts = cts;
-        _ = PersistWorkspaceDebouncedAsync(cts, debounceMilliseconds);
+        var requestVersion = Interlocked.Increment(ref _workspaceSaveRequestVersion);
+        _ = PersistWorkspaceDebouncedAsync(requestVersion, debounceMilliseconds);
     }
 
     private void CancelPendingWorkspaceSave()
     {
-        if (_saveWorkspaceCts == null)
-        {
-            return;
-        }
-
-        _saveWorkspaceCts.Cancel();
-        _saveWorkspaceCts.Dispose();
-        _saveWorkspaceCts = null;
+        Interlocked.Increment(ref _workspaceSaveRequestVersion);
     }
 
-    private async Task PersistWorkspaceDebouncedAsync(CancellationTokenSource cts, int debounceMilliseconds)
+    private async Task PersistWorkspaceDebouncedAsync(long requestVersion, int debounceMilliseconds)
     {
         try
         {
             if (debounceMilliseconds > 0)
             {
-                await Task.Delay(debounceMilliseconds, cts.Token);
+                await Task.Delay(debounceMilliseconds);
             }
 
-            await PersistWorkspaceToStorageAsync(cts.Token);
+            if (_lifecycleCts.IsCancellationRequested
+                || requestVersion != Volatile.Read(ref _workspaceSaveRequestVersion))
+            {
+                return;
+            }
+
+            await PersistWorkspaceToStorageAsync(_lifecycleCts.Token);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (_lifecycleCts.IsCancellationRequested)
         {
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[LauncherAIPersistence] 保存工作区失败: {ex.Message}");
-        }
-        finally
-        {
-            if (ReferenceEquals(_saveWorkspaceCts, cts))
-            {
-                _saveWorkspaceCts = null;
-            }
-
-            cts.Dispose();
         }
     }
 

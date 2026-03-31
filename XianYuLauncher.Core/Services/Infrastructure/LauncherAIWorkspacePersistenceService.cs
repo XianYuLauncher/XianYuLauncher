@@ -30,136 +30,160 @@ public sealed class LauncherAIWorkspacePersistenceService : ILauncherAIWorkspace
         _attachmentsPath = Path.Combine(_workspaceRootPath, AppDataFileConsts.LauncherAIAttachmentsFolder);
     }
 
-    public Task<LauncherAIWorkspaceStorageModel?> LoadWorkspaceAsync(CancellationToken cancellationToken = default)
+    public async Task<LauncherAIWorkspaceStorageModel?> LoadWorkspaceAsync(CancellationToken cancellationToken = default)
     {
-        return Task.Run(() =>
+        cancellationToken.ThrowIfCancellationRequested();
+
+        try
         {
-            try
-            {
-                EnsureWorkspaceDirectories();
-                return _fileService.Read<LauncherAIWorkspaceStorageModel>(_workspaceRootPath, AppDataFileConsts.LauncherAIWorkspaceJson);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "加载 Launcher AI 工作区失败。");
-                return null;
-            }
-        }, cancellationToken);
+            EnsureWorkspaceDirectories();
+            return await _fileService.ReadAsync<LauncherAIWorkspaceStorageModel>(
+                _workspaceRootPath,
+                AppDataFileConsts.LauncherAIWorkspaceJson,
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "加载 Launcher AI 工作区失败。");
+            return null;
+        }
     }
 
-    public Task SaveWorkspaceAsync(LauncherAIWorkspaceStorageModel workspace, CancellationToken cancellationToken = default)
+    public async Task SaveWorkspaceAsync(LauncherAIWorkspaceStorageModel workspace, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(workspace);
+        cancellationToken.ThrowIfCancellationRequested();
 
-        return Task.Run(() =>
+        EnsureWorkspaceDirectories();
+        await _fileService.SaveAsync(_workspaceRootPath, AppDataFileConsts.LauncherAIWorkspaceJson, workspace, cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<LauncherAIConversationStorageModel?> LoadConversationAsync(Guid conversationId, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        try
         {
             EnsureWorkspaceDirectories();
-            _fileService.Save(_workspaceRootPath, AppDataFileConsts.LauncherAIWorkspaceJson, workspace);
-        }, cancellationToken);
-    }
-
-    public Task<LauncherAIConversationStorageModel?> LoadConversationAsync(Guid conversationId, CancellationToken cancellationToken = default)
-    {
-        return Task.Run(() =>
+            return await _fileService.ReadAsync<LauncherAIConversationStorageModel>(
+                _conversationsPath,
+                GetConversationFileName(conversationId),
+                cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            try
-            {
-                EnsureWorkspaceDirectories();
-                return _fileService.Read<LauncherAIConversationStorageModel>(_conversationsPath, GetConversationFileName(conversationId));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "加载 Launcher AI 会话失败: {ConversationId}", conversationId);
-                return null;
-            }
-        }, cancellationToken);
+            _logger.LogWarning(ex, "加载 Launcher AI 会话失败: {ConversationId}", conversationId);
+            return null;
+        }
     }
 
-    public Task SaveConversationAsync(LauncherAIConversationStorageModel conversation, CancellationToken cancellationToken = default)
+    public async Task SaveConversationAsync(LauncherAIConversationStorageModel conversation, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(conversation);
+        cancellationToken.ThrowIfCancellationRequested();
 
-        return Task.Run(() =>
-        {
-            EnsureWorkspaceDirectories();
-            _fileService.Save(_conversationsPath, GetConversationFileName(conversation.ConversationId), conversation);
-        }, cancellationToken);
+        EnsureWorkspaceDirectories();
+        await _fileService.SaveAsync(
+            _conversationsPath,
+            GetConversationFileName(conversation.ConversationId),
+            conversation,
+            cancellationToken).ConfigureAwait(false);
     }
 
     public Task DeleteConversationAsync(Guid conversationId, CancellationToken cancellationToken = default)
     {
-        return Task.Run(() =>
+        cancellationToken.ThrowIfCancellationRequested();
+
+        try
         {
-            try
-            {
-                EnsureWorkspaceDirectories();
-                _fileService.Delete(_conversationsPath, GetConversationFileName(conversationId));
+            EnsureWorkspaceDirectories();
+            _fileService.Delete(_conversationsPath, GetConversationFileName(conversationId));
 
-                var conversationAttachmentPath = GetConversationAttachmentFolderPath(conversationId);
-                if (Directory.Exists(conversationAttachmentPath))
-                {
-                    Directory.Delete(conversationAttachmentPath, recursive: true);
-                }
-
-                RemoveConversationAttachmentMappings(conversationId);
-            }
-            catch (Exception ex)
+            var conversationAttachmentPath = GetConversationAttachmentFolderPath(conversationId);
+            if (Directory.Exists(conversationAttachmentPath))
             {
-                _logger.LogWarning(ex, "删除 Launcher AI 会话失败: {ConversationId}", conversationId);
+                Directory.Delete(conversationAttachmentPath, recursive: true);
             }
-        }, cancellationToken);
+
+            RemoveConversationAttachmentMappings(conversationId);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _logger.LogWarning(ex, "删除 Launcher AI 会话失败: {ConversationId}", conversationId);
+        }
+
+        return Task.CompletedTask;
     }
 
-    public Task<LauncherAIAttachmentStorageModel?> PersistAttachmentAsync(
+    public async Task<LauncherAIAttachmentStorageModel?> PersistAttachmentAsync(
         Guid conversationId,
         ChatImageAttachment attachment,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(attachment);
+        cancellationToken.ThrowIfCancellationRequested();
 
-        return Task.Run<LauncherAIAttachmentStorageModel?>(() =>
+        string? targetPath = null;
+
+        try
         {
-            try
+            if (TryCreateStoredAttachmentModel(conversationId, attachment, out var storedAttachment))
             {
-                if (TryCreateStoredAttachmentModel(conversationId, attachment, out var storedAttachment))
-                {
-                    return storedAttachment;
-                }
-
-                if (TryGetCachedAttachment(conversationId, attachment.FilePath, out storedAttachment))
-                {
-                    return storedAttachment;
-                }
-
-                if (string.IsNullOrWhiteSpace(attachment.FilePath) || !File.Exists(attachment.FilePath))
-                {
-                    return null;
-                }
-
-                var conversationAttachmentPath = GetConversationAttachmentFolderPath(conversationId);
-                Directory.CreateDirectory(conversationAttachmentPath);
-
-                var extension = GetAttachmentExtension(attachment);
-                var storedFileName = $"{Guid.NewGuid():N}{extension}";
-                var targetPath = Path.Combine(conversationAttachmentPath, storedFileName);
-                File.Copy(attachment.FilePath, targetPath, overwrite: false);
-
-                storedAttachment = new LauncherAIAttachmentStorageModel
-                {
-                    FileName = string.IsNullOrWhiteSpace(attachment.FileName) ? Path.GetFileName(targetPath) : attachment.FileName,
-                    RelativeFilePath = CreateRelativeAttachmentPath(conversationId, storedFileName),
-                    ContentType = string.IsNullOrWhiteSpace(attachment.ContentType) ? "image/png" : attachment.ContentType
-                };
-
-                CacheAttachment(conversationId, attachment.FilePath, storedAttachment);
                 return storedAttachment;
             }
-            catch (Exception ex)
+
+            if (TryGetCachedAttachment(conversationId, attachment.FilePath, out storedAttachment))
             {
-                _logger.LogWarning(ex, "持久化 Launcher AI 附件失败: {ConversationId}, {FileName}", conversationId, attachment.FileName);
+                return storedAttachment;
+            }
+
+            if (string.IsNullOrWhiteSpace(attachment.FilePath) || !File.Exists(attachment.FilePath))
+            {
                 return null;
             }
-        }, cancellationToken);
+
+            var conversationAttachmentPath = GetConversationAttachmentFolderPath(conversationId);
+            Directory.CreateDirectory(conversationAttachmentPath);
+
+            var extension = GetAttachmentExtension(attachment);
+            var storedFileName = $"{Guid.NewGuid():N}{extension}";
+            targetPath = Path.Combine(conversationAttachmentPath, storedFileName);
+
+            await using (var sourceStream = new FileStream(attachment.FilePath, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, useAsync: true))
+            await using (var targetStream = new FileStream(targetPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, useAsync: true))
+            {
+                await sourceStream.CopyToAsync(targetStream, cancellationToken).ConfigureAwait(false);
+            }
+
+            storedAttachment = new LauncherAIAttachmentStorageModel
+            {
+                FileName = string.IsNullOrWhiteSpace(attachment.FileName) ? Path.GetFileName(targetPath) : attachment.FileName,
+                RelativeFilePath = CreateRelativeAttachmentPath(conversationId, storedFileName),
+                ContentType = string.IsNullOrWhiteSpace(attachment.ContentType) ? "image/png" : attachment.ContentType
+            };
+
+            CacheAttachment(conversationId, attachment.FilePath, storedAttachment);
+            return storedAttachment;
+        }
+        catch (OperationCanceledException)
+        {
+            if (!string.IsNullOrWhiteSpace(targetPath) && File.Exists(targetPath))
+            {
+                File.Delete(targetPath);
+            }
+
+            throw;
+        }
+        catch (Exception ex)
+        {
+            if (!string.IsNullOrWhiteSpace(targetPath) && File.Exists(targetPath))
+            {
+                File.Delete(targetPath);
+            }
+
+            _logger.LogWarning(ex, "持久化 Launcher AI 附件失败: {ConversationId}, {FileName}", conversationId, attachment.FileName);
+            return null;
+        }
     }
 
     public bool TryCreateStoredAttachmentModel(Guid conversationId, ChatImageAttachment attachment, out LauncherAIAttachmentStorageModel attachmentModel)
@@ -236,7 +260,19 @@ public sealed class LauncherAIWorkspacePersistenceService : ILauncherAIWorkspace
             return null;
         }
 
-        return Path.Combine(_attachmentsPath, normalizedRelativePath.Replace('/', Path.DirectorySeparatorChar));
+        try
+        {
+            var attachmentRoot = EnsureTrailingDirectorySeparator(Path.GetFullPath(_attachmentsPath));
+            var absolutePath = Path.GetFullPath(Path.Combine(_attachmentsPath, normalizedRelativePath.Replace('/', Path.DirectorySeparatorChar)));
+            return absolutePath.StartsWith(attachmentRoot, StringComparison.OrdinalIgnoreCase)
+                ? absolutePath
+                : null;
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            _logger.LogWarning(ex, "解析 Launcher AI 附件路径失败: {RelativePath}", relativePath);
+            return null;
+        }
     }
 
     private bool TryGetStoredAttachmentRelativePath(Guid conversationId, string absolutePath, out string relativePath)
@@ -275,12 +311,47 @@ public sealed class LauncherAIWorkspacePersistenceService : ILauncherAIWorkspace
     {
         normalizedRelativePath = relativePath?.Trim().Replace('\\', '/') ?? string.Empty;
         if (string.IsNullOrWhiteSpace(normalizedRelativePath)
-            || Path.IsPathRooted(normalizedRelativePath)
-            || normalizedRelativePath.Contains("..", StringComparison.Ordinal))
+            || Path.IsPathRooted(normalizedRelativePath))
         {
             normalizedRelativePath = string.Empty;
             return false;
         }
+
+        var segments = normalizedRelativePath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        List<string> normalizedSegments = new(segments.Length);
+
+        foreach (var rawSegment in segments)
+        {
+            var segment = rawSegment.Trim();
+
+            if (string.Equals(segment, "..", StringComparison.Ordinal))
+            {
+                normalizedRelativePath = string.Empty;
+                return false;
+            }
+
+            if (string.Equals(segment, ".", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            if (string.IsNullOrWhiteSpace(segment)
+                || segment.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            {
+                normalizedRelativePath = string.Empty;
+                return false;
+            }
+
+            normalizedSegments.Add(segment);
+        }
+
+        if (normalizedSegments.Count == 0)
+        {
+            normalizedRelativePath = string.Empty;
+            return false;
+        }
+
+        normalizedRelativePath = string.Join('/', normalizedSegments);
 
         return true;
     }

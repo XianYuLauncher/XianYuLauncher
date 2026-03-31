@@ -40,6 +40,7 @@ public interface IVersionPathGameLaunchService
 
 public sealed class VersionPathGameLaunchService : IVersionPathGameLaunchService
 {
+    private static readonly SemaphoreSlim LaunchPathSwitchGate = new(1, 1);
     private readonly IFileService _fileService;
     private readonly IGameLaunchService _gameLaunchService;
     private readonly ITokenRefreshService _tokenRefreshService;
@@ -108,6 +109,7 @@ public sealed class VersionPathGameLaunchService : IVersionPathGameLaunchService
     {
         ArgumentNullException.ThrowIfNull(preparedLaunch);
 
+        await LaunchPathSwitchGate.WaitAsync(cancellationToken);
         var launchOptions = options ?? new VersionPathLaunchOptions();
         var originalMinecraftPath = _fileService.GetMinecraftDataPath();
         var shouldSwitchMinecraftPath = !string.Equals(
@@ -185,6 +187,8 @@ public sealed class VersionPathGameLaunchService : IVersionPathGameLaunchService
                     _logger.LogWarning(ex, "恢复原始游戏目录失败：{Path}", originalMinecraftPath);
                 }
             }
+
+            LaunchPathSwitchGate.Release();
         }
     }
 

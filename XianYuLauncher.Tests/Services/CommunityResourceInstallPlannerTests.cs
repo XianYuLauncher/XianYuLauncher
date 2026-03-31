@@ -97,6 +97,29 @@ public class CommunityResourceInstallPlannerTests
         result.Plan.UseTargetDirectoryForAllDependencies.Should().BeTrue();
     }
 
+    [Theory]
+    [InlineData("..\\evil.jar")]
+    [InlineData("nested/folder/evil.jar")]
+    public async Task PlanAsync_WhenFileNameContainsPathSegments_ShouldReturnMissingRequirement(string fileName)
+    {
+        string gameDirectory = Path.Combine(@"C:\.minecraft", "versions", "1.20.1-Fabric");
+        _gameDirResolverMock
+            .Setup(service => service.GetGameDirForVersionAsync("1.20.1-Fabric"))
+            .ReturnsAsync(gameDirectory);
+
+        var result = await CreatePlanner().PlanAsync(new CommunityResourceInstallRequest
+        {
+            ResourceType = "mod",
+            FileName = fileName,
+            TargetVersionName = "1.20.1-Fabric"
+        });
+
+        result.IsReadyToInstall.Should().BeFalse();
+        result.MissingRequirements.Should().ContainSingle();
+        result.MissingRequirements[0].Type.Should().Be(CommunityResourceInstallRequirementType.FileName);
+        result.MissingRequirements[0].Message.Should().Contain("文件名无效");
+    }
+
     [Fact]
     public async Task PlanAsync_World_ReturnsUnsupported()
     {

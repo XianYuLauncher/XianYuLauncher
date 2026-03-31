@@ -35,9 +35,7 @@
         <controls:LauncherAIPanel
             x:Name="ChatPanel"
             Grid.Row="1"
-            ViewModel="{Binding ChatViewModel, ElementName=Root}"
             ShowEmptyPlaceholder="True"
-            EmptyPlaceholderText="{Binding EmptyStateText, ElementName=Root}"
             HeaderVisibility="Collapsed"
             PopOutButtonVisibility="Collapsed" />
     </Grid>

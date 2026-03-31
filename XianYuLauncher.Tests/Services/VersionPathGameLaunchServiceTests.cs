@@ -139,6 +139,75 @@ public sealed class VersionPathGameLaunchServiceTests : IDisposable
             callOrder);
     }
 
+    [Fact]
+    public async Task LaunchAsync_ShouldSerializeConcurrentPathLaunches()
+    {
+        var preparedLaunchA = CreateService().PrepareLaunch(CreateVersionPath("target-instance-a", "1.21.10"));
+        var preparedLaunchB = CreateService().PrepareLaunch(CreateVersionPath("target-instance-b", "1.21.11"));
+        var originalMinecraftPath = Path.Combine(_testRootDirectory, "original-instance", ".minecraft");
+        Directory.CreateDirectory(originalMinecraftPath);
+        var activeProfile = new MinecraftProfile { Name = "Offline", IsActive = true, IsOffline = true };
+        var callOrder = new List<string>();
+        TaskCompletionSource<bool> firstLaunchEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> allowFirstLaunchToFinish = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource<bool> secondLaunchEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        _fileService.Setup(service => service.GetMinecraftDataPath()).Returns(originalMinecraftPath);
+        _fileService
+            .Setup(service => service.SetMinecraftDataPath(It.IsAny<string>()))
+            .Callback<string>(path => callOrder.Add($"set:{path}"));
+        _profileManager.Setup(service => service.LoadProfilesAsync()).ReturnsAsync([activeProfile]);
+        _profileManager.Setup(service => service.GetActiveProfile(It.IsAny<List<MinecraftProfile>>())).Returns(activeProfile);
+        _gameLaunchService
+            .Setup(service => service.LaunchGameAsync(
+                It.IsAny<string>(),
+                activeProfile,
+                It.IsAny<Action<double>?>(),
+                It.IsAny<Action<string>?>(),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>(),
+                It.IsAny<int?>()))
+            .Returns<string, MinecraftProfile, Action<double>?, Action<string>?, CancellationToken, string?, string?, string?, int?>(
+                async (versionName, _, _, _, _, _, _, _, _) =>
+                {
+                    callOrder.Add($"launch:{versionName}");
+                    if (string.Equals(versionName, preparedLaunchA.VersionName, StringComparison.Ordinal))
+                    {
+                        firstLaunchEntered.TrySetResult(true);
+                        await allowFirstLaunchToFinish.Task;
+                    }
+                    else if (string.Equals(versionName, preparedLaunchB.VersionName, StringComparison.Ordinal))
+                    {
+                        secondLaunchEntered.TrySetResult(true);
+                    }
+
+                    return new GameLaunchResult { Success = true };
+                });
+
+        var service = CreateService();
+        var firstLaunchTask = service.LaunchAsync(preparedLaunchA);
+        await firstLaunchEntered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        var secondLaunchTask = service.LaunchAsync(preparedLaunchB);
+        await Task.Delay(100);
+        secondLaunchEntered.Task.IsCompleted.Should().BeFalse();
+
+        allowFirstLaunchToFinish.TrySetResult(true);
+        await Task.WhenAll(firstLaunchTask, secondLaunchTask);
+
+        callOrder.Should().Equal(
+        [
+            $"set:{preparedLaunchA.MinecraftPath}",
+            $"launch:{preparedLaunchA.VersionName}",
+            $"set:{originalMinecraftPath}",
+            $"set:{preparedLaunchB.MinecraftPath}",
+            $"launch:{preparedLaunchB.VersionName}",
+            $"set:{originalMinecraftPath}"
+        ]);
+    }
+
     private VersionPathGameLaunchService CreateService()
     {
         return new VersionPathGameLaunchService(

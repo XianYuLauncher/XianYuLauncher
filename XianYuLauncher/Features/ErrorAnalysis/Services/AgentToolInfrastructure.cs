@@ -1,5 +1,5 @@
 using System.IO.Compression;
-using Microsoft.Extensions.DependencyInjection;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
@@ -103,18 +103,12 @@ public sealed class AgentToolSupportService : IAgentToolSupportService
 
         List<string> candidateFiles = [];
         var globalModsPath = Path.Combine(minecraftPath, MinecraftPathConsts.Mods);
-        if (Directory.Exists(globalModsPath))
-        {
-            candidateFiles.AddRange(Directory.GetFiles(globalModsPath, "*.jar*"));
-        }
+        candidateFiles.AddRange(TryGetModFiles(globalModsPath));
 
         if (!string.IsNullOrWhiteSpace(versionId))
         {
             var versionModsPath = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, versionId, MinecraftPathConsts.Mods);
-            if (Directory.Exists(versionModsPath))
-            {
-                candidateFiles.AddRange(Directory.GetFiles(versionModsPath, "*.jar*"));
-            }
+            candidateFiles.AddRange(TryGetModFiles(versionModsPath));
         }
 
         return candidateFiles
@@ -148,6 +142,24 @@ public sealed class AgentToolSupportService : IAgentToolSupportService
         }
 
         return null;
+    }
+
+    private static IReadOnlyList<string> TryGetModFiles(string modsPath)
+    {
+        if (!Directory.Exists(modsPath))
+        {
+            return [];
+        }
+
+        try
+        {
+            return Directory.GetFiles(modsPath, "*.jar*");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AgentToolSupportService] 枚举 Mod 目录失败: {modsPath}, {ex}");
+            return [];
+        }
     }
 
     public async Task<string?> TryGetFabricModIdAsync(string jarPath)
@@ -203,11 +215,23 @@ public sealed class AgentToolSupportService : IAgentToolSupportService
             return null;
         }
 
-        return javaVersions
-            .Where(j => !string.IsNullOrWhiteSpace(j.Path) && File.Exists(j.Path) && j.MajorVersion > 0)
+        var candidates = javaVersions
+            .Where(j =>
+                !string.IsNullOrWhiteSpace(j.Path) &&
+                File.Exists(j.Path) &&
+                j.MajorVersion > 0 &&
+                j.MajorVersion >= requiredMajorVersion)
+            .ToList();
+
+        if (candidates.Count == 0)
+        {
+            return null;
+        }
+
+        return candidates
             .OrderByDescending(j => j.MajorVersion == requiredMajorVersion)
             .ThenByDescending(j => j.IsJDK)
-            .ThenBy(j => Math.Abs(j.MajorVersion - requiredMajorVersion))
+            .ThenBy(j => j.MajorVersion - requiredMajorVersion)
             .FirstOrDefault();
     }
 }
@@ -246,16 +270,25 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
                 return AgentToolExecutionResult.FromMessage($"工具当前不可用: {toolCall.FunctionName}");
             }
 
-            var args = string.IsNullOrWhiteSpace(toolCall.Arguments)
-                ? new JObject()
-                : JObject.Parse(toolCall.Arguments);
+            JObject args;
+            try
+            {
+                args = string.IsNullOrWhiteSpace(toolCall.Arguments)
+                    ? new JObject()
+                    : JObject.Parse(toolCall.Arguments);
+            }
+            catch (JsonException ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AI Tool Error] {toolCall.FunctionName} 参数解析失败: {ex}");
+                return AgentToolExecutionResult.FromMessage($"工具参数格式无效: {toolCall.FunctionName}。请重试。\n原始参数需要是合法 JSON。");
+            }
 
             return await handler.ExecuteAsync(_sessionState.Context, args, cancellationToken);
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[AI Tool Error] {toolCall.FunctionName}: {ex.Message}");
-            return AgentToolExecutionResult.FromMessage($"工具执行失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[AI Tool Error] {toolCall.FunctionName}: {ex}");
+            return AgentToolExecutionResult.FromMessage("工具执行失败，请重试或查看日志。");
         }
     }
 }
@@ -274,7 +307,7 @@ public sealed class AgentActionExecutor : IAgentActionExecutor
         var handler = _handlers.FirstOrDefault(h => string.Equals(h.ActionType, proposal.ActionType, StringComparison.OrdinalIgnoreCase));
         if (handler == null)
         {
-            throw new InvalidOperationException($"未找到动作处理器: {proposal.ActionType}");
+            return $"未找到可执行的动作处理器: {proposal.ActionType}";
         }
 
         return await handler.ExecuteAsync(proposal, cancellationToken);

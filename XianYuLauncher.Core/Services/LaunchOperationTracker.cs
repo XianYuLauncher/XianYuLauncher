@@ -15,6 +15,7 @@ public interface ILaunchOperationTracker
 
 public sealed class LaunchOperationTracker : ILaunchOperationTracker
 {
+    private const int MaxRetainedTerminalOperations = 5;
     private readonly Lock _lock = new();
     private readonly Dictionary<string, LaunchOperationEntry> _operations = new(StringComparer.OrdinalIgnoreCase);
 
@@ -56,6 +57,7 @@ public sealed class LaunchOperationTracker : ILaunchOperationTracker
         lock (_lock)
         {
             _operations[operationId] = entry;
+            PruneTerminalOperations_NoLock();
         }
 
         return operationId;
@@ -129,6 +131,22 @@ public sealed class LaunchOperationTracker : ILaunchOperationTracker
 
             updateAction(entry);
             entry.LastUpdatedAtUtc = DateTimeOffset.UtcNow;
+            PruneTerminalOperations_NoLock();
+        }
+    }
+
+    private void PruneTerminalOperations_NoLock()
+    {
+        var operationIdsToRemove = _operations.Values
+            .Where(entry => entry.IsTerminal)
+            .OrderByDescending(entry => entry.LastUpdatedAtUtc)
+            .Skip(MaxRetainedTerminalOperations)
+            .Select(entry => entry.OperationId)
+            .ToList();
+
+        foreach (var operationId in operationIdsToRemove)
+        {
+            _operations.Remove(operationId);
         }
     }
 

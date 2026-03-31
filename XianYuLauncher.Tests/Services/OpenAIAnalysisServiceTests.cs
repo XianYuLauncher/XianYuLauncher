@@ -25,7 +25,7 @@ public sealed class OpenAIAnalysisServiceTests
         };
 
         await using var server = await FakeSseServer.StartAsync(payloads);
-        var service = new OpenAIAnalysisService(Mock.Of<ILogger<OpenAIAnalysisService>>());
+        var service = CreateService();
 
         var chunks = await CollectChunksAsync(service.StreamChatWithToolsAsync(
             [new ChatMessage("user", "请删除 Test.jar")],
@@ -53,7 +53,7 @@ public sealed class OpenAIAnalysisServiceTests
         };
 
         await using var server = await FakeSseServer.StartAsync(payloads);
-        var service = new OpenAIAnalysisService(Mock.Of<ILogger<OpenAIAnalysisService>>());
+        var service = CreateService();
 
         var chunks = await CollectChunksAsync(service.StreamChatWithToolsAsync(
             [new ChatMessage("user", "你好")],
@@ -76,7 +76,7 @@ public sealed class OpenAIAnalysisServiceTests
         };
 
         await using var server = await FakeSseServer.StartAsync(payloads);
-        var service = new OpenAIAnalysisService(Mock.Of<ILogger<OpenAIAnalysisService>>());
+        var service = CreateService();
 
         _ = await CollectChunksAsync(service.StreamChatWithToolsAsync(
             [new ChatMessage("user", "请看看这张图")
@@ -108,10 +108,55 @@ public sealed class OpenAIAnalysisServiceTests
     }
 
     [Fact]
+    public async Task StreamChatWithToolsAsync_WithRestoredAttachment_ShouldRegenerateDataUrlFromFile()
+    {
+        var payloads = new[]
+        {
+            "{\"choices\":[{\"delta\":{\"content\":\"已收到恢复后的图片\"}}]}"
+        };
+
+        var tempFilePath = CreateTempAttachmentFile([1, 2, 3]);
+
+        try
+        {
+            await using var server = await FakeSseServer.StartAsync(payloads);
+            var service = CreateService();
+
+            _ = await CollectChunksAsync(service.StreamChatWithToolsAsync(
+                [new ChatMessage("user", "请看看恢复后的图片")
+                {
+                    ImageAttachments =
+                    [
+                        new ChatImageAttachment
+                        {
+                            FileName = Path.GetFileName(tempFilePath),
+                            FilePath = tempFilePath,
+                            ContentType = "image/png",
+                            DataUrl = string.Empty
+                        }
+                    ]
+                }],
+                [],
+                "test-key",
+                server.Endpoint,
+                "test-model"));
+
+            server.LastRequestBody.Should().NotBeNullOrWhiteSpace();
+            var body = JObject.Parse(server.LastRequestBody!);
+            var content = body["messages"]![0]!["content"]!.Should().BeOfType<JArray>().Subject;
+            content[1]!["image_url"]!["url"]!.Value<string>().Should().Be("data:image/png;base64,AQID");
+        }
+        finally
+        {
+            TryDeleteTempAttachmentFile(tempFilePath);
+        }
+    }
+
+    [Fact]
     public async Task StreamChatWithToolsAsync_WhenRequestFails_ShouldThrowRequestExceptionWithBody()
     {
         await using var server = await FakeSseServer.StartFailureAsync(HttpStatusCode.BadRequest, "{\"error\":\"bad request\"}");
-        var service = new OpenAIAnalysisService(Mock.Of<ILogger<OpenAIAnalysisService>>());
+        var service = CreateService();
 
         var action = async () => await CollectChunksAsync(service.StreamChatWithToolsAsync(
             [new ChatMessage("user", "你好")],
@@ -135,7 +180,7 @@ public sealed class OpenAIAnalysisServiceTests
         };
 
         await using var server = await FakeSseServer.StartAsync(payloads, "/compatible-mode/v1/chat/completions/");
-        var service = new OpenAIAnalysisService(Mock.Of<ILogger<OpenAIAnalysisService>>());
+        var service = CreateService();
 
         var chunks = await CollectChunksAsync(service.StreamChatWithToolsAsync(
             [new ChatMessage("user", "你好")],
@@ -153,7 +198,7 @@ public sealed class OpenAIAnalysisServiceTests
     {
         const string errorBody = "{\"error\":{\"message\":\"model not found\"}}";
         await using var server = await FakeSseServer.StartFailureAsync(HttpStatusCode.NotFound, errorBody, "/compatible-mode/v1/chat/completions/");
-        var service = new OpenAIAnalysisService(Mock.Of<ILogger<OpenAIAnalysisService>>());
+        var service = CreateService();
 
         var action = async () => await CollectChunksAsync(service.StreamChatWithToolsAsync(
             [new ChatMessage("user", "你好")],
@@ -177,7 +222,7 @@ public sealed class OpenAIAnalysisServiceTests
         };
 
         await using var server = await FakeSseServer.StartAsync(payloads);
-        var service = new OpenAIAnalysisService(Mock.Of<ILogger<OpenAIAnalysisService>>());
+        var service = CreateService();
 
         var action = async () => await CollectChunksAsync(service.StreamChatWithToolsAsync(
             [new ChatMessage("user", "你好")],
@@ -201,6 +246,35 @@ public sealed class OpenAIAnalysisServiceTests
         }
 
         return chunks;
+    }
+
+    private static OpenAIAnalysisService CreateService()
+    {
+        return new OpenAIAnalysisService(new HttpClient(), Mock.Of<ILogger<OpenAIAnalysisService>>());
+    }
+
+    private static string CreateTempAttachmentFile(byte[] bytes)
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "openai-analysis-service-tests", Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        var filePath = Path.Combine(directory, "restored.png");
+        File.WriteAllBytes(filePath, bytes);
+        return filePath;
+    }
+
+    private static void TryDeleteTempAttachmentFile(string filePath)
+    {
+        try
+        {
+            var directory = Path.GetDirectoryName(filePath);
+            if (!string.IsNullOrWhiteSpace(directory) && Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+        catch
+        {
+        }
     }
 
     private sealed class FakeSseServer : IAsyncDisposable

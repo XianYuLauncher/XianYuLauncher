@@ -77,4 +77,31 @@ public sealed class LaunchOperationTrackerTests
         snapshot.Should().NotBeNull();
         snapshot!.OperationId.Should().Be(operationId);
     }
+
+    [Fact]
+    public void CompleteOperation_WhenTerminalOperationsExceedLimit_ShouldRetainLatestFiveAndKeepActiveOperation()
+    {
+        var tracker = new LaunchOperationTracker();
+        var activeOperationId = tracker.CreateOperation("active", @"D:\\.minecraft\\versions\\active");
+        List<string> completedOperationIds = [];
+
+        for (var index = 0; index < 6; index++)
+        {
+            var operationId = tracker.CreateOperation($"1.21.{index}", $@"D:\\.minecraft\\versions\\1.21.{index}");
+            tracker.CompleteOperation(operationId);
+            completedOperationIds.Add(operationId);
+            Thread.Sleep(2);
+        }
+
+        tracker.TryGetSnapshot(activeOperationId, out var activeSnapshot).Should().BeTrue();
+        activeSnapshot.Should().NotBeNull();
+        activeSnapshot!.IsTerminal.Should().BeFalse();
+
+        tracker.TryGetSnapshot(completedOperationIds[0], out _).Should().BeFalse();
+        foreach (var operationId in completedOperationIds.Skip(1))
+        {
+            tracker.TryGetSnapshot(operationId, out var snapshot).Should().BeTrue();
+            snapshot!.IsTerminal.Should().BeTrue();
+        }
+    }
 }

@@ -9,6 +9,7 @@ namespace XianYuLauncher.Core.Services;
 /// </summary>
 public class OperationQueueService : IOperationQueueService
 {
+    private const int MaxRetainedTerminalTasks = 5;
     private readonly ILogger<OperationQueueService> _logger;
     private readonly SemaphoreSlim _globalConcurrencyGate;
     private readonly Dictionary<string, ScopeLockEntry> _scopeLocks = new(StringComparer.OrdinalIgnoreCase);
@@ -175,24 +176,28 @@ public class OperationQueueService : IOperationQueueService
             await scopeLockEntry.Semaphore.WaitAsync(cancellationToken);
             scopeLockAcquired = true;
 
-            UpdateTaskState(taskInfo, OperationTaskState.Running, "任务开始执行", null);
+            var runningSnapshot = UpdateTaskState(taskInfo, OperationTaskState.Running, "任务开始执行", null);
+            TaskStateChanged?.Invoke(this, runningSnapshot);
 
             var executionContext = new OperationTaskExecutionContext(taskInfo.TaskId, (status, progress) =>
             {
-                taskInfo.StatusMessage = string.IsNullOrWhiteSpace(status) ? taskInfo.StatusMessage : status;
-                taskInfo.Progress = Math.Clamp(progress, 0, 100);
-                taskInfo.LastUpdatedAtUtc = DateTimeOffset.UtcNow;
-                StoreSnapshot(taskInfo);
-                TaskProgressChanged?.Invoke(this, Clone(taskInfo));
+                var progressSnapshot = UpdateTaskProgress(taskInfo, status, progress);
+                if (progressSnapshot != null)
+                {
+                    TaskProgressChanged?.Invoke(this, progressSnapshot);
+                }
             });
 
             await request.ExecuteAsync(executionContext, cancellationToken);
 
-            UpdateTaskState(taskInfo, OperationTaskState.Completed, ResolveCompletedStatusMessage(taskInfo), null);
-            taskInfo.Progress = 100;
-            taskInfo.LastUpdatedAtUtc = DateTimeOffset.UtcNow;
-            StoreSnapshot(taskInfo);
-            TaskProgressChanged?.Invoke(this, Clone(taskInfo));
+            var completedSnapshot = UpdateTaskState(
+                taskInfo,
+                OperationTaskState.Completed,
+                ResolveCompletedStatusMessage(GetTaskSnapshot(taskInfo)),
+                null,
+                progress: 100);
+            TaskStateChanged?.Invoke(this, completedSnapshot);
+            TaskProgressChanged?.Invoke(this, Clone(completedSnapshot));
 
             return new OperationExecutionResult
             {
@@ -200,10 +205,11 @@ public class OperationQueueService : IOperationQueueService
                 Success = true
             };
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             _logger.LogWarning("操作任务已取消: {TaskName}({TaskId})", taskInfo.TaskName, taskInfo.TaskId);
-            UpdateTaskState(taskInfo, OperationTaskState.Cancelled, ResolveCancelledStatusMessage(taskInfo), null);
+            var cancelledSnapshot = UpdateTaskState(taskInfo, OperationTaskState.Cancelled, ResolveCancelledStatusMessage(GetTaskSnapshot(taskInfo)), null);
+            TaskStateChanged?.Invoke(this, cancelledSnapshot);
             return new OperationExecutionResult
             {
                 TaskInfo = Clone(taskInfo),
@@ -214,7 +220,8 @@ public class OperationQueueService : IOperationQueueService
         catch (Exception ex)
         {
             _logger.LogError(ex, "操作任务执行失败: {TaskName}({TaskId})", taskInfo.TaskName, taskInfo.TaskId);
-            UpdateTaskState(taskInfo, OperationTaskState.Failed, $"任务失败：{ex.Message}", ex.Message);
+            var failedSnapshot = UpdateTaskState(taskInfo, OperationTaskState.Failed, $"任务失败：{ex.Message}", ex.Message);
+            TaskStateChanged?.Invoke(this, failedSnapshot);
             return new OperationExecutionResult
             {
                 TaskInfo = Clone(taskInfo),
@@ -253,6 +260,7 @@ public class OperationQueueService : IOperationQueueService
         string normalizedScopeKey = string.IsNullOrWhiteSpace(request.ScopeKey)
             ? "global"
             : request.ScopeKey.Trim();
+        var createdAtUtc = DateTimeOffset.UtcNow;
 
         OperationTaskInfo taskInfo = new()
         {
@@ -262,7 +270,9 @@ public class OperationQueueService : IOperationQueueService
             ScopeKey = normalizedScopeKey,
             State = OperationTaskState.Queued,
             Progress = 0,
-            StatusMessage = "已加入任务队列"
+            StatusMessage = "已加入任务队列",
+            CreatedAtUtc = createdAtUtc,
+            LastUpdatedAtUtc = createdAtUtc
         };
 
         CancellationTokenSource cancellationTokenSource = linkCallerCancellation
@@ -276,7 +286,8 @@ public class OperationQueueService : IOperationQueueService
             _managedTasks[taskInfo.TaskId] = managedTask;
         }
 
-        UpdateTaskState(taskInfo, OperationTaskState.Queued, taskInfo.StatusMessage, null);
+        var queuedSnapshot = UpdateTaskState(taskInfo, OperationTaskState.Queued, taskInfo.StatusMessage, null);
+        TaskStateChanged?.Invoke(this, queuedSnapshot);
         return managedTask;
     }
 
@@ -333,21 +344,96 @@ public class OperationQueueService : IOperationQueueService
         }
     }
 
-    private void UpdateTaskState(OperationTaskInfo taskInfo, OperationTaskState newState, string statusMessage, string? errorMessage)
-    {
-        taskInfo.State = newState;
-        taskInfo.StatusMessage = statusMessage;
-        taskInfo.ErrorMessage = errorMessage;
-        taskInfo.LastUpdatedAtUtc = DateTimeOffset.UtcNow;
-        StoreSnapshot(taskInfo);
-        TaskStateChanged?.Invoke(this, Clone(taskInfo));
-    }
-
-    private void StoreSnapshot(OperationTaskInfo taskInfo)
+    private OperationTaskInfo GetTaskSnapshot(OperationTaskInfo taskInfo)
     {
         lock (_syncRoot)
         {
-            _taskSnapshots[taskInfo.TaskId] = Clone(taskInfo);
+            return Clone(taskInfo);
+        }
+    }
+
+    private OperationTaskInfo UpdateTaskState(
+        OperationTaskInfo taskInfo,
+        OperationTaskState newState,
+        string statusMessage,
+        string? errorMessage,
+        double? progress = null)
+    {
+        return UpdateTaskSnapshot(taskInfo, info =>
+        {
+            info.State = newState;
+            info.StatusMessage = statusMessage;
+            info.ErrorMessage = errorMessage;
+            if (progress.HasValue)
+            {
+                info.Progress = Math.Clamp(progress.Value, 0, 100);
+            }
+
+            info.LastUpdatedAtUtc = DateTimeOffset.UtcNow;
+        });
+    }
+
+    private OperationTaskInfo? UpdateTaskProgress(OperationTaskInfo taskInfo, string? statusMessage, double progress)
+    {
+        return TryUpdateTaskSnapshot(taskInfo, info =>
+        {
+            if (info.State is OperationTaskState.Completed or OperationTaskState.Failed or OperationTaskState.Cancelled)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(statusMessage))
+            {
+                info.StatusMessage = statusMessage;
+            }
+
+            info.Progress = Math.Clamp(progress, 0, 100);
+            info.LastUpdatedAtUtc = DateTimeOffset.UtcNow;
+            return true;
+        });
+    }
+
+    private OperationTaskInfo UpdateTaskSnapshot(OperationTaskInfo taskInfo, Action<OperationTaskInfo> updateAction)
+    {
+        lock (_syncRoot)
+        {
+            updateAction(taskInfo);
+            var snapshot = Clone(taskInfo);
+            _taskSnapshots[taskInfo.TaskId] = snapshot;
+            PruneTerminalSnapshots_NoLock();
+            return Clone(snapshot);
+        }
+    }
+
+    private OperationTaskInfo? TryUpdateTaskSnapshot(OperationTaskInfo taskInfo, Func<OperationTaskInfo, bool> updateAction)
+    {
+        lock (_syncRoot)
+        {
+            if (!updateAction(taskInfo))
+            {
+                return null;
+            }
+
+            var snapshot = Clone(taskInfo);
+            _taskSnapshots[taskInfo.TaskId] = snapshot;
+            PruneTerminalSnapshots_NoLock();
+            return Clone(snapshot);
+        }
+    }
+
+    private void PruneTerminalSnapshots_NoLock()
+    {
+        var taskIdsToRemove = _taskSnapshots.Values
+            .Where(task => task.State is OperationTaskState.Completed or OperationTaskState.Failed or OperationTaskState.Cancelled)
+            .OrderByDescending(task => task.LastUpdatedAtUtc)
+            .ThenByDescending(task => task.CreatedAtUtc)
+            .Skip(MaxRetainedTerminalTasks)
+            .Select(task => task.TaskId)
+            .ToList();
+
+        foreach (var taskId in taskIdsToRemove)
+        {
+            _taskSnapshots.Remove(taskId);
         }
     }
 

@@ -19,11 +19,10 @@ namespace XianYuLauncher.Core.Services
         private readonly HttpClient _httpClient;
         private readonly ILogger<OpenAIAnalysisService> _logger;
 
-        public OpenAIAnalysisService(ILogger<OpenAIAnalysisService> logger)
+        public OpenAIAnalysisService(HttpClient httpClient, ILogger<OpenAIAnalysisService> logger)
         {
-            _logger = logger;
-            _httpClient = new HttpClient();
-            _httpClient.Timeout = TimeSpan.FromSeconds(60); // AI calls can be slow
+            _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>
@@ -243,6 +242,17 @@ namespace XianYuLauncher.Core.Services
                 return message.Content ?? string.Empty;
             }
 
+            var imageParts = message.ImageAttachments
+                .Select(BuildImageContentPart)
+                .Where(part => part != null)
+                .Cast<object>()
+                .ToList();
+
+            if (imageParts.Count == 0)
+            {
+                return message.Content ?? string.Empty;
+            }
+
             List<object> contentParts = [];
             if (!string.IsNullOrWhiteSpace(message.Content))
             {
@@ -253,16 +263,76 @@ namespace XianYuLauncher.Core.Services
                 });
             }
 
-            contentParts.AddRange(message.ImageAttachments.Select(attachment => new
+            contentParts.AddRange(imageParts);
+
+            return contentParts;
+        }
+
+        private static object? BuildImageContentPart(ChatImageAttachment attachment)
+        {
+            if (!TryResolveAttachmentDataUrl(attachment, out var dataUrl))
+            {
+                return null;
+            }
+
+            return new
             {
                 type = "image_url",
                 image_url = new
                 {
-                    url = attachment.DataUrl
+                    url = dataUrl
                 }
-            }));
+            };
+        }
 
-            return contentParts;
+        private static bool TryResolveAttachmentDataUrl(ChatImageAttachment attachment, out string dataUrl)
+        {
+            if (!string.IsNullOrWhiteSpace(attachment.DataUrl))
+            {
+                dataUrl = attachment.DataUrl;
+                return true;
+            }
+
+            if (string.IsNullOrWhiteSpace(attachment.FilePath) || !File.Exists(attachment.FilePath))
+            {
+                dataUrl = string.Empty;
+                return false;
+            }
+
+            try
+            {
+                var bytes = File.ReadAllBytes(attachment.FilePath);
+                dataUrl = $"data:{ResolveAttachmentContentType(attachment)};base64,{Convert.ToBase64String(bytes)}";
+                return true;
+            }
+            catch
+            {
+                dataUrl = string.Empty;
+                return false;
+            }
+        }
+
+        private static string ResolveAttachmentContentType(ChatImageAttachment attachment)
+        {
+            if (!string.IsNullOrWhiteSpace(attachment.ContentType))
+            {
+                return attachment.ContentType;
+            }
+
+            var extension = Path.GetExtension(attachment.FileName);
+            if (string.IsNullOrWhiteSpace(extension))
+            {
+                extension = Path.GetExtension(attachment.FilePath);
+            }
+
+            return extension.ToLowerInvariant() switch
+            {
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".webp" => "image/webp",
+                ".gif" => "image/gif",
+                ".bmp" => "image/bmp",
+                _ => "image/png"
+            };
         }
 
         /// <summary>

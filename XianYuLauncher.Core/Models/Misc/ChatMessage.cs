@@ -13,10 +13,16 @@ namespace XianYuLauncher.Core.Models
 
     public class ChatMessage
     {
+        private List<ChatImageAttachment> _imageAttachments = [];
+
         public string Role { get; set; } = "user";
         public string? Content { get; set; } = string.Empty;
 
-        public List<ChatImageAttachment>? ImageAttachments { get; set; }
+        public List<ChatImageAttachment> ImageAttachments
+        {
+            get => _imageAttachments;
+            set => _imageAttachments = value ?? [];
+        }
 
         /// <summary>
         /// 当 Role == "assistant" 且模型请求调用工具时，包含工具调用列表
