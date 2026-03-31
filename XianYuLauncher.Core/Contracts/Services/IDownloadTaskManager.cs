@@ -166,6 +166,17 @@ public interface IDownloadTaskManager
         IReadOnlyList<string>? statusResourceArguments = null);
 
     /// <summary>
+    /// 以下载阶段语义更新外部任务，保留速度与瞬时进度信息。
+    /// </summary>
+    void UpdateExternalTaskDownloadProgress(
+        string taskId,
+        double progress,
+        DownloadProgressStatus downloadStatus,
+        string statusMessage,
+        string? statusResourceKey = null,
+        IReadOnlyList<string>? statusResourceArguments = null);
+
+    /// <summary>
     /// 将外部任务标记为完成。
     /// </summary>
     void CompleteExternalTask(

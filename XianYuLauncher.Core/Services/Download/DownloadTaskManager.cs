@@ -559,6 +559,43 @@ public class DownloadTaskManager : IDownloadTaskManager
         OnTaskProgressChanged(taskInfo);
     }
 
+    public void UpdateExternalTaskDownloadProgress(
+        string taskId,
+        double progress,
+        DownloadProgressStatus downloadStatus,
+        string statusMessage,
+        string? statusResourceKey = null,
+        IReadOnlyList<string>? statusResourceArguments = null)
+    {
+        DownloadTaskInfo? taskInfo;
+
+        lock (_lock)
+        {
+            if (!_externalTasks.TryGetValue(taskId, out var externalTask))
+            {
+                _logger.LogWarning("未找到要更新下载进度的外部下载任务: {TaskId}", taskId);
+                return;
+            }
+
+            taskInfo = externalTask.Info;
+
+            if (taskInfo.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled)
+            {
+                _logger.LogWarning("外部下载任务已结束，忽略下载进度更新请求: {TaskId}", taskId);
+                return;
+            }
+
+            taskInfo.Progress = Math.Clamp(progress, 0, 100);
+            UpdateTaskStatus(taskInfo, statusMessage, statusResourceKey, statusResourceArguments);
+            UpdateTaskSpeed(taskInfo, downloadStatus);
+            taskInfo.State = DownloadTaskState.Downloading;
+            taskInfo.QueuePosition = null;
+        }
+
+        OnTaskStateChanged(taskInfo);
+        OnTaskProgressChanged(taskInfo);
+    }
+
     public void CompleteExternalTask(
         string taskId,
         string statusMessage = "下载完成",

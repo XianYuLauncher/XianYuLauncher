@@ -51,6 +51,35 @@ public class ModpackInstallationService : IModpackInstallationService
         string? sourceVersionId = null,
         CancellationToken cancellationToken = default)
     {
+        return await InstallModpackAsync(
+            downloadUrl,
+            fileName,
+            modpackDisplayName,
+            targetVersionName,
+            minecraftPath,
+            isFromCurseForge,
+            progress,
+            modpackIconUrl,
+            sourceProjectId,
+            sourceVersionId,
+            contentFileProgress: null,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<ModpackInstallResult> InstallModpackAsync(
+        string downloadUrl,
+        string fileName,
+        string modpackDisplayName,
+        string targetVersionName,
+        string minecraftPath,
+        bool isFromCurseForge,
+        IProgress<ModpackInstallProgress> progress,
+        string? modpackIconUrl,
+        string? sourceProjectId,
+        string? sourceVersionId,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        CancellationToken cancellationToken = default)
+    {
         string tempDir = string.Empty;
 
         try
@@ -97,14 +126,14 @@ public class ModpackInstallationService : IModpackInstallationService
             {
                 Debug.WriteLine("[整合包安装] 检测到CurseForge整合包格式");
                 return await InstallCurseForgeModpackCoreAsync(
-                    extractDir, curseForgeManifestPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, cancellationToken);
+                    extractDir, curseForgeManifestPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, contentFileProgress, cancellationToken);
             }
 
             if (File.Exists(modrinthIndexPath))
             {
                 Debug.WriteLine("[整合包安装] 检测到Modrinth整合包格式");
                 return await InstallModrinthModpackCoreAsync(
-                    extractDir, modrinthIndexPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, cancellationToken);
+                    extractDir, modrinthIndexPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, contentFileProgress, cancellationToken);
             }
 
             return ModpackInstallResult.Failed($"整合包格式不支持：未找到{MinecraftFileConsts.ManifestJson}（CurseForge）或{MinecraftFileConsts.ModrinthIndexJson}（Modrinth）");
@@ -136,6 +165,35 @@ public class ModpackInstallationService : IModpackInstallationService
         string? versionIconPath = null,
         string? sourceProjectId = null,
         string? sourceVersionId = null,
+        CancellationToken cancellationToken = default)
+    {
+        return await UpdateModpackInPlaceAsync(
+            downloadUrl,
+            fileName,
+            modpackDisplayName,
+            minecraftPath,
+            targetVersionId,
+            isFromCurseForge,
+            progress,
+            versionIconPath,
+            sourceProjectId,
+            sourceVersionId,
+            contentFileProgress: null,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    public async Task<ModpackInstallResult> UpdateModpackInPlaceAsync(
+        string downloadUrl,
+        string fileName,
+        string modpackDisplayName,
+        string minecraftPath,
+        string targetVersionId,
+        bool isFromCurseForge,
+        IProgress<ModpackInstallProgress> progress,
+        string? versionIconPath,
+        string? sourceProjectId,
+        string? sourceVersionId,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
         CancellationToken cancellationToken = default)
     {
         string tempDir = string.Empty;
@@ -185,6 +243,7 @@ public class ModpackInstallationService : IModpackInstallationService
                     versionIconPath,
                     sourceProjectId,
                     sourceVersionId,
+                        contentFileProgress,
                     cancellationToken);
             }
 
@@ -200,6 +259,7 @@ public class ModpackInstallationService : IModpackInstallationService
                     versionIconPath,
                     sourceProjectId,
                     sourceVersionId,
+                        contentFileProgress,
                     cancellationToken);
             }
 
@@ -233,6 +293,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string? versionIconPath,
         string? sourceProjectId,
         string? sourceVersionId,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
         CancellationToken cancellationToken)
     {
         string indexJson = await File.ReadAllTextAsync(indexPath, cancellationToken);
@@ -273,7 +334,7 @@ public class ModpackInstallationService : IModpackInstallationService
         var files = indexData["files"] as JArray;
         if (files != null && files.Count > 0)
         {
-            await DownloadModrinthFilesAsync(files, targetVersionDir, progress, cancellationToken);
+            await DownloadModrinthFilesAsync(files, targetVersionDir, progress, contentFileProgress, cancellationToken);
         }
 
         var modpackManifestVersionId = NormalizeModpackVersionId(indexData["versionId"]?.ToString())
@@ -295,6 +356,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string? versionIconPath,
         string? sourceProjectId,
         string? sourceVersionId,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
         CancellationToken cancellationToken)
     {
         string indexJson = await File.ReadAllTextAsync(indexPath, cancellationToken);
@@ -333,7 +395,7 @@ public class ModpackInstallationService : IModpackInstallationService
         var files = indexData["files"] as JArray;
         if (files != null && files.Count > 0)
         {
-            await DownloadModrinthFilesAsync(files, modpackVersionDir, progress, cancellationToken);
+            await DownloadModrinthFilesAsync(files, modpackVersionDir, progress, contentFileProgress, cancellationToken);
         }
 
         var modpackManifestVersionId = NormalizeModpackVersionId(indexData["versionId"]?.ToString())
@@ -369,11 +431,46 @@ public class ModpackInstallationService : IModpackInstallationService
         JArray files,
         string modpackVersionDir,
         IProgress<ModpackInstallProgress> progress,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
         CancellationToken cancellationToken)
     {
         Report(progress, 80, "80%", "正在下载整合包文件...");
 
-        int totalFiles = files.Count;
+        List<(string FileKey, string FileDisplayName, string DownloadUrl, string TargetPath)> downloadEntries = [];
+
+        foreach (var fileItem in files)
+        {
+            var downloads = fileItem["downloads"] as JArray;
+            var path = fileItem["path"]?.ToString();
+
+            if (downloads == null || downloads.Count == 0 || string.IsNullOrEmpty(path))
+            {
+                continue;
+            }
+
+            string normalizedPath = path.Replace('/', Path.DirectorySeparatorChar);
+            string targetPath = Path.Combine(modpackVersionDir, normalizedPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+
+            string fileDisplayName = Path.GetFileName(normalizedPath.TrimEnd(Path.DirectorySeparatorChar));
+            if (string.IsNullOrWhiteSpace(fileDisplayName))
+            {
+                fileDisplayName = path;
+            }
+
+            downloadEntries.Add((
+                NormalizeContentFileKey(path),
+                fileDisplayName,
+                downloads[0]!.ToString(),
+                targetPath));
+        }
+
+        int totalFiles = downloadEntries.Count;
+        if (totalFiles == 0)
+        {
+            return;
+        }
+
         int downloadedFiles = 0;
 
         var threadCount = await _localSettingsService.ReadSettingAsync<int?>("DownloadThreadCount") ?? 32;
@@ -382,46 +479,55 @@ public class ModpackInstallationService : IModpackInstallationService
         using var semaphore = new SemaphoreSlim(threadCount);
         var downloadTasks = new List<Task>();
 
-        // 预先创建目录
-        foreach (var fileItem in files)
+        foreach (var file in downloadEntries)
         {
-            var path = fileItem["path"]?.ToString();
-            if (!string.IsNullOrEmpty(path))
-            {
-                string targetPath = Path.Combine(modpackVersionDir, path.Replace('/', Path.DirectorySeparatorChar));
-                Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
-            }
-        }
-
-        foreach (var fileItem in files)
-        {
-            var downloads = fileItem["downloads"] as JArray;
-            var path = fileItem["path"]?.ToString();
-
-            if (downloads == null || downloads.Count == 0 || string.IsNullOrEmpty(path))
-                continue;
-
-            string downloadUrl = downloads[0]!.ToString();
-            string targetPath = Path.Combine(modpackVersionDir, path.Replace('/', Path.DirectorySeparatorChar));
-            string fileDisplayName = Path.GetFileName(path);
-
             var downloadTask = Task.Run(async () =>
             {
-                await semaphore.WaitAsync(cancellationToken);
+                bool semaphoreAcquired = false;
                 try
                 {
+                    await semaphore.WaitAsync(cancellationToken);
+                    semaphoreAcquired = true;
                     cancellationToken.ThrowIfCancellationRequested();
-                    Debug.WriteLine($"[Modrinth整合包] 开始下载: {fileDisplayName}");
+                    Debug.WriteLine($"[Modrinth整合包] 开始下载: {file.FileDisplayName}");
 
-                    await _downloadManager.DownloadFileAsync(downloadUrl, targetPath, null, null, cancellationToken);
+                    await _downloadManager.DownloadFileAsync(
+                        file.DownloadUrl,
+                        file.TargetPath,
+                        null,
+                        status =>
+                        {
+                            if (cancellationToken.IsCancellationRequested)
+                            {
+                                return;
+                            }
+
+                            ReportContentFileDownloading(contentFileProgress, file.FileKey, file.FileDisplayName, status);
+                        },
+                        cancellationToken);
+
+                    ReportContentFileCompleted(contentFileProgress, file.FileKey, file.FileDisplayName);
 
                     var completed = Interlocked.Increment(ref downloadedFiles);
                     double p = 80 + ((double)completed / totalFiles) * 20;
                     Report(progress, p, $"{p:F1}%", $"正在下载整合包文件 ({completed}/{totalFiles})...");
                 }
+                catch (OperationCanceledException)
+                {
+                    ReportContentFileCancelled(contentFileProgress, file.FileKey, file.FileDisplayName);
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    ReportContentFileFailed(contentFileProgress, file.FileKey, file.FileDisplayName, ex.Message);
+                    throw;
+                }
                 finally
                 {
-                    semaphore.Release();
+                    if (semaphoreAcquired)
+                    {
+                        semaphore.Release();
+                    }
                 }
             }, cancellationToken);
 
@@ -446,6 +552,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string? versionIconPath,
         string? sourceProjectId,
         string? sourceVersionId,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
         CancellationToken cancellationToken)
     {
         string manifestJson = await File.ReadAllTextAsync(manifestPath, cancellationToken);
@@ -488,7 +595,7 @@ public class ModpackInstallationService : IModpackInstallationService
 
         if (manifest.Files != null && manifest.Files.Count > 0)
         {
-            await DownloadCurseForgeFilesAsync(manifest, targetVersionDir, progress, cancellationToken);
+            await DownloadCurseForgeFilesAsync(manifest, targetVersionDir, progress, contentFileProgress, cancellationToken);
         }
 
         var modpackManifestVersionId = NormalizeModpackVersionId(manifest.Version)
@@ -510,6 +617,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string? versionIconPath,
         string? sourceProjectId,
         string? sourceVersionId,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
         CancellationToken cancellationToken)
     {
         string manifestJson = await File.ReadAllTextAsync(manifestPath, cancellationToken);
@@ -554,7 +662,7 @@ public class ModpackInstallationService : IModpackInstallationService
         // 下载整合包中的文件
         if (manifest.Files != null && manifest.Files.Count > 0)
         {
-            await DownloadCurseForgeFilesAsync(manifest, modpackVersionDir, progress, cancellationToken);
+            await DownloadCurseForgeFilesAsync(manifest, modpackVersionDir, progress, contentFileProgress, cancellationToken);
         }
 
         var modpackManifestVersionId = NormalizeModpackVersionId(manifest.Version)
@@ -824,6 +932,7 @@ public class ModpackInstallationService : IModpackInstallationService
         CurseForgeManifest manifest,
         string modpackVersionDir,
         IProgress<ModpackInstallProgress> progress,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
         CancellationToken cancellationToken)
     {
         // 获取项目 classId 信息
@@ -878,7 +987,34 @@ public class ModpackInstallationService : IModpackInstallationService
         Directory.CreateDirectory(shaderPacksDir);
         Directory.CreateDirectory(dataPacksDir);
 
-        int totalFiles = fileDetails.Count;
+        List<(string FileKey, string FileDisplayName, string TargetPath, string DownloadUrl)> downloadEntries = [];
+
+        foreach (var file in fileDetails)
+        {
+            string fileDisplayName = file.FileName ?? $"file_{file.Id}";
+
+            if (string.IsNullOrEmpty(file.DownloadUrl))
+            {
+                continue;
+            }
+
+            string targetDir = ResolveTargetDir(file.ModId, projectClassIdMap,
+                modsDir, resourcePacksDir, shaderPacksDir, dataPacksDir);
+            string targetPath = Path.Combine(targetDir, fileDisplayName);
+
+            downloadEntries.Add((
+                NormalizeContentFileKey(Path.GetRelativePath(modpackVersionDir, targetPath)),
+                fileDisplayName,
+                targetPath,
+                file.DownloadUrl));
+        }
+
+        int totalFiles = downloadEntries.Count;
+        if (totalFiles == 0)
+        {
+            return;
+        }
+
         int downloadedFiles = 0;
 
         var threadCount = await _localSettingsService.ReadSettingAsync<int?>("DownloadThreadCount") ?? 32;
@@ -887,35 +1023,60 @@ public class ModpackInstallationService : IModpackInstallationService
         using var semaphore = new SemaphoreSlim(threadCount);
         var downloadTasks = new List<Task>();
 
-        foreach (var file in fileDetails)
+        foreach (var file in downloadEntries)
         {
-            string fileDisplayName = file.FileName ?? $"file_{file.Id}";
-
-            if (string.IsNullOrEmpty(file.DownloadUrl))
-                continue;
-
-            string targetDir = ResolveTargetDir(file.ModId, projectClassIdMap,
-                modsDir, resourcePacksDir, shaderPacksDir, dataPacksDir);
-            string targetPath = Path.Combine(targetDir, fileDisplayName);
-            string downloadUrl = file.DownloadUrl;
-
             var downloadTask = Task.Run(async () =>
             {
-                await semaphore.WaitAsync(cancellationToken);
+                bool semaphoreAcquired = false;
                 try
                 {
+                    await semaphore.WaitAsync(cancellationToken);
+                    semaphoreAcquired = true;
                     cancellationToken.ThrowIfCancellationRequested();
-                    Debug.WriteLine($"[CurseForge整合包] 开始下载: {fileDisplayName}");
+                    Debug.WriteLine($"[CurseForge整合包] 开始下载: {file.FileDisplayName}");
 
-                    await _curseForgeService.DownloadFileAsync(downloadUrl, targetPath, null, cancellationToken);
+                    bool downloadSucceeded = await _curseForgeService.DownloadFileAsync(
+                        file.DownloadUrl,
+                        file.TargetPath,
+                        progressCallback: null,
+                        downloadStatusCallback: status =>
+                        {
+                            if (cancellationToken.IsCancellationRequested)
+                            {
+                                return;
+                            }
+
+                            ReportContentFileDownloading(contentFileProgress, file.FileKey, file.FileDisplayName, status);
+                        },
+                        cancellationToken);
+
+                    if (!downloadSucceeded)
+                    {
+                        throw new InvalidOperationException($"下载 {file.FileDisplayName} 失败");
+                    }
+
+                    ReportContentFileCompleted(contentFileProgress, file.FileKey, file.FileDisplayName);
 
                     var completed = Interlocked.Increment(ref downloadedFiles);
                     double p = 70 + ((double)completed / totalFiles) * 30;
                     Report(progress, p, $"{p:F1}%", $"正在下载整合包文件 ({completed}/{totalFiles})...");
                 }
+                catch (OperationCanceledException)
+                {
+                    ReportContentFileCancelled(contentFileProgress, file.FileKey, file.FileDisplayName);
+                    throw;
+                }
+                catch (Exception ex)
+                {
+                    ReportContentFileFailed(contentFileProgress, file.FileKey, file.FileDisplayName, ex.Message);
+                    throw;
+                }
                 finally
                 {
-                    semaphore.Release();
+                    if (semaphoreAcquired)
+                    {
+                        semaphore.Release();
+                    }
                 }
             }, cancellationToken);
 
@@ -1015,6 +1176,45 @@ public class ModpackInstallationService : IModpackInstallationService
             Status = status,
             Speed = speed
         });
+    }
+
+    private static string NormalizeContentFileKey(string path)
+    {
+        return path.Replace('\\', '/');
+    }
+
+    private static void ReportContentFileDownloading(
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string fileKey,
+        string fileName,
+        DownloadProgressStatus downloadStatus)
+    {
+        contentFileProgress?.Report(ModpackContentFileProgress.Downloading(fileKey, fileName, downloadStatus));
+    }
+
+    private static void ReportContentFileCompleted(
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string fileKey,
+        string fileName)
+    {
+        contentFileProgress?.Report(ModpackContentFileProgress.Completed(fileKey, fileName));
+    }
+
+    private static void ReportContentFileFailed(
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string fileKey,
+        string fileName,
+        string errorMessage)
+    {
+        contentFileProgress?.Report(ModpackContentFileProgress.Failed(fileKey, fileName, errorMessage));
+    }
+
+    private static void ReportContentFileCancelled(
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        string fileKey,
+        string fileName)
+    {
+        contentFileProgress?.Report(ModpackContentFileProgress.Cancelled(fileKey, fileName));
     }
 
     private static void CopyDirectory(string sourceDir, string destinationDir)

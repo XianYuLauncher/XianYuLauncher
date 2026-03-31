@@ -330,6 +330,9 @@
   <data name="DownloadQueue_TaskType_ModpackDownload" xml:space="preserve">
     <value>Modpack Download</value>
   </data>
+  <data name="DownloadQueue_TaskType_ModpackInstallFile" xml:space="preserve">
+    <value>Modpack File</value>
+  </data>
   <data name="DownloadQueue_TaskType_CommunityResourceUpdateBatch" xml:space="preserve">
     <value>Community Resource Update</value>
   </data>

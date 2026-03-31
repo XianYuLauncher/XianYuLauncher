@@ -32,6 +32,23 @@ public interface IModpackInstallationService
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 安装整合包，并额外汇报整合包内容文件级进度。
+    /// </summary>
+    Task<ModpackInstallResult> InstallModpackAsync(
+        string downloadUrl,
+        string fileName,
+        string modpackDisplayName,
+        string targetVersionName,
+        string minecraftPath,
+        bool isFromCurseForge,
+        IProgress<ModpackInstallProgress> progress,
+        string? modpackIconUrl,
+        string? sourceProjectId,
+        string? sourceVersionId,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 在现有实例内执行整合包更新（覆盖更新）。
     /// </summary>
     /// <param name="downloadUrl">目标整合包下载 URL</param>
@@ -56,5 +73,22 @@ public interface IModpackInstallationService
         string? versionIconPath = null,
         string? sourceProjectId = null,
         string? sourceVersionId = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 在现有实例内执行整合包更新，并额外汇报整合包内容文件级进度。
+    /// </summary>
+    Task<ModpackInstallResult> UpdateModpackInPlaceAsync(
+        string downloadUrl,
+        string fileName,
+        string modpackDisplayName,
+        string minecraftPath,
+        string targetVersionId,
+        bool isFromCurseForge,
+        IProgress<ModpackInstallProgress> progress,
+        string? versionIconPath,
+        string? sourceProjectId,
+        string? sourceVersionId,
+        IProgress<ModpackContentFileProgress>? contentFileProgress,
         CancellationToken cancellationToken = default);
 }

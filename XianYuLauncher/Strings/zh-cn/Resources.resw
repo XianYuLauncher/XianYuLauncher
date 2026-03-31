@@ -330,6 +330,9 @@
   <data name="DownloadQueue_TaskType_ModpackDownload" xml:space="preserve">
     <value>整合包下载</value>
   </data>
+  <data name="DownloadQueue_TaskType_ModpackInstallFile" xml:space="preserve">
+    <value>整合包文件</value>
+  </data>
   <data name="DownloadQueue_TaskType_CommunityResourceUpdateBatch" xml:space="preserve">
     <value>社区资源更新</value>
   </data>
