@@ -45,6 +45,43 @@ public class FilePickerService : IFilePickerService
         return file?.Path;
     }
 
+    public async Task<IReadOnlyList<string>> PickMultipleFilePathsAsync(
+        IReadOnlyList<string> fileTypeFilters,
+        PickerLocationId suggestedStartLocation,
+        PickerViewMode? viewMode = null,
+        string? settingsIdentifier = null,
+        string? commitButtonText = null)
+    {
+        var openPicker = new FileOpenPicker
+        {
+            SuggestedStartLocation = suggestedStartLocation
+        };
+
+        foreach (var filter in fileTypeFilters)
+        {
+            openPicker.FileTypeFilter.Add(filter);
+        }
+
+        if (viewMode.HasValue)
+        {
+            openPicker.ViewMode = viewMode.Value;
+        }
+
+        if (!string.IsNullOrWhiteSpace(settingsIdentifier))
+        {
+            openPicker.SettingsIdentifier = settingsIdentifier;
+        }
+
+        if (!string.IsNullOrWhiteSpace(commitButtonText))
+        {
+            openPicker.CommitButtonText = commitButtonText;
+        }
+
+        InitializeWithMainWindow(openPicker);
+        var files = await openPicker.PickMultipleFilesAsync();
+        return files.Select(file => file.Path).Where(path => !string.IsNullOrWhiteSpace(path)).ToArray();
+    }
+
     public async Task<string?> PickSingleFolderPathAsync(PickerLocationId suggestedStartLocation)
     {
         var folderPicker = new FolderPicker

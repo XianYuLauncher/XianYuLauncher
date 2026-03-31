@@ -126,6 +126,9 @@
   <data name="Shell_启动.Content" xml:space="preserve">
     <value>启动</value>
   </data>
+  <data name="Shell_LauncherAI.Content" xml:space="preserve">
+    <value>Launcher AI</value>
+  </data>
   <data name="Shell_资源下载.Content" xml:space="preserve">
     <value>下载</value>
   </data>
@@ -261,6 +264,78 @@
   <data name="DownloadQueue_Status_BackgroundDownloading" xml:space="preserve">
     <value>正在后台下载...</value>
   </data>
+  <data name="DownloadQueue_Status_Cancelling" xml:space="preserve">
+    <value>正在取消...</value>
+  </data>
+  <data name="DownloadQueue_Status_PreparingModpackInstall" xml:space="preserve">
+    <value>正在准备整合包安装...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackExtractingPackage" xml:space="preserve">
+    <value>正在解压整合包...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackParsingManifest" xml:space="preserve">
+    <value>正在解析整合包信息...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDeployingFiles" xml:space="preserve">
+    <value>版本下载完成，正在部署整合包文件...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingFiles" xml:space="preserve">
+    <value>正在下载整合包文件...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackUpdatingCoreFiles" xml:space="preserve">
+    <value>正在更新实例核心文件（Minecraft {0} / {1} {2}）...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingCoreVersion" xml:space="preserve">
+    <value>正在下载Minecraft {0} 和 {1} {2}...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackCleaningFiles" xml:space="preserve">
+    <value>正在清理旧整合包文件...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackApplyingOverrides" xml:space="preserve">
+    <value>正在覆盖整合包配置文件...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackCopyingOverrides" xml:space="preserve">
+    <value>正在复制覆盖文件...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackFetchingResourceInfo" xml:space="preserve">
+    <value>正在获取资源信息...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingFilesWithCount" xml:space="preserve">
+    <value>正在下载整合包文件 ({0}/{1})...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingPackage" xml:space="preserve">
+    <value>正在下载整合包...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackCopyingLocalPackage" xml:space="preserve">
+    <value>正在复制本地整合包文件...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackInstallCompleted" xml:space="preserve">
+    <value>整合包安装完成</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackInstallFailedWithError" xml:space="preserve">
+    <value>整合包安装失败: {0}</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackInstallCancelled" xml:space="preserve">
+    <value>整合包安装已取消</value>
+  </data>
+  <data name="DownloadQueue_Status_ValidatingFile" xml:space="preserve">
+    <value>正在校验 {0}...</value>
+  </data>
+  <data name="DownloadQueue_Status_ApplyingFileUpdate" xml:space="preserve">
+    <value>正在替换 {0}...</value>
+  </data>
+  <data name="DownloadQueue_Status_CommunityUpdateProgress" xml:space="preserve">
+    <value>已更新 {0}/{1}，失败 {2}</value>
+  </data>
+  <data name="DownloadQueue_Status_CommunityUpdateCompleted" xml:space="preserve">
+    <value>批次完成：已更新 {0}/{1}，失败 {2}</value>
+  </data>
+  <data name="DownloadQueue_Status_CommunityUpdateFailed" xml:space="preserve">
+    <value>批次失败：已更新 {0}/{1}，失败 {2}</value>
+  </data>
+  <data name="DownloadQueue_Status_CommunityUpdateCancelled" xml:space="preserve">
+    <value>批次已取消：已更新 {0}/{1}，失败 {2}</value>
+  </data>
   <data name="DownloadQueue_TaskType_GameInstall" xml:space="preserve">
     <value>游戏安装</value>
   </data>
@@ -282,11 +357,23 @@
   <data name="DownloadQueue_TaskType_ModpackDownload" xml:space="preserve">
     <value>整合包下载</value>
   </data>
+  <data name="DownloadQueue_TaskType_ModpackInstallFile" xml:space="preserve">
+    <value>整合包文件</value>
+  </data>
+  <data name="DownloadQueue_TaskType_CommunityResourceUpdateBatch" xml:space="preserve">
+    <value>社区资源更新</value>
+  </data>
+  <data name="DownloadQueue_TaskType_CommunityResourceUpdateFile" xml:space="preserve">
+    <value>更新文件</value>
+  </data>
   <data name="DownloadQueue_TaskType_FileDownload" xml:space="preserve">
     <value>文件下载</value>
   </data>
   <data name="DownloadQueue_TaskType_Generic" xml:space="preserve">
     <value>下载任务</value>
+  </data>
+  <data name="DownloadQueue_DisplayName_CommunityResourceUpdateBatch" xml:space="preserve">
+    <value>社区资源更新 · {0}</value>
   </data>
   <data name="DownloadQueue_DisplayName_FavoriteImport" xml:space="preserve">
     <value>收藏夹导入</value>
@@ -296,6 +383,9 @@
   </data>
   <data name="DownloadQueue_DisplayName_Server" xml:space="preserve">
     <value>服务端 {0}</value>
+  </data>
+  <data name="DownloadQueue_DisplayName_ModpackInstall" xml:space="preserve">
+    <value>整合包安装 · {0}</value>
   </data>
   <data name="SettingsPage_Title.Text" xml:space="preserve">
     <value>设置</value>
@@ -1579,14 +1669,14 @@
   <data name="ErrorAnalysis_LogDetails.Text" xml:space="preserve">
     <value>实时日志详情</value>
   </data>
+  <data name="ErrorAnalysis_AiPanel.SectionTitle" xml:space="preserve">
+    <value>崩溃分析</value>
+  </data>
   <data name="ErrorAnalysis_AnalysisTitle.Text" xml:space="preserve">
-    <value>XianYu Fixer</value>
+    <value>Launcher AI</value>
   </data>
-  <data name="ErrorAnalysis_NoErrorInfo.Text" xml:space="preserve">
+  <data name="ErrorAnalysis_NoErrorInfoText" xml:space="preserve">
     <value>没有分析内容，因为 Minecraft 还没崩溃...</value>
-  </data>
-  <data name="ErrorAnalysis_Analyzing.Text" xml:space="preserve">
-    <value>正在分析崩溃原因...</value>
   </data>
   <data name="联机Page_DownloadingTerracottaTitle" xml:space="preserve">
     <value>正在下载陶瓦插件</value>
@@ -1594,17 +1684,20 @@
   <data name="联机Page_DownloadingTerracottaMessage" xml:space="preserve">
     <value>正在下载并安装 Terracotta 插件，请稍候...</value>
   </data>
-  <data name="ErrorAnalysis_AnalysisComplete.Text" xml:space="preserve">
-    <value>分析完成。</value>
-  </data>
-  <data name="ErrorAnalysis_AnalysisCanceled.Text" xml:space="preserve">
+  <data name="ErrorAnalysis_AnalysisCanceledText" xml:space="preserve">
     <value>分析已取消。</value>
   </data>
-  <data name="ErrorAnalysis_RequestFailed.Text" xml:space="preserve">
-    <value>分析请求失败: {0}</value>
-  </data>
-  <data name="ErrorAnalysis_AnalysisFailed.Text" xml:space="preserve">
+  <data name="ErrorAnalysis_AnalysisFailedText" xml:space="preserve">
     <value>分析失败: {0}</value>
+  </data>
+  <data name="ErrorAnalysis_EmptyAssistantResponseText" xml:space="preserve">
+    <value>AI 没有返回任何内容。请稍后重试，或检查当前接口/模型是否支持流式输出。</value>
+  </data>
+  <data name="ErrorAnalysis_ImageFallbackRetryText" xml:space="preserve">
+    <value>当前模型不支持图片输入，已自动忽略图片并按文字内容重试。</value>
+  </data>
+  <data name="ErrorAnalysis_ImageFallbackRequiresUserText" xml:space="preserve">
+    <value>当前模型不支持图片输入，且这条消息没有文字内容，无法自动回退重试。请补充文字描述后再试。</value>
   </data>
   <data name="VersionManagerPage_SelectAllText" xml:space="preserve">
     <value>全选</value>
@@ -2777,25 +2870,43 @@
     <value>版本 '{0}' 已存在，请使用其他名称</value>
   </data>
   <data name="Settings_AI_Analysis_Title.Text" xml:space="preserve">
-    <value>XianYuFixer AI 分析</value>
+    <value>Launcher AI</value>
   </data>
-  <data name="Settings_AI_CrashAnalysis.Header" xml:space="preserve">
-    <value>AI 崩溃分析</value>
+  <data name="Settings_LauncherAI.Description" xml:space="preserve">
+    <value>启用后可在启动器内使用第三方 AI 服务进行对话与问题处理</value>
   </data>
-  <data name="Settings_AI_CrashAnalysis.Description" xml:space="preserve">
-    <value>启用后可使用第三方 AI 服务分析崩溃日志</value>
+  <data name="LauncherAIPage_Title.Text" xml:space="preserve">
+    <value>Launcher AI</value>
   </data>
-  <data name="Settings_AI_CrashAnalysisDescription.Text" xml:space="preserve">
-    <value>启用后可使用第三方 AI 服务分析崩溃日志。</value>
+  <data name="LauncherAIPage_Subtitle.Text" xml:space="preserve">
+    <value>与启动器 Agent 对话，处理启动、版本、模组和排障任务</value>
+  </data>
+  <data name="LauncherAIPage_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>在独立窗口中打开</value>
+  </data>
+  <data name="LauncherAIPanel_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>在独立窗口中打开</value>
+  </data>
+  <data name="ErrorAnalysisChatPanel_AddImageButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>添加图片</value>
+  </data>
+  <data name="ErrorAnalysisChatPanel_RemovePendingImageButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>移除图片</value>
+  </data>
+  <data name="LauncherProfileDialog_ShortcutTitle" xml:space="preserve">
+    <value>选择启动档案</value>
+  </data>
+  <data name="LauncherProfileDialog_ShortcutPrimaryButton" xml:space="preserve">
+    <value>创建快捷方式</value>
+  </data>
+  <data name="LauncherProfileDialog_CloseButton" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="LauncherProfileFlyout_NoProfiles" xml:space="preserve">
+    <value>暂无可用启动档案</value>
   </data>
   <data name="Settings_AI_Disclaimer.Text" xml:space="preserve">
-    <value>XianYuFixer 仅提供接入 OpenAI API 规范的 LLM 的能力，软件内不提供任何 AI 服务或账号。使用前请确认您所在地区允许使用相关服务，并严格遵守所选 AI 提供商的服务条款、使用政策与隐私规则；API Key 由您自行申请与保管，相关费用与合规责任由用户自行承担。</value>
-  </data>
-  <data name="Settings_AI_ConfigDetails.Header" xml:space="preserve">
-    <value>AI 配置详情</value>
-  </data>
-  <data name="Settings_AI_ConfigDescription.Text" xml:space="preserve">
-    <value>配置 API 端点、密钥与模型</value>
+    <value>Launcher AI 仅提供接入 OpenAI API 规范的 LLM 的能力，软件内不提供任何 AI 服务或账号。使用前请确认您所在地区允许使用相关服务，并严格遵守所选 AI 提供商的服务条款、使用政策与隐私规则；API Key 由您自行申请与保管，相关费用与合规责任由用户自行承担。</value>
   </data>
   <data name="Settings_AI_ApiEndpoint.Header" xml:space="preserve">
     <value>API 端点 (Base URL)</value>
@@ -2814,6 +2925,15 @@
   </data>
   <data name="Settings_AI_ModelName.Description" xml:space="preserve">
     <value>使用的 AI 模型</value>
+  </data>
+  <data name="Settings_AI_SystemPrompt.Header" xml:space="preserve">
+    <value>系统提示</value>
+  </data>
+  <data name="Settings_AI_SystemPrompt.Description" xml:space="preserve">
+    <value>留空则使用内置默认提示词</value>
+  </data>
+  <data name="Settings_AI_SystemPromptTextBox.PlaceholderText" xml:space="preserve">
+    <value>留空则使用内置默认系统提示词</value>
   </data>
   <data name="ResourceDownloadPage_FavoritesButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>拖拽资源到此处以收藏</value>
@@ -2872,9 +2992,6 @@
   </data>
   <data name="Settings_NetworkSection.Text" xml:space="preserve">
     <value>网络</value>
-  </data>
-  <data name="Settings_AISection.Text" xml:space="preserve">
-    <value>AI 分析</value>
   </data>
   <data name="Settings_AboutSection.Text" xml:space="preserve">
     <value>关于</value>

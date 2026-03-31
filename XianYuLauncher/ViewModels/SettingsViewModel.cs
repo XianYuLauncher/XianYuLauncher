@@ -117,7 +117,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         private readonly UpdateService _updateService;
         private readonly IGameSettingsDomainService _gameSettingsDomainService;
         private readonly IPersonalizationSettingsDomainService _personalizationSettingsDomainService;
-        private readonly IAiSettingsDomainService _aiSettingsDomainService;
+        private readonly IAISettingsDomainService _aiSettingsDomainService;
         private readonly IAboutSettingsDomainService _aboutSettingsDomainService;
         private readonly INetworkSettingsApplicationService _networkSettingsApplicationService;
         private readonly IDownloadSourceSettingsService _downloadSourceSettingsService;
@@ -130,17 +130,64 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         private bool _isApplyingDownloadSourceState;
         private bool _disposed;
 
-    [ObservableProperty]
-    private bool _isAIAnalysisEnabled;
+        [ObservableProperty]
+        private bool _isAIAnalysisEnabled;
 
-    [ObservableProperty]
-    private string _aiApiEndpoint = "https://api.openai.com";
+        private string _aiApiEndpoint = "https://api.openai.com";
 
-    [ObservableProperty]
-    private string _aiApiKey = string.Empty;
+        public string AIApiEndpoint
+        {
+            get => _aiApiEndpoint;
+            set
+            {
+                if (SetProperty(ref _aiApiEndpoint, value))
+                {
+                    QueueSettingWrite("AI_Endpoint", () => _aiSettingsDomainService.SaveApiEndpointAsync(value));
+                }
+            }
+        }
 
-    [ObservableProperty]
-    private string _aiModel = "gpt-3.5-turbo";
+        private string _aiApiKey = string.Empty;
+
+        public string AIApiKey
+        {
+            get => _aiApiKey;
+            set
+            {
+                if (SetProperty(ref _aiApiKey, value))
+                {
+                    QueueSettingWrite("AI_ApiKey", () => _aiSettingsDomainService.SaveApiKeyAsync(value), 400);
+                }
+            }
+        }
+
+        private string _aiModel = "gpt-3.5-turbo";
+
+        public string AIModel
+        {
+            get => _aiModel;
+            set
+            {
+                if (SetProperty(ref _aiModel, value))
+                {
+                    QueueSettingWrite("AI_Model", () => _aiSettingsDomainService.SaveModelAsync(value));
+                }
+            }
+        }
+
+        private string _aiSystemPrompt = string.Empty;
+
+        public string AISystemPrompt
+        {
+            get => _aiSystemPrompt;
+            set
+            {
+                if (SetProperty(ref _aiSystemPrompt, value))
+                {
+                    QueueSettingWrite("AI_SystemPrompt", () => _aiSettingsDomainService.SaveSystemPromptAsync(value), 400);
+                }
+            }
+        }
     
     /// <summary>
     /// 下载源项（用于下拉框显示）
@@ -1102,7 +1149,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         UpdateService updateService,
         IGameSettingsDomainService gameSettingsDomainService,
         IPersonalizationSettingsDomainService personalizationSettingsDomainService,
-        IAiSettingsDomainService aiSettingsDomainService,
+        IAISettingsDomainService aiSettingsDomainService,
         IAboutSettingsDomainService aboutSettingsDomainService,
         INetworkSettingsApplicationService networkSettingsApplicationService,
         IDownloadSourceSettingsService downloadSourceSettingsService,
@@ -1442,24 +1489,10 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     /// </summary>
     partial void OnIsAIAnalysisEnabledChanged(bool value)
     {
+        _aiSettingsDomainService.PublishEnabledState(value);
         QueueSettingWrite("AI_Enable", () => _aiSettingsDomainService.SaveEnabledAsync(value));
     }
 
-    partial void OnAiApiEndpointChanged(string value)
-    {
-        QueueSettingWrite("AI_Endpoint", () => _aiSettingsDomainService.SaveApiEndpointAsync(value));
-    }
-
-    partial void OnAiApiKeyChanged(string value)
-    {
-        QueueSettingWrite("AI_ApiKey", () => _aiSettingsDomainService.SaveApiKeyAsync(value), 400);
-    }
-
-    partial void OnAiModelChanged(string value)
-    {
-        QueueSettingWrite("AI_Model", () => _aiSettingsDomainService.SaveModelAsync(value));
-    }
-    
     /// <summary>
     /// 刷新缓存大小信息
     /// </summary>
@@ -2559,9 +2592,10 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     {
         var state = await _aiSettingsDomainService.LoadAsync();
         IsAIAnalysisEnabled = state.IsEnabled;
-        AiApiEndpoint = state.ApiEndpoint;
-        AiApiKey = state.ApiKey;
-        AiModel = state.Model;
+        AIApiEndpoint = state.ApiEndpoint;
+        AIApiKey = state.ApiKey;
+        AIModel = state.Model;
+        AISystemPrompt = state.SystemPrompt;
     }
 
     private async Task LoadJavaPathAsync()

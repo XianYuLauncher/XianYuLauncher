@@ -13,5 +13,8 @@ public enum DownloadTaskCategory
     DataPackDownload,
     WorldDownload,
     ModpackDownload,
-    FileDownload
+    CommunityResourceUpdateBatch,
+    CommunityResourceUpdateFile,
+    FileDownload,
+    ModpackInstallFile
 }

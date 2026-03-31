@@ -28,6 +28,7 @@ public class PageService : IPageService
                     Configure<CharacterViewModel, CharacterPage>();
                     Configure<CharacterManagementViewModel, CharacterManagementPage>();
                     Configure<ErrorAnalysisViewModel, ErrorAnalysisPage>();
+                    Configure<LauncherAIViewModel, LauncherAIPage>();
                     Configure<TutorialPageViewModel, TutorialPage>();
                     Configure<MultiplayerViewModel, MultiplayerPage>();
                     Configure<MultiplayerLobbyViewModel, MultiplayerLobbyPage>();

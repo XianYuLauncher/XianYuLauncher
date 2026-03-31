@@ -83,6 +83,16 @@ public sealed partial class LaunchPage : Page
                  ViewModel.QuickPlayWorld = launchParams.WorldFolder;
                  ViewModel.QuickPlayServer = launchParams.ServerAddress;
                  ViewModel.QuickPlayPort = launchParams.ServerPort;
+
+                 if (!string.IsNullOrWhiteSpace(launchParams.ProfileId))
+                 {
+                     var targetProfile = ViewModel.Profiles.FirstOrDefault(profile => string.Equals(profile.Id, launchParams.ProfileId, StringComparison.OrdinalIgnoreCase));
+                     if (targetProfile != null)
+                     {
+                         ViewModel.SelectedProfile = targetProfile;
+                         ViewModel.Username = targetProfile.Name;
+                     }
+                 }
                  
                  // 标记为已处理
                  launchParams.IsHandled = true;

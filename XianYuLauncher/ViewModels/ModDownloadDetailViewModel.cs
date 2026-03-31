@@ -32,13 +32,14 @@ namespace XianYuLauncher.ViewModels
         private readonly IDownloadTaskManager _downloadTaskManager;
         private readonly IResourceDialogService _resourceDialogService;
         private readonly ICommonDialogService _commonDialogService;
-        private readonly IProgressDialogService _progressDialogService;
         private readonly INavigationService _navigationService;
-        private readonly IModpackInstallationService _modpackInstallationService;
+        private readonly IModpackDownloadQueueService _modpackDownloadQueueService;
         private readonly IModResourceDownloadOrchestrator _modResourceDownloadOrchestrator;
         private readonly IModDetailLoadOrchestrator _modDetailLoadOrchestrator;
         private readonly IVersionInfoService _versionInfoService;
         private readonly IUiDispatcher _uiDispatcher;
+        private readonly ICommunityResourceInstallPlanner _communityResourceInstallPlanner;
+        private readonly ICommunityResourceInstallService _communityResourceInstallService;
         private readonly IGameDirResolver _gameDirResolver;
         private readonly IHttpImageSourceService _httpImageSourceService;
         private readonly ILogger<ModDownloadDetailViewModel> _logger;
@@ -275,9 +276,6 @@ namespace XianYuLauncher.ViewModels
             }
         }
 
-        // 安装取消令牌源
-        private CancellationTokenSource? _installCancellationTokenSource;
-        
         // CurseForge文件加载取消令牌源
         private CancellationTokenSource? _curseForgeLoadCancellationTokenSource;
 
@@ -515,13 +513,14 @@ namespace XianYuLauncher.ViewModels
             IDownloadTaskManager downloadTaskManager,
             IResourceDialogService resourceDialogService,
             ICommonDialogService commonDialogService,
-            IProgressDialogService progressDialogService,
             INavigationService navigationService,
-            IModpackInstallationService modpackInstallationService,
+            IModpackDownloadQueueService modpackDownloadQueueService,
             IModResourceDownloadOrchestrator modResourceDownloadOrchestrator,
             IModDetailLoadOrchestrator modDetailLoadOrchestrator,
             IVersionInfoService versionInfoService,
             IUiDispatcher uiDispatcher,
+            ICommunityResourceInstallPlanner communityResourceInstallPlanner,
+            ICommunityResourceInstallService communityResourceInstallService,
             IGameDirResolver gameDirResolver,
             IHttpImageSourceService httpImageSourceService,
             ILogger<ModDownloadDetailViewModel> logger)
@@ -532,13 +531,14 @@ namespace XianYuLauncher.ViewModels
             _downloadTaskManager = downloadTaskManager;
             _resourceDialogService = resourceDialogService;
             _commonDialogService = commonDialogService;
-            _progressDialogService = progressDialogService;
             _navigationService = navigationService;
-            _modpackInstallationService = modpackInstallationService;
+            _modpackDownloadQueueService = modpackDownloadQueueService;
             _modResourceDownloadOrchestrator = modResourceDownloadOrchestrator;
             _modDetailLoadOrchestrator = modDetailLoadOrchestrator;
             _versionInfoService = versionInfoService;
             _uiDispatcher = uiDispatcher;
+            _communityResourceInstallPlanner = communityResourceInstallPlanner;
+            _communityResourceInstallService = communityResourceInstallService;
             _gameDirResolver = gameDirResolver;
             _httpImageSourceService = httpImageSourceService;
             _logger = logger;
@@ -1324,75 +1324,29 @@ namespace XianYuLauncher.ViewModels
                 }
                 
                 string? selectedSaveName = SelectedSaveName;
-                if (string.IsNullOrEmpty(selectedSaveName))
+                if (string.IsNullOrEmpty(selectedSaveName) && !UseCustomDownloadPath)
                 {
                     IsDownloading = false;
                     DownloadStatus = "下载已取消";
                     return;
                 }
-                
-                string savesDir;
+
                 var targetVersion = _currentDownloadingGameVersion ?? SelectedInstalledVersion;
 
-                if (targetVersion != null)
-                {
-                    savesDir = await ResolveSavesDirectoryAsync(targetVersion);
-                }
-                else
-                {
-                    savesDir = await ResolveSavesDirectoryAsync(null);
-                }
-                
-                string selectedSaveDir = Path.Combine(savesDir, selectedSaveName);
-                string targetDir = Path.Combine(selectedSaveDir, MinecraftPathConsts.Datapacks);
-                
+                var installPlan = await BuildInstallPlanAsync(currentDownloadingModVersion, targetVersion, selectedSaveName);
+                string targetDir = installPlan.PrimaryTargetDirectory;
+
                 _fileService.CreateDirectory(targetDir);
-                
-                string savePath = Path.Combine(targetDir, currentDownloadingModVersion.FileName);
 
-                // 如果URL缺失且是CurseForge资源，尝试手动构造
-                if (string.IsNullOrEmpty(currentDownloadingModVersion.DownloadUrl) && 
-                    currentDownloadingModVersion.IsCurseForge && 
-                    currentDownloadingModVersion.OriginalCurseForgeFile != null)
-                {
-                    try 
-                    {
-                        currentDownloadingModVersion.DownloadUrl = _curseForgeService.ConstructDownloadUrl(
-                            currentDownloadingModVersion.OriginalCurseForgeFile.Id,
-                            currentDownloadingModVersion.OriginalCurseForgeFile.FileName ?? currentDownloadingModVersion.FileName);
-                        WriteDebugLog($"CompleteDatapackDownloadAsync 手动构造下载 URL: {currentDownloadingModVersion.DownloadUrl}");
-                    }
-                    catch (Exception ex)
-                    {
-                        WriteErrorLog(ex, "CompleteDatapackDownloadAsync 构造下载 URL 失败");
-                    }
-                }
-
-                InitializeDownloadTeachingTip();
-
-                await ProcessDependenciesForResourceAsync(currentDownloadingModVersion, targetDir, targetVersion);
-
-                string resolvedDownloadUrl = _modResourceDownloadOrchestrator.EnsureDownloadUrl(currentDownloadingModVersion);
-                if (string.IsNullOrWhiteSpace(resolvedDownloadUrl))
-                {
-                    throw new Exception("无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
-                }
-
-                CompleteDownloadTeachingTip();
-
-                await _modResourceDownloadOrchestrator.StartResourceDownloadAsync(
-                    ModName,
-                    ProjectType,
-                    ModIconUrl,
-                    resolvedDownloadUrl,
-                    savePath,
-                    showInTeachingTip: true,
-                    teachingTipGroupKey: _downloadTeachingTipGroupKey,
-                    communityResourceProvider: ResolveCommunityResourceProvider(currentDownloadingModVersion));
+                string operationId = await StartPlannedInstallAsync(
+                    installPlan,
+                    currentDownloadingModVersion,
+                    targetVersion);
 
                 ResetDownloadTeachingTipSession();
 
                 DownloadStatus = "下载已开始，请查看下载提示。";
+                WriteInformationLog($"社区资源下载任务已启动: {operationId}");
                 
                 _currentDownloadingModVersion = null;
                 _currentDownloadingGameVersion = null;
@@ -1427,6 +1381,86 @@ namespace XianYuLauncher.ViewModels
                 targetDir,
                 gameVersion,
                 (fileName, progress, statusMessage) => UpdateDownloadTeachingTip(fileName, progress, statusMessage));
+        }
+
+        private CommunityResourceInstallRequest CreateInstallRequest(
+            ModVersionViewModel modVersion,
+            InstalledGameVersionViewModel? targetVersion,
+            string? targetSaveName = null)
+        {
+            return new CommunityResourceInstallRequest
+            {
+                ResourceType = ProjectType,
+                FileName = modVersion.FileName,
+                TargetVersionName = targetVersion?.OriginalVersionName,
+                UseCustomDownloadPath = UseCustomDownloadPath,
+                CustomDownloadPath = CustomDownloadPath,
+                TargetSaveName = targetSaveName
+            };
+        }
+
+        private async Task<CommunityResourceInstallPlan> BuildInstallPlanAsync(
+            ModVersionViewModel modVersion,
+            InstalledGameVersionViewModel? targetVersion,
+            string? targetSaveName = null)
+        {
+            var planningResult = await _communityResourceInstallPlanner.PlanAsync(
+                CreateInstallRequest(modVersion, targetVersion, targetSaveName));
+
+            if (planningResult.IsReadyToInstall && planningResult.Plan != null)
+            {
+                return planningResult.Plan;
+            }
+
+            if (!string.IsNullOrWhiteSpace(planningResult.UnsupportedReason))
+            {
+                throw new InvalidOperationException(planningResult.UnsupportedReason);
+            }
+
+            if (planningResult.MissingRequirements.Count > 0)
+            {
+                throw new InvalidOperationException(planningResult.MissingRequirements[0].Message);
+            }
+
+            throw new InvalidOperationException("无法生成资源安装计划。");
+        }
+
+        private CommunityResourceInstallDescriptor CreateInstallDescriptor(
+            ModVersionViewModel modVersion,
+            InstalledGameVersionViewModel? targetVersion)
+        {
+            return new CommunityResourceInstallDescriptor
+            {
+                ResourceName = ModName,
+                ResourceIconUrl = ModIconUrl,
+                FileName = modVersion.FileName,
+                DownloadUrl = modVersion.DownloadUrl,
+                CommunityResourceProvider = ResolveCommunityResourceProvider(modVersion),
+                OriginalVersion = modVersion.OriginalVersion,
+                OriginalCurseForgeFile = modVersion.OriginalCurseForgeFile,
+                TargetLoaderType = targetVersion?.LoaderType,
+                TargetGameVersion = targetVersion?.GameVersion
+            };
+        }
+
+        private string EnsureDownloadTeachingTipGroupKey()
+        {
+            return _downloadTeachingTipGroupKey ??= Guid.NewGuid().ToString("N");
+        }
+
+        private async Task<string> StartPlannedInstallAsync(
+            CommunityResourceInstallPlan installPlan,
+            ModVersionViewModel modVersion,
+            InstalledGameVersionViewModel? targetVersion)
+        {
+            var descriptor = CreateInstallDescriptor(modVersion, targetVersion);
+            var operationId = await _communityResourceInstallService.StartInstallAsync(
+                installPlan,
+                descriptor,
+                showInTeachingTip: true,
+                teachingTipGroupKey: EnsureDownloadTeachingTipGroupKey());
+            modVersion.DownloadUrl = descriptor.DownloadUrl;
+            return operationId;
         }
 
         // 加载已安装游戏版本
@@ -1746,15 +1780,6 @@ namespace XianYuLauncher.ViewModels
             DownloadStatus = "下载已取消";
         }
 
-        // 取消安装命令
-        [RelayCommand]
-        public void CancelInstall()
-        {
-            _installCancellationTokenSource?.Cancel();
-            IsInstalling = false;
-            InstallStatus = "安装已取消";
-        }
-
         [RelayCommand]
         public async Task DownloadModAsync(ModVersionViewModel? modVersion)
         {
@@ -1802,60 +1827,29 @@ namespace XianYuLauncher.ViewModels
                 
                 if (isDatapack)
                 {
-                    // 保存当前正在下载的Mod版本
-                    _currentDownloadingModVersion = modVersion;
-                    
-                    // 数据包特殊处理：需要选择存档
-                    // 打开存档选择弹窗
-                    await ShowSaveSelectionDialog();
-                    
-                    // 注意：存档选择后的下载逻辑在CompleteDatapackDownloadAsync方法中处理
-                    // 这里直接返回，等待用户选择存档后再继续
-                    return;
+                    if (!UseCustomDownloadPath || string.IsNullOrWhiteSpace(CustomDownloadPath))
+                    {
+                        // 保存当前正在下载的Mod版本
+                        _currentDownloadingModVersion = modVersion;
+                        _currentDownloadingGameVersion = targetVersion;
+
+                        // 数据包特殊处理：需要选择存档
+                        // 打开存档选择弹窗
+                        await ShowSaveSelectionDialog();
+
+                        // 注意：存档选择后的下载逻辑在CompleteDatapackDownloadAsync方法中处理
+                        // 这里直接返回，等待用户选择存档后再继续
+                        return;
+                    }
+
+                    SelectedSaveName = null;
                 }
                 
                 // 非数据包类型，继续常规下载流程
                 IsDownloading = true;
                 DownloadStatus = "正在准备下载...";
-                
-                string savePath;
-                
-                // 如果使用自定义下载路径
-                string? customDownloadPath = CustomDownloadPath;
-                if (UseCustomDownloadPath && !string.IsNullOrEmpty(customDownloadPath))
-                {
-                    savePath = Path.Combine(customDownloadPath, modVersion.FileName);
-                }
-                else
-                {
-                    string gameDir = await ResolveTargetGameDirAsync(targetVersion);
-                    
-                    // 根据项目类型选择文件夹名称
-                    string targetFolder;
-                    
-                    // 非数据包类型，使用常规逻辑
-                    switch (ProjectType)
-                    {
-                        case "resourcepack":
-                            targetFolder = "resourcepacks";
-                            break;
-                        case "shader":
-                            targetFolder = "shaderpacks";
-                            break;
-                        default:
-                            targetFolder = "mods";
-                            break;
-                    }
-                    
-                    // 构建目标文件夹路径
-                    string targetDir = Path.Combine(gameDir, targetFolder);
-                    
-                    // 创建目标文件夹（如果不存在）
-                    _fileService.CreateDirectory(targetDir);
-                    
-                    // 构建完整的文件保存路径
-                    savePath = Path.Combine(targetDir, modVersion.FileName);
-                }
+                var installPlan = await BuildInstallPlanAsync(modVersion, targetVersion, SelectedSaveName);
+                _fileService.CreateDirectory(installPlan.PrimaryTargetDirectory);
                 
                 // 如果是世界，则不执行普通下载逻辑，转为 InstallWorldAsync
                 if (ProjectType == "world")
@@ -1865,36 +1859,15 @@ namespace XianYuLauncher.ViewModels
                    return;
                 }
 
-                var dependenciesTargetDir = Path.GetDirectoryName(savePath);
-                
-                InitializeDownloadTeachingTip();
-
-                if (!string.IsNullOrEmpty(dependenciesTargetDir))
-                {
-                    await ProcessDependenciesForResourceAsync(modVersion, dependenciesTargetDir, targetVersion);
-                }
-
-                string resolvedDownloadUrl = _modResourceDownloadOrchestrator.EnsureDownloadUrl(modVersion);
-                if (string.IsNullOrWhiteSpace(resolvedDownloadUrl))
-                {
-                    throw new Exception("无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
-                }
-
-                CompleteDownloadTeachingTip();
-
-                await _modResourceDownloadOrchestrator.StartResourceDownloadAsync(
-                    ModName,
-                    ProjectType,
-                    ModIconUrl,
-                    resolvedDownloadUrl,
-                    savePath,
-                    showInTeachingTip: true,
-                    teachingTipGroupKey: _downloadTeachingTipGroupKey,
-                    communityResourceProvider: ResolveCommunityResourceProvider(modVersion));
+                string operationId = await StartPlannedInstallAsync(
+                    installPlan,
+                    modVersion,
+                    targetVersion);
 
                 ResetDownloadTeachingTipSession();
 
                 DownloadStatus = "下载已开始，请查看下载提示。";
+                WriteInformationLog($"社区资源下载任务已启动: {operationId}");
             }
             catch (Exception ex)
             {
@@ -2044,29 +2017,7 @@ namespace XianYuLauncher.ViewModels
             InstallStatus = "正在准备整合包安装...";
             InstallProgress = 0;
             InstallProgressText = "0%";
-            _installCancellationTokenSource = new CancellationTokenSource();
-            var installCancellationTokenSource = _installCancellationTokenSource;
-
-            var dialogCloseTcs = new TaskCompletionSource<bool>();
-
-            var dialogTask = _progressDialogService.ShowObservableProgressDialogAsync(
-                "ModDownloadDetailPage_ModpackInstallDialog_Title".GetLocalized(),
-                () => InstallStatus,
-                () => InstallProgress,
-                () => InstallProgressText,
-                this,
-                primaryButtonText: null,
-                closeButtonText: "ModDownloadDetailPage_ModpackInstallDialog_CloseButtonText".GetLocalized(),
-                autoCloseWhen: dialogCloseTcs.Task,
-                getSpeed: () => InstallSpeed);
-            
-            _ = dialogTask.ContinueWith(t =>
-            {
-                if (t.Result == ContentDialogResult.None)
-                {
-                    _installCancellationTokenSource?.Cancel();
-                }
-            }, TaskScheduler.Default);
+            InstallSpeed = string.Empty;
 
             try
             {
@@ -2076,66 +2027,35 @@ namespace XianYuLauncher.ViewModels
 
                 string minecraftPath = _fileService.GetMinecraftDataPath();
 
-                var progress = new Progress<ModpackInstallProgress>(p =>
-                {
-                    _uiDispatcher.TryEnqueue(() =>
+                string taskId = await _modpackDownloadQueueService.StartInstallAsync(
+                    new ModpackDownloadQueueRequest
                     {
-                        InstallProgress = p.Progress;
-                        InstallProgressText = p.ProgressText;
-                        InstallStatus = p.Status;
-                        if (!string.IsNullOrEmpty(p.Speed))
-                            InstallSpeed = p.Speed;
-                    });
-                });
+                        DownloadUrl = resolvedDownloadUrl,
+                        FileName = modVersion.FileName,
+                        ModpackDisplayName = ModName,
+                        TargetVersionName = targetVersionName,
+                        MinecraftPath = minecraftPath,
+                        IsFromCurseForge = modVersion.IsCurseForge,
+                        ModpackIconSource = ModIconUrl,
+                        SourceProjectId = ModId,
+                        SourceVersionId = ResolveSourceVersionId(modVersion),
+                        ShowInTeachingTip = true,
+                    },
+                    CancellationToken.None);
 
-                var result = await _modpackInstallationService.InstallModpackAsync(
-                    resolvedDownloadUrl,
-                    modVersion.FileName,
-                    ModName,
-                    targetVersionName,
-                    minecraftPath,
-                    modVersion.IsCurseForge,
-                    progress,
-                    ModIconUrl,
-                    ModId,
-                    ResolveSourceVersionId(modVersion),
-                    installCancellationTokenSource.Token);
-
-                if (result.Success)
-                {
-                    await Task.Delay(500);
-                    dialogCloseTcs.TrySetResult(true);
-                    await ShowMessageAsync(string.Format(
-                        "ModDownloadDetailPage_ModpackInstall_Success".GetLocalized(),
-                        result.ModpackName));
-                }
-                else
-                {
-                    dialogCloseTcs.TrySetResult(true);
-                    if (result.ErrorMessage != "安装已取消")
-                    {
-                        ErrorMessage = result.ErrorMessage ?? string.Empty;
-                        InstallStatus = "安装失败！";
-                        await ShowMessageAsync(string.Format(
-                            "ModDownloadDetailPage_ModpackInstall_Failed".GetLocalized(),
-                            result.ErrorMessage ?? "ModDownloadDetailPage_ModpackInstall_UnknownError".GetLocalized()));
-                    }
-                    else
-                    {
-                        InstallStatus = "安装已取消";
-                    }
-                }
+                WriteInformationLog($"整合包安装已加入下载队列，TaskId: {taskId}");
+                InstallStatus = "整合包安装已加入下载队列，请查看下载提示。";
+                InstallProgress = 0;
+                InstallProgressText = "0%";
             }
             catch (OperationCanceledException)
             {
                 InstallStatus = "安装已取消";
-                dialogCloseTcs.TrySetResult(true);
             }
             catch (Exception ex)
             {
                 ErrorMessage = ex.Message;
                 InstallStatus = "安装失败！";
-                dialogCloseTcs.TrySetResult(true);
                 await ShowMessageAsync(string.Format(
                     "ModDownloadDetailPage_ModpackInstall_Failed".GetLocalized(),
                     ex.Message));
@@ -2143,8 +2063,6 @@ namespace XianYuLauncher.ViewModels
             finally
             {
                 IsInstalling = false;
-                _installCancellationTokenSource?.Dispose();
-                _installCancellationTokenSource = null;
             }
         }
 
@@ -2280,13 +2198,6 @@ namespace XianYuLauncher.ViewModels
                 _downloadCancellationTokenSource = null;
             }
 
-            // 取消安装任务
-            if (_installCancellationTokenSource != null)
-            {
-                _installCancellationTokenSource.Cancel();
-                _installCancellationTokenSource.Dispose();
-                _installCancellationTokenSource = null;
-            }
         }
         
         /// <summary>
@@ -2785,51 +2696,29 @@ namespace XianYuLauncher.ViewModels
                     return;
                 }
                 
-                // 直接构建下载路径
-                string gameDir = await _gameDirResolver.GetGameDirForVersionAsync(gameVersion.OriginalVersionName);
-                string targetDir = ModDownloadPlanningHelper.BuildTargetDirectory(gameDir, ProjectType);
+                var installPlan = await BuildInstallPlanAsync(modVersion, gameVersion);
+                string targetDir = installPlan.PrimaryTargetDirectory;
                 _fileService.CreateDirectory(targetDir);
-                string savePath = Path.Combine(targetDir, modVersion.FileName);
+                string savePath = installPlan.SavePath;
                 
                 WriteDebugLog($"QuickInstall 下载路径: {savePath}");
                 WriteDebugLog($"QuickInstall 下载 URL: {modVersion.DownloadUrl}");
-
-                string resolvedQuickInstallDownloadUrl = _modResourceDownloadOrchestrator.EnsureDownloadUrl(modVersion);
-                if (string.IsNullOrEmpty(resolvedQuickInstallDownloadUrl))
-                {
-                    IsDownloading = false;
-                    await _commonDialogService.ShowMessageDialogAsync("下载失败", "无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
-                    return;
-                }
                 
                 IsDownloading = true;
                 DownloadStatus = "正在准备下载...";
                 DownloadProgress = 0;
                 DownloadProgressText = "0.0%";
-                
-                InitializeDownloadTeachingTip();
 
-                // 先下载依赖
-                // 注意：这里仍然是同步等待依赖下载完成，如果依赖较多可能会导致短暂无响应
-                // 理想情况下应该将依赖下载也纳入 DownloadTaskManager 管理
-                await ProcessDependenciesForResourceAsync(modVersion, targetDir, gameVersion);
-                CompleteDownloadTeachingTip();
-
-                await _modResourceDownloadOrchestrator.StartResourceDownloadAsync(
-                    ModName,
-                    ProjectType,
-                    ModIconUrl,
-                    resolvedQuickInstallDownloadUrl,
-                    savePath,
-                    showInTeachingTip: true,
-                    teachingTipGroupKey: _downloadTeachingTipGroupKey,
-                    communityResourceProvider: ResolveCommunityResourceProvider(modVersion));
+                string operationId = await StartPlannedInstallAsync(
+                    installPlan,
+                    modVersion,
+                    gameVersion);
 
                 ResetDownloadTeachingTipSession();
 
                 DownloadStatus = "下载已开始，请查看下载提示。";
                 IsDownloading = false;
-                WriteInformationLog($"QuickInstall 下载任务已启动: {savePath}");
+                WriteInformationLog($"QuickInstall 下载任务已启动: {operationId}");
             }
             catch (TaskCanceledException)
             {

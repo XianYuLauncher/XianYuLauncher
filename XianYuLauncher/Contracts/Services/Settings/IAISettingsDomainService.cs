@@ -1,8 +1,9 @@
+using System;
 using System.Threading.Tasks;
 
 namespace XianYuLauncher.Contracts.Services.Settings;
 
-public sealed class AiSettingsState
+public sealed class AISettingsState
 {
     public bool IsEnabled { get; init; }
 
@@ -11,11 +12,19 @@ public sealed class AiSettingsState
     public string ApiKey { get; init; } = string.Empty;
 
     public string Model { get; init; } = "gpt-3.5-turbo";
+
+    public string SystemPrompt { get; init; } = string.Empty;
 }
 
-public interface IAiSettingsDomainService
+public interface IAISettingsDomainService
 {
-    Task<AiSettingsState> LoadAsync();
+    bool CurrentEnabled { get; }
+
+    event EventHandler<bool>? EnabledChanged;
+
+    Task<AISettingsState> LoadAsync();
+
+    void PublishEnabledState(bool value);
 
     Task SaveEnabledAsync(bool value);
 
@@ -24,4 +33,6 @@ public interface IAiSettingsDomainService
     Task SaveApiKeyAsync(string value);
 
     Task SaveModelAsync(string value);
+
+    Task SaveSystemPromptAsync(string value);
 }

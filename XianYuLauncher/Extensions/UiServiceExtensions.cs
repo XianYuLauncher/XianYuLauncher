@@ -31,6 +31,8 @@ internal static class UiServiceExtensions
         services.AddSingleton<IResourceDialogService, ResourceDialogService>();
         services.AddSingleton<ISelectionDialogService, SelectionDialogService>();
         services.AddSingleton<ICrashReportDialogService, CrashReportDialogService>();
+        services.AddSingleton<IGameCrashWorkflowService, GameCrashWorkflowService>();
+        services.AddSingleton<IGameLaunchObservationService, GameLaunchObservationService>();
         services.AddSingleton<IUpdateDialogFlowService, UpdateDialogFlowService>();
         services.AddSingleton<IAnnouncementDialogService, AnnouncementDialogService>();
         services.AddSingleton<IDownloadTaskPresentationService, DownloadTaskPresentationService>();
@@ -45,7 +47,7 @@ internal static class UiServiceExtensions
         services.AddSingleton<IPersonalizationSettingsDomainService, PersonalizationSettingsDomainService>();
         services.AddSingleton<INetworkSettingsDomainService, NetworkSettingsDomainService>();
         services.AddSingleton<INetworkSettingsApplicationService, NetworkSettingsApplicationService>();
-        services.AddSingleton<IAiSettingsDomainService, AiSettingsDomainService>();
+        services.AddSingleton<IAISettingsDomainService, AISettingsDomainService>();
         services.AddSingleton<IAboutSettingsDomainService, AboutSettingsDomainService>();
         services.AddSingleton<IDownloadSourceSettingsService, DownloadSourceSettingsService>();
 

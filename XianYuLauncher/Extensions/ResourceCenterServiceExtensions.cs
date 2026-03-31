@@ -14,6 +14,12 @@ internal static class ResourceCenterServiceExtensions
 {
     public static IServiceCollection AddResourceCenterServices(this IServiceCollection services)
     {
+        services.AddSingleton<ICommunityResourceInstallPlanner, CommunityResourceInstallPlanner>();
+        services.AddSingleton<ICommunityResourceMetadataService, CommunityResourceMetadataService>();
+        services.AddSingleton<ICommunityResourceInventoryService, CommunityResourceInventoryService>();
+        services.AddSingleton<ICommunityResourceUpdateCheckService, CommunityResourceUpdateCheckService>();
+        services.AddSingleton<ICommunityResourceUpdateService, CommunityResourceUpdateService>();
+
         services.AddHttpClient(nameof(ModrinthService));
         services.AddSingleton<ModrinthService>(sp =>
         {
@@ -48,10 +54,10 @@ internal static class ResourceCenterServiceExtensions
             var minecraftVersionService = sp.GetRequiredService<IMinecraftVersionService>();
             var versionInfoManager = sp.GetRequiredService<IVersionInfoManager>();
             var curseForgeService = sp.GetRequiredService<CurseForgeService>();
-            var localSettingsService = sp.GetRequiredService<ILocalSettingsService>();
+            var downloadTaskManager = sp.GetRequiredService<IDownloadTaskManager>();
             return new ModpackInstallationService(
                 downloadManager, fallbackDownloadManager,
-                minecraftVersionService, versionInfoManager, curseForgeService, localSettingsService);
+                minecraftVersionService, versionInfoManager, curseForgeService, downloadTaskManager);
         });
 
         services.AddHttpClient(nameof(TranslationService));

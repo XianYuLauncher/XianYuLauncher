@@ -13,11 +13,13 @@ internal static class LaunchServiceExtensions
     {
         services.AddSingleton<IGameDirResolver, GameDirResolver>();
         services.AddSingleton<IGameLaunchService, GameLaunchService>();
+        services.AddSingleton<IVersionPathGameLaunchService, VersionPathGameLaunchService>();
         services.AddSingleton<ICrashAnalyzer, CrashAnalyzer>();
         services.AddSingleton<IProfileManager, ProfileManager>();
         services.AddSingleton<IVersionConfigService, VersionConfigService>();
         services.AddSingleton<ILaunchSettingsResolver, LaunchSettingsResolver>();
         services.AddSingleton<IRegionValidator, RegionValidator>();
+        services.AddSingleton<WorldDataService>();
         services.AddSingleton<TerracottaService>();
         services.AddTransient<IGameProcessMonitor, GameProcessMonitor>();
 

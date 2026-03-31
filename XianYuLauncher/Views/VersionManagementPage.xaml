@@ -452,8 +452,10 @@
                                                             BorderThickness="1" 
                                                             BorderBrush="{ThemeResource CardStrokeColorDefault}"
                                                             CornerRadius="8"
-                                                            Command="{Binding DataContext.LaunchWithSaveCommand, ElementName=ContentArea}"
-                                                            CommandParameter="{Binding}">
+                                                            Tag="{Binding}">
+                                                        <Button.Flyout>
+                                                            <Flyout Opening="SaveLaunchProfileFlyout_Opening" />
+                                                        </Button.Flyout>
                                                         <Grid>
                                                             <Grid.ColumnDefinitions>
                                                                 <ColumnDefinition Width="Auto" />

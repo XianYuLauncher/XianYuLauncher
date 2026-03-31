@@ -18,6 +18,8 @@ public interface IFileService
     /// </summary>
     string GetLauncherCachePath();
     T? Read<T>(string folderPath, string fileName);
+    Task<T?> ReadAsync<T>(string folderPath, string fileName, CancellationToken cancellationToken = default);
     void Save<T>(string folderPath, string fileName, T content);
+    Task SaveAsync<T>(string folderPath, string fileName, T content, CancellationToken cancellationToken = default);
     void Delete(string folderPath, string fileName);
 }

@@ -1,4 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Services;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Views;
 
@@ -11,6 +13,8 @@ internal static class ViewModelServiceExtensions
 {
     public static IServiceCollection AddViewModelServices(this IServiceCollection services)
     {
+        services.AddSingleton<IGameManifestQueryService, GameManifestQueryService>();
+
         services.AddTransient<DownloadQueueViewModel>();
         services.AddTransient<DownloadQueuePage>();
 
@@ -39,8 +43,12 @@ internal static class ViewModelServiceExtensions
         services.AddTransient<CharacterManagementViewModel>();
         services.AddTransient<CharacterManagementPage>();
 
-        services.AddSingleton<ErrorAnalysisViewModel>();
+        services.AddTransient<ErrorAnalysisViewModel>();
         services.AddTransient<ErrorAnalysisPage>();
+        services.AddSingleton<LauncherAIWorkspaceState>();
+        services.AddSingleton<LauncherAIViewModel>();
+        services.AddTransient<LauncherAIPage>();
+        services.AddTransient<LauncherAIWindowPage>();
 
         services.AddTransient<TutorialPageViewModel>();
         services.AddTransient<TutorialPage>();

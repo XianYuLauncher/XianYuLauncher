@@ -32,18 +32,28 @@ public class DownloadTaskManager : IDownloadTaskManager
     private readonly List<ManagedDownloadTask> _tasks = new();
     private readonly Dictionary<string, ExternalDownloadTask> _externalTasks = new(StringComparer.Ordinal);
     private readonly SemaphoreSlim _schedulerGate = new(1, 1);
+    private int _activeNestedDownloadSlots;
+    private TaskCompletionSource<object?> _nestedDownloadSlotChanged = CreateNestedDownloadSlotChangedSource();
 
     private sealed class ManagedDownloadTask
     {
         public ManagedDownloadTask(DownloadTaskInfo info, Func<DownloadTaskInfo, CancellationToken, Task> executor)
         {
             Info = info;
-            Executor = executor;
+            QueueExecutor = executor;
+        }
+
+        public ManagedDownloadTask(DownloadTaskInfo info, Func<DownloadTaskExecutionContext, Task> customExecutor)
+        {
+            Info = info;
+            CustomExecutor = customExecutor;
         }
 
         public DownloadTaskInfo Info { get; }
 
-        public Func<DownloadTaskInfo, CancellationToken, Task> Executor { get; set; }
+        public Func<DownloadTaskInfo, CancellationToken, Task>? QueueExecutor { get; set; }
+
+        public Func<DownloadTaskExecutionContext, Task>? CustomExecutor { get; set; }
 
         public CancellationTokenSource CancellationTokenSource { get; private set; } = new();
 
@@ -68,15 +78,20 @@ public class DownloadTaskManager : IDownloadTaskManager
 
     private sealed class ExternalDownloadTask
     {
-        public ExternalDownloadTask(DownloadTaskInfo info, bool retainInRecentWhenFinished)
+        public ExternalDownloadTask(DownloadTaskInfo info, bool retainInRecentWhenFinished, Action? cancelAction)
         {
             Info = info;
             RetainInRecentWhenFinished = retainInRecentWhenFinished;
+            CancelAction = cancelAction;
         }
 
         public DownloadTaskInfo Info { get; }
 
         public bool RetainInRecentWhenFinished { get; }
+
+        public Action? CancelAction { get; }
+
+        public bool CancelRequested { get; set; }
     }
 
     public DownloadTaskManager(
@@ -124,10 +139,15 @@ public class DownloadTaskManager : IDownloadTaskManager
     /// <summary>
     /// 启动原版 Minecraft 下载
     /// </summary>
-    public Task StartVanillaDownloadAsync(string versionId, string customVersionName, string? versionIconPath = null, bool showInTeachingTip = false)
+    public async Task StartVanillaDownloadAsync(string versionId, string customVersionName, string? versionIconPath = null, bool showInTeachingTip = false)
+    {
+        _ = await StartVanillaDownloadWithTaskIdAsync(versionId, customVersionName, versionIconPath, showInTeachingTip).ConfigureAwait(false);
+    }
+
+    public Task<string> StartVanillaDownloadWithTaskIdAsync(string versionId, string customVersionName, string? versionIconPath = null, bool showInTeachingTip = false)
     {
         var taskName = string.IsNullOrEmpty(customVersionName) ? versionId : customVersionName;
-        return EnqueueManagedTaskAsync(
+        return EnqueueManagedTaskWithTaskIdAsync(
             taskName,
             customVersionName,
             DownloadTaskCategory.GameInstall,
@@ -170,7 +190,22 @@ public class DownloadTaskManager : IDownloadTaskManager
     /// <summary>
     /// 启动多加载器组合版本下载（新）
     /// </summary>
-    public Task StartMultiModLoaderDownloadAsync(
+    public async Task StartMultiModLoaderDownloadAsync(
+        string minecraftVersion,
+        IEnumerable<ModLoaderSelection> modLoaderSelections,
+        string customVersionName,
+        string? versionIconPath = null,
+        bool showInTeachingTip = false)
+    {
+        _ = await StartMultiModLoaderDownloadWithTaskIdAsync(
+            minecraftVersion,
+            modLoaderSelections,
+            customVersionName,
+            versionIconPath,
+            showInTeachingTip).ConfigureAwait(false);
+    }
+
+    public Task<string> StartMultiModLoaderDownloadWithTaskIdAsync(
         string minecraftVersion,
         IEnumerable<ModLoaderSelection> modLoaderSelections,
         string customVersionName,
@@ -182,7 +217,7 @@ public class DownloadTaskManager : IDownloadTaskManager
             ? string.Join(" + ", selections.Select(selection => selection.Type))
             : customVersionName;
 
-        return EnqueueManagedTaskAsync(
+        return EnqueueManagedTaskWithTaskIdAsync(
             taskName,
             customVersionName,
             DownloadTaskCategory.GameInstall,
@@ -259,17 +294,41 @@ public class DownloadTaskManager : IDownloadTaskManager
     public void CancelTask(string taskId)
     {
         ManagedDownloadTask? managedTask;
+        ExternalDownloadTask? externalTask = null;
+        Action? externalCancelAction = null;
+        bool shouldMarkManagedTaskCancelled = false;
+        bool shouldNotifyManagedTaskProgress = false;
 
         lock (_lock)
         {
             managedTask = _tasks.FirstOrDefault(task => task.Info.TaskId == taskId);
             if (managedTask == null)
             {
-                _logger.LogWarning("未找到要取消的下载任务: {TaskId}", taskId);
-                return;
+                if (!_externalTasks.TryGetValue(taskId, out externalTask))
+                {
+                    _logger.LogWarning("未找到要取消的下载任务: {TaskId}", taskId);
+                    return;
+                }
+
+                if (!externalTask.Info.CanCancel || externalTask.CancelAction == null)
+                {
+                    _logger.LogWarning("外部下载任务不支持取消: {TaskId}", taskId);
+                    return;
+                }
+
+                if (externalTask.CancelRequested)
+                {
+                    return;
+                }
+
+                externalTask.CancelRequested = true;
+                externalTask.Info.AllowCancel = false;
+                UpdateTaskStatus(externalTask.Info, "正在取消...", "DownloadQueue_Status_Cancelling");
+                externalTask.Info.QueuePosition = null;
+                externalCancelAction = externalTask.CancelAction;
             }
 
-            if (managedTask.Info.State == DownloadTaskState.Completed
+            else if (managedTask.Info.State == DownloadTaskState.Completed
                 || managedTask.Info.State == DownloadTaskState.Failed
                 || managedTask.Info.State == DownloadTaskState.Cancelled)
             {
@@ -277,19 +336,57 @@ public class DownloadTaskManager : IDownloadTaskManager
                 return;
             }
 
-            _logger.LogInformation("正在取消下载任务: {TaskName}", managedTask.Info.TaskName);
-            managedTask.Info.State = DownloadTaskState.Cancelled;
-            ResetTaskSpeed(managedTask.Info);
-            UpdateTaskStatus(managedTask.Info, "下载已取消", "DownloadQueue_Status_Cancelled");
-            UpdateQueuePositionsLocked();
-
-            if (managedTask.IsRunning)
+            else
             {
-                managedTask.CancellationTokenSource.Cancel();
+                _logger.LogInformation("正在取消下载任务: {TaskName}", managedTask.Info.TaskName);
+                if (managedTask.IsRunning)
+                {
+                    managedTask.Info.AllowCancel = false;
+                    UpdateTaskStatus(managedTask.Info, "正在取消...", "DownloadQueue_Status_Cancelling");
+                    managedTask.Info.QueuePosition = null;
+                    shouldNotifyManagedTaskProgress = true;
+                    managedTask.CancellationTokenSource.Cancel();
+                }
+                else
+                {
+                    shouldMarkManagedTaskCancelled = true;
+                }
+
+                UpdateQueuePositionsLocked();
             }
         }
 
-        OnTaskStateChanged(managedTask.Info);
+        if (managedTask != null)
+        {
+            if (shouldMarkManagedTaskCancelled)
+            {
+                MarkTaskCancelled(managedTask.Info);
+                return;
+            }
+
+            if (shouldNotifyManagedTaskProgress)
+            {
+                OnTaskProgressChanged(managedTask.Info);
+                return;
+            }
+
+            OnTaskStateChanged(managedTask.Info);
+            return;
+        }
+
+        if (externalTask != null)
+        {
+            OnTaskProgressChanged(externalTask.Info);
+
+            try
+            {
+                externalCancelAction?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "取消外部下载任务时发生异常: {TaskId}", taskId);
+            }
+        }
     }
 
     public async Task RetryTaskAsync(string taskId)
@@ -302,6 +399,12 @@ public class DownloadTaskManager : IDownloadTaskManager
             if (managedTask == null)
             {
                 _logger.LogWarning("未找到要重试的下载任务: {TaskId}", taskId);
+                return;
+            }
+
+            if (!managedTask.Info.CanRetry)
+            {
+                _logger.LogWarning("当前下载任务不支持重试: {TaskName}", managedTask.Info.TaskName);
                 return;
             }
 
@@ -327,6 +430,50 @@ public class DownloadTaskManager : IDownloadTaskManager
         await ProcessQueueAsync().ConfigureAwait(false);
     }
 
+    public Task<string> StartCustomManagedTaskWithTaskIdAsync(
+        string taskName,
+        string versionName,
+        DownloadTaskCategory taskCategory,
+        Func<DownloadTaskExecutionContext, Task> executor,
+        bool showInTeachingTip = false,
+        string? iconSource = null,
+        string? teachingTipGroupKey = null,
+        string? batchGroupKey = null,
+        string? parentTaskId = null,
+        bool allowCancel = true,
+        bool allowRetry = true,
+        string? displayNameResourceKey = null,
+        IReadOnlyList<string>? displayNameResourceArguments = null,
+        string? taskTypeResourceKey = null)
+    {
+        ArgumentNullException.ThrowIfNull(executor);
+
+        var task = CreateManagedTaskInfo(
+            taskName,
+            versionName,
+            taskCategory,
+            showInTeachingTip,
+            iconSource,
+            teachingTipGroupKey,
+            batchGroupKey,
+            parentTaskId,
+            allowCancel,
+            allowRetry,
+            displayNameResourceKey,
+            displayNameResourceArguments,
+            taskTypeResourceKey);
+
+        lock (_lock)
+        {
+            _tasks.Add(new ManagedDownloadTask(task, executor));
+            UpdateQueuePositionsLocked();
+        }
+
+        _logger.LogInformation("自定义下载任务已入队: {TaskName}", taskName);
+        OnTaskStateChanged(task);
+        return StartCustomManagedTaskCoreAsync(task.TaskId);
+    }
+
     public string CreateExternalTask(
         string taskName,
         string versionName = "",
@@ -334,6 +481,10 @@ public class DownloadTaskManager : IDownloadTaskManager
         string? teachingTipGroupKey = null,
         DownloadTaskCategory taskCategory = DownloadTaskCategory.Unknown,
         bool retainInRecentWhenFinished = true,
+        string? batchGroupKey = null,
+        string? parentTaskId = null,
+        bool allowCancel = false,
+        Action? cancelAction = null,
         string? displayNameResourceKey = null,
         IReadOnlyList<string>? displayNameResourceArguments = null,
         string? taskTypeResourceKey = null)
@@ -355,15 +506,19 @@ public class DownloadTaskManager : IDownloadTaskManager
             StatusResourceKey = "DownloadQueue_Status_Downloading",
             StatusResourceArguments = [],
             IsQueueManaged = false,
+            AllowCancel = allowCancel,
+            AllowRetry = false,
             ShowInTeachingTip = showInTeachingTip,
             TeachingTipGroupKey = string.IsNullOrWhiteSpace(teachingTipGroupKey) ? Guid.NewGuid().ToString("N") : teachingTipGroupKey,
+            BatchGroupKey = string.IsNullOrWhiteSpace(batchGroupKey) ? string.Empty : batchGroupKey,
+            ParentTaskId = parentTaskId,
             CreatedAtUtc = createdAtUtc,
             LastUpdatedAtUtc = createdAtUtc
         };
 
         lock (_lock)
         {
-            _externalTasks[taskInfo.TaskId] = new ExternalDownloadTask(taskInfo, retainInRecentWhenFinished);
+            _externalTasks[taskInfo.TaskId] = new ExternalDownloadTask(taskInfo, retainInRecentWhenFinished, cancelAction);
             UpdateQueuePositionsLocked();
         }
 
@@ -404,6 +559,76 @@ public class DownloadTaskManager : IDownloadTaskManager
 
         OnTaskStateChanged(taskInfo);
         OnTaskProgressChanged(taskInfo);
+    }
+
+    public void UpdateExternalTaskDownloadProgress(
+        string taskId,
+        double progress,
+        DownloadProgressStatus downloadStatus,
+        string statusMessage,
+        string? statusResourceKey = null,
+        IReadOnlyList<string>? statusResourceArguments = null)
+    {
+        DownloadTaskInfo? taskInfo;
+        bool shouldRaiseStateChanged;
+
+        lock (_lock)
+        {
+            if (!_externalTasks.TryGetValue(taskId, out var externalTask))
+            {
+                _logger.LogWarning("未找到要更新下载进度的外部下载任务: {TaskId}", taskId);
+                return;
+            }
+
+            taskInfo = externalTask.Info;
+
+            if (taskInfo.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled)
+            {
+                _logger.LogWarning("外部下载任务已结束，忽略下载进度更新请求: {TaskId}", taskId);
+                return;
+            }
+
+            var previousState = taskInfo.State;
+            taskInfo.Progress = Math.Clamp(progress, 0, 100);
+            UpdateTaskStatus(taskInfo, statusMessage, statusResourceKey, statusResourceArguments);
+            UpdateTaskSpeed(taskInfo, downloadStatus);
+            taskInfo.State = DownloadTaskState.Downloading;
+            taskInfo.QueuePosition = null;
+
+            shouldRaiseStateChanged = previousState != taskInfo.State;
+        }
+
+        if (shouldRaiseStateChanged)
+        {
+            OnTaskStateChanged(taskInfo);
+        }
+
+        OnTaskProgressChanged(taskInfo);
+    }
+
+    public async Task<IAsyncDisposable> AcquireNestedDownloadSlotAsync(
+        string? ownerTaskId = null,
+        CancellationToken cancellationToken = default)
+    {
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            int maxConcurrentTasks = await GetMaxConcurrentTasksAsync().ConfigureAwait(false);
+            Task waitTask;
+
+            lock (_lock)
+            {
+                if (CanAcquireNestedDownloadSlotLocked(ownerTaskId, maxConcurrentTasks))
+                {
+                    _activeNestedDownloadSlots++;
+                    return new NestedDownloadSlotLease(this);
+                }
+
+                waitTask = _nestedDownloadSlotChanged.Task;
+            }
+
+            await waitTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 
     public void CompleteExternalTask(
@@ -531,7 +756,30 @@ public class DownloadTaskManager : IDownloadTaskManager
     /// <summary>
     /// 启动社区资源下载（Mod、资源包、光影、数据包、世界）
     /// </summary>
-    public Task StartResourceDownloadAsync(
+    public async Task StartResourceDownloadAsync(
+        string resourceName,
+        string resourceType,
+        string downloadUrl,
+        string savePath,
+        string? iconUrl = null,
+        IEnumerable<ResourceDependency>? dependencies = null,
+        bool showInTeachingTip = false,
+        string? teachingTipGroupKey = null,
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown)
+    {
+        _ = await StartResourceDownloadWithTaskIdAsync(
+            resourceName,
+            resourceType,
+            downloadUrl,
+            savePath,
+            iconUrl,
+            dependencies,
+            showInTeachingTip,
+            teachingTipGroupKey,
+            communityResourceProvider).ConfigureAwait(false);
+    }
+
+    public Task<string> StartResourceDownloadWithTaskIdAsync(
         string resourceName,
         string resourceType,
         string downloadUrl,
@@ -544,7 +792,7 @@ public class DownloadTaskManager : IDownloadTaskManager
     {
         var dependencyList = dependencies?.ToList();
 
-        return EnqueueManagedTaskAsync(
+        return EnqueueManagedTaskWithTaskIdAsync(
             resourceName,
             resourceType,
             ResolveResourceTaskCategory(resourceType),
@@ -597,8 +845,80 @@ public class DownloadTaskManager : IDownloadTaskManager
         IReadOnlyList<string>? displayNameResourceArguments = null,
         string? taskTypeResourceKey = null)
     {
+        _ = await EnqueueManagedTaskWithTaskIdAsync(
+            taskName,
+            versionName,
+            taskCategory,
+            executor,
+            showInTeachingTip,
+            iconSource,
+            teachingTipGroupKey,
+            displayNameResourceKey,
+            displayNameResourceArguments,
+                taskTypeResourceKey).ConfigureAwait(false);
+    }
+
+    private async Task<string> EnqueueManagedTaskWithTaskIdAsync(
+        string taskName,
+        string versionName,
+        DownloadTaskCategory taskCategory,
+        Func<DownloadTaskInfo, CancellationToken, Task> executor,
+        bool showInTeachingTip,
+        string? iconSource = null,
+        string? teachingTipGroupKey = null,
+        string? displayNameResourceKey = null,
+        IReadOnlyList<string>? displayNameResourceArguments = null,
+        string? taskTypeResourceKey = null)
+    {
+        var task = CreateManagedTaskInfo(
+            taskName,
+            versionName,
+            taskCategory,
+            showInTeachingTip,
+            iconSource,
+            teachingTipGroupKey,
+            batchGroupKey: null,
+            parentTaskId: null,
+            allowCancel: true,
+            allowRetry: true,
+            displayNameResourceKey,
+            displayNameResourceArguments,
+            taskTypeResourceKey);
+
+        lock (_lock)
+        {
+            _tasks.Add(new ManagedDownloadTask(task, executor));
+            UpdateQueuePositionsLocked();
+        }
+
+        _logger.LogInformation("下载任务已入队: {TaskName}", taskName);
+        OnTaskStateChanged(task);
+        return await StartCustomManagedTaskCoreAsync(task.TaskId).ConfigureAwait(false);
+    }
+
+    private async Task<string> StartCustomManagedTaskCoreAsync(string taskId)
+    {
+        await ProcessQueueAsync().ConfigureAwait(false);
+        return taskId;
+    }
+
+    private static DownloadTaskInfo CreateManagedTaskInfo(
+        string taskName,
+        string versionName,
+        DownloadTaskCategory taskCategory,
+        bool showInTeachingTip,
+        string? iconSource,
+        string? teachingTipGroupKey,
+        string? batchGroupKey,
+        string? parentTaskId,
+        bool allowCancel,
+        bool allowRetry,
+        string? displayNameResourceKey,
+        IReadOnlyList<string>? displayNameResourceArguments,
+        string? taskTypeResourceKey)
+    {
         var createdAtUtc = DateTimeOffset.UtcNow;
-        var task = new DownloadTaskInfo
+        return new DownloadTaskInfo
         {
             TaskName = taskName,
             VersionName = versionName,
@@ -616,20 +936,14 @@ public class DownloadTaskManager : IDownloadTaskManager
             StatusResourceArguments = [],
             ShowInTeachingTip = showInTeachingTip,
             TeachingTipGroupKey = string.IsNullOrWhiteSpace(teachingTipGroupKey) ? Guid.NewGuid().ToString("N") : teachingTipGroupKey,
+            BatchGroupKey = string.IsNullOrWhiteSpace(batchGroupKey) ? string.Empty : batchGroupKey,
+            ParentTaskId = parentTaskId,
             IsQueueManaged = true,
+            AllowCancel = allowCancel,
+            AllowRetry = allowRetry,
             CreatedAtUtc = createdAtUtc,
             LastUpdatedAtUtc = createdAtUtc
         };
-
-        lock (_lock)
-        {
-            _tasks.Add(new ManagedDownloadTask(task, executor));
-            UpdateQueuePositionsLocked();
-        }
-
-        _logger.LogInformation("下载任务已入队: {TaskName}", taskName);
-        OnTaskStateChanged(task);
-        await ProcessQueueAsync().ConfigureAwait(false);
     }
 
     private static DownloadTaskCategory ResolveResourceTaskCategory(string resourceType)
@@ -688,6 +1002,7 @@ public class DownloadTaskManager : IDownloadTaskManager
                         }
                     }
 
+                    SignalNestedDownloadSlotChangedLocked();
                     UpdateQueuePositionsLocked();
                 }
 
@@ -723,7 +1038,15 @@ public class DownloadTaskManager : IDownloadTaskManager
     {
         try
         {
-            await managedTask.Executor(managedTask.Info, managedTask.CancellationTokenSource.Token).ConfigureAwait(false);
+            if (managedTask.CustomExecutor != null)
+            {
+                await managedTask.CustomExecutor(CreateExecutionContext(managedTask)).ConfigureAwait(false);
+            }
+            else if (managedTask.QueueExecutor != null)
+            {
+                await managedTask.QueueExecutor(managedTask.Info, managedTask.CancellationTokenSource.Token).ConfigureAwait(false);
+            }
+
             managedTask.CancellationTokenSource.Token.ThrowIfCancellationRequested();
             CompleteTask(managedTask.Info);
         }
@@ -742,12 +1065,101 @@ public class DownloadTaskManager : IDownloadTaskManager
             lock (_lock)
             {
                 managedTask.IsRunning = false;
+                SignalNestedDownloadSlotChangedLocked();
                 UpdateQueuePositionsLocked();
             }
 
             NotifyTasksSnapshotChanged();
             await ProcessQueueAsync().ConfigureAwait(false);
         }
+    }
+
+    private DownloadTaskExecutionContext CreateExecutionContext(ManagedDownloadTask managedTask)
+    {
+        return new DownloadTaskExecutionContext(
+            managedTask.Info.TaskId,
+            managedTask.CancellationTokenSource.Token,
+            update => ApplyExecutionUpdate(managedTask.Info, update));
+    }
+
+    private static TaskCompletionSource<object?> CreateNestedDownloadSlotChangedSource()
+    {
+        return new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+    }
+
+    private bool CanAcquireNestedDownloadSlotLocked(string? ownerTaskId, int maxConcurrentTasks)
+    {
+        int runningManagedTasks = _tasks.Count(task => task.IsRunning);
+        if (!string.IsNullOrWhiteSpace(ownerTaskId) &&
+            _tasks.Any(task => task.IsRunning && string.Equals(task.Info.TaskId, ownerTaskId, StringComparison.Ordinal)))
+        {
+            runningManagedTasks = Math.Max(0, runningManagedTasks - 1);
+        }
+
+        return runningManagedTasks + _activeNestedDownloadSlots < maxConcurrentTasks;
+    }
+
+    private void ReleaseNestedDownloadSlot()
+    {
+        lock (_lock)
+        {
+            if (_activeNestedDownloadSlots <= 0)
+            {
+                return;
+            }
+
+            _activeNestedDownloadSlots--;
+            SignalNestedDownloadSlotChangedLocked();
+        }
+    }
+
+    private void SignalNestedDownloadSlotChangedLocked()
+    {
+        TaskCompletionSource<object?> current = _nestedDownloadSlotChanged;
+        _nestedDownloadSlotChanged = CreateNestedDownloadSlotChangedSource();
+        current.TrySetResult(null);
+    }
+
+    private sealed class NestedDownloadSlotLease : IAsyncDisposable
+    {
+        private readonly DownloadTaskManager _owner;
+        private int _disposed;
+
+        public NestedDownloadSlotLease(DownloadTaskManager owner)
+        {
+            _owner = owner;
+        }
+
+        public ValueTask DisposeAsync()
+        {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0)
+            {
+                _owner.ReleaseNestedDownloadSlot();
+            }
+
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    private void ApplyExecutionUpdate(DownloadTaskInfo task, DownloadTaskExecutionUpdate update)
+    {
+        lock (_lock)
+        {
+            task.Progress = Math.Clamp(update.Progress, 0, 100);
+            UpdateTaskStatus(task, update.StatusMessage, update.StatusResourceKey, update.StatusResourceArguments);
+
+            if (update.ResetSpeed)
+            {
+                ResetTaskSpeed(task);
+            }
+            else if (update.SpeedBytesPerSecond.HasValue || update.SpeedText != null)
+            {
+                task.SpeedBytesPerSecond = Math.Max(0, update.SpeedBytesPerSecond ?? 0);
+                task.SpeedText = update.SpeedText ?? string.Empty;
+            }
+        }
+
+        OnTaskProgressChanged(task);
     }
 
     private async Task ExecuteFileDownloadAsync(
@@ -1225,7 +1637,8 @@ public class DownloadTaskManager : IDownloadTaskManager
             task.State = DownloadTaskState.Completed;
             task.Progress = 100;
             ResetTaskSpeed(task);
-            UpdateTaskStatus(task, "下载完成", "DownloadQueue_Status_Completed");
+            var (statusMessage, statusResourceKey, statusResourceArguments) = GetCompletedStatusPresentation(task);
+            UpdateTaskStatus(task, statusMessage, statusResourceKey, statusResourceArguments);
             UpdateQueuePositionsLocked();
             shouldNotify = true;
         }
@@ -1250,7 +1663,8 @@ public class DownloadTaskManager : IDownloadTaskManager
             task.State = DownloadTaskState.Failed;
             task.ErrorMessage = errorMessage;
             ResetTaskSpeed(task);
-            UpdateTaskStatus(task, $"下载失败: {errorMessage}", "DownloadQueue_Status_FailedWithError", [errorMessage]);
+            var (statusMessage, statusResourceKey, statusResourceArguments) = GetFailedStatusPresentation(task, errorMessage);
+            UpdateTaskStatus(task, statusMessage, statusResourceKey, statusResourceArguments);
             UpdateQueuePositionsLocked();
             shouldNotify = true;
         }
@@ -1279,7 +1693,8 @@ public class DownloadTaskManager : IDownloadTaskManager
 
             task.State = DownloadTaskState.Cancelled;
             ResetTaskSpeed(task);
-            UpdateTaskStatus(task, "下载已取消", "DownloadQueue_Status_Cancelled");
+            var (statusMessage, statusResourceKey, statusResourceArguments) = GetCancelledStatusPresentation(task);
+            UpdateTaskStatus(task, statusMessage, statusResourceKey, statusResourceArguments);
             UpdateQueuePositionsLocked();
             shouldNotify = true;
         }
@@ -1326,6 +1741,35 @@ public class DownloadTaskManager : IDownloadTaskManager
             ? [.. statusResourceArguments]
             : [];
         task.LastUpdatedAtUtc = DateTimeOffset.UtcNow;
+    }
+
+    private static (string StatusMessage, string StatusResourceKey, IReadOnlyList<string>? StatusResourceArguments) GetCompletedStatusPresentation(DownloadTaskInfo task)
+    {
+        return task.TaskCategory switch
+        {
+            DownloadTaskCategory.ModpackDownload => ("整合包安装完成！", "DownloadQueue_Status_ModpackInstallCompleted", null),
+            _ => ("下载完成", "DownloadQueue_Status_Completed", null)
+        };
+    }
+
+    private static (string StatusMessage, string StatusResourceKey, IReadOnlyList<string>? StatusResourceArguments) GetFailedStatusPresentation(
+        DownloadTaskInfo task,
+        string errorMessage)
+    {
+        return task.TaskCategory switch
+        {
+            DownloadTaskCategory.ModpackDownload => ($"整合包安装失败: {errorMessage}", "DownloadQueue_Status_ModpackInstallFailedWithError", [errorMessage]),
+            _ => ($"下载失败: {errorMessage}", "DownloadQueue_Status_FailedWithError", [errorMessage])
+        };
+    }
+
+    private static (string StatusMessage, string StatusResourceKey, IReadOnlyList<string>? StatusResourceArguments) GetCancelledStatusPresentation(DownloadTaskInfo task)
+    {
+        return task.TaskCategory switch
+        {
+            DownloadTaskCategory.ModpackDownload => ("整合包安装已取消", "DownloadQueue_Status_ModpackInstallCancelled", null),
+            _ => ("下载已取消", "DownloadQueue_Status_Cancelled", null)
+        };
     }
 
     private static string? NormalizeTaskIconSource(string? iconSource)

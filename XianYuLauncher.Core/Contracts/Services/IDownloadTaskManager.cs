@@ -35,6 +35,11 @@ public interface IDownloadTaskManager
     Task StartVanillaDownloadAsync(string versionId, string customVersionName, string? versionIconPath = null, bool showInTeachingTip = false);
 
     /// <summary>
+    /// 启动原版 Minecraft 下载并返回任务 ID。
+    /// </summary>
+    Task<string> StartVanillaDownloadWithTaskIdAsync(string versionId, string customVersionName, string? versionIconPath = null, bool showInTeachingTip = false);
+
+    /// <summary>
     /// 启动 ModLoader 版本下载
     /// </summary>
     /// <param name="minecraftVersion">Minecraft 版本</param>
@@ -56,6 +61,16 @@ public interface IDownloadTaskManager
     /// <param name="modLoaderSelections">加载器选择列表</param>
     /// <param name="customVersionName">自定义版本名称</param>
     Task StartMultiModLoaderDownloadAsync(
+        string minecraftVersion,
+        IEnumerable<ModLoaderSelection> modLoaderSelections,
+        string customVersionName,
+        string? versionIconPath = null,
+        bool showInTeachingTip = false);
+
+    /// <summary>
+    /// 启动多加载器组合版本下载并返回任务 ID。
+    /// </summary>
+    Task<string> StartMultiModLoaderDownloadWithTaskIdAsync(
         string minecraftVersion,
         IEnumerable<ModLoaderSelection> modLoaderSelections,
         string customVersionName,
@@ -104,6 +119,25 @@ public interface IDownloadTaskManager
     Task RetryTaskAsync(string taskId);
 
     /// <summary>
+    /// 启动一个由业务层提供执行逻辑的托管任务，并返回任务 ID。
+    /// </summary>
+    Task<string> StartCustomManagedTaskWithTaskIdAsync(
+        string taskName,
+        string versionName,
+        DownloadTaskCategory taskCategory,
+        Func<DownloadTaskExecutionContext, Task> executor,
+        bool showInTeachingTip = false,
+        string? iconSource = null,
+        string? teachingTipGroupKey = null,
+        string? batchGroupKey = null,
+        string? parentTaskId = null,
+        bool allowCancel = true,
+        bool allowRetry = true,
+        string? displayNameResourceKey = null,
+        IReadOnlyList<string>? displayNameResourceArguments = null,
+        string? taskTypeResourceKey = null);
+
+    /// <summary>
     /// 创建一个由业务层主动驱动的外部任务（如依赖解析、收藏夹批量导入）。
     /// </summary>
     string CreateExternalTask(
@@ -113,6 +147,10 @@ public interface IDownloadTaskManager
         string? teachingTipGroupKey = null,
         DownloadTaskCategory taskCategory = DownloadTaskCategory.Unknown,
         bool retainInRecentWhenFinished = true,
+        string? batchGroupKey = null,
+        string? parentTaskId = null,
+        bool allowCancel = false,
+        Action? cancelAction = null,
         string? displayNameResourceKey = null,
         IReadOnlyList<string>? displayNameResourceArguments = null,
         string? taskTypeResourceKey = null);
@@ -126,6 +164,25 @@ public interface IDownloadTaskManager
         string statusMessage,
         string? statusResourceKey = null,
         IReadOnlyList<string>? statusResourceArguments = null);
+
+    /// <summary>
+    /// 以下载阶段语义更新外部任务，保留速度与瞬时进度信息。
+    /// </summary>
+    void UpdateExternalTaskDownloadProgress(
+        string taskId,
+        double progress,
+        DownloadProgressStatus downloadStatus,
+        string statusMessage,
+        string? statusResourceKey = null,
+        IReadOnlyList<string>? statusResourceArguments = null);
+
+    /// <summary>
+    /// 为嵌套下载操作申请一个与 DownloadQueue 全局并发预算共享的租约。
+    /// ownerTaskId 可指定所属的父队列任务，以避免父任务本身占满唯一并发槽位时出现死锁。
+    /// </summary>
+    Task<IAsyncDisposable> AcquireNestedDownloadSlotAsync(
+        string? ownerTaskId = null,
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 将外部任务标记为完成。
@@ -165,6 +222,17 @@ public interface IDownloadTaskManager
     /// <param name="iconUrl">图标URL（可选，用于缓存图标）</param>
     /// <param name="dependencies">依赖列表（可选）</param>
     Task StartResourceDownloadAsync(
+        string resourceName,
+        string resourceType,
+        string downloadUrl,
+        string savePath,
+        string? iconUrl = null,
+        IEnumerable<ResourceDependency>? dependencies = null,
+        bool showInTeachingTip = false,
+        string? teachingTipGroupKey = null,
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown);
+
+    Task<string> StartResourceDownloadWithTaskIdAsync(
         string resourceName,
         string resourceType,
         string downloadUrl,

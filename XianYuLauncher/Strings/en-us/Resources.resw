@@ -126,6 +126,9 @@
   <data name="Shell_启动.Content" xml:space="preserve">
     <value>Launch</value>
   </data>
+  <data name="Shell_LauncherAI.Content" xml:space="preserve">
+    <value>Launcher AI</value>
+  </data>
   <data name="Shell_资源下载.Content" xml:space="preserve">
     <value>Download</value>
   </data>
@@ -261,6 +264,78 @@
   <data name="DownloadQueue_Status_BackgroundDownloading" xml:space="preserve">
     <value>Downloading in background...</value>
   </data>
+  <data name="DownloadQueue_Status_Cancelling" xml:space="preserve">
+    <value>Cancelling...</value>
+  </data>
+  <data name="DownloadQueue_Status_PreparingModpackInstall" xml:space="preserve">
+    <value>Preparing modpack install...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackExtractingPackage" xml:space="preserve">
+    <value>Extracting modpack...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackParsingManifest" xml:space="preserve">
+    <value>Parsing modpack manifest...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDeployingFiles" xml:space="preserve">
+    <value>Version download complete, deploying modpack files...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingFiles" xml:space="preserve">
+    <value>Downloading modpack files...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackUpdatingCoreFiles" xml:space="preserve">
+    <value>Updating core instance files (Minecraft {0} / {1} {2})...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingCoreVersion" xml:space="preserve">
+    <value>Downloading Minecraft {0} and {1} {2}...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackCleaningFiles" xml:space="preserve">
+    <value>Cleaning old modpack files...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackApplyingOverrides" xml:space="preserve">
+    <value>Applying modpack override files...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackCopyingOverrides" xml:space="preserve">
+    <value>Copying override files...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackFetchingResourceInfo" xml:space="preserve">
+    <value>Fetching resource metadata...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingFilesWithCount" xml:space="preserve">
+    <value>Downloading modpack files ({0}/{1})...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackDownloadingPackage" xml:space="preserve">
+    <value>Downloading modpack package...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackCopyingLocalPackage" xml:space="preserve">
+    <value>Copying local modpack package...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackInstallCompleted" xml:space="preserve">
+    <value>Modpack install completed</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackInstallFailedWithError" xml:space="preserve">
+    <value>Modpack install failed: {0}</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackInstallCancelled" xml:space="preserve">
+    <value>Modpack install cancelled</value>
+  </data>
+  <data name="DownloadQueue_Status_ValidatingFile" xml:space="preserve">
+    <value>Validating {0}...</value>
+  </data>
+  <data name="DownloadQueue_Status_ApplyingFileUpdate" xml:space="preserve">
+    <value>Replacing {0}...</value>
+  </data>
+  <data name="DownloadQueue_Status_CommunityUpdateProgress" xml:space="preserve">
+    <value>Updated {0}/{1}, failed {2}</value>
+  </data>
+  <data name="DownloadQueue_Status_CommunityUpdateCompleted" xml:space="preserve">
+    <value>Batch complete: updated {0}/{1}, failed {2}</value>
+  </data>
+  <data name="DownloadQueue_Status_CommunityUpdateFailed" xml:space="preserve">
+    <value>Batch failed: updated {0}/{1}, failed {2}</value>
+  </data>
+  <data name="DownloadQueue_Status_CommunityUpdateCancelled" xml:space="preserve">
+    <value>Batch cancelled: updated {0}/{1}, failed {2}</value>
+  </data>
   <data name="DownloadQueue_TaskType_GameInstall" xml:space="preserve">
     <value>Game Install</value>
   </data>
@@ -282,11 +357,23 @@
   <data name="DownloadQueue_TaskType_ModpackDownload" xml:space="preserve">
     <value>Modpack Download</value>
   </data>
+  <data name="DownloadQueue_TaskType_ModpackInstallFile" xml:space="preserve">
+    <value>Modpack File</value>
+  </data>
+  <data name="DownloadQueue_TaskType_CommunityResourceUpdateBatch" xml:space="preserve">
+    <value>Community Resource Update</value>
+  </data>
+  <data name="DownloadQueue_TaskType_CommunityResourceUpdateFile" xml:space="preserve">
+    <value>Update File</value>
+  </data>
   <data name="DownloadQueue_TaskType_FileDownload" xml:space="preserve">
     <value>File Download</value>
   </data>
   <data name="DownloadQueue_TaskType_Generic" xml:space="preserve">
     <value>Download Task</value>
+  </data>
+  <data name="DownloadQueue_DisplayName_CommunityResourceUpdateBatch" xml:space="preserve">
+    <value>Community Resource Update · {0}</value>
   </data>
   <data name="DownloadQueue_DisplayName_FavoriteImport" xml:space="preserve">
     <value>Favorites Import</value>
@@ -296,6 +383,9 @@
   </data>
   <data name="DownloadQueue_DisplayName_Server" xml:space="preserve">
     <value>Server {0}</value>
+  </data>
+  <data name="DownloadQueue_DisplayName_ModpackInstall" xml:space="preserve">
+    <value>Modpack Install · {0}</value>
   </data>
   <data name="SettingsPage_Title.Text" xml:space="preserve">
     <value>Settings</value>
@@ -1576,14 +1666,14 @@ Continue downloading?</value>
   <data name="ErrorAnalysis_LogDetails.Text" xml:space="preserve">
     <value>Real-time Log Details</value>
   </data>
+  <data name="ErrorAnalysis_AiPanel.SectionTitle" xml:space="preserve">
+    <value>Crash Analysis</value>
+  </data>
   <data name="ErrorAnalysis_AnalysisTitle.Text" xml:space="preserve">
-    <value>XianYu Fixer</value>
+    <value>Launcher AI</value>
   </data>
-  <data name="ErrorAnalysis_NoErrorInfo.Text" xml:space="preserve">
+  <data name="ErrorAnalysis_NoErrorInfoText" xml:space="preserve">
     <value>No analysis content because Minecraft hasn't crashed yet...</value>
-  </data>
-  <data name="ErrorAnalysis_Analyzing.Text" xml:space="preserve">
-    <value>Analyzing the crash reason...</value>
   </data>
   <data name="联机Page_DownloadingTerracottaTitle" xml:space="preserve">
     <value>Downloading Terracotta Plugin</value>
@@ -1591,17 +1681,20 @@ Continue downloading?</value>
   <data name="联机Page_DownloadingTerracottaMessage" xml:space="preserve">
     <value>Downloading and installing Terracotta plugin, please wait...</value>
   </data>
-  <data name="ErrorAnalysis_AnalysisComplete.Text" xml:space="preserve">
-    <value>Analysis completed.</value>
-  </data>
-  <data name="ErrorAnalysis_AnalysisCanceled.Text" xml:space="preserve">
+  <data name="ErrorAnalysis_AnalysisCanceledText" xml:space="preserve">
     <value>Analysis canceled.</value>
   </data>
-  <data name="ErrorAnalysis_RequestFailed.Text" xml:space="preserve">
-    <value>Analysis request failed: {0}</value>
-  </data>
-  <data name="ErrorAnalysis_AnalysisFailed.Text" xml:space="preserve">
+  <data name="ErrorAnalysis_AnalysisFailedText" xml:space="preserve">
     <value>Analysis failed: {0}</value>
+  </data>
+  <data name="ErrorAnalysis_EmptyAssistantResponseText" xml:space="preserve">
+    <value>The AI returned no content. Please try again, or verify that the current endpoint/model supports streaming responses.</value>
+  </data>
+  <data name="ErrorAnalysis_ImageFallbackRetryText" xml:space="preserve">
+    <value>This model does not support image input. The request was retried with text only.</value>
+  </data>
+  <data name="ErrorAnalysis_ImageFallbackRequiresUserText" xml:space="preserve">
+    <value>This model does not support image input, and this message has no text content. Please add a text description and try again.</value>
   </data>
   <data name="VersionManagerPage_SelectAllText" xml:space="preserve">
     <value>Select All</value>
@@ -2780,25 +2873,43 @@ Continue downloading?</value>
     <value>Version '{0}' already exists, please use a different name</value>
   </data>
   <data name="Settings_AI_Analysis_Title.Text" xml:space="preserve">
-    <value>XianYuFixer AI Analysis</value>
+    <value>Launcher AI</value>
   </data>
-  <data name="Settings_AI_CrashAnalysis.Header" xml:space="preserve">
-    <value>AI Crash Analysis</value>
+  <data name="Settings_LauncherAI.Description" xml:space="preserve">
+    <value>Enable Launcher AI for conversations and in-app problem solving through a third-party AI service</value>
   </data>
-  <data name="Settings_AI_CrashAnalysis.Description" xml:space="preserve">
-    <value>Use third-party AI service to analyze crash logs</value>
+  <data name="LauncherAIPage_Title.Text" xml:space="preserve">
+    <value>Launcher AI</value>
   </data>
-  <data name="Settings_AI_CrashAnalysisDescription.Text" xml:space="preserve">
-    <value>Enable to use third-party AI service for crash log analysis.</value>
+  <data name="LauncherAIPage_Subtitle.Text" xml:space="preserve">
+    <value>Talk to the launcher agent to handle launches, versions, mods, and troubleshooting tasks.</value>
+  </data>
+  <data name="LauncherAIPage_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Open in a separate window</value>
+  </data>
+  <data name="LauncherAIPanel_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Open in a separate window</value>
+  </data>
+  <data name="ErrorAnalysisChatPanel_AddImageButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Add image</value>
+  </data>
+  <data name="ErrorAnalysisChatPanel_RemovePendingImageButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Remove image</value>
+  </data>
+  <data name="LauncherProfileDialog_ShortcutTitle" xml:space="preserve">
+    <value>Select a launch profile</value>
+  </data>
+  <data name="LauncherProfileDialog_ShortcutPrimaryButton" xml:space="preserve">
+    <value>Create shortcut</value>
+  </data>
+  <data name="LauncherProfileDialog_CloseButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="LauncherProfileFlyout_NoProfiles" xml:space="preserve">
+    <value>No launch profiles available</value>
   </data>
   <data name="Settings_AI_Disclaimer.Text" xml:space="preserve">
-    <value>XianYuFixer only provides the capability to access LLMs compatible with the OpenAI API specification. No AI services or accounts are provided within the software. Please confirm that relevant services are permitted in your region before use, and strictly abide by the terms of service, usage policies, and privacy rules of the selected AI provider; API Keys must be applied for and kept by yourself, and relevant costs and compliance responsibilities are borne by the user.</value>
-  </data>
-  <data name="Settings_AI_ConfigDetails.Header" xml:space="preserve">
-    <value>AI Configuration Details</value>
-  </data>
-  <data name="Settings_AI_ConfigDescription.Text" xml:space="preserve">
-    <value>Configure API endpoint, key and model</value>
+    <value>Launcher AI only provides the capability to access LLMs compatible with the OpenAI API specification. No AI services or accounts are provided within the software. Please confirm that relevant services are permitted in your region before use, and strictly abide by the terms of service, usage policies, and privacy rules of the selected AI provider; API Keys must be applied for and kept by yourself, and relevant costs and compliance responsibilities are borne by the user.</value>
   </data>
   <data name="Settings_AI_ApiEndpoint.Header" xml:space="preserve">
     <value>API Endpoint (Base URL)</value>
@@ -2817,6 +2928,15 @@ Continue downloading?</value>
   </data>
   <data name="Settings_AI_ModelName.Description" xml:space="preserve">
     <value>AI model to use</value>
+  </data>
+  <data name="Settings_AI_SystemPrompt.Header" xml:space="preserve">
+    <value>System Prompt</value>
+  </data>
+  <data name="Settings_AI_SystemPrompt.Description" xml:space="preserve">
+    <value>Leave empty to use the built-in default prompt</value>
+  </data>
+  <data name="Settings_AI_SystemPromptTextBox.PlaceholderText" xml:space="preserve">
+    <value>Leave empty to use the built-in default system prompt</value>
   </data>
   <data name="ResourceDownloadPage_FavoritesButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>Drag resources here to bookmark</value>
@@ -2875,9 +2995,6 @@ Continue downloading?</value>
   </data>
   <data name="Settings_NetworkSection.Text" xml:space="preserve">
     <value>Network</value>
-  </data>
-  <data name="Settings_AISection.Text" xml:space="preserve">
-    <value>AI Analysis</value>
   </data>
   <data name="Settings_AboutSection.Text" xml:space="preserve">
     <value>About</value>
