@@ -23,7 +23,7 @@ public sealed class SearchCommunityResourcesToolHandler : IAgentToolHandler
             type = "object",
             properties = new
             {
-                query = new { type = "string", description = "搜索关键词，例如 Iris" },
+                query = new { type = "string", description = "可选。搜索关键词，例如 Iris；省略时返回当前更热门的资源，适合先了解热度最高的内容。" },
                 resource_type = new { type = "string", description = "资源类型", @enum = new[] { "mod", "resourcepack", "shader", "datapack" } },
                 platforms = new
                 {
@@ -41,7 +41,7 @@ public sealed class SearchCommunityResourcesToolHandler : IAgentToolHandler
                 loader = new { type = "string", description = "可选。按加载器过滤，例如 fabric、forge、neoforge、quilt" },
                 limit = new { type = "integer", description = "可选。每个平台最多返回多少条，默认 5，最大 10。" }
             },
-            required = new[] { "query", "resource_type" }
+            required = new[] { "resource_type" }
         });
 
     public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ReadOnly;

@@ -204,15 +204,6 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         int limit,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(query))
-        {
-            return SerializePayload(new
-            {
-                status = "invalid_request",
-                message = "query 不能为空。"
-            });
-        }
-
         var normalizedResourceType = NormalizeQueryableResourceType(resourceType);
         if (normalizedResourceType == null)
         {
@@ -232,8 +223,11 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         var normalizedLoader = NormalizeLoader(loader);
         var normalizedCategoryTokens = NormalizeCategoryTokens(categoryTokens);
         var normalizedGameVersion = NormalizeText(gameVersion);
+        var normalizedQuery = NormalizeText(query) ?? string.Empty;
         var effectiveLimit = Math.Clamp(limit, 1, 10);
-        var effectiveQuery = _translationService.GetEnglishKeywordForSearch(query.Trim());
+        var effectiveQuery = string.IsNullOrEmpty(normalizedQuery)
+            ? string.Empty
+            : _translationService.GetEnglishKeywordForSearch(normalizedQuery);
         var results = new List<object>();
 
         foreach (var platform in normalizedPlatforms)
@@ -267,8 +261,9 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         return SerializePayload(new
         {
             status = "ok",
-            query = query.Trim(),
+            query = normalizedQuery,
             effective_query = effectiveQuery,
+            query_provided = !string.IsNullOrEmpty(normalizedQuery),
             resource_type = normalizedResourceType,
             platforms = normalizedPlatforms,
             category_tokens = normalizedCategoryTokens,
