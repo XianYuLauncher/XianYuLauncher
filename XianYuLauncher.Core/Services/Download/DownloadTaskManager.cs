@@ -570,6 +570,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         IReadOnlyList<string>? statusResourceArguments = null)
     {
         DownloadTaskInfo? taskInfo;
+        bool shouldRaiseStateChanged;
 
         lock (_lock)
         {
@@ -587,14 +588,21 @@ public class DownloadTaskManager : IDownloadTaskManager
                 return;
             }
 
+            var previousState = taskInfo.State;
             taskInfo.Progress = Math.Clamp(progress, 0, 100);
             UpdateTaskStatus(taskInfo, statusMessage, statusResourceKey, statusResourceArguments);
             UpdateTaskSpeed(taskInfo, downloadStatus);
             taskInfo.State = DownloadTaskState.Downloading;
             taskInfo.QueuePosition = null;
+
+            shouldRaiseStateChanged = previousState != taskInfo.State;
         }
 
-        OnTaskStateChanged(taskInfo);
+        if (shouldRaiseStateChanged)
+        {
+            OnTaskStateChanged(taskInfo);
+        }
+
         OnTaskProgressChanged(taskInfo);
     }
 

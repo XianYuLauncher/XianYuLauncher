@@ -525,6 +525,44 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
+    public void UpdateExternalTaskDownloadProgress_WhenStateUnchanged_ShouldOnlyRaiseProgressAndSingleSnapshot()
+    {
+        // Arrange
+        var stateChanges = new List<DownloadTaskInfo>();
+        var progressChanges = new List<DownloadTaskInfo>();
+        var snapshotChangedCount = 0;
+
+        var taskId = _downloadTaskManager.CreateExternalTask(
+            "整合包文件",
+            "modpack-file",
+            taskCategory: DownloadTaskCategory.ModpackInstallFile,
+            retainInRecentWhenFinished: true);
+
+        _downloadTaskManager.TaskStateChanged += (_, task) => stateChanges.Add(task);
+        _downloadTaskManager.TaskProgressChanged += (_, task) => progressChanges.Add(task);
+        _downloadTaskManager.TasksSnapshotChanged += (_, _) => snapshotChangedCount++;
+
+        // Act
+        _downloadTaskManager.UpdateExternalTaskDownloadProgress(
+            taskId,
+            25,
+            new DownloadProgressStatus(256, 1024, 25, 2048),
+            "正在下载 file.jar... 25%",
+            statusResourceKey: "DownloadQueue_Status_DownloadingNamedWithProgress",
+            statusResourceArguments: ["file.jar", "25%"]);
+
+        // Assert
+        stateChanges.Should().BeEmpty();
+        progressChanges.Should().ContainSingle(task =>
+            task.TaskId == taskId
+            && task.Progress == 25
+            && task.SpeedBytesPerSecond == 2048
+            && task.StatusResourceKey == "DownloadQueue_Status_DownloadingNamedWithProgress"
+            && task.State == DownloadTaskState.Downloading);
+        snapshotChangedCount.Should().Be(1);
+    }
+
+    [Fact]
     public void CompleteExternalTask_WhenConfiguredNotToRetain_ShouldRemoveTaskFromSnapshot()
     {
         // Arrange

@@ -1780,13 +1780,6 @@ namespace XianYuLauncher.ViewModels
             DownloadStatus = "下载已取消";
         }
 
-        // 取消安装命令
-        [RelayCommand]
-        public void CancelInstall()
-        {
-            InstallStatus = "整合包安装已交给下载队列，请在下载队列中取消任务。";
-        }
-
         [RelayCommand]
         public async Task DownloadModAsync(ModVersionViewModel? modVersion)
         {
