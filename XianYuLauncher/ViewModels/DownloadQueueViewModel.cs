@@ -475,6 +475,7 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
         {
             DownloadTaskCategory.CommunityResourceUpdateBatch => DownloadTaskCategory.CommunityResourceUpdateFile,
             DownloadTaskCategory.ModpackDownload => DownloadTaskCategory.ModpackInstallFile,
+            DownloadTaskCategory.ModpackUpdate => DownloadTaskCategory.ModpackUpdateFile,
             _ => null
         };
     }

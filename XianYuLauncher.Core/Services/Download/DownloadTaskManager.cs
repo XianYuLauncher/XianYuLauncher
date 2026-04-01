@@ -1845,6 +1845,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         return task.TaskCategory switch
         {
             DownloadTaskCategory.ModpackDownload => ("整合包安装完成！", "DownloadQueue_Status_ModpackInstallCompleted", null),
+            DownloadTaskCategory.ModpackUpdate => ("整合包更新完成！", "DownloadQueue_Status_ModpackUpdateCompleted", null),
             _ => ("下载完成", "DownloadQueue_Status_Completed", null)
         };
     }
@@ -1856,6 +1857,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         return task.TaskCategory switch
         {
             DownloadTaskCategory.ModpackDownload => ($"整合包安装失败: {errorMessage}", "DownloadQueue_Status_ModpackInstallFailedWithError", [errorMessage]),
+            DownloadTaskCategory.ModpackUpdate => ($"整合包更新失败: {errorMessage}", "DownloadQueue_Status_ModpackUpdateFailedWithError", [errorMessage]),
             _ => ($"下载失败: {errorMessage}", "DownloadQueue_Status_FailedWithError", [errorMessage])
         };
     }
@@ -1865,6 +1867,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         return task.TaskCategory switch
         {
             DownloadTaskCategory.ModpackDownload => ("整合包安装已取消", "DownloadQueue_Status_ModpackInstallCancelled", null),
+            DownloadTaskCategory.ModpackUpdate => ("整合包更新已取消", "DownloadQueue_Status_ModpackUpdateCancelled", null),
             _ => ("下载已取消", "DownloadQueue_Status_Cancelled", null)
         };
     }

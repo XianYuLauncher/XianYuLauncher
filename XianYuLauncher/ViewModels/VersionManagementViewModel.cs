@@ -28,6 +28,7 @@ using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Models;
 using XianYuLauncher.Models.VersionManagement;
 using Microsoft.UI.Xaml;
+using XianYuLauncher.Features.ModDownloadDetail.Services;
 using XianYuLauncher.Features.VersionManagement.Services;
 using XianYuLauncher.Features.VersionManagement.ViewModels;
 
@@ -799,6 +800,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private readonly IVersionConfigService _versionConfigService;
     private readonly IModpackUpdateService _modpackUpdateService;
     private readonly IModpackInstallationService _modpackInstallationService;
+    private readonly IModpackDownloadQueueService _modpackDownloadQueueService;
     private readonly ICommunityResourceUpdateService _communityResourceUpdateService;
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IOperationQueueService _operationQueueService;
@@ -814,6 +816,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private string? _currentModpackMinecraftVersion;
     private string? _currentModpackLoaderType;
     private string? _currentOperationQueueScopeKey;
+    private string? _trackedModpackUpdateTaskId;
+    private string? _trackedModpackUpdateVersionName;
+    private string? _trackedModpackUpdateSourceVersionId;
+    private string? _trackedModpackUpdateDisplayName;
     private int _currentOperationQueuePendingCount;
     private bool _isOperationQueueEventsSubscribed;
     private bool _isDownloadTaskEventsSubscribed;
@@ -888,6 +894,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         IVersionConfigService versionConfigService,
         IModpackUpdateService modpackUpdateService,
         IModpackInstallationService modpackInstallationService,
+        IModpackDownloadQueueService modpackDownloadQueueService,
         ICommunityResourceUpdateService communityResourceUpdateService,
         IDownloadTaskManager downloadTaskManager,
         IOperationQueueService operationQueueService,
@@ -919,6 +926,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _versionConfigService = versionConfigService;
         _modpackUpdateService = modpackUpdateService;
         _modpackInstallationService = modpackInstallationService;
+        _modpackDownloadQueueService = modpackDownloadQueueService;
         _communityResourceUpdateService = communityResourceUpdateService;
         _downloadTaskManager = downloadTaskManager;
         _operationQueueService = operationQueueService;
@@ -1299,6 +1307,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     {
         SubscribeOperationQueueEvents();
         SubscribeDownloadTaskEvents();
+        ClearTrackedModpackUpdateState();
         _isPageReady = false;
         if (parameter is VersionListViewModel.VersionInfoItem version)
         {
@@ -2321,6 +2330,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
 
         _downloadTaskManager.TaskStateChanged += DownloadTaskManager_TaskStateChanged;
+        _downloadTaskManager.TaskProgressChanged += DownloadTaskManager_TaskProgressChanged;
         _isDownloadTaskEventsSubscribed = true;
     }
 
@@ -2332,6 +2342,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
 
         _downloadTaskManager.TaskStateChanged -= DownloadTaskManager_TaskStateChanged;
+        _downloadTaskManager.TaskProgressChanged -= DownloadTaskManager_TaskProgressChanged;
         _isDownloadTaskEventsSubscribed = false;
     }
 
@@ -2599,6 +2610,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
             // 恢复加载状态，避免UI阻塞
             IsLoading = true;
+            if (!string.Equals(_trackedModpackUpdateVersionName, SelectedVersion.Name, StringComparison.OrdinalIgnoreCase))
+            {
+                ClearTrackedModpackUpdateState();
+            }
             IsCurrentVersionModpack = false;
             UpdatableResourceCount = 0;
             _currentModpackPlatform = null;
@@ -3451,6 +3466,11 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
     private void DownloadTaskManager_TaskStateChanged(object? sender, DownloadTaskInfo taskInfo)
     {
+        if (IsTrackedModpackUpdateTask(taskInfo))
+        {
+            _ = HandleTrackedModpackUpdateTaskStateChangedAsync(taskInfo);
+        }
+
         if (taskInfo.TaskCategory != DownloadTaskCategory.CommunityResourceUpdateBatch)
         {
             return;
@@ -3467,6 +3487,121 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
 
         _ = RefreshCommunityResourcesAfterUpdateAsync(taskInfo);
+    }
+
+    private void DownloadTaskManager_TaskProgressChanged(object? sender, DownloadTaskInfo taskInfo)
+    {
+        if (!IsTrackedModpackUpdateTask(taskInfo))
+        {
+            return;
+        }
+
+        _ = _uiDispatcher.RunOnUiThreadAsync(() =>
+        {
+            IsInstallingExtension = true;
+            ExtensionInstallDialogTitle = GetOperationDialogTitle(OperationTaskType.ModpackUpdate);
+            ExtensionInstallProgress = taskInfo.Progress;
+            if (!string.IsNullOrWhiteSpace(taskInfo.StatusMessage))
+            {
+                ExtensionInstallStatus = taskInfo.StatusMessage;
+            }
+
+            return Task.CompletedTask;
+        });
+    }
+
+    private bool IsTrackedModpackUpdateTask(DownloadTaskInfo taskInfo)
+    {
+        return !string.IsNullOrWhiteSpace(_trackedModpackUpdateTaskId)
+            && string.Equals(taskInfo.TaskId, _trackedModpackUpdateTaskId, StringComparison.Ordinal);
+    }
+
+    private void TrackModpackUpdateTask(string taskId, string versionName, string sourceVersionId, string displayName)
+    {
+        _trackedModpackUpdateTaskId = taskId;
+        _trackedModpackUpdateVersionName = versionName;
+        _trackedModpackUpdateSourceVersionId = sourceVersionId;
+        _trackedModpackUpdateDisplayName = displayName;
+    }
+
+    private void ClearTrackedModpackUpdateState()
+    {
+        _trackedModpackUpdateTaskId = null;
+        _trackedModpackUpdateVersionName = null;
+        _trackedModpackUpdateSourceVersionId = null;
+        _trackedModpackUpdateDisplayName = null;
+    }
+
+    private async Task HandleTrackedModpackUpdateTaskStateChangedAsync(DownloadTaskInfo taskInfo)
+    {
+        await _uiDispatcher.RunOnUiThreadAsync(async () =>
+        {
+            switch (taskInfo.State)
+            {
+                case DownloadTaskState.Queued:
+                case DownloadTaskState.Downloading:
+                    IsInstallingExtension = true;
+                    ExtensionInstallDialogTitle = GetOperationDialogTitle(OperationTaskType.ModpackUpdate);
+                    ExtensionInstallProgress = taskInfo.Progress;
+                    ExtensionInstallStatus = taskInfo.StatusMessage;
+                    break;
+
+                case DownloadTaskState.Completed:
+                {
+                    ExtensionInstallProgress = taskInfo.Progress;
+                    ExtensionInstallStatus = taskInfo.StatusMessage;
+
+                    if (!string.IsNullOrWhiteSpace(_trackedModpackUpdateSourceVersionId))
+                    {
+                        _currentModpackVersionId = _trackedModpackUpdateSourceVersionId;
+                        MarkCurrentModpackVersion(_trackedModpackUpdateSourceVersionId);
+                    }
+
+                    HasModpackUpdate = false;
+                    ModpackUpdateLatestVersion = string.Empty;
+
+                    try
+                    {
+                        await RefreshAfterModpackUpdateAsync(_pageCancellationTokenSource?.Token ?? CancellationToken.None);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        StatusMessage = $"整合包更新完成，但刷新页面失败：{ex.Message}";
+                    }
+
+                    StatusMessage = string.Format(
+                        "VersionManagerPage_ModpackUpdateSuccessWithTargetStatusFormat".GetLocalized(),
+                        string.IsNullOrWhiteSpace(_trackedModpackUpdateDisplayName)
+                            ? SelectedVersion?.Name ?? string.Empty
+                            : _trackedModpackUpdateDisplayName);
+
+                    await Task.Delay(500);
+                    IsInstallingExtension = false;
+                    ClearTrackedModpackUpdateState();
+                    break;
+                }
+
+                case DownloadTaskState.Failed:
+                    ExtensionInstallStatus = taskInfo.ErrorMessage ?? taskInfo.StatusMessage;
+                    StatusMessage = taskInfo.ErrorMessage ?? taskInfo.StatusMessage;
+                    await Task.Delay(500);
+                    IsInstallingExtension = false;
+                    ClearTrackedModpackUpdateState();
+                    break;
+
+                case DownloadTaskState.Cancelled:
+                    ExtensionInstallStatus = taskInfo.StatusMessage;
+                    StatusMessage = taskInfo.StatusMessage;
+                    await Task.Delay(500);
+                    IsInstallingExtension = false;
+                    ClearTrackedModpackUpdateState();
+                    break;
+            }
+        });
     }
 
     private async Task RefreshCommunityResourcesAfterUpdateAsync(DownloadTaskInfo taskInfo)
@@ -3533,44 +3668,74 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         try
         {
-            var previewTarget = ResolveModpackTargetVersion(preferLatestWhenNoSelection: true);
-            if (previewTarget == null)
+            var targetVersion = ResolveModpackTargetVersion(preferLatestWhenNoSelection: true);
+            if (targetVersion == null)
             {
                 StatusMessage = "VersionManagerPage_ModpackVersionNotSelectedStatus".GetLocalized();
                 return;
             }
 
-            _currentOperationQueueScopeKey = BuildOperationScopeKey(SelectedVersion);
-            _currentOperationQueuePendingCount = 1;
+            ModpackUpdateQueueRequest request = BuildModpackUpdateQueueRequest(targetVersion);
             ExtensionInstallDialogTitle = GetOperationDialogTitle(OperationTaskType.ModpackUpdate);
+            IsInstallingExtension = true;
+            ExtensionInstallProgress = 0;
+            ExtensionInstallStatus = "已加入下载队列，等待开始...";
 
-            var enqueueResult = await _operationQueueService.EnqueueAsync(
-                new OperationTaskRequest
-                {
-                    TaskName = "更新整合包",
-                    TaskType = OperationTaskType.ModpackUpdate,
-                    ScopeKey = _currentOperationQueueScopeKey,
-                    AllowParallel = true,
-                    ExecuteAsync = async (context, token) =>
-                    {
-                        token.ThrowIfCancellationRequested();
-                        await UpdateModpackCoreAsync((status, progress) => context.ReportProgress(status, progress), token, preferLatestWhenNoSelection: true);
-                    }
-                },
+            string taskId = await _modpackDownloadQueueService.StartUpdateAsync(
+                request,
                 _pageCancellationTokenSource?.Token ?? CancellationToken.None);
 
-            if (!enqueueResult.Success)
+            string sourceVersionId = string.IsNullOrWhiteSpace(request.SourceVersionId)
+                ? targetVersion.VersionId
+                : request.SourceVersionId;
+            TrackModpackUpdateTask(taskId, SelectedVersion.Name, sourceVersionId, targetVersion.DisplayName);
+
+            StatusMessage = $"已将整合包更新加入下载队列：{targetVersion.DisplayName}";
+
+            DownloadTaskInfo? queuedSnapshot = _downloadTaskManager.TasksSnapshot
+                .FirstOrDefault(task => string.Equals(task.TaskId, taskId, StringComparison.Ordinal));
+            if (queuedSnapshot != null)
             {
-                throw new InvalidOperationException(enqueueResult.ErrorMessage ?? "整合包更新任务失败");
+                _ = HandleTrackedModpackUpdateTaskStateChangedAsync(queuedSnapshot);
             }
         }
         catch (Exception ex)
         {
-            _currentOperationQueuePendingCount = 0;
             IsInstallingExtension = false;
             ExtensionInstallStatus = $"更新失败：{ex.Message}";
             StatusMessage = $"更新失败：{ex.Message}";
+            ClearTrackedModpackUpdateState();
         }
+    }
+
+    private ModpackUpdateQueueRequest BuildModpackUpdateQueueRequest(ModpackVersionOption targetVersion)
+    {
+        if (SelectedVersion == null)
+        {
+            throw new InvalidOperationException("未选择版本");
+        }
+
+        if (string.IsNullOrWhiteSpace(targetVersion.DownloadUrl))
+        {
+            throw new InvalidOperationException("目标整合包版本缺少下载地址");
+        }
+
+        string sourceVersionId = string.IsNullOrWhiteSpace(targetVersion.SourceVersionId)
+            ? targetVersion.VersionId
+            : targetVersion.SourceVersionId;
+
+        return new ModpackUpdateQueueRequest
+        {
+            DownloadUrl = targetVersion.DownloadUrl,
+            FileName = string.IsNullOrWhiteSpace(targetVersion.FileName) ? "modpack.mrpack" : targetVersion.FileName,
+            ModpackDisplayName = SelectedVersion.Name,
+            TargetVersionName = SelectedVersion.Name,
+            MinecraftPath = MinecraftPath,
+            IsFromCurseForge = string.Equals(_currentModpackPlatform, "curseforge", StringComparison.OrdinalIgnoreCase),
+            ModpackIconSource = CurrentVersionIconPath,
+            SourceProjectId = _currentModpackProjectId,
+            SourceVersionId = sourceVersionId,
+        };
     }
 
     private async Task UpdateModpackCoreAsync(Action<string, double>? progressReporter, CancellationToken cancellationToken, bool preferLatestWhenNoSelection)

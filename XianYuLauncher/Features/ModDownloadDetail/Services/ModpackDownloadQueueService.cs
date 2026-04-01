@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
@@ -8,6 +9,7 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
 {
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IModpackInstallationService _modpackInstallationService;
+    private readonly ConcurrentDictionary<string, byte> _activeUpdateTasksByVersion = new(StringComparer.OrdinalIgnoreCase);
 
     public ModpackDownloadQueueService(
         IDownloadTaskManager downloadTaskManager,
@@ -48,6 +50,50 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
             taskTypeResourceKey: "DownloadQueue_TaskType_ModpackDownload");
     }
 
+    public async Task<string> StartUpdateAsync(
+        ModpackUpdateQueueRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.DownloadUrl);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.FileName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.ModpackDisplayName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.TargetVersionName);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.MinecraftPath);
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        string normalizedTargetVersionName = request.TargetVersionName.Trim();
+        if (!_activeUpdateTasksByVersion.TryAdd(normalizedTargetVersionName, 0))
+        {
+            throw new InvalidOperationException($"实例 {normalizedTargetVersionName} 已有整合包更新任务正在进行中。");
+        }
+
+        string batchGroupKey = $"modpack-update:{Guid.NewGuid():N}";
+
+        try
+        {
+            return await _downloadTaskManager.StartCustomManagedTaskWithTaskIdAsync(
+                normalizedTargetVersionName,
+                normalizedTargetVersionName,
+                DownloadTaskCategory.ModpackUpdate,
+                context => ExecuteUpdateAsync(request, normalizedTargetVersionName, batchGroupKey, context),
+                showInTeachingTip: request.ShowInTeachingTip,
+                iconSource: request.ModpackIconSource,
+                batchGroupKey: batchGroupKey,
+                allowCancel: true,
+                allowRetry: false,
+                displayNameResourceKey: "DownloadQueue_DisplayName_ModpackUpdate",
+                displayNameResourceArguments: [normalizedTargetVersionName],
+                taskTypeResourceKey: "DownloadQueue_TaskType_ModpackUpdate").ConfigureAwait(false);
+        }
+        catch
+        {
+            _activeUpdateTasksByVersion.TryRemove(normalizedTargetVersionName, out _);
+            throw;
+        }
+    }
+
     private async Task ExecuteInstallAsync(
         ModpackDownloadQueueRequest request,
         string batchGroupKey,
@@ -62,7 +108,10 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
             _downloadTaskManager,
             batchGroupKey,
             context.TaskId,
-            request.TargetVersionName.Trim());
+            request.TargetVersionName.Trim(),
+            DownloadTaskCategory.ModpackInstallFile,
+            "DownloadQueue_TaskType_ModpackInstallFile",
+            "整合包安装失败");
         var progress = new AsyncProgressDispatcher<ModpackInstallProgress>(installProgress => ReportInstallProgress(context, installProgress));
         var contentFileProgress = new ContentFileProgressDispatcher(contentFileCoordinator);
         bool finalizedPendingContentTasks = false;
@@ -123,6 +172,92 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
             }
 
             throw;
+        }
+    }
+
+    private async Task ExecuteUpdateAsync(
+        ModpackUpdateQueueRequest request,
+        string normalizedTargetVersionName,
+        string batchGroupKey,
+        DownloadTaskExecutionContext context)
+    {
+        context.ReportStatus(
+            0,
+            "正在准备整合包更新...",
+            "DownloadQueue_Status_PreparingModpackUpdate");
+
+        var contentFileCoordinator = new ModpackContentFileTaskCoordinator(
+            _downloadTaskManager,
+            batchGroupKey,
+            context.TaskId,
+            normalizedTargetVersionName,
+            DownloadTaskCategory.ModpackUpdateFile,
+            "DownloadQueue_TaskType_ModpackUpdateFile",
+            "整合包更新失败");
+        var progress = new AsyncProgressDispatcher<ModpackInstallProgress>(updateProgress => ReportInstallProgress(context, updateProgress));
+        var contentFileProgress = new ContentFileProgressDispatcher(contentFileCoordinator);
+        bool finalizedPendingContentTasks = false;
+
+        try
+        {
+            ModpackInstallResult result = await _modpackInstallationService.UpdateModpackInPlaceAsync(
+                request.DownloadUrl,
+                request.FileName,
+                request.ModpackDisplayName,
+                request.MinecraftPath,
+                normalizedTargetVersionName,
+                request.IsFromCurseForge,
+                progress,
+                request.ModpackIconSource,
+                request.SourceProjectId,
+                request.SourceVersionId,
+                contentFileProgress,
+                context.CancellationToken).ConfigureAwait(false);
+
+            await progress.FlushAsync().ConfigureAwait(false);
+            await contentFileProgress.FlushAsync().ConfigureAwait(false);
+
+            context.CancellationToken.ThrowIfCancellationRequested();
+
+            if (!result.Success)
+            {
+                string errorMessage = string.IsNullOrWhiteSpace(result.ErrorMessage)
+                    ? "未知错误"
+                    : result.ErrorMessage.Trim();
+                contentFileCoordinator.FailPending(errorMessage);
+                finalizedPendingContentTasks = true;
+                throw new InvalidOperationException(errorMessage);
+            }
+
+            context.ReportStatus(100, "整合包更新完成！", "DownloadQueue_Status_ModpackUpdateCompleted");
+        }
+        catch (OperationCanceledException)
+        {
+            await progress.FlushAsync().ConfigureAwait(false);
+            await contentFileProgress.FlushAsync().ConfigureAwait(false);
+
+            if (!finalizedPendingContentTasks)
+            {
+                contentFileCoordinator.CancelPending();
+            }
+
+            throw;
+        }
+        catch (Exception ex)
+        {
+            await progress.FlushAsync().ConfigureAwait(false);
+            await contentFileProgress.FlushAsync().ConfigureAwait(false);
+
+            if (!finalizedPendingContentTasks)
+            {
+                contentFileCoordinator.FailPending(ex.Message);
+            }
+
+            throw;
+        }
+        finally
+        {
+            _activeUpdateTasksByVersion.TryRemove(normalizedTargetVersionName, out _);
         }
     }
 
@@ -328,6 +463,9 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
         private readonly string _batchGroupKey;
         private readonly string _parentTaskId;
         private readonly string _versionName;
+        private readonly DownloadTaskCategory _taskCategory;
+        private readonly string _taskTypeResourceKey;
+        private readonly string _pendingFailureMessage;
         private readonly Lock _lock = new();
         private readonly Dictionary<string, ChildTaskEntry> _childTasks = new(StringComparer.Ordinal);
 
@@ -335,12 +473,18 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
             IDownloadTaskManager downloadTaskManager,
             string batchGroupKey,
             string parentTaskId,
-            string versionName)
+            string versionName,
+            DownloadTaskCategory taskCategory,
+            string taskTypeResourceKey,
+            string pendingFailureMessage)
         {
             _downloadTaskManager = downloadTaskManager;
             _batchGroupKey = batchGroupKey;
             _parentTaskId = parentTaskId;
             _versionName = versionName;
+            _taskCategory = taskCategory;
+            _taskTypeResourceKey = taskTypeResourceKey;
+            _pendingFailureMessage = pendingFailureMessage;
         }
 
         public void UpdateDownloading(
@@ -432,7 +576,7 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
         public void FailPending(string errorMessage)
         {
             string normalizedErrorMessage = string.IsNullOrWhiteSpace(errorMessage)
-                ? "整合包安装失败"
+                ? _pendingFailureMessage
                 : errorMessage.Trim();
 
             foreach (string taskId in TakePendingTaskIds())
@@ -470,12 +614,12 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
                     fileName,
                     _versionName,
                     showInTeachingTip: false,
-                    taskCategory: DownloadTaskCategory.ModpackInstallFile,
+                    taskCategory: _taskCategory,
                     retainInRecentWhenFinished: true,
                     batchGroupKey: _batchGroupKey,
                     parentTaskId: _parentTaskId,
                     allowCancel: false,
-                    taskTypeResourceKey: "DownloadQueue_TaskType_ModpackInstallFile",
+                    taskTypeResourceKey: _taskTypeResourceKey,
                     startInQueuedState: startInQueuedState);
 
                 _childTasks[fileKey] = new ChildTaskEntry(taskId);

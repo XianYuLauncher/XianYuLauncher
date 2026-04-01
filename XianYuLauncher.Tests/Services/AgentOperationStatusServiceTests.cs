@@ -70,6 +70,33 @@ public sealed class AgentOperationStatusServiceTests
     }
 
     [Fact]
+    public void GetOperationStatusMessage_ShouldFormatModpackUpdateDownloadOperation()
+    {
+        var task = new DownloadTaskInfo
+        {
+            TaskId = "modpack-update-op",
+            TaskName = "更新整合包",
+            VersionName = "Create Arcane Colony",
+            State = DownloadTaskState.Downloading,
+            Progress = 64,
+            StatusMessage = "正在下载整合包文件...",
+            TaskCategory = DownloadTaskCategory.ModpackUpdate
+        };
+        _downloadTaskManager.SetupGet(manager => manager.TasksSnapshot).Returns([task]);
+        var service = CreateService();
+
+        var message = service.GetOperationStatusMessage("modpack-update-op");
+
+        message.Should().Contain("operation_id: modpack-update-op");
+        message.Should().Contain("state: downloading");
+        message.Should().Contain("status_message: 正在下载整合包文件...");
+        message.Should().Contain("operation_kind: modpack_update");
+        message.Should().Contain("progress_percent: 64");
+        message.Should().Contain("task_name: 更新整合包");
+        message.Should().Contain("version_name: Create Arcane Colony");
+    }
+
+    [Fact]
     public void GetOperationStatusMessage_ShouldFormatLaunchOperationWithoutDownloadOnlyFields()
     {
         _downloadTaskManager.SetupGet(manager => manager.TasksSnapshot).Returns([]);

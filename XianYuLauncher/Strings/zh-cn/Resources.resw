@@ -270,6 +270,9 @@
   <data name="DownloadQueue_Status_PreparingModpackInstall" xml:space="preserve">
     <value>正在准备整合包安装...</value>
   </data>
+  <data name="DownloadQueue_Status_PreparingModpackUpdate" xml:space="preserve">
+    <value>正在准备整合包更新...</value>
+  </data>
   <data name="DownloadQueue_Status_ModpackExtractingPackage" xml:space="preserve">
     <value>正在解压整合包...</value>
   </data>
@@ -318,6 +321,15 @@
   <data name="DownloadQueue_Status_ModpackInstallCancelled" xml:space="preserve">
     <value>整合包安装已取消</value>
   </data>
+  <data name="DownloadQueue_Status_ModpackUpdateCompleted" xml:space="preserve">
+    <value>整合包更新完成</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackUpdateFailedWithError" xml:space="preserve">
+    <value>整合包更新失败: {0}</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackUpdateCancelled" xml:space="preserve">
+    <value>整合包更新已取消</value>
+  </data>
   <data name="DownloadQueue_Status_ValidatingFile" xml:space="preserve">
     <value>正在校验 {0}...</value>
   </data>
@@ -360,6 +372,12 @@
   <data name="DownloadQueue_TaskType_ModpackInstallFile" xml:space="preserve">
     <value>整合包文件</value>
   </data>
+  <data name="DownloadQueue_TaskType_ModpackUpdate" xml:space="preserve">
+    <value>整合包更新</value>
+  </data>
+  <data name="DownloadQueue_TaskType_ModpackUpdateFile" xml:space="preserve">
+    <value>整合包文件更新</value>
+  </data>
   <data name="DownloadQueue_TaskType_CommunityResourceUpdateBatch" xml:space="preserve">
     <value>社区资源更新</value>
   </data>
@@ -386,6 +404,9 @@
   </data>
   <data name="DownloadQueue_DisplayName_ModpackInstall" xml:space="preserve">
     <value>整合包安装 · {0}</value>
+  </data>
+  <data name="DownloadQueue_DisplayName_ModpackUpdate" xml:space="preserve">
+    <value>整合包更新 · {0}</value>
   </data>
   <data name="SettingsPage_Title.Text" xml:space="preserve">
     <value>设置</value>

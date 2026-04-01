@@ -166,6 +166,8 @@ public sealed class AgentOperationStatusService : IAgentOperationStatusService
             DownloadTaskCategory.DataPackDownload => "data_pack_download",
             DownloadTaskCategory.WorldDownload => "world_download",
             DownloadTaskCategory.ModpackDownload => "modpack_download",
+            DownloadTaskCategory.ModpackUpdate => "modpack_update",
+            DownloadTaskCategory.ModpackUpdateFile => "modpack_update_file",
             DownloadTaskCategory.CommunityResourceUpdateBatch => "community_resource_update_batch",
             DownloadTaskCategory.CommunityResourceUpdateFile => "community_resource_update_file",
             DownloadTaskCategory.FileDownload => "file_download",
