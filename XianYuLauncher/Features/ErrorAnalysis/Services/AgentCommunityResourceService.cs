@@ -1498,8 +1498,28 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             }));
         }
 
-        var detail = await _curseForgeService.GetModDetailAsync(modId);
-        var file = await _curseForgeService.GetFileAsync(modId, fileId);
+        CurseForgeModDetail detail;
+        CurseForgeFile? file;
+        try
+        {
+            detail = await _curseForgeService.GetModDetailAsync(modId);
+            file = await _curseForgeService.GetFileAsync(modId, fileId);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return ModpackInstallExecutionContext.FromMessage(SerializePayload(new
+            {
+                status = "failed",
+                message = $"获取 CurseForge 项目或文件信息失败：{ex.Message}",
+                project_id = command.ProjectId,
+                file_id = command.ResourceFileId
+            }));
+        }
+
         cancellationToken.ThrowIfCancellationRequested();
         if (file == null)
         {

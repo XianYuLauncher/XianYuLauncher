@@ -725,7 +725,10 @@ public class ModpackInstallationService : IModpackInstallationService
 
     private static string ValidateTargetVersionName(string targetVersionName, string minecraftPath)
     {
-        var validationResult = ModpackInstallNameValidationHelper.Validate(targetVersionName, minecraftPath);
+        var validationResult = ModpackInstallNameValidationHelper.Validate(
+            targetVersionName,
+            minecraftPath,
+            suppressDirectoryCheckExceptions: false);
         if (validationResult.IsValid)
         {
             return validationResult.NormalizedName;

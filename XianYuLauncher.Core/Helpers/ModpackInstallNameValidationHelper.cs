@@ -21,7 +21,10 @@ public readonly record struct ModpackInstallNameValidationResult(
 
 public static class ModpackInstallNameValidationHelper
 {
-    public static ModpackInstallNameValidationResult Validate(string? versionName, string minecraftPath)
+    public static ModpackInstallNameValidationResult Validate(
+        string? versionName,
+        string minecraftPath,
+        bool suppressDirectoryCheckExceptions = true)
     {
         var baseResult = VersionNameValidationHelper.ValidateVersionName(versionName ?? string.Empty, minecraftPath);
         if (!baseResult.IsValid)
@@ -45,9 +48,10 @@ public static class ModpackInstallNameValidationHelper
                     baseResult.MaxSafeLength);
             }
         }
-        catch
+        catch when (suppressDirectoryCheckExceptions)
         {
-            // 安装阶段会再次做最终校验，这里保持与输入弹窗一致的宽松预检查。
+            // UI 预校验允许在极端文件系统异常时退化为“无法提前发现重名实例”；
+            // 安装阶段应传 suppressDirectoryCheckExceptions=false，避免吞掉最终校验异常。
         }
 
         return new ModpackInstallNameValidationResult(
