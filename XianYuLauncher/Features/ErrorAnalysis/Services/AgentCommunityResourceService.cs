@@ -270,14 +270,29 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             return SerializePayload(new
             {
                 status = "invalid_request",
-                message = "resource_type 仅支持 mod、resourcepack、shader、datapack、modpack。"
+                message = "resource_type 仅支持 mod、resourcepack、shader、datapack、world、modpack。"
             });
         }
 
-        var normalizedPlatforms = NormalizePlatforms(platforms);
+        var requestedPlatforms = NormalizePlatforms(platforms);
+        if (requestedPlatforms.Count == 0)
+        {
+            requestedPlatforms = ["modrinth", "curseforge"];
+        }
+
+        var normalizedPlatforms = FilterUnsupportedQueryablePlatforms(normalizedResourceType, requestedPlatforms);
+        var ignoredPlatforms = requestedPlatforms
+            .Except(normalizedPlatforms, StringComparer.OrdinalIgnoreCase)
+            .ToList();
         if (normalizedPlatforms.Count == 0)
         {
-            normalizedPlatforms = ["modrinth", "curseforge"];
+            return SerializePayload(new
+            {
+                status = "unsupported_request",
+                message = BuildUnsupportedQueryablePlatformMessage(normalizedResourceType),
+                resource_type = normalizedResourceType,
+                requested_platforms = requestedPlatforms
+            });
         }
 
         var normalizedLoader = NormalizeLoader(loader);
@@ -325,7 +340,10 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             effective_query = effectiveQuery,
             query_provided = !string.IsNullOrEmpty(normalizedQuery),
             resource_type = normalizedResourceType,
+            requested_platforms = requestedPlatforms,
             platforms = normalizedPlatforms,
+            ignored_platforms = ignoredPlatforms,
+            note = BuildQueryablePlatformAdjustmentNote(normalizedResourceType, ignoredPlatforms),
             category_tokens = normalizedCategoryTokens,
             total_returned = results.Count,
             results
@@ -343,14 +361,29 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             return SerializePayload(new
             {
                 status = "invalid_request",
-                message = "resource_type 仅支持 mod、resourcepack、shader、datapack、modpack。"
+                message = "resource_type 仅支持 mod、resourcepack、shader、datapack、world、modpack。"
             });
         }
 
-        var normalizedPlatforms = NormalizePlatforms(platforms);
+        var requestedPlatforms = NormalizePlatforms(platforms);
+        if (requestedPlatforms.Count == 0)
+        {
+            requestedPlatforms = ["modrinth", "curseforge"];
+        }
+
+        var normalizedPlatforms = FilterUnsupportedQueryablePlatforms(normalizedResourceType, requestedPlatforms);
+        var ignoredPlatforms = requestedPlatforms
+            .Except(normalizedPlatforms, StringComparer.OrdinalIgnoreCase)
+            .ToList();
         if (normalizedPlatforms.Count == 0)
         {
-            normalizedPlatforms = ["modrinth", "curseforge"];
+            return SerializePayload(new
+            {
+                status = "unsupported_request",
+                message = BuildUnsupportedQueryablePlatformMessage(normalizedResourceType),
+                resource_type = normalizedResourceType,
+                requested_platforms = requestedPlatforms
+            });
         }
 
         var metadata = await _communityResourceFilterMetadataService.GetFilterMetadataAsync(
@@ -374,7 +407,10 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         {
             status = "ok",
             resource_type = normalizedResourceType,
+            requested_platforms = requestedPlatforms,
             platforms = metadata.Platforms,
+            ignored_platforms = ignoredPlatforms,
+            note = BuildQueryablePlatformAdjustmentNote(normalizedResourceType, ignoredPlatforms),
             category_count = categories.Count,
             loader_count = metadata.Loaders.Count,
             categories,
@@ -1004,18 +1040,29 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             };
         }
 
+        var proposalParameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["project_id"] = executionContext.Command.ProjectId,
+            ["resource_file_id"] = executionContext.Command.ResourceFileId,
+            ["target_version_name"] = executionContext.TargetVersionName,
+            ["download_dependencies"] = executionContext.Command.DownloadDependencies.ToString(),
+        };
+        if (!string.IsNullOrWhiteSpace(executionContext.VersionDirectoryPath))
+        {
+            proposalParameters["target_version_path"] = executionContext.VersionDirectoryPath;
+        }
+
+        if (!string.IsNullOrWhiteSpace(executionContext.ResourceType))
+        {
+            proposalParameters["resource_type"] = executionContext.ResourceType;
+        }
+
         return new AgentCommunityResourceInstallPreparation
         {
             Message = executionContext.Message,
             IsReadyForConfirmation = true,
             ButtonText = executionContext.ButtonText,
-            ProposalParameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
-            {
-                ["project_id"] = executionContext.Command.ProjectId,
-                ["resource_file_id"] = executionContext.Command.ResourceFileId,
-                ["target_version_name"] = executionContext.TargetVersionName,
-                ["download_dependencies"] = executionContext.Command.DownloadDependencies.ToString(),
-            }
+            ProposalParameters = proposalParameters
         };
     }
 
@@ -1036,6 +1083,8 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             teachingTipGroupKey: CreateInstallTeachingTipGroupKey(),
             cancellationToken: cancellationToken);
 
+        bool isWorldInstall = string.Equals(executionContext.ResourceType, "world", StringComparison.OrdinalIgnoreCase);
+
         return SerializePayload(new
         {
             status = "started",
@@ -1045,8 +1094,16 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             resource_type = executionContext.ResourceType,
             resource_name = executionContext.ResourceName,
             target_version_name = executionContext.TargetVersionName,
+            version_directory_path = executionContext.VersionDirectoryPath,
+            resolved_game_directory = executionContext.ResolvedGameDirectory,
             download_dependencies = executionContext.Command.DownloadDependencies,
-            message = $"已开始安装 {executionContext.ResourceName} 到 {executionContext.TargetVersionName}。可继续使用 getOperationStatus 查询下载状态。"
+            dependency_target_directory = executionContext.Plan.DependencyTargetDirectory,
+            world_target_directory = isWorldInstall ? executionContext.Plan.PrimaryTargetDirectory : null,
+            duplicate_policy = isWorldInstall ? "auto_rename" : null,
+            expected_world_base_name = isWorldInstall ? Path.GetFileNameWithoutExtension(executionContext.Plan.SavePath) : null,
+            message = isWorldInstall
+                ? $"已开始安装世界 {executionContext.ResourceName} 到实例 {executionContext.TargetVersionName} 的 saves 目录。若同名存档已存在，将自动重命名。可继续使用 getOperationStatus 查询下载状态。"
+                : $"已开始安装 {executionContext.ResourceName} 到 {executionContext.TargetVersionName}。可继续使用 getOperationStatus 查询下载状态。"
         });
     }
 
@@ -1131,6 +1188,11 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         int limit,
         CancellationToken cancellationToken)
     {
+        if (!ModResourcePathHelper.SupportsModrinthReadOnlyQuery(resourceType))
+        {
+            return [];
+        }
+
         var facets = new List<List<string>>();
         var modrinthCategoryTokens = GetModrinthCategoryTokens(categoryTokens);
 
@@ -1190,7 +1252,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         CancellationToken cancellationToken)
     {
         var loaderType = MapCurseForgeLoaderType(loader);
-        var classId = MapCurseForgeClassId(resourceType);
+        var classId = ModResourcePathHelper.MapProjectTypeToCurseForgeClassId(resourceType);
         var categoryIds = GetCurseForgeCategoryIds(categoryTokens);
         var projects = await SearchCurseForgeProjectsAsync(classId, query, gameVersion, loaderType, categoryIds, limit, cancellationToken);
 
@@ -1966,37 +2028,19 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             }));
         }
 
-        var targetVersionName = ResolveTargetVersionName(command.TargetVersionName, command.TargetVersionPath);
-        if (string.IsNullOrWhiteSpace(targetVersionName))
+        ResolvedTargetVersionContext targetVersion = await ResolveTargetVersionAsync(
+            command.TargetVersionName,
+            command.TargetVersionPath,
+            cancellationToken);
+        if (!targetVersion.IsReady)
         {
-            return CommunityResourceInstallExecutionContext.FromMessage(SerializePayload(new
-            {
-                status = "missing_requirements",
-                missing_requirements = new[]
-                {
-                    new
-                    {
-                        field = "target_version_name",
-                        message = "必须提供 target_version_name，或提供 target_version_path 让启动器推导目标实例。"
-                    }
-                }
-            }));
+            return CommunityResourceInstallExecutionContext.FromMessage(targetVersion.Message);
         }
 
-        var installedVersions = await _minecraftVersionService.GetInstalledVersionsAsync();
-        cancellationToken.ThrowIfCancellationRequested();
-        if (!installedVersions.Any(version => string.Equals(version, targetVersionName, StringComparison.OrdinalIgnoreCase)))
-        {
-            return CommunityResourceInstallExecutionContext.FromMessage(SerializePayload(new
-            {
-                status = "invalid_request",
-                message = $"目标实例 {targetVersionName} 不存在，请先调用 getInstances 获取可用实例。",
-                available_instances = installedVersions.OrderBy(version => version, StringComparer.OrdinalIgnoreCase).ToList()
-            }));
-        }
-
-        var versionDirectory = Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftPathConsts.Versions, targetVersionName);
-        var targetVersionConfig = await _versionInfoService.GetFullVersionInfoAsync(targetVersionName, versionDirectory, preferCache: true);
+        var targetVersionConfig = await _versionInfoService.GetFullVersionInfoAsync(
+            targetVersion.TargetVersionName,
+            targetVersion.VersionDirectoryPath,
+            preferCache: true);
         cancellationToken.ThrowIfCancellationRequested();
 
         return identity.Provider switch
@@ -2004,13 +2048,13 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             CommunityResourceProvider.Modrinth => await BuildModrinthInstallContextAsync(
                 command,
                 identity.RawProjectId,
-                targetVersionName,
+                targetVersion,
                 targetVersionConfig,
                 cancellationToken),
             CommunityResourceProvider.CurseForge => await BuildCurseForgeInstallContextAsync(
                 command,
                 identity.RawProjectId,
-                targetVersionName,
+                targetVersion,
                 targetVersionConfig,
                 cancellationToken),
             _ => CommunityResourceInstallExecutionContext.FromMessage(SerializePayload(new
@@ -2024,7 +2068,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
     private async Task<CommunityResourceInstallExecutionContext> BuildModrinthInstallContextAsync(
         AgentCommunityResourceInstallCommand command,
         string rawProjectId,
-        string targetVersionName,
+        ResolvedTargetVersionContext targetVersion,
         VersionConfig targetVersionConfig,
         CancellationToken cancellationToken)
     {
@@ -2077,11 +2121,11 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         {
             ResourceType = resourceType,
             FileName = primaryFile.Filename,
-            TargetVersionName = targetVersionName,
+            TargetVersionName = targetVersion.TargetVersionName,
             UseCustomDownloadPath = false,
         }, cancellationToken);
 
-        var planContext = CreatePlanContext(command, targetVersionName, detail.Title, resourceType, planningResult);
+        var planContext = CreatePlanContext(command, targetVersion, detail.Title, resourceType, planningResult);
         if (planContext.Plan == null)
         {
             return planContext;
@@ -2099,13 +2143,13 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             TargetGameVersion = NormalizeText(targetVersionConfig.MinecraftVersion),
         };
 
-        return CreateReadyContext(command, targetVersionName, detail.Title, resourceType, planContext.Plan, descriptor);
+        return CreateReadyContext(command, targetVersion, detail.Title, resourceType, planContext.Plan, descriptor);
     }
 
     private async Task<CommunityResourceInstallExecutionContext> BuildCurseForgeInstallContextAsync(
         AgentCommunityResourceInstallCommand command,
         string rawProjectId,
-        string targetVersionName,
+        ResolvedTargetVersionContext targetVersion,
         VersionConfig targetVersionConfig,
         CancellationToken cancellationToken)
     {
@@ -2149,11 +2193,11 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         {
             ResourceType = resourceType,
             FileName = file.FileName,
-            TargetVersionName = targetVersionName,
+            TargetVersionName = targetVersion.TargetVersionName,
             UseCustomDownloadPath = false,
         }, cancellationToken);
 
-        var planContext = CreatePlanContext(command, targetVersionName, detail.Name, resourceType, planningResult);
+        var planContext = CreatePlanContext(command, targetVersion, detail.Name, resourceType, planningResult);
         if (planContext.Plan == null)
         {
             return planContext;
@@ -2171,12 +2215,12 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             TargetGameVersion = NormalizeText(targetVersionConfig.MinecraftVersion),
         };
 
-        return CreateReadyContext(command, targetVersionName, detail.Name, resourceType, planContext.Plan, descriptor);
+        return CreateReadyContext(command, targetVersion, detail.Name, resourceType, planContext.Plan, descriptor);
     }
 
     private CommunityResourceInstallExecutionContext CreatePlanContext(
         AgentCommunityResourceInstallCommand command,
-        string targetVersionName,
+        ResolvedTargetVersionContext targetVersion,
         string resourceName,
         string resourceType,
         CommunityResourceInstallPlanningResult planningResult)
@@ -2224,17 +2268,19 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             UseCustomDownloadPath = planningResult.Plan.UseCustomDownloadPath,
         };
 
-        return CreateReadyContext(command, targetVersionName, resourceName, resourceType, overriddenPlan, descriptor: null);
+        return CreateReadyContext(command, targetVersion, resourceName, resourceType, overriddenPlan, descriptor: null);
     }
 
     private CommunityResourceInstallExecutionContext CreateReadyContext(
         AgentCommunityResourceInstallCommand command,
-        string targetVersionName,
+        ResolvedTargetVersionContext targetVersion,
         string resourceName,
         string resourceType,
         CommunityResourceInstallPlan plan,
         CommunityResourceInstallDescriptor? descriptor)
     {
+        bool isWorldInstall = string.Equals(resourceType, "world", StringComparison.OrdinalIgnoreCase);
+
         return new CommunityResourceInstallExecutionContext
         {
             Command = command,
@@ -2246,7 +2292,9 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                 resource_file_id = command.ResourceFileId,
                 resource_type = resourceType,
                 resource_name = resourceName,
-                target_version_name = targetVersionName,
+                target_version_name = targetVersion.TargetVersionName,
+                version_directory_path = targetVersion.VersionDirectoryPath,
+                resolved_game_directory = targetVersion.ResolvedGameDirectory,
                 download_dependencies = command.DownloadDependencies,
                 plan = new
                 {
@@ -2254,10 +2302,18 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                     dependency_target_directory = plan.DependencyTargetDirectory,
                     save_path = plan.SavePath,
                 },
-                message = $"已准备安装 {resourceName} 到 {targetVersionName}。等待用户确认。"
+                world_target_directory = isWorldInstall ? plan.PrimaryTargetDirectory : null,
+                dependency_target_directory = plan.DependencyTargetDirectory,
+                duplicate_policy = isWorldInstall ? "auto_rename" : null,
+                expected_world_base_name = isWorldInstall ? Path.GetFileNameWithoutExtension(plan.SavePath) : null,
+                message = isWorldInstall
+                    ? $"已准备将世界 {resourceName} 安装到实例 {targetVersion.TargetVersionName} 的 saves 目录。若同名存档已存在，将自动重命名。等待用户确认。"
+                    : $"已准备安装 {resourceName} 到 {targetVersion.TargetVersionName}。等待用户确认。"
             }),
             ButtonText = $"安装 {resourceName}",
-            TargetVersionName = targetVersionName,
+            TargetVersionName = targetVersion.TargetVersionName,
+            VersionDirectoryPath = targetVersion.VersionDirectoryPath,
+            ResolvedGameDirectory = targetVersion.ResolvedGameDirectory,
             ResourceName = resourceName,
             ResourceType = resourceType,
             Plan = plan,
@@ -2270,7 +2326,6 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         var message = resourceType switch
         {
             "datapack" => "数据包安装需要目标世界/存档选择，当前 AI V1 还没有 get_worlds 之类的补参工具，因此暂不支持直接安装。",
-            "world" => "世界安装仍属于二期/Phase 5 范围，当前 AI V1 不支持直接安装。",
             "modpack" => "整合包请改用 installModpack。它会创建新实例，而不是安装到现有实例。",
             _ => reason ?? "当前资源类型超出 AI V1 安装范围。"
         };
@@ -3112,7 +3167,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
     private static string? NormalizeQueryableResourceType(string? resourceType)
     {
         var normalized = NormalizeOptionalQueryableResourceType(resourceType);
-        return normalized is "mod" or "resourcepack" or "shader" or "datapack" or "modpack" ? normalized : null;
+        return normalized is "mod" or "resourcepack" or "shader" or "datapack" or "world" or "modpack" ? normalized : null;
     }
 
     private static string? NormalizeOptionalQueryableResourceType(string? resourceType)
@@ -3126,13 +3181,13 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         normalized = ModResourcePathHelper.NormalizeProjectType(normalized);
         return normalized switch
         {
-            "mod" or "resourcepack" or "shader" or "datapack" or "modpack" => normalized,
+            "mod" or "resourcepack" or "shader" or "datapack" or "world" or "modpack" => normalized,
             _ => null
         };
     }
 
     private static bool IsAiInstallSupportedResourceType(string resourceType) =>
-        resourceType is "mod" or "resourcepack" or "shader";
+        resourceType is "mod" or "resourcepack" or "shader" or "world";
 
     private static List<string> NormalizePlatforms(IReadOnlyList<string>? platforms)
     {
@@ -3157,6 +3212,39 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         }
 
         return normalizedPlatforms;
+    }
+
+    private static List<string> FilterUnsupportedQueryablePlatforms(string resourceType, IReadOnlyList<string> platforms) =>
+        platforms
+            .Where(platform => platform switch
+            {
+                "modrinth" => ModResourcePathHelper.SupportsModrinthReadOnlyQuery(resourceType),
+                "curseforge" => true,
+                _ => false
+            })
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private static string BuildUnsupportedQueryablePlatformMessage(string resourceType) =>
+        resourceType switch
+        {
+            "world" => "world 的只读查询当前仅支持 CurseForge；Modrinth 暂不支持该类型的搜索与标签查询。",
+            _ => "请求的平台组合当前不受支持。"
+        };
+
+    private static string? BuildQueryablePlatformAdjustmentNote(string resourceType, IReadOnlyList<string> ignoredPlatforms)
+    {
+        if (ignoredPlatforms.Count == 0)
+        {
+            return null;
+        }
+
+        return resourceType switch
+        {
+            "world" when ignoredPlatforms.Contains("modrinth", StringComparer.OrdinalIgnoreCase)
+                => "world 的只读查询当前仅支持 CurseForge，已自动忽略 Modrinth。",
+            _ => null
+        };
     }
 
     private static List<string> NormalizeCategoryTokens(IReadOnlyList<string>? categoryTokens)
@@ -3297,16 +3385,6 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         truncated = true;
         return value[..Math.Max(0, maxChars)].TrimEnd() + "...";
     }
-
-    private static int MapCurseForgeClassId(string resourceType) =>
-        resourceType switch
-        {
-            "resourcepack" => 12,
-            "shader" => 6552,
-            "datapack" => 6945,
-            "modpack" => 4471,
-            _ => 6,
-        };
 
     private static int? MapCurseForgeLoaderType(string? loader) =>
         NormalizeLoader(loader) switch
@@ -3542,6 +3620,10 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         public string ButtonText { get; init; } = string.Empty;
 
         public string TargetVersionName { get; init; } = string.Empty;
+
+        public string VersionDirectoryPath { get; init; } = string.Empty;
+
+        public string ResolvedGameDirectory { get; init; } = string.Empty;
 
         public string ResourceName { get; init; } = string.Empty;
 

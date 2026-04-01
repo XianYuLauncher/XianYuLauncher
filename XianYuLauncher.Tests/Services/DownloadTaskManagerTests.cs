@@ -2054,6 +2054,14 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
         return memoryStream.ToArray();
     }
 
+    private static string ComputeSha1(string content)
+    {
+        using var sha1 = System.Security.Cryptography.SHA1.Create();
+        byte[] bytes = Encoding.UTF8.GetBytes(content);
+        byte[] hash = sha1.ComputeHash(bytes);
+        return Convert.ToHexString(hash);
+    }
+
     /// <summary>
     /// 测试世界下载任务创建
     /// </summary>
@@ -2101,6 +2109,124 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
         firstState.TaskName.Should().Be("Test World");
         firstState.VersionName.Should().Be("world");
         firstState.State.Should().Be(DownloadTaskState.Queued);
+    }
+
+    [Fact]
+    public async Task StartWorldDownloadWithTaskIdAsync_ShouldReturnCreatedTaskId()
+    {
+        // Arrange
+        var zipContent = CreateTestZipContent();
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>(
+                async (url, path, sha1, progress, ct) =>
+                {
+                    var dir = Path.GetDirectoryName(path);
+                    if (!string.IsNullOrEmpty(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                    }
+
+                    await File.WriteAllBytesAsync(path, zipContent, ct);
+                    return DownloadResult.Succeeded(path, url);
+                });
+
+        var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
+        var savesDir = Path.Combine(_tempDirectory, "saves");
+
+        // Act
+        var taskId = await downloadTaskManager.StartWorldDownloadWithTaskIdAsync(
+            "Test World",
+            "https://example.com/world.zip",
+            savesDir,
+            "TestWorld.zip");
+
+        await Task.Delay(100);
+
+        // Assert
+        taskId.Should().NotBeNullOrWhiteSpace();
+        downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.TaskName == "Test World"
+            && task.TaskCategory == DownloadTaskCategory.WorldDownload);
+    }
+
+    [Fact]
+    public async Task StartWorldDownloadWithTaskIdAsync_WhenDependenciesNeedDownload_ShouldDownloadDependenciesAndExtractWorld()
+    {
+        // Arrange
+        var zipContent = CreateTestZipContent();
+        const string dependencyContent = "fabric-api-world";
+        string expectedSha1 = ComputeSha1(dependencyContent);
+        string modsDir = Path.Combine(_tempDirectory, "mods");
+        string dependencyPath = Path.Combine(modsDir, "fabric-api.jar");
+        string savesDir = Path.Combine(_tempDirectory, "saves");
+        var requests = new ConcurrentQueue<(string Url, string Path, string? Sha1)>();
+
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>(
+                async (url, path, sha1, progress, ct) =>
+                {
+                    requests.Enqueue((url, path, sha1));
+
+                    var dir = Path.GetDirectoryName(path);
+                    if (!string.IsNullOrEmpty(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                    }
+
+                    if (path.EndsWith("fabric-api.jar", StringComparison.OrdinalIgnoreCase))
+                    {
+                        await File.WriteAllTextAsync(path, dependencyContent, ct);
+                    }
+                    else
+                    {
+                        await File.WriteAllBytesAsync(path, zipContent, ct);
+                    }
+
+                    progress?.Invoke(new DownloadProgressStatus(100, 100, 100));
+                    return DownloadResult.Succeeded(path, url);
+                });
+
+        var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
+
+        // Act
+        await downloadTaskManager.StartWorldDownloadWithTaskIdAsync(
+            "Test World",
+            "https://example.com/world.zip",
+            savesDir,
+            "TestWorld.zip",
+            dependencies:
+            [
+                new ResourceDependency
+                {
+                    Name = "Fabric API",
+                    DownloadUrl = "https://example.com/fabric-api.jar",
+                    SavePath = dependencyPath,
+                    ExpectedSha1 = expectedSha1,
+                },
+            ]);
+
+        await Task.Delay(500);
+
+        // Assert
+        requests.Should().Contain(request => request.Path == dependencyPath && request.Sha1 == expectedSha1);
+        requests.Should().Contain(request => request.Path.EndsWith("TestWorld.zip", StringComparison.OrdinalIgnoreCase) && request.Sha1 == null);
+        File.Exists(dependencyPath).Should().BeTrue();
+        File.Exists(Path.Combine(savesDir, "TestWorld", "level.dat")).Should().BeTrue();
     }
 
     /// <summary>

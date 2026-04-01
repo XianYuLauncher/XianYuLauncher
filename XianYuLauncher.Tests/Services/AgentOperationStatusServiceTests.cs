@@ -97,6 +97,33 @@ public sealed class AgentOperationStatusServiceTests
     }
 
     [Fact]
+    public void GetOperationStatusMessage_ShouldFormatWorldDownloadOperation()
+    {
+        var task = new DownloadTaskInfo
+        {
+            TaskId = "world-install-op",
+            TaskName = "安装世界 Bliss Valley",
+            VersionName = "Fabric 1.20.1",
+            State = DownloadTaskState.Downloading,
+            Progress = 81,
+            StatusMessage = "正在解压世界存档...",
+            TaskCategory = DownloadTaskCategory.WorldDownload
+        };
+        _downloadTaskManager.SetupGet(manager => manager.TasksSnapshot).Returns([task]);
+        var service = CreateService();
+
+        var message = service.GetOperationStatusMessage("world-install-op");
+
+        message.Should().Contain("operation_id: world-install-op");
+        message.Should().Contain("state: downloading");
+        message.Should().Contain("status_message: 正在解压世界存档...");
+        message.Should().Contain("operation_kind: world_download");
+        message.Should().Contain("progress_percent: 81");
+        message.Should().Contain("task_name: 安装世界 Bliss Valley");
+        message.Should().Contain("version_name: Fabric 1.20.1");
+    }
+
+    [Fact]
     public void GetOperationStatusMessage_ShouldFormatLaunchOperationWithoutDownloadOnlyFields()
     {
         _downloadTaskManager.SetupGet(manager => manager.TasksSnapshot).Returns([]);

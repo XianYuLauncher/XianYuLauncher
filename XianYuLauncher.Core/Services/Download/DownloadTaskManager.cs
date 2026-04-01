@@ -863,13 +863,39 @@ public class DownloadTaskManager : IDownloadTaskManager
         string? iconUrl = null,
         bool showInTeachingTip = false,
         string? teachingTipGroupKey = null,
-        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown)
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown,
+        IEnumerable<ResourceDependency>? dependencies = null)
     {
-        return EnqueueManagedTaskAsync(
+        return StartWorldDownloadWithTaskIdAsync(
+            worldName,
+            downloadUrl,
+            savesDirectory,
+            fileName,
+            iconUrl,
+            showInTeachingTip,
+            teachingTipGroupKey,
+            communityResourceProvider,
+            dependencies);
+    }
+
+    public Task<string> StartWorldDownloadWithTaskIdAsync(
+        string worldName,
+        string downloadUrl,
+        string savesDirectory,
+        string fileName,
+        string? iconUrl = null,
+        bool showInTeachingTip = false,
+        string? teachingTipGroupKey = null,
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown,
+        IEnumerable<ResourceDependency>? dependencies = null)
+    {
+        var dependencyList = dependencies?.ToList();
+
+        return EnqueueManagedTaskWithTaskIdAsync(
             worldName,
             "world",
             DownloadTaskCategory.WorldDownload,
-            (task, cancellationToken) => ExecuteWorldDownloadAsync(worldName, downloadUrl, savesDirectory, fileName, communityResourceProvider, task, cancellationToken),
+            (task, cancellationToken) => ExecuteWorldDownloadAsync(worldName, downloadUrl, savesDirectory, fileName, dependencyList, communityResourceProvider, task, cancellationToken),
             showInTeachingTip,
             iconUrl,
             teachingTipGroupKey);
@@ -1366,56 +1392,12 @@ public class DownloadTaskManager : IDownloadTaskManager
         CancellationToken cancellationToken)
     {
         var totalItems = 1 + (dependencies?.Count ?? 0);
-        var completedItems = 0;
-
-        if (dependencies != null && dependencies.Count > 0)
-        {
-            _logger.LogInformation("开始下载 {Count} 个依赖", dependencies.Count);
-
-            foreach (var dependency in dependencies)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                if (await ShouldSkipDependencyDownloadAsync(dependency, cancellationToken).ConfigureAwait(false))
-                {
-                    completedItems++;
-                    ResetTaskSpeed(task);
-                    var overallProgress = (completedItems * 100.0) / totalItems;
-                    task.Progress = Math.Clamp(overallProgress, 0, 100);
-                    UpdateTaskStatus(task, $"已跳过前置: {dependency.Name}");
-                    OnTaskProgressChanged(task);
-                    _logger.LogInformation("依赖已存在且哈希匹配，跳过下载: {DependencyName}", dependency.Name);
-                    continue;
-                }
-
-                ResetTaskSpeed(task);
-                UpdateTaskStatus(task, $"正在下载前置: {dependency.Name}...", "DownloadQueue_Status_DownloadingDependency", [dependency.Name]);
-                OnTaskProgressChanged(task);
-
-                await DownloadFileAsync(
-                    dependency.DownloadUrl,
-                    dependency.SavePath,
-                    dependency.ExpectedSha1,
-                    status =>
-                    {
-                        if (cancellationToken.IsCancellationRequested)
-                        {
-                            return;
-                        }
-
-                        var overallProgress = (completedItems * 100.0 + status.Percent) / totalItems;
-                        task.Progress = Math.Clamp(overallProgress, 0, 100);
-                        UpdateTaskStatus(task, $"正在下载前置: {dependency.Name}... {status.Percent:F0}%", "DownloadQueue_Status_DownloadingDependencyWithProgress", [dependency.Name, $"{status.Percent:F0}%"]);
-                        UpdateTaskSpeed(task, status);
-                        OnTaskProgressChanged(task);
-                    },
-                    cancellationToken,
-                    communityResourceProvider).ConfigureAwait(false);
-
-                completedItems++;
-                _logger.LogInformation("依赖下载完成: {DependencyName}", dependency.Name);
-            }
-        }
+        int completedItems = await DownloadDependenciesAsync(
+            dependencies,
+            totalItems,
+            communityResourceProvider,
+            task,
+            cancellationToken).ConfigureAwait(false);
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -1434,8 +1416,7 @@ public class DownloadTaskManager : IDownloadTaskManager
                     return;
                 }
 
-                var overallProgress = (completedItems * 100.0 + status.Percent) / totalItems;
-                task.Progress = Math.Clamp(overallProgress, 0, 100);
+                task.Progress = CalculateOverallProgress(completedItems, totalItems, status.Percent);
                 UpdateTaskStatus(task, $"正在下载 {resourceName}... {status.Percent:F0}%", "DownloadQueue_Status_DownloadingNamedWithProgress", [resourceName, $"{status.Percent:F0}%"]);
                 UpdateTaskSpeed(task, status);
                 OnTaskProgressChanged(task);
@@ -1444,6 +1425,67 @@ public class DownloadTaskManager : IDownloadTaskManager
             communityResourceProvider).ConfigureAwait(false);
 
         cancellationToken.ThrowIfCancellationRequested();
+    }
+
+    private async Task<int> DownloadDependenciesAsync(
+        List<ResourceDependency>? dependencies,
+        int totalItems,
+        CommunityResourceProvider communityResourceProvider,
+        DownloadTaskInfo task,
+        CancellationToken cancellationToken)
+    {
+        var completedItems = 0;
+
+        if (dependencies == null || dependencies.Count == 0)
+        {
+            return completedItems;
+        }
+
+        _logger.LogInformation("开始下载 {Count} 个依赖", dependencies.Count);
+
+        foreach (var dependency in dependencies)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (await ShouldSkipDependencyDownloadAsync(dependency, cancellationToken).ConfigureAwait(false))
+            {
+                completedItems++;
+                ResetTaskSpeed(task);
+                task.Progress = CalculateOverallProgress(completedItems, totalItems, 0);
+                UpdateTaskStatus(task, $"已跳过前置: {dependency.Name}");
+                OnTaskProgressChanged(task);
+                _logger.LogInformation("依赖已存在且哈希匹配，跳过下载: {DependencyName}", dependency.Name);
+                continue;
+            }
+
+            ResetTaskSpeed(task);
+            UpdateTaskStatus(task, $"正在下载前置: {dependency.Name}...", "DownloadQueue_Status_DownloadingDependency", [dependency.Name]);
+            OnTaskProgressChanged(task);
+
+            await DownloadFileAsync(
+                dependency.DownloadUrl,
+                dependency.SavePath,
+                dependency.ExpectedSha1,
+                status =>
+                {
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    task.Progress = CalculateOverallProgress(completedItems, totalItems, status.Percent);
+                    UpdateTaskStatus(task, $"正在下载前置: {dependency.Name}... {status.Percent:F0}%", "DownloadQueue_Status_DownloadingDependencyWithProgress", [dependency.Name, $"{status.Percent:F0}%"]);
+                    UpdateTaskSpeed(task, status);
+                    OnTaskProgressChanged(task);
+                },
+                cancellationToken,
+                communityResourceProvider).ConfigureAwait(false);
+
+            completedItems++;
+            _logger.LogInformation("依赖下载完成: {DependencyName}", dependency.Name);
+        }
+
+        return completedItems;
     }
 
     /// <summary>
@@ -1545,6 +1587,11 @@ public class DownloadTaskManager : IDownloadTaskManager
         }
     }
 
+    private static double CalculateOverallProgress(int completedItems, int totalItems, double currentItemPercent)
+    {
+        return Math.Clamp((completedItems * 100.0 + currentItemPercent) / totalItems, 0, 100);
+    }
+
     private static string GetCommunityFallbackResourceType(CommunityResourceProvider communityResourceProvider)
     {
         return communityResourceProvider switch
@@ -1580,10 +1627,19 @@ public class DownloadTaskManager : IDownloadTaskManager
         string downloadUrl,
         string savesDirectory,
         string fileName,
+        List<ResourceDependency>? dependencies,
         CommunityResourceProvider communityResourceProvider,
         DownloadTaskInfo task,
         CancellationToken cancellationToken)
     {
+        int totalItems = 1 + (dependencies?.Count ?? 0);
+        int completedItems = await DownloadDependenciesAsync(
+            dependencies,
+            totalItems,
+            communityResourceProvider,
+            task,
+            cancellationToken).ConfigureAwait(false);
+
         var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         var zipPath = Path.Combine(tempDir, fileName);
 
@@ -1606,7 +1662,7 @@ public class DownloadTaskManager : IDownloadTaskManager
                         return;
                     }
 
-                    task.Progress = Math.Clamp(status.Percent * 0.7, 0, 70);
+                    task.Progress = CalculateOverallProgress(completedItems, totalItems, status.Percent * 0.7);
                     UpdateTaskStatus(task, $"正在下载 {worldName}... {status.Percent:F0}%", "DownloadQueue_Status_DownloadingNamedWithProgress", [worldName, $"{status.Percent:F0}%"]);
                     UpdateTaskSpeed(task, status);
                     OnTaskProgressChanged(task);
@@ -1618,7 +1674,7 @@ public class DownloadTaskManager : IDownloadTaskManager
 
             ResetTaskSpeed(task);
             UpdateTaskStatus(task, "正在解压世界存档...", "DownloadQueue_Status_ExtractingWorldArchive");
-            task.Progress = 70;
+            task.Progress = CalculateOverallProgress(completedItems, totalItems, 70);
             OnTaskProgressChanged(task);
 
             if (!Directory.Exists(savesDirectory))
@@ -1631,7 +1687,7 @@ public class DownloadTaskManager : IDownloadTaskManager
 
             ResetTaskSpeed(task);
             UpdateTaskStatus(task, $"正在解压到: {Path.GetFileName(worldDir)}", "DownloadQueue_Status_ExtractingTo", [Path.GetFileName(worldDir)]);
-            task.Progress = 80;
+            task.Progress = CalculateOverallProgress(completedItems, totalItems, 80);
             OnTaskProgressChanged(task);
 
             Directory.CreateDirectory(worldDir);

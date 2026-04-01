@@ -1,3 +1,5 @@
+using System.IO;
+using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Features.ModDownloadDetail.Services;
@@ -5,10 +7,14 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Services;
 public sealed class CommunityResourceInstallService : ICommunityResourceInstallService
 {
     private readonly IModResourceDownloadOrchestrator _modResourceDownloadOrchestrator;
+    private readonly IDownloadTaskManager _downloadTaskManager;
 
-    public CommunityResourceInstallService(IModResourceDownloadOrchestrator modResourceDownloadOrchestrator)
+    public CommunityResourceInstallService(
+        IModResourceDownloadOrchestrator modResourceDownloadOrchestrator,
+        IDownloadTaskManager downloadTaskManager)
     {
         _modResourceDownloadOrchestrator = modResourceDownloadOrchestrator;
+        _downloadTaskManager = downloadTaskManager;
     }
 
     public async Task<string> StartInstallAsync(
@@ -36,6 +42,20 @@ public sealed class CommunityResourceInstallService : ICommunityResourceInstallS
             cancellationToken);
 
         cancellationToken.ThrowIfCancellationRequested();
+        if (installPlan.ResourceKind == CommunityResourceKind.World)
+        {
+            return await _downloadTaskManager.StartWorldDownloadWithTaskIdAsync(
+                descriptor.ResourceName,
+                descriptor.DownloadUrl,
+                installPlan.PrimaryTargetDirectory,
+                Path.GetFileName(installPlan.SavePath),
+                descriptor.ResourceIconUrl,
+                showInTeachingTip: showInTeachingTip,
+                teachingTipGroupKey: teachingTipGroupKey,
+                communityResourceProvider: descriptor.CommunityResourceProvider,
+                dependencies: dependencies);
+        }
+
         return await _modResourceDownloadOrchestrator.StartResourceDownloadWithTaskIdAsync(
             descriptor.ResourceName,
             installPlan,

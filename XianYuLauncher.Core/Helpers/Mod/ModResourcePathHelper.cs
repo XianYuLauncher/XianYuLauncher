@@ -29,6 +29,20 @@ public static class ModResourcePathHelper
             _ => "mod"
         };
 
+    public static int MapProjectTypeToCurseForgeClassId(string? projectType) =>
+        NormalizeProjectType(projectType) switch
+        {
+            "resourcepack" => 12,
+            "world" => 17,
+            "modpack" => 4471,
+            "shader" => 6552,
+            "datapack" => 6945,
+            _ => 6
+        };
+
+    public static bool SupportsModrinthReadOnlyQuery(string? projectType) =>
+        NormalizeProjectType(projectType) is not "world";
+
     public static string GetDependencyTargetDir(string minecraftPath, string? versionName, string projectType)
     {
         string baseDir = string.IsNullOrEmpty(versionName)
