@@ -86,11 +86,6 @@ public class ModpackInstallationService : IModpackInstallationService
         try
         {
             var validatedTargetVersionName = ValidateTargetVersionName(targetVersionName, minecraftPath);
-            var targetVersionDir = Path.Combine(minecraftPath, MinecraftPathConsts.Versions, validatedTargetVersionName);
-            if (Directory.Exists(targetVersionDir))
-            {
-                return ModpackInstallResult.Failed($"实例已存在: {validatedTargetVersionName}");
-            }
 
             // 1. 下载整合包文件
             tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
@@ -730,7 +725,10 @@ public class ModpackInstallationService : IModpackInstallationService
 
     private static string ValidateTargetVersionName(string targetVersionName, string minecraftPath)
     {
-        var validationResult = VersionNameValidationHelper.ValidateVersionName(targetVersionName, minecraftPath);
+        var validationResult = ModpackInstallNameValidationHelper.Validate(
+            targetVersionName,
+            minecraftPath,
+            suppressDirectoryCheckExceptions: false);
         if (validationResult.IsValid)
         {
             return validationResult.NormalizedName;
@@ -738,11 +736,12 @@ public class ModpackInstallationService : IModpackInstallationService
 
         throw validationResult.Error switch
         {
-            VersionNameValidationError.Empty => new Exception("目标实例不能为空"),
-            VersionNameValidationError.InvalidChars => new Exception("实例名称包含非法字符"),
-            VersionNameValidationError.ReservedDeviceName => new Exception("实例名称不能使用 Windows 保留名称"),
-            VersionNameValidationError.TrailingSpaceOrDot => new Exception("实例名称不能以句点或空格结尾"),
-            VersionNameValidationError.TooLong => new Exception($"实例名称过长，请控制在 {validationResult.MaxSafeLength} 个字符以内"),
+            ModpackInstallNameValidationError.Empty => new Exception("目标实例不能为空"),
+            ModpackInstallNameValidationError.InvalidChars => new Exception("实例名称包含非法字符"),
+            ModpackInstallNameValidationError.ReservedDeviceName => new Exception("实例名称不能使用 Windows 保留名称"),
+            ModpackInstallNameValidationError.TrailingSpaceOrDot => new Exception("实例名称不能以句点或空格结尾"),
+            ModpackInstallNameValidationError.TooLong => new Exception($"实例名称过长，请控制在 {validationResult.MaxSafeLength} 个字符以内"),
+            ModpackInstallNameValidationError.AlreadyExists => new Exception($"实例已存在: {validationResult.NormalizedName}"),
             _ => new Exception("实例名称无效"),
         };
     }

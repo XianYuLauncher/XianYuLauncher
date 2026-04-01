@@ -1909,35 +1909,21 @@ namespace XianYuLauncher.ViewModels
         private (bool IsValid, string ErrorMessage) ValidateModpackInstallName(string versionName)
         {
             string minecraftDirectory = _fileService.GetMinecraftDataPath();
-            var validationResult = VersionNameValidationHelper.ValidateVersionName(versionName, minecraftDirectory);
+            var validationResult = ModpackInstallNameValidationHelper.Validate(versionName, minecraftDirectory);
             if (!validationResult.IsValid)
             {
                 return (false, validationResult.Error switch
                 {
-                    VersionNameValidationError.Empty => "ModDownloadDetailPage_ModpackInstallNameDialog_Error_Empty".GetLocalized(),
-                    VersionNameValidationError.InvalidChars => "ModDownloadDetailPage_ModpackInstallNameDialog_Error_InvalidChars".GetLocalized(),
-                    VersionNameValidationError.ReservedDeviceName => "ModDownloadDetailPage_ModpackInstallNameDialog_Error_ReservedDeviceName".GetLocalized(),
-                    VersionNameValidationError.TrailingSpaceOrDot => "ModDownloadDetailPage_ModpackInstallNameDialog_Error_TrailingSpaceOrDot".GetLocalized(),
-                    VersionNameValidationError.TooLong => "ModDownloadDetailPage_ModpackInstallNameDialog_Error_TooLong".GetLocalized(validationResult.MaxSafeLength),
+                    ModpackInstallNameValidationError.Empty => "ModDownloadDetailPage_ModpackInstallNameDialog_Error_Empty".GetLocalized(),
+                    ModpackInstallNameValidationError.InvalidChars => "ModDownloadDetailPage_ModpackInstallNameDialog_Error_InvalidChars".GetLocalized(),
+                    ModpackInstallNameValidationError.ReservedDeviceName => "ModDownloadDetailPage_ModpackInstallNameDialog_Error_ReservedDeviceName".GetLocalized(),
+                    ModpackInstallNameValidationError.TrailingSpaceOrDot => "ModDownloadDetailPage_ModpackInstallNameDialog_Error_TrailingSpaceOrDot".GetLocalized(),
+                    ModpackInstallNameValidationError.TooLong => "ModDownloadDetailPage_ModpackInstallNameDialog_Error_TooLong".GetLocalized(validationResult.MaxSafeLength),
+                    ModpackInstallNameValidationError.AlreadyExists => string.Format(
+                        "ModDownloadDetailPage_ModpackInstallNameDialog_Error_Exists".GetLocalized(),
+                        validationResult.NormalizedName),
                     _ => "ModDownloadDetailPage_ModpackInstallNameDialog_Error_Empty".GetLocalized(),
                 });
-            }
-
-            try
-            {
-                string versionsDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions);
-                string versionDirectory = Path.Combine(versionsDirectory, validationResult.NormalizedName);
-
-                if (Directory.Exists(versionDirectory))
-                {
-                    return (false, string.Format(
-                        "ModDownloadDetailPage_ModpackInstallNameDialog_Error_Exists".GetLocalized(),
-                        validationResult.NormalizedName));
-                }
-            }
-            catch
-            {
-                // 忽略路径检查异常，后续安装阶段仍会做最终校验。
             }
 
             return (true, string.Empty);

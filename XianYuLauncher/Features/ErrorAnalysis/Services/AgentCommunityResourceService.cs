@@ -67,6 +67,14 @@ public interface IAgentCommunityResourceService
     Task<string> StartInstallAsync(
         AgentCommunityResourceInstallCommand command,
         CancellationToken cancellationToken);
+
+    Task<AgentCommunityResourceInstallPreparation> PrepareModpackInstallAsync(
+        AgentCommunityResourceInstallCommand command,
+        CancellationToken cancellationToken);
+
+    Task<string> StartModpackInstallAsync(
+        AgentCommunityResourceInstallCommand command,
+        CancellationToken cancellationToken);
 }
 
 public sealed class AgentInstanceCommunityResourceInventoryCommand
@@ -161,6 +169,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
     private readonly ICommunityResourceUpdateService _communityResourceUpdateService;
     private readonly ICommunityResourceInstallPlanner _communityResourceInstallPlanner;
     private readonly ICommunityResourceInstallService _communityResourceInstallService;
+    private readonly IModpackDownloadQueueService _modpackDownloadQueueService;
     private readonly ITranslationService _translationService;
     private readonly ICommunityResourceFilterMetadataService _communityResourceFilterMetadataService;
 
@@ -176,6 +185,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         ICommunityResourceUpdateService communityResourceUpdateService,
         ICommunityResourceInstallPlanner communityResourceInstallPlanner,
         ICommunityResourceInstallService communityResourceInstallService,
+        IModpackDownloadQueueService modpackDownloadQueueService,
         ITranslationService translationService,
         ICommunityResourceFilterMetadataService communityResourceFilterMetadataService)
     {
@@ -190,6 +200,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         _communityResourceUpdateService = communityResourceUpdateService;
         _communityResourceInstallPlanner = communityResourceInstallPlanner;
         _communityResourceInstallService = communityResourceInstallService;
+        _modpackDownloadQueueService = modpackDownloadQueueService;
         _translationService = translationService;
         _communityResourceFilterMetadataService = communityResourceFilterMetadataService;
     }
@@ -210,7 +221,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             return SerializePayload(new
             {
                 status = "invalid_request",
-                message = "resource_type 仅支持 mod、resourcepack、shader、datapack。"
+                message = "resource_type 仅支持 mod、resourcepack、shader、datapack、modpack。"
             });
         }
 
@@ -283,7 +294,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             return SerializePayload(new
             {
                 status = "invalid_request",
-                message = "resource_type 仅支持 mod、resourcepack、shader、datapack。"
+                message = "resource_type 仅支持 mod、resourcepack、shader、datapack、modpack。"
             });
         }
 
@@ -773,6 +784,73 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             target_version_name = executionContext.TargetVersionName,
             download_dependencies = executionContext.Command.DownloadDependencies,
             message = $"已开始安装 {executionContext.ResourceName} 到 {executionContext.TargetVersionName}。可继续使用 getOperationStatus 查询下载状态。"
+        });
+    }
+
+    public async Task<AgentCommunityResourceInstallPreparation> PrepareModpackInstallAsync(
+        AgentCommunityResourceInstallCommand command,
+        CancellationToken cancellationToken)
+    {
+        var executionContext = await BuildModpackInstallExecutionContextAsync(command, cancellationToken);
+        if (!executionContext.IsReady)
+        {
+            return new AgentCommunityResourceInstallPreparation
+            {
+                Message = executionContext.Message
+            };
+        }
+
+        return new AgentCommunityResourceInstallPreparation
+        {
+            Message = executionContext.Message,
+            IsReadyForConfirmation = true,
+            ButtonText = executionContext.ButtonText,
+            ProposalParameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["project_id"] = executionContext.Command.ProjectId,
+                ["resource_file_id"] = executionContext.Command.ResourceFileId,
+                ["target_version_name"] = executionContext.TargetVersionName,
+            }
+        };
+    }
+
+    public async Task<string> StartModpackInstallAsync(
+        AgentCommunityResourceInstallCommand command,
+        CancellationToken cancellationToken)
+    {
+        var executionContext = await BuildModpackInstallExecutionContextAsync(command, cancellationToken);
+        if (!executionContext.IsReady)
+        {
+            return executionContext.Message;
+        }
+
+        string operationId = await _modpackDownloadQueueService.StartInstallAsync(
+            new ModpackDownloadQueueRequest
+            {
+                DownloadUrl = executionContext.DownloadUrl,
+                FileName = executionContext.FileName,
+                ModpackDisplayName = executionContext.ResourceName,
+                TargetVersionName = executionContext.TargetVersionName,
+                MinecraftPath = _fileService.GetMinecraftDataPath(),
+                IsFromCurseForge = executionContext.IsFromCurseForge,
+                ModpackIconSource = executionContext.IconUrl,
+                SourceProjectId = executionContext.SourceProjectId,
+                SourceVersionId = executionContext.SourceVersionId,
+                ShowInTeachingTip = true,
+            },
+            cancellationToken);
+
+        return SerializePayload(new
+        {
+            status = "started",
+            operation_id = operationId,
+            project_id = executionContext.Command.ProjectId,
+            resource_file_id = executionContext.Command.ResourceFileId,
+            resource_type = "modpack",
+            platform = executionContext.Platform,
+            resource_name = executionContext.ResourceName,
+            target_version_name = executionContext.TargetVersionName,
+            message = $"已开始安装整合包 {executionContext.ResourceName}，将创建实例 {executionContext.TargetVersionName}。可继续使用 getOperationStatus 查询下载状态。"
         });
     }
 
@@ -1272,6 +1350,327 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         });
     }
 
+    private async Task<ModpackInstallExecutionContext> BuildModpackInstallExecutionContextAsync(
+        AgentCommunityResourceInstallCommand command,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(command.ProjectId))
+        {
+            return ModpackInstallExecutionContext.FromMessage(SerializePayload(new
+            {
+                status = "invalid_request",
+                message = "project_id 不能为空。"
+            }));
+        }
+
+        if (string.IsNullOrWhiteSpace(command.ResourceFileId))
+        {
+            return ModpackInstallExecutionContext.FromMessage(SerializePayload(new
+            {
+                status = "invalid_request",
+                message = "resource_file_id 不能为空。"
+            }));
+        }
+
+        string minecraftPath = _fileService.GetMinecraftDataPath();
+        var targetVersionValidation = ModpackInstallNameValidationHelper.Validate(command.TargetVersionName, minecraftPath);
+        if (!targetVersionValidation.IsValid)
+        {
+            return ModpackInstallExecutionContext.FromMessage(CreateModpackInstallValidationMessage(targetVersionValidation));
+        }
+
+        var identity = TryParseProjectIdentity(command.ProjectId);
+        if (identity == null)
+        {
+            return ModpackInstallExecutionContext.FromMessage(SerializePayload(new
+            {
+                status = "invalid_request",
+                message = "project_id 无法识别，CurseForge 项目请传 curseforge-<id>。"
+            }));
+        }
+
+        return identity.Provider switch
+        {
+            CommunityResourceProvider.Modrinth => await BuildModrinthModpackInstallContextAsync(
+                command,
+                identity.RawProjectId,
+                targetVersionValidation.NormalizedName,
+                cancellationToken),
+            CommunityResourceProvider.CurseForge => await BuildCurseForgeModpackInstallContextAsync(
+                command,
+                identity.RawProjectId,
+                targetVersionValidation.NormalizedName,
+                cancellationToken),
+            _ => ModpackInstallExecutionContext.FromMessage(SerializePayload(new
+            {
+                status = "invalid_request",
+                message = "暂不支持的资源平台。"
+            }))
+        };
+    }
+
+    private async Task<ModpackInstallExecutionContext> BuildModrinthModpackInstallContextAsync(
+        AgentCommunityResourceInstallCommand command,
+        string rawProjectId,
+        string targetVersionName,
+        CancellationToken cancellationToken)
+    {
+        var detail = await _modrinthService.GetProjectDetailAsync(rawProjectId);
+        if (detail == null)
+        {
+            return ModpackInstallExecutionContext.FromMessage(SerializePayload(new
+            {
+                status = "not_found",
+                message = "未找到对应的 Modrinth 项目。"
+            }));
+        }
+
+        var version = await _modrinthService.GetVersionByIdAsync(command.ResourceFileId);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (version == null)
+        {
+            return ModpackInstallExecutionContext.FromMessage(SerializePayload(new
+            {
+                status = "not_found",
+                message = $"未找到 Modrinth 版本 {command.ResourceFileId}。"
+            }));
+        }
+
+        if (!string.Equals(version.ProjectId, detail.Id, StringComparison.OrdinalIgnoreCase))
+        {
+            return ModpackInstallExecutionContext.FromMessage(SerializePayload(new
+            {
+                status = "invalid_request",
+                message = "resource_file_id 不属于当前 project_id。"
+            }));
+        }
+
+        string resourceType = DetectModrinthResourceType(command.ResourceType, detail.ProjectType, [version]);
+        if (!string.Equals(resourceType, "modpack", StringComparison.OrdinalIgnoreCase))
+        {
+            return BuildModpackOnlyInstallContext(resourceType);
+        }
+
+        var primaryFile = version.Files.FirstOrDefault(file => file.Primary) ?? version.Files.FirstOrDefault();
+        if (primaryFile == null || string.IsNullOrWhiteSpace(primaryFile.Filename) || primaryFile.Url == null)
+        {
+            return ModpackInstallExecutionContext.FromMessage(SerializePayload(new
+            {
+                status = "invalid_request",
+                message = "当前 Modrinth 版本没有可下载的整合包主文件。"
+            }));
+        }
+
+        return CreateReadyModpackInstallContext(
+            command,
+            platform: "modrinth",
+            targetVersionName,
+            detail.Title,
+            primaryFile.Filename,
+            primaryFile.Url.ToString(),
+            detail.IconUrl?.ToString(),
+            detail.Id,
+            version.Id,
+            isFromCurseForge: false);
+    }
+
+    private async Task<ModpackInstallExecutionContext> BuildCurseForgeModpackInstallContextAsync(
+        AgentCommunityResourceInstallCommand command,
+        string rawProjectId,
+        string targetVersionName,
+        CancellationToken cancellationToken)
+    {
+        if (!int.TryParse(rawProjectId, out int modId))
+        {
+            return ModpackInstallExecutionContext.FromMessage(SerializePayload(new
+            {
+                status = "invalid_request",
+                message = "CurseForge project_id 必须是 curseforge-<数字 id>。"
+            }));
+        }
+
+        if (!int.TryParse(command.ResourceFileId, out int fileId))
+        {
+            return ModpackInstallExecutionContext.FromMessage(SerializePayload(new
+            {
+                status = "invalid_request",
+                message = "CurseForge 的 resource_file_id 必须是数字文件 ID。"
+            }));
+        }
+
+        CurseForgeModDetail detail;
+        CurseForgeFile? file;
+        try
+        {
+            detail = await _curseForgeService.GetModDetailAsync(modId);
+            file = await _curseForgeService.GetFileAsync(modId, fileId);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return ModpackInstallExecutionContext.FromMessage(SerializePayload(new
+            {
+                status = "failed",
+                message = $"获取 CurseForge 项目或文件信息失败：{ex.Message}",
+                project_id = command.ProjectId,
+                file_id = command.ResourceFileId
+            }));
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        if (file == null)
+        {
+            return ModpackInstallExecutionContext.FromMessage(SerializePayload(new
+            {
+                status = "not_found",
+                message = $"未找到 CurseForge 文件 {fileId}。"
+            }));
+        }
+
+        string resourceType = ModDetailLoadHelper.ResolveCurseForgeProjectType(detail.ClassId, command.ResourceType);
+        if (!string.Equals(resourceType, "modpack", StringComparison.OrdinalIgnoreCase))
+        {
+            return BuildModpackOnlyInstallContext(resourceType);
+        }
+
+        if (string.IsNullOrWhiteSpace(file.FileName))
+        {
+            return ModpackInstallExecutionContext.FromMessage(SerializePayload(new
+            {
+                status = "invalid_request",
+                message = "当前 CurseForge 文件缺少文件名，无法加入整合包安装队列。"
+            }));
+        }
+
+        string downloadUrl = string.IsNullOrWhiteSpace(file.DownloadUrl)
+            ? _curseForgeService.ConstructDownloadUrl(file.Id, file.FileName)
+            : file.DownloadUrl;
+
+        return CreateReadyModpackInstallContext(
+            command,
+            platform: "curseforge",
+            targetVersionName,
+            detail.Name,
+            file.FileName,
+            downloadUrl,
+            detail.Logo?.Url,
+            command.ProjectId,
+            file.Id.ToString(),
+            isFromCurseForge: true);
+    }
+
+    private static string CreateModpackInstallValidationMessage(ModpackInstallNameValidationResult validationResult)
+    {
+        return validationResult.Error switch
+        {
+            ModpackInstallNameValidationError.Empty => SerializePayload(new
+            {
+                status = "missing_requirements",
+                missing_requirements = new[]
+                {
+                    new
+                    {
+                        field = "target_version_name",
+                        message = "整合包安装必须提供新的 target_version_name 作为实例名。"
+                    }
+                }
+            }),
+            ModpackInstallNameValidationError.InvalidChars => SerializePayload(new
+            {
+                status = "invalid_request",
+                field = "target_version_name",
+                message = "target_version_name 包含非法字符。"
+            }),
+            ModpackInstallNameValidationError.ReservedDeviceName => SerializePayload(new
+            {
+                status = "invalid_request",
+                field = "target_version_name",
+                message = "target_version_name 不能使用 Windows 保留名称。"
+            }),
+            ModpackInstallNameValidationError.TrailingSpaceOrDot => SerializePayload(new
+            {
+                status = "invalid_request",
+                field = "target_version_name",
+                message = "target_version_name 不能以空格或句点结尾。"
+            }),
+            ModpackInstallNameValidationError.TooLong => SerializePayload(new
+            {
+                status = "invalid_request",
+                field = "target_version_name",
+                message = $"target_version_name 过长，请控制在 {validationResult.MaxSafeLength} 个字符以内。",
+                max_safe_length = validationResult.MaxSafeLength > 0 ? (int?)validationResult.MaxSafeLength : null
+            }),
+            ModpackInstallNameValidationError.AlreadyExists => SerializePayload(new
+            {
+                status = "invalid_request",
+                field = "target_version_name",
+                conflicting_instance = validationResult.NormalizedName,
+                message = $"实例 {validationResult.NormalizedName} 已存在，请改用新的 target_version_name。"
+            }),
+            _ => SerializePayload(new
+            {
+                status = "invalid_request",
+                field = "target_version_name",
+                message = "target_version_name 无效。"
+            })
+        };
+    }
+
+    private static ModpackInstallExecutionContext BuildModpackOnlyInstallContext(string resourceType)
+    {
+        string normalizedResourceType = NormalizeText(resourceType) ?? "unknown";
+        return ModpackInstallExecutionContext.FromMessage(SerializePayload(new
+        {
+            status = "invalid_request",
+            resource_type = normalizedResourceType,
+            message = $"installModpack 仅支持 modpack，但当前 project_id / resource_file_id 对应的资源类型是 {normalizedResourceType}。"
+        }));
+    }
+
+    private static ModpackInstallExecutionContext CreateReadyModpackInstallContext(
+        AgentCommunityResourceInstallCommand command,
+        string platform,
+        string targetVersionName,
+        string resourceName,
+        string fileName,
+        string downloadUrl,
+        string? iconUrl,
+        string? sourceProjectId,
+        string? sourceVersionId,
+        bool isFromCurseForge)
+    {
+        return new ModpackInstallExecutionContext
+        {
+            Command = command,
+            IsReady = true,
+            Message = SerializePayload(new
+            {
+                status = "ready_for_confirmation",
+                project_id = command.ProjectId,
+                resource_file_id = command.ResourceFileId,
+                resource_type = "modpack",
+                platform,
+                resource_name = resourceName,
+                target_version_name = targetVersionName,
+                file_name = fileName,
+                message = $"已准备安装整合包 {resourceName}，将创建实例 {targetVersionName}。等待用户确认。"
+            }),
+            ButtonText = $"安装整合包 {resourceName}",
+            TargetVersionName = targetVersionName,
+            ResourceName = resourceName,
+            FileName = fileName,
+            DownloadUrl = downloadUrl,
+            Platform = platform,
+            IconUrl = iconUrl,
+            SourceProjectId = sourceProjectId,
+            SourceVersionId = sourceVersionId,
+            IsFromCurseForge = isFromCurseForge,
+        };
+    }
+
     private async Task<CommunityResourceInstallExecutionContext> BuildInstallExecutionContextAsync(
         AgentCommunityResourceInstallCommand command,
         CancellationToken cancellationToken)
@@ -1609,7 +2008,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         {
             "datapack" => "数据包安装需要目标世界/存档选择，当前 AI V1 还没有 get_worlds 之类的补参工具，因此暂不支持直接安装。",
             "world" => "世界安装仍属于二期/Phase 5 范围，当前 AI V1 不支持直接安装。",
-            "modpack" => "整合包安装/更新仍属于二期/Phase 5 范围，当前 AI V1 不支持直接安装。",
+            "modpack" => "整合包请改用 installModpack。它会创建新实例，而不是安装到现有实例。",
             _ => reason ?? "当前资源类型超出 AI V1 安装范围。"
         };
 
@@ -2075,7 +2474,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
     private static string? NormalizeQueryableResourceType(string? resourceType)
     {
         var normalized = NormalizeOptionalQueryableResourceType(resourceType);
-        return normalized is "mod" or "resourcepack" or "shader" or "datapack" ? normalized : null;
+        return normalized is "mod" or "resourcepack" or "shader" or "datapack" or "modpack" ? normalized : null;
     }
 
     private static string? NormalizeOptionalQueryableResourceType(string? resourceType)
@@ -2089,7 +2488,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         normalized = ModResourcePathHelper.NormalizeProjectType(normalized);
         return normalized switch
         {
-            "mod" or "resourcepack" or "shader" or "datapack" => normalized,
+            "mod" or "resourcepack" or "shader" or "datapack" or "modpack" => normalized,
             _ => null
         };
     }
@@ -2267,6 +2666,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             "resourcepack" => 12,
             "shader" => 6552,
             "datapack" => 6945,
+            "modpack" => 4471,
             _ => 6,
         };
 
@@ -2435,6 +2835,44 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             {
                 Command = new AgentCommunityResourceInstallCommand(),
                 Message = message
+            };
+        }
+    }
+
+    private sealed class ModpackInstallExecutionContext
+    {
+        public required AgentCommunityResourceInstallCommand Command { get; init; }
+
+        public bool IsReady { get; init; }
+
+        public required string Message { get; init; }
+
+        public string ButtonText { get; init; } = string.Empty;
+
+        public string TargetVersionName { get; init; } = string.Empty;
+
+        public string ResourceName { get; init; } = string.Empty;
+
+        public string FileName { get; init; } = string.Empty;
+
+        public string DownloadUrl { get; init; } = string.Empty;
+
+        public string Platform { get; init; } = string.Empty;
+
+        public string? IconUrl { get; init; }
+
+        public string? SourceProjectId { get; init; }
+
+        public string? SourceVersionId { get; init; }
+
+        public bool IsFromCurseForge { get; init; }
+
+        public static ModpackInstallExecutionContext FromMessage(string message)
+        {
+            return new ModpackInstallExecutionContext
+            {
+                Command = new AgentCommunityResourceInstallCommand(),
+                Message = message,
             };
         }
     }
