@@ -63,8 +63,8 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
             batchGroupKey,
             context.TaskId,
             request.TargetVersionName.Trim());
-        Progress<ModpackInstallProgress> progress = new(installProgress => ReportInstallProgress(context, installProgress));
-        Progress<ModpackContentFileProgress> contentFileProgress = new(fileProgress => ReportContentFileProgress(contentFileCoordinator, fileProgress));
+        IProgress<ModpackInstallProgress> progress = new CallbackProgress<ModpackInstallProgress>(installProgress => ReportInstallProgress(context, installProgress));
+        IProgress<ModpackContentFileProgress> contentFileProgress = new CallbackProgress<ModpackContentFileProgress>(fileProgress => ReportContentFileProgress(contentFileCoordinator, fileProgress));
         bool finalizedPendingContentTasks = false;
 
         try
@@ -155,6 +155,9 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
 
         switch (progress.State)
         {
+            case ModpackContentFileProgressState.Queued:
+                coordinator.Queue(progress.FileKey, progress.FileName);
+                break;
             case ModpackContentFileProgressState.Downloading:
             {
                 var downloadStatus = progress.DownloadStatus
@@ -181,6 +184,21 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
             case ModpackContentFileProgressState.Cancelled:
                 coordinator.Cancel(progress.FileKey, progress.FileName);
                 break;
+        }
+    }
+
+    private sealed class CallbackProgress<T> : IProgress<T>
+    {
+        private readonly Action<T> _handler;
+
+        public CallbackProgress(Action<T> handler)
+        {
+            _handler = handler ?? throw new ArgumentNullException(nameof(handler));
+        }
+
+        public void Report(T value)
+        {
+            _handler(value);
         }
     }
 
@@ -275,6 +293,11 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
                 statusResourceArguments);
         }
 
+        public void Queue(string fileKey, string fileName)
+        {
+            GetOrCreateTask(fileKey, fileName, startInQueuedState: true);
+        }
+
         public void Complete(string fileKey, string fileName)
         {
             if (!TryTransitionToTerminal(fileKey, fileName, out string taskId))
@@ -344,7 +367,7 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
             }
         }
 
-        private (string TaskId, bool IsTerminal) GetOrCreateTask(string fileKey, string fileName)
+        private (string TaskId, bool IsTerminal) GetOrCreateTask(string fileKey, string fileName, bool startInQueuedState = false)
         {
             lock (_lock)
             {
@@ -362,7 +385,8 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
                     batchGroupKey: _batchGroupKey,
                     parentTaskId: _parentTaskId,
                     allowCancel: false,
-                    taskTypeResourceKey: "DownloadQueue_TaskType_ModpackInstallFile");
+                    taskTypeResourceKey: "DownloadQueue_TaskType_ModpackInstallFile",
+                    startInQueuedState: startInQueuedState);
 
                 _childTasks[fileKey] = new ChildTaskEntry(taskId);
                 return (taskId, false);

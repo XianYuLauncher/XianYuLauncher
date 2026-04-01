@@ -17,7 +17,8 @@ public class ModpackInstallProgress
 
 public enum ModpackContentFileProgressState
 {
-    Downloading = 0,
+    Queued = 0,
+    Downloading,
     Completed,
     Failed,
     Cancelled
@@ -36,6 +37,17 @@ public sealed class ModpackContentFileProgress
     public DownloadProgressStatus? DownloadStatus { get; init; }
 
     public string? ErrorMessage { get; init; }
+
+    public static ModpackContentFileProgress Queued(string fileKey, string fileName)
+    {
+        return new ModpackContentFileProgress
+        {
+            FileKey = fileKey,
+            FileName = fileName,
+            State = ModpackContentFileProgressState.Queued,
+            Progress = 0,
+        };
+    }
 
     public static ModpackContentFileProgress Downloading(
         string fileKey,

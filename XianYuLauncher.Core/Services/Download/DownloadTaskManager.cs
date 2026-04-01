@@ -487,9 +487,15 @@ public class DownloadTaskManager : IDownloadTaskManager
         Action? cancelAction = null,
         string? displayNameResourceKey = null,
         IReadOnlyList<string>? displayNameResourceArguments = null,
-        string? taskTypeResourceKey = null)
+        string? taskTypeResourceKey = null,
+        string? iconSource = null,
+        bool startInQueuedState = false)
     {
         var createdAtUtc = DateTimeOffset.UtcNow;
+        var initialState = startInQueuedState ? DownloadTaskState.Queued : DownloadTaskState.Downloading;
+        var (initialStatusMessage, initialStatusResourceKey) = startInQueuedState
+            ? ("等待下载...", "DownloadQueue_Status_Waiting")
+            : ("正在下载...", "DownloadQueue_Status_Downloading");
         var taskInfo = new DownloadTaskInfo
         {
             TaskName = taskName,
@@ -500,15 +506,16 @@ public class DownloadTaskManager : IDownloadTaskManager
             DisplayNameResourceArguments = displayNameResourceArguments is { Count: > 0 }
                 ? [.. displayNameResourceArguments]
                 : [],
-            State = DownloadTaskState.Downloading,
+            State = initialState,
             Progress = 0,
-            StatusMessage = "正在下载...",
-            StatusResourceKey = "DownloadQueue_Status_Downloading",
+            StatusMessage = initialStatusMessage,
+            StatusResourceKey = initialStatusResourceKey,
             StatusResourceArguments = [],
             IsQueueManaged = false,
             AllowCancel = allowCancel,
             AllowRetry = false,
             ShowInTeachingTip = showInTeachingTip,
+            IconSource = NormalizeTaskIconSource(iconSource),
             TeachingTipGroupKey = string.IsNullOrWhiteSpace(teachingTipGroupKey) ? Guid.NewGuid().ToString("N") : teachingTipGroupKey,
             BatchGroupKey = string.IsNullOrWhiteSpace(batchGroupKey) ? string.Empty : batchGroupKey,
             ParentTaskId = parentTaskId,

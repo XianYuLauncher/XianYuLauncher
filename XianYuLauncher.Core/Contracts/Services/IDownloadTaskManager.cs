@@ -153,7 +153,9 @@ public interface IDownloadTaskManager
         Action? cancelAction = null,
         string? displayNameResourceKey = null,
         IReadOnlyList<string>? displayNameResourceArguments = null,
-        string? taskTypeResourceKey = null);
+        string? taskTypeResourceKey = null,
+        string? iconSource = null,
+        bool startInQueuedState = false);
 
     /// <summary>
     /// 更新外部任务的进度与状态文案。
