@@ -17,7 +17,7 @@ public sealed class SearchCommunityResourcesToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "跨 Modrinth / CurseForge 搜索社区资源。V1 支持 mod、resourcepack、shader、datapack、world、modpack 的只读搜索。",
+        "跨 Modrinth / CurseForge 搜索社区资源。V1 支持 mod、resourcepack、shader、datapack、world、modpack 的只读搜索，其中 world 当前仅通过 CurseForge 查询。",
         new
         {
             type = "object",
@@ -28,7 +28,7 @@ public sealed class SearchCommunityResourcesToolHandler : IAgentToolHandler
                 platforms = new
                 {
                     type = "array",
-                    description = "可选。搜索平台数组；省略时默认同时搜索 Modrinth 和 CurseForge。",
+                    description = "可选。搜索平台数组；省略时默认同时搜索 Modrinth 和 CurseForge。world 当前会自动收敛到 CurseForge。",
                     items = new { type = "string", @enum = new[] { "modrinth", "curseforge" } }
                 },
                 category_tokens = new
@@ -96,7 +96,7 @@ public sealed class GetCommunityResourceTagsToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "返回社区资源搜索可用的类别 token 和加载器值。categories[*].token 可直接传给 searchCommunityResources.category_tokens。V1 支持 mod、resourcepack、shader、datapack、world、modpack。",
+        "返回社区资源搜索可用的类别 token 和加载器值。categories[*].token 可直接传给 searchCommunityResources.category_tokens。V1 支持 mod、resourcepack、shader、datapack、world、modpack，其中 world 当前仅返回 CurseForge 标签。",
         new
         {
             type = "object",
@@ -106,7 +106,7 @@ public sealed class GetCommunityResourceTagsToolHandler : IAgentToolHandler
                 platforms = new
                 {
                     type = "array",
-                    description = "可选。查询平台数组；省略时默认同时返回 Modrinth 和 CurseForge 的标签。",
+                    description = "可选。查询平台数组；省略时默认同时返回 Modrinth 和 CurseForge 的标签。world 当前会自动收敛到 CurseForge。",
                     items = new { type = "string", @enum = new[] { "modrinth", "curseforge" } }
                 }
             },

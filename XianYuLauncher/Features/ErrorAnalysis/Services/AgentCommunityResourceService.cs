@@ -274,10 +274,25 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             });
         }
 
-        var normalizedPlatforms = NormalizePlatforms(platforms);
+        var requestedPlatforms = NormalizePlatforms(platforms);
+        if (requestedPlatforms.Count == 0)
+        {
+            requestedPlatforms = ["modrinth", "curseforge"];
+        }
+
+        var normalizedPlatforms = FilterUnsupportedQueryablePlatforms(normalizedResourceType, requestedPlatforms);
+        var ignoredPlatforms = requestedPlatforms
+            .Except(normalizedPlatforms, StringComparer.OrdinalIgnoreCase)
+            .ToList();
         if (normalizedPlatforms.Count == 0)
         {
-            normalizedPlatforms = ["modrinth", "curseforge"];
+            return SerializePayload(new
+            {
+                status = "unsupported_request",
+                message = BuildUnsupportedQueryablePlatformMessage(normalizedResourceType),
+                resource_type = normalizedResourceType,
+                requested_platforms = requestedPlatforms
+            });
         }
 
         var normalizedLoader = NormalizeLoader(loader);
@@ -325,7 +340,10 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             effective_query = effectiveQuery,
             query_provided = !string.IsNullOrEmpty(normalizedQuery),
             resource_type = normalizedResourceType,
+            requested_platforms = requestedPlatforms,
             platforms = normalizedPlatforms,
+            ignored_platforms = ignoredPlatforms,
+            note = BuildQueryablePlatformAdjustmentNote(normalizedResourceType, ignoredPlatforms),
             category_tokens = normalizedCategoryTokens,
             total_returned = results.Count,
             results
@@ -347,10 +365,25 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             });
         }
 
-        var normalizedPlatforms = NormalizePlatforms(platforms);
+        var requestedPlatforms = NormalizePlatforms(platforms);
+        if (requestedPlatforms.Count == 0)
+        {
+            requestedPlatforms = ["modrinth", "curseforge"];
+        }
+
+        var normalizedPlatforms = FilterUnsupportedQueryablePlatforms(normalizedResourceType, requestedPlatforms);
+        var ignoredPlatforms = requestedPlatforms
+            .Except(normalizedPlatforms, StringComparer.OrdinalIgnoreCase)
+            .ToList();
         if (normalizedPlatforms.Count == 0)
         {
-            normalizedPlatforms = ["modrinth", "curseforge"];
+            return SerializePayload(new
+            {
+                status = "unsupported_request",
+                message = BuildUnsupportedQueryablePlatformMessage(normalizedResourceType),
+                resource_type = normalizedResourceType,
+                requested_platforms = requestedPlatforms
+            });
         }
 
         var metadata = await _communityResourceFilterMetadataService.GetFilterMetadataAsync(
@@ -374,7 +407,10 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         {
             status = "ok",
             resource_type = normalizedResourceType,
+            requested_platforms = requestedPlatforms,
             platforms = metadata.Platforms,
+            ignored_platforms = ignoredPlatforms,
+            note = BuildQueryablePlatformAdjustmentNote(normalizedResourceType, ignoredPlatforms),
             category_count = categories.Count,
             loader_count = metadata.Loaders.Count,
             categories,
@@ -1152,6 +1188,11 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         int limit,
         CancellationToken cancellationToken)
     {
+        if (!ModResourcePathHelper.SupportsModrinthReadOnlyQuery(resourceType))
+        {
+            return [];
+        }
+
         var facets = new List<List<string>>();
         var modrinthCategoryTokens = GetModrinthCategoryTokens(categoryTokens);
 
@@ -1211,7 +1252,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         CancellationToken cancellationToken)
     {
         var loaderType = MapCurseForgeLoaderType(loader);
-        var classId = MapCurseForgeClassId(resourceType);
+        var classId = ModResourcePathHelper.MapProjectTypeToCurseForgeClassId(resourceType);
         var categoryIds = GetCurseForgeCategoryIds(categoryTokens);
         var projects = await SearchCurseForgeProjectsAsync(classId, query, gameVersion, loaderType, categoryIds, limit, cancellationToken);
 
@@ -3173,6 +3214,39 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         return normalizedPlatforms;
     }
 
+    private static List<string> FilterUnsupportedQueryablePlatforms(string resourceType, IReadOnlyList<string> platforms) =>
+        platforms
+            .Where(platform => platform switch
+            {
+                "modrinth" => ModResourcePathHelper.SupportsModrinthReadOnlyQuery(resourceType),
+                "curseforge" => true,
+                _ => false
+            })
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+    private static string BuildUnsupportedQueryablePlatformMessage(string resourceType) =>
+        resourceType switch
+        {
+            "world" => "world 的只读查询当前仅支持 CurseForge；Modrinth 暂不支持该类型的搜索与标签查询。",
+            _ => "请求的平台组合当前不受支持。"
+        };
+
+    private static string? BuildQueryablePlatformAdjustmentNote(string resourceType, IReadOnlyList<string> ignoredPlatforms)
+    {
+        if (ignoredPlatforms.Count == 0)
+        {
+            return null;
+        }
+
+        return resourceType switch
+        {
+            "world" when ignoredPlatforms.Contains("modrinth", StringComparer.OrdinalIgnoreCase)
+                => "world 的只读查询当前仅支持 CurseForge，已自动忽略 Modrinth。",
+            _ => null
+        };
+    }
+
     private static List<string> NormalizeCategoryTokens(IReadOnlyList<string>? categoryTokens)
     {
         var normalizedTokens = new List<string>();
@@ -3311,16 +3385,6 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         truncated = true;
         return value[..Math.Max(0, maxChars)].TrimEnd() + "...";
     }
-
-    private static int MapCurseForgeClassId(string resourceType) =>
-        resourceType switch
-        {
-            "resourcepack" => 12,
-            "shader" => 6552,
-            "datapack" => 6945,
-            "modpack" => 4471,
-            _ => 6,
-        };
 
     private static int? MapCurseForgeLoaderType(string? loader) =>
         NormalizeLoader(loader) switch

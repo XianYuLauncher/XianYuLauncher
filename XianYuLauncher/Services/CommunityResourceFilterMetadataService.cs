@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Helpers;
@@ -42,6 +43,7 @@ public sealed class CommunityResourceFilterMetadataService : ICommunityResourceF
         var effectivePlatforms = platforms == null
             ? DefaultPlatforms.ToList()
             : NormalizePlatforms(platforms);
+        effectivePlatforms = FilterUnsupportedPlatforms(normalizedResourceType, effectivePlatforms);
 
         var categories = new List<CategoryItem>();
         if (includeAllCategory)
@@ -102,6 +104,11 @@ public sealed class CommunityResourceFilterMetadataService : ICommunityResourceF
 
     private async Task<List<CategoryItem>> GetModrinthCategoriesAsync(string resourceType)
     {
+        if (!ModResourcePathHelper.SupportsModrinthReadOnlyQuery(resourceType))
+        {
+            return [];
+        }
+
         try
         {
             var projectType = resourceType switch
@@ -142,6 +149,11 @@ public sealed class CommunityResourceFilterMetadataService : ICommunityResourceF
 
     private async Task<List<string>> GetModrinthLoadersAsync(string resourceType)
     {
+        if (!ModResourcePathHelper.SupportsModrinthReadOnlyQuery(resourceType))
+        {
+            return [];
+        }
+
         var projectType = resourceType switch
         {
             "shader" => "shader",
@@ -181,7 +193,7 @@ public sealed class CommunityResourceFilterMetadataService : ICommunityResourceF
 
         try
         {
-            var classId = MapCurseForgeClassId(resourceType);
+            var classId = ModResourcePathHelper.MapProjectTypeToCurseForgeClassId(resourceType);
             List<CurseForgeCategory>? curseForgeCategories = null;
 
             if (CurseForgeCategoryCache.TryGetValue(classId, out var memoryCachedCategories))
@@ -264,14 +276,14 @@ public sealed class CommunityResourceFilterMetadataService : ICommunityResourceF
         return normalizedPlatforms;
     }
 
-    private static int MapCurseForgeClassId(string resourceType) =>
-        resourceType switch
-        {
-            "resourcepack" => 12,
-            "modpack" => 4471,
-            "world" => 17,
-            "shader" => 6552,
-            "datapack" => 6945,
-            _ => 6,
-        };
+    private static List<string> FilterUnsupportedPlatforms(string resourceType, IReadOnlyList<string> platforms) =>
+        platforms
+            .Where(platform => platform switch
+            {
+                "modrinth" => ModResourcePathHelper.SupportsModrinthReadOnlyQuery(resourceType),
+                "curseforge" => true,
+                _ => false
+            })
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 }
