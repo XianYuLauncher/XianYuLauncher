@@ -710,6 +710,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                     TargetVersionName = executionContext.TargetVersionName,
                     MinecraftPath = _fileService.GetMinecraftDataPath(),
                     IsFromCurseForge = executionContext.IsFromCurseForge,
+                    ModpackIconSource = executionContext.IconSource,
                     SourceProjectId = executionContext.ProjectId,
                     SourceVersionId = sourceVersionId,
                     ShowInTeachingTip = true,
@@ -2570,6 +2571,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             Platform = metadata.Platform,
             ProjectId = metadata.ProjectId,
             CurrentVersionId = metadata.CurrentVersionId,
+            IconSource = VersionIconPathHelper.NormalizeOrDefault(targetContext.VersionConfig.Icon),
             SelectedVersion = selectedVersion,
         };
     }
@@ -3474,6 +3476,8 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         public string ProjectId { get; init; } = string.Empty;
 
         public string CurrentVersionId { get; init; } = string.Empty;
+
+        public string? IconSource { get; init; }
 
         public ModpackVersionItem? SelectedVersion { get; init; }
 
