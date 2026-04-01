@@ -1,6 +1,8 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
+using System.Collections.Concurrent;
+using System.Text;
 using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
@@ -1693,6 +1695,136 @@ public class DownloadTaskManagerResourceDownloadTests
     }
 
     [Fact]
+    public async Task StartResourceDownloadAsync_WhenDependencyAlreadyExistsWithMatchingHash_ShouldSkipDependencyDownload()
+    {
+        // Arrange
+        string dependencyContent = "fabric-api-existing";
+        string dependencyPath = Path.Combine(_tempDirectory, "fabric-api.jar");
+        string mainSavePath = Path.Combine(_tempDirectory, "modmenu.jar");
+        await File.WriteAllTextAsync(dependencyPath, dependencyContent);
+        string expectedSha1 = ComputeSha1(dependencyContent);
+
+        var requests = new ConcurrentQueue<(string Url, string Path, string? Sha1)>();
+        var mainDownloadObserved = new TaskCompletionSource<(string Url, string Path, string? Sha1)>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>((url, path, sha1, progress, ct) =>
+            {
+                var request = (url, path, sha1);
+                requests.Enqueue(request);
+                if (path == mainSavePath)
+                {
+                    mainDownloadObserved.TrySetResult(request);
+                }
+
+                progress?.Invoke(new DownloadProgressStatus(100, 100, 100));
+                return Task.FromResult(DownloadResult.Succeeded(path, url));
+            });
+
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            downloadManagerMock.Object);
+
+        // Act
+        await downloadTaskManager.StartResourceDownloadAsync(
+            "Mod Menu",
+            "mod",
+            "https://example.com/modmenu.jar",
+            mainSavePath,
+            dependencies:
+            [
+                new ResourceDependency
+                {
+                    Name = "Fabric API",
+                    DownloadUrl = "https://example.com/fabric-api.jar",
+                    SavePath = dependencyPath,
+                    ExpectedSha1 = expectedSha1,
+                },
+            ]);
+
+        var mainRequest = await mainDownloadObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Assert
+        mainRequest.Path.Should().Be(mainSavePath);
+        mainRequest.Sha1.Should().BeNull();
+        requests.Should().ContainSingle(request => request.Path == mainSavePath && request.Sha1 == null);
+        requests.Should().NotContain(request => request.Path == dependencyPath);
+    }
+
+    [Fact]
+    public async Task StartResourceDownloadAsync_WhenDependencyNeedsDownload_ShouldForwardExpectedSha1()
+    {
+        // Arrange
+        const string dependencyContent = "fabric-api-latest";
+        string expectedSha1 = ComputeSha1(dependencyContent);
+        string dependencyPath = Path.Combine(_tempDirectory, "fabric-api-download.jar");
+        string mainSavePath = Path.Combine(_tempDirectory, "modmenu-download.jar");
+
+        var requests = new ConcurrentQueue<(string Url, string Path, string? Sha1)>();
+        var downloadsObserved = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        int requestCount = 0;
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>((url, path, sha1, progress, ct) =>
+            {
+                requests.Enqueue((url, path, sha1));
+                if (Interlocked.Increment(ref requestCount) >= 2)
+                {
+                    downloadsObserved.TrySetResult(true);
+                }
+
+                progress?.Invoke(new DownloadProgressStatus(100, 100, 100));
+                return Task.FromResult(DownloadResult.Succeeded(path, url));
+            });
+
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            downloadManagerMock.Object);
+
+        // Act
+        await downloadTaskManager.StartResourceDownloadAsync(
+            "Mod Menu",
+            "mod",
+            "https://example.com/modmenu.jar",
+            mainSavePath,
+            dependencies:
+            [
+                new ResourceDependency
+                {
+                    Name = "Fabric API",
+                    DownloadUrl = "https://example.com/fabric-api.jar",
+                    SavePath = dependencyPath,
+                    ExpectedSha1 = expectedSha1,
+                },
+            ]);
+
+        await downloadsObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        var recordedRequests = requests.ToArray();
+
+        // Assert
+        recordedRequests.Should().HaveCount(2);
+        recordedRequests.Should().Contain(request => request.Path == dependencyPath && request.Sha1 == expectedSha1);
+        recordedRequests.Should().Contain(request => request.Path == mainSavePath && request.Sha1 == null);
+    }
+
+    [Fact]
     public async Task StartResourceDownloadAsync_WhenCommunityUrlIsMirrored_ShouldNormalizeBackToOfficialBeforeFallback()
     {
         // Arrange
@@ -1759,6 +1891,12 @@ public class DownloadTaskManagerResourceDownloadTests
         {
             return Task.FromResult(_response);
         }
+    }
+
+    private static string ComputeSha1(string content)
+    {
+        byte[] bytes = Encoding.UTF8.GetBytes(content);
+        return Convert.ToHexString(System.Security.Cryptography.SHA1.HashData(bytes)).ToLowerInvariant();
     }
 
     /// <summary>

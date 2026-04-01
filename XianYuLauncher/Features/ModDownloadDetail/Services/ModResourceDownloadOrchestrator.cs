@@ -2,6 +2,8 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
+using Serilog;
+using System.Security.Cryptography;
 using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Features.ModDownloadDetail.Services;
@@ -237,11 +239,19 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
                     continue;
                 }
 
+                string? expectedSha1 = TryGetModrinthSha1(dependencyFile);
+                if (await HasMatchingLocalDependencyAsync(savePath, expectedSha1, cancellationToken).ConfigureAwait(false))
+                {
+                    Log.Debug("[CommunityResourceInstall] 跳过已存在的 Modrinth 前置: {DependencyPath}", savePath);
+                    continue;
+                }
+
                 dependencies.Add(new ResourceDependency
                 {
                     Name = dependencyFile.Filename,
                     DownloadUrl = dependencyFile.Url.ToString(),
-                    SavePath = savePath
+                    SavePath = savePath,
+                    ExpectedSha1 = expectedSha1,
                 });
             }
 
@@ -274,11 +284,19 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
                 continue;
             }
 
+            string? expectedSha1 = TryGetCurseForgeSha1(dependencyResolution.File);
+            if (await HasMatchingLocalDependencyAsync(savePath, expectedSha1, cancellationToken).ConfigureAwait(false))
+            {
+                Log.Debug("[CommunityResourceInstall] 跳过已存在的 CurseForge 前置: {DependencyPath}", savePath);
+                continue;
+            }
+
             dependencies.Add(new ResourceDependency
             {
                 Name = dependencyResolution.ModDetail.Name,
                 DownloadUrl = downloadUrl,
-                SavePath = savePath
+                SavePath = savePath,
+                ExpectedSha1 = expectedSha1,
             });
         }
 
@@ -420,5 +438,60 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
 
         string dependencyProjectType = ModResourcePathHelper.MapCurseForgeClassIdToProjectType(depMod.ClassId);
         return ModResourcePathHelper.GetDependencyTargetDir(installPlan.GameDirectory, dependencyProjectType);
+    }
+
+    private static string? TryGetModrinthSha1(ModrinthVersionFile file)
+    {
+        return file.Hashes.TryGetValue("sha1", out string? sha1) && !string.IsNullOrWhiteSpace(sha1)
+            ? sha1.Trim()
+            : null;
+    }
+
+    private static string? TryGetCurseForgeSha1(CurseForgeFile file)
+    {
+        string? sha1 = file.Hashes?
+            .FirstOrDefault(hash => hash.Algo == 1)
+            ?.Value;
+        return string.IsNullOrWhiteSpace(sha1) ? null : sha1.Trim();
+    }
+
+    private static async Task<bool> HasMatchingLocalDependencyAsync(
+        string filePath,
+        string? expectedSha1,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(expectedSha1) || !File.Exists(filePath))
+        {
+            return false;
+        }
+
+        try
+        {
+            await using var stream = new FileStream(
+                filePath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                bufferSize: 8192,
+                options: FileOptions.Asynchronous | FileOptions.SequentialScan);
+            using SHA1 sha1 = SHA1.Create();
+            byte[] hash = await sha1.ComputeHashAsync(stream, cancellationToken).ConfigureAwait(false);
+            string actualSha1 = Convert.ToHexString(hash);
+            return actualSha1.Equals(expectedSha1, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            Log.Debug(ex, "[CommunityResourceInstall] 本地依赖文件无法访问，将回退为重新下载。Path: {DependencyPath}", filePath);
+            return false;
+        }
+        catch (IOException ex)
+        {
+            Log.Debug(ex, "[CommunityResourceInstall] 计算本地依赖哈希失败，将回退为重新下载。Path: {DependencyPath}", filePath);
+            return false;
+        }
     }
 }

@@ -503,14 +503,16 @@ public class FallbackDownloadManager
         string targetPath,
         string resourceType,
         Action<double>? progressCallback = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? expectedSha1 = null)
     {
         return await DownloadFileForCommunityWithStatusAsync(
             originalUrl,
             targetPath,
             resourceType,
             progressCallback == null ? null : status => progressCallback(status.Percent),
-            cancellationToken);
+            cancellationToken,
+            expectedSha1);
     }
 
     /// <summary>
@@ -521,7 +523,8 @@ public class FallbackDownloadManager
         string targetPath,
         string resourceType,
         Action<DownloadProgressStatus>? progressCallback = null,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        string? expectedSha1 = null)
     {
         var attemptedSources = new List<string>();
         var errors = new List<string>();
@@ -546,7 +549,7 @@ public class FallbackDownloadManager
                 sourceKey, index + 1, sourcesToTry.Count, transformedUrl);
 
             var result = await TryDownloadWithRetryAsync(
-                transformedUrl, targetPath, null, progressCallback, cancellationToken);
+                transformedUrl, targetPath, expectedSha1, progressCallback, cancellationToken);
 
             if (result.Success)
             {

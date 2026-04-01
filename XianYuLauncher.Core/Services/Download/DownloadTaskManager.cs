@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -1217,6 +1218,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         await DownloadFileAsync(
             url,
             targetPath,
+            null,
             status =>
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -1374,6 +1376,18 @@ public class DownloadTaskManager : IDownloadTaskManager
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
+                if (await ShouldSkipDependencyDownloadAsync(dependency, cancellationToken).ConfigureAwait(false))
+                {
+                    completedItems++;
+                    ResetTaskSpeed(task);
+                    var overallProgress = (completedItems * 100.0) / totalItems;
+                    task.Progress = Math.Clamp(overallProgress, 0, 100);
+                    UpdateTaskStatus(task, $"已跳过前置: {dependency.Name}");
+                    OnTaskProgressChanged(task);
+                    _logger.LogInformation("依赖已存在且哈希匹配，跳过下载: {DependencyName}", dependency.Name);
+                    continue;
+                }
+
                 ResetTaskSpeed(task);
                 UpdateTaskStatus(task, $"正在下载前置: {dependency.Name}...", "DownloadQueue_Status_DownloadingDependency", [dependency.Name]);
                 OnTaskProgressChanged(task);
@@ -1381,6 +1395,7 @@ public class DownloadTaskManager : IDownloadTaskManager
                 await DownloadFileAsync(
                     dependency.DownloadUrl,
                     dependency.SavePath,
+                    dependency.ExpectedSha1,
                     status =>
                     {
                         if (cancellationToken.IsCancellationRequested)
@@ -1411,6 +1426,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         await DownloadFileAsync(
             downloadUrl,
             savePath,
+            null,
             status =>
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -1436,6 +1452,7 @@ public class DownloadTaskManager : IDownloadTaskManager
     private async Task DownloadFileAsync(
         string url,
         string savePath,
+        string? expectedSha1,
         Action<DownloadProgressStatus> progressCallback,
         CancellationToken cancellationToken,
         CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown)
@@ -1458,7 +1475,8 @@ public class DownloadTaskManager : IDownloadTaskManager
                 savePath,
                 GetCommunityFallbackResourceType(communityResourceProvider),
                 progressCallback,
-                cancellationToken).ConfigureAwait(false);
+                cancellationToken,
+                expectedSha1).ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -1473,7 +1491,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         var result = await _downloadManager.DownloadFileAsync(
             url,
             savePath,
-            null,
+            expectedSha1,
             progressCallback,
             cancellationToken).ConfigureAwait(false);
 
@@ -1487,6 +1505,43 @@ public class DownloadTaskManager : IDownloadTaskManager
         if (!result.Success)
         {
             throw result.Exception ?? new InvalidOperationException(result.ErrorMessage ?? "下载失败");
+        }
+    }
+
+    private async Task<bool> ShouldSkipDependencyDownloadAsync(ResourceDependency dependency, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(dependency.ExpectedSha1) || !File.Exists(dependency.SavePath))
+        {
+            return false;
+        }
+
+        try
+        {
+            await using var stream = new FileStream(
+                dependency.SavePath,
+                FileMode.Open,
+                FileAccess.Read,
+                FileShare.Read,
+                bufferSize: 8192,
+                options: FileOptions.Asynchronous | FileOptions.SequentialScan);
+            using SHA1 sha1 = SHA1.Create();
+            byte[] hash = await sha1.ComputeHashAsync(stream, cancellationToken).ConfigureAwait(false);
+            string actualSha1 = Convert.ToHexString(hash);
+            return actualSha1.Equals(dependency.ExpectedSha1, StringComparison.OrdinalIgnoreCase);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogDebug(ex, "本地依赖文件无法访问，将继续重新下载。Path: {DependencyPath}, DependencyName: {DependencyName}", dependency.SavePath, dependency.Name);
+            return false;
+        }
+        catch (IOException ex)
+        {
+            _logger.LogDebug(ex, "计算本地依赖哈希失败，将继续重新下载。Path: {DependencyPath}, DependencyName: {DependencyName}", dependency.SavePath, dependency.Name);
+            return false;
         }
     }
 
@@ -1543,6 +1598,7 @@ public class DownloadTaskManager : IDownloadTaskManager
             await DownloadFileAsync(
                 downloadUrl,
                 zipPath,
+                null,
                 status =>
                 {
                     if (cancellationToken.IsCancellationRequested)
