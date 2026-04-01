@@ -267,4 +267,14 @@ public interface IDownloadTaskManager
         bool showInTeachingTip = false,
         string? teachingTipGroupKey = null,
         CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown);
+
+    Task<string> StartWorldDownloadWithTaskIdAsync(
+        string worldName,
+        string downloadUrl,
+        string savesDirectory,
+        string fileName,
+        string? iconUrl = null,
+        bool showInTeachingTip = false,
+        string? teachingTipGroupKey = null,
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown);
 }

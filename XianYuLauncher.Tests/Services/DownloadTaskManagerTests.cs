@@ -2103,6 +2103,52 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
         firstState.State.Should().Be(DownloadTaskState.Queued);
     }
 
+    [Fact]
+    public async Task StartWorldDownloadWithTaskIdAsync_ShouldReturnCreatedTaskId()
+    {
+        // Arrange
+        var zipContent = CreateTestZipContent();
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>(
+                async (url, path, sha1, progress, ct) =>
+                {
+                    var dir = Path.GetDirectoryName(path);
+                    if (!string.IsNullOrEmpty(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                    }
+
+                    await File.WriteAllBytesAsync(path, zipContent, ct);
+                    return DownloadResult.Succeeded(path, url);
+                });
+
+        var downloadTaskManager = new DownloadTaskManager(_minecraftVersionServiceMock.Object, _fileServiceMock.Object, _loggerMock.Object, downloadManagerMock.Object);
+        var savesDir = Path.Combine(_tempDirectory, "saves");
+
+        // Act
+        var taskId = await downloadTaskManager.StartWorldDownloadWithTaskIdAsync(
+            "Test World",
+            "https://example.com/world.zip",
+            savesDir,
+            "TestWorld.zip");
+
+        await Task.Delay(100);
+
+        // Assert
+        taskId.Should().NotBeNullOrWhiteSpace();
+        downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.TaskName == "Test World"
+            && task.TaskCategory == DownloadTaskCategory.WorldDownload);
+    }
+
     /// <summary>
     /// 测试世界下载完成后状态更新
     /// </summary>

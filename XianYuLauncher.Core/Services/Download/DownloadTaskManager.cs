@@ -865,7 +865,28 @@ public class DownloadTaskManager : IDownloadTaskManager
         string? teachingTipGroupKey = null,
         CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown)
     {
-        return EnqueueManagedTaskAsync(
+        return StartWorldDownloadWithTaskIdAsync(
+            worldName,
+            downloadUrl,
+            savesDirectory,
+            fileName,
+            iconUrl,
+            showInTeachingTip,
+            teachingTipGroupKey,
+            communityResourceProvider);
+    }
+
+    public Task<string> StartWorldDownloadWithTaskIdAsync(
+        string worldName,
+        string downloadUrl,
+        string savesDirectory,
+        string fileName,
+        string? iconUrl = null,
+        bool showInTeachingTip = false,
+        string? teachingTipGroupKey = null,
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown)
+    {
+        return EnqueueManagedTaskWithTaskIdAsync(
             worldName,
             "world",
             DownloadTaskCategory.WorldDownload,
