@@ -390,7 +390,7 @@ public sealed class InstallCommunityResourceToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "安装社区资源到指定实例。V1 仅支持 mod、resourcepack、shader；datapack / world 仍超出当前 AI 安装范围。整合包请改用 installModpack。调用前建议先用 getCommunityResourceFiles 选定 resource_file_id，并用 getInstances 获取 target_version_name。",
+        "安装社区资源到指定实例。V1 支持 mod、resourcepack、shader、world；datapack 仍暂不支持直接安装。整合包请改用 installModpack。调用前建议先用 getCommunityResourceFiles 选定 resource_file_id，并用 getInstances 获取 target_version_name 或 version_directory_path。",
         new
         {
             type = "object",
@@ -400,7 +400,7 @@ public sealed class InstallCommunityResourceToolHandler : IAgentToolHandler
                 resource_file_id = new { type = "string", description = "要安装的文件 ID。Modrinth 这里传版本 ID；CurseForge 这里传文件 ID。" },
                 target_version_name = new { type = "string", description = "目标实例名，优先从 getInstances 的 target_version_name 中选择。" },
                 target_version_path = new { type = "string", description = "可选。若传实例目录路径，启动器会自动推导出 target_version_name。" },
-                resource_type = new { type = "string", description = "可选。辅助识别资源类型。", @enum = new[] { "mod", "resourcepack", "shader", "datapack" } },
+                resource_type = new { type = "string", description = "可选。辅助识别资源类型。", @enum = new[] { "mod", "resourcepack", "shader", "datapack", "world" } },
                 download_dependencies = new { type = "boolean", description = "可选。是否自动下载前置依赖；默认 false。" }
             },
             required = new[] { "project_id", "resource_file_id" }
@@ -709,6 +709,7 @@ public sealed class InstallCommunityResourceActionHandler : IAgentActionHandler
             ProjectId = proposal.Parameters.TryGetValue("project_id", out var projectId) ? projectId : string.Empty,
             ResourceFileId = proposal.Parameters.TryGetValue("resource_file_id", out var resourceFileId) ? resourceFileId : string.Empty,
             TargetVersionName = proposal.Parameters.TryGetValue("target_version_name", out var targetVersionName) ? targetVersionName : null,
+            TargetVersionPath = proposal.Parameters.TryGetValue("target_version_path", out var targetVersionPath) ? targetVersionPath : null,
             ResourceType = proposal.Parameters.TryGetValue("resource_type", out var resourceType) ? resourceType : null,
             DownloadDependencies = proposal.Parameters.TryGetValue("download_dependencies", out var downloadDependencies)
                 && bool.TryParse(downloadDependencies, out var parsedDownloadDependencies)
