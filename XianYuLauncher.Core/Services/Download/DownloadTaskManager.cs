@@ -1379,6 +1379,11 @@ public class DownloadTaskManager : IDownloadTaskManager
                 if (await ShouldSkipDependencyDownloadAsync(dependency, cancellationToken).ConfigureAwait(false))
                 {
                     completedItems++;
+                    ResetTaskSpeed(task);
+                    var overallProgress = (completedItems * 100.0) / totalItems;
+                    task.Progress = Math.Clamp(overallProgress, 0, 100);
+                    UpdateTaskStatus(task, $"已跳过前置: {dependency.Name}");
+                    OnTaskProgressChanged(task);
                     _logger.LogInformation("依赖已存在且哈希匹配，跳过下载: {DependencyName}", dependency.Name);
                     continue;
                 }
@@ -1503,7 +1508,7 @@ public class DownloadTaskManager : IDownloadTaskManager
         }
     }
 
-    private static async Task<bool> ShouldSkipDependencyDownloadAsync(ResourceDependency dependency, CancellationToken cancellationToken)
+    private async Task<bool> ShouldSkipDependencyDownloadAsync(ResourceDependency dependency, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(dependency.ExpectedSha1) || !File.Exists(dependency.SavePath))
         {
@@ -1528,8 +1533,14 @@ public class DownloadTaskManager : IDownloadTaskManager
         {
             throw;
         }
-        catch
+        catch (UnauthorizedAccessException ex)
         {
+            _logger.LogDebug(ex, "本地依赖文件无法访问，将继续重新下载。Path: {DependencyPath}, DependencyName: {DependencyName}", dependency.SavePath, dependency.Name);
+            return false;
+        }
+        catch (IOException ex)
+        {
+            _logger.LogDebug(ex, "计算本地依赖哈希失败，将继续重新下载。Path: {DependencyPath}, DependencyName: {DependencyName}", dependency.SavePath, dependency.Name);
             return false;
         }
     }

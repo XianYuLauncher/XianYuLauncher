@@ -2,6 +2,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
+using Serilog;
 using System.Security.Cryptography;
 using XianYuLauncher.ViewModels;
 
@@ -241,7 +242,7 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
                 string? expectedSha1 = TryGetModrinthSha1(dependencyFile);
                 if (await HasMatchingLocalDependencyAsync(savePath, expectedSha1, cancellationToken).ConfigureAwait(false))
                 {
-                    System.Diagnostics.Debug.WriteLine($"[CommunityResourceInstall] 跳过已存在的 Modrinth 前置: {savePath}");
+                    Log.Debug("[CommunityResourceInstall] 跳过已存在的 Modrinth 前置: {DependencyPath}", savePath);
                     continue;
                 }
 
@@ -286,7 +287,7 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
             string? expectedSha1 = TryGetCurseForgeSha1(dependencyResolution.File);
             if (await HasMatchingLocalDependencyAsync(savePath, expectedSha1, cancellationToken).ConfigureAwait(false))
             {
-                System.Diagnostics.Debug.WriteLine($"[CommunityResourceInstall] 跳过已存在的 CurseForge 前置: {savePath}");
+                Log.Debug("[CommunityResourceInstall] 跳过已存在的 CurseForge 前置: {DependencyPath}", savePath);
                 continue;
             }
 
@@ -482,8 +483,14 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
         {
             throw;
         }
-        catch
+        catch (UnauthorizedAccessException ex)
         {
+            Log.Debug(ex, "[CommunityResourceInstall] 本地依赖文件无法访问，将回退为重新下载。Path: {DependencyPath}", filePath);
+            return false;
+        }
+        catch (IOException ex)
+        {
+            Log.Debug(ex, "[CommunityResourceInstall] 计算本地依赖哈希失败，将回退为重新下载。Path: {DependencyPath}", filePath);
             return false;
         }
     }
