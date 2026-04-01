@@ -285,6 +285,9 @@
   <data name="DownloadQueue_Status_ModpackDownloadingFiles" xml:space="preserve">
     <value>正在下载整合包文件...</value>
   </data>
+  <data name="DownloadQueue_Status_ModpackUpdating" xml:space="preserve">
+    <value>正在更新整合包...</value>
+  </data>
   <data name="DownloadQueue_Status_ModpackUpdatingCoreFiles" xml:space="preserve">
     <value>正在更新实例核心文件（Minecraft {0} / {1} {2}）...</value>
   </data>
@@ -3675,8 +3678,17 @@
   <data name="VersionManagerPage_ModpackVersionNotSelectedStatus" xml:space="preserve">
     <value>请先选择目标整合包版本</value>
   </data>
+  <data name="VersionManagerPage_ModpackUpdateQueuedWithTargetStatusFormat" xml:space="preserve">
+    <value>已将整合包更新加入下载队列：{0}</value>
+  </data>
   <data name="VersionManagerPage_ModpackUpdateSuccessWithTargetStatusFormat" xml:space="preserve">
     <value>整合包更新完成，当前版本：{0}</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateRefreshFailedWithErrorStatusFormat" xml:space="preserve">
+    <value>整合包更新完成，但刷新页面失败：{0}</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateDownloadUrlEmpty" xml:space="preserve">
+    <value>目标整合包版本缺少下载地址</value>
   </data>
   <data name="VersionManagerPage_ModpackUpdateReservedWithTargetStatusFormat" xml:space="preserve">
     <value>整合包自动更新即将上线，已选择目标版本：{0}</value>

@@ -285,6 +285,9 @@
   <data name="DownloadQueue_Status_ModpackDownloadingFiles" xml:space="preserve">
     <value>Downloading modpack files...</value>
   </data>
+  <data name="DownloadQueue_Status_ModpackUpdating" xml:space="preserve">
+    <value>Updating modpack...</value>
+  </data>
   <data name="DownloadQueue_Status_ModpackUpdatingCoreFiles" xml:space="preserve">
     <value>Updating core instance files (Minecraft {0} / {1} {2})...</value>
   </data>
@@ -3678,8 +3681,17 @@ Continue downloading?</value>
   <data name="VersionManagerPage_ModpackVersionNotSelectedStatus" xml:space="preserve">
     <value>Please select a target modpack version first</value>
   </data>
+  <data name="VersionManagerPage_ModpackUpdateQueuedWithTargetStatusFormat" xml:space="preserve">
+    <value>Added modpack update to the download queue: {0}</value>
+  </data>
   <data name="VersionManagerPage_ModpackUpdateSuccessWithTargetStatusFormat" xml:space="preserve">
     <value>Modpack update completed. Current version: {0}</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateRefreshFailedWithErrorStatusFormat" xml:space="preserve">
+    <value>Modpack update completed, but refreshing the page failed: {0}</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateDownloadUrlEmpty" xml:space="preserve">
+    <value>The target modpack version is missing a download URL</value>
   </data>
   <data name="VersionManagerPage_ModpackUpdateReservedWithTargetStatusFormat" xml:space="preserve">
     <value>Automatic modpack update is coming soon. Selected target version: {0}</value>

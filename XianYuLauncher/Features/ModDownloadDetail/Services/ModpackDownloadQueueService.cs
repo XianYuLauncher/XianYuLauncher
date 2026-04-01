@@ -194,7 +194,7 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
             DownloadTaskCategory.ModpackUpdateFile,
             "DownloadQueue_TaskType_ModpackUpdateFile",
             "整合包更新失败");
-        var progress = new AsyncProgressDispatcher<ModpackInstallProgress>(updateProgress => ReportInstallProgress(context, updateProgress));
+        var progress = new AsyncProgressDispatcher<ModpackInstallProgress>(updateProgress => ReportUpdateProgress(context, updateProgress));
         var contentFileProgress = new ContentFileProgressDispatcher(contentFileCoordinator);
         bool finalizedPendingContentTasks = false;
 
@@ -328,6 +328,17 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
                 coordinator.Cancel(progress.FileKey, progress.FileName);
                 break;
         }
+    }
+
+    private static void ReportUpdateProgress(DownloadTaskExecutionContext context, ModpackInstallProgress progress)
+    {
+        if (string.IsNullOrWhiteSpace(progress.Status) && string.IsNullOrWhiteSpace(progress.StatusResourceKey))
+        {
+            progress.Status = "正在更新整合包...";
+            progress.StatusResourceKey = "DownloadQueue_Status_ModpackUpdating";
+        }
+
+        ReportInstallProgress(context, progress);
     }
 
     private sealed class AsyncProgressDispatcher<T> : IProgress<T>

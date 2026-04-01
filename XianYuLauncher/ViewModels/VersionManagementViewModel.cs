@@ -3580,7 +3580,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                     }
                     catch (Exception ex)
                     {
-                        StatusMessage = $"整合包更新完成，但刷新页面失败：{ex.Message}";
+                        StatusMessage = string.Format(
+                            "VersionManagerPage_ModpackUpdateRefreshFailedWithErrorStatusFormat".GetLocalized(),
+                            ex.Message);
+                        await Task.Delay(500);
+                        IsInstallingExtension = false;
+                        ClearTrackedModpackUpdateState();
+                        break;
                     }
 
                     StatusMessage = string.Format(
@@ -3688,7 +3694,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             await QueueTrackedModpackUpdateAsync(
                 targetVersion,
                 _pageCancellationTokenSource?.Token ?? CancellationToken.None,
-                $"已将整合包更新加入下载队列：{targetVersion.DisplayName}");
+                string.Format(
+                    "VersionManagerPage_ModpackUpdateQueuedWithTargetStatusFormat".GetLocalized(),
+                    targetVersion.DisplayName));
         }
         catch (Exception ex)
         {
@@ -3736,12 +3744,12 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     {
         if (SelectedVersion == null)
         {
-            throw new InvalidOperationException("未选择版本");
+            throw new InvalidOperationException("Msg_NoVersionSelected".GetLocalized());
         }
 
         if (string.IsNullOrWhiteSpace(targetVersion.DownloadUrl))
         {
-            throw new InvalidOperationException("目标整合包版本缺少下载地址");
+            throw new InvalidOperationException("VersionManagerPage_ModpackUpdateDownloadUrlEmpty".GetLocalized());
         }
 
         string sourceVersionId = string.IsNullOrWhiteSpace(targetVersion.SourceVersionId)
