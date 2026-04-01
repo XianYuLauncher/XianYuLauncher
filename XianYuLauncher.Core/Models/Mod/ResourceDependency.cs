@@ -19,4 +19,9 @@ public class ResourceDependency
     /// 保存路径
     /// </summary>
     public string SavePath { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 预期的 SHA1 哈希值，用于跳过已存在文件并校验下载结果。
+    /// </summary>
+    public string? ExpectedSha1 { get; set; }
 }
