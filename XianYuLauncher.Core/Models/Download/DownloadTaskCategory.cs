@@ -16,5 +16,7 @@ public enum DownloadTaskCategory
     CommunityResourceUpdateBatch,
     CommunityResourceUpdateFile,
     FileDownload,
-    ModpackInstallFile
+    ModpackInstallFile,
+    ModpackUpdate,
+    ModpackUpdateFile
 }

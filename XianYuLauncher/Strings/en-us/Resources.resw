@@ -270,6 +270,9 @@
   <data name="DownloadQueue_Status_PreparingModpackInstall" xml:space="preserve">
     <value>Preparing modpack install...</value>
   </data>
+  <data name="DownloadQueue_Status_PreparingModpackUpdate" xml:space="preserve">
+    <value>Preparing modpack update...</value>
+  </data>
   <data name="DownloadQueue_Status_ModpackExtractingPackage" xml:space="preserve">
     <value>Extracting modpack...</value>
   </data>
@@ -281,6 +284,9 @@
   </data>
   <data name="DownloadQueue_Status_ModpackDownloadingFiles" xml:space="preserve">
     <value>Downloading modpack files...</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackUpdating" xml:space="preserve">
+    <value>Updating modpack...</value>
   </data>
   <data name="DownloadQueue_Status_ModpackUpdatingCoreFiles" xml:space="preserve">
     <value>Updating core instance files (Minecraft {0} / {1} {2})...</value>
@@ -317,6 +323,15 @@
   </data>
   <data name="DownloadQueue_Status_ModpackInstallCancelled" xml:space="preserve">
     <value>Modpack install cancelled</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackUpdateCompleted" xml:space="preserve">
+    <value>Modpack update completed</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackUpdateFailedWithError" xml:space="preserve">
+    <value>Modpack update failed: {0}</value>
+  </data>
+  <data name="DownloadQueue_Status_ModpackUpdateCancelled" xml:space="preserve">
+    <value>Modpack update cancelled</value>
   </data>
   <data name="DownloadQueue_Status_ValidatingFile" xml:space="preserve">
     <value>Validating {0}...</value>
@@ -360,6 +375,12 @@
   <data name="DownloadQueue_TaskType_ModpackInstallFile" xml:space="preserve">
     <value>Modpack File</value>
   </data>
+  <data name="DownloadQueue_TaskType_ModpackUpdate" xml:space="preserve">
+    <value>Modpack Update</value>
+  </data>
+  <data name="DownloadQueue_TaskType_ModpackUpdateFile" xml:space="preserve">
+    <value>Modpack File Update</value>
+  </data>
   <data name="DownloadQueue_TaskType_CommunityResourceUpdateBatch" xml:space="preserve">
     <value>Community Resource Update</value>
   </data>
@@ -386,6 +407,9 @@
   </data>
   <data name="DownloadQueue_DisplayName_ModpackInstall" xml:space="preserve">
     <value>Modpack Install · {0}</value>
+  </data>
+  <data name="DownloadQueue_DisplayName_ModpackUpdate" xml:space="preserve">
+    <value>Modpack Update · {0}</value>
   </data>
   <data name="SettingsPage_Title.Text" xml:space="preserve">
     <value>Settings</value>
@@ -3657,8 +3681,17 @@ Continue downloading?</value>
   <data name="VersionManagerPage_ModpackVersionNotSelectedStatus" xml:space="preserve">
     <value>Please select a target modpack version first</value>
   </data>
+  <data name="VersionManagerPage_ModpackUpdateQueuedWithTargetStatusFormat" xml:space="preserve">
+    <value>Added modpack update to the download queue: {0}</value>
+  </data>
   <data name="VersionManagerPage_ModpackUpdateSuccessWithTargetStatusFormat" xml:space="preserve">
     <value>Modpack update completed. Current version: {0}</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateRefreshFailedWithErrorStatusFormat" xml:space="preserve">
+    <value>Modpack update completed, but refreshing the page failed: {0}</value>
+  </data>
+  <data name="VersionManagerPage_ModpackUpdateDownloadUrlEmpty" xml:space="preserve">
+    <value>The target modpack version is missing a download URL</value>
   </data>
   <data name="VersionManagerPage_ModpackUpdateReservedWithTargetStatusFormat" xml:space="preserve">
     <value>Automatic modpack update is coming soon. Selected target version: {0}</value>

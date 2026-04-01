@@ -209,13 +209,13 @@ public sealed class GetOperationStatusToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "根据 operation_id 查询 installGame、installCommunityResource、installModpack、updateInstanceCommunityResources 或 launchGame 返回的任务状态。",
+        "根据 operation_id 查询 installGame、installCommunityResource、installModpack、updateModpack、updateInstanceCommunityResources 或 launchGame 返回的任务状态。",
         new
         {
             type = "object",
             properties = new
             {
-                operation_id = new { type = "string", description = "installGame、installCommunityResource、installModpack、updateInstanceCommunityResources 或 launchGame 执行后返回的 operation_id" }
+                operation_id = new { type = "string", description = "installGame、installCommunityResource、installModpack、updateModpack、updateInstanceCommunityResources 或 launchGame 执行后返回的 operation_id" }
             },
             required = new[] { "operation_id" }
         });

@@ -22,6 +22,9 @@ public class CrashFixQueryToolHandlersTests
                 MinecraftVersion = "1.21.1",
                 ModLoaderType = "fabric",
                 ModLoaderVersion = "0.16.10",
+                ModpackPlatform = "modrinth",
+                ModpackProjectId = "fancy-pack",
+                ModpackVersionId = "version-42",
                 UseGlobalJavaSetting = false,
                 JavaPath = @"C:\Java\jdk-21\bin\javaw.exe",
                 OverrideMemory = true,
@@ -39,6 +42,10 @@ public class CrashFixQueryToolHandlersTests
 
         payload["version_id"]!.Value<string>().Should().Be(versionId);
         payload["version_directory_path"]!.Value<string>().Should().Be(expectedVersionDirectory);
+    payload["is_modpack"]!.Value<bool>().Should().BeTrue();
+    payload["modpack_platform"]!.Value<string>().Should().Be("modrinth");
+    payload["modpack_project_id"]!.Value<string>().Should().Be("fancy-pack");
+    payload["modpack_version_id"]!.Value<string>().Should().Be("version-42");
         payload["uses_global_settings_overall"]!.Value<bool>().Should().BeFalse();
         payload["java_settings"]!["follows_global"]!.Value<bool>().Should().BeFalse();
         payload["memory_settings"]!["follows_global"]!.Value<bool>().Should().BeFalse();
@@ -71,6 +78,10 @@ public class CrashFixQueryToolHandlersTests
             }));
 
         payload["uses_global_settings_overall"]!.Value<bool>().Should().BeTrue();
+        payload["is_modpack"]!.Value<bool>().Should().BeFalse();
+        payload["modpack_platform"]!.Type.Should().Be(JTokenType.Null);
+        payload["modpack_project_id"]!.Type.Should().Be(JTokenType.Null);
+        payload["modpack_version_id"]!.Type.Should().Be(JTokenType.Null);
         payload["jvm_settings"]!["follows_global"]!.Value<bool>().Should().BeTrue();
         payload["game_directory_settings"]!["follows_global"]!.Value<bool>().Should().BeTrue();
         payload["game_directory_settings"]!["local_override_ignored_by_use_global_settings"]!.Value<bool>().Should().BeTrue();

@@ -248,7 +248,7 @@ public sealed class GetInstancesToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "返回当前启动器已安装的可用实例列表。结果会包含 target_version_name、version_directory_path 和 resolved_game_directory；安装社区资源时优先把 target_version_name 传给 installCommunityResource。",
+        "返回当前启动器已安装的可用实例列表。结果会包含 target_version_name、version_directory_path、resolved_game_directory，以及 is_modpack / modpack_platform / modpack_project_id / modpack_version_id；安装或更新整合包前应优先先读这里。",
         new
         {
             type = "object",
@@ -264,6 +264,114 @@ public sealed class GetInstancesToolHandler : IAgentToolHandler
     {
         var message = await _communityResourceService.GetInstallableInstancesAsync(context, cancellationToken);
         return AgentToolExecutionResult.FromMessage(message);
+    }
+}
+
+public sealed class CheckModpackUpdateToolHandler : IAgentToolHandler
+{
+    private readonly IAgentCommunityResourceService _communityResourceService;
+
+    public CheckModpackUpdateToolHandler(IAgentCommunityResourceService communityResourceService)
+    {
+        _communityResourceService = communityResourceService;
+    }
+
+    public string ToolName => "checkModpackUpdate";
+
+    public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
+        ToolName,
+        "检查指定实例是否存在整合包更新。仅适用于已安装的整合包实例；结果会返回 latest_version、default_update_candidate，以及可供 updateModpack 使用的 candidates[*].source_version_id。",
+        new
+        {
+            type = "object",
+            properties = new
+            {
+                target_version_name = new { type = "string", description = "目标实例名，优先使用 getInstances 返回的 target_version_name。" },
+                target_version_path = new { type = "string", description = "可选。getInstances 返回的 version_directory_path；若提供，启动器会自动推导目标实例。" },
+                include_candidates = new { type = "boolean", description = "可选。是否返回候选版本列表；默认 true。" },
+                candidate_limit = new { type = "integer", description = "可选。候选版本最多返回多少项；默认 10，最大 20。" }
+            },
+            required = Array.Empty<string>()
+        });
+
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ReadOnly;
+
+    public bool IsAvailable(ErrorAnalysisSessionContext context) => true;
+
+    public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    {
+        string message = await _communityResourceService.CheckModpackUpdateAsync(
+            new AgentModpackUpdateCheckCommand
+            {
+                TargetVersionName = arguments["target_version_name"]?.ToString() ?? arguments["targetVersionName"]?.ToString(),
+                TargetVersionPath = arguments["target_version_path"]?.ToString() ?? arguments["targetVersionPath"]?.ToString(),
+                IncludeCandidates = arguments["include_candidates"]?.Value<bool>() ?? arguments["includeCandidates"]?.Value<bool>() ?? true,
+                CandidateLimit = arguments["candidate_limit"]?.Value<int>() ?? arguments["candidateLimit"]?.Value<int>() ?? 10,
+            },
+            cancellationToken);
+
+        return AgentToolExecutionResult.FromMessage(message);
+    }
+}
+
+public sealed class UpdateModpackToolHandler : IAgentToolHandler
+{
+    public const string ToolNameValue = "updateModpack";
+
+    private readonly IAgentCommunityResourceService _communityResourceService;
+
+    public UpdateModpackToolHandler(IAgentCommunityResourceService communityResourceService)
+    {
+        _communityResourceService = communityResourceService;
+    }
+
+    public string ToolName => ToolNameValue;
+
+    public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
+        ToolName,
+        "确认式整合包更新工具。仅适用于已安装的整合包实例。默认更新到最新可用版本；若要指定目标版本，只能传 checkModpackUpdate 返回的 source_version_id。",
+        new
+        {
+            type = "object",
+            properties = new
+            {
+                target_version_name = new { type = "string", description = "目标实例名，优先使用 getInstances 返回的 target_version_name。" },
+                target_version_path = new { type = "string", description = "可选。getInstances 返回的 version_directory_path；若提供，启动器会自动推导目标实例。" },
+                source_version_id = new { type = "string", description = "可选。目标整合包版本的稳定 ID；只能使用 checkModpackUpdate 返回的 candidates[*].source_version_id。省略时默认更新到最新可用版本。" }
+            },
+            required = Array.Empty<string>()
+        });
+
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ConfirmationRequired;
+
+    public bool IsAvailable(ErrorAnalysisSessionContext context) => true;
+
+    public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
+    {
+        AgentModpackUpdatePreparation preparation = await _communityResourceService.PrepareModpackUpdateAsync(
+            new AgentModpackUpdateCommand
+            {
+                TargetVersionName = arguments["target_version_name"]?.ToString() ?? arguments["targetVersionName"]?.ToString(),
+                TargetVersionPath = arguments["target_version_path"]?.ToString() ?? arguments["targetVersionPath"]?.ToString(),
+                SourceVersionId = arguments["source_version_id"]?.ToString() ?? arguments["sourceVersionId"]?.ToString(),
+            },
+            cancellationToken);
+
+        if (!preparation.IsReadyForConfirmation)
+        {
+            return AgentToolExecutionResult.FromMessage(preparation.Message);
+        }
+
+        AgentActionProposal proposal = new()
+        {
+            ActionType = ToolName,
+            ButtonText = preparation.ButtonText,
+            DisplayMessage = preparation.Message,
+            PermissionLevel = AgentToolPermissionLevel.ConfirmationRequired,
+            Parameters = new Dictionary<string, string>(preparation.ProposalParameters, StringComparer.OrdinalIgnoreCase)
+        };
+
+        return AgentToolExecutionResult.FromActionProposal(preparation.Message, proposal);
     }
 }
 
@@ -634,6 +742,31 @@ public sealed class InstallModpackActionHandler : IAgentActionHandler
         };
 
         return _communityResourceService.StartModpackInstallAsync(command, cancellationToken);
+    }
+}
+
+public sealed class UpdateModpackActionHandler : IAgentActionHandler
+{
+    private readonly IAgentCommunityResourceService _communityResourceService;
+
+    public UpdateModpackActionHandler(IAgentCommunityResourceService communityResourceService)
+    {
+        _communityResourceService = communityResourceService;
+    }
+
+    public string ActionType => UpdateModpackToolHandler.ToolNameValue;
+
+    public AgentToolPermissionLevel PermissionLevel => AgentToolPermissionLevel.ConfirmationRequired;
+
+    public Task<string> ExecuteAsync(AgentActionProposal proposal, CancellationToken cancellationToken)
+    {
+        AgentModpackUpdateCommand command = new()
+        {
+            TargetVersionName = proposal.Parameters.TryGetValue("target_version_name", out string? targetVersionName) ? targetVersionName : null,
+            SourceVersionId = proposal.Parameters.TryGetValue("source_version_id", out string? sourceVersionId) ? sourceVersionId : null,
+        };
+
+        return _communityResourceService.StartModpackUpdateAsync(command, cancellationToken);
     }
 }
 

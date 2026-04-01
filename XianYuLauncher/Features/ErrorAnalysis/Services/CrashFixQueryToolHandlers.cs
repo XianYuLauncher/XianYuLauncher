@@ -68,7 +68,7 @@ public sealed class GetVersionConfigToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "获取当前会话实例的版本配置快照，返回 JSON，包含 uses_global_settings_overall，以及 Java/JVM/GC/内存/分辨率/版本隔离的局部配置与 follows_global 状态。它描述的是实例局部设置，不是最终生效值；需要最终结果时改用 getEffectiveLaunchSettings。",
+        "获取当前会话实例的版本配置快照，返回 JSON，包含 uses_global_settings_overall、is_modpack、modpack_platform / modpack_project_id / modpack_version_id，以及 Java/JVM/GC/内存/分辨率/版本隔离的局部配置与 follows_global 状态。它描述的是实例局部设置，不是最终生效值；需要最终结果时改用 getEffectiveLaunchSettings。",
         new
         {
             type = "object",

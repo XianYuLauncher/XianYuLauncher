@@ -811,6 +811,67 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
+    public async Task StartCustomManagedTaskWithTaskIdAsync_WhenModpackUpdateTaskCompletes_ShouldUseUpdateCompletedPresentation()
+    {
+        // Act
+        var taskId = await _downloadTaskManager.StartCustomManagedTaskWithTaskIdAsync(
+            "更新 Create Arcane Colony",
+            "Create Arcane Colony",
+            DownloadTaskCategory.ModpackUpdate,
+            executionContext =>
+            {
+                executionContext.ReportStatus(80, "正在应用整合包更新...", "DownloadQueue_Status_ModpackApplyingOverrides");
+                return Task.CompletedTask;
+            },
+            showInTeachingTip: true,
+            allowRetry: false,
+            displayNameResourceKey: "DownloadQueue_DisplayName_ModpackUpdate",
+            displayNameResourceArguments: ["Create Arcane Colony"],
+            taskTypeResourceKey: "DownloadQueue_TaskType_ModpackUpdate");
+
+        await Task.Delay(100);
+
+        // Assert
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.TaskCategory == DownloadTaskCategory.ModpackUpdate
+            && task.State == DownloadTaskState.Completed
+            && task.StatusResourceKey == "DownloadQueue_Status_ModpackUpdateCompleted"
+            && task.ShowInTeachingTip
+            && !task.CanRetry);
+    }
+
+    [Fact]
+    public async Task StartCustomManagedTaskWithTaskIdAsync_WhenModpackUpdateTaskFails_ShouldUseUpdateFailedPresentation()
+    {
+        // Act
+        var taskId = await _downloadTaskManager.StartCustomManagedTaskWithTaskIdAsync(
+            "更新 Create Arcane Colony",
+            "Create Arcane Colony",
+            DownloadTaskCategory.ModpackUpdate,
+            executionContext =>
+            {
+                executionContext.ReportStatus(60, "正在更新整合包...", "DownloadQueue_Status_ModpackDownloadingFiles");
+                throw new InvalidOperationException("文件校验失败");
+            },
+            allowRetry: false,
+            displayNameResourceKey: "DownloadQueue_DisplayName_ModpackUpdate",
+            displayNameResourceArguments: ["Create Arcane Colony"],
+            taskTypeResourceKey: "DownloadQueue_TaskType_ModpackUpdate");
+
+        await Task.Delay(100);
+
+        // Assert
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskId == taskId
+            && task.TaskCategory == DownloadTaskCategory.ModpackUpdate
+            && task.State == DownloadTaskState.Failed
+            && task.StatusResourceKey == "DownloadQueue_Status_ModpackUpdateFailedWithError"
+            && task.ErrorMessage == "文件校验失败"
+            && !task.CanRetry);
+    }
+
+    [Fact]
     public async Task AcquireNestedDownloadSlotAsync_WhenOwnerTaskIsOnlyRunningTaskAndQueueLimitIsOne_ShouldSucceed()
     {
         _localSettingsServiceMock

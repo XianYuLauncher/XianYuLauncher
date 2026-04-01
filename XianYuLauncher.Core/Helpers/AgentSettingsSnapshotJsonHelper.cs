@@ -70,12 +70,19 @@ public static class AgentSettingsSnapshotJsonHelper
         var usesGlobalSettingsOverall = config.UseGlobalJavaSetting
             && !config.OverrideMemory
             && !config.OverrideResolution;
+        var isModpack = !string.IsNullOrWhiteSpace(config.ModpackPlatform)
+            && !string.IsNullOrWhiteSpace(config.ModpackProjectId)
+            && !string.IsNullOrWhiteSpace(config.ModpackVersionId);
         var payload = new
         {
             version_id = versionId,
             minecraft_root_path = minecraftRootPath,
             version_directory_path = versionDirectoryPath,
             minecraft_version = config.MinecraftVersion,
+            is_modpack = isModpack,
+            modpack_platform = NullIfWhiteSpace(config.ModpackPlatform),
+            modpack_project_id = NullIfWhiteSpace(config.ModpackProjectId),
+            modpack_version_id = NullIfWhiteSpace(config.ModpackVersionId),
             modloader = new
             {
                 type = string.IsNullOrWhiteSpace(config.ModLoaderType) ? "vanilla" : config.ModLoaderType,
