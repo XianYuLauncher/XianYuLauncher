@@ -266,7 +266,8 @@ public interface IDownloadTaskManager
         string? iconUrl = null,
         bool showInTeachingTip = false,
         string? teachingTipGroupKey = null,
-        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown);
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown,
+        IEnumerable<ResourceDependency>? dependencies = null);
 
     Task<string> StartWorldDownloadWithTaskIdAsync(
         string worldName,
@@ -276,5 +277,6 @@ public interface IDownloadTaskManager
         string? iconUrl = null,
         bool showInTeachingTip = false,
         string? teachingTipGroupKey = null,
-        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown);
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown,
+        IEnumerable<ResourceDependency>? dependencies = null);
 }
