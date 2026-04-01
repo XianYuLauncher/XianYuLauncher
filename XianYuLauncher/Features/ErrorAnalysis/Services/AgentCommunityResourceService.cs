@@ -44,6 +44,18 @@ public interface IAgentCommunityResourceService
 
     Task<string> GetInstallableInstancesAsync(ErrorAnalysisSessionContext context, CancellationToken cancellationToken);
 
+    Task<string> CheckModpackUpdateAsync(
+        AgentModpackUpdateCheckCommand command,
+        CancellationToken cancellationToken);
+
+    Task<AgentModpackUpdatePreparation> PrepareModpackUpdateAsync(
+        AgentModpackUpdateCommand command,
+        CancellationToken cancellationToken);
+
+    Task<string> StartModpackUpdateAsync(
+        AgentModpackUpdateCommand command,
+        CancellationToken cancellationToken);
+
     Task<string> GetInstanceCommunityResourcesAsync(
         AgentInstanceCommunityResourceInventoryCommand command,
         CancellationToken cancellationToken);
@@ -108,6 +120,37 @@ public sealed class AgentInstanceCommunityResourceUpdateCommand
     public string? SelectionMode { get; init; }
 }
 
+public sealed class AgentModpackUpdateCheckCommand
+{
+    public string? TargetVersionName { get; init; }
+
+    public string? TargetVersionPath { get; init; }
+
+    public bool IncludeCandidates { get; init; } = true;
+
+    public int CandidateLimit { get; init; } = 10;
+}
+
+public sealed class AgentModpackUpdateCommand
+{
+    public string? TargetVersionName { get; init; }
+
+    public string? TargetVersionPath { get; init; }
+
+    public string? SourceVersionId { get; init; }
+}
+
+public sealed class AgentModpackUpdatePreparation
+{
+    public required string Message { get; init; }
+
+    public bool IsReadyForConfirmation { get; init; }
+
+    public string ButtonText { get; init; } = string.Empty;
+
+    public Dictionary<string, string> ProposalParameters { get; init; } = [];
+}
+
 public sealed class AgentCommunityResourceUpdatePreparation
 {
     public required string Message { get; init; }
@@ -158,6 +201,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         "legacyfabric"
     };
 
+    private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly ModrinthService _modrinthService;
     private readonly CurseForgeService _curseForgeService;
     private readonly IMinecraftVersionService _minecraftVersionService;
@@ -170,10 +214,12 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
     private readonly ICommunityResourceInstallPlanner _communityResourceInstallPlanner;
     private readonly ICommunityResourceInstallService _communityResourceInstallService;
     private readonly IModpackDownloadQueueService _modpackDownloadQueueService;
+    private readonly IModpackUpdateService _modpackUpdateService;
     private readonly ITranslationService _translationService;
     private readonly ICommunityResourceFilterMetadataService _communityResourceFilterMetadataService;
 
     public AgentCommunityResourceService(
+        IDownloadTaskManager downloadTaskManager,
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
         IMinecraftVersionService minecraftVersionService,
@@ -186,9 +232,11 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         ICommunityResourceInstallPlanner communityResourceInstallPlanner,
         ICommunityResourceInstallService communityResourceInstallService,
         IModpackDownloadQueueService modpackDownloadQueueService,
+        IModpackUpdateService modpackUpdateService,
         ITranslationService translationService,
         ICommunityResourceFilterMetadataService communityResourceFilterMetadataService)
     {
+        _downloadTaskManager = downloadTaskManager;
         _modrinthService = modrinthService;
         _curseForgeService = curseForgeService;
         _minecraftVersionService = minecraftVersionService;
@@ -201,6 +249,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         _communityResourceInstallPlanner = communityResourceInstallPlanner;
         _communityResourceInstallService = communityResourceInstallService;
         _modpackDownloadQueueService = modpackDownloadQueueService;
+        _modpackUpdateService = modpackUpdateService;
         _translationService = translationService;
         _communityResourceFilterMetadataService = communityResourceFilterMetadataService;
     }
@@ -470,15 +519,25 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
 
             string? minecraftVersion = null;
             string? loaderType = null;
+            string? modpackPlatform = null;
+            string? modpackProjectId = null;
+            string? modpackVersionId = null;
             try
             {
                 var config = await _versionInfoService.GetFullVersionInfoAsync(versionName, versionDirectoryPath, preferCache: true);
                 minecraftVersion = NormalizeText(config?.MinecraftVersion);
                 loaderType = NormalizeLoader(config?.ModLoaderType);
+                modpackPlatform = NormalizeText(config?.ModpackPlatform)?.ToLowerInvariant();
+                modpackProjectId = NormalizeText(config?.ModpackProjectId);
+                modpackVersionId = NormalizeText(config?.ModpackVersionId);
             }
             catch
             {
             }
+
+            bool isModpack = !string.IsNullOrWhiteSpace(modpackPlatform)
+                && !string.IsNullOrWhiteSpace(modpackProjectId)
+                && !string.IsNullOrWhiteSpace(modpackVersionId);
 
             instances.Add(new
             {
@@ -487,6 +546,10 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                 resolved_game_directory = resolvedGameDirectory,
                 minecraft_version = minecraftVersion,
                 loader = loaderType,
+                is_modpack = isModpack,
+                modpack_platform = modpackPlatform,
+                modpack_project_id = modpackProjectId,
+                modpack_version_id = modpackVersionId,
                 is_current_session_version = string.Equals(context.VersionId, versionName, StringComparison.OrdinalIgnoreCase)
             });
         }
@@ -498,6 +561,205 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             current_session_version = context.VersionId,
             instances
         });
+    }
+
+    public async Task<string> CheckModpackUpdateAsync(
+        AgentModpackUpdateCheckCommand command,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        ResolvedModpackTargetContext targetContext = await ResolveModpackTargetAsync(
+            command.TargetVersionName,
+            command.TargetVersionPath,
+            cancellationToken);
+        if (!targetContext.IsReady)
+        {
+            return targetContext.Message;
+        }
+
+        ModpackMetadataContext metadata = ResolveModpackMetadata(targetContext);
+        if (!metadata.IsReady)
+        {
+            return metadata.Message;
+        }
+
+        IReadOnlyList<ModpackVersionItem> versions;
+        try
+        {
+            versions = await _modpackUpdateService.GetAvailableVersionsAsync(
+                CreateModpackUpdateCheckRequest(targetContext.VersionConfig, metadata),
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return SerializePayload(new
+            {
+                status = "failed",
+                target_version_name = targetContext.TargetVersionName,
+                version_directory_path = targetContext.VersionDirectoryPath,
+                resolved_game_directory = targetContext.ResolvedGameDirectory,
+                modpack_platform = metadata.Platform,
+                modpack_project_id = metadata.ProjectId,
+                modpack_version_id = metadata.CurrentVersionId,
+                message = $"检查整合包更新失败：{ex.Message}"
+            });
+        }
+
+        List<ModpackVersionItem> updateCandidates = versions
+            .Where(version => !version.IsCurrentVersion)
+            .ToList();
+        ModpackVersionItem? latestVersion = versions.FirstOrDefault();
+        ModpackVersionItem? defaultUpdateCandidate = updateCandidates.FirstOrDefault();
+        bool includeCandidates = command.IncludeCandidates;
+        int candidateLimit = Math.Clamp(command.CandidateLimit <= 0 ? 10 : command.CandidateLimit, 1, 20);
+        List<object> serializedCandidates = includeCandidates
+            ? updateCandidates.Take(candidateLimit).Select(SerializeModpackVersionItem).ToList()
+            : [];
+        string? activeOperationId = TryGetActiveModpackUpdateTaskId(targetContext.TargetVersionName);
+
+        return SerializePayload(new
+        {
+            status = "ok",
+            target_version_name = targetContext.TargetVersionName,
+            version_directory_path = targetContext.VersionDirectoryPath,
+            resolved_game_directory = targetContext.ResolvedGameDirectory,
+            is_modpack = true,
+            modpack_platform = metadata.Platform,
+            modpack_project_id = metadata.ProjectId,
+            modpack_version_id = metadata.CurrentVersionId,
+            minecraft_version = NormalizeText(targetContext.VersionConfig.MinecraftVersion),
+            loader = NormalizeLoader(targetContext.VersionConfig.ModLoaderType),
+            has_update = defaultUpdateCandidate != null,
+            active_update_operation_id = activeOperationId,
+            latest_version = latestVersion == null ? null : SerializeModpackVersionItem(latestVersion),
+            default_update_candidate = defaultUpdateCandidate == null ? null : SerializeModpackVersionItem(defaultUpdateCandidate),
+            candidate_count = updateCandidates.Count,
+            candidates_truncated = includeCandidates && updateCandidates.Count > candidateLimit,
+            source_version_id_only = true,
+            candidates = serializedCandidates,
+            message = !string.IsNullOrWhiteSpace(activeOperationId)
+                ? $"实例 {targetContext.TargetVersionName} 已有整合包更新任务正在进行中。可继续使用 getOperationStatus 查询状态。"
+                : defaultUpdateCandidate == null
+                    ? $"实例 {targetContext.TargetVersionName} 当前已经是最新整合包版本。"
+                    : $"实例 {targetContext.TargetVersionName} 有可用整合包更新，默认目标为 {ResolveModpackVersionDisplayName(defaultUpdateCandidate)}。"
+        });
+    }
+
+    public async Task<AgentModpackUpdatePreparation> PrepareModpackUpdateAsync(
+        AgentModpackUpdateCommand command,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        ModpackUpdateExecutionContext executionContext = await BuildModpackUpdateExecutionContextAsync(command, cancellationToken);
+        if (!executionContext.IsReady)
+        {
+            return new AgentModpackUpdatePreparation
+            {
+                Message = executionContext.Message
+            };
+        }
+
+        return new AgentModpackUpdatePreparation
+        {
+            Message = executionContext.Message,
+            IsReadyForConfirmation = true,
+            ButtonText = executionContext.ButtonText,
+            ProposalParameters = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["target_version_name"] = executionContext.TargetVersionName,
+                ["source_version_id"] = executionContext.SelectedVersion!.SourceVersionId,
+            }
+        };
+    }
+
+    public async Task<string> StartModpackUpdateAsync(
+        AgentModpackUpdateCommand command,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(command);
+
+        ModpackUpdateExecutionContext executionContext = await BuildModpackUpdateExecutionContextAsync(command, cancellationToken);
+        if (!executionContext.IsReady || executionContext.SelectedVersion == null)
+        {
+            return executionContext.Message;
+        }
+
+        string sourceVersionId = string.IsNullOrWhiteSpace(executionContext.SelectedVersion.SourceVersionId)
+            ? executionContext.SelectedVersion.VersionId
+            : executionContext.SelectedVersion.SourceVersionId;
+        string fallbackFileName = string.Equals(executionContext.Platform, "curseforge", StringComparison.OrdinalIgnoreCase)
+            ? $"modpack-update-{sourceVersionId}.zip"
+            : $"modpack-update-{sourceVersionId}.mrpack";
+
+        try
+        {
+            string operationId = await _modpackDownloadQueueService.StartUpdateAsync(
+                new ModpackUpdateQueueRequest
+                {
+                    DownloadUrl = executionContext.SelectedVersion.DownloadUrl,
+                    FileName = string.IsNullOrWhiteSpace(executionContext.SelectedVersion.FileName)
+                        ? fallbackFileName
+                        : executionContext.SelectedVersion.FileName,
+                    ModpackDisplayName = executionContext.TargetVersionName,
+                    TargetVersionName = executionContext.TargetVersionName,
+                    MinecraftPath = _fileService.GetMinecraftDataPath(),
+                    IsFromCurseForge = executionContext.IsFromCurseForge,
+                    SourceProjectId = executionContext.ProjectId,
+                    SourceVersionId = sourceVersionId,
+                    ShowInTeachingTip = true,
+                },
+                cancellationToken);
+
+            return SerializePayload(new
+            {
+                status = "started",
+                operation_id = operationId,
+                target_version_name = executionContext.TargetVersionName,
+                version_directory_path = executionContext.VersionDirectoryPath,
+                resolved_game_directory = executionContext.ResolvedGameDirectory,
+                resource_type = "modpack",
+                modpack_platform = executionContext.Platform,
+                modpack_project_id = executionContext.ProjectId,
+                current_modpack_version_id = executionContext.CurrentVersionId,
+                target_source_version_id = sourceVersionId,
+                target_version = SerializeModpackVersionItem(executionContext.SelectedVersion),
+                message = $"已开始将实例 {executionContext.TargetVersionName} 的整合包更新到 {ResolveModpackVersionDisplayName(executionContext.SelectedVersion)}。可继续使用 getOperationStatus 查询下载状态。"
+            });
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (InvalidOperationException)
+            when (TryGetActiveModpackUpdateTaskId(executionContext.TargetVersionName) is string activeOperationId
+                && !string.IsNullOrWhiteSpace(activeOperationId))
+        {
+            return SerializePayload(new
+            {
+                status = "already_running",
+                target_version_name = executionContext.TargetVersionName,
+                operation_id = activeOperationId,
+                message = $"实例 {executionContext.TargetVersionName} 已有整合包更新任务正在进行中。可继续使用 getOperationStatus 查询状态。"
+            });
+        }
+        catch (Exception ex)
+        {
+            return SerializePayload(new
+            {
+                status = "failed",
+                target_version_name = executionContext.TargetVersionName,
+                modpack_platform = executionContext.Platform,
+                modpack_project_id = executionContext.ProjectId,
+                target_source_version_id = sourceVersionId,
+                message = $"启动整合包更新失败：{ex.Message}"
+            });
+        }
     }
 
     public async Task<string> GetInstanceCommunityResourcesAsync(
@@ -2107,6 +2369,211 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         };
     }
 
+    private async Task<ResolvedModpackTargetContext> ResolveModpackTargetAsync(
+        string? targetVersionName,
+        string? targetVersionPath,
+        CancellationToken cancellationToken)
+    {
+        ResolvedTargetVersionContext targetVersion = await ResolveTargetVersionAsync(
+            targetVersionName,
+            targetVersionPath,
+            cancellationToken);
+        if (!targetVersion.IsReady)
+        {
+            return ResolvedModpackTargetContext.FromMessage(targetVersion.Message);
+        }
+
+        try
+        {
+            VersionConfig versionConfig = await _versionInfoService.GetFullVersionInfoAsync(
+                targetVersion.TargetVersionName,
+                targetVersion.VersionDirectoryPath,
+                preferCache: true);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            return new ResolvedModpackTargetContext
+            {
+                IsReady = true,
+                TargetVersionName = targetVersion.TargetVersionName,
+                VersionDirectoryPath = targetVersion.VersionDirectoryPath,
+                ResolvedGameDirectory = targetVersion.ResolvedGameDirectory,
+                VersionConfig = versionConfig,
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return ResolvedModpackTargetContext.FromMessage(SerializePayload(new
+            {
+                status = "failed",
+                target_version_name = targetVersion.TargetVersionName,
+                version_directory_path = targetVersion.VersionDirectoryPath,
+                resolved_game_directory = targetVersion.ResolvedGameDirectory,
+                message = $"读取实例 {targetVersion.TargetVersionName} 的版本配置失败：{ex.Message}"
+            }));
+        }
+    }
+
+    private async Task<ModpackUpdateExecutionContext> BuildModpackUpdateExecutionContextAsync(
+        AgentModpackUpdateCommand command,
+        CancellationToken cancellationToken)
+    {
+        ResolvedModpackTargetContext targetContext = await ResolveModpackTargetAsync(
+            command.TargetVersionName,
+            command.TargetVersionPath,
+            cancellationToken);
+        if (!targetContext.IsReady)
+        {
+            return ModpackUpdateExecutionContext.FromMessage(targetContext.Message);
+        }
+
+        ModpackMetadataContext metadata = ResolveModpackMetadata(targetContext);
+        if (!metadata.IsReady)
+        {
+            return ModpackUpdateExecutionContext.FromMessage(metadata.Message);
+        }
+
+        string? activeOperationId = TryGetActiveModpackUpdateTaskId(targetContext.TargetVersionName);
+        if (!string.IsNullOrWhiteSpace(activeOperationId))
+        {
+            return ModpackUpdateExecutionContext.FromMessage(SerializePayload(new
+            {
+                status = "already_running",
+                target_version_name = targetContext.TargetVersionName,
+                version_directory_path = targetContext.VersionDirectoryPath,
+                resolved_game_directory = targetContext.ResolvedGameDirectory,
+                operation_id = activeOperationId,
+                message = $"实例 {targetContext.TargetVersionName} 已有整合包更新任务正在进行中。可继续使用 getOperationStatus 查询状态。"
+            }));
+        }
+
+        IReadOnlyList<ModpackVersionItem> versions;
+        try
+        {
+            versions = await _modpackUpdateService.GetAvailableVersionsAsync(
+                CreateModpackUpdateCheckRequest(targetContext.VersionConfig, metadata),
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return ModpackUpdateExecutionContext.FromMessage(SerializePayload(new
+            {
+                status = "failed",
+                target_version_name = targetContext.TargetVersionName,
+                version_directory_path = targetContext.VersionDirectoryPath,
+                resolved_game_directory = targetContext.ResolvedGameDirectory,
+                modpack_platform = metadata.Platform,
+                modpack_project_id = metadata.ProjectId,
+                modpack_version_id = metadata.CurrentVersionId,
+                message = $"获取整合包更新候选失败：{ex.Message}"
+            }));
+        }
+
+        ModpackVersionItem? latestVersion = versions.FirstOrDefault();
+        List<ModpackVersionItem> updateCandidates = versions
+            .Where(version => !version.IsCurrentVersion)
+            .ToList();
+
+        string? requestedSourceVersionId = NormalizeText(command.SourceVersionId);
+        ModpackVersionItem? selectedVersion = null;
+        if (string.IsNullOrWhiteSpace(requestedSourceVersionId))
+        {
+            selectedVersion = updateCandidates.FirstOrDefault();
+            if (selectedVersion == null)
+            {
+                return ModpackUpdateExecutionContext.FromMessage(SerializePayload(new
+                {
+                    status = "no_updates",
+                    target_version_name = targetContext.TargetVersionName,
+                    version_directory_path = targetContext.VersionDirectoryPath,
+                    resolved_game_directory = targetContext.ResolvedGameDirectory,
+                    modpack_platform = metadata.Platform,
+                    modpack_project_id = metadata.ProjectId,
+                    modpack_version_id = metadata.CurrentVersionId,
+                    latest_version = latestVersion == null ? null : SerializeModpackVersionItem(latestVersion),
+                    message = $"实例 {targetContext.TargetVersionName} 当前已经是最新整合包版本。"
+                }));
+            }
+        }
+        else
+        {
+            selectedVersion = updateCandidates.FirstOrDefault(version =>
+                string.Equals(version.SourceVersionId, requestedSourceVersionId, StringComparison.OrdinalIgnoreCase));
+            if (selectedVersion == null)
+            {
+                return ModpackUpdateExecutionContext.FromMessage(BuildModpackVersionSelectionFailureMessage(
+                    targetContext,
+                    metadata,
+                    requestedSourceVersionId,
+                    versions,
+                    updateCandidates));
+            }
+        }
+
+        string selectedSourceVersionId = string.IsNullOrWhiteSpace(selectedVersion.SourceVersionId)
+            ? selectedVersion.VersionId
+            : selectedVersion.SourceVersionId;
+        selectedVersion = new ModpackVersionItem
+        {
+            VersionId = selectedVersion.VersionId,
+            SourceVersionId = selectedSourceVersionId,
+            DisplayName = selectedVersion.DisplayName,
+            FileName = selectedVersion.FileName,
+            DownloadUrl = selectedVersion.DownloadUrl,
+            PublishedAt = selectedVersion.PublishedAt,
+            IsCurrentVersion = selectedVersion.IsCurrentVersion,
+            GameVersions = selectedVersion.GameVersions,
+            Loaders = selectedVersion.Loaders,
+        };
+
+        if (string.IsNullOrWhiteSpace(selectedVersion.DownloadUrl))
+        {
+            return ModpackUpdateExecutionContext.FromMessage(SerializePayload(new
+            {
+                status = "invalid_request",
+                target_version_name = targetContext.TargetVersionName,
+                source_version_id = selectedSourceVersionId,
+                message = $"目标整合包版本 {ResolveModpackVersionDisplayName(selectedVersion)} 缺少下载地址，无法启动更新。"
+            }));
+        }
+
+        return new ModpackUpdateExecutionContext
+        {
+            Command = command,
+            IsReady = true,
+            Message = SerializePayload(new
+            {
+                status = "ready_for_confirmation",
+                target_version_name = targetContext.TargetVersionName,
+                version_directory_path = targetContext.VersionDirectoryPath,
+                resolved_game_directory = targetContext.ResolvedGameDirectory,
+                modpack_platform = metadata.Platform,
+                modpack_project_id = metadata.ProjectId,
+                modpack_version_id = metadata.CurrentVersionId,
+                source_version_id = selectedSourceVersionId,
+                latest_version = latestVersion == null ? null : SerializeModpackVersionItem(latestVersion),
+                selected_version = SerializeModpackVersionItem(selectedVersion),
+                source_version_id_provided = !string.IsNullOrWhiteSpace(requestedSourceVersionId),
+                message = $"已准备将实例 {targetContext.TargetVersionName} 的整合包更新到 {ResolveModpackVersionDisplayName(selectedVersion)}。等待用户确认。"
+            }),
+            ButtonText = $"更新整合包到 {ResolveModpackVersionDisplayName(selectedVersion)}",
+            TargetVersionName = targetContext.TargetVersionName,
+            VersionDirectoryPath = targetContext.VersionDirectoryPath,
+            ResolvedGameDirectory = targetContext.ResolvedGameDirectory,
+            Platform = metadata.Platform,
+            ProjectId = metadata.ProjectId,
+            CurrentVersionId = metadata.CurrentVersionId,
+            SelectedVersion = selectedVersion,
+        };
+    }
+
     private async Task<UpdatePreparationContext> BuildUpdatePreparationContextAsync(
         AgentInstanceCommunityResourceUpdateCommand command,
         CancellationToken cancellationToken)
@@ -2251,6 +2718,143 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         return Path.GetFileName(normalizedTargetVersionPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
     }
 
+    private ModpackMetadataContext ResolveModpackMetadata(ResolvedModpackTargetContext targetContext)
+    {
+        string? platform = NormalizeText(targetContext.VersionConfig.ModpackPlatform)?.ToLowerInvariant();
+        string? projectId = NormalizeText(targetContext.VersionConfig.ModpackProjectId);
+        string? versionId = NormalizeText(targetContext.VersionConfig.ModpackVersionId);
+
+        if (string.IsNullOrWhiteSpace(platform)
+            && string.IsNullOrWhiteSpace(projectId)
+            && string.IsNullOrWhiteSpace(versionId))
+        {
+            return ModpackMetadataContext.FromMessage(SerializePayload(new
+            {
+                status = "not_modpack",
+                target_version_name = targetContext.TargetVersionName,
+                version_directory_path = targetContext.VersionDirectoryPath,
+                resolved_game_directory = targetContext.ResolvedGameDirectory,
+                message = $"实例 {targetContext.TargetVersionName} 不是整合包，无法执行整合包更新。"
+            }));
+        }
+
+        List<string> missingFields = [];
+        if (string.IsNullOrWhiteSpace(platform))
+        {
+            missingFields.Add("modpack_platform");
+        }
+
+        if (string.IsNullOrWhiteSpace(projectId))
+        {
+            missingFields.Add("modpack_project_id");
+        }
+
+        if (string.IsNullOrWhiteSpace(versionId))
+        {
+            missingFields.Add("modpack_version_id");
+        }
+
+        if (missingFields.Count > 0)
+        {
+            return ModpackMetadataContext.FromMessage(SerializePayload(new
+            {
+                status = "missing_modpack_metadata",
+                target_version_name = targetContext.TargetVersionName,
+                version_directory_path = targetContext.VersionDirectoryPath,
+                resolved_game_directory = targetContext.ResolvedGameDirectory,
+                modpack_platform = platform,
+                modpack_project_id = projectId,
+                modpack_version_id = versionId,
+                missing_fields = missingFields,
+                message = $"实例 {targetContext.TargetVersionName} 缺少整合包来源元数据，无法执行整合包更新。"
+            }));
+        }
+
+        if (platform is not ("modrinth" or "curseforge"))
+        {
+            return ModpackMetadataContext.FromMessage(SerializePayload(new
+            {
+                status = "unsupported_modpack_platform",
+                target_version_name = targetContext.TargetVersionName,
+                version_directory_path = targetContext.VersionDirectoryPath,
+                resolved_game_directory = targetContext.ResolvedGameDirectory,
+                modpack_platform = platform,
+                modpack_project_id = projectId,
+                modpack_version_id = versionId,
+                message = $"当前整合包平台 {platform} 暂不支持 AI 更新。"
+            }));
+        }
+
+        return new ModpackMetadataContext
+        {
+            IsReady = true,
+            Platform = platform!,
+            ProjectId = projectId!,
+            CurrentVersionId = versionId!,
+        };
+    }
+
+    private static ModpackUpdateCheckRequest CreateModpackUpdateCheckRequest(
+        VersionConfig versionConfig,
+        ModpackMetadataContext metadata)
+    {
+        return new ModpackUpdateCheckRequest
+        {
+            Platform = metadata.Platform,
+            ProjectId = metadata.ProjectId,
+            CurrentVersionId = metadata.CurrentVersionId,
+            MinecraftVersion = NormalizeText(versionConfig.MinecraftVersion),
+            ModLoaderType = NormalizeLoader(versionConfig.ModLoaderType),
+        };
+    }
+
+    private string? TryGetActiveModpackUpdateTaskId(string targetVersionName)
+    {
+        if (string.IsNullOrWhiteSpace(targetVersionName))
+        {
+            return null;
+        }
+
+        DownloadTaskInfo? activeTask = _downloadTaskManager.TasksSnapshot
+            .Where(task => task.TaskCategory == DownloadTaskCategory.ModpackUpdate
+                && string.Equals(task.VersionName, targetVersionName, StringComparison.OrdinalIgnoreCase)
+                && task.State is DownloadTaskState.Queued or DownloadTaskState.Downloading)
+            .OrderByDescending(task => task.CreatedAtUtc)
+            .FirstOrDefault();
+
+        return activeTask?.TaskId;
+    }
+
+    private static string BuildModpackVersionSelectionFailureMessage(
+        ResolvedModpackTargetContext targetContext,
+        ModpackMetadataContext metadata,
+        string requestedSourceVersionId,
+        IReadOnlyList<ModpackVersionItem> versions,
+        IReadOnlyList<ModpackVersionItem> updateCandidates)
+    {
+        bool pointsToCurrentVersion = versions.Any(version =>
+            version.IsCurrentVersion
+            && string.Equals(version.SourceVersionId, requestedSourceVersionId, StringComparison.OrdinalIgnoreCase));
+
+        return SerializePayload(new
+        {
+            status = "invalid_request",
+            target_version_name = targetContext.TargetVersionName,
+            version_directory_path = targetContext.VersionDirectoryPath,
+            resolved_game_directory = targetContext.ResolvedGameDirectory,
+            modpack_platform = metadata.Platform,
+            modpack_project_id = metadata.ProjectId,
+            modpack_version_id = metadata.CurrentVersionId,
+            source_version_id = requestedSourceVersionId,
+            available_candidates = updateCandidates.Take(10).Select(SerializeModpackVersionItem).ToList(),
+            message = pointsToCurrentVersion
+                ? $"source_version_id {requestedSourceVersionId} 指向当前已安装版本，无需重复更新。"
+                : updateCandidates.Count == 0
+                    ? $"实例 {targetContext.TargetVersionName} 当前没有可用的整合包更新候选。"
+                    : $"source_version_id {requestedSourceVersionId} 不在当前可更新候选中。请先调用 checkModpackUpdate，并只使用 candidates[*].source_version_id。"
+        });
+    }
+
     private static object SerializeInventoryItem(CommunityResourceInventoryItem item)
     {
         return new
@@ -2270,6 +2874,38 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             update_support = item.UpdateSupport,
             unsupported_reason = item.UpdateUnsupportedReason,
         };
+    }
+
+    private static object SerializeModpackVersionItem(ModpackVersionItem item)
+    {
+        return new
+        {
+            version_id = item.VersionId,
+            source_version_id = item.SourceVersionId,
+            display_name = ResolveModpackVersionDisplayName(item),
+            file_name = item.FileName,
+            published_at = item.PublishedAt,
+            is_current_version = item.IsCurrentVersion,
+            game_versions = item.GameVersions,
+            loaders = item.Loaders,
+        };
+    }
+
+    private static string ResolveModpackVersionDisplayName(ModpackVersionItem item)
+    {
+        string? normalizedDisplayName = NormalizeText(item.DisplayName);
+        if (!string.IsNullOrWhiteSpace(normalizedDisplayName))
+        {
+            return normalizedDisplayName;
+        }
+
+        string? normalizedVersionId = NormalizeText(item.VersionId);
+        if (!string.IsNullOrWhiteSpace(normalizedVersionId))
+        {
+            return normalizedVersionId;
+        }
+
+        return NormalizeText(item.SourceVersionId) ?? "未命名版本";
     }
 
     private static object SerializeUpdateCheckItem(CommunityResourceUpdateCheckItem item)
@@ -2767,6 +3403,88 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             return new ResolvedTargetVersionContext
             {
                 Message = message
+            };
+        }
+    }
+
+    private sealed class ResolvedModpackTargetContext
+    {
+        public bool IsReady { get; init; }
+
+        public string Message { get; init; } = string.Empty;
+
+        public string TargetVersionName { get; init; } = string.Empty;
+
+        public string VersionDirectoryPath { get; init; } = string.Empty;
+
+        public string ResolvedGameDirectory { get; init; } = string.Empty;
+
+        public VersionConfig VersionConfig { get; init; } = new();
+
+        public static ResolvedModpackTargetContext FromMessage(string message)
+        {
+            return new ResolvedModpackTargetContext
+            {
+                Message = message
+            };
+        }
+    }
+
+    private sealed class ModpackMetadataContext
+    {
+        public bool IsReady { get; init; }
+
+        public string Message { get; init; } = string.Empty;
+
+        public string Platform { get; init; } = string.Empty;
+
+        public string ProjectId { get; init; } = string.Empty;
+
+        public string CurrentVersionId { get; init; } = string.Empty;
+
+        public bool IsFromCurseForge => string.Equals(Platform, "curseforge", StringComparison.OrdinalIgnoreCase);
+
+        public static ModpackMetadataContext FromMessage(string message)
+        {
+            return new ModpackMetadataContext
+            {
+                Message = message
+            };
+        }
+    }
+
+    private sealed class ModpackUpdateExecutionContext
+    {
+        public required AgentModpackUpdateCommand Command { get; init; }
+
+        public bool IsReady { get; init; }
+
+        public required string Message { get; init; }
+
+        public string ButtonText { get; init; } = string.Empty;
+
+        public string TargetVersionName { get; init; } = string.Empty;
+
+        public string VersionDirectoryPath { get; init; } = string.Empty;
+
+        public string ResolvedGameDirectory { get; init; } = string.Empty;
+
+        public string Platform { get; init; } = string.Empty;
+
+        public string ProjectId { get; init; } = string.Empty;
+
+        public string CurrentVersionId { get; init; } = string.Empty;
+
+        public ModpackVersionItem? SelectedVersion { get; init; }
+
+        public bool IsFromCurseForge => string.Equals(Platform, "curseforge", StringComparison.OrdinalIgnoreCase);
+
+        public static ModpackUpdateExecutionContext FromMessage(string message)
+        {
+            return new ModpackUpdateExecutionContext
+            {
+                Command = new AgentModpackUpdateCommand(),
+                Message = message,
             };
         }
     }

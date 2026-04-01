@@ -59,6 +59,7 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentToolHandler, GetCommunityResourceProjectDetailToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetCommunityResourceFilesToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetInstancesToolHandler>();
+        services.AddSingleton<IAgentToolHandler, CheckModpackUpdateToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetInstanceCommunityResourcesToolHandler>();
         services.AddSingleton<IAgentToolHandler, CheckInstanceCommunityResourceUpdatesToolHandler>();
         services.AddSingleton<IAgentToolHandler, UpdateInstanceCommunityResourcesToolHandler>();
