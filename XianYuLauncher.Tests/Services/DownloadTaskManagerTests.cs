@@ -525,6 +525,65 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
+    public void UpdateExternalTaskDownloadProgress_WhenQueuedTaskStarts_ShouldTransitionToDownloadingAndPreserveIcon()
+    {
+        string iconPath = Path.Combine(Path.GetTempPath(), $"download-task-manager-tests-{Guid.NewGuid():N}.png");
+        Directory.CreateDirectory(Path.GetDirectoryName(iconPath)!);
+        File.WriteAllBytes(iconPath, [1, 2, 3]);
+
+        try
+        {
+            var stateChanges = new List<DownloadTaskInfo>();
+            var progressChanges = new List<DownloadTaskInfo>();
+
+            _downloadTaskManager.TaskStateChanged += (_, task) => stateChanges.Add(task);
+            _downloadTaskManager.TaskProgressChanged += (_, task) => progressChanges.Add(task);
+
+            var taskId = _downloadTaskManager.CreateExternalTask(
+                "整合包文件",
+                "modpack-file",
+                taskCategory: DownloadTaskCategory.ModpackInstallFile,
+                retainInRecentWhenFinished: true,
+                batchGroupKey: "modpack-install:test",
+                parentTaskId: "modpack-parent",
+                taskTypeResourceKey: "DownloadQueue_TaskType_ModpackInstallFile",
+                iconSource: iconPath,
+                startInQueuedState: true);
+
+            _downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+                task.TaskId == taskId
+                && task.State == DownloadTaskState.Queued
+                && task.StatusResourceKey == "DownloadQueue_Status_Waiting"
+                && task.IconSource == iconPath
+                && task.ParentTaskId == "modpack-parent");
+
+            _downloadTaskManager.UpdateExternalTaskDownloadProgress(
+                taskId,
+                25,
+                new DownloadProgressStatus(256, 1024, 25, 2048),
+                "正在下载 file.jar... 25%",
+                statusResourceKey: "DownloadQueue_Status_DownloadingNamedWithProgress",
+                statusResourceArguments: ["file.jar", "25%"]);
+
+            stateChanges.Should().ContainSingle(task =>
+                task.TaskId == taskId
+                && task.State == DownloadTaskState.Downloading
+                && task.IconSource == iconPath);
+            progressChanges.Should().Contain(task =>
+                task.TaskId == taskId
+                && task.Progress == 25
+                && task.IconSource == iconPath);
+        }
+        finally
+        {
+            if (File.Exists(iconPath))
+            {
+                File.Delete(iconPath);
+            }
+        }
+    }
+
+    [Fact]
     public void UpdateExternalTaskDownloadProgress_WhenStateUnchanged_ShouldOnlyRaiseProgressAndSingleSnapshot()
     {
         // Arrange
@@ -560,6 +619,37 @@ public class DownloadTaskManagerTests
             && task.StatusResourceKey == "DownloadQueue_Status_DownloadingNamedWithProgress"
             && task.State == DownloadTaskState.Downloading);
         snapshotChangedCount.Should().Be(1);
+    }
+
+    [Fact]
+    public void BeginTasksSnapshotUpdate_WhenCreatingMultipleExternalTasks_ShouldPublishSingleMergedSnapshot()
+    {
+        var snapshotChangedCount = 0;
+        _downloadTaskManager.TasksSnapshotChanged += (_, _) => snapshotChangedCount++;
+
+        using (_downloadTaskManager.BeginTasksSnapshotUpdate())
+        {
+            _downloadTaskManager.CreateExternalTask(
+                "文件 A",
+                "instance-a",
+                taskCategory: DownloadTaskCategory.ModpackInstallFile,
+                startInQueuedState: true);
+            _downloadTaskManager.CreateExternalTask(
+                "文件 B",
+                "instance-a",
+                taskCategory: DownloadTaskCategory.ModpackInstallFile,
+                startInQueuedState: true);
+            _downloadTaskManager.CreateExternalTask(
+                "文件 C",
+                "instance-a",
+                taskCategory: DownloadTaskCategory.ModpackInstallFile,
+                startInQueuedState: true);
+        }
+
+        snapshotChangedCount.Should().Be(1);
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task => task.TaskName == "文件 A" && task.State == DownloadTaskState.Queued);
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task => task.TaskName == "文件 B" && task.State == DownloadTaskState.Queued);
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task => task.TaskName == "文件 C" && task.State == DownloadTaskState.Queued);
     }
 
     [Fact]

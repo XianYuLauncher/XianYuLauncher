@@ -54,10 +54,9 @@ internal static class ResourceCenterServiceExtensions
             var minecraftVersionService = sp.GetRequiredService<IMinecraftVersionService>();
             var versionInfoManager = sp.GetRequiredService<IVersionInfoManager>();
             var curseForgeService = sp.GetRequiredService<CurseForgeService>();
-            var downloadTaskManager = sp.GetRequiredService<IDownloadTaskManager>();
             return new ModpackInstallationService(
                 downloadManager, fallbackDownloadManager,
-                minecraftVersionService, versionInfoManager, curseForgeService, downloadTaskManager);
+                minecraftVersionService, versionInfoManager, curseForgeService);
         });
 
         services.AddHttpClient(nameof(TranslationService));

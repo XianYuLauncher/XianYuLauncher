@@ -14,6 +14,7 @@ namespace XianYuLauncher.Core.Services;
 public sealed class CommunityResourceUpdateService : ICommunityResourceUpdateService
 {
     private readonly ICommunityResourceUpdateCheckService _updateCheckService;
+    private readonly IDownloadManager _downloadManager;
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IOperationQueueService _operationQueueService;
     private readonly ModrinthService _modrinthService;
@@ -22,6 +23,7 @@ public sealed class CommunityResourceUpdateService : ICommunityResourceUpdateSer
 
     public CommunityResourceUpdateService(
         ICommunityResourceUpdateCheckService updateCheckService,
+        IDownloadManager downloadManager,
         IDownloadTaskManager downloadTaskManager,
         IOperationQueueService operationQueueService,
         ModrinthService modrinthService,
@@ -29,6 +31,7 @@ public sealed class CommunityResourceUpdateService : ICommunityResourceUpdateSer
         FallbackDownloadManager fallbackDownloadManager)
     {
         _updateCheckService = updateCheckService;
+        _downloadManager = downloadManager;
         _downloadTaskManager = downloadTaskManager;
         _operationQueueService = operationQueueService;
         _modrinthService = modrinthService;
@@ -139,27 +142,47 @@ public sealed class CommunityResourceUpdateService : ICommunityResourceUpdateSer
 
         try
         {
-            foreach (CommunityResourceUpdateCheckItem item in itemsToUpdate)
+            List<(CommunityResourceUpdateCheckItem Item, string ChildTaskId)> executionItems = [];
+
+            using (_downloadTaskManager.BeginTasksSnapshotUpdate())
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                foreach (CommunityResourceUpdateCheckItem item in itemsToUpdate)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                string childTaskId = await _downloadTaskManager.StartCustomManagedTaskWithTaskIdAsync(
-                    item.DisplayName,
-                    item.ResourceType,
-                    DownloadTaskCategory.CommunityResourceUpdateFile,
-                    executionContext => ExecuteUpdateItemAsync(item, executionContext),
-                    showInTeachingTip: false,
-                    iconSource: ResolveResourceIconSource(request, item.ResourceInstanceId),
-                    batchGroupKey: batchGroupKey,
-                    parentTaskId: summaryTaskId,
-                    allowCancel: false,
-                    allowRetry: false,
-                    taskTypeResourceKey: "DownloadQueue_TaskType_CommunityResourceUpdateFile").ConfigureAwait(false);
+                    string childTaskId = _downloadTaskManager.CreateExternalTask(
+                        item.DisplayName,
+                        item.ResourceType,
+                        taskCategory: DownloadTaskCategory.CommunityResourceUpdateFile,
+                        retainInRecentWhenFinished: true,
+                        batchGroupKey: batchGroupKey,
+                        parentTaskId: summaryTaskId,
+                        allowCancel: false,
+                        taskTypeResourceKey: "DownloadQueue_TaskType_CommunityResourceUpdateFile",
+                        iconSource: ResolveResourceIconSource(request, item.ResourceInstanceId),
+                        startInQueuedState: true);
 
-                coordinator.RegisterChildTask(childTaskId);
+                    coordinator.RegisterChildTask(childTaskId);
+                    executionItems.Add((item, childTaskId));
+                }
             }
 
+            PublishBatchProgress(context, coordinator, coordinator.CaptureSnapshot());
+
             using CancellationTokenRegistration cancellationRegistration = cancellationToken.Register(() => CancelChildTasks(coordinator));
+            int parallelism = await ResolveBatchDownloadParallelismAsync(cancellationToken).ConfigureAwait(false);
+
+            await Parallel.ForEachAsync(
+                executionItems,
+                new ParallelOptions
+                {
+                    MaxDegreeOfParallelism = parallelism,
+                    CancellationToken = cancellationToken,
+                },
+                async (executionItem, token) =>
+                {
+                    await ExecuteUpdateItemAsync(executionItem.Item, executionItem.ChildTaskId, token).ConfigureAwait(false);
+                }).ConfigureAwait(false);
 
             await coordinator.CompletionSource.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
 
@@ -218,77 +241,108 @@ public sealed class CommunityResourceUpdateService : ICommunityResourceUpdateSer
 
     private async Task ExecuteUpdateItemAsync(
         CommunityResourceUpdateCheckItem item,
-        DownloadTaskExecutionContext context)
+        string childTaskId,
+        CancellationToken cancellationToken)
     {
-        DownloadCandidate? candidate = await ResolveDownloadCandidateAsync(item, context.CancellationToken).ConfigureAwait(false);
-        if (candidate == null)
-        {
-            throw new InvalidOperationException("无法解析更新文件信息。");
-        }
-
-        string targetDirectory = Path.GetDirectoryName(item.FilePath) ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(targetDirectory))
-        {
-            throw new InvalidOperationException("无法确定更新目标目录。");
-        }
-
-        Directory.CreateDirectory(targetDirectory);
-
-        string tempFilePath = Path.Combine(targetDirectory, $"{candidate.FileName}.{Guid.NewGuid():N}.tmp");
+        string? tempFilePath = null;
 
         try
         {
+            DownloadCandidate? candidate = await ResolveDownloadCandidateAsync(item, cancellationToken).ConfigureAwait(false);
+            if (candidate == null)
+            {
+                throw new InvalidOperationException("无法解析更新文件信息。");
+            }
+
+            string targetDirectory = Path.GetDirectoryName(item.FilePath) ?? string.Empty;
+            if (string.IsNullOrWhiteSpace(targetDirectory))
+            {
+                throw new InvalidOperationException("无法确定更新目标目录。");
+            }
+
+            Directory.CreateDirectory(targetDirectory);
+
+            tempFilePath = Path.Combine(targetDirectory, $"{candidate.FileName}.{Guid.NewGuid():N}.tmp");
+
+            _downloadTaskManager.UpdateExternalTask(
+                childTaskId,
+                1,
+                $"正在下载 {item.DisplayName}...",
+                "DownloadQueue_Status_DownloadingNamed",
+                [item.DisplayName]);
+
             FallbackDownloadResult downloadResult = await _fallbackDownloadManager.DownloadFileForCommunityWithStatusAsync(
                 NormalizeCommunityDownloadUrl(candidate.DownloadUrl, candidate.Provider),
                 tempFilePath,
                 GetCommunityFallbackResourceType(candidate.Provider),
                 status =>
                 {
-                    if (context.CancellationToken.IsCancellationRequested)
+                    if (cancellationToken.IsCancellationRequested)
                     {
                         return;
                     }
 
-                    context.ReportDownloadProgress(
+                    _downloadTaskManager.UpdateExternalTaskDownloadProgress(
+                        childTaskId,
                         Math.Min(90, status.Percent * 0.9),
                         status,
                         $"正在下载 {item.DisplayName}... {status.Percent:F0}%",
                         "DownloadQueue_Status_DownloadingNamedWithProgress",
                         [item.DisplayName, $"{status.Percent:F0}%"]);
                 },
-                context.CancellationToken).ConfigureAwait(false);
+                cancellationToken).ConfigureAwait(false);
 
-            context.CancellationToken.ThrowIfCancellationRequested();
+            cancellationToken.ThrowIfCancellationRequested();
 
             if (!downloadResult.Success)
             {
                 throw new InvalidOperationException(downloadResult.ErrorMessage ?? "社区资源下载失败");
             }
 
-            context.ReportStatus(
+            _downloadTaskManager.UpdateExternalTask(
+                childTaskId,
                 95,
                 $"正在校验 {item.DisplayName}...",
                 "DownloadQueue_Status_ValidatingFile",
                 [item.DisplayName]);
 
-            if (!await ValidateDownloadedFileAsync(tempFilePath, candidate.ExpectedSha1, context.CancellationToken).ConfigureAwait(false))
+            if (!await ValidateDownloadedFileAsync(tempFilePath, candidate.ExpectedSha1, cancellationToken).ConfigureAwait(false))
             {
                 throw new InvalidOperationException("下载文件校验失败");
             }
 
             string finalPath = BuildFinalPath(item, candidate.FileName);
-            context.ReportStatus(
+            _downloadTaskManager.UpdateExternalTask(
+                childTaskId,
                 98,
                 $"正在替换 {item.DisplayName}...",
                 "DownloadQueue_Status_ApplyingFileUpdate",
                 [item.DisplayName]);
 
             ReplaceDownloadedFile(item, tempFilePath, finalPath);
+            _downloadTaskManager.CompleteExternalTask(
+                childTaskId,
+                "下载完成",
+                "DownloadQueue_Status_Completed");
         }
-        catch
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
             SafeDelete(tempFilePath);
+            _downloadTaskManager.CancelExternalTask(
+                childTaskId,
+                "下载已取消",
+                "DownloadQueue_Status_Cancelled");
             throw;
+        }
+        catch (Exception ex)
+        {
+            SafeDelete(tempFilePath);
+            _downloadTaskManager.FailExternalTask(
+                childTaskId,
+                ex.Message,
+                $"下载失败: {ex.Message}",
+                "DownloadQueue_Status_FailedWithError",
+                [ex.Message]);
         }
     }
 
@@ -326,8 +380,17 @@ public sealed class CommunityResourceUpdateService : ICommunityResourceUpdateSer
     {
         foreach (string childTaskId in coordinator.GetChildTaskIds())
         {
-            _downloadTaskManager.CancelTask(childTaskId);
+            _downloadTaskManager.CancelExternalTask(
+                childTaskId,
+                "下载已取消",
+                "DownloadQueue_Status_Cancelled");
         }
+    }
+
+    private async Task<int> ResolveBatchDownloadParallelismAsync(CancellationToken cancellationToken)
+    {
+        int configuredParallelism = await _downloadManager.GetConfiguredThreadCountAsync(cancellationToken).ConfigureAwait(false);
+        return Math.Max(1, configuredParallelism);
     }
 
     private static async Task WaitForCoordinatorSettledAsync(Task completionTask)

@@ -28,6 +28,11 @@ public interface IDownloadTaskManager
     event EventHandler? TasksSnapshotChanged;
 
     /// <summary>
+    /// 延迟下载队列快照变更通知，作用域结束后仅发送一次合并通知。
+    /// </summary>
+    IDisposable BeginTasksSnapshotUpdate();
+
+    /// <summary>
     /// 启动原版 Minecraft 下载
     /// </summary>
     /// <param name="versionId">版本ID</param>
@@ -153,7 +158,9 @@ public interface IDownloadTaskManager
         Action? cancelAction = null,
         string? displayNameResourceKey = null,
         IReadOnlyList<string>? displayNameResourceArguments = null,
-        string? taskTypeResourceKey = null);
+        string? taskTypeResourceKey = null,
+        string? iconSource = null,
+        bool startInQueuedState = false);
 
     /// <summary>
     /// 更新外部任务的进度与状态文案。

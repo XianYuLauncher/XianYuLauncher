@@ -250,6 +250,133 @@ public sealed class CommunityResourceUpdateServiceTests : IDisposable
         checkService.LastRequest!.ResourceInstanceIds.Should().BeNull();
     }
 
+    [Fact]
+    public async Task StartUpdateAsync_ShouldKeepSiblingChildTasksQueuedAndHonorConfiguredParallelism()
+    {
+        string modsDirectory = Path.Combine(_rootDirectory, "mods");
+        Directory.CreateDirectory(modsDirectory);
+
+        string firstFilePath = Path.Combine(modsDirectory, "alpha.jar");
+        string secondFilePath = Path.Combine(modsDirectory, "beta.jar");
+        await File.WriteAllTextAsync(firstFilePath, "old-alpha");
+        await File.WriteAllTextAsync(secondFilePath, "old-beta");
+
+        string firstIconPath = Path.Combine(_rootDirectory, "icons", "alpha.png");
+        string secondIconPath = Path.Combine(_rootDirectory, "icons", "beta.png");
+        Directory.CreateDirectory(Path.GetDirectoryName(firstIconPath)!);
+        await File.WriteAllBytesAsync(firstIconPath, [1, 2, 3]);
+        await File.WriteAllBytesAsync(secondIconPath, [4, 5, 6]);
+
+        FakeCommunityResourceUpdateCheckService checkService = new()
+        {
+            Result = new CommunityResourceUpdateCheckResult
+            {
+                TargetVersionName = "Fabric-1.20.1",
+                ResolvedGameDirectory = _rootDirectory,
+                Items =
+                [
+                    new CommunityResourceUpdateCheckItem
+                    {
+                        ResourceInstanceId = "mod:mods/alpha.jar",
+                        ResourceType = "mod",
+                        DisplayName = "Alpha",
+                        FilePath = firstFilePath,
+                        RelativePath = "mods/alpha.jar",
+                        Provider = "Modrinth",
+                        ProjectId = "alpha-project",
+                        LatestResourceFileId = "alpha-v2",
+                        Status = "update_available",
+                        HasUpdate = true,
+                    },
+                    new CommunityResourceUpdateCheckItem
+                    {
+                        ResourceInstanceId = "mod:mods/beta.jar",
+                        ResourceType = "mod",
+                        DisplayName = "Beta",
+                        FilePath = secondFilePath,
+                        RelativePath = "mods/beta.jar",
+                        Provider = "Modrinth",
+                        ProjectId = "beta-project",
+                        LatestResourceFileId = "beta-v2",
+                        Status = "update_available",
+                        HasUpdate = true,
+                    }
+                ]
+            }
+        };
+
+        MetadataHttpMessageHandler metadataHandler = new();
+        metadataHandler.AddJsonResponse(
+            "/v2/version/alpha-v2",
+            BuildModrinthVersionResponse("alpha-v2", "alpha-project", "2.0.0", "alpha-new.jar", "https://cdn.modrinth.com/data/alpha-new.jar", ComputeSha1("new-alpha")));
+        metadataHandler.AddJsonResponse(
+            "/v2/version/beta-v2",
+            BuildModrinthVersionResponse("beta-v2", "beta-project", "2.0.0", "beta-new.jar", "https://cdn.modrinth.com/data/beta-new.jar", ComputeSha1("new-beta")));
+
+        RecordingDownloadManager downloadManager = new()
+        {
+            ConfiguredThreadCount = 1,
+            DownloadStartedSignal = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously),
+            AllowDownloadCompletionSignal = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously),
+        };
+        downloadManager.ConfigureSuccess("alpha-new.jar", "new-alpha");
+        downloadManager.ConfigureSuccess("beta-new.jar", "new-beta");
+
+        CommunityResourceUpdateService service = CreateService(
+            checkService,
+            metadataHandler,
+            downloadManager,
+            out OperationQueueService operationQueueService,
+            out DownloadTaskManager downloadTaskManager);
+
+        string operationId = await service.StartUpdateAsync(new CommunityResourceUpdateRequest
+        {
+            TargetVersionName = "Fabric-1.20.1",
+            SelectionMode = CommunityResourceUpdateRequest.AllUpdatableSelectionMode,
+            ResourceIconSources = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["mod:mods/alpha.jar"] = firstIconPath,
+                ["mod:mods/beta.jar"] = secondIconPath,
+            },
+        });
+
+        await downloadManager.DownloadStartedSignal!.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        await WaitForConditionAsync(() =>
+        {
+            List<DownloadTaskInfo> childTasks = downloadTaskManager.TasksSnapshot
+                .Where(task => task.TaskCategory == DownloadTaskCategory.CommunityResourceUpdateFile)
+                .Where(task => task.BatchGroupKey == $"community-resource-update:{operationId}")
+                .ToList();
+
+            return childTasks.Count == 2
+                && childTasks.Any(task => task.State == DownloadTaskState.Downloading)
+                && childTasks.Any(task => task.State == DownloadTaskState.Queued);
+        }, "社区资源更新子任务未在预期时间内同时出现 downloading/queued 状态。", TimeSpan.FromSeconds(5));
+
+        List<DownloadTaskInfo> queuedSnapshot = downloadTaskManager.TasksSnapshot
+            .Where(task => task.TaskCategory == DownloadTaskCategory.CommunityResourceUpdateFile)
+            .Where(task => task.BatchGroupKey == $"community-resource-update:{operationId}")
+            .ToList();
+
+        queuedSnapshot.Should().HaveCount(2);
+        queuedSnapshot.Should().OnlyContain(task => task.ParentTaskId != null);
+        queuedSnapshot.Should().OnlyContain(task => task.IconSource != null);
+        queuedSnapshot.Should().Contain(task => task.State == DownloadTaskState.Queued);
+        downloadManager.MaxConcurrentDownloads.Should().Be(1);
+
+        downloadManager.AllowDownloadCompletionSignal!.TrySetResult(true);
+
+        OperationTaskInfo finalSnapshot = await WaitForTerminalSnapshotAsync(operationQueueService, operationId);
+
+        finalSnapshot.State.Should().Be(OperationTaskState.Completed);
+        downloadManager.MaxConcurrentDownloads.Should().Be(1);
+        downloadTaskManager.TasksSnapshot.Should().Contain(task =>
+            task.TaskCategory == DownloadTaskCategory.CommunityResourceUpdateFile
+            && task.BatchGroupKey == $"community-resource-update:{operationId}"
+            && task.State == DownloadTaskState.Completed);
+    }
+
     private CommunityResourceUpdateService CreateService(
         FakeCommunityResourceUpdateCheckService checkService,
         MetadataHttpMessageHandler metadataHandler,
@@ -281,6 +408,7 @@ public sealed class CommunityResourceUpdateServiceTests : IDisposable
 
         return new CommunityResourceUpdateService(
             checkService,
+            downloadManager,
             downloadTaskManager,
             operationQueueService,
             modrinthService,
@@ -311,6 +439,25 @@ public sealed class CommunityResourceUpdateServiceTests : IDisposable
         }
 
         throw new TimeoutException($"任务 {operationId} 未在预期时间内结束。");
+    }
+
+    private static async Task WaitForConditionAsync(
+        Func<bool> predicate,
+        string failureMessage,
+        TimeSpan timeout)
+    {
+        DateTimeOffset deadline = DateTimeOffset.UtcNow.Add(timeout);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            if (predicate())
+            {
+                return;
+            }
+
+            await Task.Delay(20);
+        }
+
+        throw new TimeoutException(failureMessage);
     }
 
     private static string ComputeSha1(string content)
@@ -405,6 +552,16 @@ public sealed class CommunityResourceUpdateServiceTests : IDisposable
     private sealed class RecordingDownloadManager : IDownloadManager
     {
         private readonly List<ConfiguredDownload> _configuredDownloads = [];
+        private int _activeDownloads;
+        private int _maxConcurrentDownloads;
+
+        public int ConfiguredThreadCount { get; set; } = 2;
+
+        public TaskCompletionSource<bool>? DownloadStartedSignal { get; set; }
+
+        public TaskCompletionSource<bool>? AllowDownloadCompletionSignal { get; set; }
+
+        public int MaxConcurrentDownloads => Volatile.Read(ref _maxConcurrentDownloads);
 
         public void ConfigureSuccess(string urlToken, string content)
         {
@@ -434,24 +591,62 @@ public sealed class CommunityResourceUpdateServiceTests : IDisposable
             bool allowShardedDownload,
             CancellationToken cancellationToken = default)
         {
+            return DownloadFileCoreAsync(url, targetPath, progressCallback, cancellationToken);
+        }
+
+        private async Task<DownloadResult> DownloadFileCoreAsync(
+            string url,
+            string targetPath,
+            Action<DownloadProgressStatus>? progressCallback,
+            CancellationToken cancellationToken)
+        {
             ConfiguredDownload? configuredDownload = _configuredDownloads.FirstOrDefault(download =>
                 url.Contains(download.UrlToken, StringComparison.OrdinalIgnoreCase));
 
             if (configuredDownload == null)
             {
-                return Task.FromResult(DownloadResult.Failed(url, "no configured download"));
+                return DownloadResult.Failed(url, "no configured download");
             }
+
+            int activeDownloads = Interlocked.Increment(ref _activeDownloads);
+            UpdateMaxConcurrentDownloads(activeDownloads);
+            DownloadStartedSignal?.TrySetResult(true);
 
             if (!configuredDownload.Success)
             {
-                return Task.FromResult(DownloadResult.Failed(url, configuredDownload.ErrorMessage ?? "download failed"));
+                try
+                {
+                    if (AllowDownloadCompletionSignal != null)
+                    {
+                        await AllowDownloadCompletionSignal.Task.WaitAsync(cancellationToken);
+                    }
+
+                    return DownloadResult.Failed(url, configuredDownload.ErrorMessage ?? "download failed");
+                }
+                finally
+                {
+                    Interlocked.Decrement(ref _activeDownloads);
+                }
             }
 
-            Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
-            File.WriteAllText(targetPath, configuredDownload.Content ?? string.Empty);
-            progressCallback?.Invoke(new DownloadProgressStatus(50, 100, 50));
-            progressCallback?.Invoke(new DownloadProgressStatus(100, 100, 100));
-            return Task.FromResult(DownloadResult.Succeeded(targetPath, url));
+            try
+            {
+                progressCallback?.Invoke(new DownloadProgressStatus(50, 100, 50));
+
+                if (AllowDownloadCompletionSignal != null)
+                {
+                    await AllowDownloadCompletionSignal.Task.WaitAsync(cancellationToken);
+                }
+
+                Directory.CreateDirectory(Path.GetDirectoryName(targetPath)!);
+                File.WriteAllText(targetPath, configuredDownload.Content ?? string.Empty);
+                progressCallback?.Invoke(new DownloadProgressStatus(100, 100, 100));
+                return DownloadResult.Succeeded(targetPath, url);
+            }
+            finally
+            {
+                Interlocked.Decrement(ref _activeDownloads);
+            }
         }
 
         public Task<byte[]> DownloadBytesAsync(string url, CancellationToken cancellationToken = default)
@@ -475,7 +670,24 @@ public sealed class CommunityResourceUpdateServiceTests : IDisposable
 
         public Task<int> GetConfiguredThreadCountAsync(CancellationToken cancellationToken = default)
         {
-            return Task.FromResult(2);
+            return Task.FromResult(ConfiguredThreadCount);
+        }
+
+        private void UpdateMaxConcurrentDownloads(int activeDownloads)
+        {
+            while (true)
+            {
+                int currentMax = Volatile.Read(ref _maxConcurrentDownloads);
+                if (activeDownloads <= currentMax)
+                {
+                    return;
+                }
+
+                if (Interlocked.CompareExchange(ref _maxConcurrentDownloads, activeDownloads, currentMax) == currentMax)
+                {
+                    return;
+                }
+            }
         }
 
         private sealed record ConfiguredDownload(string UrlToken, bool Success, string? Content, string? ErrorMessage);

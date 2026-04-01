@@ -46,8 +46,7 @@ public interface IModpackInstallationService
         string? sourceProjectId,
         string? sourceVersionId,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
-        CancellationToken cancellationToken = default,
-        string? concurrencyOwnerTaskId = null);
+        CancellationToken cancellationToken = default);
 
     /// <summary>
     /// 在现有实例内执行整合包更新（覆盖更新）。
@@ -91,6 +90,5 @@ public interface IModpackInstallationService
         string? sourceProjectId,
         string? sourceVersionId,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
-        CancellationToken cancellationToken = default,
-        string? concurrencyOwnerTaskId = null);
+        CancellationToken cancellationToken = default);
 }

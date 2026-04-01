@@ -8,6 +8,21 @@ namespace XianYuLauncher.Tests.Services;
 public sealed class ModpackContentFileProgressTests
 {
     [Fact]
+    public void Queued_ShouldCreatePendingState()
+    {
+        var progress = ModpackContentFileProgress.Queued(
+            "mods/example.jar",
+            "example.jar");
+
+        progress.FileKey.Should().Be("mods/example.jar");
+        progress.FileName.Should().Be("example.jar");
+        progress.State.Should().Be(ModpackContentFileProgressState.Queued);
+        progress.Progress.Should().Be(0);
+        progress.DownloadStatus.Should().BeNull();
+        progress.ErrorMessage.Should().BeNull();
+    }
+
+    [Fact]
     public void Downloading_ShouldClampProgressAndPreserveDownloadStatus()
     {
         var downloadStatus = new DownloadProgressStatus(512, 1024, 150, 2048);
