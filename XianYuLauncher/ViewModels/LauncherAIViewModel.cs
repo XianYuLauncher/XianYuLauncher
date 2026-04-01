@@ -24,6 +24,7 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable
     private readonly Dictionary<Guid, long> _dirtyConversationStamps = [];
     private bool _isApplyingConversationSnapshot;
     private bool _isRestoringWorkspace;
+    private Guid? _loadedConversationId;
     private long _dirtyWorkspaceStamp;
     private long _nextDirtyStamp;
     private long _workspaceSaveRequestVersion;
@@ -241,7 +242,6 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable
         }
 
         RemoveConversation(conversation, ensureReplacement: true);
-
         EnsureActiveConversationLoaded();
     }
 
@@ -428,6 +428,7 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable
         var activeConversation = SelectedConversation;
         if (activeConversation == null)
         {
+            _loadedConversationId = null;
             return;
         }
 
@@ -435,6 +436,7 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable
         try
         {
             _sessionState.ApplySnapshot(activeConversation.Snapshot);
+            _loadedConversationId = activeConversation.Id;
         }
         finally
         {
@@ -446,7 +448,7 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable
 
     private void PersistActiveConversationSnapshot(bool schedulePersistenceSave = true)
     {
-        var activeConversation = SelectedConversation;
+        var activeConversation = GetLoadedConversation();
         if (activeConversation == null)
         {
             return;
@@ -462,6 +464,16 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable
         {
             QueueWorkspacePersistenceSave();
         }
+    }
+
+    private LauncherAIConversationTab? GetLoadedConversation()
+    {
+        if (_loadedConversationId is Guid loadedConversationId)
+        {
+            return _workspaceState.Conversations.FirstOrDefault(conversation => conversation.Id == loadedConversationId);
+        }
+
+        return null;
     }
 
     private void AttachSessionMessageHandlers(IEnumerable<UiChatMessage> messages)
@@ -573,6 +585,11 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable
         var wasSelected = _workspaceState.SelectedConversationId == conversation.Id;
 
         _workspaceState.Conversations.Remove(conversation);
+        if (_loadedConversationId == removedConversationId)
+        {
+            _loadedConversationId = null;
+        }
+
         ForgetDirtyConversation(removedConversationId);
         MarkWorkspaceDirty();
         QueueConversationDeletion(removedConversationId);

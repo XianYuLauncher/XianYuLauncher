@@ -183,12 +183,15 @@ public sealed partial class LauncherAIWorkspacePanel : UserControl
 
     private void ConversationTabView_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_isRefreshingTabs || ViewModel == null)
+        var conversationTabView = ConversationTabView;
+
+        if (_isRefreshingTabs || ViewModel == null || conversationTabView == null)
         {
             return;
         }
 
-        if (ConversationTabView.SelectedItem is TabViewItem item && item.Tag is Guid conversationId)
+        if (conversationTabView.SelectedItem is TabViewItem item
+            && TryResolveConversationId(item.DataContext, item, out var conversationId))
         {
             if (!ViewModel.TrySelectConversation(conversationId))
             {
@@ -204,7 +207,8 @@ public sealed partial class LauncherAIWorkspacePanel : UserControl
 
     private void ConversationTabView_TabCloseRequested(TabView sender, TabViewTabCloseRequestedEventArgs args)
     {
-        if (ViewModel == null || args.Tab is not TabViewItem item || item.Tag is not Guid conversationId)
+        if (ViewModel == null
+            || !TryResolveConversationId(args.Item, args.Tab as TabViewItem, out var conversationId))
         {
             return;
         }
@@ -246,14 +250,21 @@ public sealed partial class LauncherAIWorkspacePanel : UserControl
 
     private void UpdateSelection()
     {
+        var conversationTabView = ConversationTabView;
+
+        if (conversationTabView == null)
+        {
+            return;
+        }
+
         if (ViewModel?.SelectedConversation?.Id is Guid selectedId
             && _tabItems.TryGetValue(selectedId, out var item))
         {
-            ConversationTabView.SelectedItem = item;
+            conversationTabView.SelectedItem = item;
         }
-        else if (ConversationTabView.SelectedItem != null)
+        else if (conversationTabView.SelectedItem != null)
         {
-            ConversationTabView.SelectedItem = null;
+            conversationTabView.SelectedItem = null;
         }
     }
 
@@ -373,6 +384,7 @@ public sealed partial class LauncherAIWorkspacePanel : UserControl
         var item = new TabViewItem
         {
             Header = conversation.Title,
+            DataContext = conversation,
             Tag = conversation.Id,
             Content = null,
         };
@@ -380,6 +392,30 @@ public sealed partial class LauncherAIWorkspacePanel : UserControl
         ToolTipService.SetToolTip(item, conversation.ToolTip);
         _tabItems[conversation.Id] = item;
         ConversationTabView.TabItems.Insert(insertIndex, item);
+    }
+
+    private static bool TryResolveConversationId(object? itemData, TabViewItem? tabItem, out Guid conversationId)
+    {
+        if (itemData is LauncherAIConversationTab conversation)
+        {
+            conversationId = conversation.Id;
+            return true;
+        }
+
+        if (tabItem?.DataContext is LauncherAIConversationTab tabConversation)
+        {
+            conversationId = tabConversation.Id;
+            return true;
+        }
+
+        if (tabItem?.Tag is Guid tagConversationId)
+        {
+            conversationId = tagConversationId;
+            return true;
+        }
+
+        conversationId = Guid.Empty;
+        return false;
     }
 
     private void RemoveTabItem(Guid conversationId)
