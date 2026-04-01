@@ -513,6 +513,11 @@ public class ModpackInstallationService : IModpackInstallationService
                 {
                     token.ThrowIfCancellationRequested();
                     Debug.WriteLine($"[Modrinth整合包] 开始下载: {file.FileDisplayName}");
+                    ReportContentFileDownloading(
+                        contentFileProgress,
+                        file.FileKey,
+                        file.FileDisplayName,
+                        new DownloadProgressStatus(0, 0, 0, 0));
 
                     await _downloadManager.DownloadFileAsync(
                         file.DownloadUrl,
@@ -1094,6 +1099,11 @@ public class ModpackInstallationService : IModpackInstallationService
                 {
                     token.ThrowIfCancellationRequested();
                     Debug.WriteLine($"[CurseForge整合包] 开始下载: {file.FileDisplayName}");
+                    ReportContentFileDownloading(
+                        contentFileProgress,
+                        file.FileKey,
+                        file.FileDisplayName,
+                        new DownloadProgressStatus(0, 0, 0, 0));
 
                     bool downloadSucceeded = await _curseForgeService.DownloadFileAsync(
                         file.DownloadUrl,
