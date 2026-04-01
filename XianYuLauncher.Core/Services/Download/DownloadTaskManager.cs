@@ -34,6 +34,8 @@ public class DownloadTaskManager : IDownloadTaskManager
     private readonly SemaphoreSlim _schedulerGate = new(1, 1);
     private int _activeNestedDownloadSlots;
     private TaskCompletionSource<object?> _nestedDownloadSlotChanged = CreateNestedDownloadSlotChangedSource();
+    private int _snapshotUpdateScopeCount;
+    private bool _snapshotUpdatePending;
 
     private sealed class ManagedDownloadTask
     {
@@ -94,6 +96,28 @@ public class DownloadTaskManager : IDownloadTaskManager
         public bool CancelRequested { get; set; }
     }
 
+    private sealed class SnapshotUpdateScope : IDisposable
+    {
+        private readonly DownloadTaskManager _owner;
+        private bool _disposed;
+
+        public SnapshotUpdateScope(DownloadTaskManager owner)
+        {
+            _owner = owner;
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+            {
+                return;
+            }
+
+            _disposed = true;
+            _owner.EndTasksSnapshotUpdate();
+        }
+    }
+
     public DownloadTaskManager(
         IMinecraftVersionService minecraftVersionService,
         IFileService fileService,
@@ -135,6 +159,16 @@ public class DownloadTaskManager : IDownloadTaskManager
     public event EventHandler<DownloadTaskInfo>? TaskStateChanged;
     public event EventHandler<DownloadTaskInfo>? TaskProgressChanged;
     public event EventHandler? TasksSnapshotChanged;
+
+    public IDisposable BeginTasksSnapshotUpdate()
+    {
+        lock (_lock)
+        {
+            _snapshotUpdateScopeCount++;
+        }
+
+        return new SnapshotUpdateScope(this);
+    }
 
     /// <summary>
     /// 启动原版 Minecraft 下载
@@ -1812,7 +1846,41 @@ public class DownloadTaskManager : IDownloadTaskManager
 
     private void NotifyTasksSnapshotChanged()
     {
+        lock (_lock)
+        {
+            if (_snapshotUpdateScopeCount > 0)
+            {
+                _snapshotUpdatePending = true;
+                return;
+            }
+        }
+
         TasksSnapshotChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void EndTasksSnapshotUpdate()
+    {
+        bool shouldNotify = false;
+
+        lock (_lock)
+        {
+            if (_snapshotUpdateScopeCount == 0)
+            {
+                return;
+            }
+
+            _snapshotUpdateScopeCount--;
+            if (_snapshotUpdateScopeCount == 0 && _snapshotUpdatePending)
+            {
+                _snapshotUpdatePending = false;
+                shouldNotify = true;
+            }
+        }
+
+        if (shouldNotify)
+        {
+            TasksSnapshotChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
     private void UpdateQueuePositionsLocked()

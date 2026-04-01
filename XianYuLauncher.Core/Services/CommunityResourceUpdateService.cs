@@ -144,24 +144,27 @@ public sealed class CommunityResourceUpdateService : ICommunityResourceUpdateSer
         {
             List<(CommunityResourceUpdateCheckItem Item, string ChildTaskId)> executionItems = [];
 
-            foreach (CommunityResourceUpdateCheckItem item in itemsToUpdate)
+            using (_downloadTaskManager.BeginTasksSnapshotUpdate())
             {
-                cancellationToken.ThrowIfCancellationRequested();
+                foreach (CommunityResourceUpdateCheckItem item in itemsToUpdate)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
 
-                string childTaskId = _downloadTaskManager.CreateExternalTask(
-                    item.DisplayName,
-                    item.ResourceType,
-                    taskCategory: DownloadTaskCategory.CommunityResourceUpdateFile,
-                    retainInRecentWhenFinished: true,
-                    batchGroupKey: batchGroupKey,
-                    parentTaskId: summaryTaskId,
-                    allowCancel: false,
-                    taskTypeResourceKey: "DownloadQueue_TaskType_CommunityResourceUpdateFile",
-                    iconSource: ResolveResourceIconSource(request, item.ResourceInstanceId),
-                    startInQueuedState: true);
+                    string childTaskId = _downloadTaskManager.CreateExternalTask(
+                        item.DisplayName,
+                        item.ResourceType,
+                        taskCategory: DownloadTaskCategory.CommunityResourceUpdateFile,
+                        retainInRecentWhenFinished: true,
+                        batchGroupKey: batchGroupKey,
+                        parentTaskId: summaryTaskId,
+                        allowCancel: false,
+                        taskTypeResourceKey: "DownloadQueue_TaskType_CommunityResourceUpdateFile",
+                        iconSource: ResolveResourceIconSource(request, item.ResourceInstanceId),
+                        startInQueuedState: true);
 
-                coordinator.RegisterChildTask(childTaskId);
-                executionItems.Add((item, childTaskId));
+                    coordinator.RegisterChildTask(childTaskId);
+                    executionItems.Add((item, childTaskId));
+                }
             }
 
             PublishBatchProgress(context, coordinator, coordinator.CaptureSnapshot());

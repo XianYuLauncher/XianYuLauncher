@@ -75,8 +75,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string? sourceProjectId,
         string? sourceVersionId,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
-        CancellationToken cancellationToken = default,
-        string? concurrencyOwnerTaskId = null)
+        CancellationToken cancellationToken = default)
     {
         string tempDir = string.Empty;
 
@@ -119,14 +118,14 @@ public class ModpackInstallationService : IModpackInstallationService
             {
                 Debug.WriteLine("[整合包安装] 检测到CurseForge整合包格式");
                 return await InstallCurseForgeModpackCoreAsync(
-                    extractDir, curseForgeManifestPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
+                    extractDir, curseForgeManifestPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, contentFileProgress, cancellationToken);
             }
 
             if (File.Exists(modrinthIndexPath))
             {
                 Debug.WriteLine("[整合包安装] 检测到Modrinth整合包格式");
                 return await InstallModrinthModpackCoreAsync(
-                    extractDir, modrinthIndexPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
+                    extractDir, modrinthIndexPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, contentFileProgress, cancellationToken);
             }
 
             return ModpackInstallResult.Failed($"整合包格式不支持：未找到{MinecraftFileConsts.ManifestJson}（CurseForge）或{MinecraftFileConsts.ModrinthIndexJson}（Modrinth）");
@@ -187,8 +186,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string? sourceProjectId,
         string? sourceVersionId,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
-        CancellationToken cancellationToken = default,
-        string? concurrencyOwnerTaskId = null)
+        CancellationToken cancellationToken = default)
     {
         string tempDir = string.Empty;
 
@@ -238,7 +236,6 @@ public class ModpackInstallationService : IModpackInstallationService
                     sourceProjectId,
                     sourceVersionId,
                     contentFileProgress,
-                    concurrencyOwnerTaskId,
                     cancellationToken);
             }
 
@@ -255,7 +252,6 @@ public class ModpackInstallationService : IModpackInstallationService
                     sourceProjectId,
                         sourceVersionId,
                         contentFileProgress,
-                        concurrencyOwnerTaskId,
                     cancellationToken);
             }
 
@@ -290,7 +286,6 @@ public class ModpackInstallationService : IModpackInstallationService
         string? sourceProjectId,
         string? sourceVersionId,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
-        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
         string indexJson = await File.ReadAllTextAsync(indexPath, cancellationToken);
@@ -344,7 +339,7 @@ public class ModpackInstallationService : IModpackInstallationService
         var files = indexData["files"] as JArray;
         if (files != null && files.Count > 0)
         {
-            await DownloadModrinthFilesAsync(files, targetVersionDir, progress, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
+            await DownloadModrinthFilesAsync(files, targetVersionDir, progress, contentFileProgress, cancellationToken);
         }
 
         var modpackManifestVersionId = NormalizeModpackVersionId(indexData["versionId"]?.ToString())
@@ -367,7 +362,6 @@ public class ModpackInstallationService : IModpackInstallationService
         string? sourceProjectId,
         string? sourceVersionId,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
-        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
         string indexJson = await File.ReadAllTextAsync(indexPath, cancellationToken);
@@ -419,7 +413,7 @@ public class ModpackInstallationService : IModpackInstallationService
         var files = indexData["files"] as JArray;
         if (files != null && files.Count > 0)
         {
-            await DownloadModrinthFilesAsync(files, modpackVersionDir, progress, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
+            await DownloadModrinthFilesAsync(files, modpackVersionDir, progress, contentFileProgress, cancellationToken);
         }
 
         var modpackManifestVersionId = NormalizeModpackVersionId(indexData["versionId"]?.ToString())
@@ -456,7 +450,6 @@ public class ModpackInstallationService : IModpackInstallationService
         string modpackVersionDir,
         IProgress<ModpackInstallProgress> progress,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
-        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
         Report(progress, 80, "80%", "正在下载整合包文件...", statusResourceKey: "DownloadQueue_Status_ModpackDownloadingFiles");
@@ -576,7 +569,6 @@ public class ModpackInstallationService : IModpackInstallationService
         string? sourceProjectId,
         string? sourceVersionId,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
-        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
         string manifestJson = await File.ReadAllTextAsync(manifestPath, cancellationToken);
@@ -632,7 +624,7 @@ public class ModpackInstallationService : IModpackInstallationService
 
         if (manifest.Files != null && manifest.Files.Count > 0)
         {
-            await DownloadCurseForgeFilesAsync(manifest, targetVersionDir, progress, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
+            await DownloadCurseForgeFilesAsync(manifest, targetVersionDir, progress, contentFileProgress, cancellationToken);
         }
 
         var modpackManifestVersionId = NormalizeModpackVersionId(manifest.Version)
@@ -655,7 +647,6 @@ public class ModpackInstallationService : IModpackInstallationService
         string? sourceProjectId,
         string? sourceVersionId,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
-        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
         string manifestJson = await File.ReadAllTextAsync(manifestPath, cancellationToken);
@@ -713,7 +704,7 @@ public class ModpackInstallationService : IModpackInstallationService
         // 下载整合包中的文件
         if (manifest.Files != null && manifest.Files.Count > 0)
         {
-            await DownloadCurseForgeFilesAsync(manifest, modpackVersionDir, progress, contentFileProgress, concurrencyOwnerTaskId, cancellationToken);
+            await DownloadCurseForgeFilesAsync(manifest, modpackVersionDir, progress, contentFileProgress, cancellationToken);
         }
 
         var modpackManifestVersionId = NormalizeModpackVersionId(manifest.Version)
@@ -988,7 +979,6 @@ public class ModpackInstallationService : IModpackInstallationService
         string modpackVersionDir,
         IProgress<ModpackInstallProgress> progress,
         IProgress<ModpackContentFileProgress>? contentFileProgress,
-        string? concurrencyOwnerTaskId,
         CancellationToken cancellationToken)
     {
         // 获取项目 classId 信息
@@ -1373,9 +1363,23 @@ public class ModpackInstallationService : IModpackInstallationService
             return;
         }
 
-        foreach (var file in files)
+        var queuedFiles = files
+            .Select(file => new ModpackQueuedContentFileEntry(file.FileKey, file.FileDisplayName))
+            .ToArray();
+        if (queuedFiles.Length == 0)
         {
-            contentFileProgress.Report(ModpackContentFileProgress.Queued(file.FileKey, file.FileDisplayName));
+            return;
+        }
+
+        if (contentFileProgress is IModpackContentFileProgressBatchReporter batchReporter)
+        {
+            batchReporter.ReportQueuedRange(queuedFiles);
+            return;
+        }
+
+        foreach (var file in queuedFiles)
+        {
+            contentFileProgress.Report(ModpackContentFileProgress.Queued(file.FileKey, file.FileName));
         }
     }
 

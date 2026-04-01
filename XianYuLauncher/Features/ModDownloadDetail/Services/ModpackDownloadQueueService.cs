@@ -63,8 +63,8 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
             batchGroupKey,
             context.TaskId,
             request.TargetVersionName.Trim());
-        IProgress<ModpackInstallProgress> progress = new CallbackProgress<ModpackInstallProgress>(installProgress => ReportInstallProgress(context, installProgress));
-        IProgress<ModpackContentFileProgress> contentFileProgress = new CallbackProgress<ModpackContentFileProgress>(fileProgress => ReportContentFileProgress(contentFileCoordinator, fileProgress));
+        var progress = new AsyncProgressDispatcher<ModpackInstallProgress>(installProgress => ReportInstallProgress(context, installProgress));
+        var contentFileProgress = new ContentFileProgressDispatcher(contentFileCoordinator);
         bool finalizedPendingContentTasks = false;
 
         try
@@ -81,8 +81,10 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
                 request.SourceProjectId,
                 request.SourceVersionId,
                 contentFileProgress,
-                context.CancellationToken,
-                concurrencyOwnerTaskId: context.TaskId);
+                context.CancellationToken);
+
+            await progress.FlushAsync();
+            await contentFileProgress.FlushAsync();
 
             context.CancellationToken.ThrowIfCancellationRequested();
 
@@ -100,6 +102,9 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
         }
         catch (OperationCanceledException)
         {
+            await progress.FlushAsync();
+            await contentFileProgress.FlushAsync();
+
             if (!finalizedPendingContentTasks)
             {
                 contentFileCoordinator.CancelPending();
@@ -109,6 +114,9 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
         }
         catch (Exception ex)
         {
+            await progress.FlushAsync();
+            await contentFileProgress.FlushAsync();
+
             if (!finalizedPendingContentTasks)
             {
                 contentFileCoordinator.FailPending(ex.Message);
@@ -187,18 +195,84 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
         }
     }
 
-    private sealed class CallbackProgress<T> : IProgress<T>
+    private sealed class AsyncProgressDispatcher<T> : IProgress<T>
     {
+        private readonly SerializedActionQueue _queue = new();
         private readonly Action<T> _handler;
 
-        public CallbackProgress(Action<T> handler)
+        public AsyncProgressDispatcher(Action<T> handler)
         {
             _handler = handler ?? throw new ArgumentNullException(nameof(handler));
         }
 
         public void Report(T value)
         {
-            _handler(value);
+            _queue.Post(() => _handler(value));
+        }
+
+        public Task FlushAsync()
+        {
+            return _queue.FlushAsync();
+        }
+    }
+
+    private sealed class ContentFileProgressDispatcher : IProgress<ModpackContentFileProgress>, IModpackContentFileProgressBatchReporter
+    {
+        private readonly SerializedActionQueue _queue = new();
+        private readonly ModpackContentFileTaskCoordinator _coordinator;
+
+        public ContentFileProgressDispatcher(ModpackContentFileTaskCoordinator coordinator)
+        {
+            _coordinator = coordinator ?? throw new ArgumentNullException(nameof(coordinator));
+        }
+
+        public void Report(ModpackContentFileProgress value)
+        {
+            _queue.Post(() => ReportContentFileProgress(_coordinator, value));
+        }
+
+        public void ReportQueuedRange(IReadOnlyList<ModpackQueuedContentFileEntry> files)
+        {
+            if (files.Count == 0)
+            {
+                return;
+            }
+
+            var snapshot = files.ToArray();
+            _queue.Post(() => _coordinator.QueueRange(snapshot));
+        }
+
+        public Task FlushAsync()
+        {
+            return _queue.FlushAsync();
+        }
+    }
+
+    private sealed class SerializedActionQueue
+    {
+        private readonly Lock _lock = new();
+        private Task _tail = Task.CompletedTask;
+
+        public void Post(Action action)
+        {
+            ArgumentNullException.ThrowIfNull(action);
+
+            lock (_lock)
+            {
+                _tail = _tail.ContinueWith(
+                    _ => action(),
+                    CancellationToken.None,
+                    TaskContinuationOptions.None,
+                    TaskScheduler.Default);
+            }
+        }
+
+        public Task FlushAsync()
+        {
+            lock (_lock)
+            {
+                return _tail;
+            }
         }
     }
 
@@ -296,6 +370,22 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
         public void Queue(string fileKey, string fileName)
         {
             GetOrCreateTask(fileKey, fileName, startInQueuedState: true);
+        }
+
+        public void QueueRange(IReadOnlyList<ModpackQueuedContentFileEntry> files)
+        {
+            if (files.Count == 0)
+            {
+                return;
+            }
+
+            using (_downloadTaskManager.BeginTasksSnapshotUpdate())
+            {
+                foreach (var file in files)
+                {
+                    GetOrCreateTask(file.FileKey, file.FileName, startInQueuedState: true);
+                }
+            }
         }
 
         public void Complete(string fileKey, string fileName)

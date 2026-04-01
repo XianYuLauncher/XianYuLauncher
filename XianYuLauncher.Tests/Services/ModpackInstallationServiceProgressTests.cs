@@ -90,8 +90,7 @@ public sealed class ModpackInstallationServiceProgressTests : IDisposable
             sourceProjectId: null,
             sourceVersionId: null,
             contentFileProgress: recorder,
-            cancellationToken: CancellationToken.None,
-            concurrencyOwnerTaskId: null);
+            cancellationToken: CancellationToken.None);
 
         await recorder.WaitForDownloadingAsync().WaitAsync(TimeSpan.FromSeconds(5));
 
@@ -109,6 +108,76 @@ public sealed class ModpackInstallationServiceProgressTests : IDisposable
 
         result.Success.Should().BeTrue();
         recorder.Events.Should().Contain(progress => progress.State == ModpackContentFileProgressState.Completed);
+    }
+
+    [Fact]
+    public async Task InstallModpackAsync_WhenBatchReporterAvailable_ShouldUseQueuedRangeReporting()
+    {
+        string packagePath = Path.Combine(_rootDirectory, "batch-test.mrpack");
+        string minecraftPath = Path.Combine(_rootDirectory, "minecraft-batch");
+        Directory.CreateDirectory(minecraftPath);
+        CreateModrinthPackageWithTwoFiles(packagePath);
+
+        GateDownloadManager downloadManager = new();
+        FallbackDownloadManager fallbackDownloadManager = new(
+            downloadManager,
+            new DownloadSourceFactory(),
+            new HttpClient(new ThrowingHttpMessageHandler()));
+
+        Mock<IMinecraftVersionService> minecraftVersionService = new();
+        minecraftVersionService
+            .Setup(service => service.DownloadModLoaderVersionAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>(),
+                It.IsAny<string?>(),
+                It.IsAny<string?>()))
+            .Returns(Task.CompletedTask);
+
+        Mock<IVersionInfoManager> versionInfoManager = new();
+        versionInfoManager
+            .Setup(service => service.GetVersionConfigAsync(It.IsAny<string>(), It.IsAny<string>()))
+            .ReturnsAsync((VersionConfig?)null);
+        versionInfoManager
+            .Setup(service => service.SaveVersionConfigAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<VersionConfig>()))
+            .Returns(Task.CompletedTask);
+
+        ModpackInstallationService service = new(
+            downloadManager,
+            fallbackDownloadManager,
+            minecraftVersionService.Object,
+            versionInfoManager.Object,
+            new CurseForgeService(new HttpClient(new ThrowingHttpMessageHandler()), new DownloadSourceFactory()));
+
+        BatchAwareContentFileProgressRecorder recorder = new();
+
+        Task<ModpackInstallResult> installTask = service.InstallModpackAsync(
+            packagePath,
+            Path.GetFileName(packagePath),
+            "Batch Test Pack",
+            "BatchTestInstance",
+            minecraftPath,
+            isFromCurseForge: false,
+            new SilentInstallProgress(),
+            modpackIconUrl: null,
+            sourceProjectId: null,
+            sourceVersionId: null,
+            contentFileProgress: recorder,
+            cancellationToken: CancellationToken.None);
+
+        await recorder.WaitForQueuedBatchAsync().WaitAsync(TimeSpan.FromSeconds(5));
+
+        recorder.QueuedBatches.Should().ContainSingle();
+        recorder.QueuedBatches[0].Should().HaveCount(2);
+        recorder.Events.Should().NotContain(progress => progress.State == ModpackContentFileProgressState.Queued);
+
+        downloadManager.ReleaseDownload();
+
+        ModpackInstallResult result = await installTask.WaitAsync(TimeSpan.FromSeconds(5));
+        result.Success.Should().BeTrue();
     }
 
     private static void CreateModrinthPackage(string packagePath)
@@ -139,6 +208,39 @@ public sealed class ModpackInstallationServiceProgressTests : IDisposable
             }
             """);
     }
+
+        private static void CreateModrinthPackageWithTwoFiles(string packagePath)
+        {
+                using FileStream stream = File.Create(packagePath);
+                using ZipArchive archive = new(stream, ZipArchiveMode.Create);
+
+                ZipArchiveEntry indexEntry = archive.CreateEntry("modrinth.index.json");
+                using StreamWriter writer = new(indexEntry.Open());
+                writer.Write(
+                        """
+                        {
+                            "formatVersion": 1,
+                            "game": "minecraft",
+                            "versionId": "batch-test-version",
+                            "name": "Batch Test Pack",
+                            "summary": "test",
+                            "files": [
+                                {
+                                    "path": "mods/test-mod-a.jar",
+                                    "downloads": ["https://example.com/test-mod-a.jar"]
+                                },
+                                {
+                                    "path": "mods/test-mod-b.jar",
+                                    "downloads": ["https://example.com/test-mod-b.jar"]
+                                }
+                            ],
+                            "dependencies": {
+                                "minecraft": "1.20.1",
+                                "fabric-loader": "0.15.0"
+                            }
+                        }
+                        """);
+        }
 
     private sealed class GateDownloadManager : IDownloadManager
     {
@@ -226,6 +328,33 @@ public sealed class ModpackInstallationServiceProgressTests : IDisposable
             {
                 _downloadingObserved.TrySetResult(true);
             }
+        }
+    }
+
+    private sealed class BatchAwareContentFileProgressRecorder : IProgress<ModpackContentFileProgress>, IModpackContentFileProgressBatchReporter
+    {
+        private readonly TaskCompletionSource<bool> _queuedBatchObserved = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public List<IReadOnlyList<ModpackQueuedContentFileEntry>> QueuedBatches { get; } = [];
+
+        public ConcurrentQueue<ModpackContentFileProgress> ProgressEvents { get; } = new();
+
+        public IReadOnlyList<ModpackContentFileProgress> Events => ProgressEvents.ToArray();
+
+        public Task WaitForQueuedBatchAsync()
+        {
+            return _queuedBatchObserved.Task;
+        }
+
+        public void Report(ModpackContentFileProgress value)
+        {
+            ProgressEvents.Enqueue(value);
+        }
+
+        public void ReportQueuedRange(IReadOnlyList<ModpackQueuedContentFileEntry> files)
+        {
+            QueuedBatches.Add(files.ToArray());
+            _queuedBatchObserved.TrySetResult(true);
         }
     }
 

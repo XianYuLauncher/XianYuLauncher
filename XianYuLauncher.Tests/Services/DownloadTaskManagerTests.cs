@@ -622,6 +622,37 @@ public class DownloadTaskManagerTests
     }
 
     [Fact]
+    public void BeginTasksSnapshotUpdate_WhenCreatingMultipleExternalTasks_ShouldPublishSingleMergedSnapshot()
+    {
+        var snapshotChangedCount = 0;
+        _downloadTaskManager.TasksSnapshotChanged += (_, _) => snapshotChangedCount++;
+
+        using (_downloadTaskManager.BeginTasksSnapshotUpdate())
+        {
+            _downloadTaskManager.CreateExternalTask(
+                "文件 A",
+                "instance-a",
+                taskCategory: DownloadTaskCategory.ModpackInstallFile,
+                startInQueuedState: true);
+            _downloadTaskManager.CreateExternalTask(
+                "文件 B",
+                "instance-a",
+                taskCategory: DownloadTaskCategory.ModpackInstallFile,
+                startInQueuedState: true);
+            _downloadTaskManager.CreateExternalTask(
+                "文件 C",
+                "instance-a",
+                taskCategory: DownloadTaskCategory.ModpackInstallFile,
+                startInQueuedState: true);
+        }
+
+        snapshotChangedCount.Should().Be(1);
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task => task.TaskName == "文件 A" && task.State == DownloadTaskState.Queued);
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task => task.TaskName == "文件 B" && task.State == DownloadTaskState.Queued);
+        _downloadTaskManager.TasksSnapshot.Should().Contain(task => task.TaskName == "文件 C" && task.State == DownloadTaskState.Queued);
+    }
+
+    [Fact]
     public void CompleteExternalTask_WhenConfiguredNotToRetain_ShouldRemoveTaskFromSnapshot()
     {
         // Arrange
