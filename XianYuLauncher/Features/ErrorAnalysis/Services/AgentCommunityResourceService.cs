@@ -270,7 +270,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             return SerializePayload(new
             {
                 status = "invalid_request",
-                message = "resource_type 仅支持 mod、resourcepack、shader、datapack、modpack。"
+                message = "resource_type 仅支持 mod、resourcepack、shader、datapack、world、modpack。"
             });
         }
 
@@ -343,7 +343,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             return SerializePayload(new
             {
                 status = "invalid_request",
-                message = "resource_type 仅支持 mod、resourcepack、shader、datapack、modpack。"
+                message = "resource_type 仅支持 mod、resourcepack、shader、datapack、world、modpack。"
             });
         }
 
@@ -3112,7 +3112,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
     private static string? NormalizeQueryableResourceType(string? resourceType)
     {
         var normalized = NormalizeOptionalQueryableResourceType(resourceType);
-        return normalized is "mod" or "resourcepack" or "shader" or "datapack" or "modpack" ? normalized : null;
+        return normalized is "mod" or "resourcepack" or "shader" or "datapack" or "world" or "modpack" ? normalized : null;
     }
 
     private static string? NormalizeOptionalQueryableResourceType(string? resourceType)
@@ -3126,7 +3126,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         normalized = ModResourcePathHelper.NormalizeProjectType(normalized);
         return normalized switch
         {
-            "mod" or "resourcepack" or "shader" or "datapack" or "modpack" => normalized,
+            "mod" or "resourcepack" or "shader" or "datapack" or "world" or "modpack" => normalized,
             _ => null
         };
     }

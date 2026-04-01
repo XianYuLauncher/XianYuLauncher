@@ -17,14 +17,14 @@ public sealed class SearchCommunityResourcesToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "跨 Modrinth / CurseForge 搜索社区资源。V1 支持 mod、resourcepack、shader、datapack、modpack 的只读搜索。",
+        "跨 Modrinth / CurseForge 搜索社区资源。V1 支持 mod、resourcepack、shader、datapack、world、modpack 的只读搜索。",
         new
         {
             type = "object",
             properties = new
             {
                 query = new { type = "string", description = "可选。搜索关键词，例如 Iris；省略时返回当前更热门的资源，适合先了解热度最高的内容。" },
-                resource_type = new { type = "string", description = "资源类型", @enum = new[] { "mod", "resourcepack", "shader", "datapack", "modpack" } },
+                resource_type = new { type = "string", description = "资源类型", @enum = new[] { "mod", "resourcepack", "shader", "datapack", "world", "modpack" } },
                 platforms = new
                 {
                     type = "array",
@@ -96,13 +96,13 @@ public sealed class GetCommunityResourceTagsToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "返回社区资源搜索可用的类别 token 和加载器值。categories[*].token 可直接传给 searchCommunityResources.category_tokens。V1 支持 mod、resourcepack、shader、datapack、modpack。",
+        "返回社区资源搜索可用的类别 token 和加载器值。categories[*].token 可直接传给 searchCommunityResources.category_tokens。V1 支持 mod、resourcepack、shader、datapack、world、modpack。",
         new
         {
             type = "object",
             properties = new
             {
-                resource_type = new { type = "string", description = "资源类型", @enum = new[] { "mod", "resourcepack", "shader", "datapack", "modpack" } },
+                resource_type = new { type = "string", description = "资源类型", @enum = new[] { "mod", "resourcepack", "shader", "datapack", "world", "modpack" } },
                 platforms = new
                 {
                     type = "array",
@@ -156,7 +156,7 @@ public sealed class GetCommunityResourceProjectDetailToolHandler : IAgentToolHan
             properties = new
             {
                 project_id = new { type = "string", description = "资源项目 ID。CurseForge 必须是 curseforge-<id>；Modrinth 直接使用 project_id。" },
-                resource_type = new { type = "string", description = "可选。辅助识别资源类型，尤其是 Modrinth datapack 或 modpack。", @enum = new[] { "mod", "resourcepack", "shader", "datapack", "modpack" } },
+                resource_type = new { type = "string", description = "可选。辅助识别资源类型，尤其是 Modrinth datapack、world 或 modpack。", @enum = new[] { "mod", "resourcepack", "shader", "datapack", "world", "modpack" } },
                 include_body = new { type = "boolean", description = "可选。是否返回项目正文内容；默认 false，只返回预览。" },
                 body_max_chars = new { type = "integer", description = "可选。正文最多返回多少字符；默认 4000，最大 12000。仅在 include_body=true 时生效。" }
             },
@@ -204,7 +204,7 @@ public sealed class GetCommunityResourceFilesToolHandler : IAgentToolHandler
             properties = new
             {
                 project_id = new { type = "string", description = "资源项目 ID。CurseForge 必须是 curseforge-<id>；Modrinth 直接使用 project_id。" },
-                resource_type = new { type = "string", description = "可选。辅助识别资源类型，尤其是 Modrinth datapack 或 modpack。", @enum = new[] { "mod", "resourcepack", "shader", "datapack", "modpack" } },
+                resource_type = new { type = "string", description = "可选。辅助识别资源类型，尤其是 Modrinth datapack、world 或 modpack。", @enum = new[] { "mod", "resourcepack", "shader", "datapack", "world", "modpack" } },
                 game_version = new { type = "string", description = "可选。按 Minecraft 版本过滤。" },
                 loader = new { type = "string", description = "可选。按加载器过滤。" },
                 limit = new { type = "integer", description = "可选。最多返回多少个文件，默认 20，最大 50。" }

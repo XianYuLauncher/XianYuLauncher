@@ -109,6 +109,7 @@ public sealed class CommunityResourceFilterMetadataService : ICommunityResourceF
                 "shader" => "shader",
                 "resourcepack" => "resourcepack",
                 "datapack" => "mod",
+                "world" => "world",
                 "modpack" => "modpack",
                 "mod" => "mod",
                 _ => string.Empty
@@ -148,7 +149,7 @@ public sealed class CommunityResourceFilterMetadataService : ICommunityResourceF
             "datapack" => "datapack",
             "modpack" => "modpack",
             "mod" => "mod",
-            "world" => "mod",
+            "world" => "world",
             _ => string.Empty
         };
 
