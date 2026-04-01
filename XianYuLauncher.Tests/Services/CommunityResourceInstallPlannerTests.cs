@@ -121,8 +121,13 @@ public class CommunityResourceInstallPlannerTests
     }
 
     [Fact]
-    public async Task PlanAsync_World_ReturnsUnsupported()
+    public async Task PlanAsync_World_ReturnsSavesDirectoryAndModsDependencyDirectory()
     {
+        string gameDirectory = Path.Combine(@"C:\.minecraft", "versions", "1.20.1");
+        _gameDirResolverMock
+            .Setup(service => service.GetGameDirForVersionAsync("1.20.1"))
+            .ReturnsAsync(gameDirectory);
+
         var result = await CreatePlanner().PlanAsync(new CommunityResourceInstallRequest
         {
             ResourceType = "world",
@@ -130,8 +135,13 @@ public class CommunityResourceInstallPlannerTests
             TargetVersionName = "1.20.1"
         });
 
-        result.IsReadyToInstall.Should().BeFalse();
-        result.UnsupportedReason.Should().NotBeNullOrWhiteSpace();
+        result.IsReadyToInstall.Should().BeTrue();
+        result.Plan.Should().NotBeNull();
+        result.Plan!.ResourceKind.Should().Be(CommunityResourceKind.World);
+        result.Plan.PrimaryTargetDirectory.Should().Be(Path.Combine(gameDirectory, "saves"));
+        result.Plan.DependencyTargetDirectory.Should().Be(Path.Combine(gameDirectory, "mods"));
+        result.Plan.SavePath.Should().Be(Path.Combine(gameDirectory, "saves", "world.zip"));
+        result.Plan.TargetSaveName.Should().BeNull();
     }
 
     [Fact]

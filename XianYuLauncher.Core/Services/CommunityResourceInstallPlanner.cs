@@ -25,7 +25,7 @@ public sealed class CommunityResourceInstallPlanner : ICommunityResourceInstallP
 
         string normalizedResourceType = ModResourcePathHelper.NormalizeProjectType(request.ResourceType);
         CommunityResourceKind resourceKind = MapResourceKind(normalizedResourceType);
-        if (resourceKind is CommunityResourceKind.World or CommunityResourceKind.Modpack or CommunityResourceKind.Unknown)
+        if (resourceKind is CommunityResourceKind.Modpack or CommunityResourceKind.Unknown)
         {
             return CommunityResourceInstallPlanningResult.Unsupported(GetUnsupportedReason(resourceKind, normalizedResourceType));
         }
@@ -105,6 +105,7 @@ public sealed class CommunityResourceInstallPlanner : ICommunityResourceInstallP
         }
 
         string primaryTargetDirectory = BuildPrimaryTargetDirectory(resourceKind, gameDirectory, request.TargetSaveName?.Trim());
+        string dependencyTargetDirectory = BuildDependencyTargetDirectory(resourceKind, gameDirectory, primaryTargetDirectory);
         return CommunityResourceInstallPlanningResult.Ready(new CommunityResourceInstallPlan
         {
             ResourceKind = resourceKind,
@@ -113,7 +114,7 @@ public sealed class CommunityResourceInstallPlanner : ICommunityResourceInstallP
             TargetVersionName = targetVersionName,
             TargetSaveName = request.TargetSaveName?.Trim(),
             PrimaryTargetDirectory = primaryTargetDirectory,
-            DependencyTargetDirectory = primaryTargetDirectory,
+            DependencyTargetDirectory = dependencyTargetDirectory,
             SavePath = Path.Combine(primaryTargetDirectory, normalizedFileName),
             UseTargetDirectoryForAllDependencies = false,
             DownloadDependencies = downloadDependencies,
@@ -168,7 +169,6 @@ public sealed class CommunityResourceInstallPlanner : ICommunityResourceInstallP
     {
         return resourceKind switch
         {
-            CommunityResourceKind.World => "世界安装尚未接入统一静默安装规划，当前仍依赖下载后解压流程。",
             CommunityResourceKind.Modpack => "整合包安装尚未接入统一静默安装规划，当前仍依赖独立安装流程。",
             _ => $"当前不支持为资源类型 {normalizedResourceType} 生成安装计划。"
         };
@@ -182,7 +182,17 @@ public sealed class CommunityResourceInstallPlanner : ICommunityResourceInstallP
             CommunityResourceKind.ResourcePack => Path.Combine(gameDirectory, MinecraftPathConsts.ResourcePacks),
             CommunityResourceKind.Shader => Path.Combine(gameDirectory, MinecraftPathConsts.ShaderPacks),
             CommunityResourceKind.DataPack => Path.Combine(gameDirectory, MinecraftPathConsts.Saves, targetSaveName!, MinecraftPathConsts.Datapacks),
+            CommunityResourceKind.World => Path.Combine(gameDirectory, MinecraftPathConsts.Saves),
             _ => throw new InvalidOperationException($"不支持的资源类型: {resourceKind}")
+        };
+    }
+
+    private static string BuildDependencyTargetDirectory(CommunityResourceKind resourceKind, string gameDirectory, string primaryTargetDirectory)
+    {
+        return resourceKind switch
+        {
+            CommunityResourceKind.World => Path.Combine(gameDirectory, MinecraftPathConsts.Mods),
+            _ => primaryTargetDirectory,
         };
     }
 }
