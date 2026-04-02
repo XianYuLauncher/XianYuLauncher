@@ -185,6 +185,7 @@ public partial class ShellViewModel : ObservableRecipient
 
     private void RefreshTipFromActiveTask(ShellDownloadTipItem tip, DownloadTaskInfo taskInfo)
     {
+        bool wasOpen = tip.IsOpen;
         CancelScheduledTipRemoval(tip);
         var presentation = _downloadTaskPresentationService.Resolve(taskInfo);
         tip.TaskId = taskInfo.TaskId;
@@ -195,6 +196,13 @@ public partial class ShellViewModel : ObservableRecipient
         if (taskInfo.ShowInTeachingTip)
         {
             tip.IsOpen = true;
+        }
+
+        if (!wasOpen && tip.IsOpen)
+        {
+            WriteDownloadTipTrace(
+                "OpenTip",
+                $"taskId={taskInfo.TaskId}, presentationKey={tip.PresentationKey}, state={taskInfo.State}, progress={taskInfo.Progress:F1}, status={presentation.StatusMessage}");
         }
     }
 
@@ -313,6 +321,14 @@ public partial class ShellViewModel : ObservableRecipient
                 DownloadTeachingTips.Remove(tipItem);
             }
         });
+    }
+
+    private static void WriteDownloadTipTrace(string stage, string message)
+    {
+        if (stage == "OpenTip")
+        {
+            Serilog.Log.Information("[ShellViewModel:{Stage}] {Message}", stage, message);
+        }
     }
 
     [RelayCommand]

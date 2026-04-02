@@ -26,7 +26,8 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         string PrimaryUrl,
         string? FallbackUrl,
         string TargetPath,
-        string? ExpectedSha1);
+        string? ExpectedSha1,
+        long? ExpectedSize);
 
     protected readonly IDownloadManager DownloadManager;
     protected readonly ILibraryManager LibraryManager;
@@ -222,12 +223,20 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
 
         Logger.LogInformation("开始下载Minecraft JAR: {Url}", clientDownload.Url);
 
-        var result = await DownloadManager.DownloadFileAsync(
-            clientDownload.Url,
-            jarPath,
-            clientDownload.Sha1,
-            progressCallback != null ? (Action<DownloadProgressStatus>)(status => progressCallback(status.Percent)) : null,
-            cancellationToken);
+        var result = clientDownload.Size > 0
+            ? await DownloadManager.DownloadFileAsync(
+                clientDownload.Url,
+                jarPath,
+                clientDownload.Sha1,
+                progressCallback != null ? (Action<DownloadProgressStatus>)(status => progressCallback(status.Percent)) : null,
+                clientDownload.Size,
+                cancellationToken)
+            : await DownloadManager.DownloadFileAsync(
+                clientDownload.Url,
+                jarPath,
+                clientDownload.Sha1,
+                progressCallback != null ? (Action<DownloadProgressStatus>)(status => progressCallback(status.Percent)) : null,
+                cancellationToken);
 
         if (!result.Success)
         {
@@ -341,7 +350,8 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
             primaryUrl,
             officialUrl,
             targetPath,
-            library.Sha1);
+            library.Sha1,
+            library.ExpectedSize);
     }
 
     protected async Task DownloadLibraryPlansAsync(
@@ -378,13 +388,22 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
             {
                 try
                 {
-                    var result = await DownloadManager.DownloadFileAsync(
-                        plan.PrimaryUrl,
-                        plan.TargetPath,
-                        plan.ExpectedSha1,
-                        null,
-                        false,
-                        ct);
+                    var result = plan.ExpectedSize.HasValue
+                        ? await DownloadManager.DownloadFileAsync(
+                            plan.PrimaryUrl,
+                            plan.TargetPath,
+                            plan.ExpectedSha1,
+                            null,
+                            plan.ExpectedSize,
+                            false,
+                            ct)
+                        : await DownloadManager.DownloadFileAsync(
+                            plan.PrimaryUrl,
+                            plan.TargetPath,
+                            plan.ExpectedSha1,
+                            null,
+                            false,
+                            ct);
 
                     if (!result.Success &&
                         !string.IsNullOrWhiteSpace(plan.FallbackUrl) &&
@@ -392,13 +411,22 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
                     {
                         Logger.LogWarning("库文件主下载源失败，切换到官方源: {LibraryName} -> {FallbackUrl}", plan.LibraryName, plan.FallbackUrl);
 
-                        result = await DownloadManager.DownloadFileAsync(
-                            plan.FallbackUrl,
-                            plan.TargetPath,
-                            plan.ExpectedSha1,
-                            null,
-                            false,
-                            ct);
+                        result = plan.ExpectedSize.HasValue
+                            ? await DownloadManager.DownloadFileAsync(
+                                plan.FallbackUrl,
+                                plan.TargetPath,
+                                plan.ExpectedSha1,
+                                null,
+                                plan.ExpectedSize,
+                                false,
+                                ct)
+                            : await DownloadManager.DownloadFileAsync(
+                                plan.FallbackUrl,
+                                plan.TargetPath,
+                                plan.ExpectedSha1,
+                                null,
+                                false,
+                                ct);
                     }
 
                     if (!result.Success)
@@ -453,4 +481,5 @@ public class ModLoaderLibrary
     public string Name { get; set; } = string.Empty;
     public string? Url { get; set; }
     public string? Sha1 { get; set; }
+    public long? ExpectedSize { get; set; }
 }

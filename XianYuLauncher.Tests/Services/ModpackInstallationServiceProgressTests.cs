@@ -260,7 +260,18 @@ public sealed class ModpackInstallationServiceProgressTests : IDisposable
             Action<DownloadProgressStatus>? progressCallback = null,
             CancellationToken cancellationToken = default)
         {
-            return DownloadFileAsync(url, targetPath, expectedSha1, progressCallback, true, cancellationToken);
+            return DownloadFileAsync(url, targetPath, expectedSha1, progressCallback, null, true, cancellationToken);
+        }
+
+        public Task<DownloadResult> DownloadFileAsync(
+            string url,
+            string targetPath,
+            string? expectedSha1,
+            Action<DownloadProgressStatus>? progressCallback,
+            long? knownContentLength,
+            CancellationToken cancellationToken = default)
+        {
+            return DownloadFileAsync(url, targetPath, expectedSha1, progressCallback, knownContentLength, true, cancellationToken);
         }
 
         public async Task<DownloadResult> DownloadFileAsync(
@@ -268,6 +279,18 @@ public sealed class ModpackInstallationServiceProgressTests : IDisposable
             string targetPath,
             string? expectedSha1,
             Action<DownloadProgressStatus>? progressCallback,
+            bool allowShardedDownload,
+            CancellationToken cancellationToken = default)
+        {
+            return await DownloadFileAsync(url, targetPath, expectedSha1, progressCallback, null, allowShardedDownload, cancellationToken);
+        }
+
+        public async Task<DownloadResult> DownloadFileAsync(
+            string url,
+            string targetPath,
+            string? expectedSha1,
+            Action<DownloadProgressStatus>? progressCallback,
+            long? knownContentLength,
             bool allowShardedDownload,
             CancellationToken cancellationToken = default)
         {

@@ -504,7 +504,8 @@ public class LibraryManagerTests : IDisposable
                         Artifact = new DownloadFile 
                         { 
                             Url = "https://example.com/library.jar",
-                            Sha1 = "abc123"
+                            Sha1 = "abc123",
+                            Size = 12345
                         }
                     }
                 }
@@ -529,7 +530,7 @@ public class LibraryManagerTests : IDisposable
         _mockDownloadManager.Verify(
             m => m.DownloadFilesAsync(
                 It.Is<IEnumerable<DownloadTask>>(tasks => 
-                    tasks.Any(t => t.Url == "https://example.com/library.jar")),
+                    tasks.Any(t => t.Url == "https://example.com/library.jar" && t.ExpectedSize == 12345)),
                 4, // 默认并发数
                 It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<CancellationToken>()),
@@ -599,9 +600,9 @@ public class LibraryManagerTests : IDisposable
                     {
                         Classifiers = new Dictionary<string, DownloadFile>
                         {
-                            ["natives-windows"] = new DownloadFile { Url = windowsUrl, Sha1 = "a" },
-                            ["natives-linux"] = new DownloadFile { Url = linuxUrl, Sha1 = "b" },
-                            ["natives-osx"] = new DownloadFile { Url = osxUrl, Sha1 = "c" }
+                            ["natives-windows"] = new DownloadFile { Url = windowsUrl, Sha1 = "a", Size = 101 },
+                            ["natives-linux"] = new DownloadFile { Url = linuxUrl, Sha1 = "b", Size = 202 },
+                            ["natives-osx"] = new DownloadFile { Url = osxUrl, Sha1 = "c", Size = 303 }
                         }
                     }
                 }
@@ -636,6 +637,7 @@ public class LibraryManagerTests : IDisposable
             Assert.DoesNotContain(otherUrl, urls);
         }
         Assert.Single(taskList);
+        Assert.All(taskList, task => Assert.NotNull(task.ExpectedSize));
     }
 
     /// <summary>

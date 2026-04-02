@@ -251,6 +251,7 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
                     Name = dependencyFile.Filename,
                     DownloadUrl = dependencyFile.Url.ToString(),
                     SavePath = savePath,
+                    ExpectedSize = dependencyFile.Size > 0 ? dependencyFile.Size : null,
                     ExpectedSha1 = expectedSha1,
                 });
             }
@@ -296,6 +297,7 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
                 Name = dependencyResolution.ModDetail.Name,
                 DownloadUrl = downloadUrl,
                 SavePath = savePath,
+                ExpectedSize = dependencyResolution.File.FileLength > 0 ? dependencyResolution.File.FileLength : null,
                 ExpectedSha1 = expectedSha1,
             });
         }
@@ -341,7 +343,8 @@ public class ModResourceDownloadOrchestrator : IModResourceDownloadOrchestrator
             dependencies,
             showInTeachingTip: showInTeachingTip,
             teachingTipGroupKey: teachingTipGroupKey,
-            communityResourceProvider: descriptor.CommunityResourceProvider);
+                communityResourceProvider: descriptor.CommunityResourceProvider,
+                expectedSize: descriptor.ExpectedSize);
     }
 
     private async Task<ModrinthVersion?> ResolveModrinthDependencyVersionAsync(Dependency dependency, ModrinthVersion currentVersion)

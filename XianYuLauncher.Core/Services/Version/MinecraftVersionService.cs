@@ -473,17 +473,32 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 20)); // 20% - 开始下载JAR文件
 
-            await _downloadManager.DownloadFileAsync(
-                clientJarUrl,
-                jarPath,
-                clientDownload.Sha1,
-                status =>
-                {
-                    // 计算进度（20% - 80%用于JAR下载）
-                    double progress = 20 + (status.Percent * 0.6);
-                    progressCallback?.Invoke(new DownloadProgressStatus(status.DownloadedBytes, status.TotalBytes, progress, status.BytesPerSecond));
-                },
-                default);
+            Action<DownloadProgressStatus> downloadProgressCallback = status =>
+            {
+                // 计算进度（20% - 80%用于JAR下载）
+                double progress = 20 + (status.Percent * 0.6);
+                progressCallback?.Invoke(new DownloadProgressStatus(status.DownloadedBytes, status.TotalBytes, progress, status.BytesPerSecond));
+            };
+
+            if (clientDownload.Size > 0)
+            {
+                await _downloadManager.DownloadFileAsync(
+                    clientJarUrl,
+                    jarPath,
+                    clientDownload.Sha1,
+                    downloadProgressCallback,
+                    clientDownload.Size,
+                    default);
+            }
+            else
+            {
+                await _downloadManager.DownloadFileAsync(
+                    clientJarUrl,
+                    jarPath,
+                    clientDownload.Sha1,
+                    downloadProgressCallback,
+                    default);
+            }
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 85)); // 85% - 开始验证JAR文件
 

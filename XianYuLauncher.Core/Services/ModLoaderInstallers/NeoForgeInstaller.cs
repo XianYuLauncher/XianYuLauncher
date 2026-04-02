@@ -411,7 +411,8 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
                 downloadUrl,
                 originalUrl,
                 libraryPath,
-                library.Downloads.Artifact.Sha1));
+                library.Downloads.Artifact.Sha1,
+                library.Downloads.Artifact.Size > 0 ? library.Downloads.Artifact.Size : null));
         }
 
         if (downloadPlans.Count == 0)

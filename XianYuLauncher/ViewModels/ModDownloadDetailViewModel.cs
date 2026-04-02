@@ -8,6 +8,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -99,6 +100,24 @@ namespace XianYuLauncher.ViewModels
         private void WriteWarningLog(string message) => _logger.LogWarning("{Message}", message);
 
         private void WriteErrorLog(Exception exception, string message) => _logger.LogError(exception, "{Message}", message);
+
+        private void WriteDownloadTrace(string stage, string message)
+        {
+            switch (stage)
+            {
+                case "StartPlannedInstallAsync.Begin":
+                case "StartPlannedInstallAsync.End":
+                    Serilog.Log.Information(
+                        "[ModDownloadDetailViewModel:{Stage}] Mod={ModName} ProjectType={ProjectType} PreparationTaskId={PreparationTaskId} GroupKey={GroupKey} Message={Message}",
+                        stage,
+                        ModName,
+                        ProjectType,
+                        _downloadPreparationTaskId ?? "-",
+                        _downloadTeachingTipGroupKey ?? "-",
+                        message);
+                    break;
+            }
+        }
 
         [RelayCommand]
         public async Task ShowPublishers()
@@ -1435,12 +1454,27 @@ namespace XianYuLauncher.ViewModels
                 ResourceIconUrl = ModIconUrl,
                 FileName = modVersion.FileName,
                 DownloadUrl = modVersion.DownloadUrl,
+                ExpectedSize = ResolveExpectedDownloadSize(modVersion),
                 CommunityResourceProvider = ResolveCommunityResourceProvider(modVersion),
                 OriginalVersion = modVersion.OriginalVersion,
                 OriginalCurseForgeFile = modVersion.OriginalCurseForgeFile,
                 TargetLoaderType = targetVersion?.LoaderType,
                 TargetGameVersion = targetVersion?.GameVersion
             };
+        }
+
+        private static long? ResolveExpectedDownloadSize(ModVersionViewModel modVersion)
+        {
+            if (modVersion.OriginalCurseForgeFile?.FileLength > 0)
+            {
+                return modVersion.OriginalCurseForgeFile.FileLength;
+            }
+
+            var primaryFile = modVersion.OriginalVersion?.Files.FirstOrDefault(file => file.Primary)
+                ?? modVersion.OriginalVersion?.Files.FirstOrDefault(file => string.Equals(file.Filename, modVersion.FileName, StringComparison.OrdinalIgnoreCase))
+                ?? modVersion.OriginalVersion?.Files.FirstOrDefault();
+
+            return primaryFile is { Size: > 0 } ? primaryFile.Size : null;
         }
 
         private string EnsureDownloadTeachingTipGroupKey()
@@ -1453,13 +1487,20 @@ namespace XianYuLauncher.ViewModels
             ModVersionViewModel modVersion,
             InstalledGameVersionViewModel? targetVersion)
         {
+            Stopwatch stopwatch = Stopwatch.StartNew();
             var descriptor = CreateInstallDescriptor(modVersion, targetVersion);
+            WriteDownloadTrace(
+                "StartPlannedInstallAsync.Begin",
+                $"resource={descriptor.ResourceName}, type={installPlan.NormalizedResourceType}, targetVersion={installPlan.TargetVersionName ?? "-"}, targetSaveName={installPlan.TargetSaveName ?? "-"}, savePath={installPlan.SavePath}");
             var operationId = await _communityResourceInstallService.StartInstallAsync(
                 installPlan,
                 descriptor,
                 showInTeachingTip: true,
                 teachingTipGroupKey: EnsureDownloadTeachingTipGroupKey());
             modVersion.DownloadUrl = descriptor.DownloadUrl;
+            WriteDownloadTrace(
+                "StartPlannedInstallAsync.End",
+                $"resource={descriptor.ResourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}, operationId={operationId}, resolvedDownloadUrl={descriptor.DownloadUrl}");
             return operationId;
         }
 

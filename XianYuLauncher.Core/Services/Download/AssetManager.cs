@@ -86,12 +86,20 @@ public class AssetManager : IAssetManager
         _logger.LogInformation("开始下载资源索引: {AssetIndexId} from {Url}", assetIndexId, assetIndexUrl);
         progressCallback?.Invoke(0);
 
-        var result = await _downloadManager.DownloadFileAsync(
-            assetIndexUrl,
-            indexFilePath,
-            assetIndexSha1,
-            progressCallback == null ? null : status => progressCallback(status.Percent),
-            cancellationToken);
+        var result = versionInfo.AssetIndex.Size > 0
+            ? await _downloadManager.DownloadFileAsync(
+                assetIndexUrl,
+                indexFilePath,
+                assetIndexSha1,
+                progressCallback == null ? null : status => progressCallback(status.Percent),
+                versionInfo.AssetIndex.Size,
+                cancellationToken)
+            : await _downloadManager.DownloadFileAsync(
+                assetIndexUrl,
+                indexFilePath,
+                assetIndexSha1,
+                progressCallback == null ? null : status => progressCallback(status.Percent),
+                cancellationToken);
 
         if (!result.Success)
         {
