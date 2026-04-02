@@ -554,9 +554,6 @@ public class FallbackDownloadManager
 
             var transformedUrl = TransformUrl(originalUrl, source, resourceType);
             Stopwatch sourceStopwatch = Stopwatch.StartNew();
-            WriteFallbackTrace(
-                "CommunityDownload.SourceBegin",
-                $"elapsedMs={stopwatch.ElapsedMilliseconds}, source={sourceKey}, attempt={index + 1}/{sourcesToTry.Count}, transformedUrl={SummarizeUrl(transformedUrl)}");
             _logger?.LogDebug("尝试源 {Source}: {Url}", sourceKey, transformedUrl);
             _logger?.LogWarning("[社区资源回退] 尝试源 {Source} ({Index}/{Total}), URL={Url}",
                 sourceKey, index + 1, sourcesToTry.Count, transformedUrl);
@@ -861,15 +858,10 @@ public class FallbackDownloadManager
         long? expectedSize = null)
     {
         DownloadResult? lastResult = null;
-        Stopwatch stopwatch = Stopwatch.StartNew();
 
         for (int retry = 0; retry <= MaxRetriesPerSource; retry++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-
-            WriteFallbackTrace(
-                "TryDownloadWithRetry.AttemptBegin",
-                $"source={sourceKey ?? "-"}, attempt={retry + 1}/{MaxRetriesPerSource + 1}, elapsedMs={stopwatch.ElapsedMilliseconds}, url={SummarizeUrl(url)}");
 
             if (retry > 0)
             {
@@ -893,10 +885,6 @@ public class FallbackDownloadManager
                     expectedSha1,
                     progressCallback,
                     cancellationToken);
-
-            WriteFallbackTrace(
-                "TryDownloadWithRetry.AttemptEnd",
-                $"source={sourceKey ?? "-"}, attempt={retry + 1}/{MaxRetriesPerSource + 1}, elapsedMs={stopwatch.ElapsedMilliseconds}, success={lastResult.Success}, retryCount={lastResult.RetryCount}, error={lastResult.ErrorMessage ?? "-"}");
 
             if (lastResult.Success)
             {

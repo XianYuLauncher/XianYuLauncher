@@ -604,13 +604,6 @@ public class DownloadTaskManager : IDownloadTaskManager
             taskInfo.QueuePosition = null;
         }
 
-        if (taskInfo.ShowInTeachingTip)
-        {
-            WriteDownloadTrace(
-                "UpdateExternalTask",
-                $"{DescribeTask(taskInfo)}, status={statusMessage}, statusResourceKey={statusResourceKey ?? "-"}");
-        }
-
         OnTaskStateChanged(taskInfo);
         OnTaskProgressChanged(taskInfo);
     }
@@ -655,13 +648,6 @@ public class DownloadTaskManager : IDownloadTaskManager
         if (shouldRaiseStateChanged)
         {
             OnTaskStateChanged(taskInfo);
-        }
-
-        if (taskInfo.ShowInTeachingTip)
-        {
-            WriteDownloadTrace(
-                "UpdateExternalTaskDownloadProgress",
-                $"{DescribeTask(taskInfo)}, status={statusMessage}, speed={downloadStatus.SpeedText}, bytesPerSecond={downloadStatus.BytesPerSecond}");
         }
 
         OnTaskProgressChanged(taskInfo);
@@ -1082,14 +1068,6 @@ public class DownloadTaskManager : IDownloadTaskManager
                     var availableSlots = Math.Max(0, maxConcurrentTasks - runningCount);
                     if (availableSlots == 0)
                     {
-                        ManagedDownloadTask? firstQueuedTask = _tasks.FirstOrDefault(task => !task.IsRunning && task.Info.State == DownloadTaskState.Queued);
-                        if (firstQueuedTask != null)
-                        {
-                            WriteDownloadTrace(
-                                "ProcessQueue.WaitingForSlot",
-                                $"maxConcurrentTasks={maxConcurrentTasks}, runningCount={runningCount}, queuedCount={_tasks.Count(task => !task.IsRunning && task.Info.State == DownloadTaskState.Queued)}, firstQueuedAgeMs={(DateTimeOffset.UtcNow - firstQueuedTask.Info.CreatedAtUtc).TotalMilliseconds:F0}, firstQueued={DescribeTask(firstQueuedTask.Info)}");
-                        }
-
                         UpdateQueuePositionsLocked();
                         return;
                     }
@@ -1122,9 +1100,6 @@ public class DownloadTaskManager : IDownloadTaskManager
 
                 foreach (var task in tasksToStart)
                 {
-                    WriteDownloadTrace(
-                        "ProcessQueue.StartTask",
-                        $"queueAgeMs={(DateTimeOffset.UtcNow - task.Info.CreatedAtUtc).TotalMilliseconds:F0}, {DescribeTask(task.Info)}");
                     OnTaskStateChanged(task.Info);
                     _ = RunManagedTaskAsync(task);
                 }
@@ -1198,10 +1173,6 @@ public class DownloadTaskManager : IDownloadTaskManager
                 SignalNestedDownloadSlotChangedLocked();
                 UpdateQueuePositionsLocked();
             }
-
-            WriteDownloadTrace(
-                "RunManagedTaskAsync.Finally",
-                DescribeTask(managedTask.Info));
 
             NotifyTasksSnapshotChanged();
             await ProcessQueueAsync().ConfigureAwait(false);
@@ -1458,11 +1429,6 @@ public class DownloadTaskManager : IDownloadTaskManager
         DownloadTaskInfo task,
         CancellationToken cancellationToken)
     {
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        WriteDownloadTrace(
-            "ExecuteResourceDownloadAsync.Begin",
-            $"resource={resourceName}, resourceType={resourceType}, savePath={savePath}, dependencyCount={dependencies?.Count ?? 0}, provider={communityResourceProvider}, expectedSize={(expectedSize?.ToString() ?? "-")}, task={DescribeTask(task)}");
-
         var totalItems = 1 + (dependencies?.Count ?? 0);
         int completedItems = await DownloadDependenciesAsync(
             dependencies,
@@ -1470,10 +1436,6 @@ public class DownloadTaskManager : IDownloadTaskManager
             communityResourceProvider,
             task,
             cancellationToken).ConfigureAwait(false);
-
-        WriteDownloadTrace(
-            "ExecuteResourceDownloadAsync.AfterDependencies",
-            $"resource={resourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}, completedDependencies={completedItems}, totalItems={totalItems}");
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -1501,10 +1463,6 @@ public class DownloadTaskManager : IDownloadTaskManager
             communityResourceProvider,
             expectedSize).ConfigureAwait(false);
 
-        WriteDownloadTrace(
-            "ExecuteResourceDownloadAsync.MainFileCompleted",
-            $"resource={resourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}, savePath={savePath}");
-
         cancellationToken.ThrowIfCancellationRequested();
     }
 
@@ -1519,25 +1477,14 @@ public class DownloadTaskManager : IDownloadTaskManager
 
         if (dependencies == null || dependencies.Count == 0)
         {
-            WriteDownloadTrace(
-                "DownloadDependenciesAsync.None",
-                $"task={DescribeTask(task)}, totalItems={totalItems}");
             return completedItems;
         }
 
         _logger.LogInformation("开始下载 {Count} 个依赖", dependencies.Count);
-        WriteDownloadTrace(
-            "DownloadDependenciesAsync.Begin",
-            $"task={DescribeTask(task)}, dependencyCount={dependencies.Count}, totalItems={totalItems}");
 
         foreach (var dependency in dependencies)
         {
             cancellationToken.ThrowIfCancellationRequested();
-
-            Stopwatch dependencyStopwatch = Stopwatch.StartNew();
-            WriteDownloadTrace(
-                "DownloadDependenciesAsync.DependencyBegin",
-                $"taskId={task.TaskId}, dependency={dependency.Name}, savePath={dependency.SavePath}, expectedSha1={dependency.ExpectedSha1 ?? "-"}, expectedSize={(dependency.ExpectedSize?.ToString() ?? "-")}, url={SummarizeUrl(dependency.DownloadUrl)}");
 
             if (await ShouldSkipDependencyDownloadAsync(dependency, cancellationToken).ConfigureAwait(false))
             {
@@ -1547,9 +1494,6 @@ public class DownloadTaskManager : IDownloadTaskManager
                 UpdateTaskStatus(task, $"已跳过前置: {dependency.Name}");
                 OnTaskProgressChanged(task);
                 _logger.LogInformation("依赖已存在且哈希匹配，跳过下载: {DependencyName}", dependency.Name);
-                WriteDownloadTrace(
-                    "DownloadDependenciesAsync.DependencySkipped",
-                    $"taskId={task.TaskId}, dependency={dependency.Name}, elapsedMs={dependencyStopwatch.ElapsedMilliseconds}, completedItems={completedItems}/{totalItems}");
                 continue;
             }
 
@@ -1579,9 +1523,6 @@ public class DownloadTaskManager : IDownloadTaskManager
 
             completedItems++;
             _logger.LogInformation("依赖下载完成: {DependencyName}", dependency.Name);
-            WriteDownloadTrace(
-                "DownloadDependenciesAsync.DependencyCompleted",
-                $"taskId={task.TaskId}, dependency={dependency.Name}, elapsedMs={dependencyStopwatch.ElapsedMilliseconds}, completedItems={completedItems}/{totalItems}");
         }
 
         return completedItems;
@@ -1609,25 +1550,7 @@ public class DownloadTaskManager : IDownloadTaskManager
             _logger.LogError("无效的下载 URL: '{Url}'", url);
             throw new ArgumentException($"无效的下载 URL (必须是绝对路径): '{url}'", nameof(url));
         }
-
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        bool sawFirstProgress = false;
-        Action<DownloadProgressStatus> instrumentedProgressCallback = status =>
-        {
-            if (!sawFirstProgress)
-            {
-                sawFirstProgress = true;
-                WriteDownloadTrace(
-                    "DownloadFile.FirstProgress",
-                    $"provider={communityResourceProvider}, elapsedMs={stopwatch.ElapsedMilliseconds}, percent={status.Percent:F1}, speed={status.SpeedText}, bytesPerSecond={status.BytesPerSecond}, url={SummarizeUrl(url)}, savePath={savePath}");
-            }
-
-            progressCallback(status);
-        };
-
-        WriteDownloadTrace(
-            "DownloadFile.Begin",
-            $"provider={communityResourceProvider}, expectedSha1={expectedSha1 ?? "-"}, expectedSize={(expectedSize?.ToString() ?? "-")}, url={SummarizeUrl(url)}, savePath={savePath}");
+        Action<DownloadProgressStatus> instrumentedProgressCallback = status => progressCallback(status);
 
         if (communityResourceProvider != CommunityResourceProvider.Unknown && _fallbackDownloadManager != null)
         {
@@ -1644,15 +1567,8 @@ public class DownloadTaskManager : IDownloadTaskManager
 
             if (!fallbackResult.Success)
             {
-                WriteDownloadTrace(
-                    "DownloadFile.Error",
-                    $"provider={communityResourceProvider}, elapsedMs={stopwatch.ElapsedMilliseconds}, sawFirstProgress={sawFirstProgress}, error={fallbackResult.ErrorMessage ?? "社区资源下载失败"}, url={SummarizeUrl(url)}, savePath={savePath}");
                 throw new InvalidOperationException(fallbackResult.ErrorMessage ?? "社区资源下载失败");
             }
-
-            WriteDownloadTrace(
-                "DownloadFile.Completed",
-                $"provider={communityResourceProvider}, elapsedMs={stopwatch.ElapsedMilliseconds}, sawFirstProgress={sawFirstProgress}, url={SummarizeUrl(url)}, savePath={savePath}");
 
             return;
         }
@@ -1676,24 +1592,13 @@ public class DownloadTaskManager : IDownloadTaskManager
 
         if (result == null)
         {
-            WriteDownloadTrace(
-                "DownloadFile.Error",
-                $"provider={communityResourceProvider}, elapsedMs={stopwatch.ElapsedMilliseconds}, sawFirstProgress={sawFirstProgress}, error=下载服务返回了空结果, url={SummarizeUrl(url)}, savePath={savePath}");
             throw new InvalidOperationException("下载服务返回了空结果");
         }
 
         if (!result.Success)
         {
-            string errorMessage = result.Exception?.Message ?? result.ErrorMessage ?? "下载失败";
-            WriteDownloadTrace(
-                "DownloadFile.Error",
-                $"provider={communityResourceProvider}, elapsedMs={stopwatch.ElapsedMilliseconds}, sawFirstProgress={sawFirstProgress}, error={errorMessage}, url={SummarizeUrl(url)}, savePath={savePath}");
             throw result.Exception ?? new InvalidOperationException(result.ErrorMessage ?? "下载失败");
         }
-
-        WriteDownloadTrace(
-            "DownloadFile.Completed",
-            $"provider={communityResourceProvider}, elapsedMs={stopwatch.ElapsedMilliseconds}, sawFirstProgress={sawFirstProgress}, url={SummarizeUrl(url)}, savePath={savePath}");
     }
 
     private async Task<bool> ShouldSkipDependencyDownloadAsync(ResourceDependency dependency, CancellationToken cancellationToken)
@@ -1769,10 +1674,16 @@ public class DownloadTaskManager : IDownloadTaskManager
     {
         switch (stage)
         {
+            case "CreateExternalTask":
+            case "StartResourceDownloadWithTaskIdAsync":
+            case "StartWorldDownloadWithTaskIdAsync":
             case "EnqueueManagedTask":
             case "RunManagedTaskAsync.Begin":
             case "RunManagedTaskAsync.Completed":
                 Serilog.Log.Information("[DownloadTaskManager:{Stage}] {Message}", stage, message);
+                break;
+            case "RunManagedTaskAsync.Cancelled":
+                Serilog.Log.Warning("[DownloadTaskManager:{Stage}] {Message}", stage, message);
                 break;
             case "RunManagedTaskAsync.Error":
                 Serilog.Log.Error("[DownloadTaskManager:{Stage}] {Message}", stage, message);
@@ -1806,11 +1717,6 @@ public class DownloadTaskManager : IDownloadTaskManager
         DownloadTaskInfo task,
         CancellationToken cancellationToken)
     {
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        WriteDownloadTrace(
-            "ExecuteWorldDownloadAsync.Begin",
-            $"world={worldName}, fileName={fileName}, savesDirectory={savesDirectory}, dependencyCount={dependencies?.Count ?? 0}, provider={communityResourceProvider}, expectedSize={(expectedSize?.ToString() ?? "-")}, task={DescribeTask(task)}");
-
         int totalItems = 1 + (dependencies?.Count ?? 0);
         int completedItems = await DownloadDependenciesAsync(
             dependencies,
@@ -1818,10 +1724,6 @@ public class DownloadTaskManager : IDownloadTaskManager
             communityResourceProvider,
             task,
             cancellationToken).ConfigureAwait(false);
-
-        WriteDownloadTrace(
-            "ExecuteWorldDownloadAsync.AfterDependencies",
-            $"world={worldName}, elapsedMs={stopwatch.ElapsedMilliseconds}, completedDependencies={completedItems}, totalItems={totalItems}");
 
         var tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
         var zipPath = Path.Combine(tempDir, fileName);
@@ -1853,10 +1755,6 @@ public class DownloadTaskManager : IDownloadTaskManager
                 cancellationToken,
                 communityResourceProvider,
                 expectedSize).ConfigureAwait(false);
-
-            WriteDownloadTrace(
-                "ExecuteWorldDownloadAsync.DownloadArchiveCompleted",
-                $"world={worldName}, elapsedMs={stopwatch.ElapsedMilliseconds}, zipPath={zipPath}");
 
             cancellationToken.ThrowIfCancellationRequested();
 
@@ -1943,10 +1841,6 @@ public class DownloadTaskManager : IDownloadTaskManager
                     archive.ExtractToDirectory(worldDir);
                 }
             }, cancellationToken).ConfigureAwait(false);
-
-            WriteDownloadTrace(
-                "ExecuteWorldDownloadAsync.ExtractCompleted",
-                $"world={worldName}, elapsedMs={stopwatch.ElapsedMilliseconds}, savesDirectory={savesDirectory}");
 
             cancellationToken.ThrowIfCancellationRequested();
             _logger.LogInformation("世界存档下载完成: {WorldName} -> {WorldDir}", worldName, worldDir);

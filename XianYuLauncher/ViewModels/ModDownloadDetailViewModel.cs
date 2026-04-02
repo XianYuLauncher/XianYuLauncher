@@ -421,9 +421,6 @@ namespace XianYuLauncher.ViewModels
                 0,
                 "正在解析前置依赖...",
                 statusResourceKey: "DownloadQueue_Status_PreparingDependencies");
-            WriteDownloadTrace(
-                "InitializeDownloadTeachingTip",
-                $"createdPreparationTask={_downloadPreparationTaskId}, teachingTipGroupKey={_downloadTeachingTipGroupKey}, initialStatus={DownloadStatus}");
         }
 
         private void UpdateDownloadTeachingTip(string fileName, double progress, string statusMessage)
@@ -443,9 +440,6 @@ namespace XianYuLauncher.ViewModels
                 statusMessage,
                 statusResourceKey: "DownloadQueue_Status_DownloadingDependencyResource",
                 statusResourceArguments: [fileName]);
-            WriteDownloadTrace(
-                "UpdateDownloadTeachingTip",
-                $"fileName={fileName}, progress={progress:F1}, status={statusMessage}");
         }
 
         private void CompleteDownloadTeachingTip(string statusMessage = "前置依赖已就绪，正在加入下载队列...")
@@ -461,9 +455,6 @@ namespace XianYuLauncher.ViewModels
                 _downloadPreparationTaskId,
                 statusMessage,
                 statusResourceKey: "DownloadQueue_Status_DependenciesReady");
-            WriteDownloadTrace(
-                "CompleteDownloadTeachingTip",
-                $"status={statusMessage}");
             ResetDownloadTeachingTipSession(clearGroupKey: false);
         }
 
@@ -481,9 +472,6 @@ namespace XianYuLauncher.ViewModels
                 _downloadPreparationTaskId,
                 statusMessage,
                 statusResourceKey: "DownloadQueue_Status_Cancelled");
-            WriteDownloadTrace(
-                "CancelDownloadTeachingTip",
-                $"status={statusMessage}");
             ResetDownloadTeachingTipSession();
         }
 
@@ -503,17 +491,11 @@ namespace XianYuLauncher.ViewModels
                 $"准备阶段失败: {errorMessage}",
                 statusResourceKey: "DownloadQueue_Status_PreparationFailed",
                 statusResourceArguments: [errorMessage]);
-            WriteDownloadTrace(
-                "FailDownloadTeachingTip",
-                $"error={errorMessage}");
             ResetDownloadTeachingTipSession();
         }
 
         private void ResetDownloadTeachingTipSession(bool clearGroupKey = true)
         {
-            WriteDownloadTrace(
-                "ResetDownloadTeachingTipSession",
-                $"clearGroupKey={clearGroupKey}");
             _downloadPreparationTaskId = null;
             if (clearGroupKey)
             {

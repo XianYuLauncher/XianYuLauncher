@@ -180,9 +180,6 @@ public partial class ShellViewModel : ObservableRecipient
             StatusMessage = presentation.StatusMessage
         };
         DownloadTeachingTips.Add(item);
-        WriteDownloadTipTrace(
-            "CreateTip",
-            $"taskId={info.TaskId}, presentationKey={presentationKey}, state={info.State}, progress={info.Progress:F1}, showInTeachingTip={info.ShowInTeachingTip}, title={presentation.DisplayName}");
         return item;
     }
 
@@ -260,10 +257,6 @@ public partial class ShellViewModel : ObservableRecipient
     {
         CancelScheduledTipRemoval(item);
 
-        WriteDownloadTipTrace(
-            "ScheduleTipRemoval",
-            $"taskId={taskId}, presentationKey={item.PresentationKey}, title={item.Title}");
-
         var closeCts = new CancellationTokenSource();
         _pendingTipCloseOperations[item] = closeCts;
 
@@ -325,9 +318,6 @@ public partial class ShellViewModel : ObservableRecipient
             CancelScheduledTipRemoval(tipItem);
             if (DownloadTeachingTips.Contains(tipItem))
             {
-                WriteDownloadTipTrace(
-                    "RemoveTipAfterClose",
-                    $"taskId={tipItem.TaskId}, presentationKey={tipItem.PresentationKey}, title={tipItem.Title}");
                 DownloadTeachingTips.Remove(tipItem);
             }
         });

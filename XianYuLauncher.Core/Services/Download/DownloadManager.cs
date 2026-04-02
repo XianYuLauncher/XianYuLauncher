@@ -176,7 +176,6 @@ public class DownloadManager : IDownloadManager
         long? knownContentLength = null,
         CancellationToken cancellationToken = default)
     {
-        Stopwatch overallStopwatch = Stopwatch.StartNew();
         int retryCount = 0;
         Exception? lastException = null;
         int maxAttempts = Math.Max(1, DefaultMaxRetries);
@@ -201,18 +200,11 @@ public class DownloadManager : IDownloadManager
         int threadCount = maxConcurrency ?? await GetConfiguredShardCountAsync();
         await EnsureRangeSupportCacheLoadedAsync(cancellationToken);
 
-        WriteDownloadManagerTrace(
-            "DownloadFileInternal.Begin",
-            $"url={SummarizeUrl(url)}, targetPath={targetPath}, expectedSha1={expectedSha1 ?? "-"}, allowShardedDownload={allowShardedDownload}, threadCount={threadCount}, maxAttempts={maxAttempts}, knownContentLength={(normalizedKnownContentLength?.ToString() ?? "-")}");
-
         for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
             try
             {
                 Stopwatch attemptStopwatch = Stopwatch.StartNew();
-                WriteDownloadManagerTrace(
-                    "DownloadFileInternal.AttemptBegin",
-                    $"url={SummarizeUrl(url)}, attempt={attempt}/{maxAttempts}, overallElapsedMs={overallStopwatch.ElapsedMilliseconds}");
 
                 if (attempt > 1)
                 {
@@ -271,9 +263,6 @@ public class DownloadManager : IDownloadManager
                 }
                 else
                 {
-                    WriteDownloadManagerTrace(
-                        "DownloadFileInternal.UseDirect",
-                        $"url={SummarizeUrl(url)}, attempt={attempt}/{maxAttempts}, elapsedMs={attemptStopwatch.ElapsedMilliseconds}, knownContentLength={(contentLength?.ToString() ?? "-")}");
                     await DownloadFileDirectAsync(url, targetPath, contentLength, trackedProgressCallback, cancellationToken);
                 }
                 
@@ -293,10 +282,6 @@ public class DownloadManager : IDownloadManager
                     }
                 }
 
-                WriteDownloadManagerTrace(
-                    "DownloadFileInternal.AttemptSucceeded",
-                    $"url={SummarizeUrl(url)}, attempt={attempt}/{maxAttempts}, attemptElapsedMs={attemptStopwatch.ElapsedMilliseconds}, overallElapsedMs={overallStopwatch.ElapsedMilliseconds}");
-
                 if (attempt > 1)
                 {
                     _logger.LogInformation("下载重试成功: {Url}, Attempt={Attempt}/{MaxAttempts}", url, attempt, maxAttempts);
@@ -308,9 +293,6 @@ public class DownloadManager : IDownloadManager
             catch (HashVerificationException ex)
             {
                 _logger.LogError(ex, $"SHA1验证失败: {url}");
-                WriteDownloadManagerTrace(
-                    "DownloadFileInternal.HashVerificationError",
-                    $"url={SummarizeUrl(url)}, attempt={attempt}/{maxAttempts}, overallElapsedMs={overallStopwatch.ElapsedMilliseconds}, error={ex.Message}");
                 lastException = ex;
 
                 if (attempt < maxAttempts)
@@ -328,9 +310,6 @@ public class DownloadManager : IDownloadManager
             {
                 // 用户取消，返回取消结果而不是抛异常，避免 Debug 模式下 VS 中断
                 CleanupFile(targetPath);
-                WriteDownloadManagerTrace(
-                    "DownloadFileInternal.Cancelled",
-                    $"url={SummarizeUrl(url)}, overallElapsedMs={overallStopwatch.ElapsedMilliseconds}, retryCount={retryCount}");
                 return DownloadResult.Failed(url, "下载已取消", null, retryCount);
             }
             catch (HttpRequestException ex) when (IsNonRetriableHttpStatus(ex.StatusCode))
@@ -339,15 +318,12 @@ public class DownloadManager : IDownloadManager
                 _logger.LogWarning(ex, $"下载失败 (不可重试 HTTP 状态): {url}");
                 WriteDownloadManagerTrace(
                     "DownloadFileInternal.NonRetriableHttpError",
-                    $"url={SummarizeUrl(url)}, overallElapsedMs={overallStopwatch.ElapsedMilliseconds}, statusCode={(int?)ex.StatusCode ?? -1}, error={ex.Message}");
+                    $"url={SummarizeUrl(url)}, statusCode={(int?)ex.StatusCode ?? -1}, error={ex.Message}");
                 return DownloadResult.Failed(url, $"下载失败: {ex.Message}", ex, retryCount);
             }
             catch (Exception ex)
             {
                 lastException = ex;
-                WriteDownloadManagerTrace(
-                    "DownloadFileInternal.AttemptError",
-                    $"url={SummarizeUrl(url)}, attempt={attempt}/{maxAttempts}, overallElapsedMs={overallStopwatch.ElapsedMilliseconds}, errorType={ex.GetType().Name}, error={ex.Message}");
 
                 if (attempt < maxAttempts)
                 {
@@ -362,10 +338,6 @@ public class DownloadManager : IDownloadManager
                 break;
             }
         }
-
-        WriteDownloadManagerTrace(
-            "DownloadFileInternal.Failed",
-            $"url={SummarizeUrl(url)}, overallElapsedMs={overallStopwatch.ElapsedMilliseconds}, retryCount={retryCount}, error={lastException?.Message ?? "-"}");
         return DownloadResult.Failed(url, $"下载失败: {lastException?.Message}", lastException, retryCount);
     }
 
@@ -426,10 +398,6 @@ public class DownloadManager : IDownloadManager
         int maxAttempts,
         Stopwatch attemptStopwatch)
     {
-        WriteDownloadManagerTrace(
-            "DownloadFileInternal.UseNegotiatedGet",
-            $"url={SummarizeUrl(url)}, attempt={attempt}/{maxAttempts}, elapsedMs={attemptStopwatch.ElapsedMilliseconds}, knownContentLength={(knownContentLength?.ToString() ?? "-")}, rangeHint={(cachedRangeSupport?.ToString() ?? "Unknown")}, threadCount={threadCount}");
-
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
         UpdateRangeSupportHintFromDirectResponse(url, response);
@@ -469,8 +437,7 @@ public class DownloadManager : IDownloadManager
             response,
             resolvedContentLength,
             progressCallback,
-            cancellationToken,
-            attemptStopwatch);
+            cancellationToken);
         return false;
     }
 
@@ -487,9 +454,6 @@ public class DownloadManager : IDownloadManager
     {
         try
         {
-            WriteDownloadManagerTrace(
-                "DownloadFileInternal.UseSharded",
-                $"url={SummarizeUrl(url)}, attempt={attempt}/{maxAttempts}, elapsedMs={attemptStopwatch.ElapsedMilliseconds}, contentLength={contentLength}, threadCount={threadCount}");
             await DownloadFileShardedAsync(url, targetPath, contentLength, threadCount, progressCallback, cancellationToken);
             MarkHostRangeSupport(url, true, "分片下载成功");
         }
@@ -891,29 +855,16 @@ public class DownloadManager : IDownloadManager
 
     private async Task<long?> GetContentLengthAsync(string url, CancellationToken ct)
     {
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        WriteDownloadManagerTrace(
-            "GetContentLength.Begin",
-            $"url={SummarizeUrl(url)}");
         try {
             using var request = new HttpRequestMessage(HttpMethod.Head, url);
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
             if (response.IsSuccessStatusCode) {
-                WriteDownloadManagerTrace(
-                    "GetContentLength.Success",
-                    $"url={SummarizeUrl(url)}, elapsedMs={stopwatch.ElapsedMilliseconds}, statusCode={(int)response.StatusCode}, contentLength={(response.Content.Headers.ContentLength?.ToString() ?? "-")}");
                 return response.Content.Headers.ContentLength;
             }
-            WriteDownloadManagerTrace(
-                "GetContentLength.NonSuccess",
-                $"url={SummarizeUrl(url)}, elapsedMs={stopwatch.ElapsedMilliseconds}, statusCode={(int)response.StatusCode}");
         } catch (OperationCanceledException) when (ct.IsCancellationRequested) {
             throw;
         } catch (Exception ex) {
             _logger.LogDebug(ex, "获取文件长度失败，回退直连下载: {Url}", url);
-            WriteDownloadManagerTrace(
-                "GetContentLength.Error",
-                $"url={SummarizeUrl(url)}, elapsedMs={stopwatch.ElapsedMilliseconds}, errorType={ex.GetType().Name}, error={ex.Message}");
         }
         return null;
     }
@@ -923,29 +874,16 @@ public class DownloadManager : IDownloadManager
         string? host = GetRangeSupportCacheKey(url);
         if (string.IsNullOrWhiteSpace(host))
         {
-            WriteDownloadManagerTrace(
-                "CanUseShardedDownload.NoHost",
-                $"url={SummarizeUrl(url)}, totalBytes={totalBytes}");
             return false;
         }
 
         if (TryGetCachedRangeSupport(url) is bool cachedSupportsRange)
         {
-            WriteDownloadManagerTrace(
-                "CanUseShardedDownload.CacheHit",
-                $"url={SummarizeUrl(url)}, host={host}, totalBytes={totalBytes}, supportsRange={cachedSupportsRange}");
             return cachedSupportsRange;
         }
 
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        WriteDownloadManagerTrace(
-            "CanUseShardedDownload.ProbeBegin",
-            $"url={SummarizeUrl(url)}, host={host}, totalBytes={totalBytes}");
         bool supportsRange = await ProbePartialRangeSupportAsync(url, totalBytes, ct);
         MarkHostRangeSupport(url, supportsRange, supportsRange ? "Range 探测通过" : "Range 探测失败，回退直连");
-        WriteDownloadManagerTrace(
-            "CanUseShardedDownload.ProbeEnd",
-            $"url={SummarizeUrl(url)}, host={host}, totalBytes={totalBytes}, supportsRange={supportsRange}, elapsedMs={stopwatch.ElapsedMilliseconds}");
         return supportsRange;
     }
 
@@ -954,22 +892,15 @@ public class DownloadManager : IDownloadManager
         long probeEnd = Math.Min(RangeProbeSizeBytes - 1, totalBytes - 1);
         if (probeEnd < 0)
         {
-            WriteDownloadManagerTrace(
-                "ProbePartialRangeSupport.InvalidRange",
-                $"url={SummarizeUrl(url)}, totalBytes={totalBytes}, probeEnd={probeEnd}");
             return false;
         }
 
-        Stopwatch stopwatch = Stopwatch.StartNew();
         try
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             request.Headers.Range = new RangeHeaderValue(0, probeEnd);
 
             using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
-            WriteDownloadManagerTrace(
-                "ProbePartialRangeSupport.Response",
-                $"url={SummarizeUrl(url)}, elapsedMs={stopwatch.ElapsedMilliseconds}, statusCode={(int)response.StatusCode}, expectedRange=0-{probeEnd}/{totalBytes}");
             if (response.StatusCode != HttpStatusCode.PartialContent)
             {
                 return false;
@@ -1007,9 +938,6 @@ public class DownloadManager : IDownloadManager
                 }
             }
 
-            WriteDownloadManagerTrace(
-                "ProbePartialRangeSupport.Completed",
-                $"url={SummarizeUrl(url)}, elapsedMs={stopwatch.ElapsedMilliseconds}, totalRead={totalRead}, expectedBytes={expectedBytes}");
             return totalRead == expectedBytes;
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
@@ -1019,9 +947,6 @@ public class DownloadManager : IDownloadManager
         catch (Exception ex)
         {
             _logger.LogDebug(ex, "下载源 Range 探测失败，回退直连: {Url}", url);
-            WriteDownloadManagerTrace(
-                "ProbePartialRangeSupport.Error",
-                $"url={SummarizeUrl(url)}, elapsedMs={stopwatch.ElapsedMilliseconds}, errorType={ex.GetType().Name}, error={ex.Message}");
             return false;
         }
     }
@@ -1170,14 +1095,10 @@ public class DownloadManager : IDownloadManager
 
     private async Task DownloadFileDirectAsync(string url, string targetPath, long? knownTotalBytes, Action<DownloadProgressStatus>? progress, CancellationToken ct)
     {
-        Stopwatch stopwatch = Stopwatch.StartNew();
-        WriteDownloadManagerTrace(
-            "DownloadFileDirect.Begin",
-            $"url={SummarizeUrl(url)}, targetPath={targetPath}, knownTotalBytes={(knownTotalBytes?.ToString() ?? "-")}");
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         using var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
         UpdateRangeSupportHintFromDirectResponse(url, response);
-        await DownloadFileDirectFromResponseAsync(url, targetPath, response, knownTotalBytes, progress, ct, stopwatch);
+        await DownloadFileDirectFromResponseAsync(url, targetPath, response, knownTotalBytes, progress, ct);
     }
 
     private async Task DownloadFileDirectFromResponseAsync(
@@ -1186,26 +1107,18 @@ public class DownloadManager : IDownloadManager
         HttpResponseMessage response,
         long? knownTotalBytes,
         Action<DownloadProgressStatus>? progress,
-        CancellationToken ct,
-        Stopwatch stopwatch)
+        CancellationToken ct)
     {
         var tempPath = targetPath + ".tmp";
         EnsureDirectory(targetPath);
-        bool sawFirstRead = false;
         try
         {
-            WriteDownloadManagerTrace(
-                "DownloadFileDirect.HeadersReceived",
-                $"url={SummarizeUrl(url)}, elapsedMs={stopwatch.ElapsedMilliseconds}, statusCode={(int)response.StatusCode}, contentLength={(response.Content.Headers.ContentLength?.ToString() ?? "-")}");
             response.EnsureSuccessStatusCode();
 
             var totalBytes = response.Content.Headers.ContentLength ?? knownTotalBytes ?? -1L;
             var downloaded = 0L;
 
             using var stream = await response.Content.ReadAsStreamAsync(ct);
-            WriteDownloadManagerTrace(
-                "DownloadFileDirect.StreamOpened",
-                $"url={SummarizeUrl(url)}, elapsedMs={stopwatch.ElapsedMilliseconds}, totalBytes={totalBytes}");
             using var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
             var buffer = new byte[81920];
             int bytesRead;
@@ -1217,14 +1130,6 @@ public class DownloadManager : IDownloadManager
 
             while ((bytesRead = await stream.ReadAsync(buffer, ct)) > 0)
             {
-                if (!sawFirstRead)
-                {
-                    sawFirstRead = true;
-                    WriteDownloadManagerTrace(
-                        "DownloadFileDirect.FirstRead",
-                        $"url={SummarizeUrl(url)}, elapsedMs={stopwatch.ElapsedMilliseconds}, firstBytes={bytesRead}, totalBytes={totalBytes}");
-                }
-
                 await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
                 downloaded += bytesRead;
                 if (totalBytes > 0 && progress != null)
@@ -1246,10 +1151,6 @@ public class DownloadManager : IDownloadManager
                     }
                 }
             }
-
-            WriteDownloadManagerTrace(
-                "DownloadFileDirect.Completed",
-                $"url={SummarizeUrl(url)}, elapsedMs={stopwatch.ElapsedMilliseconds}, downloaded={downloaded}, totalBytes={totalBytes}, sawFirstRead={sawFirstRead}");
         }
         catch
         {

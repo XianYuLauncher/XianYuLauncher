@@ -51,23 +51,17 @@ public sealed class CommunityResourceInstallService : ICommunityResourceInstallS
 
             descriptor.DownloadUrl = resolvedDownloadUrl;
 
-            WriteDownloadTrace(
-                "StartInstallAsync.BuildDependencies.Begin",
-                $"resource={descriptor.ResourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}, resourceType={installPlan.NormalizedResourceType}");
             IReadOnlyList<ResourceDependency> dependencies = await _modResourceDownloadOrchestrator.BuildDependenciesAsync(
                 installPlan,
                 descriptor,
                 cancellationToken);
             WriteDownloadTrace(
-                "StartInstallAsync.BuildDependencies.End",
+                "StartInstallAsync.BuildDependencies",
                 $"resource={descriptor.ResourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}, dependencyCount={dependencies.Count}");
 
             cancellationToken.ThrowIfCancellationRequested();
             if (installPlan.ResourceKind == CommunityResourceKind.World)
             {
-                WriteDownloadTrace(
-                    "StartInstallAsync.EnqueueWorldDownload.Begin",
-                    $"resource={descriptor.ResourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}, targetDirectory={installPlan.PrimaryTargetDirectory}, fileName={Path.GetFileName(installPlan.SavePath)}");
                 string taskId = await _downloadTaskManager.StartWorldDownloadWithTaskIdAsync(
                     descriptor.ResourceName,
                     descriptor.DownloadUrl,
@@ -85,9 +79,6 @@ public sealed class CommunityResourceInstallService : ICommunityResourceInstallS
                 return taskId;
             }
 
-            WriteDownloadTrace(
-                "StartInstallAsync.EnqueueResourceDownload.Begin",
-                $"resource={descriptor.ResourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}, savePath={installPlan.SavePath}");
             string operationId = await _modResourceDownloadOrchestrator.StartResourceDownloadWithTaskIdAsync(
                 descriptor.ResourceName,
                 installPlan,
@@ -121,6 +112,8 @@ public sealed class CommunityResourceInstallService : ICommunityResourceInstallS
         switch (stage)
         {
             case "StartInstallAsync.Begin":
+            case "StartInstallAsync.ResolveDownloadUrl":
+            case "StartInstallAsync.BuildDependencies":
             case "StartInstallAsync.EnqueueWorldDownload.End":
             case "StartInstallAsync.EnqueueResourceDownload.End":
                 Serilog.Log.Information("[CommunityResourceInstallService:{Stage}] {Message}", stage, message);
