@@ -129,7 +129,7 @@
                         <TextBlock 
                             x:Name="TypeTextBlock"
                             Style="{StaticResource CaptionTextBlockStyle}"
-                            Foreground="White" />
+                            Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
                     </Border>
                     <Border 
                         Background="{ThemeResource ControlFillColorSecondaryBrush}"
