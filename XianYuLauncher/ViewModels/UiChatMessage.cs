@@ -27,7 +27,14 @@ namespace XianYuLauncher.ViewModels
         public string? AIHistoryContent
         {
             get => _aiHistoryContent;
-            set => SetProperty(ref _aiHistoryContent, value);
+            set
+            {
+                if (SetProperty(ref _aiHistoryContent, value))
+                {
+                    OnPropertyChanged(nameof(HasToolOutputContent));
+                    OnPropertyChanged(nameof(FormattedToolOutputContent));
+                }
+            }
         }
 
         [ObservableProperty]
@@ -35,6 +42,36 @@ namespace XianYuLauncher.ViewModels
 
         [ObservableProperty]
         private List<ToolCallInfo>? _toolCalls;
+
+        private string? _toolInputContent;
+
+        public string? ToolInputContent
+        {
+            get => _toolInputContent;
+            set
+            {
+                if (SetProperty(ref _toolInputContent, value))
+                {
+                    OnPropertyChanged(nameof(HasToolInputContent));
+                    OnPropertyChanged(nameof(FormattedToolInputContent));
+                }
+            }
+        }
+
+        private string? _toolOutputContent;
+
+        public string? ToolOutputContent
+        {
+            get => _toolOutputContent;
+            set
+            {
+                if (SetProperty(ref _toolOutputContent, value))
+                {
+                    OnPropertyChanged(nameof(HasToolOutputContent));
+                    OnPropertyChanged(nameof(FormattedToolOutputContent));
+                }
+            }
+        }
 
         [ObservableProperty]
         private List<ChatImageAttachment> _imageAttachments = [];
@@ -56,6 +93,10 @@ namespace XianYuLauncher.ViewModels
         public bool HasImageAttachments => ImageAttachments.Count > 0;
         public bool ShowUserText => IsUser && !string.IsNullOrWhiteSpace(Content);
         public bool ShowAssistantText => IsAssistant && !SuppressContentRendering && !string.IsNullOrWhiteSpace(Content);
+        public bool HasToolInputContent => !string.IsNullOrWhiteSpace(ToolInputContent);
+        public bool HasToolOutputContent => !string.IsNullOrWhiteSpace(GetToolOutputSource());
+        public string FormattedToolInputContent => ToolInputContent ?? string.Empty;
+        public string FormattedToolOutputContent => GetToolOutputSource() ?? "等待工具返回...";
         public bool ShouldShowMessageContainer => ShowUserText || HasImageAttachments || ShowAssistantText || IsTool;
         
         public UiChatMessage(string role, string content, bool includeInAIHistory = true, IEnumerable<ChatImageAttachment>? imageAttachments = null)
@@ -83,6 +124,8 @@ namespace XianYuLauncher.ViewModels
             OnPropertyChanged(nameof(IsTool));
             OnPropertyChanged(nameof(ShowUserText));
             OnPropertyChanged(nameof(ShowAssistantText));
+            OnPropertyChanged(nameof(HasToolOutputContent));
+            OnPropertyChanged(nameof(FormattedToolOutputContent));
             OnPropertyChanged(nameof(ShouldShowMessageContainer));
         }
 
@@ -107,6 +150,16 @@ namespace XianYuLauncher.ViewModels
                 ContentType = attachment.ContentType,
                 DataUrl = attachment.DataUrl
             }).ToList() ?? [];
+        }
+
+        private string? GetToolOutputSource()
+        {
+            if (!string.IsNullOrWhiteSpace(ToolOutputContent))
+            {
+                return ToolOutputContent;
+            }
+
+            return string.IsNullOrWhiteSpace(AIHistoryContent) ? null : AIHistoryContent;
         }
     }
 }

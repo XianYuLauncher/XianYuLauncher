@@ -348,7 +348,9 @@ public partial class ErrorAnalysisSessionState : ObservableObject
             AIHistoryImageAttachments = CloneImageAttachments(message.AIHistoryImageAttachments),
             SuppressContentRendering = message.SuppressContentRendering,
             ToolCallId = message.ToolCallId,
-            ToolCalls = CloneToolCalls(message.ToolCalls)
+            ToolCalls = CloneToolCalls(message.ToolCalls),
+            ToolInputContent = message.ToolInputContent,
+            ToolOutputContent = message.ToolOutputContent
         }).ToList();
     }
 

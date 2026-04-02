@@ -80,9 +80,13 @@ public sealed class LauncherAIWorkspacePersistenceServiceTests : IDisposable
                 [
                     new LauncherAIChatMessageStorageModel
                     {
-                        Role = "user",
-                        Content = "你好",
+                        Role = "tool",
+                        Content = "patchGlobalLaunchSettings",
                         DisplayRoleText = "user",
+                        ToolCallId = "call_1",
+                        ToolInputContent = "{\"window_width\":1280}",
+                        ToolOutputContent = "已准备提案",
+                        AIHistoryContent = "已准备提案",
                         ImageAttachments = []
                     }
                 ],
@@ -113,6 +117,9 @@ public sealed class LauncherAIWorkspacePersistenceServiceTests : IDisposable
         loaded.Interruption.Should().NotBeNull();
         loaded.Session.ChatInput.Should().Be("草稿");
         loaded.Session.ChatMessages.Should().ContainSingle();
+        loaded.Session.ChatMessages[0].Role.Should().Be("tool");
+        loaded.Session.ChatMessages[0].ToolInputContent.Should().Be("{\"window_width\":1280}");
+        loaded.Session.ChatMessages[0].ToolOutputContent.Should().Be("已准备提案");
         loaded.Session.ActionProposals.Should().ContainSingle();
         loaded.Session.ActionProposals[0].ActionType.Should().Be("launchGame");
     }
