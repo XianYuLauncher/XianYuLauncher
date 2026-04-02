@@ -813,9 +813,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         if (sender is ResourceFilterFlyout filterControl)
         {
             ViewModel.IsShowAllVersions = filterControl.IsShowAllVersions;
-
-            // 注意：版本 TokenView 的刷新已在 UserControl 的 Click 事件中完成
-            // 这里不需要再调用 RefreshCurrentPageFilterTokenItems() 刷新全部三个
+            RefreshCurrentPageFilterTokenItems();
         }
     }
 
