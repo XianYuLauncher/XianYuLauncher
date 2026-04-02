@@ -17,6 +17,7 @@ internal static class ResourceCenterServiceExtensions
         services.AddSingleton<ICommunityResourceInstallPlanner, CommunityResourceInstallPlanner>();
         services.AddSingleton<ICommunityResourceMetadataService, CommunityResourceMetadataService>();
         services.AddSingleton<ICommunityResourceInventoryService, CommunityResourceInventoryService>();
+        services.AddSingleton<ICommunityResourceWorldTargetResolver, CommunityResourceWorldTargetResolver>();
         services.AddSingleton<ICommunityResourceUpdateCheckService, CommunityResourceUpdateCheckService>();
         services.AddSingleton<ICommunityResourceUpdateService, CommunityResourceUpdateService>();
 
