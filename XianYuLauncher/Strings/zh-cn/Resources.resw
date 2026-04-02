@@ -487,10 +487,10 @@
     <value>刷新</value>
   </data>
   <data name="Settings_JavaSelectionMode_Auto.Content" xml:space="preserve">
-    <value>自动从列表内选择 Java</value>
+    <value>自动</value>
   </data>
   <data name="Settings_JavaSelectionMode_Manual.Content" xml:space="preserve">
-    <value>手动选择 Java</value>
+    <value>手动</value>
   </data>
   <data name="Settings_Browse.Content" xml:space="preserve">
     <value>浏览...</value>
@@ -566,12 +566,6 @@
   </data>
   <data name="TutorialPage_JavaSelectionMode.Text" xml:space="preserve">
     <value>Java 选择方式</value>
-  </data>
-  <data name="TutorialPage_AutoJavaSelection.Content" xml:space="preserve">
-    <value>自动从列表内选择 Java</value>
-  </data>
-  <data name="TutorialPage_ManualJavaSelection.Content" xml:space="preserve">
-    <value>手动选择 Java</value>
   </data>
   <data name="TutorialPage_JavaPathTitle.Text" xml:space="preserve">
     <value>Java 路径</value>
@@ -2726,10 +2720,10 @@
     <value>Java 选择模式</value>
   </data>
   <data name="TutorialPage_JavaSelectionMode_Auto.Content" xml:space="preserve">
-    <value>自动选择</value>
+    <value>自动</value>
   </data>
   <data name="TutorialPage_JavaSelectionMode_Manual.Content" xml:space="preserve">
-    <value>手动指定</value>
+    <value>手动</value>
   </data>
   <data name="TutorialPage_AccountLogin_Title.Text" xml:space="preserve">
     <value>账户登录</value>

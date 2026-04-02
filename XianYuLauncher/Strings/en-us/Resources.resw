@@ -487,10 +487,10 @@
     <value>Refresh</value>
   </data>
   <data name="Settings_JavaSelectionMode_Auto.Content" xml:space="preserve">
-    <value>Auto-select Java from list</value>
+    <value>Auto</value>
   </data>
   <data name="Settings_JavaSelectionMode_Manual.Content" xml:space="preserve">
-    <value>Manually select Java</value>
+    <value>Manual</value>
   </data>
   <data name="Settings_Browse.Content" xml:space="preserve">
     <value>Browse...</value>
@@ -566,12 +566,6 @@
   </data>
   <data name="TutorialPage_JavaSelectionMode.Text" xml:space="preserve">
     <value>Java Selection Mode</value>
-  </data>
-  <data name="TutorialPage_AutoJavaSelection.Content" xml:space="preserve">
-    <value>Auto-select Java from list</value>
-  </data>
-  <data name="TutorialPage_ManualJavaSelection.Content" xml:space="preserve">
-    <value>Manually select Java</value>
   </data>
   <data name="TutorialPage_JavaPathTitle.Text" xml:space="preserve">
     <value>Java Path</value>
@@ -2723,10 +2717,10 @@ Continue downloading?</value>
     <value>Java Selection Mode</value>
   </data>
   <data name="TutorialPage_JavaSelectionMode_Auto.Content" xml:space="preserve">
-    <value>Auto Select</value>
+    <value>Auto</value>
   </data>
   <data name="TutorialPage_JavaSelectionMode_Manual.Content" xml:space="preserve">
-    <value>Manual Specify</value>
+    <value>Manual</value>
   </data>
   <data name="TutorialPage_AccountLogin_Title.Text" xml:space="preserve">
     <value>Account Login</value>

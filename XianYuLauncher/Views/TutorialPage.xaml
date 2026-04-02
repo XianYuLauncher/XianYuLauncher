@@ -330,14 +330,14 @@
                                 <RadioButton
                                     x:Uid="TutorialPage_JavaSelectionMode_Auto"
                                     GroupName="JavaMode"
-                                    Content="自动选择"
+                                    Content="自动"
                                     IsChecked="{x:Bind ViewModel.JavaSelectionMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Auto, Mode=OneWay}"
                                     Command="{x:Bind ViewModel.SwitchJavaSelectionModeCommand}"
                                     CommandParameter="Auto"/>
                                 <RadioButton
                                     x:Uid="TutorialPage_JavaSelectionMode_Manual"
                                     GroupName="JavaMode"
-                                    Content="手动指定"
+                                    Content="手动"
                                     IsChecked="{x:Bind ViewModel.JavaSelectionMode, Converter={StaticResource EnumToBooleanConverter}, ConverterParameter=Manual, Mode=OneWay}"
                                     Command="{x:Bind ViewModel.SwitchJavaSelectionModeCommand}"
                                     CommandParameter="Manual"/>
