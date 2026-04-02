@@ -297,7 +297,8 @@ public class AssetManagerTests : IDisposable
             {
                 Id = "1.20",
                 Url = "https://example.com/index.json",
-                Sha1 = "abc123"
+                Sha1 = "abc123",
+                Size = 4096
             }
         };
 
@@ -307,6 +308,7 @@ public class AssetManagerTests : IDisposable
                 It.IsAny<string>(),
                 It.IsAny<string>(),
                 It.IsAny<Action<DownloadProgressStatus>>(),
+                It.IsAny<long?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(DownloadResult.Succeeded("index.json", "https://example.com/index.json"));
 
@@ -323,6 +325,7 @@ public class AssetManagerTests : IDisposable
                 It.Is<string>(p => p.EndsWith("1.20.json")),
                 "abc123",
                 It.IsAny<Action<DownloadProgressStatus>>(),
+                4096,
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }

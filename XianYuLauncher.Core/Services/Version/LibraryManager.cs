@@ -93,6 +93,7 @@ public class LibraryManager : ILibraryManager
                         Url = library.Downloads.Artifact.Url,
                         TargetPath = libraryPath,
                         ExpectedSha1 = library.Downloads.Artifact.Sha1,
+                        ExpectedSize = library.Downloads.Artifact.Size > 0 ? library.Downloads.Artifact.Size : null,
                         Description = $"库文件: {library.Name}",
                         Priority = 0
                     });
@@ -115,6 +116,7 @@ public class LibraryManager : ILibraryManager
                                 Url = nativeDownload.Url,
                                 TargetPath = nativePath,
                                 ExpectedSha1 = nativeDownload.Sha1,
+                                ExpectedSize = nativeDownload.Size > 0 ? nativeDownload.Size : null,
                                 Description = $"原生库: {library.Name} ({nativeClassifier})",
                                 Priority = 1
                             });

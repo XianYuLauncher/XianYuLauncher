@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.IO;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
@@ -29,39 +30,120 @@ public sealed class CommunityResourceInstallService : ICommunityResourceInstallS
 
         cancellationToken.ThrowIfCancellationRequested();
 
-        string resolvedDownloadUrl = _modResourceDownloadOrchestrator.EnsureDownloadUrl(descriptor);
-        if (string.IsNullOrWhiteSpace(resolvedDownloadUrl))
-        {
-            throw new InvalidOperationException("无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
-        }
+        Stopwatch stopwatch = Stopwatch.StartNew();
+        WriteDownloadTrace(
+            "StartInstallAsync.Begin",
+            $"resource={descriptor.ResourceName}, type={installPlan.NormalizedResourceType}, kind={installPlan.ResourceKind}, targetVersion={installPlan.TargetVersionName ?? "-"}, targetSaveName={installPlan.TargetSaveName ?? "-"}, savePath={installPlan.SavePath}, showInTeachingTip={showInTeachingTip}, teachingTipGroupKey={teachingTipGroupKey ?? "-"}");
 
-        descriptor.DownloadUrl = resolvedDownloadUrl;
-        var dependencies = await _modResourceDownloadOrchestrator.BuildDependenciesAsync(
-            installPlan,
-            descriptor,
-            cancellationToken);
-
-        cancellationToken.ThrowIfCancellationRequested();
-        if (installPlan.ResourceKind == CommunityResourceKind.World)
+        try
         {
-            return await _downloadTaskManager.StartWorldDownloadWithTaskIdAsync(
+            string resolvedDownloadUrl = _modResourceDownloadOrchestrator.EnsureDownloadUrl(descriptor);
+            WriteDownloadTrace(
+                "StartInstallAsync.ResolveDownloadUrl",
+                $"resource={descriptor.ResourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}, url={SummarizeUrl(resolvedDownloadUrl)}");
+            if (string.IsNullOrWhiteSpace(resolvedDownloadUrl))
+            {
+                WriteDownloadTrace(
+                    "StartInstallAsync.ResolveDownloadUrlFailed",
+                    $"resource={descriptor.ResourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}");
+                throw new InvalidOperationException("无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
+            }
+
+            descriptor.DownloadUrl = resolvedDownloadUrl;
+
+            WriteDownloadTrace(
+                "StartInstallAsync.BuildDependencies.Begin",
+                $"resource={descriptor.ResourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}, resourceType={installPlan.NormalizedResourceType}");
+            IReadOnlyList<ResourceDependency> dependencies = await _modResourceDownloadOrchestrator.BuildDependenciesAsync(
+                installPlan,
+                descriptor,
+                cancellationToken);
+            WriteDownloadTrace(
+                "StartInstallAsync.BuildDependencies.End",
+                $"resource={descriptor.ResourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}, dependencyCount={dependencies.Count}");
+
+            cancellationToken.ThrowIfCancellationRequested();
+            if (installPlan.ResourceKind == CommunityResourceKind.World)
+            {
+                WriteDownloadTrace(
+                    "StartInstallAsync.EnqueueWorldDownload.Begin",
+                    $"resource={descriptor.ResourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}, targetDirectory={installPlan.PrimaryTargetDirectory}, fileName={Path.GetFileName(installPlan.SavePath)}");
+                string taskId = await _downloadTaskManager.StartWorldDownloadWithTaskIdAsync(
+                    descriptor.ResourceName,
+                    descriptor.DownloadUrl,
+                    installPlan.PrimaryTargetDirectory,
+                    Path.GetFileName(installPlan.SavePath),
+                    descriptor.ResourceIconUrl,
+                    showInTeachingTip: showInTeachingTip,
+                    teachingTipGroupKey: teachingTipGroupKey,
+                    communityResourceProvider: descriptor.CommunityResourceProvider,
+                    dependencies: dependencies,
+                    expectedSize: descriptor.ExpectedSize);
+                WriteDownloadTrace(
+                    "StartInstallAsync.EnqueueWorldDownload.End",
+                    $"resource={descriptor.ResourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}, taskId={taskId}");
+                return taskId;
+            }
+
+            WriteDownloadTrace(
+                "StartInstallAsync.EnqueueResourceDownload.Begin",
+                $"resource={descriptor.ResourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}, savePath={installPlan.SavePath}");
+            string operationId = await _modResourceDownloadOrchestrator.StartResourceDownloadWithTaskIdAsync(
                 descriptor.ResourceName,
-                descriptor.DownloadUrl,
-                installPlan.PrimaryTargetDirectory,
-                Path.GetFileName(installPlan.SavePath),
-                descriptor.ResourceIconUrl,
-                showInTeachingTip: showInTeachingTip,
-                teachingTipGroupKey: teachingTipGroupKey,
-                communityResourceProvider: descriptor.CommunityResourceProvider,
-                dependencies: dependencies);
+                installPlan,
+                descriptor,
+                dependencies,
+                showInTeachingTip,
+                teachingTipGroupKey);
+            WriteDownloadTrace(
+                "StartInstallAsync.EnqueueResourceDownload.End",
+                $"resource={descriptor.ResourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}, taskId={operationId}");
+            return operationId;
+        }
+        catch (OperationCanceledException)
+        {
+            WriteDownloadTrace(
+                "StartInstallAsync.Cancelled",
+                $"resource={descriptor.ResourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}");
+            throw;
+        }
+        catch (Exception ex)
+        {
+            WriteDownloadTrace(
+                "StartInstallAsync.Error",
+                $"resource={descriptor.ResourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}, errorType={ex.GetType().Name}, error={ex.Message}");
+            throw;
+        }
+    }
+
+    private static void WriteDownloadTrace(string stage, string message)
+    {
+        switch (stage)
+        {
+            case "StartInstallAsync.Begin":
+            case "StartInstallAsync.EnqueueWorldDownload.End":
+            case "StartInstallAsync.EnqueueResourceDownload.End":
+                Serilog.Log.Information("[CommunityResourceInstallService:{Stage}] {Message}", stage, message);
+                break;
+            case "StartInstallAsync.ResolveDownloadUrlFailed":
+            case "StartInstallAsync.Cancelled":
+                Serilog.Log.Warning("[CommunityResourceInstallService:{Stage}] {Message}", stage, message);
+                break;
+            case "StartInstallAsync.Error":
+                Serilog.Log.Error("[CommunityResourceInstallService:{Stage}] {Message}", stage, message);
+                break;
+        }
+    }
+
+    private static string SummarizeUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return "-";
         }
 
-        return await _modResourceDownloadOrchestrator.StartResourceDownloadWithTaskIdAsync(
-            descriptor.ResourceName,
-            installPlan,
-            descriptor,
-            dependencies,
-            showInTeachingTip,
-            teachingTipGroupKey);
+        return Uri.TryCreate(url, UriKind.Absolute, out Uri? uri)
+            ? $"{uri.Scheme}://{uri.Host}{uri.AbsolutePath}"
+            : url;
     }
 }

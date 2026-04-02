@@ -237,7 +237,8 @@ public interface IDownloadTaskManager
         IEnumerable<ResourceDependency>? dependencies = null,
         bool showInTeachingTip = false,
         string? teachingTipGroupKey = null,
-        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown);
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown,
+        long? expectedSize = null);
 
     Task<string> StartResourceDownloadWithTaskIdAsync(
         string resourceName,
@@ -248,7 +249,8 @@ public interface IDownloadTaskManager
         IEnumerable<ResourceDependency>? dependencies = null,
         bool showInTeachingTip = false,
         string? teachingTipGroupKey = null,
-        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown);
+        CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown,
+        long? expectedSize = null);
 
     /// <summary>
     /// 启动世界下载（下载zip并解压到saves目录）
@@ -267,7 +269,8 @@ public interface IDownloadTaskManager
         bool showInTeachingTip = false,
         string? teachingTipGroupKey = null,
         CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown,
-        IEnumerable<ResourceDependency>? dependencies = null);
+        IEnumerable<ResourceDependency>? dependencies = null,
+        long? expectedSize = null);
 
     Task<string> StartWorldDownloadWithTaskIdAsync(
         string worldName,
@@ -278,5 +281,6 @@ public interface IDownloadTaskManager
         bool showInTeachingTip = false,
         string? teachingTipGroupKey = null,
         CommunityResourceProvider communityResourceProvider = CommunityResourceProvider.Unknown,
-        IEnumerable<ResourceDependency>? dependencies = null);
+        IEnumerable<ResourceDependency>? dependencies = null,
+        long? expectedSize = null);
 }

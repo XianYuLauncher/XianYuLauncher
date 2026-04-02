@@ -180,11 +180,15 @@ public partial class ShellViewModel : ObservableRecipient
             StatusMessage = presentation.StatusMessage
         };
         DownloadTeachingTips.Add(item);
+        WriteDownloadTipTrace(
+            "CreateTip",
+            $"taskId={info.TaskId}, presentationKey={presentationKey}, state={info.State}, progress={info.Progress:F1}, showInTeachingTip={info.ShowInTeachingTip}, title={presentation.DisplayName}");
         return item;
     }
 
     private void RefreshTipFromActiveTask(ShellDownloadTipItem tip, DownloadTaskInfo taskInfo)
     {
+        bool wasOpen = tip.IsOpen;
         CancelScheduledTipRemoval(tip);
         var presentation = _downloadTaskPresentationService.Resolve(taskInfo);
         tip.TaskId = taskInfo.TaskId;
@@ -195,6 +199,13 @@ public partial class ShellViewModel : ObservableRecipient
         if (taskInfo.ShowInTeachingTip)
         {
             tip.IsOpen = true;
+        }
+
+        if (!wasOpen && tip.IsOpen)
+        {
+            WriteDownloadTipTrace(
+                "OpenTip",
+                $"taskId={taskInfo.TaskId}, presentationKey={tip.PresentationKey}, state={taskInfo.State}, progress={taskInfo.Progress:F1}, status={presentation.StatusMessage}");
         }
     }
 
@@ -248,6 +259,10 @@ public partial class ShellViewModel : ObservableRecipient
     private void ScheduleTipRemoval(ShellDownloadTipItem item, string taskId)
     {
         CancelScheduledTipRemoval(item);
+
+        WriteDownloadTipTrace(
+            "ScheduleTipRemoval",
+            $"taskId={taskId}, presentationKey={item.PresentationKey}, title={item.Title}");
 
         var closeCts = new CancellationTokenSource();
         _pendingTipCloseOperations[item] = closeCts;
@@ -310,9 +325,20 @@ public partial class ShellViewModel : ObservableRecipient
             CancelScheduledTipRemoval(tipItem);
             if (DownloadTeachingTips.Contains(tipItem))
             {
+                WriteDownloadTipTrace(
+                    "RemoveTipAfterClose",
+                    $"taskId={tipItem.TaskId}, presentationKey={tipItem.PresentationKey}, title={tipItem.Title}");
                 DownloadTeachingTips.Remove(tipItem);
             }
         });
+    }
+
+    private static void WriteDownloadTipTrace(string stage, string message)
+    {
+        if (stage == "OpenTip")
+        {
+            Serilog.Log.Information("[ShellViewModel:{Stage}] {Message}", stage, message);
+        }
     }
 
     [RelayCommand]

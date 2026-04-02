@@ -10,6 +10,8 @@ public sealed class CommunityResourceInstallDescriptor
 
     public string DownloadUrl { get; set; } = string.Empty;
 
+    public long? ExpectedSize { get; init; }
+
     public CommunityResourceProvider CommunityResourceProvider { get; init; } = CommunityResourceProvider.Unknown;
 
     public ModrinthVersion? OriginalVersion { get; init; }

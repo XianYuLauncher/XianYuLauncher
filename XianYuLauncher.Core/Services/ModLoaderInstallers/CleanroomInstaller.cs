@@ -439,7 +439,8 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                 downloadUrl,
                 originalUrl,
                 libraryPath,
-                sha1));
+                sha1,
+                library.Downloads?.Artifact?.Size > 0 ? library.Downloads.Artifact.Size : null));
         }
 
         if (downloadPlans.Count == 0)

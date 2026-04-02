@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
 using System.Threading;
@@ -504,7 +505,8 @@ public class FallbackDownloadManager
         string resourceType,
         Action<double>? progressCallback = null,
         CancellationToken cancellationToken = default,
-        string? expectedSha1 = null)
+        string? expectedSha1 = null,
+        long? expectedSize = null)
     {
         return await DownloadFileForCommunityWithStatusAsync(
             originalUrl,
@@ -512,7 +514,8 @@ public class FallbackDownloadManager
             resourceType,
             progressCallback == null ? null : status => progressCallback(status.Percent),
             cancellationToken,
-            expectedSha1);
+            expectedSha1,
+            expectedSize);
     }
 
     /// <summary>
@@ -524,11 +527,17 @@ public class FallbackDownloadManager
         string resourceType,
         Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default,
-        string? expectedSha1 = null)
+        string? expectedSha1 = null,
+        long? expectedSize = null)
     {
+        Stopwatch stopwatch = Stopwatch.StartNew();
         var attemptedSources = new List<string>();
         var errors = new List<string>();
         var sourcesToTry = GetCommunitySourceOrder(resourceType);
+
+        WriteFallbackTrace(
+            "CommunityDownload.Begin",
+            $"resourceType={resourceType}, url={SummarizeUrl(originalUrl)}, targetPath={targetPath}, sourceOrder={string.Join(" -> ", sourcesToTry)}");
 
         _logger?.LogDebug("社区资源下载 {Url}，回退顺序: {Sources}", originalUrl, string.Join(" -> ", sourcesToTry));
         _logger?.LogWarning("[社区资源回退] 开始下载, 类型={ResourceType}, 原始URL={Url}, 尝试顺序={Sources}",
@@ -544,15 +553,22 @@ public class FallbackDownloadManager
             attemptedSources.Add(sourceKey);
 
             var transformedUrl = TransformUrl(originalUrl, source, resourceType);
+            Stopwatch sourceStopwatch = Stopwatch.StartNew();
+            WriteFallbackTrace(
+                "CommunityDownload.SourceBegin",
+                $"elapsedMs={stopwatch.ElapsedMilliseconds}, source={sourceKey}, attempt={index + 1}/{sourcesToTry.Count}, transformedUrl={SummarizeUrl(transformedUrl)}");
             _logger?.LogDebug("尝试源 {Source}: {Url}", sourceKey, transformedUrl);
             _logger?.LogWarning("[社区资源回退] 尝试源 {Source} ({Index}/{Total}), URL={Url}",
                 sourceKey, index + 1, sourcesToTry.Count, transformedUrl);
 
             var result = await TryDownloadWithRetryAsync(
-                transformedUrl, targetPath, expectedSha1, progressCallback, cancellationToken);
+                transformedUrl, targetPath, expectedSha1, progressCallback, cancellationToken, sourceKey, expectedSize);
 
             if (result.Success)
             {
+                WriteFallbackTrace(
+                    "CommunityDownload.SourceSucceeded",
+                    $"elapsedMs={stopwatch.ElapsedMilliseconds}, sourceElapsedMs={sourceStopwatch.ElapsedMilliseconds}, source={sourceKey}, attempted={string.Join(" -> ", attemptedSources)}");
                 _logger?.LogInformation("社区资源下载成功，使用源: {Source}", sourceKey);
                 _logger?.LogWarning("[社区资源回退] 下载成功, 使用源={Source}, 已尝试={Attempted}",
                     sourceKey, string.Join(" -> ", attemptedSources));
@@ -560,6 +576,9 @@ public class FallbackDownloadManager
             }
 
             errors.Add($"[{sourceKey}] {result.ErrorMessage}");
+            WriteFallbackTrace(
+                "CommunityDownload.SourceFailed",
+                $"elapsedMs={stopwatch.ElapsedMilliseconds}, sourceElapsedMs={sourceStopwatch.ElapsedMilliseconds}, source={sourceKey}, error={result.ErrorMessage ?? "-"}, shouldFallback={ShouldFallback(result)}, autoFallback={AutoFallbackEnabled}");
             _logger?.LogWarning("源 {Source} 下载失败: {Error}", sourceKey, result.ErrorMessage);
             _logger?.LogWarning("[社区资源回退] 源 {Source} 失败, 错误={Error}, 当前已尝试={Attempted}",
                 sourceKey, result.ErrorMessage, string.Join(" -> ", attemptedSources));
@@ -568,6 +587,9 @@ public class FallbackDownloadManager
         }
 
         var allErrors = string.Join("; ", errors);
+        WriteFallbackTrace(
+            "CommunityDownload.AllFailed",
+            $"elapsedMs={stopwatch.ElapsedMilliseconds}, attempted={string.Join(" -> ", attemptedSources)}, errors={allErrors}");
         _logger?.LogError("社区资源所有源都失败: {Errors}", allErrors);
         _logger?.LogError("[社区资源回退] 所有源失败, 已尝试={Attempted}, 错误={Errors}",
             string.Join(" -> ", attemptedSources), allErrors);
@@ -834,13 +856,20 @@ public class FallbackDownloadManager
         string targetPath,
         string? expectedSha1,
         Action<DownloadProgressStatus>? progressCallback,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? sourceKey = null,
+        long? expectedSize = null)
     {
         DownloadResult? lastResult = null;
+        Stopwatch stopwatch = Stopwatch.StartNew();
 
         for (int retry = 0; retry <= MaxRetriesPerSource; retry++)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            WriteFallbackTrace(
+                "TryDownloadWithRetry.AttemptBegin",
+                $"source={sourceKey ?? "-"}, attempt={retry + 1}/{MaxRetriesPerSource + 1}, elapsedMs={stopwatch.ElapsedMilliseconds}, url={SummarizeUrl(url)}");
 
             if (retry > 0)
             {
@@ -850,12 +879,24 @@ public class FallbackDownloadManager
                 await Task.Delay(delayMs, cancellationToken);
             }
 
-            lastResult = await _innerManager.DownloadFileAsync(
-                url,
-                targetPath,
-                expectedSha1,
-                progressCallback,
-                cancellationToken);
+            lastResult = expectedSize.HasValue
+                ? await _innerManager.DownloadFileAsync(
+                    url,
+                    targetPath,
+                    expectedSha1,
+                    progressCallback,
+                    expectedSize,
+                    cancellationToken)
+                : await _innerManager.DownloadFileAsync(
+                    url,
+                    targetPath,
+                    expectedSha1,
+                    progressCallback,
+                    cancellationToken);
+
+            WriteFallbackTrace(
+                "TryDownloadWithRetry.AttemptEnd",
+                $"source={sourceKey ?? "-"}, attempt={retry + 1}/{MaxRetriesPerSource + 1}, elapsedMs={stopwatch.ElapsedMilliseconds}, success={lastResult.Success}, retryCount={lastResult.RetryCount}, error={lastResult.ErrorMessage ?? "-"}");
 
             if (lastResult.Success)
             {
@@ -879,6 +920,33 @@ public class FallbackDownloadManager
         }
 
         return lastResult ?? DownloadResult.Failed(url, "下载失败，已达到最大重试次数");
+    }
+
+    private static void WriteFallbackTrace(string stage, string message)
+    {
+        switch (stage)
+        {
+            case "CommunityDownload.Begin":
+            case "CommunityDownload.SourceSucceeded":
+                Serilog.Log.Information("[FallbackDownloadManager:{Stage}] {Message}", stage, message);
+                break;
+            case "CommunityDownload.SourceFailed":
+            case "CommunityDownload.AllFailed":
+                Serilog.Log.Warning("[FallbackDownloadManager:{Stage}] {Message}", stage, message);
+                break;
+        }
+    }
+
+    private static string SummarizeUrl(string? url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return "-";
+        }
+
+        return Uri.TryCreate(url, UriKind.Absolute, out Uri? uri)
+            ? $"{uri.Scheme}://{uri.Host}{uri.AbsolutePath}"
+            : url;
     }
 
     private static bool IsNonRetriableHttpStatus(DownloadResult result)

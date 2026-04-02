@@ -61,6 +61,17 @@ public interface IDownloadManager
         CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// 下载单个文件到指定路径，并显式提供已知文件大小，避免下载器为分片决策额外执行阻塞式 HEAD 预探测。
+    /// </summary>
+    Task<DownloadResult> DownloadFileAsync(
+        string url,
+        string targetPath,
+        string? expectedSha1,
+        Action<DownloadProgressStatus>? progressCallback,
+        long? knownContentLength,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// 下载单个文件到指定路径，并可显式控制是否允许分片下载。
     /// </summary>
     /// <param name="url">下载URL</param>
@@ -75,6 +86,18 @@ public interface IDownloadManager
         string targetPath,
         string? expectedSha1,
         Action<DownloadProgressStatus>? progressCallback,
+        bool allowShardedDownload,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// 下载单个文件到指定路径，并显式控制是否允许分片下载，同时可传入已知文件大小。
+    /// </summary>
+    Task<DownloadResult> DownloadFileAsync(
+        string url,
+        string targetPath,
+        string? expectedSha1,
+        Action<DownloadProgressStatus>? progressCallback,
+        long? knownContentLength,
         bool allowShardedDownload,
         CancellationToken cancellationToken = default);
         

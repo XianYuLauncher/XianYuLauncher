@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
+using System.Text.Json;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -41,23 +42,20 @@ public sealed class DownloadManagerTests : IDisposable
     {
         byte[] content = CreatePayload(12 * 1024 * 1024);
         string expectedSha1 = ComputeSha1(content);
+        var methods = new ConcurrentQueue<HttpMethod>();
         var rangeRequests = new ConcurrentQueue<string?>();
         var handler = new StubHttpMessageHandler(request =>
         {
+            methods.Enqueue(request.Method);
             string? rangeHeader = request.Headers.Range?.ToString();
             rangeRequests.Enqueue(rangeHeader);
 
-            if (request.Method == HttpMethod.Head)
-            {
-                return Task.FromResult(CreateHeadResponse(content.Length));
-            }
-
-            if (rangeHeader == "bytes=0-1023")
+            if (rangeHeader is not null)
             {
                 return Task.FromResult(CreateDirectResponse(content));
             }
 
-            return Task.FromResult(CreateDirectResponse(content));
+            return Task.FromResult(CreateDirectResponse(content, acceptRanges: "bytes"));
         });
 
         var downloadManager = CreateDownloadManager(handler, shardCount: 4);
@@ -78,37 +76,79 @@ public sealed class DownloadManagerTests : IDisposable
         secondResult.Success.Should().BeTrue();
         File.ReadAllBytes(firstTargetPath).Should().Equal(content);
         File.ReadAllBytes(secondTargetPath).Should().Equal(content);
-        rangeRequests.Count(range => range == "bytes=0-1023").Should().Be(1);
-        rangeRequests.Count(range => range is not null).Should().Be(1);
+        methods.Should().OnlyContain(method => method == HttpMethod.Get);
+        rangeRequests.Count(range => range is not null).Should().Be(4);
+        rangeRequests.Count(range => range is null).Should().Be(3);
+    }
+
+    [Fact]
+    public async Task DownloadFileAsync_ShardedRange404_ShouldFailFastToDirectAndDisableRangeForHost()
+    {
+        byte[] content = CreatePayload(12 * 1024 * 1024);
+        string expectedSha1 = ComputeSha1(content);
+        var methods = new ConcurrentQueue<HttpMethod>();
+        int rangeRequestCount = 0;
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            methods.Enqueue(request.Method);
+            string? rangeHeader = request.Headers.Range?.ToString();
+
+            if (rangeHeader is not null)
+            {
+                Interlocked.Increment(ref rangeRequestCount);
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
+            }
+
+            return Task.FromResult(CreateDirectResponse(content, acceptRanges: "bytes"));
+        });
+
+        var downloadManager = CreateDownloadManager(handler, shardCount: 2);
+        string firstTargetPath = Path.Combine(_testDirectory, "sharded-404-first.jar");
+        string secondTargetPath = Path.Combine(_testDirectory, "sharded-404-second.jar");
+
+        DownloadResult firstResult = await downloadManager.DownloadFileAsync(
+            "https://edge.forgecdn.net/files/7416/393/example.zip",
+            firstTargetPath,
+            expectedSha1);
+
+        int rangeRequestCountAfterFirstDownload = Volatile.Read(ref rangeRequestCount);
+
+        DownloadResult secondResult = await downloadManager.DownloadFileAsync(
+            "https://edge.forgecdn.net/files/7416/393/example.zip",
+            secondTargetPath,
+            expectedSha1);
+
+        firstResult.Success.Should().BeTrue();
+        secondResult.Success.Should().BeTrue();
+        File.ReadAllBytes(firstTargetPath).Should().Equal(content);
+        File.ReadAllBytes(secondTargetPath).Should().Equal(content);
+        methods.Should().OnlyContain(method => method == HttpMethod.Get);
+        rangeRequestCountAfterFirstDownload.Should().BeGreaterThan(0);
+        Volatile.Read(ref rangeRequestCount).Should().Be(rangeRequestCountAfterFirstDownload);
     }
 
     [Fact]
     public async Task DownloadFileAsync_ShardedHashMismatch_ShouldRetryDirectAndDisableRangeForHost()
     {
         byte[] content = CreatePayload(12 * 1024 * 1024);
+        byte[] tamperedContent = (byte[])content.Clone();
+        tamperedContent[0] ^= 0x5A;
         string expectedSha1 = ComputeSha1(content);
+        var methods = new ConcurrentQueue<HttpMethod>();
         var rangeRequests = new ConcurrentQueue<string?>();
         var handler = new StubHttpMessageHandler(request =>
         {
+            methods.Enqueue(request.Method);
             string? rangeHeader = request.Headers.Range?.ToString();
             rangeRequests.Enqueue(rangeHeader);
 
-            if (request.Method == HttpMethod.Head)
-            {
-                return Task.FromResult(CreateHeadResponse(content.Length));
-            }
-
-            if (rangeHeader == "bytes=0-1023")
-            {
-                return Task.FromResult(CreatePartialResponse(content, 0, 1023));
-            }
-
             if (rangeHeader is not null)
             {
-                return Task.FromResult(CreateDirectResponse(content));
+                (long start, long end) = ParseRange(rangeHeader);
+                return Task.FromResult(CreatePartialResponse(tamperedContent, (int)start, (int)end));
             }
 
-            return Task.FromResult(CreateDirectResponse(content));
+            return Task.FromResult(CreateDirectResponse(content, acceptRanges: "bytes"));
         });
 
         var downloadManager = CreateDownloadManager(handler, shardCount: 2);
@@ -129,32 +169,30 @@ public sealed class DownloadManagerTests : IDisposable
         secondResult.Success.Should().BeTrue();
         File.ReadAllBytes(firstTargetPath).Should().Equal(content);
         File.ReadAllBytes(secondTargetPath).Should().Equal(content);
-        rangeRequests.Count(range => range == "bytes=0-1023").Should().Be(1);
-        rangeRequests.Count(range => range is not null).Should().Be(3);
+        methods.Should().OnlyContain(method => method == HttpMethod.Get);
+        rangeRequests.Count(range => range is not null).Should().Be(2);
+        rangeRequests.Count(range => range is null).Should().Be(3);
     }
 
     [Fact]
-    public async Task DownloadFileAsync_PartialRangeReturns404_ShouldFallbackToDirect()
+    public async Task DownloadFileAsync_ResponseDeclaresNoRange_ShouldReuseDirectResponse()
     {
         byte[] content = CreatePayload(12 * 1024 * 1024);
         string expectedSha1 = ComputeSha1(content);
+        var methods = new ConcurrentQueue<HttpMethod>();
         var rangeRequests = new ConcurrentQueue<string?>();
         var handler = new StubHttpMessageHandler(request =>
         {
+            methods.Enqueue(request.Method);
             string? rangeHeader = request.Headers.Range?.ToString();
             rangeRequests.Enqueue(rangeHeader);
 
-            if (request.Method == HttpMethod.Head)
-            {
-                return Task.FromResult(CreateHeadResponse(content.Length));
-            }
-
-            if (rangeHeader == "bytes=0-1023")
+            if (rangeHeader is not null)
             {
                 return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
             }
 
-            return Task.FromResult(CreateDirectResponse(content));
+            return Task.FromResult(CreateDirectResponse(content, acceptRanges: "none"));
         });
 
         var downloadManager = CreateDownloadManager(handler, shardCount: 4);
@@ -167,8 +205,45 @@ public sealed class DownloadManagerTests : IDisposable
 
         result.Success.Should().BeTrue();
         File.ReadAllBytes(targetPath).Should().Equal(content);
-        rangeRequests.Count(range => range == "bytes=0-1023").Should().Be(1);
-        rangeRequests.Count(range => range is not null).Should().Be(1);
+        methods.Should().ContainSingle().Which.Should().Be(HttpMethod.Get);
+        rangeRequests.Should().ContainSingle().Which.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task DownloadFileAsync_UnknownHostLargeFile_ShouldNegotiateWithGetAndSwitchToSharded()
+    {
+        byte[] content = CreatePayload(12 * 1024 * 1024);
+        string expectedSha1 = ComputeSha1(content);
+        var methods = new ConcurrentQueue<HttpMethod>();
+        var rangeRequests = new ConcurrentQueue<string?>();
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            methods.Enqueue(request.Method);
+            string? rangeHeader = request.Headers.Range?.ToString();
+            rangeRequests.Enqueue(rangeHeader);
+
+            if (rangeHeader is not null)
+            {
+                (long start, long end) = ParseRange(rangeHeader);
+                return Task.FromResult(CreatePartialResponse(content, (int)start, (int)end));
+            }
+
+            return Task.FromResult(CreateDirectResponse(content, acceptRanges: "bytes"));
+        });
+
+        var downloadManager = CreateDownloadManager(handler, shardCount: 2);
+        string targetPath = Path.Combine(_testDirectory, "negotiated-sharded.jar");
+
+        DownloadResult result = await downloadManager.DownloadFileAsync(
+            "https://downloads.example.com/assets/library.jar",
+            targetPath,
+            expectedSha1);
+
+        result.Success.Should().BeTrue();
+        File.ReadAllBytes(targetPath).Should().Equal(content);
+        methods.Should().OnlyContain(method => method == HttpMethod.Get);
+        rangeRequests.Count(range => range is not null).Should().Be(2);
+        rangeRequests.Count(range => range is null).Should().Be(1);
     }
 
     [Fact]
@@ -210,22 +285,14 @@ public sealed class DownloadManagerTests : IDisposable
     {
         byte[] content = CreatePayload(12 * 1024 * 1024);
         string expectedSha1 = ComputeSha1(content);
+        var methods = new ConcurrentQueue<HttpMethod>();
         var rangeRequests = new ConcurrentQueue<string?>();
         int stalledChunkResponseCount = 0;
         var handler = new StubHttpMessageHandler(request =>
         {
+            methods.Enqueue(request.Method);
             string? rangeHeader = request.Headers.Range?.ToString();
             rangeRequests.Enqueue(rangeHeader);
-
-            if (request.Method == HttpMethod.Head)
-            {
-                return Task.FromResult(CreateHeadResponse(content.Length));
-            }
-
-            if (rangeHeader == "bytes=0-1023")
-            {
-                return Task.FromResult(CreatePartialResponse(content, 0, 1023));
-            }
 
             if (rangeHeader == "bytes=6291456-12582911" && Interlocked.Exchange(ref stalledChunkResponseCount, 1) == 0)
             {
@@ -238,7 +305,7 @@ public sealed class DownloadManagerTests : IDisposable
                 return Task.FromResult(CreatePartialResponse(content, (int)start, (int)end));
             }
 
-            return Task.FromResult(CreateDirectResponse(content));
+            return Task.FromResult(CreateDirectResponse(content, acceptRanges: "bytes"));
         });
 
         var downloadManager = CreateDownloadManager(handler, shardCount: 2, shardedProgressStallTimeout: TimeSpan.FromMilliseconds(100));
@@ -259,8 +326,48 @@ public sealed class DownloadManagerTests : IDisposable
         secondResult.Success.Should().BeTrue();
         File.ReadAllBytes(firstTargetPath).Should().Equal(content);
         File.ReadAllBytes(secondTargetPath).Should().Equal(content);
-        rangeRequests.Count(range => range == "bytes=0-1023").Should().Be(1);
-        rangeRequests.Count(range => range is not null).Should().Be(3);
+        methods.Should().OnlyContain(method => method == HttpMethod.Get);
+        rangeRequests.Count(range => range is not null).Should().Be(2);
+        rangeRequests.Count(range => range is null).Should().Be(3);
+    }
+
+    [Fact]
+    public async Task DownloadFileAsync_PersistedRangeUnsupported_ShouldStayDirectEvenWhenDirectResponseAdvertisesBytes()
+    {
+        byte[] content = CreatePayload(12 * 1024 * 1024);
+        string expectedSha1 = ComputeSha1(content);
+        var methods = new ConcurrentQueue<HttpMethod>();
+        var rangeRequests = new ConcurrentQueue<string?>();
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            methods.Enqueue(request.Method);
+            rangeRequests.Enqueue(request.Headers.Range?.ToString());
+            request.Headers.Range.Should().BeNull();
+            return Task.FromResult(CreateDirectResponse(content, acceptRanges: "bytes"));
+        });
+
+        string persistedCacheJson = CreatePersistedRangeSupportCacheJson("downloads.example.com", supportsRange: false);
+        var downloadManager = CreateDownloadManager(handler, shardCount: 2, persistedRangeSupportCacheJson: persistedCacheJson);
+        string firstTargetPath = Path.Combine(_testDirectory, "persisted-range-false-first.jar");
+        string secondTargetPath = Path.Combine(_testDirectory, "persisted-range-false-second.jar");
+
+        DownloadResult firstResult = await downloadManager.DownloadFileAsync(
+            "https://downloads.example.com/assets/library.jar",
+            firstTargetPath,
+            expectedSha1);
+
+        DownloadResult secondResult = await downloadManager.DownloadFileAsync(
+            "https://downloads.example.com/assets/library.jar",
+            secondTargetPath,
+            expectedSha1);
+
+        firstResult.Success.Should().BeTrue();
+        secondResult.Success.Should().BeTrue();
+        File.ReadAllBytes(firstTargetPath).Should().Equal(content);
+        File.ReadAllBytes(secondTargetPath).Should().Equal(content);
+        methods.Should().OnlyContain(method => method == HttpMethod.Get);
+        methods.Should().HaveCount(2);
+        rangeRequests.Should().OnlyContain(range => range == null);
     }
 
     [Fact]
@@ -284,12 +391,22 @@ public sealed class DownloadManagerTests : IDisposable
             .Should().BeFalse();
     }
 
-    private static DownloadManager CreateDownloadManager(HttpMessageHandler handler, int shardCount, TimeSpan? shardedProgressStallTimeout = null)
+    private static DownloadManager CreateDownloadManager(
+        HttpMessageHandler handler,
+        int shardCount,
+        TimeSpan? shardedProgressStallTimeout = null,
+        string? persistedRangeSupportCacheJson = null)
     {
         var localSettingsServiceMock = new Mock<ILocalSettingsService>();
         localSettingsServiceMock
             .Setup(service => service.ReadSettingAsync<int?>("DownloadShardCount"))
             .ReturnsAsync(shardCount);
+        localSettingsServiceMock
+            .Setup(service => service.ReadSettingAsync<string>("DownloadHostRangeSupportCache"))
+            .ReturnsAsync(persistedRangeSupportCacheJson);
+        localSettingsServiceMock
+            .Setup(service => service.SaveSettingAsync("DownloadHostRangeSupportCache", It.IsAny<string>()))
+            .Returns(Task.CompletedTask);
 
         return shardedProgressStallTimeout.HasValue
             ? new DownloadManager(
@@ -316,10 +433,19 @@ public sealed class DownloadManagerTests : IDisposable
 
     private static HttpResponseMessage CreateDirectResponse(byte[] content)
     {
+        return CreateDirectResponse(content, acceptRanges: null);
+    }
+
+    private static HttpResponseMessage CreateDirectResponse(byte[] content, string? acceptRanges)
+    {
         var response = new HttpResponseMessage(HttpStatusCode.OK)
         {
             Content = new ByteArrayContent(content)
         };
+        if (!string.IsNullOrWhiteSpace(acceptRanges))
+        {
+            response.Headers.AcceptRanges.Add(acceptRanges);
+        }
         response.Content.Headers.ContentLength = content.Length;
         return response;
     }
@@ -370,6 +496,22 @@ public sealed class DownloadManagerTests : IDisposable
     private static string ComputeSha1(byte[] content)
     {
         return Convert.ToHexString(SHA1.HashData(content)).ToLowerInvariant();
+    }
+
+    private static string CreatePersistedRangeSupportCacheJson(string host, bool supportsRange)
+    {
+        return JsonSerializer.Serialize(new
+        {
+            Version = 1,
+            Hosts = new Dictionary<string, object?>
+            {
+                [host] = new
+                {
+                    SupportsRange = supportsRange,
+                    UpdatedAtUtc = DateTimeOffset.UtcNow
+                }
+            }
+        });
     }
 
     private sealed class StalledReadStream : Stream

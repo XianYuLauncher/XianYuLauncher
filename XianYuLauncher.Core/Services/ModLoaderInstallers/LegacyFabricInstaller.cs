@@ -273,7 +273,8 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
             {
                 Name = name,
                 Url = lib["url"]?.ToString(),
-                Sha1 = lib["sha1"]?.ToString()
+                Sha1 = lib["sha1"]?.ToString(),
+                ExpectedSize = lib["size"]?.Value<long?>() is long size && size > 0 ? size : null
             });
         }
         
