@@ -1124,7 +1124,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             message = isWorldInstall
                 ? $"已开始安装世界 {executionContext.ResourceName} 到实例 {executionContext.TargetVersionName} 的 saves 目录。若同名存档已存在，将自动重命名。可继续使用 getOperationStatus 查询下载状态。"
                 : isDatapackInstall && executionContext.TargetWorld != null
-                    ? $"已开始将数据包 {executionContext.ResourceName} 安装到实例 {executionContext.TargetVersionName} 的世界 {executionContext.TargetWorld.DisplayName}。可继续使用 getOperationStatus 查询下载状态。"
+                    ? $"已开始将数据包 {executionContext.ResourceName} 安装到实例 {executionContext.TargetVersionName} 的世界 {executionContext.TargetWorld.DisplayName}（目录名：{executionContext.TargetWorld.TargetSaveName}）。可继续使用 getOperationStatus 查询下载状态。"
                 : $"已开始安装 {executionContext.ResourceName} 到 {executionContext.TargetVersionName}。可继续使用 getOperationStatus 查询下载状态。"
         });
     }
@@ -2476,7 +2476,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                 message = isWorldInstall
                     ? $"已准备将世界 {resourceName} 安装到实例 {targetVersion.TargetVersionName} 的 saves 目录。若同名存档已存在，将自动重命名。等待用户确认。"
                     : isDatapackInstall && targetWorld != null
-                        ? $"已准备将数据包 {resourceName} 安装到实例 {targetVersion.TargetVersionName} 的世界 {targetWorld.DisplayName}。等待用户确认。"
+                        ? $"已准备将数据包 {resourceName} 安装到实例 {targetVersion.TargetVersionName} 的世界 {targetWorld.DisplayName}（目录名：{targetWorld.TargetSaveName}）。等待用户确认。"
                     : $"已准备安装 {resourceName} 到 {targetVersion.TargetVersionName}。等待用户确认。"
             }),
             ButtonText = isDatapackInstall && targetWorld != null
