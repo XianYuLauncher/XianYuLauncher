@@ -847,6 +847,11 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             resolved_game_directory = result.ResolvedGameDirectory,
             total_count = result.Resources.Count,
             requested_resource_types = resourceTypes,
+            usage = new
+            {
+                datapack_target_resolution = "安装 datapack 时，请先筛选 world 项，再把该项的 resource_instance_id 传给 installCommunityResource.target_world_resource_id。",
+                world_name_note = "world_name 主要用于展示，不保证唯一或长期稳定，不应替代 resource_instance_id 作为安装目标主键。"
+            },
             resources = result.Resources.Select(SerializeInventoryItem).ToList()
         });
     }
@@ -2330,7 +2335,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                     new
                     {
                         field = "target_world_resource_id",
-                        message = "安装数据包必须提供 target_world_resource_id。请先调用 getInstanceCommunityResources，并传 resource_types=[\"world\"]，再从返回的 world 项里选择 resource_instance_id。"
+                        message = "安装数据包必须提供 target_world_resource_id。请先调用 getInstanceCommunityResources，并传 resource_types=[\"world\"]，再从返回的 world 项里选择 resource_instance_id；不要改用 world_name 或自行拼 world_path。"
                     }
                 }
             }),
@@ -2343,7 +2348,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                 resolved_game_directory = targetVersion.ResolvedGameDirectory,
                 requested_target_world_resource_id = resolution.RequestedTargetWorldResourceId,
                 available_worlds = availableWorlds,
-                message = $"target_world_resource_id {resolution.RequestedTargetWorldResourceId} 不是有效的世界 resource_instance_id。请只使用 getInstanceCommunityResources(resource_types=[\"world\"]) 返回的 world 项 resource_instance_id。"
+                message = $"target_world_resource_id {resolution.RequestedTargetWorldResourceId} 不是有效的世界 resource_instance_id。请只使用 getInstanceCommunityResources(resource_types=[\"world\"]) 返回的 world 项 resource_instance_id，不要传 world_name 或 world_path。"
             }),
             CommunityResourceWorldTargetResolutionStatus.WorldNotFound => SerializePayload(new
             {
@@ -2354,7 +2359,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                 resolved_game_directory = targetVersion.ResolvedGameDirectory,
                 requested_target_world_resource_id = resolution.RequestedTargetWorldResourceId,
                 available_worlds = availableWorlds,
-                message = $"target_world_resource_id {resolution.RequestedTargetWorldResourceId} 不属于实例 {targetVersion.TargetVersionName} 当前可用的世界清单。请先重新调用 getInstanceCommunityResources(resource_types=[\"world\"]) 并只使用该实例返回的 world 项 resource_instance_id。"
+                message = $"target_world_resource_id {resolution.RequestedTargetWorldResourceId} 不属于实例 {targetVersion.TargetVersionName} 当前可用的世界清单。请先重新调用 getInstanceCommunityResources(resource_types=[\"world\"])，并只使用该实例返回的 world 项 resource_instance_id，不要回退到 world_name 或路径推断。"
             }),
             _ => SerializePayload(new
             {
@@ -3096,6 +3101,10 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             pack_format = item.PackFormat,
             update_support = item.UpdateSupport,
             unsupported_reason = item.UpdateUnsupportedReason,
+            preferred_install_reference = item.ResourceType == "world" ? "resource_instance_id" : null,
+            reference_guidance = item.ResourceType == "world"
+                ? "安装 datapack 时，请把此 resource_instance_id 传给 installCommunityResource.target_world_resource_id；world_name 仅用于展示。"
+                : null,
         };
     }
 

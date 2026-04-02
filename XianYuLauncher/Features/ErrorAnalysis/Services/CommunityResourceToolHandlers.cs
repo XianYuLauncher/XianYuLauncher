@@ -390,7 +390,7 @@ public sealed class InstallCommunityResourceToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "安装社区资源到指定实例。V1 支持 mod、resourcepack、shader、world、datapack；其中 datapack 必须额外提供 target_world_resource_id。整合包请改用 installModpack。调用前建议先用 getCommunityResourceFiles 选定 resource_file_id，并用 getInstances 获取 target_version_name 或 version_directory_path；安装 datapack 前再用 getInstanceCommunityResources(resource_types=[\"world\"]) 选择目标世界。",
+        "安装社区资源到指定实例。V1 支持 mod、resourcepack、shader、world、datapack；其中 datapack 必须额外提供 target_world_resource_id。整合包请改用 installModpack。调用前建议先用 getCommunityResourceFiles 选定 resource_file_id，并用 getInstances 获取 target_version_name 或 version_directory_path；安装 datapack 前再用 getInstanceCommunityResources(resource_types=[\"world\"]) 选择目标世界，并直接复用 world 项的 resource_instance_id，不要自行拼 world_path 或仅凭 world_name 推断。",
         new
         {
             type = "object",
@@ -401,7 +401,7 @@ public sealed class InstallCommunityResourceToolHandler : IAgentToolHandler
                 target_version_name = new { type = "string", description = "目标实例名，优先从 getInstances 的 target_version_name 中选择。" },
                 target_version_path = new { type = "string", description = "可选。若传实例目录路径，启动器会自动推导出 target_version_name。" },
                 resource_type = new { type = "string", description = "可选。辅助识别资源类型。", @enum = new[] { "mod", "resourcepack", "shader", "datapack", "world" } },
-                target_world_resource_id = new { type = "string", description = "可选。安装 datapack 时必填；值必须来自 getInstanceCommunityResources(resource_types=[\"world\"]) 返回的 world 项 resource_instance_id。" },
+                target_world_resource_id = new { type = "string", description = "可选。安装 datapack 时必填；值必须来自 getInstanceCommunityResources(resource_types=[\"world\"]) 返回的 world 项 resource_instance_id，不要改传 world_name 或 world_path。" },
                 download_dependencies = new { type = "boolean", description = "可选。是否自动下载前置依赖；默认 false。" }
             },
             required = new[] { "project_id", "resource_file_id" }
@@ -516,7 +516,7 @@ public sealed class GetInstanceCommunityResourcesToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "返回指定实例内已安装的社区资源清单。支持 mod、shader、resourcepack、world、datapack 五类资源，并保留稳定的 resource_instance_id。调用前建议先用 getInstances 获取 target_version_name。",
+        "返回指定实例内已安装的社区资源清单。支持 mod、shader、resourcepack、world、datapack 五类资源，并保留稳定的 resource_instance_id。安装 datapack 时，应该先读取这里的 world 项，再把该 world 的 resource_instance_id 传给 installCommunityResource.target_world_resource_id；world_name 仅用于展示。调用前建议先用 getInstances 获取 target_version_name。",
         new
         {
             type = "object",
@@ -527,7 +527,7 @@ public sealed class GetInstanceCommunityResourcesToolHandler : IAgentToolHandler
                 resource_types = new
                 {
                     type = "array",
-                    description = "可选。按资源类型过滤；省略时返回实例内全部五类资源。",
+                    description = "可选。按资源类型过滤；省略时返回实例内全部五类资源。若要安装 datapack，建议显式传 [\"world\"] 只读取世界列表。",
                     items = new { type = "string", @enum = new[] { "mod", "shader", "resourcepack", "world", "datapack" } }
                 }
             },
