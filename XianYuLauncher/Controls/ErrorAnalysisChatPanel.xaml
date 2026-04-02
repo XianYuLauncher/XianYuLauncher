@@ -289,21 +289,17 @@
                             Padding="12,8"
                             CornerRadius="4"
                             Style="{StaticResource AccentButtonStyle}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <FontIcon Glyph="&#xE73E;" FontSize="16" Foreground="White" Margin="0,0,12,0" />
+                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                <FontIcon
+                                    FontFamily="{StaticResource SymbolThemeFontFamily}"
+                                    Glyph="&#xE73E;"
+                                    FontSize="16" />
                                 <TextBlock
-                                    Grid.Column="1"
                                     Text="{Binding ViewModel.FixButtonText, ElementName=Root}"
-                                    Foreground="White"
-                                    FontWeight="SemiBold"
-                                    TextTrimming="CharacterEllipsis"/>
-                                <FontIcon Grid.Column="2" Glyph="&#xE76C;" FontSize="12" Foreground="White" Opacity="0.8" />
-                            </Grid>
+                                    FontSize="14"
+                                    VerticalAlignment="Center"
+                                    TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
                         </Button>
                         <Button
                             Grid.Column="1"
