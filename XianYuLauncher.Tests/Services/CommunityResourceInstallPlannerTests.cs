@@ -58,6 +58,30 @@ public class CommunityResourceInstallPlannerTests
     }
 
     [Fact]
+    public async Task PlanAsync_DatapackWithSaveName_ReturnsWorldDatapacksPath()
+    {
+        string gameDirectory = Path.Combine(@"C:\.minecraft", "versions", "1.20.1-Fabric");
+        _gameDirResolverMock
+            .Setup(service => service.GetGameDirForVersionAsync("1.20.1-Fabric"))
+            .ReturnsAsync(gameDirectory);
+
+        CommunityResourceInstallPlanningResult result = await CreatePlanner().PlanAsync(new CommunityResourceInstallRequest
+        {
+            ResourceType = "datapack",
+            FileName = "example-datapack.zip",
+            TargetVersionName = "1.20.1-Fabric",
+            TargetSaveName = "My Adventure World"
+        });
+
+        result.IsReadyToInstall.Should().BeTrue();
+        result.Plan.Should().NotBeNull();
+        result.Plan!.PrimaryTargetDirectory.Should().Be(Path.Combine(gameDirectory, "saves", "My Adventure World", "datapacks"));
+        result.Plan.DependencyTargetDirectory.Should().Be(Path.Combine(gameDirectory, "saves", "My Adventure World", "datapacks"));
+        result.Plan.TargetSaveName.Should().Be("My Adventure World");
+        result.Plan.SavePath.Should().Be(Path.Combine(gameDirectory, "saves", "My Adventure World", "datapacks", "example-datapack.zip"));
+    }
+
+    [Fact]
     public async Task PlanAsync_ShaderWithVersion_ReturnsShaderpacksPath()
     {
         string gameDirectory = Path.Combine(@"C:\.minecraft", "versions", "1.20.1-Fabric");
