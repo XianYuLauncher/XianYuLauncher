@@ -175,6 +175,16 @@ namespace XianYuLauncher.Views
             }
         }
 
+        private void BackButton_PointerEntered(object sender, PointerRoutedEventArgs e)
+        {
+            AnimatedIcon.SetState(BackAnimatedIcon, "PointerOver");
+        }
+
+        private void BackButton_PointerExited(object sender, PointerRoutedEventArgs e)
+        {
+            AnimatedIcon.SetState(BackAnimatedIcon, "Normal");
+        }
+
         /// <summary>
         /// 弹出独立聊天窗口
         /// </summary>

@@ -1676,7 +1676,7 @@ Continue downloading?</value>
     <value>List of open source software used in this project:</value>
   </data>
   <data name="ErrorAnalysis_Title.Text" xml:space="preserve">
-    <value>Real-time Game Log</value>
+    <value>Game Log</value>
   </data>
   <data name="ErrorAnalysis_ExportLogButton.Content" xml:space="preserve">
     <value>Export Logs</value>

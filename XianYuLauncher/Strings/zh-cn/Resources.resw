@@ -1679,7 +1679,7 @@
     <value>本项目使用的开源软件列表：</value>
   </data>
   <data name="ErrorAnalysis_Title.Text" xml:space="preserve">
-    <value>实时游戏日志</value>
+    <value>游戏日志</value>
   </data>
   <data name="ErrorAnalysis_ExportLogButton.Content" xml:space="preserve">
     <value>导出日志</value>
