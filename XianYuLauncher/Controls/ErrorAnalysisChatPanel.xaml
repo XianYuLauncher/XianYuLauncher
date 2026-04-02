@@ -107,44 +107,100 @@
                                     Foreground="{ThemeResource TextFillColorPrimaryBrush}"
                                     IsTextSelectionEnabled="True"
                                     Visibility="{x:Bind ShowAssistantText, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"/>
-                                <Border
+                                <Expander
                                     Visibility="{x:Bind IsTool, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
-                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}"
-                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                    BorderThickness="1"
-                                    CornerRadius="10"
-                                    Padding="12,10">
-                                    <Grid ColumnSpacing="10" VerticalAlignment="Center">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <Grid Width="20" Height="20" VerticalAlignment="Center">
-                                            <FontIcon
-                                                Glyph="&#xEC7A;"
-                                                FontSize="16"
-                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                                HorizontalAlignment="Center"
-                                                VerticalAlignment="Center" />
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Stretch"
+                                    Padding="0">
+                                    <Expander.Header>
+                                        <Grid Padding="0,8,4,8" ColumnSpacing="10" VerticalAlignment="Center">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid Width="20" Height="20" VerticalAlignment="Center">
+                                                <FontIcon
+                                                    Glyph="&#xEC7A;"
+                                                    FontSize="16"
+                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                                    HorizontalAlignment="Center"
+                                                    VerticalAlignment="Center" />
+                                            </Grid>
+                                            <StackPanel Grid.Column="1" Spacing="0" VerticalAlignment="Center">
+                                                <TextBlock
+                                                    Text="Invoking"
+                                                    FontSize="11"
+                                                    LineHeight="12"
+                                                    Opacity="0.72"
+                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                <TextBlock
+                                                    Text="{x:Bind Content, Mode=OneWay}"
+                                                    FontFamily="{ThemeResource ContentControlThemeFontFamily}"
+                                                    FontSize="13"
+                                                    LineHeight="16"
+                                                    FontWeight="SemiBold"
+                                                    Foreground="{ThemeResource TextFillColorPrimaryBrush}"
+                                                    TextWrapping="WrapWholeWords" />
+                                            </StackPanel>
                                         </Grid>
-                                        <StackPanel Grid.Column="1" Spacing="0" VerticalAlignment="Center">
-                                            <TextBlock
-                                                Text="Invoking"
-                                                FontSize="11"
-                                                LineHeight="12"
-                                                Opacity="0.72"
-                                                Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                                            <TextBlock
-                                                Text="{x:Bind Content, Mode=OneWay}"
-                                                FontFamily="{ThemeResource ContentControlThemeFontFamily}"
-                                                FontSize="13"
-                                                LineHeight="16"
-                                                FontWeight="SemiBold"
-                                                Foreground="{ThemeResource TextFillColorPrimaryBrush}"
-                                                TextWrapping="WrapWholeWords" />
+                                    </Expander.Header>
+                                    <Expander.Content>
+                                        <StackPanel Margin="12,0,12,12" Spacing="12">
+                                            <StackPanel Spacing="6">
+                                                <TextBlock
+                                                    Text="输入"
+                                                    FontSize="11"
+                                                    Opacity="0.72"
+                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                <Border
+                                                    Background="{ThemeResource ControlAltFillColorSecondaryBrush}"
+                                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="8"
+                                                    Padding="10">
+                                                    <ScrollViewer
+                                                        MaxHeight="160"
+                                                        HorizontalScrollMode="Auto"
+                                                        HorizontalScrollBarVisibility="Auto"
+                                                        VerticalScrollBarVisibility="Auto">
+                                                        <TextBlock
+                                                            Text="{x:Bind FormattedToolInputContent, Mode=OneWay}"
+                                                            FontFamily="Consolas"
+                                                            FontSize="12"
+                                                            IsTextSelectionEnabled="True"
+                                                            TextWrapping="NoWrap" />
+                                                    </ScrollViewer>
+                                                </Border>
+                                            </StackPanel>
+                                            <StackPanel Spacing="6">
+                                                <TextBlock
+                                                    Text="输出"
+                                                    FontSize="11"
+                                                    Opacity="0.72"
+                                                    Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                                <Border
+                                                    Background="{ThemeResource ControlAltFillColorSecondaryBrush}"
+                                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                    BorderThickness="1"
+                                                    CornerRadius="8"
+                                                    Padding="10">
+                                                    <ScrollViewer
+                                                        MaxHeight="180"
+                                                        HorizontalScrollMode="Auto"
+                                                        HorizontalScrollBarVisibility="Auto"
+                                                        VerticalScrollBarVisibility="Auto">
+                                                        <TextBlock
+                                                            Text="{x:Bind FormattedToolOutputContent, Mode=OneWay}"
+                                                            FontFamily="Consolas"
+                                                            FontSize="12"
+                                                            IsTextSelectionEnabled="True"
+                                                            TextWrapping="NoWrap" />
+                                                    </ScrollViewer>
+                                                </Border>
+                                            </StackPanel>
                                         </StackPanel>
-                                    </Grid>
-                                </Border>
+                                    </Expander.Content>
+                                </Expander>
                             </StackPanel>
                         </Grid>
                     </DataTemplate>

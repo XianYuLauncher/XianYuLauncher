@@ -87,6 +87,10 @@ public sealed class LauncherAIChatMessageStorageModel
 
     public List<ToolCallInfo>? ToolCalls { get; init; }
 
+    public string? ToolInputContent { get; init; }
+
+    public string? ToolOutputContent { get; init; }
+
     public List<LauncherAIAttachmentStorageModel> ImageAttachments { get; init; } = [];
 
     public List<LauncherAIAttachmentStorageModel>? AIHistoryImageAttachments { get; init; }

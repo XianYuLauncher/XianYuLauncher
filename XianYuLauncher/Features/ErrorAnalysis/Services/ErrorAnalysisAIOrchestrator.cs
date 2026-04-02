@@ -442,7 +442,8 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
                         toolUiMessage = new UiChatMessage("tool", toolCall.FunctionName)
                         {
                             ToolCallId = toolCall.Id,
-                            AIHistoryContent = string.Empty
+                            AIHistoryContent = string.Empty,
+                            ToolInputContent = toolCall.Arguments
                         };
                         _sessionState.ChatMessages.Add(toolUiMessage);
                     });
@@ -453,6 +454,7 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
                         if (toolUiMessage != null)
                         {
                             toolUiMessage.AIHistoryContent = result.Message;
+                            toolUiMessage.ToolOutputContent = result.Message;
                         }
                     });
 

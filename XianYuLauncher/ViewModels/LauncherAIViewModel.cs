@@ -846,6 +846,8 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable
                 AIHistoryContent = message.AIHistoryContent,
                 ToolCallId = message.ToolCallId,
                 ToolCalls = CloneToolCalls(message.ToolCalls),
+                ToolInputContent = message.ToolInputContent,
+                ToolOutputContent = message.ToolOutputContent,
                 ImageAttachments = await CreateAttachmentStorageModelsAsync(conversationId, message.ImageAttachments, cancellationToken),
                 AIHistoryImageAttachments = message.AIHistoryImageAttachments == null
                     ? null
@@ -986,6 +988,8 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable
             AIHistoryContent = storage.AIHistoryContent,
             ToolCallId = storage.ToolCallId,
             ToolCalls = CloneToolCalls(storage.ToolCalls),
+            ToolInputContent = storage.ToolInputContent,
+            ToolOutputContent = storage.ToolOutputContent,
             AIHistoryImageAttachments = storage.AIHistoryImageAttachments == null
                 ? null
                 : RestoreAttachments(storage.AIHistoryImageAttachments),
