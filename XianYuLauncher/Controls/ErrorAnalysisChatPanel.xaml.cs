@@ -92,6 +92,7 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
         Loaded += OnLoaded;
         Unloaded += OnUnloaded;
         ChatListView.Loaded += OnChatListViewLoaded;
+        ChatListView.ContainerContentChanging += ChatListView_ContainerContentChanging;
     }
 
     private static void OnViewModelChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -255,6 +256,16 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
             _chatScrollViewer.ViewChanged -= ChatScrollViewer_ViewChanged;
             _chatScrollViewer.ViewChanged += ChatScrollViewer_ViewChanged;
         }
+
+        UpdateAllChatMessageContainerVisibilities();
+    }
+
+    private void ChatListView_ContainerContentChanging(ListViewBase sender, ContainerContentChangingEventArgs e)
+    {
+        if (e.Item is UiChatMessage message && e.ItemContainer is ListViewItem container)
+        {
+            ApplyChatMessageContainerVisibility(message, container);
+        }
     }
 
     private static ScrollViewer? FindScrollViewer(DependencyObject parent)
@@ -291,6 +302,7 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
     private void ChatMessages_CollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         UpdateMessageRolePresentation();
+        UpdateAllChatMessageContainerVisibilities();
 
         if (e.Action == NotifyCollectionChangedAction.Add)
         {
@@ -332,7 +344,19 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
 
     private void ChatMessage_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName != nameof(UiChatMessage.Content) || _userIsScrollingChat || _isChatScrollPending)
+        if (sender is UiChatMessage message
+            && e.PropertyName is nameof(UiChatMessage.Content)
+                or nameof(UiChatMessage.SuppressContentRendering)
+                or nameof(UiChatMessage.ShouldShowMessageContainer))
+        {
+            UpdateChatMessageContainerVisibility(message);
+        }
+
+        if (e.PropertyName is not nameof(UiChatMessage.Content)
+                and not nameof(UiChatMessage.SuppressContentRendering)
+                and not nameof(UiChatMessage.ShouldShowMessageContainer)
+            || _userIsScrollingChat
+            || _isChatScrollPending)
         {
             return;
         }
@@ -406,6 +430,32 @@ public sealed partial class ErrorAnalysisChatPanel : UserControl
     {
         var shouldShow = ShowEmptyPlaceholder && (ViewModel?.HasChatMessages != true);
         EmptyStatePanel.Visibility = shouldShow ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void UpdateAllChatMessageContainerVisibilities()
+    {
+        if (_attachedViewModel == null)
+        {
+            return;
+        }
+
+        foreach (var message in _attachedViewModel.ChatMessages)
+        {
+            UpdateChatMessageContainerVisibility(message);
+        }
+    }
+
+    private void UpdateChatMessageContainerVisibility(UiChatMessage message)
+    {
+        if (ChatListView.ContainerFromItem(message) is ListViewItem container)
+        {
+            ApplyChatMessageContainerVisibility(message, container);
+        }
+    }
+
+    private static void ApplyChatMessageContainerVisibility(UiChatMessage message, ListViewItem container)
+    {
+        container.Visibility = message.ShouldShowMessageContainer ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void UpdateMessageRolePresentation()
