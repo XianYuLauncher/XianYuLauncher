@@ -174,6 +174,8 @@ public sealed class AgentCommunityResourceInstallCommand
 
     public string? ResourceType { get; init; }
 
+    public string? TargetWorldResourceId { get; init; }
+
     public bool DownloadDependencies { get; init; }
 }
 
@@ -209,6 +211,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
     private readonly IFileService _fileService;
     private readonly IGameDirResolver _gameDirResolver;
     private readonly ICommunityResourceInventoryService _communityResourceInventoryService;
+    private readonly ICommunityResourceWorldTargetResolver _communityResourceWorldTargetResolver;
     private readonly ICommunityResourceUpdateCheckService _communityResourceUpdateCheckService;
     private readonly ICommunityResourceUpdateService _communityResourceUpdateService;
     private readonly ICommunityResourceInstallPlanner _communityResourceInstallPlanner;
@@ -227,6 +230,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         IFileService fileService,
         IGameDirResolver gameDirResolver,
         ICommunityResourceInventoryService communityResourceInventoryService,
+        ICommunityResourceWorldTargetResolver communityResourceWorldTargetResolver,
         ICommunityResourceUpdateCheckService communityResourceUpdateCheckService,
         ICommunityResourceUpdateService communityResourceUpdateService,
         ICommunityResourceInstallPlanner communityResourceInstallPlanner,
@@ -244,6 +248,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         _fileService = fileService;
         _gameDirResolver = gameDirResolver;
         _communityResourceInventoryService = communityResourceInventoryService;
+        _communityResourceWorldTargetResolver = communityResourceWorldTargetResolver;
         _communityResourceUpdateCheckService = communityResourceUpdateCheckService;
         _communityResourceUpdateService = communityResourceUpdateService;
         _communityResourceInstallPlanner = communityResourceInstallPlanner;
@@ -1057,6 +1062,11 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             proposalParameters["resource_type"] = executionContext.ResourceType;
         }
 
+        if (!string.IsNullOrWhiteSpace(executionContext.TargetWorld?.ResourceInstanceId))
+        {
+            proposalParameters["target_world_resource_id"] = executionContext.TargetWorld.ResourceInstanceId;
+        }
+
         return new AgentCommunityResourceInstallPreparation
         {
             Message = executionContext.Message,
@@ -1084,6 +1094,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             cancellationToken: cancellationToken);
 
         bool isWorldInstall = string.Equals(executionContext.ResourceType, "world", StringComparison.OrdinalIgnoreCase);
+        bool isDatapackInstall = string.Equals(executionContext.ResourceType, "datapack", StringComparison.OrdinalIgnoreCase);
 
         return SerializePayload(new
         {
@@ -1097,12 +1108,18 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             version_directory_path = executionContext.VersionDirectoryPath,
             resolved_game_directory = executionContext.ResolvedGameDirectory,
             download_dependencies = executionContext.Command.DownloadDependencies,
+            target_world_resource_id = isDatapackInstall ? executionContext.TargetWorld?.ResourceInstanceId : null,
+            target_save_name = isDatapackInstall ? executionContext.TargetWorld?.TargetSaveName : null,
+            target_world = isDatapackInstall && executionContext.TargetWorld != null ? SerializeWorldTargetDescriptor(executionContext.TargetWorld) : null,
+            datapack_target_directory = isDatapackInstall ? executionContext.Plan.PrimaryTargetDirectory : null,
             dependency_target_directory = executionContext.Plan.DependencyTargetDirectory,
             world_target_directory = isWorldInstall ? executionContext.Plan.PrimaryTargetDirectory : null,
             duplicate_policy = isWorldInstall ? "auto_rename" : null,
             expected_world_base_name = isWorldInstall ? Path.GetFileNameWithoutExtension(executionContext.Plan.SavePath) : null,
             message = isWorldInstall
                 ? $"已开始安装世界 {executionContext.ResourceName} 到实例 {executionContext.TargetVersionName} 的 saves 目录。若同名存档已存在，将自动重命名。可继续使用 getOperationStatus 查询下载状态。"
+                : isDatapackInstall && executionContext.TargetWorld != null
+                    ? $"已开始将数据包 {executionContext.ResourceName} 安装到实例 {executionContext.TargetVersionName} 的世界 {executionContext.TargetWorld.DisplayName}。可继续使用 getOperationStatus 查询下载状态。"
                 : $"已开始安装 {executionContext.ResourceName} 到 {executionContext.TargetVersionName}。可继续使用 getOperationStatus 查询下载状态。"
         });
     }
@@ -2117,15 +2134,26 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             return BuildOutOfScopeContext(resourceType);
         }
 
+        CommunityResourceInstallTargetContext installTarget = await ResolveInstallTargetContextAsync(
+            command,
+            targetVersion,
+            resourceType,
+            cancellationToken);
+        if (!installTarget.IsReady)
+        {
+            return CommunityResourceInstallExecutionContext.FromMessage(installTarget.Message);
+        }
+
         var planningResult = await _communityResourceInstallPlanner.PlanAsync(new CommunityResourceInstallRequest
         {
             ResourceType = resourceType,
             FileName = primaryFile.Filename,
             TargetVersionName = targetVersion.TargetVersionName,
+            TargetSaveName = installTarget.TargetSaveName,
             UseCustomDownloadPath = false,
         }, cancellationToken);
 
-        var planContext = CreatePlanContext(command, targetVersion, detail.Title, resourceType, planningResult);
+        var planContext = CreatePlanContext(command, targetVersion, detail.Title, resourceType, planningResult, installTarget.TargetWorld);
         if (planContext.Plan == null)
         {
             return planContext;
@@ -2143,7 +2171,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             TargetGameVersion = NormalizeText(targetVersionConfig.MinecraftVersion),
         };
 
-        return CreateReadyContext(command, targetVersion, detail.Title, resourceType, planContext.Plan, descriptor);
+        return CreateReadyContext(command, targetVersion, detail.Title, resourceType, planContext.Plan, descriptor, installTarget.TargetWorld);
     }
 
     private async Task<CommunityResourceInstallExecutionContext> BuildCurseForgeInstallContextAsync(
@@ -2189,15 +2217,26 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             return BuildOutOfScopeContext(resourceType);
         }
 
+        CommunityResourceInstallTargetContext installTarget = await ResolveInstallTargetContextAsync(
+            command,
+            targetVersion,
+            resourceType,
+            cancellationToken);
+        if (!installTarget.IsReady)
+        {
+            return CommunityResourceInstallExecutionContext.FromMessage(installTarget.Message);
+        }
+
         var planningResult = await _communityResourceInstallPlanner.PlanAsync(new CommunityResourceInstallRequest
         {
             ResourceType = resourceType,
             FileName = file.FileName,
             TargetVersionName = targetVersion.TargetVersionName,
+            TargetSaveName = installTarget.TargetSaveName,
             UseCustomDownloadPath = false,
         }, cancellationToken);
 
-        var planContext = CreatePlanContext(command, targetVersion, detail.Name, resourceType, planningResult);
+        var planContext = CreatePlanContext(command, targetVersion, detail.Name, resourceType, planningResult, installTarget.TargetWorld);
         if (planContext.Plan == null)
         {
             return planContext;
@@ -2215,7 +2254,120 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             TargetGameVersion = NormalizeText(targetVersionConfig.MinecraftVersion),
         };
 
-        return CreateReadyContext(command, targetVersion, detail.Name, resourceType, planContext.Plan, descriptor);
+        return CreateReadyContext(command, targetVersion, detail.Name, resourceType, planContext.Plan, descriptor, installTarget.TargetWorld);
+    }
+
+    private async Task<CommunityResourceInstallTargetContext> ResolveInstallTargetContextAsync(
+        AgentCommunityResourceInstallCommand command,
+        ResolvedTargetVersionContext targetVersion,
+        string resourceType,
+        CancellationToken cancellationToken)
+    {
+        if (!string.Equals(resourceType, "datapack", StringComparison.OrdinalIgnoreCase))
+        {
+            return CommunityResourceInstallTargetContext.Ready();
+        }
+
+        try
+        {
+            CommunityResourceWorldTargetResolutionResult resolution = await _communityResourceWorldTargetResolver.ResolveAsync(
+                new CommunityResourceWorldTargetResolutionRequest
+                {
+                    TargetVersionName = targetVersion.TargetVersionName,
+                    ResolvedGameDirectory = targetVersion.ResolvedGameDirectory,
+                    TargetWorldResourceId = command.TargetWorldResourceId,
+                },
+                cancellationToken);
+
+            if (resolution.IsResolved && resolution.ResolvedWorld != null)
+            {
+                return CommunityResourceInstallTargetContext.Ready(
+                    resolution.ResolvedWorld.TargetSaveName,
+                    resolution.ResolvedWorld);
+            }
+
+            return CommunityResourceInstallTargetContext.FromMessage(
+                BuildDatapackTargetWorldValidationMessage(targetVersion, resolution));
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            return CommunityResourceInstallTargetContext.FromMessage(SerializePayload(new
+            {
+                status = "failed",
+                resource_type = "datapack",
+                target_version_name = targetVersion.TargetVersionName,
+                version_directory_path = targetVersion.VersionDirectoryPath,
+                resolved_game_directory = targetVersion.ResolvedGameDirectory,
+                message = $"读取实例 {targetVersion.TargetVersionName} 的世界清单失败：{ex.Message}"
+            }));
+        }
+    }
+
+    private string BuildDatapackTargetWorldValidationMessage(
+        ResolvedTargetVersionContext targetVersion,
+        CommunityResourceWorldTargetResolutionResult resolution)
+    {
+        List<object> availableWorlds = resolution.AvailableWorlds
+            .Select(SerializeWorldTargetDescriptor)
+            .ToList();
+
+        return resolution.Status switch
+        {
+            CommunityResourceWorldTargetResolutionStatus.MissingWorldResourceId => SerializePayload(new
+            {
+                status = "missing_requirements",
+                resource_type = "datapack",
+                target_version_name = targetVersion.TargetVersionName,
+                version_directory_path = targetVersion.VersionDirectoryPath,
+                resolved_game_directory = targetVersion.ResolvedGameDirectory,
+                available_worlds = availableWorlds,
+                missing_requirements = new[]
+                {
+                    new
+                    {
+                        field = "target_world_resource_id",
+                        message = "安装数据包必须提供 target_world_resource_id。请先调用 getInstanceCommunityResources，并传 resource_types=[\"world\"]，再从返回的 world 项里选择 resource_instance_id。"
+                    }
+                }
+            }),
+            CommunityResourceWorldTargetResolutionStatus.InvalidWorldResourceId => SerializePayload(new
+            {
+                status = "invalid_request",
+                resource_type = "datapack",
+                target_version_name = targetVersion.TargetVersionName,
+                version_directory_path = targetVersion.VersionDirectoryPath,
+                resolved_game_directory = targetVersion.ResolvedGameDirectory,
+                requested_target_world_resource_id = resolution.RequestedTargetWorldResourceId,
+                available_worlds = availableWorlds,
+                message = $"target_world_resource_id {resolution.RequestedTargetWorldResourceId} 不是有效的世界 resource_instance_id。请只使用 getInstanceCommunityResources(resource_types=[\"world\"]) 返回的 world 项 resource_instance_id。"
+            }),
+            CommunityResourceWorldTargetResolutionStatus.WorldNotFound => SerializePayload(new
+            {
+                status = "invalid_request",
+                resource_type = "datapack",
+                target_version_name = targetVersion.TargetVersionName,
+                version_directory_path = targetVersion.VersionDirectoryPath,
+                resolved_game_directory = targetVersion.ResolvedGameDirectory,
+                requested_target_world_resource_id = resolution.RequestedTargetWorldResourceId,
+                available_worlds = availableWorlds,
+                message = $"target_world_resource_id {resolution.RequestedTargetWorldResourceId} 不属于实例 {targetVersion.TargetVersionName} 当前可用的世界清单。请先重新调用 getInstanceCommunityResources(resource_types=[\"world\"]) 并只使用该实例返回的 world 项 resource_instance_id。"
+            }),
+            _ => SerializePayload(new
+            {
+                status = "failed",
+                resource_type = "datapack",
+                target_version_name = targetVersion.TargetVersionName,
+                version_directory_path = targetVersion.VersionDirectoryPath,
+                resolved_game_directory = targetVersion.ResolvedGameDirectory,
+                requested_target_world_resource_id = resolution.RequestedTargetWorldResourceId,
+                available_worlds = availableWorlds,
+                message = "解析数据包目标世界失败。"
+            })
+        };
     }
 
     private CommunityResourceInstallExecutionContext CreatePlanContext(
@@ -2223,7 +2375,8 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         ResolvedTargetVersionContext targetVersion,
         string resourceName,
         string resourceType,
-        CommunityResourceInstallPlanningResult planningResult)
+        CommunityResourceInstallPlanningResult planningResult,
+        CommunityResourceWorldTargetDescriptor? targetWorld)
     {
         if (!string.IsNullOrWhiteSpace(planningResult.UnsupportedReason))
         {
@@ -2268,7 +2421,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             UseCustomDownloadPath = planningResult.Plan.UseCustomDownloadPath,
         };
 
-        return CreateReadyContext(command, targetVersion, resourceName, resourceType, overriddenPlan, descriptor: null);
+        return CreateReadyContext(command, targetVersion, resourceName, resourceType, overriddenPlan, descriptor: null, targetWorld);
     }
 
     private CommunityResourceInstallExecutionContext CreateReadyContext(
@@ -2277,9 +2430,14 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         string resourceName,
         string resourceType,
         CommunityResourceInstallPlan plan,
-        CommunityResourceInstallDescriptor? descriptor)
+        CommunityResourceInstallDescriptor? descriptor,
+        CommunityResourceWorldTargetDescriptor? targetWorld)
     {
         bool isWorldInstall = string.Equals(resourceType, "world", StringComparison.OrdinalIgnoreCase);
+        bool isDatapackInstall = string.Equals(resourceType, "datapack", StringComparison.OrdinalIgnoreCase);
+        object? serializedTargetWorld = isDatapackInstall && targetWorld != null
+            ? SerializeWorldTargetDescriptor(targetWorld)
+            : null;
 
         return new CommunityResourceInstallExecutionContext
         {
@@ -2296,26 +2454,35 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                 version_directory_path = targetVersion.VersionDirectoryPath,
                 resolved_game_directory = targetVersion.ResolvedGameDirectory,
                 download_dependencies = command.DownloadDependencies,
+                target_world_resource_id = isDatapackInstall ? targetWorld?.ResourceInstanceId : null,
+                target_save_name = isDatapackInstall ? targetWorld?.TargetSaveName : null,
+                target_world = serializedTargetWorld,
                 plan = new
                 {
                     target_directory = plan.PrimaryTargetDirectory,
                     dependency_target_directory = plan.DependencyTargetDirectory,
                     save_path = plan.SavePath,
                 },
+                datapack_target_directory = isDatapackInstall ? plan.PrimaryTargetDirectory : null,
                 world_target_directory = isWorldInstall ? plan.PrimaryTargetDirectory : null,
                 dependency_target_directory = plan.DependencyTargetDirectory,
                 duplicate_policy = isWorldInstall ? "auto_rename" : null,
                 expected_world_base_name = isWorldInstall ? Path.GetFileNameWithoutExtension(plan.SavePath) : null,
                 message = isWorldInstall
                     ? $"已准备将世界 {resourceName} 安装到实例 {targetVersion.TargetVersionName} 的 saves 目录。若同名存档已存在，将自动重命名。等待用户确认。"
+                    : isDatapackInstall && targetWorld != null
+                        ? $"已准备将数据包 {resourceName} 安装到实例 {targetVersion.TargetVersionName} 的世界 {targetWorld.DisplayName}。等待用户确认。"
                     : $"已准备安装 {resourceName} 到 {targetVersion.TargetVersionName}。等待用户确认。"
             }),
-            ButtonText = $"安装 {resourceName}",
+            ButtonText = isDatapackInstall && targetWorld != null
+                ? $"为 {targetWorld.DisplayName} 安装 {resourceName}"
+                : $"安装 {resourceName}",
             TargetVersionName = targetVersion.TargetVersionName,
             VersionDirectoryPath = targetVersion.VersionDirectoryPath,
             ResolvedGameDirectory = targetVersion.ResolvedGameDirectory,
             ResourceName = resourceName,
             ResourceType = resourceType,
+            TargetWorld = targetWorld,
             Plan = plan,
             Descriptor = descriptor,
         };
@@ -2325,7 +2492,6 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
     {
         var message = resourceType switch
         {
-            "datapack" => "数据包安装需要目标世界/存档选择，当前 AI V1 还没有 get_worlds 之类的补参工具，因此暂不支持直接安装。",
             "modpack" => "整合包请改用 installModpack。它会创建新实例，而不是安装到现有实例。",
             _ => reason ?? "当前资源类型超出 AI V1 安装范围。"
         };
@@ -2933,6 +3099,19 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
         };
     }
 
+    private static object SerializeWorldTargetDescriptor(CommunityResourceWorldTargetDescriptor item)
+    {
+        return new
+        {
+            resource_instance_id = item.ResourceInstanceId,
+            display_name = item.DisplayName,
+            world_name = item.WorldName,
+            target_save_name = item.TargetSaveName,
+            relative_path = item.RelativePath,
+            file_path = item.FilePath,
+        };
+    }
+
     private static object SerializeModpackVersionItem(ModpackVersionItem item)
     {
         return new
@@ -3187,7 +3366,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
     }
 
     private static bool IsAiInstallSupportedResourceType(string resourceType) =>
-        resourceType is "mod" or "resourcepack" or "shader" or "world";
+        resourceType is "mod" or "resourcepack" or "shader" or "datapack" or "world";
 
     private static List<string> NormalizePlatforms(IReadOnlyList<string>? platforms)
     {
@@ -3629,6 +3808,8 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
 
         public string ResourceType { get; init; } = string.Empty;
 
+        public CommunityResourceWorldTargetDescriptor? TargetWorld { get; init; }
+
         public CommunityResourceInstallPlan? Plan { get; init; }
 
         public CommunityResourceInstallDescriptor? Descriptor { get; init; }
@@ -3639,6 +3820,37 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             {
                 Command = new AgentCommunityResourceInstallCommand(),
                 Message = message
+            };
+        }
+    }
+
+    private sealed class CommunityResourceInstallTargetContext
+    {
+        public bool IsReady { get; init; }
+
+        public string Message { get; init; } = string.Empty;
+
+        public string? TargetSaveName { get; init; }
+
+        public CommunityResourceWorldTargetDescriptor? TargetWorld { get; init; }
+
+        public static CommunityResourceInstallTargetContext Ready(
+            string? targetSaveName = null,
+            CommunityResourceWorldTargetDescriptor? targetWorld = null)
+        {
+            return new CommunityResourceInstallTargetContext
+            {
+                IsReady = true,
+                TargetSaveName = targetSaveName,
+                TargetWorld = targetWorld,
+            };
+        }
+
+        public static CommunityResourceInstallTargetContext FromMessage(string message)
+        {
+            return new CommunityResourceInstallTargetContext
+            {
+                Message = message,
             };
         }
     }
