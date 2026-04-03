@@ -10,6 +10,8 @@ GITHUB_NOREPLY_EMAIL_PATTERNS = (
     re.compile(r"^([A-Za-z0-9-]+)@users\.noreply\.github\.com$", re.IGNORECASE),
 )
 
+MAX_HTTP_ERROR_TEXT_LEN = 240
+
 def infer_github_login_from_email(author_email):
     """从 GitHub noreply 邮箱推断 login。"""
     if not author_email:
@@ -23,13 +25,42 @@ def infer_github_login_from_email(author_email):
 
     return None
 
-def get_github_commit_author_login(repo, github_token, commit_hash, cache):
+def summarize_http_error(response):
+    """提取 HTTP 错误摘要，避免日志噪声过大。"""
+    summary_parts = [f"status={response.status_code}"]
+
+    rate_limit_remaining = response.headers.get("X-RateLimit-Remaining")
+    if rate_limit_remaining:
+        summary_parts.append(f"rate_limit_remaining={rate_limit_remaining}")
+
+    message = None
+    try:
+        payload = response.json()
+        if isinstance(payload, dict):
+            message = payload.get("message")
+    except Exception:
+        message = None
+
+    if not message:
+        response_text = (response.text or "").strip()
+        if response_text:
+            message = response_text[:MAX_HTTP_ERROR_TEXT_LEN]
+            if len(response_text) > MAX_HTTP_ERROR_TEXT_LEN:
+                message += "..."
+
+    if message:
+        summary_parts.append(f"message={message}")
+
+    return ", ".join(summary_parts)
+
+def get_github_commit_author_login(repo, github_token, commit_hash, author_email, cache):
     """从 GitHub Commit API 获取 canonical author login。"""
     if not repo or '/' not in repo or not github_token or not commit_hash:
         return None
 
-    if commit_hash in cache:
-        return cache[commit_hash]
+    cache_key = (author_email or "").strip().lower() or f"commit:{commit_hash}"
+    if cache_key in cache:
+        return cache[cache_key]
 
     try:
         import requests
@@ -46,29 +77,29 @@ def get_github_commit_author_login(repo, github_token, commit_hash, cache):
             timeout=60)
 
         if response.status_code != 200:
-            print(f"GitHub commit lookup error for {commit_hash}: {response.status_code} - {response.text}")
-            cache[commit_hash] = None
+            print(f"GitHub commit lookup error for {commit_hash}: {summarize_http_error(response)}")
+            cache[cache_key] = None
             return None
 
         result = response.json()
         author = result.get('author') or {}
         login = author.get('login')
-        cache[commit_hash] = login.strip() if isinstance(login, str) and login.strip() else None
-        return cache[commit_hash]
+        cache[cache_key] = login.strip() if isinstance(login, str) and login.strip() else None
+        return cache[cache_key]
     except Exception as e:
         print(f"Exception getting GitHub commit author for {commit_hash}: {e}")
-        cache[commit_hash] = None
+        cache[cache_key] = None
         return None
 
 def resolve_canonical_contributor(author_name, author_email, repo, github_token, commit_hash, cache):
     """解析 commit 的 canonical contributor，优先使用 GitHub login。"""
-    github_login = get_github_commit_author_login(repo, github_token, commit_hash, cache)
-    if github_login:
-        return f"@{github_login}", "github-commit-author"
-
     inferred_login = infer_github_login_from_email(author_email)
     if inferred_login:
         return f"@{inferred_login}", "github-noreply-email"
+
+    github_login = get_github_commit_author_login(repo, github_token, commit_hash, author_email, cache)
+    if github_login:
+        return f"@{github_login}", "github-commit-author"
 
     if author_name and author_name.strip():
         return author_name.strip(), "git-author-name"
@@ -158,11 +189,11 @@ def get_git_commits(last_tag, current_ref, repo='', github_token=''):
 """
             output_buffer.append(block)
             
-        return "\n".join(output_buffer)
+        return "\n".join(output_buffer), len(hashes)
         
     except Exception as e:
         print(f"Exception getting git details: {e}")
-        return ""
+        return "", 0
 
 def get_previous_tag(current_tag):
     """尝试获取上一个 Tag，正式版跳过所有 dev/beta tag"""
@@ -241,7 +272,7 @@ def get_github_generated_release_notes(repo, github_token, current_tag, previous
             timeout=60)
 
         if response.status_code != 200:
-            print(f"GitHub generate-notes error: {response.status_code} - {response.text}")
+            print(f"GitHub generate-notes error: {summarize_http_error(response)}")
             return None
 
         result = response.json()
@@ -398,7 +429,7 @@ def call_ai_api(api_url, api_key, model, commits, github_generated_notes=None, p
         response = requests.post(f"{api_url}/chat/completions", headers=headers, json=data, timeout=60)
         
         if response.status_code != 200:
-            print(f"API Error: {response.status_code} - {response.text}")
+            print(f"API Error: {summarize_http_error(response)}")
             return None
             
         result = response.json()
@@ -437,7 +468,7 @@ def main():
         print("GitHub generated release notes unavailable.")
     
     # 2. 获取 Commits
-    commits = get_git_commits(prev_tag, args.current_ref, args.repo, args.github_token)
+    commits, commit_count = get_git_commits(prev_tag, args.current_ref, args.repo, args.github_token)
     
     if not commits:
         print("No commits found.")
@@ -446,7 +477,7 @@ def main():
             f.write("本次更新包含若干修复和改进。")
         return
 
-    print(f"Found {len(commits.splitlines())} commits.")
+    print(f"Found {commit_count} commits.")
     
     # 3. 调用 AI
     changelog = None
