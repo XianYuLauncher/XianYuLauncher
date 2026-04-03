@@ -2325,7 +2325,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
 
         _downloadTaskManager.TaskStateChanged += DownloadTaskManager_TaskStateChanged;
-        _downloadTaskManager.TaskProgressChanged += DownloadTaskManager_TaskProgressChanged;
         _isDownloadTaskEventsSubscribed = true;
     }
 
@@ -2337,7 +2336,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
 
         _downloadTaskManager.TaskStateChanged -= DownloadTaskManager_TaskStateChanged;
-        _downloadTaskManager.TaskProgressChanged -= DownloadTaskManager_TaskProgressChanged;
         _isDownloadTaskEventsSubscribed = false;
     }
 
@@ -3484,27 +3482,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         _ = RefreshCommunityResourcesAfterUpdateAsync(taskInfo);
     }
 
-    private void DownloadTaskManager_TaskProgressChanged(object? sender, DownloadTaskInfo taskInfo)
-    {
-        if (!IsTrackedModpackUpdateTask(taskInfo))
-        {
-            return;
-        }
-
-        _ = _uiDispatcher.RunOnUiThreadAsync(() =>
-        {
-            IsInstallingExtension = true;
-            ExtensionInstallDialogTitle = GetOperationDialogTitle(OperationTaskType.ModpackUpdate);
-            ExtensionInstallProgress = taskInfo.Progress;
-            if (!string.IsNullOrWhiteSpace(taskInfo.StatusMessage))
-            {
-                ExtensionInstallStatus = taskInfo.StatusMessage;
-            }
-
-            return Task.CompletedTask;
-        });
-    }
-
     private bool IsTrackedModpackUpdateTask(DownloadTaskInfo taskInfo)
     {
         return !string.IsNullOrWhiteSpace(_trackedModpackUpdateTaskId)
@@ -3550,17 +3527,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             {
                 case DownloadTaskState.Queued:
                 case DownloadTaskState.Downloading:
-                    IsInstallingExtension = true;
-                    ExtensionInstallDialogTitle = GetOperationDialogTitle(OperationTaskType.ModpackUpdate);
-                    ExtensionInstallProgress = taskInfo.Progress;
-                    ExtensionInstallStatus = taskInfo.StatusMessage;
                     break;
 
                 case DownloadTaskState.Completed:
                 {
-                    ExtensionInstallProgress = taskInfo.Progress;
-                    ExtensionInstallStatus = taskInfo.StatusMessage;
-
                     if (!string.IsNullOrWhiteSpace(_trackedModpackUpdateSourceVersionId))
                     {
                         _currentModpackVersionId = _trackedModpackUpdateSourceVersionId;
@@ -3583,8 +3553,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                         StatusMessage = string.Format(
                             "VersionManagerPage_ModpackUpdateRefreshFailedWithErrorStatusFormat".GetLocalized(),
                             ex.Message);
-                        await Task.Delay(500);
-                        IsInstallingExtension = false;
                         ClearTrackedModpackUpdateState();
                         break;
                     }
@@ -3595,25 +3563,17 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                             ? SelectedVersion?.Name ?? string.Empty
                             : _trackedModpackUpdateDisplayName);
 
-                    await Task.Delay(500);
-                    IsInstallingExtension = false;
                     ClearTrackedModpackUpdateState();
                     break;
                 }
 
                 case DownloadTaskState.Failed:
-                    ExtensionInstallStatus = taskInfo.ErrorMessage ?? taskInfo.StatusMessage;
                     StatusMessage = taskInfo.ErrorMessage ?? taskInfo.StatusMessage;
-                    await Task.Delay(500);
-                    IsInstallingExtension = false;
                     ClearTrackedModpackUpdateState();
                     break;
 
                 case DownloadTaskState.Cancelled:
-                    ExtensionInstallStatus = taskInfo.StatusMessage;
                     StatusMessage = taskInfo.StatusMessage;
-                    await Task.Delay(500);
-                    IsInstallingExtension = false;
                     ClearTrackedModpackUpdateState();
                     break;
             }
@@ -3700,8 +3660,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
         catch (Exception ex)
         {
-            IsInstallingExtension = false;
-            ExtensionInstallStatus = $"更新失败：{ex.Message}";
             StatusMessage = $"更新失败：{ex.Message}";
             ClearTrackedModpackUpdateState();
         }
@@ -3718,11 +3676,6 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
 
         ModpackUpdateQueueRequest request = BuildModpackUpdateQueueRequest(targetVersion);
-        ExtensionInstallDialogTitle = GetOperationDialogTitle(OperationTaskType.ModpackUpdate);
-        IsInstallingExtension = true;
-        ExtensionInstallProgress = 0;
-        ExtensionInstallStatus = "已加入下载队列，等待开始...";
-
         string taskId = await _modpackDownloadQueueService.StartUpdateAsync(request, cancellationToken);
 
         string sourceVersionId = string.IsNullOrWhiteSpace(request.SourceVersionId)
