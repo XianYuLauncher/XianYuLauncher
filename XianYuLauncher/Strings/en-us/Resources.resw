@@ -216,6 +216,9 @@
   <data name="DownloadQueue_Status_NameWithProgress" xml:space="preserve">
     <value>{0} - {1}</value>
   </data>
+  <data name="DownloadQueue_Status_TextWithProgress" xml:space="preserve">
+    <value>{0} {1}</value>
+  </data>
   <data name="DownloadQueue_Status_Completed" xml:space="preserve">
     <value>Download complete</value>
   </data>

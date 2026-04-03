@@ -35,22 +35,27 @@ public sealed class DownloadTaskPresentationService : IDownloadTaskPresentationS
 
     private static string ResolveStatusMessage(DownloadTaskInfo taskInfo, string displayName)
     {
+        string statusMessage;
+
         if (taskInfo.State == DownloadTaskState.Queued && taskInfo.QueuePosition is int queuePosition)
         {
-            return "DownloadQueue_Status_QueuedWithPosition".GetLocalized(queuePosition);
+            statusMessage = "DownloadQueue_Status_QueuedWithPosition".GetLocalized(queuePosition);
+            return statusMessage;
         }
 
         if (!string.IsNullOrWhiteSpace(taskInfo.StatusResourceKey))
         {
-            return taskInfo.StatusResourceKey!.GetLocalized(ToStatusArguments(taskInfo, displayName));
+            statusMessage = taskInfo.StatusResourceKey!.GetLocalized(ToStatusArguments(taskInfo, displayName));
+            return AppendInlineProgressIfNeeded(taskInfo, statusMessage);
         }
 
         if (!string.IsNullOrWhiteSpace(taskInfo.StatusMessage))
         {
-            return taskInfo.StatusMessage;
+            statusMessage = taskInfo.StatusMessage;
+            return AppendInlineProgressIfNeeded(taskInfo, statusMessage);
         }
 
-        return taskInfo.State switch
+        statusMessage = taskInfo.State switch
         {
             DownloadTaskState.Queued => "DownloadQueue_Status_Waiting".GetLocalized(),
             DownloadTaskState.Downloading => "DownloadQueue_Status_Downloading".GetLocalized(),
@@ -59,6 +64,8 @@ public sealed class DownloadTaskPresentationService : IDownloadTaskPresentationS
             DownloadTaskState.Cancelled => "DownloadQueue_Status_Cancelled".GetLocalized(),
             _ => "DownloadQueue_Status_Generic".GetLocalized()
         };
+
+        return AppendInlineProgressIfNeeded(taskInfo, statusMessage);
     }
 
     private static object[] ToStatusArguments(DownloadTaskInfo taskInfo, string displayName)
@@ -102,6 +109,23 @@ public sealed class DownloadTaskPresentationService : IDownloadTaskPresentationS
             && taskInfo.StatusResourceKey is "DownloadQueue_Status_DownloadingNamed"
                 or "DownloadQueue_Status_DownloadingNamedWithProgress"
                 or "DownloadQueue_Status_NameWithProgress";
+    }
+
+    private static string AppendInlineProgressIfNeeded(DownloadTaskInfo taskInfo, string statusMessage)
+    {
+        if (taskInfo.State != DownloadTaskState.Downloading
+            || taskInfo.TaskCategory is not (DownloadTaskCategory.ModpackDownload or DownloadTaskCategory.ModpackUpdate)
+            || taskInfo.Progress <= 0
+            || taskInfo.Progress >= 100
+            || string.IsNullOrWhiteSpace(statusMessage)
+            || statusMessage.Contains('%', StringComparison.Ordinal))
+        {
+            return statusMessage;
+        }
+
+        return "DownloadQueue_Status_TextWithProgress".GetLocalized(
+            statusMessage,
+            $"{Math.Clamp(taskInfo.Progress, 0, 100):F0}%");
     }
 
     private static string ResolveTaskTypeResourceKey(DownloadTaskInfo taskInfo)
