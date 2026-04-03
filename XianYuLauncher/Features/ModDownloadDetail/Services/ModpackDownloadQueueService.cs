@@ -430,8 +430,8 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
         downloadStatus = default;
         if (installProgress.SpeedBytesPerSecond.HasValue)
         {
-            double bytesPerSecond = Math.Max(0, installProgress.SpeedBytesPerSecond.Value);
-            downloadStatus = new DownloadProgressStatus(0, 0, progress, bytesPerSecond);
+            double directSpeedBytesPerSecond = Math.Max(0, installProgress.SpeedBytesPerSecond.Value);
+            downloadStatus = new DownloadProgressStatus(0, 0, progress, directSpeedBytesPerSecond);
             return true;
         }
 
