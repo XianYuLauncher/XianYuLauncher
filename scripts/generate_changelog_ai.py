@@ -5,7 +5,77 @@ import json
 import re
 import argparse
 
-def get_git_commits(last_tag, current_ref):
+GITHUB_NOREPLY_EMAIL_PATTERNS = (
+    re.compile(r"^\d+\+([A-Za-z0-9-]+)@users\.noreply\.github\.com$", re.IGNORECASE),
+    re.compile(r"^([A-Za-z0-9-]+)@users\.noreply\.github\.com$", re.IGNORECASE),
+)
+
+def infer_github_login_from_email(author_email):
+    """从 GitHub noreply 邮箱推断 login。"""
+    if not author_email:
+        return None
+
+    normalized_email = author_email.strip()
+    for pattern in GITHUB_NOREPLY_EMAIL_PATTERNS:
+        match = pattern.match(normalized_email)
+        if match:
+            return match.group(1)
+
+    return None
+
+def get_github_commit_author_login(repo, github_token, commit_hash, cache):
+    """从 GitHub Commit API 获取 canonical author login。"""
+    if not repo or '/' not in repo or not github_token or not commit_hash:
+        return None
+
+    if commit_hash in cache:
+        return cache[commit_hash]
+
+    try:
+        import requests
+
+        owner, name = repo.split('/', 1)
+        headers = {
+            "Authorization": f"Bearer {github_token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28"
+        }
+        response = requests.get(
+            f"https://api.github.com/repos/{owner}/{name}/commits/{commit_hash}",
+            headers=headers,
+            timeout=60)
+
+        if response.status_code != 200:
+            print(f"GitHub commit lookup error for {commit_hash}: {response.status_code} - {response.text}")
+            cache[commit_hash] = None
+            return None
+
+        result = response.json()
+        author = result.get('author') or {}
+        login = author.get('login')
+        cache[commit_hash] = login.strip() if isinstance(login, str) and login.strip() else None
+        return cache[commit_hash]
+    except Exception as e:
+        print(f"Exception getting GitHub commit author for {commit_hash}: {e}")
+        cache[commit_hash] = None
+        return None
+
+def resolve_canonical_contributor(author_name, author_email, repo, github_token, commit_hash, cache):
+    """解析 commit 的 canonical contributor，优先使用 GitHub login。"""
+    github_login = get_github_commit_author_login(repo, github_token, commit_hash, cache)
+    if github_login:
+        return f"@{github_login}", "github-commit-author"
+
+    inferred_login = infer_github_login_from_email(author_email)
+    if inferred_login:
+        return f"@{inferred_login}", "github-noreply-email"
+
+    if author_name and author_name.strip():
+        return author_name.strip(), "git-author-name"
+
+    return "unknown", "unknown"
+
+def get_git_commits(last_tag, current_ref, repo='', github_token=''):
     """
     获取详细的提交记录，包含 Message, Stat 和部分 Diff
     """
@@ -17,6 +87,7 @@ def get_git_commits(last_tag, current_ref):
         hashes = result.stdout.strip().splitlines()
         
         output_buffer = []
+        commit_author_cache = {}
         MAX_DIFF_LEN = 1500  # 每个 Commit 最多读取多少字符的 Diff，防止 Token 爆炸
         
         print(f"Analyzing {len(hashes)} commits for diffs...")
@@ -24,10 +95,36 @@ def get_git_commits(last_tag, current_ref):
         # 倒序处理（从旧到新），或者正序都可以，git log 默认是新到旧
         for commit_hash in hashes:
             if not commit_hash: continue
-            
-            # 获取 Author 和 Subject
-            info_cmd = ["git", "show", "-s", "--format=Commit: %h%nAuthor: %an%nDate: %cd%nMessage: %s%n%b", commit_hash]
-            info = subprocess.run(info_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace').stdout.strip()
+
+            meta_cmd = ["git", "show", "-s", "--format=%h%x1f%an%x1f%ae%x1f%cd%x1f%s%x1f%b", commit_hash]
+            meta_output = subprocess.run(meta_cmd, capture_output=True, text=True, encoding='utf-8', errors='replace').stdout
+            short_hash, author_name, author_email, commit_date, subject, body = (meta_output.split("\x1f", 5) + [""] * 6)[:6]
+            author_name = author_name.strip()
+            author_email = author_email.strip()
+            commit_date = commit_date.strip()
+            subject = subject.strip()
+            body = body.strip()
+
+            canonical_contributor, contributor_source = resolve_canonical_contributor(
+                author_name,
+                author_email,
+                repo,
+                github_token,
+                commit_hash,
+                commit_author_cache)
+
+            info_lines = [
+                f"Commit: {short_hash.strip()}",
+                f"Author Name: {author_name}",
+                f"Author Email: {author_email}",
+                f"Canonical Contributor: {canonical_contributor}",
+                f"Canonical Contributor Source: {contributor_source}",
+                f"Date: {commit_date}",
+                f"Message: {subject}"
+            ]
+            if body:
+                info_lines.append(body)
+            info = "\n".join(info_lines)
             
             # 获取修改的文件列表 (Stat)
             stat_cmd = ["git", "show", "--stat", "--oneline", "--no-patch", commit_hash]
@@ -241,9 +338,11 @@ def call_ai_api(api_url, api_key, model, commits, github_generated_notes=None, p
 7. **内容精简**：
    - 如果某个功能被多次 Commit 修改，请合并为一条。
    - 忽略纯粹的格式化、注释修改、CI/CD 配置文件调整（除非影响到发布产物）。
-    - 每个条目末尾都必须包含贡献者与主要 Commit 的短 Hash，格式固定为 `(by @xxx) (3a401ae, a528963)`。
+    - 每个条目末尾都必须包含贡献者与主要 Commit 的短 Hash，格式优先为 `(by @xxx) (3a401ae, a528963)`。
     - 如果同一条目涉及多位贡献者或多个主要 Commit，可以列出多个用户名和多个短 Hash，但保持上述格式。
-    - 贡献者信息优先参考我提供的 GitHub 自动生成发布说明，不要凭空编造 GitHub 用户名。
+    - 提交详情中会显式提供 `Canonical Contributor` 字段。只要它存在，就优先直接使用该值，不要自行改写。
+    - 绝对不要根据 `Author Name` 推断、拼接或猜测 `@用户名`。只有 `Canonical Contributor` 或 GitHub 自动生成说明中明确给出的 `@username` 才能使用 `@`。
+    - 如果 `Canonical Contributor` 不是 `@username` 形式，而是普通名字，则按原样输出贡献者名字，不要强行补 `@`。
 8. **输出要求**：最终返回内容仅包含更新日志本身，不要有任何开场白、解释或总结性文字（如"好的"、"以下是更新日志"等）。
 9. **尾部保留策略**：不要在正文里自行生成 `## New Contributors` 与 `**Full Changelog**`；它们会由后处理统一追加。
 10. **示例**：
@@ -273,8 +372,9 @@ def call_ai_api(api_url, api_key, model, commits, github_generated_notes=None, p
 必须严格遵守：
 - 使用简体中文。
 - 仅使用以下分类标题：✨ 新增功能、⚡ 优化、🛠️ 修复、🔨 内部变更。
-- 每个条目末尾都必须使用 `(by @xxx) (3a401ae, a528963)` 格式。
-- 贡献者用户名优先使用 GitHub 自动生成发布说明中的 `@username`。
+- 每个条目末尾都必须包含贡献者和短哈希；优先使用 `(by @xxx) (3a401ae, a528963)` 格式。
+- `Canonical Contributor` 是贡献者字段的最高优先级，必须直接使用，不要自行改写。
+- 绝对不要根据 `Author Name` 自行猜测 `@username`。
 - `## New Contributors` 与 `**Full Changelog**` 不要由你输出，后处理会统一追加。
 """
 
@@ -337,7 +437,7 @@ def main():
         print("GitHub generated release notes unavailable.")
     
     # 2. 获取 Commits
-    commits = get_git_commits(prev_tag, args.current_ref)
+    commits = get_git_commits(prev_tag, args.current_ref, args.repo, args.github_token)
     
     if not commits:
         print("No commits found.")
