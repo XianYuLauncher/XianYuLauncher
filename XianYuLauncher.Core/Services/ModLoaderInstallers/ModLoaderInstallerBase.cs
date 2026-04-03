@@ -466,6 +466,9 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
             {
                 var plan = indexedPlan.Plan;
                 bool succeeded = false;
+                Action<DownloadProgressStatus>? taskProgressCallback = progressCallback == null
+                    ? null
+                    : status => ReportAggregateProgress(indexedPlan.Index, status);
 
                 try
                 {
@@ -474,7 +477,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
                             plan.PrimaryUrl,
                             plan.TargetPath,
                             plan.ExpectedSha1,
-                            status => ReportAggregateProgress(indexedPlan.Index, status),
+                            taskProgressCallback,
                             plan.ExpectedSize,
                             false,
                             ct)
@@ -482,7 +485,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
                             plan.PrimaryUrl,
                             plan.TargetPath,
                             plan.ExpectedSha1,
-                            status => ReportAggregateProgress(indexedPlan.Index, status),
+                            taskProgressCallback,
                             false,
                             ct);
 
@@ -497,7 +500,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
                                 plan.FallbackUrl,
                                 plan.TargetPath,
                                 plan.ExpectedSha1,
-                                status => ReportAggregateProgress(indexedPlan.Index, status),
+                                taskProgressCallback,
                                 plan.ExpectedSize,
                                 false,
                                 ct)
@@ -505,7 +508,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
                                 plan.FallbackUrl,
                                 plan.TargetPath,
                                 plan.ExpectedSha1,
-                                status => ReportAggregateProgress(indexedPlan.Index, status),
+                                taskProgressCallback,
                                 false,
                                 ct);
                     }
