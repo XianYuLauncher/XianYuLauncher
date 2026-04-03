@@ -1391,29 +1391,27 @@ public class DownloadManager : IDownloadManager
         long stallTimeoutMs = (long)_directReadProgressStallTimeout.TotalMilliseconds;
         int checkIntervalMs = (int)Math.Clamp(stallTimeoutMs / 4, 50L, 1000L);
 
-        try
+        while (!cancellationToken.IsCancellationRequested)
         {
-            while (!cancellationToken.IsCancellationRequested)
+            await Task.Delay(checkIntervalMs);
+            if (cancellationToken.IsCancellationRequested)
             {
-                await Task.Delay(checkIntervalMs, cancellationToken);
-
-                long idleMs = Environment.TickCount64 - getLastProgressTick();
-                if (idleMs < stallTimeoutMs)
-                {
-                    continue;
-                }
-
-                _logger.LogWarning(
-                    "直连下载长时间无进度，准备取消当前读取并重试: {Url}, IdleMs={IdleMs}, TimeoutMs={TimeoutMs}",
-                    url,
-                    idleMs,
-                    stallTimeoutMs);
-                onStalled();
                 return;
             }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
+
+            long idleMs = Environment.TickCount64 - getLastProgressTick();
+            if (idleMs < stallTimeoutMs)
+            {
+                continue;
+            }
+
+            _logger.LogWarning(
+                "直连下载长时间无进度，准备取消当前读取并重试: {Url}, IdleMs={IdleMs}, TimeoutMs={TimeoutMs}",
+                url,
+                idleMs,
+                stallTimeoutMs);
+            onStalled();
+            return;
         }
     }
 
@@ -1426,29 +1424,27 @@ public class DownloadManager : IDownloadManager
         long stallTimeoutMs = (long)_shardedProgressStallTimeout.TotalMilliseconds;
         int checkIntervalMs = (int)Math.Clamp(stallTimeoutMs / 4, 50L, 1000L);
 
-        try
+        while (!cancellationToken.IsCancellationRequested)
         {
-            while (!cancellationToken.IsCancellationRequested)
+            await Task.Delay(checkIntervalMs);
+            if (cancellationToken.IsCancellationRequested)
             {
-                await Task.Delay(checkIntervalMs, cancellationToken);
-
-                long idleMs = Environment.TickCount64 - getLastProgressTick();
-                if (idleMs < stallTimeoutMs)
-                {
-                    continue;
-                }
-
-                _logger.LogWarning(
-                    "分片下载长时间无进度，准备停止分片并回退直连: {Url}, IdleMs={IdleMs}, TimeoutMs={TimeoutMs}",
-                    url,
-                    idleMs,
-                    stallTimeoutMs);
-                onStalled();
                 return;
             }
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
+
+            long idleMs = Environment.TickCount64 - getLastProgressTick();
+            if (idleMs < stallTimeoutMs)
+            {
+                continue;
+            }
+
+            _logger.LogWarning(
+                "分片下载长时间无进度，准备停止分片并回退直连: {Url}, IdleMs={IdleMs}, TimeoutMs={TimeoutMs}",
+                url,
+                idleMs,
+                stallTimeoutMs);
+            onStalled();
+            return;
         }
     }
 
