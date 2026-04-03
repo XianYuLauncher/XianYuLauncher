@@ -1,4 +1,5 @@
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
@@ -113,19 +114,14 @@ public sealed class DownloadTaskPresentationService : IDownloadTaskPresentationS
 
     private static string AppendInlineProgressIfNeeded(DownloadTaskInfo taskInfo, string statusMessage)
     {
-        if (taskInfo.State != DownloadTaskState.Downloading
-            || taskInfo.TaskCategory is not (DownloadTaskCategory.ModpackDownload or DownloadTaskCategory.ModpackUpdate)
-            || taskInfo.Progress <= 0
-            || taskInfo.Progress >= 100
-            || string.IsNullOrWhiteSpace(statusMessage)
-            || statusMessage.Contains('%', StringComparison.Ordinal))
+        if (!DownloadTaskDisplayHelper.ShouldAppendInlineProgress(taskInfo, statusMessage))
         {
             return statusMessage;
         }
 
         return "DownloadQueue_Status_TextWithProgress".GetLocalized(
             statusMessage,
-            $"{Math.Clamp(taskInfo.Progress, 0, 100):F0}%");
+            DownloadTaskDisplayHelper.FormatInlineProgressText(taskInfo.Progress));
     }
 
     private static string ResolveTaskTypeResourceKey(DownloadTaskInfo taskInfo)

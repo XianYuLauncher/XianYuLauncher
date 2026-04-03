@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.ViewModels;
@@ -318,7 +319,7 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
                 groupedTaskIds.Add(childTask.TaskId);
             }
 
-            double aggregateSpeedBytesPerSecond = GetAggregateSpeedBytesPerSecond(summaryTask, childTasks);
+            double aggregateSpeedBytesPerSecond = DownloadTaskDisplayHelper.GetAggregateSpeedBytesPerSecond(summaryTask, childTasks);
             var groupItem = GetOrCreateGroupItem(summaryTask.TaskId, GetOrCreateTaskItem(summaryTask));
             groupItem.UpdateFrom(
                 summaryTask,
@@ -386,24 +387,6 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
             .Sum(task => Math.Max(0, task.SpeedBytesPerSecond));
 
         TotalSpeed = FormatSpeedText(totalBytesPerSecond);
-    }
-
-    private static double GetAggregateSpeedBytesPerSecond(
-        DownloadTaskInfo summaryTask,
-        IReadOnlyList<DownloadTaskInfo> childTaskInfos)
-    {
-        var childAggregateSpeedBytesPerSecond = childTaskInfos
-            .Where(task => task.State == DownloadTaskState.Downloading)
-            .Sum(task => Math.Max(0, task.SpeedBytesPerSecond));
-
-        if (childAggregateSpeedBytesPerSecond > 0)
-        {
-            return childAggregateSpeedBytesPerSecond;
-        }
-
-        return summaryTask.State == DownloadTaskState.Downloading
-            ? Math.Max(0, summaryTask.SpeedBytesPerSecond)
-            : 0;
     }
 
     private DownloadQueueTaskItemViewModel GetOrCreateTaskItem(DownloadTaskInfo taskInfo)
