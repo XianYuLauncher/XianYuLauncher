@@ -381,20 +381,15 @@ jobs:
         MODEL="${{ secrets.AI_MODEL }}"
         if [ -z "$MODEL" ]; then MODEL="gpt-3.5-turbo"; fi
         
-        # 如果没有配置 API Key，生成一个简单的占位符，防止流程失败
-        if [ -z "${{ secrets.AI_API_KEY }}" ]; then
-            echo "::warning::AI_API_KEY nor set. Skipping AI generation."
-            echo "changelog=Auto-generated release (AI Token missing)." >> $GITHUB_OUTPUT
-            exit 0
-        fi
-
         echo "Generating changelog using model: $MODEL"
         
         python3 scripts/generate_changelog_ai.py \
-          --token "${{ secrets.AI_API_KEY }}" \
           --base-url "$BASE_URL" \
           --model "$MODEL" \
           --current-ref "${{ github.ref_name }}" \
+          --repo "${{ github.repository }}" \
+          --github-token "${{ github.token }}" \
+          --token "${{ secrets.AI_API_KEY }}" \
           --output "CHANGELOG.md"
           
         # 读取文件内容到 Output (使用随机分界符防止冲突，并确保有换行)

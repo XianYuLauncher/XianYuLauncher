@@ -2,7 +2,7 @@ import os
 import sys
 import subprocess
 import json
-import requests
+import re
 import argparse
 
 def get_git_commits(last_tag, current_ref):
@@ -116,12 +116,113 @@ def get_previous_tag(current_tag):
     except Exception:
         return None
 
-def call_ai_api(api_url, api_key, model, commits, language="zh-CN"):
+def get_github_generated_release_notes(repo, github_token, current_tag, previous_tag=None):
+    """获取 GitHub 内置生成的 Release Notes。"""
+    if not repo or '/' not in repo or not github_token or not current_tag:
+        return None
+
+    try:
+        import requests
+
+        owner, name = repo.split('/', 1)
+        headers = {
+            "Authorization": f"Bearer {github_token}",
+            "Accept": "application/vnd.github+json",
+            "X-GitHub-Api-Version": "2022-11-28"
+        }
+        payload = {
+            "tag_name": current_tag,
+            "target_commitish": current_tag
+        }
+        if previous_tag:
+            payload["previous_tag_name"] = previous_tag
+
+        response = requests.post(
+            f"https://api.github.com/repos/{owner}/{name}/releases/generate-notes",
+            headers=headers,
+            json=payload,
+            timeout=60)
+
+        if response.status_code != 200:
+            print(f"GitHub generate-notes error: {response.status_code} - {response.text}")
+            return None
+
+        result = response.json()
+        body = result.get('body')
+        return body.strip() if body else None
+    except Exception as e:
+        print(f"Exception getting GitHub generated release notes: {e}")
+        return None
+
+def extract_markdown_section(markdown_text, heading):
+    """提取指定 Markdown 二级标题整个 section。"""
+    if not markdown_text or not heading:
+        return None
+
+    pattern = re.compile(
+        rf"(^##\s+{re.escape(heading)}\s*$.*?)(?=^##\s+|^\*\*Full Changelog\*\*:|\Z)",
+        re.MULTILINE | re.DOTALL)
+    match = pattern.search(markdown_text)
+    return match.group(1).strip() if match else None
+
+def extract_full_changelog_line(markdown_text):
+    """提取 Full Changelog 行。"""
+    if not markdown_text:
+        return None
+
+    pattern = re.compile(r"^\*\*Full Changelog\*\*:\s+.+$", re.MULTILINE)
+    match = pattern.search(markdown_text)
+    return match.group(0).strip() if match else None
+
+def strip_trailing_release_metadata(markdown_text):
+    """移除 AI 已输出的 New Contributors / Full Changelog，避免重复追加。"""
+    if not markdown_text:
+        return ""
+
+    cleaned = re.sub(
+        r"\n*##\s+New Contributors\s*\n.*?(?=\n\*\*Full Changelog\*\*:|\Z)",
+        "\n",
+        markdown_text,
+        flags=re.DOTALL)
+    cleaned = re.sub(r"\n*\*\*Full Changelog\*\*:\s+.+$", "", cleaned, flags=re.MULTILINE)
+    return cleaned.rstrip()
+
+def build_full_changelog_line(repo, previous_tag, current_tag):
+    """构造 Full Changelog 行。"""
+    if repo and previous_tag and current_tag:
+        return f"**Full Changelog**: https://github.com/{repo}/compare/{previous_tag}...{current_tag}"
+    return None
+
+def finalize_changelog(changelog, github_generated_notes, repo, previous_tag, current_tag):
+    """统一在尾部追加 New Contributors 和 Full Changelog。"""
+    cleaned = strip_trailing_release_metadata(changelog)
+    trailing_sections = []
+
+    new_contributors = extract_markdown_section(github_generated_notes, "New Contributors")
+    if new_contributors:
+        trailing_sections.append(new_contributors)
+
+    full_changelog_line = extract_full_changelog_line(github_generated_notes)
+    if not full_changelog_line:
+        full_changelog_line = build_full_changelog_line(repo, previous_tag, current_tag)
+    if full_changelog_line:
+        trailing_sections.append(full_changelog_line)
+
+    if not trailing_sections:
+        return cleaned.rstrip() + "\n"
+
+    parts = [cleaned.rstrip()] if cleaned.strip() else []
+    parts.extend(trailing_sections)
+    return "\n\n".join(parts).rstrip() + "\n"
+
+def call_ai_api(api_url, api_key, model, commits, github_generated_notes=None, previous_tag=None, current_tag=None, language="zh-CN"):
     """调用 AI 生成日志"""
-    
-    prompt = f"""你是一个负责生成软件发布更新日志的智能助手。
-我将提供 git commit 的详细信息，包括提交信息、修改的文件列表以及代码差异（Diff）。
+    import requests
+
+    prompt = f"""我将提供 git commit 的详细信息，包括提交信息、修改的文件列表以及代码差异（Diff）。
 请分析这些代码变更，理解其实际修改的逻辑，生成一份面向最终用户的 Release Note。
+
+版本范围：{previous_tag or '起始提交'} -> {current_tag}
 
 要求：
 1. **深度分析**：不要只看 Commit Message（有时开发者写得很随意），要通过 Diff 代码变更推断实际功能变化。例如，如果修改了 `Resources.resw`，可能是"新增多语言支持"；如果修改了 `Package.appxmanifest` 的版本号，可以忽略。
@@ -140,25 +241,41 @@ def call_ai_api(api_url, api_key, model, commits, language="zh-CN"):
 7. **内容精简**：
    - 如果某个功能被多次 Commit 修改，请合并为一条。
    - 忽略纯粹的格式化、注释修改、CI/CD 配置文件调整（除非影响到发布产物）。
-   - 每个条目末尾加上主要 Commit 的短 Hash（如 `(b9c2a1)`）。
+    - 每个条目末尾都必须包含贡献者与主要 Commit 的短 Hash，格式固定为 `(by @xxx) (3a401ae, a528963)`。
+    - 如果同一条目涉及多位贡献者或多个主要 Commit，可以列出多个用户名和多个短 Hash，但保持上述格式。
+    - 贡献者信息优先参考我提供的 GitHub 自动生成发布说明，不要凭空编造 GitHub 用户名。
 8. **输出要求**：最终返回内容仅包含更新日志本身，不要有任何开场白、解释或总结性文字（如"好的"、"以下是更新日志"等）。
-9. **示例**：
+9. **尾部保留策略**：不要在正文里自行生成 `## New Contributors` 与 `**Full Changelog**`；它们会由后处理统一追加。
+10. **示例**：
 ```markdown
 ## 更新日志
 
 ### ✨ 新增功能
-*   **地图重命名与导出**：在地图管理页面新增了重命名和导出为 ZIP 文件的功能。(1c91359)
+*   **地图重命名与导出**：在地图管理页面新增了重命名和导出为 ZIP 文件的功能。(by @alice) (1c91359)
 
 ### 🛠️ 修复
-*   **下载源未生效**：修复了用户设置 BMCLAPI 下载源后，实际下载仍走官方源的问题。(0e3c49f)
+*   **下载源未生效**：修复了用户设置 BMCLAPI 下载源后，实际下载仍走官方源的问题。(by @bob) (0e3c49f)
 
 ### 🔨 内部变更
-*   **整合包安装逻辑重构**：将整合包安装逻辑从 ViewModel 下沉至 Core 服务层，改善代码结构。(cc89355)
-*   **代码清理**：移除启动视图模型中的废弃方法和冗余逻辑。(e6283dc)
+*   **整合包安装逻辑重构**：将整合包安装逻辑从 ViewModel 下沉至 Core 服务层，改善代码结构。(by @charlie) (cc89355)
+*   **代码清理**：移除启动视图模型中的废弃方法和冗余逻辑。(by @charlie) (e6283dc)
 ```
+
+以下是 GitHub 自动生成的发布说明参考（优先用它补足贡献者、PR、新贡献者和 Full Changelog 上下文）：
+{github_generated_notes or '（未获取到 GitHub 自动生成的发布说明）'}
 
 以下是提交记录详情：
 {commits}
+"""
+
+    system_prompt = """你是 XianYuLauncher 的专业发布日志生成助手。
+直接输出 Markdown 更新日志正文，不要输出开场白、解释、总结或代码块围栏。
+必须严格遵守：
+- 使用简体中文。
+- 仅使用以下分类标题：✨ 新增功能、⚡ 优化、🛠️ 修复、🔨 内部变更。
+- 每个条目末尾都必须使用 `(by @xxx) (3a401ae, a528963)` 格式。
+- 贡献者用户名优先使用 GitHub 自动生成发布说明中的 `@username`。
+- `## New Contributors` 与 `**Full Changelog**` 不要由你输出，后处理会统一追加。
 """
 
     headers = {
@@ -169,7 +286,7 @@ def call_ai_api(api_url, api_key, model, commits, language="zh-CN"):
     data = {
         "model": model,
         "messages": [
-            {"role": "system", "content": "你是一个专业的发布日志生成助手。直接输出更新日志内容，不要有任何开场白或解释。"},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.5
@@ -193,10 +310,12 @@ def call_ai_api(api_url, api_key, model, commits, language="zh-CN"):
 
 def main():
     parser = argparse.ArgumentParser(description='Generate Changelog using AI')
-    parser.add_argument('--token', required=True, help='AI API Key')
+    parser.add_argument('--token', required=False, help='AI API Key')
     parser.add_argument('--base-url', default='https://api.openai.com/v1', help='AI API Base URL')
     parser.add_argument('--model', default='gpt-3.5-turbo', help='Model name')
     parser.add_argument('--current-ref', required=True, help='Current Tag or SHA')
+    parser.add_argument('--repo', default='', help='GitHub repo in owner/name format')
+    parser.add_argument('--github-token', default='', help='GitHub token used for generate-notes API')
     parser.add_argument('--output', default='changelog.md', help='Output file')
     
     args = parser.parse_args()
@@ -206,6 +325,16 @@ def main():
     # 1. 自动寻找上一个 Tag
     prev_tag = get_previous_tag(args.current_ref)
     print(f"Previous Tag identified: {prev_tag}")
+
+    github_generated_notes = get_github_generated_release_notes(
+        args.repo,
+        args.github_token,
+        args.current_ref,
+        prev_tag)
+    if github_generated_notes:
+        print("GitHub generated release notes fetched successfully.")
+    else:
+        print("GitHub generated release notes unavailable.")
     
     # 2. 获取 Commits
     commits = get_git_commits(prev_tag, args.current_ref)
@@ -220,12 +349,29 @@ def main():
     print(f"Found {len(commits.splitlines())} commits.")
     
     # 3. 调用 AI
-    print("Generating changelog via AI...")
-    changelog = call_ai_api(args.base_url, args.token, args.model, commits)
+    changelog = None
+    if args.token:
+        print("Generating changelog via AI...")
+        changelog = call_ai_api(
+            args.base_url,
+            args.token,
+            args.model,
+            commits,
+            github_generated_notes,
+            prev_tag,
+            args.current_ref)
+    else:
+        print("AI token missing. Skipping AI generation.")
     
     if not changelog:
-        print("Failed to generate changelog with AI. Fallback to raw commits.")
-        changelog = "## Update Log\n\n" + "\n".join([f"- {line}" for line in commits.splitlines()])
+        if github_generated_notes:
+            print("Failed to generate changelog with AI. Fallback to GitHub generated release notes.")
+            changelog = github_generated_notes
+        else:
+            print("Failed to generate changelog with AI. Fallback to raw commits.")
+            changelog = "## Update Log\n\n" + "\n".join([f"- {line}" for line in commits.splitlines()])
+
+    changelog = finalize_changelog(changelog, github_generated_notes, args.repo, prev_tag, args.current_ref)
     
     # 4. 输出
     print("Writing output...")
