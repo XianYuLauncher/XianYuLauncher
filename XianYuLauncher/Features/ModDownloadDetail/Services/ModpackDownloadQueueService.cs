@@ -276,7 +276,7 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
             ? progress.StatusResourceArguments
             : null;
 
-        if (TryCreateDownloadProgressStatus(normalizedProgress, progress.Speed, out DownloadProgressStatus downloadStatus))
+        if (TryCreateDownloadProgressStatus(normalizedProgress, progress, out DownloadProgressStatus downloadStatus))
         {
             context.ReportDownloadProgress(normalizedProgress, downloadStatus, statusMessage, statusResourceKey, statusResourceArguments);
             return;
@@ -424,10 +424,18 @@ public sealed class ModpackDownloadQueueService : IModpackDownloadQueueService
 
     private static bool TryCreateDownloadProgressStatus(
         double progress,
-        string? speedText,
+        ModpackInstallProgress installProgress,
         out DownloadProgressStatus downloadStatus)
     {
         downloadStatus = default;
+        if (installProgress.SpeedBytesPerSecond.HasValue)
+        {
+            double directSpeedBytesPerSecond = Math.Max(0, installProgress.SpeedBytesPerSecond.Value);
+            downloadStatus = new DownloadProgressStatus(0, 0, progress, directSpeedBytesPerSecond);
+            return true;
+        }
+
+        string? speedText = installProgress.Speed;
         if (!TryParseSpeedBytesPerSecond(speedText, out var bytesPerSecond))
         {
             return false;

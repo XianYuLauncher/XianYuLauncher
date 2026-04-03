@@ -116,7 +116,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
                 versionId,
                 originalVersionInfo,
                 options.SkipJarDownload,
-                p => ReportProgress(progressCallback, p, 10, 35),
+                status => ReportProgress(progressCallback, status, 10, 35),
                 cancellationToken);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 35));
@@ -202,7 +202,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
             await DownloadInstallProfileLibrariesAsync(
                 installProfileLibraries,
                 librariesDirectory,
-                p => ReportProgress(progressCallback, p, 70, 80),
+                status => ReportProgress(progressCallback, status, 70, 80),
                 cancellationToken);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 80));
@@ -446,7 +446,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
     private async Task DownloadInstallProfileLibrariesAsync(
         List<Library> libraries,
         string librariesDirectory,
-        Action<double>? progressCallback,
+        Action<DownloadProgressStatus>? progressCallback,
         CancellationToken cancellationToken)
     {
         var downloadPlans = new List<LibraryDownloadPlan>();
@@ -487,7 +487,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
 
         if (downloadPlans.Count == 0)
         {
-            progressCallback?.Invoke(100);
+            progressCallback?.Invoke(new DownloadProgressStatus(100, 100, 100));
             return;
         }
 

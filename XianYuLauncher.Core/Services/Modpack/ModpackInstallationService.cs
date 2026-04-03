@@ -318,6 +318,7 @@ public class ModpackInstallationService : IModpackInstallationService
                     $"{p:F1}%",
                     $"正在更新实例核心文件（Minecraft {minecraftVersion} / {modLoaderType} {modLoaderVersion}）...",
                     status.SpeedText,
+                    status.BytesPerSecond,
                     "DownloadQueue_Status_ModpackUpdatingCoreFiles",
                     [minecraftVersion, modLoaderType, modLoaderVersion]);
             },
@@ -393,6 +394,7 @@ public class ModpackInstallationService : IModpackInstallationService
                     $"{p:F1}%",
                     $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...",
                     status.SpeedText,
+                    status.BytesPerSecond,
                     "DownloadQueue_Status_ModpackDownloadingCoreVersion",
                     [minecraftVersion, modLoaderType, modLoaderVersion]);
             },
@@ -603,6 +605,7 @@ public class ModpackInstallationService : IModpackInstallationService
                     $"{p:F1}%",
                     $"正在更新实例核心文件（Minecraft {minecraftVersion} / {modLoaderType} {modLoaderVersion}）...",
                     status.SpeedText,
+                    status.BytesPerSecond,
                     "DownloadQueue_Status_ModpackUpdatingCoreFiles",
                     [minecraftVersion, modLoaderType, modLoaderVersion]);
             },
@@ -681,6 +684,7 @@ public class ModpackInstallationService : IModpackInstallationService
                     $"{p:F1}%",
                     $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...",
                     status.SpeedText,
+                    status.BytesPerSecond,
                     "DownloadQueue_Status_ModpackDownloadingCoreVersion",
                     [minecraftVersion, modLoaderType, modLoaderVersion]);
             },
@@ -1181,14 +1185,21 @@ public class ModpackInstallationService : IModpackInstallationService
 
             Debug.WriteLine($"[整合包下载] URL: {downloadUrl}, 来源: {(isFromCurseForge ? "CurseForge" : "Modrinth")}, 资源类型: {resourceType}");
 
-            var result = await _fallbackDownloadManager.DownloadFileForCommunityAsync(
+            var result = await _fallbackDownloadManager.DownloadFileForCommunityWithStatusAsync(
                 downloadUrl,
                 targetPath,
                 resourceType,
-                percent =>
+                status =>
                 {
-                    double p = percent * 0.3;
-                    Report(progress, p, $"{p:F1}%", "正在下载整合包...", statusResourceKey: "DownloadQueue_Status_ModpackDownloadingPackage");
+                    double p = status.Percent * 0.3;
+                    Report(
+                        progress,
+                        p,
+                        $"{p:F1}%",
+                        "正在下载整合包...",
+                        status.SpeedText,
+                        status.BytesPerSecond,
+                        "DownloadQueue_Status_ModpackDownloadingPackage");
                 },
                 cancellationToken);
 
@@ -1228,6 +1239,7 @@ public class ModpackInstallationService : IModpackInstallationService
         string percentText,
         string status,
         string speed = "",
+        double? speedBytesPerSecond = null,
         string? statusResourceKey = null,
         IReadOnlyList<string>? statusResourceArguments = null)
     {
@@ -1236,7 +1248,10 @@ public class ModpackInstallationService : IModpackInstallationService
             Progress = percent,
             ProgressText = percentText,
             Status = status,
-            Speed = speed,
+            Speed = string.IsNullOrWhiteSpace(speed) && speedBytesPerSecond.HasValue
+                ? DownloadProgressStatus.FormatSpeedText(speedBytesPerSecond.Value)
+                : speed,
+            SpeedBytesPerSecond = speedBytesPerSecond,
             StatusResourceKey = statusResourceKey,
             StatusResourceArguments = statusResourceArguments is { Count: > 0 }
                 ? [.. statusResourceArguments]

@@ -31,11 +31,21 @@ public readonly record struct DownloadProgressStatus(long DownloadedBytes, long 
     {
         get
         {
-            if (BytesPerSecond <= 0) return "";
-            if (MBytesPerSecond >= 1.0) return $"{MBytesPerSecond:F2} MB/s";
-            if (KBytesPerSecond >= 1.0) return $"{KBytesPerSecond:F2} KB/s";
-            return $"{BytesPerSecond:F0} B/s";
+            return FormatSpeedText(BytesPerSecond);
         }
+    }
+
+    public static string FormatSpeedText(double bytesPerSecond)
+    {
+        if (bytesPerSecond <= 0) return "";
+
+        double megaBytesPerSecond = bytesPerSecond / (1024.0 * 1024.0);
+        if (megaBytesPerSecond >= 1.0) return $"{megaBytesPerSecond:F2} MB/s";
+
+        double kiloBytesPerSecond = bytesPerSecond / 1024.0;
+        if (kiloBytesPerSecond >= 1.0) return $"{kiloBytesPerSecond:F2} KB/s";
+
+        return $"{bytesPerSecond:F0} B/s";
     }
 };
 

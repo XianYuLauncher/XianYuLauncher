@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.ViewModels;
@@ -130,16 +131,12 @@ public partial class DownloadQueueTaskGroupViewModel : ObservableObject
 
     public void UpdateFrom(
         DownloadTaskInfo summaryTask,
-        IReadOnlyList<DownloadTaskInfo> childTaskInfos,
-        IReadOnlyList<DownloadQueueTaskItemViewModel> childTaskItems)
+        IReadOnlyList<DownloadQueueTaskItemViewModel> childTaskItems,
+        double aggregateSpeedBytesPerSecond)
     {
         SummaryTask.UpdateFrom(summaryTask);
         SyncCollection(ChildTasks, childTaskItems);
         HasChildTasks = childTaskItems.Count > 0;
-
-        var aggregateSpeedBytesPerSecond = childTaskInfos
-            .Where(task => task.State == DownloadTaskState.Downloading)
-            .Sum(task => Math.Max(0, task.SpeedBytesPerSecond));
 
         AggregateSpeedText = aggregateSpeedBytesPerSecond > 0
             ? FormatSpeedText(aggregateSpeedBytesPerSecond)
@@ -290,7 +287,7 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
 
         var snapshot = _downloadTaskManager.TasksSnapshot;
         var groupedTaskIds = new HashSet<string>(StringComparer.Ordinal);
-        var groupedSummaryTaskIds = new HashSet<string>(StringComparer.Ordinal);
+        double groupedRunningBytesPerSecond = 0;
 
         var runningGroups = new List<DownloadQueueTaskGroupViewModel>();
         var queuedGroups = new List<DownloadQueueTaskGroupViewModel>();
@@ -316,15 +313,18 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
                 continue;
             }
 
-            groupedSummaryTaskIds.Add(summaryTask.TaskId);
             groupedTaskIds.Add(summaryTask.TaskId);
             foreach (var childTask in childTasks)
             {
                 groupedTaskIds.Add(childTask.TaskId);
             }
 
+            double aggregateSpeedBytesPerSecond = DownloadTaskDisplayHelper.GetAggregateSpeedBytesPerSecond(summaryTask, childTasks);
             var groupItem = GetOrCreateGroupItem(summaryTask.TaskId, GetOrCreateTaskItem(summaryTask));
-            groupItem.UpdateFrom(summaryTask, childTasks, childTasks.Select(GetOrCreateTaskItem).ToList());
+            groupItem.UpdateFrom(
+                summaryTask,
+                childTasks.Select(GetOrCreateTaskItem).ToList(),
+                aggregateSpeedBytesPerSecond);
 
             switch (summaryTask.State)
             {
@@ -337,6 +337,7 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
                     recentGroups.Add(groupItem);
                     break;
                 default:
+                    groupedRunningBytesPerSecond += aggregateSpeedBytesPerSecond;
                     runningGroups.Add(groupItem);
                     break;
             }
@@ -380,9 +381,9 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
         HasRecentTasks = recentGroups.Count > 0 || recentTasks.Count > 0;
         IsEmptyStateVisible = !HasRunningTasks && !HasQueuedTasks && !HasRecentTasks;
 
-        var totalBytesPerSecond = snapshot
+        var totalBytesPerSecond = groupedRunningBytesPerSecond + snapshot
             .Where(task => task.State == DownloadTaskState.Downloading)
-            .Where(task => !groupedSummaryTaskIds.Contains(task.TaskId))
+            .Where(task => !groupedTaskIds.Contains(task.TaskId))
             .Sum(task => Math.Max(0, task.SpeedBytesPerSecond));
 
         TotalSpeed = FormatSpeedText(totalBytesPerSecond);

@@ -105,7 +105,7 @@ public class OptifineInstaller : ModLoaderInstallerBase
                 versionId,
                 originalVersionInfo,
                 options.SkipJarDownload,
-                p => ReportProgress(progressCallback, p, 10, 35),
+                status => ReportProgress(progressCallback, status, 10, 35),
                 cancellationToken);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 35));
