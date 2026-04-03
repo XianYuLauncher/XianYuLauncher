@@ -197,7 +197,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
                 versionId,
                 baseVersionInfo,
                 options.SkipJarDownload,
-                p => ReportProgress(progressCallback, p, 10, 30),
+                status => ReportProgress(progressCallback, status, 10, 30),
                 cancellationToken);
         }
 
@@ -259,7 +259,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
             await DownloadModLoaderLibrariesAsync(
                 modLoaderLibraries,
                 librariesDirectory,
-                p => ReportProgress(progressCallback, p, 50, 80),
+                status => ReportProgress(progressCallback, status, 50, 80),
                 cancellationToken);
         }
 
@@ -349,24 +349,6 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
         };
     }
     
-    /// <summary>
-    /// 报告进度（映射到指定范围）
-    /// </summary>
-    private void ReportProgress(
-        Action<DownloadProgressStatus>? callback,
-        DownloadProgressStatus status,
-        double startPercent,
-        double endPercent)
-    {
-        if (callback == null) return;
-
-        var mappedPercent = startPercent + (status.Percent / 100.0) * (endPercent - startPercent);
-        callback(new DownloadProgressStatus(
-            status.DownloadedBytes,
-            status.TotalBytes,
-            mappedPercent,
-            status.BytesPerSecond));
-    }
     private bool ShouldInstallAsAddon(ModLoaderInstallOptions options, string minecraftDirectory)
     {
         // 如果指定了 CustomVersionName 且该版本已存在

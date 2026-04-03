@@ -117,7 +117,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
                 versionId,
                 originalVersionInfo,
                 options.SkipJarDownload,
-                p => ReportProgress(progressCallback, p, 15, 35),
+                status => ReportProgress(progressCallback, status, 15, 35),
                 cancellationToken);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 35));
@@ -128,7 +128,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
             await DownloadModLoaderLibrariesAsync(
                 quiltLibraries,
                 librariesDirectory,
-                p => ReportProgress(progressCallback, p, 35, 80),
+                status => ReportProgress(progressCallback, status, 35, 80),
                 cancellationToken);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 80));

@@ -76,15 +76,105 @@ public sealed class ModLoaderInstallerBaseTests : IDisposable
         resolvedPlan.ExpectedSize.Should().Be(2048);
     }
 
+    [Fact]
+    public async Task EnsureMinecraftJarAsync_WhenDownloadReportsSpeed_ShouldPreserveSpeedInProgressCallback()
+    {
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(manager => manager.DownloadFileAsync(
+                "https://downloads.example.com/client.jar",
+                It.IsAny<string>(),
+                "jar-sha1",
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                1024,
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, long?, CancellationToken>((_, _, _, callback, _, _) =>
+            {
+                callback?.Invoke(new DownloadProgressStatus(512, 1024, 50, 4096));
+                callback?.Invoke(new DownloadProgressStatus(1024, 1024, 100, 2048));
+                return Task.FromResult(DownloadResult.Succeeded("target.jar", "https://downloads.example.com/client.jar"));
+            });
+
+        var installer = new TestInstaller(downloadManager: downloadManagerMock.Object);
+        var versionDirectory = Path.Combine(_testDirectory, "versions", "test-loader");
+        Directory.CreateDirectory(versionDirectory);
+        var reportedStatuses = new List<DownloadProgressStatus>();
+
+        await installer.EnsureMinecraftJarPublicAsync(
+            versionDirectory,
+            "test-loader",
+            new VersionInfo
+            {
+                Id = "1.20.1",
+                Downloads = new Downloads
+                {
+                    Client = new DownloadFile
+                    {
+                        Url = "https://downloads.example.com/client.jar",
+                        Sha1 = "jar-sha1",
+                        Size = 1024
+                    }
+                }
+            },
+            skipDownload: false,
+            reportedStatuses.Add,
+            CancellationToken.None);
+
+        reportedStatuses.Should().Contain(status => status.BytesPerSecond == 4096 && status.Percent == 50);
+        reportedStatuses.Should().Contain(status => status.BytesPerSecond == 2048 && status.Percent == 100);
+    }
+
+    [Fact]
+    public async Task DownloadModLoaderLibrariesAsync_WhenDownloadReportsSpeed_ShouldPreserveSpeedInProgressCallback()
+    {
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(manager => manager.GetConfiguredThreadCountAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+        downloadManagerMock
+            .Setup(manager => manager.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<long?>(),
+                false,
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, long?, bool, CancellationToken>((_, _, _, callback, knownContentLength, _, _) =>
+            {
+                callback?.Invoke(new DownloadProgressStatus(256, knownContentLength ?? 1024, 25, 3072));
+                callback?.Invoke(new DownloadProgressStatus(knownContentLength ?? 1024, knownContentLength ?? 1024, 100, 1024));
+                return Task.FromResult(DownloadResult.Succeeded("target-library.jar", "https://downloads.example.com/library.jar"));
+            });
+
+        var installer = new TestInstaller(downloadManager: downloadManagerMock.Object);
+        var librariesDirectory = Path.Combine(_testDirectory, "libraries");
+        Directory.CreateDirectory(librariesDirectory);
+        var reportedStatuses = new List<DownloadProgressStatus>();
+
+        await installer.DownloadModLoaderLibrariesPublicAsync(
+            [new ModLoaderLibrary
+            {
+                Name = "net.fabricmc:fabric-loader:0.15.0",
+                ExpectedSize = 1024
+            }],
+            librariesDirectory,
+            reportedStatuses.Add,
+            CancellationToken.None);
+
+        reportedStatuses.Should().Contain(status => status.BytesPerSecond == 3072 && status.Percent > 0 && status.Percent < 100);
+        reportedStatuses.Should().Contain(status => status.BytesPerSecond == 0 && status.Percent == 100);
+    }
+
     private sealed class TestInstaller : ModLoaderInstallerBase
     {
         private readonly IDownloadSource? _downloadSource;
 
         public override string ModLoaderType => "Test";
 
-        public TestInstaller(IDownloadSource? downloadSource = null)
+        public TestInstaller(IDownloadSource? downloadSource = null, IDownloadManager? downloadManager = null)
             : base(
-                Mock.Of<IDownloadManager>(),
+            downloadManager ?? Mock.Of<IDownloadManager>(),
                 Mock.Of<ILibraryManager>(),
                 Mock.Of<IVersionInfoManager>(),
                 Mock.Of<IJavaRuntimeService>(),
@@ -106,6 +196,32 @@ public sealed class ModLoaderInstallerBaseTests : IDisposable
         {
             var plan = BuildLibraryDownloadPlan(library, targetPath);
             return plan == null ? null : (plan.PrimaryUrl, plan.FallbackUrl, plan.ExpectedSize);
+        }
+
+        public Task EnsureMinecraftJarPublicAsync(
+            string versionDirectory,
+            string versionId,
+            VersionInfo originalVersionInfo,
+            bool skipDownload,
+            Action<DownloadProgressStatus>? progressCallback,
+            CancellationToken cancellationToken)
+        {
+            return EnsureMinecraftJarAsync(
+                versionDirectory,
+                versionId,
+                originalVersionInfo,
+                skipDownload,
+                progressCallback,
+                cancellationToken);
+        }
+
+        public Task DownloadModLoaderLibrariesPublicAsync(
+            IEnumerable<ModLoaderLibrary> libraries,
+            string librariesDirectory,
+            Action<DownloadProgressStatus>? progressCallback,
+            CancellationToken cancellationToken)
+        {
+            return DownloadModLoaderLibrariesAsync(libraries, librariesDirectory, progressCallback, cancellationToken);
         }
 
         public override Task<string> InstallAsync(

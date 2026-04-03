@@ -113,7 +113,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                 versionId,
                 originalVersionInfo,
                 options.SkipJarDownload,
-                p => ReportProgress(progressCallback, p, 10, 35),
+                status => ReportProgress(progressCallback, status, 10, 35),
                 cancellationToken);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 35));
@@ -187,7 +187,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                 installProfileLibraries,
                 librariesDirectory,
                 installerPath,
-                p => ReportProgress(progressCallback, p, 70, 80),
+                status => ReportProgress(progressCallback, status, 70, 80),
                 cancellationToken);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 80));
@@ -379,7 +379,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
         List<Library> libraries,
         string librariesDirectory,
         string installerPath,
-        Action<double>? progressCallback,
+        Action<DownloadProgressStatus>? progressCallback,
         CancellationToken cancellationToken)
     {
         var downloadPlans = new List<LibraryDownloadPlan>();
@@ -446,7 +446,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
         if (downloadPlans.Count == 0)
         {
             Logger.LogInformation("没有需要下载的依赖库");
-            progressCallback?.Invoke(100);
+            progressCallback?.Invoke(new DownloadProgressStatus(100, 100, 100));
             return;
         }
 

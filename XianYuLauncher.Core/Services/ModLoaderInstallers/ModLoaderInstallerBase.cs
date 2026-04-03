@@ -195,7 +195,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         string versionDirectory,
         string versionId,
         VersionInfo originalVersionInfo,
-        Action<double>? progressCallback,
+        Action<DownloadProgressStatus>? progressCallback,
         CancellationToken cancellationToken)
     {
         if (originalVersionInfo.Downloads?.Client == null)
@@ -228,14 +228,14 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
                 clientDownload.Url,
                 jarPath,
                 clientDownload.Sha1,
-                progressCallback != null ? (Action<DownloadProgressStatus>)(status => progressCallback(status.Percent)) : null,
+                progressCallback,
                 clientDownload.Size,
                 cancellationToken)
             : await DownloadManager.DownloadFileAsync(
                 clientDownload.Url,
                 jarPath,
                 clientDownload.Sha1,
-                progressCallback != null ? (Action<DownloadProgressStatus>)(status => progressCallback(status.Percent)) : null,
+                progressCallback,
                 cancellationToken);
 
         if (!result.Success)
@@ -260,7 +260,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         string versionId,
         VersionInfo originalVersionInfo,
         bool skipDownload,
-        Action<double>? progressCallback,
+        Action<DownloadProgressStatus>? progressCallback,
         CancellationToken cancellationToken)
     {
         var jarPath = Path.Combine(versionDirectory, $"{versionId}.jar");
@@ -268,14 +268,14 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         if (File.Exists(jarPath))
         {
             Logger.LogInformation("Minecraft JAR已存在，跳过下载: {JarPath}", jarPath);
-            progressCallback?.Invoke(100);
+            progressCallback?.Invoke(new DownloadProgressStatus(100, 100, 100));
             return;
         }
         
         if (skipDownload)
         {
             Logger.LogInformation("跳过JAR下载（skipDownload=true），JAR文件不存在: {JarPath}", jarPath);
-            progressCallback?.Invoke(100);
+            progressCallback?.Invoke(new DownloadProgressStatus(100, 100, 100));
             return;
         }
         
@@ -288,7 +288,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
     protected async Task DownloadModLoaderLibrariesAsync(
         IEnumerable<ModLoaderLibrary> libraries,
         string librariesDirectory,
-        Action<double>? progressCallback,
+        Action<DownloadProgressStatus>? progressCallback,
         CancellationToken cancellationToken)
     {
         var downloadPlans = new List<LibraryDownloadPlan>();
@@ -318,7 +318,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         if (downloadPlans.Count == 0)
         {
             Logger.LogInformation("所有库文件已存在，无需下载");
-            progressCallback?.Invoke(100);
+            progressCallback?.Invoke(new DownloadProgressStatus(100, 100, 100));
             return;
         }
 
@@ -356,7 +356,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
 
     protected async Task DownloadLibraryPlansAsync(
         IEnumerable<LibraryDownloadPlan> downloadPlans,
-        Action<double>? progressCallback,
+        Action<DownloadProgressStatus>? progressCallback,
         CancellationToken cancellationToken,
         int? maxConcurrency = null)
     {
@@ -367,25 +367,106 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
 
         if (planList.Count == 0)
         {
-            progressCallback?.Invoke(100);
+            progressCallback?.Invoke(new DownloadProgressStatus(100, 100, 100));
             return;
         }
 
         int parallelism = maxConcurrency ?? await DownloadManager.GetConfiguredThreadCountAsync(cancellationToken);
         Logger.LogInformation("开始下载 {Count} 个库文件，并发数: {Parallelism}", planList.Count, parallelism);
 
-        int completedCount = 0;
         var failures = new ConcurrentBag<string>();
+        bool canReportWeightedProgress = planList.All(plan => plan.ExpectedSize is > 0);
+        long[] expectedSizes = canReportWeightedProgress
+            ? planList.Select(plan => plan.ExpectedSize!.Value).ToArray()
+            : [];
+        long totalExpectedBytes = canReportWeightedProgress
+            ? expectedSizes.Sum()
+            : 0;
+        double[] perPlanPercents = new double[planList.Count];
+        double[] perPlanSpeeds = new double[planList.Count];
+        long[] perPlanDownloadedBytes = canReportWeightedProgress
+            ? new long[planList.Count]
+            : [];
+        object progressSync = new();
+
+        void ReportAggregateProgress(int planIndex, DownloadProgressStatus? currentStatus = null, bool markCompleted = false)
+        {
+            if (progressCallback == null)
+            {
+                return;
+            }
+
+            DownloadProgressStatus snapshot;
+            lock (progressSync)
+            {
+                if (currentStatus is DownloadProgressStatus status)
+                {
+                    perPlanPercents[planIndex] = Math.Clamp(status.Percent, 0, 100);
+                    perPlanSpeeds[planIndex] = Math.Max(0, status.BytesPerSecond);
+
+                    if (canReportWeightedProgress)
+                    {
+                        perPlanDownloadedBytes[planIndex] = Math.Min(
+                            expectedSizes[planIndex],
+                            Math.Max(0, status.DownloadedBytes));
+                    }
+                }
+
+                if (markCompleted)
+                {
+                    perPlanPercents[planIndex] = 100;
+                    perPlanSpeeds[planIndex] = 0;
+                    if (canReportWeightedProgress)
+                    {
+                        perPlanDownloadedBytes[planIndex] = expectedSizes[planIndex];
+                    }
+                }
+
+                double aggregateSpeedBytesPerSecond = 0;
+                foreach (double speed in perPlanSpeeds)
+                {
+                    aggregateSpeedBytesPerSecond += Math.Max(0, speed);
+                }
+
+                if (canReportWeightedProgress)
+                {
+                    long totalDownloadedBytes = 0;
+                    foreach (long downloadedBytes in perPlanDownloadedBytes)
+                    {
+                        totalDownloadedBytes += downloadedBytes;
+                    }
+
+                    double weightedPercent = totalExpectedBytes > 0
+                        ? (double)totalDownloadedBytes / totalExpectedBytes * 100
+                        : 100;
+                    snapshot = new DownloadProgressStatus(
+                        totalDownloadedBytes,
+                        totalExpectedBytes,
+                        weightedPercent,
+                        aggregateSpeedBytesPerSecond);
+                }
+                else
+                {
+                    double averagePercent = perPlanPercents.Average();
+                    snapshot = new DownloadProgressStatus(0, 0, averagePercent, aggregateSpeedBytesPerSecond);
+                }
+            }
+
+            progressCallback(snapshot);
+        }
 
         await Parallel.ForEachAsync(
-            planList,
+            planList.Select((plan, index) => (Plan: plan, Index: index)),
             new ParallelOptions
             {
                 MaxDegreeOfParallelism = Math.Max(1, parallelism),
                 CancellationToken = cancellationToken
             },
-            async (plan, ct) =>
+            async (indexedPlan, ct) =>
             {
+                var plan = indexedPlan.Plan;
+                bool succeeded = false;
+
                 try
                 {
                     var result = plan.ExpectedSize.HasValue
@@ -393,7 +474,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
                             plan.PrimaryUrl,
                             plan.TargetPath,
                             plan.ExpectedSha1,
-                            null,
+                            status => ReportAggregateProgress(indexedPlan.Index, status),
                             plan.ExpectedSize,
                             false,
                             ct)
@@ -401,7 +482,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
                             plan.PrimaryUrl,
                             plan.TargetPath,
                             plan.ExpectedSha1,
-                            null,
+                            status => ReportAggregateProgress(indexedPlan.Index, status),
                             false,
                             ct);
 
@@ -416,7 +497,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
                                 plan.FallbackUrl,
                                 plan.TargetPath,
                                 plan.ExpectedSha1,
-                                null,
+                                status => ReportAggregateProgress(indexedPlan.Index, status),
                                 plan.ExpectedSize,
                                 false,
                                 ct)
@@ -424,7 +505,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
                                 plan.FallbackUrl,
                                 plan.TargetPath,
                                 plan.ExpectedSha1,
-                                null,
+                                status => ReportAggregateProgress(indexedPlan.Index, status),
                                 false,
                                 ct);
                     }
@@ -433,7 +514,10 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
                     {
                         Logger.LogWarning("库文件下载失败: {LibraryName}, 错误: {Error}", plan.LibraryName, result.ErrorMessage);
                         failures.Add($"{plan.LibraryName}: {result.ErrorMessage}");
+                        return;
                     }
+
+                    succeeded = true;
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
@@ -446,8 +530,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
                 }
                 finally
                 {
-                    var currentCompleted = Interlocked.Increment(ref completedCount);
-                    progressCallback?.Invoke((double)currentCompleted / planList.Count * 100);
+                    ReportAggregateProgress(indexedPlan.Index, markCompleted: succeeded);
                 }
             });
 
@@ -468,6 +551,25 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         
         var mappedProgress = minProgress + (progress / 100.0) * (maxProgress - minProgress);
         progressCallback(new DownloadProgressStatus(0, 100, mappedProgress, bytesPerSecond));
+    }
+
+    protected void ReportProgress(
+        Action<DownloadProgressStatus>? progressCallback,
+        DownloadProgressStatus status,
+        double minProgress,
+        double maxProgress)
+    {
+        if (progressCallback == null)
+        {
+            return;
+        }
+
+        var mappedProgress = minProgress + (status.Percent / 100.0) * (maxProgress - minProgress);
+        progressCallback(new DownloadProgressStatus(
+            status.DownloadedBytes,
+            status.TotalBytes,
+            mappedProgress,
+            status.BytesPerSecond));
     }
 
     #endregion
