@@ -47,13 +47,28 @@
         </InfoBar>
 
         <!-- 卡片区域 -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Top" Spacing="48" Margin="0,10,0,0">
+        <Grid
+            x:Name="ActionCardsGrid"
+            Grid.Row="2"
+            HorizontalAlignment="Stretch"
+            VerticalAlignment="Top"
+            Margin="0,10,0,0"
+            MaxWidth="648">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="48" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
             <!-- 房主卡片 -->
             <Button
+                Grid.Column="0"
                 Command="{x:Bind ViewModel.HostGameCommand}"
                 Style="{StaticResource TextBlockButtonStyle}"
-                Padding="0">
-                <Grid Width="300" Height="200">
+                Padding="0"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch">
+                <Grid MaxWidth="300" MinHeight="200" HorizontalAlignment="Stretch">
                     <Border
                         Background="{ThemeResource CardBackgroundFillColorDefault}"
                         BorderBrush="{ThemeResource CardStrokeColorDefault}"
@@ -87,10 +102,13 @@
 
             <!-- 房客卡片 -->
             <Button
+                Grid.Column="2"
                 Command="{x:Bind ViewModel.JoinGameCommand}"
                 Style="{StaticResource TextBlockButtonStyle}"
-                Padding="0">
-                <Grid Width="300" Height="200">
+                Padding="0"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch">
+                <Grid MaxWidth="300" MinHeight="200" HorizontalAlignment="Stretch">
                     <Border
                         Background="{ThemeResource CardBackgroundFillColorDefault}"
                         BorderBrush="{ThemeResource CardStrokeColorDefault}"
@@ -121,7 +139,7 @@
                     </Border>
                 </Grid>
             </Button>
-        </StackPanel>
+        </Grid>
         </Grid>
     </Grid>
 </Page>
