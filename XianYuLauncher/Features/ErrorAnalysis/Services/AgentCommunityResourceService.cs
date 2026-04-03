@@ -684,7 +684,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             source_version_id_only = true,
             candidates = serializedCandidates,
             message = !string.IsNullOrWhiteSpace(activeOperationId)
-                ? $"实例 {targetContext.TargetVersionName} 已有整合包更新任务正在进行中。可继续使用 getOperationStatus 查询状态。"
+                ? $"实例 {targetContext.TargetVersionName} 已有整合包更新任务正在进行中，operation_id 为 {activeOperationId}。{AgentOperationFollowUpMessageHelper.BuildSleepThenStatusHint(mentionTeachingTip: true)}"
                 : defaultUpdateCandidate == null
                     ? $"实例 {targetContext.TargetVersionName} 当前已经是最新整合包版本。"
                     : $"实例 {targetContext.TargetVersionName} 有可用整合包更新，默认目标为 {ResolveModpackVersionDisplayName(defaultUpdateCandidate)}。"
@@ -771,7 +771,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                 current_modpack_version_id = executionContext.CurrentVersionId,
                 target_source_version_id = sourceVersionId,
                 target_version = SerializeModpackVersionItem(executionContext.SelectedVersion),
-                message = $"已开始将实例 {executionContext.TargetVersionName} 的整合包更新到 {ResolveModpackVersionDisplayName(executionContext.SelectedVersion)}。可继续使用 getOperationStatus 查询下载状态。"
+                message = $"已开始将实例 {executionContext.TargetVersionName} 的整合包更新到 {ResolveModpackVersionDisplayName(executionContext.SelectedVersion)}。{AgentOperationFollowUpMessageHelper.BuildSleepThenStatusHint(mentionTeachingTip: true)}"
             });
         }
         catch (OperationCanceledException)
@@ -787,7 +787,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                 status = "already_running",
                 target_version_name = executionContext.TargetVersionName,
                 operation_id = activeOperationId,
-                message = $"实例 {executionContext.TargetVersionName} 已有整合包更新任务正在进行中。可继续使用 getOperationStatus 查询状态。"
+                message = $"实例 {executionContext.TargetVersionName} 已有整合包更新任务正在进行中。{AgentOperationFollowUpMessageHelper.BuildSleepThenStatusHint(mentionTeachingTip: true)}"
             });
         }
         catch (Exception ex)
@@ -1033,7 +1033,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             resolved_game_directory = targetVersion.ResolvedGameDirectory,
             selection_mode = selectionMode,
             resource_instance_ids = requestedIds,
-            message = $"已开始在 {targetVersion.TargetVersionName} 中批量更新社区资源。可继续使用 getOperationStatus 查询进度。"
+            message = $"已开始在 {targetVersion.TargetVersionName} 中批量更新社区资源。{AgentOperationFollowUpMessageHelper.BuildSleepThenStatusHint(mentionTeachingTip: true)}"
         });
     }
 
@@ -1122,10 +1122,10 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             duplicate_policy = isWorldInstall ? "auto_rename" : null,
             expected_world_base_name = isWorldInstall ? Path.GetFileNameWithoutExtension(executionContext.Plan.SavePath) : null,
             message = isWorldInstall
-                ? $"已开始安装世界 {executionContext.ResourceName} 到实例 {executionContext.TargetVersionName} 的 saves 目录。若同名存档已存在，将自动重命名。可继续使用 getOperationStatus 查询下载状态。"
+                ? $"已开始安装世界 {executionContext.ResourceName} 到实例 {executionContext.TargetVersionName} 的 saves 目录。若同名存档已存在，将自动重命名。{AgentOperationFollowUpMessageHelper.BuildSleepThenStatusHint(mentionTeachingTip: true)}"
                 : isDatapackInstall && executionContext.TargetWorld != null
-                    ? $"已开始将数据包 {executionContext.ResourceName} 安装到实例 {executionContext.TargetVersionName} 的世界 {executionContext.TargetWorld.DisplayName}（目录名：{executionContext.TargetWorld.TargetSaveName}）。可继续使用 getOperationStatus 查询下载状态。"
-                : $"已开始安装 {executionContext.ResourceName} 到 {executionContext.TargetVersionName}。可继续使用 getOperationStatus 查询下载状态。"
+                    ? $"已开始将数据包 {executionContext.ResourceName} 安装到实例 {executionContext.TargetVersionName} 的世界 {executionContext.TargetWorld.DisplayName}（目录名：{executionContext.TargetWorld.TargetSaveName}）。{AgentOperationFollowUpMessageHelper.BuildSleepThenStatusHint(mentionTeachingTip: true)}"
+                : $"已开始安装 {executionContext.ResourceName} 到 {executionContext.TargetVersionName}。{AgentOperationFollowUpMessageHelper.BuildSleepThenStatusHint(mentionTeachingTip: true)}"
         });
     }
 
@@ -1192,7 +1192,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
             platform = executionContext.Platform,
             resource_name = executionContext.ResourceName,
             target_version_name = executionContext.TargetVersionName,
-            message = $"已开始安装整合包 {executionContext.ResourceName}，将创建实例 {executionContext.TargetVersionName}。可继续使用 getOperationStatus 查询下载状态。"
+            message = $"已开始安装整合包 {executionContext.ResourceName}，将创建实例 {executionContext.TargetVersionName}。{AgentOperationFollowUpMessageHelper.BuildSleepThenStatusHint(mentionTeachingTip: true)}"
         });
     }
 
@@ -2675,7 +2675,7 @@ internal sealed class AgentCommunityResourceService : IAgentCommunityResourceSer
                 version_directory_path = targetContext.VersionDirectoryPath,
                 resolved_game_directory = targetContext.ResolvedGameDirectory,
                 operation_id = activeOperationId,
-                message = $"实例 {targetContext.TargetVersionName} 已有整合包更新任务正在进行中。可继续使用 getOperationStatus 查询状态。"
+                message = $"实例 {targetContext.TargetVersionName} 已有整合包更新任务正在进行中，operation_id 为 {activeOperationId}。{AgentOperationFollowUpMessageHelper.BuildSleepThenStatusHint(mentionTeachingTip: true)}"
             }));
         }
 

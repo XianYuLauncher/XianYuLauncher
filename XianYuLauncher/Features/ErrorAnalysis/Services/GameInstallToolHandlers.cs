@@ -189,10 +189,10 @@ public sealed class InstallGameActionHandler : IAgentActionHandler
             cancellationToken);
 
         var message = loaderSelections.Count == 0
-            ? $"已开始安装原版 Minecraft {minecraftVersion}，版本名：{versionName}。\noperation_id: {operationId}\n可继续使用 getOperationStatus 查询进度，下载队列 TeachingTip 也会同步显示。"
-            : $"已开始安装 Minecraft {minecraftVersion}，加载器：{loaderSummary}，版本名：{versionName}。\noperation_id: {operationId}\n可继续使用 getOperationStatus 查询进度，下载队列 TeachingTip 也会同步显示。";
+            ? $"已开始安装原版 Minecraft {minecraftVersion}，版本名：{versionName}。"
+            : $"已开始安装 Minecraft {minecraftVersion}，加载器：{loaderSummary}，版本名：{versionName}。";
 
-        return message;
+        return AgentOperationFollowUpMessageHelper.AppendOperationStatusHint(message, operationId, mentionTeachingTip: true);
     }
 }
 
@@ -209,7 +209,7 @@ public sealed class GetOperationStatusToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "根据 operation_id 查询 installGame、installCommunityResource（含世界安装）、installModpack、updateModpack、updateInstanceCommunityResources 或 launchGame 返回的任务状态。",
+        "根据 operation_id 查询 installGame、installCommunityResource（含世界安装）、installModpack、updateModpack、updateInstanceCommunityResources 或 launchGame 返回的任务状态。非终态结果会附带 suggested_poll_delay_seconds；通常应先调用 sleep 再复查，避免短时间重复查询。",
         new
         {
             type = "object",
