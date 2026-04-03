@@ -332,6 +332,90 @@ public sealed class DownloadManagerTests : IDisposable
     }
 
     [Fact]
+    public async Task DownloadFileAsync_DirectReadStalls_ShouldRetryAndEventuallySucceed()
+    {
+        byte[] content = CreatePayload(64 * 1024);
+        string expectedSha1 = ComputeSha1(content);
+        int requestCount = 0;
+        var handler = new StubHttpMessageHandler(_ =>
+        {
+            int currentRequestCount = Interlocked.Increment(ref requestCount);
+            return Task.FromResult(currentRequestCount == 1
+                ? CreateStalledDirectResponse(content.Length)
+                : CreateDirectResponse(content));
+        });
+
+        var downloadManager = CreateDownloadManager(
+            handler,
+            shardCount: 1,
+            shardedProgressStallTimeout: TimeSpan.FromMilliseconds(100));
+        string targetPath = Path.Combine(_testDirectory, "direct-stall-retry.bin");
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+
+        DownloadResult result = await downloadManager.DownloadFileAsync(
+            "https://downloads.example.com/assets/direct-stall.bin",
+            targetPath,
+            expectedSha1,
+            progressCallback: null,
+            allowShardedDownload: false,
+            cancellationToken: cts.Token);
+
+        result.Success.Should().BeTrue();
+        File.ReadAllBytes(targetPath).Should().Equal(content);
+        Volatile.Read(ref requestCount).Should().Be(2);
+    }
+
+    [Fact]
+    public async Task DownloadFilesAsync_AllTasksHaveExpectedSize_ShouldReportByteWeightedOverallProgress()
+    {
+        byte[] smallContent = CreatePayload(10);
+        byte[] largeContent = CreatePayload(90);
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            byte[] content = request.RequestUri?.AbsolutePath.Contains("large", StringComparison.OrdinalIgnoreCase) == true
+                ? largeContent
+                : smallContent;
+            return Task.FromResult(CreateDirectResponse(content));
+        });
+
+        var downloadManager = CreateDownloadManager(handler, shardCount: 1, downloadThreadCount: 1);
+        var progressSnapshots = new ConcurrentQueue<DownloadProgressStatus>();
+        var tasks = new[]
+        {
+            new DownloadTask
+            {
+                Url = "https://downloads.example.com/assets/small.bin",
+                TargetPath = Path.Combine(_testDirectory, "batch-small.bin"),
+                ExpectedSha1 = ComputeSha1(smallContent),
+                ExpectedSize = smallContent.Length,
+                Priority = 0
+            },
+            new DownloadTask
+            {
+                Url = "https://downloads.example.com/assets/large.bin",
+                TargetPath = Path.Combine(_testDirectory, "batch-large.bin"),
+                ExpectedSha1 = ComputeSha1(largeContent),
+                ExpectedSize = largeContent.Length,
+                Priority = 1
+            }
+        };
+
+        List<DownloadResult> results = (await downloadManager.DownloadFilesAsync(
+            tasks,
+            maxConcurrency: 1,
+            progressCallback: status => progressSnapshots.Enqueue(status))).ToList();
+
+        results.Should().OnlyContain(result => result.Success);
+        var snapshots = progressSnapshots.ToList();
+        snapshots.Should().Contain(snapshot =>
+            snapshot.TotalBytes == 100 &&
+            snapshot.DownloadedBytes == 10 &&
+            snapshot.Percent >= 9.9 &&
+            snapshot.Percent <= 10.1);
+        snapshots.Should().Contain(snapshot => snapshot.TotalBytes == 100 && snapshot.DownloadedBytes == 100 && snapshot.Percent == 100);
+    }
+
+    [Fact]
     public async Task DownloadFileAsync_PersistedRangeUnsupported_ShouldStayDirectEvenWhenDirectResponseAdvertisesBytes()
     {
         byte[] content = CreatePayload(12 * 1024 * 1024);
@@ -395,12 +479,16 @@ public sealed class DownloadManagerTests : IDisposable
         HttpMessageHandler handler,
         int shardCount,
         TimeSpan? shardedProgressStallTimeout = null,
+        int? downloadThreadCount = null,
         string? persistedRangeSupportCacheJson = null)
     {
         var localSettingsServiceMock = new Mock<ILocalSettingsService>();
         localSettingsServiceMock
             .Setup(service => service.ReadSettingAsync<int?>("DownloadShardCount"))
             .ReturnsAsync(shardCount);
+        localSettingsServiceMock
+            .Setup(service => service.ReadSettingAsync<int?>("DownloadThreadCount"))
+            .ReturnsAsync(downloadThreadCount);
         localSettingsServiceMock
             .Setup(service => service.ReadSettingAsync<string>("DownloadHostRangeSupportCache"))
             .ReturnsAsync(persistedRangeSupportCacheJson);
@@ -447,6 +535,16 @@ public sealed class DownloadManagerTests : IDisposable
             response.Headers.AcceptRanges.Add(acceptRanges);
         }
         response.Content.Headers.ContentLength = content.Length;
+        return response;
+    }
+
+    private static HttpResponseMessage CreateStalledDirectResponse(int contentLength)
+    {
+        var response = new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StreamContent(new StalledReadStream())
+        };
+        response.Content.Headers.ContentLength = contentLength;
         return response;
     }
 

@@ -26,6 +26,7 @@ public class DownloadManager : IDownloadManager
     private readonly HttpClient _httpClient;
     private readonly ILogger<DownloadManager> _logger;
     private readonly ILocalSettingsService _localSettingsService;
+    private readonly TimeSpan _directReadProgressStallTimeout;
     private readonly TimeSpan _shardedProgressStallTimeout;
     private readonly ConcurrentDictionary<string, RangeSupportCacheEntry> _rangeSupportCache = new(StringComparer.OrdinalIgnoreCase);
     private readonly SemaphoreSlim _rangeSupportCacheSyncGate = new(1, 1);
@@ -111,6 +112,7 @@ public class DownloadManager : IDownloadManager
             : shardedProgressStallTimeout.Value > TimeSpan.Zero
                 ? shardedProgressStallTimeout.Value
                 : throw new ArgumentOutOfRangeException(nameof(shardedProgressStallTimeout));
+        _directReadProgressStallTimeout = _shardedProgressStallTimeout;
 
         if (!_httpClient.DefaultRequestHeaders.UserAgent.Any())
         {
@@ -610,6 +612,7 @@ public class DownloadManager : IDownloadManager
         CancellationToken cancellationToken = default)
     {
         var taskList = tasks.OrderBy(t => t.Priority).ToList();
+        var indexedTasks = taskList.Select((task, index) => (DownloadTask: task, Index: index)).ToList();
         var results = new ConcurrentQueue<DownloadResult>();
         var totalCount = taskList.Count;
 
@@ -623,43 +626,129 @@ public class DownloadManager : IDownloadManager
         _logger.LogInformation($"批量下载: {totalCount}个文件, 并发: {threadCount}");
 
         int completedCount = 0;
-        
-        // 估算总体大小（如果有的话）
-        long totalEstimatedSize = taskList.Sum(t => t.ExpectedSize ?? 0);
-        long totalDownloadedSize = 0;
+        bool canReportByteWeightedProgress = progressCallback != null && taskList.All(task => task.ExpectedSize is > 0);
+        long[] expectedTaskSizes = canReportByteWeightedProgress
+            ? taskList.Select(task => task.ExpectedSize!.Value).ToArray()
+            : [];
+        long totalExpectedSize = canReportByteWeightedProgress
+            ? expectedTaskSizes.Sum()
+            : 0;
+        long[] downloadedTaskSizes = canReportByteWeightedProgress
+            ? new long[totalCount]
+            : [];
+        double[] taskSpeeds = canReportByteWeightedProgress
+            ? new double[totalCount]
+            : [];
+        long aggregateDownloadedBytes = 0;
+        double aggregateSpeedBytesPerSecond = 0;
+        var aggregateProgressSync = new object();
+
+        void ReportBatchProgress(int taskIndex, DownloadProgressStatus? taskStatus = null, bool markCompleted = false)
+        {
+            if (progressCallback == null)
+            {
+                return;
+            }
+
+            if (!canReportByteWeightedProgress)
+            {
+                if (markCompleted)
+                {
+                    int currentCompletedCount = Volatile.Read(ref completedCount);
+                    progressCallback(new DownloadProgressStatus(
+                        currentCompletedCount,
+                        totalCount,
+                        (double)currentCompletedCount / totalCount * 100));
+                }
+
+                return;
+            }
+
+            DownloadProgressStatus snapshot;
+            lock (aggregateProgressSync)
+            {
+                if (taskStatus is DownloadProgressStatus status)
+                {
+                    long expectedTaskSize = expectedTaskSizes[taskIndex];
+                    long nextDownloadedBytes = Math.Min(expectedTaskSize, Math.Max(0, status.DownloadedBytes));
+                    long previousDownloadedBytes = downloadedTaskSizes[taskIndex];
+                    if (nextDownloadedBytes > previousDownloadedBytes)
+                    {
+                        downloadedTaskSizes[taskIndex] = nextDownloadedBytes;
+                        aggregateDownloadedBytes += nextDownloadedBytes - previousDownloadedBytes;
+                    }
+
+                    double previousSpeed = taskSpeeds[taskIndex];
+                    double nextSpeed = Math.Max(0, status.BytesPerSecond);
+                    if (!previousSpeed.Equals(nextSpeed))
+                    {
+                        taskSpeeds[taskIndex] = nextSpeed;
+                        aggregateSpeedBytesPerSecond += nextSpeed - previousSpeed;
+                    }
+                }
+
+                if (markCompleted)
+                {
+                    long expectedTaskSize = expectedTaskSizes[taskIndex];
+                    long previousDownloadedBytes = downloadedTaskSizes[taskIndex];
+                    if (expectedTaskSize > previousDownloadedBytes)
+                    {
+                        downloadedTaskSizes[taskIndex] = expectedTaskSize;
+                        aggregateDownloadedBytes += expectedTaskSize - previousDownloadedBytes;
+                    }
+
+                    double previousSpeed = taskSpeeds[taskIndex];
+                    if (previousSpeed != 0)
+                    {
+                        taskSpeeds[taskIndex] = 0;
+                        aggregateSpeedBytesPerSecond -= previousSpeed;
+                    }
+                }
+
+                double percent = totalExpectedSize > 0
+                    ? (double)aggregateDownloadedBytes / totalExpectedSize * 100
+                    : 100;
+                snapshot = new DownloadProgressStatus(
+                    aggregateDownloadedBytes,
+                    totalExpectedSize,
+                    percent,
+                    Math.Max(0, aggregateSpeedBytesPerSecond));
+            }
+
+            progressCallback(snapshot);
+        }
 
         try
         {
-            await Parallel.ForEachAsync(taskList, new ParallelOptions 
+            await Parallel.ForEachAsync(indexedTasks, new ParallelOptions 
             { 
                 MaxDegreeOfParallelism = threadCount,
                 CancellationToken = cancellationToken 
-            }, async (task, ct) =>
+            }, async (indexedTask, ct) =>
             {
                 // 如果已取消，直接返回
                 if (ct.IsCancellationRequested) return;
+
+                DownloadTask task = indexedTask.DownloadTask;
+                Action<DownloadProgressStatus>? taskProgressCallback = canReportByteWeightedProgress
+                    ? status => ReportBatchProgress(indexedTask.Index, status)
+                    : null;
                 
                 // 重要修复：在批量下载模式下，强制单个文件的下载不进行分片（或限制为1），避免 32并发 x 32分片 = 1000+连接数 导致的 429 错误
                 var result = await DownloadFileInternalAsync(
                     task.Url,
                     task.TargetPath,
                     task.ExpectedSha1,
-                    null, // 不监听单个文件进度
+                    taskProgressCallback,
                     1,    // 强制单文件并发数为1 (禁用内部分片并发)
                     false,
                     task.ExpectedSize,
                     ct);
 
                 results.Enqueue(result);
-                
-                var newCompleted = Interlocked.Increment(ref completedCount);
-                
-                if (totalEstimatedSize > 0 && task.ExpectedSize.HasValue)
-                {
-                    Interlocked.Add(ref totalDownloadedSize, task.ExpectedSize.Value);
-                }
-                
-                progressCallback?.Invoke(new DownloadProgressStatus(newCompleted, totalCount, (double)newCompleted / totalCount * 100));
+
+                Interlocked.Increment(ref completedCount);
+                ReportBatchProgress(indexedTask.Index, markCompleted: true);
             });
         }
         catch (OperationCanceledException)
@@ -1111,12 +1200,27 @@ public class DownloadManager : IDownloadManager
     {
         var tempPath = targetPath + ".tmp";
         EnsureDirectory(targetPath);
+        int stalled = 0;
+        long lastProgressTick = Environment.TickCount64;
+        long downloaded = 0;
+        using var directReadCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        Task watchdogTask = MonitorDirectDownloadProgressAsync(
+            url,
+            () => Interlocked.Read(ref lastProgressTick),
+            () =>
+            {
+                if (Interlocked.Exchange(ref stalled, 1) == 0)
+                {
+                    directReadCts.Cancel();
+                }
+            },
+            directReadCts.Token);
+
         try
         {
             response.EnsureSuccessStatusCode();
 
             var totalBytes = response.Content.Headers.ContentLength ?? knownTotalBytes ?? -1L;
-            var downloaded = 0L;
 
             using var stream = await response.Content.ReadAsStreamAsync(ct);
             using var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write, FileShare.None, 81920, true);
@@ -1128,8 +1232,9 @@ public class DownloadManager : IDownloadManager
             double emaSpeed = 0;
             const double Alpha = 0.3;
 
-            while ((bytesRead = await stream.ReadAsync(buffer, ct)) > 0)
+            while ((bytesRead = await stream.ReadAsync(buffer.AsMemory(), directReadCts.Token)) > 0)
             {
+                Interlocked.Exchange(ref lastProgressTick, Environment.TickCount64);
                 await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
                 downloaded += bytesRead;
                 if (totalBytes > 0 && progress != null)
@@ -1151,11 +1256,34 @@ public class DownloadManager : IDownloadManager
                     }
                 }
             }
+
+            if (totalBytes > 0 && downloaded < totalBytes)
+            {
+                throw new IOException($"下载提前结束，预期 {totalBytes} 字节，实际 {downloaded} 字节");
+            }
+        }
+        catch (OperationCanceledException ex) when (Volatile.Read(ref stalled) == 1 && !ct.IsCancellationRequested)
+        {
+            CleanupFile(tempPath);
+            throw new TimeoutException(
+                $"直连下载在 {FormatTimeoutDuration(_directReadProgressStallTimeout)} 内无进度: {SummarizeUrl(url)}, 已下载 {downloaded} 字节",
+                ex);
         }
         catch
         {
             CleanupFile(tempPath);
             throw;
+        }
+        finally
+        {
+            directReadCts.Cancel();
+            try
+            {
+                await watchdogTask;
+            }
+            catch (OperationCanceledException) when (directReadCts.IsCancellationRequested || ct.IsCancellationRequested)
+            {
+            }
         }
 
         MoveFile(tempPath, targetPath);
@@ -1238,7 +1366,7 @@ public class DownloadManager : IDownloadManager
             });
         } catch (OperationCanceledException ex) when (Volatile.Read(ref stalled) == 1 && !ct.IsCancellationRequested) {
             CleanupFile(tempPath);
-            throw new TimeoutException($"分片下载在 {_shardedProgressStallTimeout.TotalSeconds:F0} 秒内无进度", ex);
+            throw new TimeoutException($"分片下载在 {FormatTimeoutDuration(_shardedProgressStallTimeout)} 内无进度", ex);
         } catch { CleanupFile(tempPath); throw; }
         finally
         {
@@ -1252,6 +1380,41 @@ public class DownloadManager : IDownloadManager
             }
         }
         MoveFile(tempPath, targetPath);
+    }
+
+    private async Task MonitorDirectDownloadProgressAsync(
+        string url,
+        Func<long> getLastProgressTick,
+        Action onStalled,
+        CancellationToken cancellationToken)
+    {
+        long stallTimeoutMs = (long)_directReadProgressStallTimeout.TotalMilliseconds;
+        int checkIntervalMs = (int)Math.Clamp(stallTimeoutMs / 4, 50L, 1000L);
+
+        try
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                await Task.Delay(checkIntervalMs, cancellationToken);
+
+                long idleMs = Environment.TickCount64 - getLastProgressTick();
+                if (idleMs < stallTimeoutMs)
+                {
+                    continue;
+                }
+
+                _logger.LogWarning(
+                    "直连下载长时间无进度，准备取消当前读取并重试: {Url}, IdleMs={IdleMs}, TimeoutMs={TimeoutMs}",
+                    url,
+                    idleMs,
+                    stallTimeoutMs);
+                onStalled();
+                return;
+            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
     }
 
     private async Task MonitorShardedDownloadProgressAsync(
@@ -1287,6 +1450,26 @@ public class DownloadManager : IDownloadManager
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
         }
+    }
+
+    private static string FormatTimeoutDuration(TimeSpan timeout)
+    {
+        if (timeout.TotalMilliseconds < 1000)
+        {
+            return $"{Math.Max(1, Math.Ceiling(timeout.TotalMilliseconds))} 毫秒";
+        }
+
+        if (timeout.TotalMinutes < 1)
+        {
+            return $"{timeout.TotalSeconds:0.###} 秒";
+        }
+
+        if (timeout.TotalHours < 1)
+        {
+            return $"{timeout.TotalMinutes:0.###} 分钟";
+        }
+
+        return $"{timeout.TotalHours:0.###} 小时";
     }
     
     private async Task DownloadChunkAsync(string url, string filePath, long start, long end, Action<int> onBytesRead, CancellationToken ct)
