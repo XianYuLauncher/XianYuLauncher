@@ -161,6 +161,7 @@ public sealed class LaunchOperationTracker : ILaunchOperationTracker
             OperationKind = "launchGame",
             TaskName = $"启动 {entry.VersionName}",
             VersionName = entry.VersionName,
+            SuggestedPollDelaySeconds = entry.IsTerminal ? null : AgentOperationPollingDefaults.DefaultSuggestedPollDelaySeconds,
             ErrorMessage = entry.ErrorMessage
         };
     }

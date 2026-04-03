@@ -37,6 +37,7 @@ public sealed class AgentOperationStatusServiceTests
         message.Should().Contain("progress_percent: 42.5");
         message.Should().Contain("task_name: 安装 1.20.1");
         message.Should().Contain("version_name: 1.20.1-Fabric");
+        message.Should().Contain("suggested_poll_delay_seconds: 10");
     }
 
     [Fact]
@@ -67,6 +68,7 @@ public sealed class AgentOperationStatusServiceTests
         message.Should().Contain("progress_percent: 37.5");
         message.Should().Contain("task_name: 更新社区资源 (Fabric-1.20.1)");
         message.Should().Contain("version_name: Fabric-1.20.1");
+        message.Should().Contain("suggested_poll_delay_seconds: 10");
     }
 
     [Fact]
@@ -141,7 +143,23 @@ public sealed class AgentOperationStatusServiceTests
         message.Should().Contain("version_name: 1.21.10");
         message.Should().NotContain("progress_percent:");
         message.Should().NotContain("queue_position:");
+        message.Should().NotContain("suggested_poll_delay_seconds:");
         message.Should().NotContain("error_message:");
+    }
+
+    [Fact]
+    public void GetOperationStatusMessage_ShouldIncludeSuggestedPollDelayForActiveLaunchOperation()
+    {
+        _downloadTaskManager.SetupGet(manager => manager.TasksSnapshot).Returns([]);
+        var service = CreateService();
+        var operationId = _launchOperationTracker.CreateOperation("1.21.10", @"D:\\.minecraft\\versions\\1.21.10");
+
+        var message = service.GetOperationStatusMessage(operationId);
+
+        message.Should().Contain($"operation_id: {operationId}");
+        message.Should().Contain("state: launching");
+        message.Should().Contain("is_terminal: False");
+        message.Should().Contain("suggested_poll_delay_seconds: 10");
     }
 
     [Fact]

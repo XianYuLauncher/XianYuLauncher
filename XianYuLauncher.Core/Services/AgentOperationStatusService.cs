@@ -25,6 +25,8 @@ public sealed class AgentOperationSnapshot
 
     public int? QueuePosition { get; set; }
 
+    public int? SuggestedPollDelaySeconds { get; set; }
+
     public string? ErrorMessage { get; set; }
 }
 
@@ -81,17 +83,20 @@ public sealed class AgentOperationStatusService : IAgentOperationStatusService
 
     internal static AgentOperationSnapshot CreateDownloadSnapshot(DownloadTaskInfo task)
     {
+        bool isTerminal = task.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled;
+
         return new AgentOperationSnapshot
         {
             OperationId = task.TaskId,
             State = MapState(task.State),
             StatusMessage = ResolveStatusMessage(task),
-            IsTerminal = task.State is DownloadTaskState.Completed or DownloadTaskState.Failed or DownloadTaskState.Cancelled,
+            IsTerminal = isTerminal,
             OperationKind = ResolveOperationKind(task),
             ProgressPercent = task.Progress,
             TaskName = string.IsNullOrWhiteSpace(task.TaskName) ? null : task.TaskName,
             VersionName = string.IsNullOrWhiteSpace(task.VersionName) ? null : task.VersionName,
             QueuePosition = task.QueuePosition,
+            SuggestedPollDelaySeconds = ResolveSuggestedPollDelaySeconds(isTerminal),
             ErrorMessage = string.IsNullOrWhiteSpace(task.ErrorMessage) ? null : task.ErrorMessage
         };
     }
@@ -127,6 +132,11 @@ public sealed class AgentOperationStatusService : IAgentOperationStatusService
         if (snapshot.QueuePosition.HasValue)
         {
             builder.AppendLine($"queue_position: {snapshot.QueuePosition.Value}");
+        }
+
+        if (snapshot.SuggestedPollDelaySeconds.HasValue)
+        {
+            builder.AppendLine($"suggested_poll_delay_seconds: {snapshot.SuggestedPollDelaySeconds.Value}");
         }
 
         if (!string.IsNullOrWhiteSpace(snapshot.ErrorMessage))
@@ -193,19 +203,27 @@ public sealed class AgentOperationStatusService : IAgentOperationStatusService
         OperationTaskInfo task,
         IReadOnlyList<OperationTaskInfo> allTasks)
     {
+        bool isTerminal = task.State is OperationTaskState.Completed or OperationTaskState.Failed or OperationTaskState.Cancelled;
+
         return new AgentOperationSnapshot
         {
             OperationId = task.TaskId,
             State = MapOperationState(task.State),
             StatusMessage = string.IsNullOrWhiteSpace(task.StatusMessage) ? "任务执行中" : task.StatusMessage,
-            IsTerminal = task.State is OperationTaskState.Completed or OperationTaskState.Failed or OperationTaskState.Cancelled,
+            IsTerminal = isTerminal,
             OperationKind = ResolveOperationKind(task.TaskType),
             ProgressPercent = task.Progress,
             TaskName = string.IsNullOrWhiteSpace(task.TaskName) ? null : task.TaskName,
             VersionName = ExtractVersionName(task.ScopeKey),
             QueuePosition = task.State == OperationTaskState.Queued ? ResolveQueuePosition(task, allTasks) : null,
+            SuggestedPollDelaySeconds = ResolveSuggestedPollDelaySeconds(isTerminal),
             ErrorMessage = string.IsNullOrWhiteSpace(task.ErrorMessage) ? null : task.ErrorMessage
         };
+    }
+
+    private static int? ResolveSuggestedPollDelaySeconds(bool isTerminal)
+    {
+        return isTerminal ? null : AgentOperationPollingDefaults.DefaultSuggestedPollDelaySeconds;
     }
 
     private static string MapOperationState(OperationTaskState state)
