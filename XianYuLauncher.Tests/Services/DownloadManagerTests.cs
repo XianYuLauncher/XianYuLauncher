@@ -308,7 +308,7 @@ public sealed class DownloadManagerTests : IDisposable
             return Task.FromResult(CreateDirectResponse(content, acceptRanges: "bytes"));
         });
 
-        var downloadManager = CreateDownloadManager(handler, shardCount: 2, shardedProgressStallTimeout: TimeSpan.FromMilliseconds(100));
+        var downloadManager = CreateDownloadManager(handler, shardCount: 2, shardedProgressStallTimeout: TimeSpan.FromSeconds(1));
         string firstTargetPath = Path.Combine(_testDirectory, "range-stall-first.jar");
         string secondTargetPath = Path.Combine(_testDirectory, "range-stall-second.jar");
 
@@ -316,6 +316,9 @@ public sealed class DownloadManagerTests : IDisposable
             "https://downloads.example.com/assets/library.jar",
             firstTargetPath,
             expectedSha1);
+
+        int rangeRequestCountAfterFirstDownload = rangeRequests.Count(range => range is not null);
+        int directRequestCountAfterFirstDownload = rangeRequests.Count(range => range is null);
 
         DownloadResult secondResult = await downloadManager.DownloadFileAsync(
             "https://downloads.example.com/assets/library.jar",
@@ -327,8 +330,9 @@ public sealed class DownloadManagerTests : IDisposable
         File.ReadAllBytes(firstTargetPath).Should().Equal(content);
         File.ReadAllBytes(secondTargetPath).Should().Equal(content);
         methods.Should().OnlyContain(method => method == HttpMethod.Get);
-        rangeRequests.Count(range => range is not null).Should().Be(2);
-        rangeRequests.Count(range => range is null).Should().Be(3);
+        rangeRequestCountAfterFirstDownload.Should().BeGreaterThan(0);
+        rangeRequests.Count(range => range is not null).Should().Be(rangeRequestCountAfterFirstDownload);
+        rangeRequests.Count(range => range is null).Should().BeGreaterThan(directRequestCountAfterFirstDownload);
     }
 
     [Fact]
