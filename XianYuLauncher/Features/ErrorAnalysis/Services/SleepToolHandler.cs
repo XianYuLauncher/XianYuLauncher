@@ -31,7 +31,10 @@ public sealed class SleepToolHandler : IAgentToolHandler
 
     public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
     {
-        JToken? secondsToken = arguments["seconds"] ?? arguments["delay_seconds"];
+        JToken? secondsToken =
+            arguments["seconds"] ??
+            arguments["delay_seconds"] ??
+            arguments["suggested_poll_delay_seconds"];
         int? requestedSeconds = null;
 
         if (secondsToken != null && secondsToken.Type != JTokenType.Null)
