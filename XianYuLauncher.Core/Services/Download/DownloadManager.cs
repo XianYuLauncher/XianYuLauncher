@@ -1390,11 +1390,15 @@ public class DownloadManager : IDownloadManager
     {
         long stallTimeoutMs = (long)_directReadProgressStallTimeout.TotalMilliseconds;
         int checkIntervalMs = (int)Math.Clamp(stallTimeoutMs / 4, 50L, 1000L);
+        TaskCompletionSource<object?> cancellationSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using CancellationTokenRegistration cancellationRegistration = cancellationToken.Register(
+            static state => ((TaskCompletionSource<object?>)state!).TrySetResult(null),
+            cancellationSignal);
 
         while (!cancellationToken.IsCancellationRequested)
         {
-            await Task.Delay(checkIntervalMs);
-            if (cancellationToken.IsCancellationRequested)
+            Task completedTask = await Task.WhenAny(Task.Delay(checkIntervalMs), cancellationSignal.Task);
+            if (ReferenceEquals(completedTask, cancellationSignal.Task))
             {
                 return;
             }
@@ -1423,11 +1427,15 @@ public class DownloadManager : IDownloadManager
     {
         long stallTimeoutMs = (long)_shardedProgressStallTimeout.TotalMilliseconds;
         int checkIntervalMs = (int)Math.Clamp(stallTimeoutMs / 4, 50L, 1000L);
+        TaskCompletionSource<object?> cancellationSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        using CancellationTokenRegistration cancellationRegistration = cancellationToken.Register(
+            static state => ((TaskCompletionSource<object?>)state!).TrySetResult(null),
+            cancellationSignal);
 
         while (!cancellationToken.IsCancellationRequested)
         {
-            await Task.Delay(checkIntervalMs);
-            if (cancellationToken.IsCancellationRequested)
+            Task completedTask = await Task.WhenAny(Task.Delay(checkIntervalMs), cancellationSignal.Task);
+            if (ReferenceEquals(completedTask, cancellationSignal.Task))
             {
                 return;
             }

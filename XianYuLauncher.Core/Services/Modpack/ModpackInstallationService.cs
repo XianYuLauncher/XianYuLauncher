@@ -1249,7 +1249,7 @@ public class ModpackInstallationService : IModpackInstallationService
             ProgressText = percentText,
             Status = status,
             Speed = string.IsNullOrWhiteSpace(speed) && speedBytesPerSecond.HasValue
-                ? new DownloadProgressStatus(0, 0, 0, speedBytesPerSecond.Value).SpeedText
+                ? DownloadProgressStatus.FormatSpeedText(speedBytesPerSecond.Value)
                 : speed,
             SpeedBytesPerSecond = speedBytesPerSecond,
             StatusResourceKey = statusResourceKey,
