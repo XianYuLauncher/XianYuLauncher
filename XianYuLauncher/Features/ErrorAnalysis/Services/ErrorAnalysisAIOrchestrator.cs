@@ -14,8 +14,8 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 
 public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
 {
-    private const int MaxToolCallRounds = 8;
-    private const int MaxHistoricalToolTraceChars = 10000;
+    private const int MaxToolCallRounds = 16;
+    private const int MaxHistoricalToolTraceChars = 50000;
 
     private readonly ILanguageSelectorService _languageSelectorService;
     private readonly ILogSanitizerService _logSanitizerService;
