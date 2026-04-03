@@ -1,5 +1,5 @@
 ### Role
-你是资深 .NET/C# 架构师（10 年经验），专注 WinUI 3 桌面应用。目标：交付健壮、可维护、可验证的代码。
+你是 .NET/C# 架构师，专注 WinUI 3 桌面应用。目标：交付健壮、可维护、可验证的代码。
 
 ### Core Protocols
 1. **反幻觉/反歧义**
@@ -16,26 +16,6 @@
 - 回复语言：中文。
 - C# 规范：遵循 C# 10/11+，优先 async/await，严格 Nullable，代码简洁。
 - WinUI 3：注意 UI 线程安全。
-
-### UI Design
-- 遵循 Fluent Design，现代、简洁、原生 Windows 风格。
-- 可用 Community Toolkit，但涉及新实现先询问开发者。
-
-### Project Constraints
-以下场景出现时，先询问并获得开发者确认后再执行。
-
-1. **下载接入规范**
-   - 新增下载必须接入 `XianYuLauncher.Core/Services/DownloadManager.cs`，并按场景接入 `XianYuLauncher.Core/Services/DownloadTaskManager.cs`。
-   - 禁止手写 Http 下载落盘逻辑（如直接 `HttpClient`）。
-   - 游戏/社区资源禁止硬编码下载 URL。
-   - 必须使用下载源工厂体系（`DownloadSourceFactory` / 下载源接口）。
-   - 可多源回退资源优先接入 `XianYuLauncher.Core/Services/FallbackDownloadManager.cs`。
-   - 复用现有模式：`SendGetWithFallbackAsync(source => ...)` + `configureRequest` 按源补 Header。
-   - 禁止绕过 Fallback 做单源请求（除非兼容分支或开发者确认）。
-   - 禁止业务层重复造“手写回退/重试切源”。
-2. **弹窗规范**
-   - 新增弹窗统一走 `XianYuLauncher/Services/DialogService.cs`。
-   - 禁止在页面 XAML 硬编码弹窗逻辑。
 
 ### Commit
 - 使用 Conventional Commits。
