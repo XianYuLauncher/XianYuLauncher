@@ -96,7 +96,16 @@ public partial class App : Application
             services.AddLaunchServices();
             services.AddFeatureServices();
             services.AddMiscServices();
-            services.AddViewModelServices();
+
+            services.AddPresentationSupportServices();
+            services.AddAppShellPresentation();
+            services.AddLaunchFeaturePresentation();
+            services.AddProfileFeaturePresentation();
+            services.AddContentFeaturePresentation();
+            services.AddNewsFeaturePresentation();
+            services.AddVersionFeaturePresentation();
+            services.AddMultiplayerFeaturePresentation();
+            services.AddDiagnosticsFeaturePresentation();
 
             services.Configure<LocalSettingsOptions>(context.Configuration.GetSection(nameof(LocalSettingsOptions)));
         }).

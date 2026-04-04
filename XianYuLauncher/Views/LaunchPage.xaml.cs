@@ -20,6 +20,7 @@ using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using Serilog;
 using Newtonsoft.Json.Linq;
+using XianYuLauncher.Features.News.ViewModels;
 
 namespace XianYuLauncher.Views;
 

@@ -2,13 +2,15 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Navigation;
+
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using XianYuLauncher.Contracts.Services;
-using XianYuLauncher.Services;
-using XianYuLauncher.ViewModels;
 
-namespace XianYuLauncher.Views;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.News.ViewModels;
+using XianYuLauncher.Services;
+
+namespace XianYuLauncher.Features.News.Views;
 
 public sealed partial class NewsListPage : Page
 {
@@ -17,7 +19,7 @@ public sealed partial class NewsListPage : Page
     private const string SourceNews = "News";
     private bool _isInitializingFilters;
 
-    public NewsListViewModel ViewModel { get; } = new NewsListViewModel();
+    public NewsListViewModel ViewModel { get; } = new();
 
     public NewsListPage()
     {
@@ -42,10 +44,8 @@ public sealed partial class NewsListPage : Page
 
     private void UpdateUI()
     {
-        // 更新加载状态
         LoadingPanel.Visibility = ViewModel.IsLoading ? Visibility.Visible : Visibility.Collapsed;
-        
-        // 更新错误信息
+
         if (!string.IsNullOrEmpty(ViewModel.ErrorMessage) && !ViewModel.IsLoading)
         {
             ErrorTextBlock.Text = ViewModel.ErrorMessage;
@@ -55,8 +55,7 @@ public sealed partial class NewsListPage : Page
         {
             ErrorTextBlock.Visibility = Visibility.Collapsed;
         }
-        
-        // 更新列表
+
         if (!ViewModel.IsLoading && ViewModel.NewsItems.Count > 0)
         {
             NewsListView.ItemsSource = ViewModel.NewsItems;
@@ -99,6 +98,7 @@ public sealed partial class NewsListPage : Page
         {
             return;
         }
+
         var selectedSource = GetSelectedTag(SourceFilterComboBox, SourceAll);
         UpdateDetailFilterOptions(selectedSource);
         await ApplyCurrentFiltersAsync();
@@ -110,6 +110,7 @@ public sealed partial class NewsListPage : Page
         {
             return;
         }
+
         await ApplyCurrentFiltersAsync();
     }
 
@@ -121,6 +122,7 @@ public sealed partial class NewsListPage : Page
             {
                 ActivityNewsTeachingTip.Target = listView.ContainerFromItem(entry) as FrameworkElement ?? NewsListView;
             }
+
             ViewModel.OpenNewsDetailCommand.Execute(entry);
         }
     }
@@ -136,6 +138,7 @@ public sealed partial class NewsListPage : Page
         {
             return;
         }
+
         var sourceFilter = GetSelectedTag(SourceFilterComboBox, SourceAll);
         var detailFilter = GetSelectedTag(
             FilterComboBox,
@@ -184,6 +187,7 @@ public sealed partial class NewsListPage : Page
                 Tag = tag
             });
         }
+
         FilterComboBox.SelectedIndex = 0;
         FilterComboBox.IsEnabled = sourceFilter != SourceAll;
     }
@@ -194,6 +198,7 @@ public sealed partial class NewsListPage : Page
         {
             return item.Tag?.ToString() ?? defaultValue;
         }
+
         return defaultValue;
     }
 }

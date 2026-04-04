@@ -1,5 +1,5 @@
 <Page
-    x:Class="XianYuLauncher.Views.NewsDetailPage"
+    x:Class="XianYuLauncher.Features.News.Views.NewsDetailPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -14,7 +14,6 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 顶部栏 - 居中块(最大1064) + 块内居左 -->
         <Grid Grid.Row="0" Padding="40,36,40,0" HorizontalAlignment="Stretch">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -26,8 +25,8 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            
-            <Button 
+
+            <Button
                 Grid.Column="0"
                 x:Name="BackButton"
                 Click="BackButton_Click"
@@ -47,20 +46,19 @@
                     </AnimatedIcon.FallbackIconSource>
                 </AnimatedIcon>
             </Button>
-            
-            <TextBlock 
+
+            <TextBlock
                 Grid.Column="1"
                 x:Uid="NewsDetailPage_Title"
-                Text="新闻详情" 
-                Style="{StaticResource TitleTextBlockStyle}" 
+                Text="新闻详情"
+                Style="{StaticResource TitleTextBlockStyle}"
                 FontWeight="SemiBold"
                 VerticalAlignment="Center" />
             </Grid>
         </Grid>
 
-        <!-- 内容区域 - ScrollViewer 全宽，滚动条贴页面右侧 -->
-        <ScrollViewer 
-            Grid.Row="1" 
+        <ScrollViewer
+            Grid.Row="1"
             Padding="40,24,40,24"
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Auto">
@@ -71,33 +69,28 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="1" Spacing="20" HorizontalAlignment="Stretch">
-                <!-- 头图 -->
-                <Border 
+                <Border
                     x:Name="ImageBorder"
                     CornerRadius="8"
                     Height="400"
                     Visibility="Collapsed">
                     <Grid>
-                        <!-- 底层图（用作被模糊的源） -->
-                        <Image 
+                        <Image
                             x:Name="NewsImageBg"
-                            Stretch="UniformToFill" 
+                            Stretch="UniformToFill"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"/>
-                        
-                        <!-- 模糊层：使用BackdropBlurBrush直接模糊背景 -->
+
                         <Border x:Name="BlurBorder" Visibility="Collapsed">
                             <Border.Background>
                                 <media:BackdropBlurBrush Amount="10" />
                             </Border.Background>
                         </Border>
-                        
-                        <!-- 变暗遮罩：确保前景图更突出 -->
+
                         <Rectangle Fill="{ThemeResource SolidBackgroundFillColorBaseBrush}" Opacity="0.05"/>
-                        
-                        <!-- 前景图：完整显示 -->
-                        <Border 
-                            VerticalAlignment="Center" 
+
+                        <Border
+                            VerticalAlignment="Center"
                             HorizontalAlignment="Center"
                             Margin="32"
                             CornerRadius="8"
@@ -105,69 +98,63 @@
                             <Border.Shadow>
                                 <ThemeShadow />
                             </Border.Shadow>
-                            
-                            <Image 
+
+                            <Image
                                 x:Name="NewsImage"
                                 Stretch="Uniform" />
                         </Border>
                     </Grid>
                 </Border>
 
-                <!-- 标题 -->
-                <TextBlock 
+                <TextBlock
                     x:Name="TitleTextBlock"
                     Style="{StaticResource TitleLargeTextBlockStyle}"
                     FontWeight="Bold"
                     TextWrapping="Wrap" />
 
-                <!-- 元信息 -->
                 <StackPanel Orientation="Horizontal" Spacing="12">
-                    <Border 
+                    <Border
                         Background="{ThemeResource AccentFillColorDefaultBrush}"
                         CornerRadius="4"
                         Padding="8,4">
-                        <TextBlock 
+                        <TextBlock
                             x:Name="TypeTextBlock"
                             Style="{StaticResource CaptionTextBlockStyle}"
                             Foreground="{ThemeResource TextOnAccentFillColorPrimaryBrush}" />
                     </Border>
-                    <Border 
+                    <Border
                         Background="{ThemeResource ControlFillColorSecondaryBrush}"
                         CornerRadius="4"
                         Padding="8,4">
-                        <TextBlock 
+                        <TextBlock
                             x:Name="VersionTextBlock"
                             Style="{StaticResource CaptionTextBlockStyle}" />
                     </Border>
-                    <TextBlock 
+                    <TextBlock
                         x:Name="DateTextBlock"
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}"
                         VerticalAlignment="Center" />
                 </StackPanel>
 
-                <!-- 分隔线 -->
                 <Border Height="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Opacity="0.5" />
 
-                <!-- 摘要 -->
-                <TextBlock 
+                <TextBlock
                     x:Name="ShortTextBlock"
                     Style="{StaticResource BodyTextBlockStyle}"
                     TextWrapping="Wrap"
                     Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
 
-                <!-- 加载中 -->
-                <StackPanel 
+                <StackPanel
                     x:Name="LoadingPanel"
-                    Orientation="Horizontal" 
+                    Orientation="Horizontal"
                     Spacing="8"
                     Visibility="Collapsed">
                     <ProgressRing IsActive="True" Width="16" Height="16" />
                     <TextBlock x:Uid="NewsDetailPage_Loading" Text="加载详细内容..." Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
 
-                <!-- 详细内容 -->
-                <Border 
+                <Border
                     x:Name="ContentBorder"
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -176,11 +163,11 @@
                     Padding="16"
                     Visibility="Collapsed">
                     <StackPanel Spacing="12">
-                        <TextBlock 
+                        <TextBlock
                             x:Uid="NewsDetailPage_UpdateContent"
                             Text="更新内容"
                             Style="{StaticResource BodyStrongTextBlockStyle}" />
-                        <TextBlock 
+                        <TextBlock
                             x:Name="ContentTextBlock"
                             Style="{StaticResource BodyTextBlockStyle}"
                             TextWrapping="Wrap"
@@ -188,8 +175,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 提示 -->
-                <TextBlock 
+                <TextBlock
                     x:Uid="NewsDetailPage_FullChangelogHint"
                     Text="完整更新日志请访问 Minecraft 官网"
                     Style="{StaticResource CaptionTextBlockStyle}"

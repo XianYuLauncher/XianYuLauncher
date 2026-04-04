@@ -2,15 +2,18 @@ using System;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading.Tasks;
+
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
+
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Services;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.News.ViewModels;
 
 public partial class NewsListViewModel : ObservableRecipient
 {
@@ -75,27 +78,25 @@ public partial class NewsListViewModel : ObservableRecipient
         {
             IsLoading = true;
             ErrorMessage = string.Empty;
-            
+
             _newsService ??= new MinecraftNewsService(_fileService);
             var newsData = await _newsService.GetLatestNewsAsync();
-            
+
             NewsItems.Clear();
-            
+
             if (newsData?.Entries != null)
             {
-                // 先筛选，再按日期降序排序（最新的在前）
-                // 使用英文标识符进行筛选，避免本地化问题
                 var filteredEntries = newsData.Entries
                     .Where(IsSourceFilterMatch)
                     .Where(IsDetailFilterMatch)
                     .OrderByDescending(entry => entry.Date);
-                
+
                 foreach (var entry in filteredEntries)
                 {
                     NewsItems.Add(entry);
                 }
             }
-            
+
             if (NewsItems.Count == 0)
             {
                 ErrorMessage = "暂无新闻";
@@ -131,11 +132,11 @@ public partial class NewsListViewModel : ObservableRecipient
 
         if (!isSourceChanged && !isDetailChanged)
         {
-            // 首次进入页面时，默认筛选可能与当前属性一致，但仍需执行一次实际加载。
             if (NewsItems.Count == 0)
             {
                 await LoadNewsAsync();
             }
+
             return;
         }
 

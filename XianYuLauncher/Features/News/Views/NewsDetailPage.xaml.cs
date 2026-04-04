@@ -1,18 +1,20 @@
 using System.Text.RegularExpressions;
+
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
-using XianYuLauncher.Contracts.Services;
-using XianYuLauncher.Services;
-using XianYuLauncher.ViewModels;
 
-namespace XianYuLauncher.Views;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.News.ViewModels;
+using XianYuLauncher.Services;
+
+namespace XianYuLauncher.Features.News.Views;
 
 public sealed partial class NewsDetailPage : Page
 {
-    public NewsDetailViewModel ViewModel { get; } = new NewsDetailViewModel();
+    public NewsDetailViewModel ViewModel { get; } = new();
     private readonly IUiDispatcher _uiDispatcher;
 
     public NewsDetailPage()
@@ -25,7 +27,7 @@ public sealed partial class NewsDetailPage : Page
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
-        
+
         if (e.Parameter is MinecraftNewsEntry entry)
         {
             ViewModel.Initialize(entry);
@@ -44,14 +46,11 @@ public sealed partial class NewsDetailPage : Page
         if (!string.IsNullOrEmpty(ViewModel.ImageUrl))
         {
             var bitmap = new BitmapImage(new System.Uri(ViewModel.ImageUrl));
-            
-            // 重置模糊层状态
+
             BlurBorder.Visibility = Visibility.Collapsed;
-            
-            // 当图片加载完成后，显示模糊层，确保BackdropBlurBrush能采集到正确的像素
-            bitmap.ImageOpened += (s, e) => 
+
+            bitmap.ImageOpened += (s, e) =>
             {
-                // 确保在 UI 线程执行
                 if (_uiDispatcher.HasThreadAccess)
                 {
                     BlurBorder.Visibility = Visibility.Visible;
@@ -104,25 +103,22 @@ public sealed partial class NewsDetailPage : Page
         AnimatedIcon.SetState(BackAnimatedIcon, "Normal");
     }
 
-    /// <summary>
-    /// 简单的 HTML 标签移除
-    /// </summary>
     private static string StripHtml(string html)
     {
-        if (string.IsNullOrEmpty(html)) return string.Empty;
-        
-        // 移除 HTML 标签
+        if (string.IsNullOrEmpty(html))
+        {
+            return string.Empty;
+        }
+
         var text = Regex.Replace(html, "<[^>]+>", " ");
-        // 解码常见 HTML 实体
         text = text.Replace("&nbsp;", " ")
                    .Replace("&amp;", "&")
                    .Replace("&lt;", "<")
                    .Replace("&gt;", ">")
                    .Replace("&quot;", "\"")
                    .Replace("&#39;", "'");
-        // 合并多余空白
         text = Regex.Replace(text, @"\s+", " ").Trim();
-        
+
         return text;
     }
 }
