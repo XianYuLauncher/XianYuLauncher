@@ -103,6 +103,7 @@ public partial class App : Application
             services.AddTutorialFeaturePresentation();
             services.AddAccountsFeaturePresentation();
             services.AddDownloadQueueFeaturePresentation();
+            services.AddModLoaderSelectorFeaturePresentation();
             services.AddContentFeaturePresentation();
             services.AddNewsFeaturePresentation();
             services.AddVersionFeaturePresentation();

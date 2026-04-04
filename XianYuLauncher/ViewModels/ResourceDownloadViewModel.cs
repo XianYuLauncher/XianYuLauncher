@@ -14,6 +14,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
 using XianYuLauncher.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;

@@ -5,6 +5,8 @@ using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Features.Accounts.Views;
 using XianYuLauncher.Features.DownloadQueue.ViewModels;
 using XianYuLauncher.Features.DownloadQueue.Views;
+using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
+using XianYuLauncher.Features.ModLoaderSelector.Views;
 using XianYuLauncher.Features.Multiplayer.ViewModels;
 using XianYuLauncher.Features.Multiplayer.Views;
 using XianYuLauncher.Features.News.ViewModels;
@@ -80,12 +82,17 @@ internal static class PresentationModuleExtensions
         return services;
     }
 
-    public static IServiceCollection AddContentFeaturePresentation(this IServiceCollection services)
+    public static IServiceCollection AddModLoaderSelectorFeaturePresentation(this IServiceCollection services)
     {
         services.AddTransient<ModLoaderSelectorViewModel>();
         services.AddTransient<ModLoaderSelectorPage>();
         services.AddPageMap<ModLoaderSelectorViewModel, ModLoaderSelectorPage>();
 
+        return services;
+    }
+
+    public static IServiceCollection AddContentFeaturePresentation(this IServiceCollection services)
+    {
         services.AddSingleton<ModDownloadDetailViewModel>();
         services.AddTransient<ModDownloadDetailPage>();
         services.AddPageMap<ModDownloadDetailViewModel, ModDownloadDetailPage>();

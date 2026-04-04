@@ -12,7 +12,7 @@ using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using System.IO;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.ModLoaderSelector.ViewModels;
 
 public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigationAware
 {
