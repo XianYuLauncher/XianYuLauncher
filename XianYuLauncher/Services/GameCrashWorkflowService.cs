@@ -2,9 +2,9 @@ using Microsoft.Extensions.DependencyInjection;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
+using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
+using XianYuLauncher.Features.ErrorAnalysis.Views;
 using XianYuLauncher.Features.Dialogs.Contracts;
-using XianYuLauncher.ViewModels;
-using XianYuLauncher.Views;
 
 namespace XianYuLauncher.Services;
 

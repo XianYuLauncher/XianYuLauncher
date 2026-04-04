@@ -5,6 +5,8 @@ using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Features.Accounts.Views;
 using XianYuLauncher.Features.DownloadQueue.ViewModels;
 using XianYuLauncher.Features.DownloadQueue.Views;
+using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
+using XianYuLauncher.Features.ErrorAnalysis.Views;
 using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.Launch.Views;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;

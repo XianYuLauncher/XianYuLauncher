@@ -8,9 +8,11 @@ using System.Text;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
 using XianYuLauncher.ViewModels;
+using XianYuLauncher.Views;
 
-namespace XianYuLauncher.Views
+namespace XianYuLauncher.Features.ErrorAnalysis.Views
 {
     /// <summary>
     /// 错误分析系统页面
