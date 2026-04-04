@@ -6,6 +6,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using XianYuLauncher.Models.VersionManagement;

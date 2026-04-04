@@ -2,6 +2,7 @@ using Microsoft.UI.Xaml.Controls;
 using Serilog;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.Multiplayer.ViewModels;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Views;

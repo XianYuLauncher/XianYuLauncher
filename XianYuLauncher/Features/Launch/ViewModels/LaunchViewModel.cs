@@ -32,10 +32,11 @@ using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using XianYuLauncher.Services;
+using XianYuLauncher.ViewModels;
 using System.Collections.Specialized;
 using System.Text;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.Launch.ViewModels;
 
 public partial class LaunchViewModel : ObservableRecipient
 {

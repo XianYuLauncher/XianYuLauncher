@@ -15,15 +15,16 @@ using Microsoft.Graphics.Canvas.Geometry;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.UI;
 
-using XianYuLauncher.ViewModels;
 using XianYuLauncher.Features.Accounts.ViewModels;
+using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
+using XianYuLauncher.ViewModels;
 using Serilog;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Features.News.ViewModels;
 
-namespace XianYuLauncher.Views;
+namespace XianYuLauncher.Features.Launch.Views;
 
 public sealed partial class LaunchPage : Page
 {

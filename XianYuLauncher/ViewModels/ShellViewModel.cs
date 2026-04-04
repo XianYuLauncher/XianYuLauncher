@@ -11,6 +11,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Views;
 
 namespace XianYuLauncher.ViewModels;
