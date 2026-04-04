@@ -22,8 +22,9 @@ using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.ModDownloadDetail.Models;
 using XianYuLauncher.Features.ModDownloadDetail.Services;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.ViewModels;
 
-namespace XianYuLauncher.ViewModels
+namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
 {
     public partial class ModDownloadDetailViewModel : ObservableObject
     {

@@ -5,6 +5,8 @@ using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Features.Accounts.Views;
 using XianYuLauncher.Features.DownloadQueue.ViewModels;
 using XianYuLauncher.Features.DownloadQueue.Views;
+using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
+using XianYuLauncher.Features.ModDownloadDetail.Views;
 using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
 using XianYuLauncher.Features.ModLoaderSelector.Views;
 using XianYuLauncher.Features.Multiplayer.ViewModels;

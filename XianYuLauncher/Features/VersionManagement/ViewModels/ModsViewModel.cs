@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;

@@ -17,6 +17,7 @@ using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
 using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.ViewModels;

@@ -3,10 +3,11 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
+using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
 using XianYuLauncher.Helpers;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Views;
 
-namespace XianYuLauncher.Views
+namespace XianYuLauncher.Features.ModDownloadDetail.Views
 {
     /// <summary>
     /// Mod下载详情页面 — 所有弹窗已迁移至 DialogService
