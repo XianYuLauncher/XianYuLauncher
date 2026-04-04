@@ -20,8 +20,9 @@ using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.ViewModels;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.VersionList.ViewModels;
 
 public partial class VersionListViewModel : ObservableRecipient
 {

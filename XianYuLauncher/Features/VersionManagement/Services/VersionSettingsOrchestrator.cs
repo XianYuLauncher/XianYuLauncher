@@ -1,8 +1,8 @@
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Models.VersionManagement;
-using XianYuLauncher.ViewModels;
 using System.Text.Json;
 
 namespace XianYuLauncher.Features.VersionManagement.Services;

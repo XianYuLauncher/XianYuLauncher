@@ -17,6 +17,7 @@ using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Features.Accounts.Views;
 using XianYuLauncher.Features.Tutorial.Views;
+using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.ViewModels;
 
@@ -182,13 +183,13 @@ public sealed partial class ShellPage : Page
                     }
 
                     var navigationService = App.GetService<Contracts.Services.INavigationService>();
-                    navigationService?.NavigateTo(typeof(ViewModels.VersionListViewModel).FullName!);
+                    navigationService?.NavigateTo(typeof(VersionListViewModel).FullName!);
 
                     _uiDispatcher.EnqueueAsync(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
                     {
                         try
                         {
-                            var vm = App.GetService<ViewModels.VersionListViewModel>();
+                            var vm = App.GetService<VersionListViewModel>();
                             if (vm != null)
                             {
                                 await vm.ImportModpackFromPathAsync(itemPath);

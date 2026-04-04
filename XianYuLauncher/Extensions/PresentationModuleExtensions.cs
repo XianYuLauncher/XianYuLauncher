@@ -21,6 +21,8 @@ using XianYuLauncher.Features.Tutorial.ViewModels;
 using XianYuLauncher.Features.Tutorial.Views;
 using XianYuLauncher.Features.VersionManagement.ViewModels;
 using XianYuLauncher.Features.VersionManagement.Views;
+using XianYuLauncher.Features.VersionList.ViewModels;
+using XianYuLauncher.Features.VersionList.Views;
 using XianYuLauncher.Services;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Views;

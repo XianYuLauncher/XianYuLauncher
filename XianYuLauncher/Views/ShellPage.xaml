@@ -95,7 +95,7 @@
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE896;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem x:Uid="Shell_版本列表" helpers:NavigationHelper.NavigateTo="XianYuLauncher.ViewModels.VersionListViewModel">
+                <NavigationViewItem x:Uid="Shell_版本列表" helpers:NavigationHelper.NavigateTo="XianYuLauncher.Features.VersionList.ViewModels.VersionListViewModel">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe838;"/>
                     </NavigationViewItem.Icon>

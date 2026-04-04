@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Features.VersionList.ViewModels;
 
 namespace XianYuLauncher.ViewModels;
 

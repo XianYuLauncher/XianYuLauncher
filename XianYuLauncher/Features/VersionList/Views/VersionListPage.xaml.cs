@@ -11,10 +11,11 @@ using System.Threading.Tasks;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.ViewModels;
 
-namespace XianYuLauncher.Views;
+namespace XianYuLauncher.Features.VersionList.Views;
 
 public sealed partial class VersionListPage : Page
 {

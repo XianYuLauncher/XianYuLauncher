@@ -1,6 +1,6 @@
 using System.Collections.ObjectModel;
 using XianYuLauncher.Models.VersionManagement;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.VersionList.ViewModels;
 
 namespace XianYuLauncher.Features.VersionManagement.Services;
 
