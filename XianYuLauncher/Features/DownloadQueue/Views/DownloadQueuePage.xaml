@@ -1,0 +1,352 @@
+<Page
+    x:Class="XianYuLauncher.Features.DownloadQueue.Views.DownloadQueuePage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:viewModels="using:XianYuLauncher.Features.DownloadQueue.ViewModels"
+    xmlns:helpers="using:XianYuLauncher.Helpers"
+    xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    mc:Ignorable="d">
+
+    <Page.Resources>
+        <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <helpers:PathToImageSourceConverter x:Key="PathToImageSourceConverter" />
+        <helpers:StringNullOrEmptyToVisibilityConverter x:Key="StringNullOrEmptyToVisibilityConverter" />
+
+        <DataTemplate x:Key="DownloadQueueTaskCardTemplate" x:DataType="viewModels:DownloadQueueTaskItemViewModel">
+            <controls:SettingsCard Margin="0,0,0,8" IsClickEnabled="False">
+                <controls:SettingsCard.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,4" VerticalAlignment="Center">
+                        <Grid Width="24" Height="24" VerticalAlignment="Center">
+                            <Image Source="{x:Bind IconSource, Mode=OneWay, Converter={StaticResource PathToImageSourceConverter}}"
+                                   Stretch="UniformToFill"
+                                   Visibility="{x:Bind HasCustomIcon, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <FontIcon Glyph="{x:Bind IconGlyph, Mode=OneWay}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Visibility="{x:Bind HasCustomIcon, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                        </Grid>
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}" Style="{ThemeResource BodyTextBlockStyle}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{x:Bind StatusMessage, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                            <ProgressBar Value="{x:Bind Progress, Mode=OneWay}"
+                                         Maximum="100"
+                                         Height="4"
+                                         CornerRadius="2"
+                                         Margin="0,4,0,0"
+                                         Width="220"
+                                         HorizontalAlignment="Left"
+                                         Visibility="{x:Bind ShowProgressBar, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        </StackPanel>
+                    </StackPanel>
+                </controls:SettingsCard.Header>
+
+                <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind TaskType, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{x:Bind SpeedText, Mode=OneWay}"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Visibility="{x:Bind SpeedText, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}" />
+                    <Button x:Uid="DownloadQueuePage_RunningCancelButton"
+                            Style="{ThemeResource SubtleButtonStyle}"
+                            Command="{x:Bind CancelCommand}"
+                            Visibility="{x:Bind CanCancel, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                            ToolTipService.ToolTip="取消任务"
+                            Padding="8">
+                        <FontIcon Glyph="&#xE711;" FontSize="14" />
+                    </Button>
+                    <Button x:Uid="DownloadQueuePage_RecentRetryButton"
+                            Style="{ThemeResource SubtleButtonStyle}"
+                            Command="{x:Bind RetryCommand}"
+                            Visibility="{x:Bind CanRetry, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                            ToolTipService.ToolTip="重试任务"
+                            Padding="8">
+                        <FontIcon Glyph="&#xE72C;" FontSize="14" />
+                    </Button>
+                </StackPanel>
+            </controls:SettingsCard>
+        </DataTemplate>
+
+        <DataTemplate x:Key="DownloadQueueChildTaskCardTemplate" x:DataType="viewModels:DownloadQueueTaskItemViewModel">
+            <controls:SettingsCard IsClickEnabled="False">
+                <controls:SettingsCard.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,4" VerticalAlignment="Center">
+                        <Grid Width="24" Height="24" VerticalAlignment="Center">
+                            <Image Source="{x:Bind IconSource, Mode=OneWay, Converter={StaticResource PathToImageSourceConverter}}"
+                                   Stretch="UniformToFill"
+                                   Visibility="{x:Bind HasCustomIcon, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <FontIcon Glyph="{x:Bind IconGlyph, Mode=OneWay}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Visibility="{x:Bind HasCustomIcon, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                        </Grid>
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{x:Bind DisplayName, Mode=OneWay}" Style="{ThemeResource BodyTextBlockStyle}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{x:Bind StatusMessage, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                            <ProgressBar Value="{x:Bind Progress, Mode=OneWay}"
+                                         Maximum="100"
+                                         Height="4"
+                                         CornerRadius="2"
+                                         Margin="0,4,0,0"
+                                         Width="220"
+                                         HorizontalAlignment="Left"
+                                         Visibility="{x:Bind ShowProgressBar, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        </StackPanel>
+                    </StackPanel>
+                </controls:SettingsCard.Header>
+
+                <StackPanel Orientation="Horizontal" Spacing="16" VerticalAlignment="Center">
+                    <TextBlock Text="{x:Bind TaskType, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="{x:Bind SpeedText, Mode=OneWay}"
+                               Style="{ThemeResource CaptionTextBlockStyle}"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"
+                               Visibility="{x:Bind SpeedText, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}" />
+                    <Button x:Uid="DownloadQueuePage_RunningCancelButton"
+                            Style="{ThemeResource SubtleButtonStyle}"
+                            Command="{x:Bind CancelCommand}"
+                            Visibility="{x:Bind CanCancel, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                            ToolTipService.ToolTip="取消任务"
+                            Padding="8">
+                        <FontIcon Glyph="&#xE711;" FontSize="14" />
+                    </Button>
+                    <Button x:Uid="DownloadQueuePage_RecentRetryButton"
+                            Style="{ThemeResource SubtleButtonStyle}"
+                            Command="{x:Bind RetryCommand}"
+                            Visibility="{x:Bind CanRetry, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                            ToolTipService.ToolTip="重试任务"
+                            Padding="8">
+                        <FontIcon Glyph="&#xE72C;" FontSize="14" />
+                    </Button>
+                </StackPanel>
+            </controls:SettingsCard>
+        </DataTemplate>
+
+        <DataTemplate x:Key="DownloadQueueTaskGroupTemplate" x:DataType="viewModels:DownloadQueueTaskGroupViewModel">
+            <controls:SettingsExpander Margin="0,0,0,8"
+                                       IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}">
+                <controls:SettingsExpander.Header>
+                    <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,4,0,4" VerticalAlignment="Center">
+                        <Grid Width="24" Height="24" VerticalAlignment="Center">
+                            <Image Source="{x:Bind SummaryTask.IconSource, Mode=OneWay, Converter={StaticResource PathToImageSourceConverter}}"
+                                   Stretch="UniformToFill"
+                                   Visibility="{x:Bind SummaryTask.HasCustomIcon, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                            <FontIcon Glyph="{x:Bind SummaryTask.IconGlyph, Mode=OneWay}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Visibility="{x:Bind SummaryTask.HasCustomIcon, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                        </Grid>
+                        <StackPanel Spacing="4">
+                            <TextBlock Text="{x:Bind SummaryTask.DisplayName, Mode=OneWay}"
+                                       Style="{ThemeResource BodyTextBlockStyle}"
+                                       TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{x:Bind SummaryTask.StatusMessage, Mode=OneWay}"
+                                       Style="{ThemeResource CaptionTextBlockStyle}"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       TextTrimming="CharacterEllipsis" />
+                            <ProgressBar Value="{x:Bind SummaryTask.Progress, Mode=OneWay}"
+                                         Maximum="100"
+                                         Height="4"
+                                         CornerRadius="2"
+                                         Width="220"
+                                         HorizontalAlignment="Left"
+                                         Visibility="{x:Bind SummaryTask.ShowProgressBar, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                        </StackPanel>
+                    </StackPanel>
+                </controls:SettingsExpander.Header>
+                <controls:SettingsExpander.Content>
+                    <StackPanel Orientation="Horizontal" Spacing="16" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <TextBlock Text="{x:Bind SummaryTask.TaskType, Mode=OneWay}"
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                   VerticalAlignment="Center" />
+                        <TextBlock Text="{x:Bind AggregateSpeedText, Mode=OneWay}"
+                                   Style="{ThemeResource CaptionTextBlockStyle}"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"
+                                   Visibility="{x:Bind AggregateSpeedText, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}" />
+                        <Button x:Uid="DownloadQueuePage_RunningCancelButton"
+                                Style="{ThemeResource SubtleButtonStyle}"
+                                Command="{x:Bind SummaryTask.CancelCommand}"
+                                Visibility="{x:Bind SummaryTask.CanCancel, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                ToolTipService.ToolTip="取消任务"
+                                Padding="8">
+                            <FontIcon Glyph="&#xE711;" FontSize="14" />
+                        </Button>
+                    </StackPanel>
+                </controls:SettingsExpander.Content>
+                <controls:SettingsExpander.Items>
+                    <controls:SettingsCard ContentAlignment="Vertical"
+                                           HorizontalContentAlignment="Stretch"
+                                           Background="Transparent"
+                                           BorderThickness="0"
+                                           IsClickEnabled="False"
+                                           Padding="0">
+                        <ItemsControl ItemsSource="{x:Bind ChildTasks, Mode=OneWay}"
+                                      ItemTemplate="{StaticResource DownloadQueueChildTaskCardTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Spacing="8" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </controls:SettingsCard>
+                </controls:SettingsExpander.Items>
+            </controls:SettingsExpander>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid x:Name="ContentArea">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 标题区域 -->
+        <Grid Grid.Row="0" HorizontalAlignment="Stretch" Padding="20,20,20,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="1" HorizontalAlignment="Stretch" Margin="0,0,0,20">
+                <TextBlock
+                    x:Uid="DownloadQueuePage_Title"
+                    Text="下载队列"
+                    Style="{ThemeResource TitleTextBlockStyle}" />
+                <TextBlock
+                    x:Uid="DownloadQueuePage_Subtitle"
+                    Text="当前下载任务和排队任务将在这里显示"
+                    Style="{ThemeResource BodyTextBlockStyle}"
+                    Margin="0,8,0,0"
+                    Opacity="0.7" />
+            </StackPanel>
+        </Grid>
+
+        <!-- 主内容区 -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="20,0,20,20">
+            <Grid HorizontalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="100*" MaxWidth="1064" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                
+                <StackPanel Grid.Column="1" Spacing="24" HorizontalAlignment="Stretch">
+
+                    <!-- 顶部摘要 -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        
+                        <Border Grid.Column="0" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="4" Padding="16" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock x:Uid="DownloadQueuePage_SummaryRunning" Text="运行中" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="{x:Bind ViewModel.RunningCount, Mode=OneWay}" Style="{ThemeResource TitleTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="1" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="4" Padding="16" Margin="4,0,4,0">
+                            <StackPanel>
+                                <TextBlock x:Uid="DownloadQueuePage_SummaryQueued" Text="排队中" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="{x:Bind ViewModel.QueuedCount, Mode=OneWay}" Style="{ThemeResource TitleTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="2" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="4" Padding="16" Margin="4,0,4,0">
+                            <StackPanel>
+                                <TextBlock x:Uid="DownloadQueuePage_SummaryTotalSpeed" Text="总速度" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="{x:Bind ViewModel.TotalSpeed, Mode=OneWay}" Style="{ThemeResource SubtitleTextBlockStyle}" FontWeight="SemiBold" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Grid.Column="3" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}" BorderThickness="1" CornerRadius="4" Padding="16" Margin="8,0,0,0">
+                            <StackPanel>
+                                <TextBlock x:Uid="DownloadQueuePage_SummaryFailed" Text="失败任务" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                                <TextBlock Text="{x:Bind ViewModel.FailedCount, Mode=OneWay}" Style="{ThemeResource TitleTextBlockStyle}" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <StackPanel Visibility="{x:Bind ViewModel.IsEmptyStateVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
+                                Spacing="20"
+                                HorizontalAlignment="Center"
+                                Margin="0,80,0,0"
+                                Padding="40,20,40,20">
+                            <FontIcon Glyph="&#xE896;"
+                                      FontSize="80"
+                                      Opacity="0.2"
+                                      Margin="0,0,0,8"
+                                      HorizontalAlignment="Center" />
+                            <TextBlock x:Uid="DownloadQueuePage_EmptyTitle"
+                                       Text="下载队列还是空的"
+                                       FontSize="20"
+                                       FontWeight="SemiBold"
+                                       Opacity="0.7"
+                                       TextAlignment="Center"
+                                       Margin="0,0,0,4"
+                                       HorizontalAlignment="Center" />
+                            <TextBlock x:Uid="DownloadQueuePage_EmptyDescription"
+                                       Text="新的下载任务、排队任务和最近记录会在这里出现。你可以从版本安装、资源下载或 Mod 下载页发起任务。"
+                                       FontSize="15"
+                                       Opacity="0.6"
+                                       TextAlignment="Center"
+                                       TextWrapping="WrapWholeWords"
+                                       LineHeight="22"
+                                       MaxWidth="420"
+                                       HorizontalAlignment="Center" />
+                            <Button Click="NavigateToDownloadPage_Click"
+                                    HorizontalAlignment="Center"
+                                    Margin="0,8,0,0"
+                                    Padding="16,10">
+                                <StackPanel Orientation="Horizontal" Spacing="8">
+                                    <FontIcon Glyph="&#xE896;" FontSize="16" />
+                                    <TextBlock x:Uid="DownloadQueuePage_EmptyActionText" Text="前往下载" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+
+                    <StackPanel Spacing="24"
+                                Visibility="{x:Bind ViewModel.IsEmptyStateVisible, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                        <!-- 运行中任务 -->
+                        <StackPanel Spacing="12"
+                                    Visibility="{x:Bind ViewModel.HasRunningTasks, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock x:Uid="DownloadQueuePage_RunningSection" Text="运行中" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.RunningGroups, Mode=OneWay}"
+                                          ItemTemplate="{StaticResource DownloadQueueTaskGroupTemplate}" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.RunningTasks, Mode=OneWay}"
+                                          ItemTemplate="{StaticResource DownloadQueueTaskCardTemplate}" />
+                        </StackPanel>
+
+                        <!-- 排队中任务 -->
+                        <StackPanel Spacing="12"
+                                    Visibility="{x:Bind ViewModel.HasQueuedTasks, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock x:Uid="DownloadQueuePage_QueuedSection" Text="排队中" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.QueuedGroups, Mode=OneWay}"
+                                          ItemTemplate="{StaticResource DownloadQueueTaskGroupTemplate}" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.QueuedTasks, Mode=OneWay}"
+                                          ItemTemplate="{StaticResource DownloadQueueTaskCardTemplate}" />
+                        </StackPanel>
+
+                        <!-- 最近任务 -->
+                        <StackPanel Spacing="12"
+                                    Visibility="{x:Bind ViewModel.HasRecentTasks, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <TextBlock x:Uid="DownloadQueuePage_RecentSection" Text="近期任务" Style="{ThemeResource BodyStrongTextBlockStyle}" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.RecentGroups, Mode=OneWay}"
+                                          ItemTemplate="{StaticResource DownloadQueueTaskGroupTemplate}" />
+                            <ItemsControl ItemsSource="{x:Bind ViewModel.RecentTasks, Mode=OneWay}"
+                                          ItemTemplate="{StaticResource DownloadQueueTaskCardTemplate}" />
+                        </StackPanel>
+                    </StackPanel>
+                    
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</Page>

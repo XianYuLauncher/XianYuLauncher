@@ -1,0 +1,130 @@
+<Page
+    x:Class="XianYuLauncher.Features.ErrorAnalysis.Views.ErrorAnalysisPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:XianYuLauncher.Controls"
+    xmlns:animatedvisuals="using:Microsoft.UI.Xaml.Controls.AnimatedVisuals"
+    xmlns:viewModels="using:XianYuLauncher.Features.ErrorAnalysis.ViewModels"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+    
+        <Grid Background="Transparent" Padding="40,36,40,24">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="100*" MaxWidth="1064" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <!-- 三列居中布局：中间列最大宽度 1064，窄窗口填满，宽窗口内容居中且不被拉得过宽 -->
+        <Grid Grid.Column="1" VerticalAlignment="Stretch">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+        
+            <!-- 标题栏 -->
+            <Grid Grid.Row="0" Margin="0,0,0,24" HorizontalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button
+                    Grid.Column="0"
+                    x:Name="BackButton"
+                    Click="BackButton_Click"
+                    Style="{StaticResource SubtleButtonStyle}"
+                    PointerEntered="BackButton_PointerEntered"
+                    PointerExited="BackButton_PointerExited"
+                    Padding="4"
+                    CornerRadius="4"
+                    Margin="0,0,12,0"
+                    VerticalAlignment="Center">
+                    <AnimatedIcon x:Name="BackAnimatedIcon" Width="24" Height="24">
+                        <AnimatedIcon.Source>
+                            <animatedvisuals:AnimatedBackVisualSource/>
+                        </AnimatedIcon.Source>
+                        <AnimatedIcon.FallbackIconSource>
+                            <SymbolIconSource Symbol="Back"/>
+                        </AnimatedIcon.FallbackIconSource>
+                    </AnimatedIcon>
+                </Button>
+
+                <StackPanel Grid.Column="1" Spacing="4" VerticalAlignment="Center">
+                    <TextBlock
+                        x:Uid="ErrorAnalysis_Title"
+                        Text="游戏日志"
+                        Style="{StaticResource TitleTextBlockStyle}"
+                        FontWeight="SemiBold" />
+                    <TextBlock
+                        Text="查看游戏运行输出与错误信息"
+                        Style="{StaticResource CaptionTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+
+                <Grid Grid.Column="2" Width="32" />
+            </Grid>
+        
+            <!-- 功能按钮区 -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="0,0,0,16" Spacing="8" VerticalAlignment="Center">
+                <Button x:Uid="ErrorAnalysis_ExportLogButton" Content="导出日志" Command="{x:Bind ViewModel.ExportErrorLogsCommand}" Width="120" Height="36" />
+                <Button x:Uid="ErrorAnalysis_CopyLogButton" Content="复制日志" Command="{x:Bind ViewModel.CopyLogsCommand}" Width="120" Height="36" />
+                <Button x:Uid="ErrorAnalysis_ContactAuthorButton" Content="联系作者" Command="{x:Bind ViewModel.JoinQQGroupCommand}" Width="120" Height="36" />
+            </StackPanel>
+        
+            <!-- 日志显示区 -->
+            <Grid Grid.Row="2">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                
+                <TextBlock x:Uid="ErrorAnalysis_LogDetails" Text="实时日志详情" FontSize="16" FontWeight="SemiBold" Margin="0,0,0,8" />
+                
+                <Border Grid.Row="1"
+                        Background="{ThemeResource TextControlBackground}"
+                        BorderBrush="{ThemeResource TextControlBorderBrush}"
+                        BorderThickness="1"
+                        CornerRadius="4">
+                    <ListView ItemsSource="{x:Bind ViewModel.LogLines, Mode=OneWay}"
+                              x:Name="LogListView"
+                              SelectionMode="Extended"
+                              IsItemClickEnabled="False"
+                              Background="Transparent"
+                              Padding="8">
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <TextBlock Text="{x:Bind}"
+                                           FontFamily="Consolas"
+                                           FontSize="12"
+                                           TextWrapping="Wrap"
+                                           Margin="0,2" />
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="MinHeight" Value="0" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                    </ListView>
+                </Border>
+            </Grid>
+        
+            <!-- 错误分析区域 -->
+            <controls:LauncherAIPanel
+                Grid.Row="3"
+                Margin="0,16,0,16"
+                x:Uid="ErrorAnalysis_AiPanel"
+                ViewModel="{x:Bind ViewModel}"
+                MessagesMaxHeight="300"
+                ShowEmptyPlaceholder="True"
+                EmptyPlaceholderText="{x:Bind ViewModel.NoErrorInfoText, Mode=OneWay}"
+                PopOutRequested="PopOutChat_Click" />
+        </Grid>
+    </Grid>
+</Page>

@@ -1,5 +1,5 @@
 using System.Collections.ObjectModel;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Models.VersionManagement;
 

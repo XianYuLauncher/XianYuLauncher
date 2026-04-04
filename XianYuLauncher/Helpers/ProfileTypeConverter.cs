@@ -1,6 +1,5 @@
 using Microsoft.UI.Xaml.Data;
 using System;
-using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Helpers
 {

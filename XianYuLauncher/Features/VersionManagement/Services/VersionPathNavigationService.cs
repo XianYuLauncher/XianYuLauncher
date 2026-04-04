@@ -1,6 +1,6 @@
 using Windows.Storage;
 using Windows.System;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.VersionList.ViewModels;
 
 namespace XianYuLauncher.Features.VersionManagement.Services;
 

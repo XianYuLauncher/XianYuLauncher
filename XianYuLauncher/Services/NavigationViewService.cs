@@ -3,8 +3,8 @@ using System.Diagnostics.CodeAnalysis;
 using Microsoft.UI.Xaml.Controls;
 
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Settings.ViewModels;
 using XianYuLauncher.Helpers;
-using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Services;
 

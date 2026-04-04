@@ -1,9 +1,9 @@
 using fNbt;
 using System.IO.Compression;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models.VersionManagement;
-using XianYuLauncher.ViewModels;
 using Windows.Storage;
 
 namespace XianYuLauncher.Features.VersionManagement.Services;

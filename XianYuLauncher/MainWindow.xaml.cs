@@ -5,6 +5,7 @@ using XianYuLauncher.Contracts.Services;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher;
@@ -74,14 +75,14 @@ public sealed partial class MainWindow : WindowEx
 
                     var navigationService = App.GetService<Contracts.Services.INavigationService>();
                     // Navigate to VersionListPage
-                    navigationService?.NavigateTo(typeof(ViewModels.VersionListViewModel).FullName!);
+                    navigationService?.NavigateTo(typeof(VersionListViewModel).FullName!);
 
                     // Call import on UI dispatcher. Avoid DI lookup in MainWindow constructor path.
                     var enqueued = dispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
                     {
                         try
                         {
-                            var vm = App.GetService<ViewModels.VersionListViewModel>();
+                            var vm = App.GetService<VersionListViewModel>();
                             if (vm != null)
                             {
                                 await vm.ImportModpackFromPathAsync(itemPath);

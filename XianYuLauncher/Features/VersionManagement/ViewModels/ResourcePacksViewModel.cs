@@ -13,11 +13,11 @@ using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Models.VersionManagement;
-using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 
@@ -382,8 +382,8 @@ public partial class ResourcePacksViewModel : ResourceManagementViewModelBase<Re
     [RelayCommand]
     private void NavigateToResourcePackPage()
     {
-        XianYuLauncher.Views.ResourceDownloadPage.TargetTabIndex = 3;
-        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
+        XianYuLauncher.Features.ResourceDownload.Views.ResourceDownloadPage.TargetTabIndex = 3;
+        _navigationService.NavigateTo(typeof(XianYuLauncher.Features.ResourceDownload.ViewModels.ResourceDownloadViewModel).FullName!);
     }
 
     #endregion

@@ -1,5 +1,5 @@
 using XianYuLauncher.Models.VersionManagement;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.VersionList.ViewModels;
 using Windows.Storage;
 
 namespace XianYuLauncher.Features.VersionManagement.Services;

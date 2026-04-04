@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.VersionManagement.ViewModels;
 
 namespace XianYuLauncher.Features.VersionManagement.Services;
 

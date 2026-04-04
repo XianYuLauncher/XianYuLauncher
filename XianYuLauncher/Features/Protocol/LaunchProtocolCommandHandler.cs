@@ -3,8 +3,8 @@ using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Services;
-using XianYuLauncher.ViewModels;
-using XianYuLauncher.Views;
+using XianYuLauncher.Features.Launch.ViewModels;
+using XianYuLauncher.Features.Shell.Views;
 
 namespace XianYuLauncher.Features.Protocol;
 

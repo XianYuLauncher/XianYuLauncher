@@ -5,7 +5,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using System.Linq;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
-using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 

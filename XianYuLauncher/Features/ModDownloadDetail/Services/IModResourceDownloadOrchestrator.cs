@@ -1,5 +1,5 @@
 using XianYuLauncher.Core.Models;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.ModDownloadDetail.Models;
 
 namespace XianYuLauncher.Features.ModDownloadDetail.Services;
 

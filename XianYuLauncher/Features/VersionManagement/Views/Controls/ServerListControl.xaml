@@ -1,0 +1,196 @@
+<UserControl
+    x:Class="XianYuLauncher.Features.VersionManagement.Views.Controls.ServerListControl"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:helpers="using:XianYuLauncher.Helpers"
+    xmlns:animations="using:CommunityToolkit.WinUI.Animations"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <helpers:BoolNegationConverter x:Key="BoolNegationConverter" />
+        <helpers:StringNullOrEmptyToVisibilityConverter x:Key="StringVisibilityConverter" />
+        
+        <SolidColorBrush x:Key="CardBackgroundFillColorDefaultBrush" Color="{ThemeResource SystemControlBackgroundChromeMediumLowBrush}" />
+        <SolidColorBrush x:Key="CardStrokeColorDefaultBrush" Color="{ThemeResource SystemControlForegroundBaseLowBrush}" />
+        
+        <Style TargetType="TextBlock" x:Key="PageTitleStyle">
+            <Setter Property="FontSize" Value="24" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Foreground" Value="{ThemeResource SystemControlForegroundBaseHighBrush}" />
+        </Style>
+        
+        <Style TargetType="TextBlock" x:Key="BodyTextStyle">
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Foreground" Value="{ThemeResource SystemControlForegroundBaseMediumBrush}" />
+        </Style>
+    </UserControl.Resources>
+
+    <Grid>
+        <animations:Implicit.ShowAnimations>
+            <animations:TranslationAnimation Duration="0:0:0.5" From="0, 40, 0" To="0" EasingMode="EaseOut" />
+            <animations:OpacityAnimation Duration="0:0:0.5" From="0" To="1.0" />
+        </animations:Implicit.ShowAnimations>
+
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- 搜索栏及工具栏 -->
+        <Grid Grid.Row="0" Margin="0,20,0,16" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <AutoSuggestBox 
+                Grid.Column="0"
+                x:Uid="ServerListControl_SearchPlaceholder"
+                Text="{Binding ServerSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                QueryIcon="Find"
+                HorizontalAlignment="Stretch" />
+
+            <Button 
+                Grid.Column="1"
+                Command="{Binding AddServerCommand}"
+                x:Uid="ServerListControl_AddServerButton"
+                Style="{StaticResource DefaultButtonStyle}"
+                Padding="10,6">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <FontIcon Glyph="&#xE710;" FontSize="16" />
+                    <TextBlock x:Uid="ServerListControl_AddServerText" VerticalAlignment="Center" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- 服务器列表容器 -->
+        <Grid Grid.Row="1" AllowDrop="True">
+            <!-- 列表 -->
+            <ListView 
+                x:Name="ServerListView"
+                ItemsSource="{Binding Servers, Mode=OneWay}"
+                SelectionMode="Single"
+                IsItemClickEnabled="True"
+                Padding="0,0,0,20">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                        <Setter Property="Margin" Value="0,0,0,16" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="Background" Value="Transparent"/>
+                        <Setter Property="UseLayoutRounding" Value="True"/>
+                        <Setter Property="CacheMode" Value="BitmapCache"/>
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid CornerRadius="8" Padding="12" Background="{StaticResource CardBackgroundFillColorDefaultBrush}" BorderBrush="{StaticResource CardStrokeColorDefaultBrush}" BorderThickness="1">
+                            <Grid.ContextFlyout>
+                                <MenuFlyout>
+                                    <MenuFlyoutItem x:Uid="ServerListControl_MenuItem_Launch" Icon="Play" Command="{Binding DataContext.LaunchServerCommand, ElementName=ServerListView}" CommandParameter="{Binding}" />
+                                    <MenuFlyoutItem x:Uid="ServerListControl_MenuItem_CreateShortcut" Icon="Link" Command="{Binding DataContext.CreateServerShortcutCommand, ElementName=ServerListView}" CommandParameter="{Binding}" />
+                                    <MenuFlyoutItem x:Uid="ServerListControl_MenuItem_Delete" Icon="Delete" Command="{Binding DataContext.DeleteServerCommand, ElementName=ServerListView}" CommandParameter="{Binding}" />
+                                </MenuFlyout>
+                            </Grid.ContextFlyout>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 图标 -->
+                            <Grid Grid.Column="0" Width="48" Height="48" CornerRadius="4">
+                                <Image Source="{Binding Icon}" Stretch="Uniform" />
+                                <Border CornerRadius="4" Background="{ThemeResource SolidBackgroundFillColorBaseBrush}" 
+                                        Visibility="{Binding HasIcon, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                    <FontIcon Glyph="&#xE753;" FontSize="20" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                </Border>
+                            </Grid>
+
+                            <!-- 信息 -->
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="16,0,16,0" Spacing="4">
+                                <TextBlock Text="{Binding Name}" Style="{StaticResource BodyStrongTextBlockStyle}" TextTrimming="CharacterEllipsis"/>
+                                
+                                <StackPanel Orientation="Horizontal" Spacing="12" Opacity="0.8">
+                                    <!-- Address -->
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                        <FontIcon Glyph="&#xE774;" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Text="{Binding Address}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+
+                                    <!-- MOTD -->
+                                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center" Visibility="{Binding Motd, Converter={StaticResource StringVisibilityConverter}}">
+                                        <FontIcon Glyph="&#xE8F3;" FontSize="12" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                        <TextBlock Text="{Binding Motd}" MaxWidth="350" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{Binding Motd}"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- 状态 (右侧) -->
+                            <StackPanel Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal" Spacing="16">
+                                <!-- Players -->
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Opacity="0.9">
+                                    <TextBlock Text="{Binding PlayerCount, TargetNullValue='- / -'}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                    <FontIcon Glyph="&#xE7F0;" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                </StackPanel>
+
+                                <!-- Ping -->
+                                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center" Opacity="0.9">
+                                    <TextBlock Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}">
+                                        <Run Text="{Binding Ping, TargetNullValue='-'}"/><Run Text="ms"/>
+                                    </TextBlock>
+                                    <FontIcon Glyph="&#xE701;" FontSize="14" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+            <!-- 空列表提示 -->
+            <StackPanel 
+                x:Name="ServerEmptyPanel"
+                Visibility="{Binding IsServerListEmpty, Converter={StaticResource BoolToVisibilityConverter}, FallbackValue=Visible}"
+                HorizontalAlignment="Center" 
+                VerticalAlignment="Center" 
+                Margin="0,100,0,0"
+                Padding="60,40,60,40"
+                Background="{StaticResource CardBackgroundFillColorDefaultBrush}"
+                CornerRadius="16"
+                BorderBrush="{StaticResource CardStrokeColorDefaultBrush}"
+                BorderThickness="1">
+                <FontIcon 
+                    Glyph="&#xE753;" 
+                    FontSize="80" 
+                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                    HorizontalAlignment="Center"
+                    Margin="0,0,0,24"/>
+                <TextBlock 
+                    x:Uid="ServerListControl_NoServersTitle" 
+                    Style="{StaticResource PageTitleStyle}" 
+                    FontSize="20"
+                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
+                    HorizontalAlignment="Center" 
+                    Margin="0,0,0,8"/>
+                <TextBlock 
+                    x:Uid="ServerListControl_NoServersDescription" 
+                    Style="{StaticResource BodyTextStyle}" 
+                    Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
+                    HorizontalAlignment="Center" 
+                    TextAlignment="Center"
+                    MaxWidth="300"
+                    Margin="0,0,0,24"/>
+                <Button 
+                    x:Uid="ServerListControl_AddServerButtonEmpty" 
+                    Command="{Binding AddServerCommand}"
+                    Style="{StaticResource DefaultButtonStyle}" 
+                    HorizontalAlignment="Center" 
+                    Width="160" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</UserControl>

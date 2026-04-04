@@ -5,9 +5,9 @@ using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
+using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Features.VersionManagement.Services;
 using XianYuLauncher.Models.VersionManagement;
-using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 

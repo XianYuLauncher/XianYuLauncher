@@ -2,8 +2,12 @@ using Microsoft.UI.Xaml.Controls;
 using Serilog;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.Services;
-using XianYuLauncher.ViewModels;
-using XianYuLauncher.Views;
+using XianYuLauncher.Features.Launch.ViewModels;
+using XianYuLauncher.Features.Multiplayer.ViewModels;
+using XianYuLauncher.Features.ResourceDownload.ViewModels;
+using XianYuLauncher.Features.Shell.Views;
+using XianYuLauncher.Features.Settings.ViewModels;
+using XianYuLauncher.Features.VersionList.ViewModels;
 
 namespace XianYuLauncher.Features.Protocol;
 

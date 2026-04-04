@@ -2,7 +2,8 @@ using Microsoft.UI.Xaml;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.Launch.ViewModels;
+using XianYuLauncher.Features.Tutorial.ViewModels;
 
 namespace XianYuLauncher.Activation;
 

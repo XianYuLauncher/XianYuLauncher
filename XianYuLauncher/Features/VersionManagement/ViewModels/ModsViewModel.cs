@@ -12,13 +12,14 @@ using Microsoft.UI.Xaml.Controls;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
+using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models.VersionManagement;
-using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 
@@ -503,8 +504,8 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
     [RelayCommand]
     private void NavigateToModPage()
     {
-        XianYuLauncher.Views.ResourceDownloadPage.TargetTabIndex = 1;
-        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
+        XianYuLauncher.Features.ResourceDownload.Views.ResourceDownloadPage.TargetTabIndex = 1;
+        _navigationService.NavigateTo(typeof(XianYuLauncher.Features.ResourceDownload.ViewModels.ResourceDownloadViewModel).FullName!);
     }
 
     #endregion
