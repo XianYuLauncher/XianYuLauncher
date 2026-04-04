@@ -8,12 +8,12 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Models;
+using XianYuLauncher.Features.VersionManagement.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
-using XianYuLauncher.ViewModels;
 using System.Collections.ObjectModel;
 
-namespace XianYuLauncher.Views;
+namespace XianYuLauncher.Features.VersionManagement.Views;
 
 public sealed partial class WorldManagementPage : Page
 {

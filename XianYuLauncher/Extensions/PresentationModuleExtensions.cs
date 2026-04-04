@@ -13,6 +13,8 @@ using XianYuLauncher.Features.News.ViewModels;
 using XianYuLauncher.Features.News.Views;
 using XianYuLauncher.Features.Tutorial.ViewModels;
 using XianYuLauncher.Features.Tutorial.Views;
+using XianYuLauncher.Features.VersionManagement.ViewModels;
+using XianYuLauncher.Features.VersionManagement.Views;
 using XianYuLauncher.Services;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Views;

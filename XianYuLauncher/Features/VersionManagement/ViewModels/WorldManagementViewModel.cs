@@ -8,8 +8,9 @@ using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
+using XianYuLauncher.ViewModels;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 
 public partial class WorldManagementViewModel : ObservableRecipient
 {

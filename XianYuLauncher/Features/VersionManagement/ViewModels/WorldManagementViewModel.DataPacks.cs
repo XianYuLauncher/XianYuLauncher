@@ -8,7 +8,7 @@ using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Models.VersionManagement;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 
 public partial class WorldManagementViewModel
 {
