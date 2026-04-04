@@ -383,8 +383,8 @@ public partial class ResourcePacksViewModel : ResourceManagementViewModelBase<Re
     [RelayCommand]
     private void NavigateToResourcePackPage()
     {
-        XianYuLauncher.Views.ResourceDownloadPage.TargetTabIndex = 3;
-        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
+        XianYuLauncher.Features.ResourceDownload.Views.ResourceDownloadPage.TargetTabIndex = 3;
+        _navigationService.NavigateTo(typeof(XianYuLauncher.Features.ResourceDownload.ViewModels.ResourceDownloadViewModel).FullName!);
     }
 
     #endregion

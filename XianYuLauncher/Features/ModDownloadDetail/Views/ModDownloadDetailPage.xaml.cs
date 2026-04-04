@@ -54,7 +54,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
 
         private void BackButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
-            ResourceDownloadPage.TargetTabIndex = ViewModel.ProjectType switch
+            XianYuLauncher.Features.ResourceDownload.Views.ResourceDownloadPage.TargetTabIndex = ViewModel.ProjectType switch
             {
                 "mod" => 1,
                 "shader" => 2,

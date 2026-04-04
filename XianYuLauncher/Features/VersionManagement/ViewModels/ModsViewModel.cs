@@ -505,8 +505,8 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
     [RelayCommand]
     private void NavigateToModPage()
     {
-        XianYuLauncher.Views.ResourceDownloadPage.TargetTabIndex = 1;
-        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
+        XianYuLauncher.Features.ResourceDownload.Views.ResourceDownloadPage.TargetTabIndex = 1;
+        _navigationService.NavigateTo(typeof(XianYuLauncher.Features.ResourceDownload.ViewModels.ResourceDownloadViewModel).FullName!);
     }
 
     #endregion

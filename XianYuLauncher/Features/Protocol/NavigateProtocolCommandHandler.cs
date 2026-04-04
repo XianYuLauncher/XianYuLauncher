@@ -4,9 +4,9 @@ using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.Multiplayer.ViewModels;
+using XianYuLauncher.Features.ResourceDownload.ViewModels;
 using XianYuLauncher.Features.Settings.ViewModels;
 using XianYuLauncher.Features.VersionList.ViewModels;
-using XianYuLauncher.ViewModels;
 using XianYuLauncher.Views;
 
 namespace XianYuLauncher.Features.Protocol;

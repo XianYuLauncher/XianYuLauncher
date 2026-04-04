@@ -270,7 +270,7 @@ public sealed partial class LaunchPage : Page
     private void AddVersionMenuItem_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         // 导航到资源下载页面
-        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
+        _navigationService.NavigateTo(typeof(XianYuLauncher.Features.ResourceDownload.ViewModels.ResourceDownloadViewModel).FullName!);
     }
 
     /// <summary>

@@ -6,7 +6,7 @@ using Microsoft.UI.Xaml.Navigation;
 using Serilog;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.ViewModels;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.ResourceDownload.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Models;
@@ -18,7 +18,7 @@ using System.ComponentModel;
 using System.Runtime.InteropServices;
 using CommunityToolkit.Labs.WinUI;
 
-namespace XianYuLauncher.Views;
+namespace XianYuLauncher.Features.ResourceDownload.Views;
 
 public sealed partial class ResourceDownloadPage : Page, INavigationAware
 {

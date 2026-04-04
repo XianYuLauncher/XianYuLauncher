@@ -289,8 +289,8 @@ public partial class ShadersViewModel : ResourceManagementViewModelBase<ShaderIn
     [RelayCommand]
     private void NavigateToShaderPage()
     {
-        XianYuLauncher.Views.ResourceDownloadPage.TargetTabIndex = 2;
-        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
+        XianYuLauncher.Features.ResourceDownload.Views.ResourceDownloadPage.TargetTabIndex = 2;
+        _navigationService.NavigateTo(typeof(XianYuLauncher.Features.ResourceDownload.ViewModels.ResourceDownloadViewModel).FullName!);
     }
 
     #endregion

@@ -20,8 +20,9 @@ using XianYuLauncher.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.ViewModels;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.ResourceDownload.ViewModels;
 
 public partial class ResourceDownloadViewModel : ObservableRecipient
 {

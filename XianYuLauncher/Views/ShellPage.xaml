@@ -90,7 +90,7 @@
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe768;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem x:Uid="Shell_资源下载" helpers:NavigationHelper.NavigateTo="XianYuLauncher.ViewModels.ResourceDownloadViewModel">
+                <NavigationViewItem x:Uid="Shell_资源下载" helpers:NavigationHelper.NavigateTo="XianYuLauncher.Features.ResourceDownload.ViewModels.ResourceDownloadViewModel">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE896;"/>
                     </NavigationViewItem.Icon>

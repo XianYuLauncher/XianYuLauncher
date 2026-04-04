@@ -3276,10 +3276,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private void NavigateToDataPackPage()
     {
         // 设置ResourceDownloadPage的TargetTabIndex为3（资源包下载标签页，数据包和资源包共用一个页面）
-        XianYuLauncher.Views.ResourceDownloadPage.TargetTabIndex = 3;
+        XianYuLauncher.Features.ResourceDownload.Views.ResourceDownloadPage.TargetTabIndex = 3;
         
         // 导航到ResourceDownloadPage
-        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
+        _navigationService.NavigateTo(typeof(XianYuLauncher.Features.ResourceDownload.ViewModels.ResourceDownloadViewModel).FullName!);
     }
     
     /// <summary>
@@ -3289,10 +3289,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private void NavigateToMapPage()
     {
         // 设置ResourceDownloadPage的TargetTabIndex为6（世界下载标签页）
-        XianYuLauncher.Views.ResourceDownloadPage.TargetTabIndex = 6;
+        XianYuLauncher.Features.ResourceDownload.Views.ResourceDownloadPage.TargetTabIndex = 6;
         
         // 导航到ResourceDownloadPage
-        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
+        _navigationService.NavigateTo(typeof(XianYuLauncher.Features.ResourceDownload.ViewModels.ResourceDownloadViewModel).FullName!);
     }
 
     [RelayCommand]

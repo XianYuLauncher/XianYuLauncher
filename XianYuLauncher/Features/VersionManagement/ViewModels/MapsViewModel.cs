@@ -16,7 +16,6 @@ using XianYuLauncher.ViewModels;
 namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 
 /// <summary>
-/// 地图管理子 ViewModel —— 拥有地图 Tab 的全部状态与命令。
 /// </summary>
 public partial class MapsViewModel : ObservableObject
 {
@@ -385,7 +384,7 @@ public partial class MapsViewModel : ObservableObject
     [RelayCommand]
     private void NavigateToMapPage()
     {
-        _navigationService.NavigateTo(typeof(ResourceDownloadViewModel).FullName!, "map");
+        _navigationService.NavigateTo(typeof(XianYuLauncher.Features.ResourceDownload.ViewModels.ResourceDownloadViewModel).FullName!, "map");
     }
 
     #endregion

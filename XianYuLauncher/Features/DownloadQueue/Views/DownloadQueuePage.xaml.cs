@@ -25,7 +25,7 @@ public sealed partial class DownloadQueuePage : Page
 
     private void NavigateToDownloadPage_Click(object sender, RoutedEventArgs e)
     {
-        ResourceDownloadPage.TargetTabIndex = 0;
-        App.GetService<INavigationService>().NavigateTo(typeof(ResourceDownloadViewModel).FullName!);
+        XianYuLauncher.Features.ResourceDownload.Views.ResourceDownloadPage.TargetTabIndex = 0;
+        App.GetService<INavigationService>().NavigateTo(typeof(XianYuLauncher.Features.ResourceDownload.ViewModels.ResourceDownloadViewModel).FullName!);
     }
 }

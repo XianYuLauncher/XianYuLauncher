@@ -17,6 +17,8 @@ using XianYuLauncher.Features.Multiplayer.ViewModels;
 using XianYuLauncher.Features.Multiplayer.Views;
 using XianYuLauncher.Features.News.ViewModels;
 using XianYuLauncher.Features.News.Views;
+using XianYuLauncher.Features.ResourceDownload.ViewModels;
+using XianYuLauncher.Features.ResourceDownload.Views;
 using XianYuLauncher.Features.Settings.ViewModels;
 using XianYuLauncher.Features.Settings.Views;
 using XianYuLauncher.Features.Tutorial.ViewModels;

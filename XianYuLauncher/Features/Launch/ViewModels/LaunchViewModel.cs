@@ -794,7 +794,7 @@ public partial class LaunchViewModel : ObservableRecipient
                 Prefix = "LaunchPage_ModRecommendation".GetLocalized(),
                 Priority = 100,
                 ActionType = _recommendedMod != null ? "mod_detail" : "route",
-                ActionTarget = _recommendedMod != null ? null : typeof(ResourceDownloadViewModel).FullName,
+                ActionTarget = _recommendedMod != null ? null : typeof(XianYuLauncher.Features.ResourceDownload.ViewModels.ResourceDownloadViewModel).FullName,
                 ActionPayload = _recommendedMod
             }
         };
