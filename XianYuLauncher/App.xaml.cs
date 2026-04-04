@@ -102,6 +102,7 @@ public partial class App : Application
             services.AddLaunchFeaturePresentation();
             services.AddTutorialFeaturePresentation();
             services.AddProfileFeaturePresentation();
+            services.AddDownloadQueueFeaturePresentation();
             services.AddContentFeaturePresentation();
             services.AddNewsFeaturePresentation();
             services.AddVersionFeaturePresentation();

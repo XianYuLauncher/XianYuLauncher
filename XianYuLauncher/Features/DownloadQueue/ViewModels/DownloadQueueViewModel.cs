@@ -10,7 +10,7 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.DownloadQueue.ViewModels;
 
 public partial class DownloadQueueTaskItemViewModel : ObservableObject
 {

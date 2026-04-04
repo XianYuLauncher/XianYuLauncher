@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.DownloadQueue.ViewModels;
+using XianYuLauncher.Features.DownloadQueue.Views;
 using XianYuLauncher.Features.Multiplayer.ViewModels;
 using XianYuLauncher.Features.Multiplayer.Views;
 using XianYuLauncher.Features.News.ViewModels;
@@ -67,12 +69,17 @@ internal static class PresentationModuleExtensions
         return services;
     }
 
-    public static IServiceCollection AddContentFeaturePresentation(this IServiceCollection services)
+    public static IServiceCollection AddDownloadQueueFeaturePresentation(this IServiceCollection services)
     {
         services.AddTransient<DownloadQueueViewModel>();
         services.AddTransient<DownloadQueuePage>();
         services.AddPageMap<DownloadQueueViewModel, DownloadQueuePage>();
 
+        return services;
+    }
+
+    public static IServiceCollection AddContentFeaturePresentation(this IServiceCollection services)
+    {
         services.AddTransient<ModLoaderSelectorViewModel>();
         services.AddTransient<ModLoaderSelectorPage>();
         services.AddPageMap<ModLoaderSelectorViewModel, ModLoaderSelectorPage>();

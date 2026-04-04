@@ -1,9 +1,11 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.DownloadQueue.ViewModels;
 using XianYuLauncher.ViewModels;
+using XianYuLauncher.Views;
 
-namespace XianYuLauncher.Views;
+namespace XianYuLauncher.Features.DownloadQueue.Views;
 
 public sealed partial class DownloadQueuePage : Page
 {
