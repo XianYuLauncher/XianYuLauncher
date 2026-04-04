@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 
-namespace XianYuLauncher.ViewModels
+namespace XianYuLauncher.Features.ModDownloadDetail.Models
 {
     /// <summary>
     /// Minecraft版本比较器，支持语义化版本排序

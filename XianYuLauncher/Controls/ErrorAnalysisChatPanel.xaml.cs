@@ -10,8 +10,8 @@ using Serilog;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
-using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Controls;
 

@@ -12,9 +12,8 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.Protocol;
+using XianYuLauncher.Features.Shell.Views;
 using XianYuLauncher.Models;
-using XianYuLauncher.ViewModels;
-using XianYuLauncher.Views;
 
 namespace XianYuLauncher.Services;
 

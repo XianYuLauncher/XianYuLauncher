@@ -5,7 +5,6 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
 using XianYuLauncher.Helpers;
-using XianYuLauncher.Views;
 
 namespace XianYuLauncher.Features.ModDownloadDetail.Views
 {

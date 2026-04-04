@@ -13,10 +13,10 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Views;
 using XianYuLauncher.Features.Launch.ViewModels;
+using XianYuLauncher.Features.Shell.Models;
 using XianYuLauncher.Features.Settings.Views;
-using XianYuLauncher.Views;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.Shell.ViewModels;
 
 public partial class ShellViewModel : ObservableRecipient
 {

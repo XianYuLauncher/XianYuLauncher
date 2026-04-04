@@ -6,7 +6,6 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:vm="using:XianYuLauncher.Features.VersionList.ViewModels"
-    xmlns:local="using:XianYuLauncher.Views"
     mc:Ignorable="d">
     <Page.Resources>
         <!-- 简化的CheckBox样式，精确控制点击区域 -->
@@ -24,7 +23,7 @@
         <!-- 布尔值到可见性的转换器 -->
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <!-- 布尔值取反转换器 -->
-        <local:BoolNegationConverter x:Key="BoolNegationConverter" />
+        <helpers:BoolNegationConverter x:Key="BoolNegationConverter" />
         
         <!-- 递归资源项模板，支持任意深度 -->
         <DataTemplate x:Key="ResourceItemTemplate" x:DataType="vm:VersionListViewModel+ResourceItem">

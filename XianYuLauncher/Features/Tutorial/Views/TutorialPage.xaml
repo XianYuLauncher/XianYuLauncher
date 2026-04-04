@@ -6,7 +6,6 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:sharedModels="using:XianYuLauncher.Shared.Models"
     xmlns:helpers="using:XianYuLauncher.Helpers"
-    xmlns:views="using:XianYuLauncher.Views"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
     xmlns:ui="using:CommunityToolkit.WinUI"
@@ -18,7 +17,7 @@
         <helpers:StringToBooleanConverter x:Key="StringToBooleanConverter" />
         <helpers:MaterialTypeToLocalizedStringConverter x:Key="MaterialTypeToLocalizedStringConverter" />
         <helpers:MaterialTypeToCustomBackgroundVisibilityConverter x:Key="MaterialTypeToCustomBackgroundVisibilityConverter" />
-        <views:ExternalLoginButtonTextConverter x:Key="ExternalLoginButtonTextConverter" />
+        <helpers:ExternalLoginButtonTextConverter x:Key="ExternalLoginButtonTextConverter" />
 
         <!-- 登录区域切换动画 -->
         <animations:ImplicitAnimationSet x:Name="LoginShowTransitions">

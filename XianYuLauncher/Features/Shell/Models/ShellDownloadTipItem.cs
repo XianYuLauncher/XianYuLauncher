@@ -1,7 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.Shell.Models;
 
 /// <summary>
 /// Shell 右下角下载进度 TeachingTip 的单条绑定模型（支持多条同时展示）。

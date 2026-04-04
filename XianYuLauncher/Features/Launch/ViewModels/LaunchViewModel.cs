@@ -34,7 +34,6 @@ using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using XianYuLauncher.Services;
-using XianYuLauncher.ViewModels;
 using System.Collections.Specialized;
 using System.Text;
 

@@ -9,7 +9,6 @@ using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
-using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 

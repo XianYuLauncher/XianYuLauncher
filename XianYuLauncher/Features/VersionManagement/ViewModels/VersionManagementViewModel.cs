@@ -25,7 +25,6 @@ using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Helpers;
-using XianYuLauncher.ViewModels;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Models;
 using XianYuLauncher.Models.VersionManagement;

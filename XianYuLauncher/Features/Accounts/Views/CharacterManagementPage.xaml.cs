@@ -19,7 +19,6 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.Accounts.ViewModels;
-using XianYuLauncher.ViewModels;
 using XianYuLauncher.Helpers;
 using Microsoft.Graphics.Canvas;
 using System;

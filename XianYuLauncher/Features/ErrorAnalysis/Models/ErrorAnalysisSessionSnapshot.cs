@@ -1,5 +1,4 @@
 using XianYuLauncher.Core.Models;
-using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Models;
 

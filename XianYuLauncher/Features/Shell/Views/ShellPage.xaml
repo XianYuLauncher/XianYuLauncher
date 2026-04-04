@@ -1,5 +1,5 @@
 <Page
-    x:Class="XianYuLauncher.Views.ShellPage"
+    x:Class="XianYuLauncher.Features.Shell.Views.ShellPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -7,7 +7,7 @@
     xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:behaviors="using:XianYuLauncher.Behaviors"
     xmlns:controls="using:XianYuLauncher.Controls"
-    xmlns:viewModels="using:XianYuLauncher.ViewModels"
+    xmlns:viewModels="using:XianYuLauncher.Features.Shell.Models"
     xmlns:i="using:Microsoft.Xaml.Interactivity"
     xmlns:media="using:CommunityToolkit.WinUI.Media"
     Loaded="OnLoaded">

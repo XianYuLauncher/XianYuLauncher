@@ -1,7 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.Generic;
 
-namespace XianYuLauncher.ViewModels
+namespace XianYuLauncher.Features.ModDownloadDetail.Models
 {
     // 已安装游戏版本ViewModel
     public partial class InstalledGameVersionViewModel : ObservableObject

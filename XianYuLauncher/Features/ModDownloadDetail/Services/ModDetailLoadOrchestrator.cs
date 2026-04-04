@@ -5,7 +5,6 @@ using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.ModDownloadDetail.Models;
 using XianYuLauncher.Helpers;
-using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Features.ModDownloadDetail.Services;
 

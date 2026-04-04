@@ -16,13 +16,14 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Features.Accounts.Views;
+using XianYuLauncher.Features.Shell.Models;
+using XianYuLauncher.Features.Shell.ViewModels;
 using XianYuLauncher.Features.Settings.Views;
 using XianYuLauncher.Features.Tutorial.Views;
 using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Helpers;
-using XianYuLauncher.ViewModels;
 
-namespace XianYuLauncher.Views;
+namespace XianYuLauncher.Features.Shell.Views;
 
 // Update NavigationViewItem titles and icons in ShellPage.xaml.
 public sealed partial class ShellPage : Page

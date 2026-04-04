@@ -2,7 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System.Collections.ObjectModel;
 
-namespace XianYuLauncher.ViewModels
+namespace XianYuLauncher.Features.ModDownloadDetail.Models
 {
     // 加载器视图模型
     public partial class LoaderViewModel : ObservableObject

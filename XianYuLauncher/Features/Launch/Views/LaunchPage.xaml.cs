@@ -19,7 +19,6 @@ using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
-using XianYuLauncher.ViewModels;
 using Serilog;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Features.News.ViewModels;

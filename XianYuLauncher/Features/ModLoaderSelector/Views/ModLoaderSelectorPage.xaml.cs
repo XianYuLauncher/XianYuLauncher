@@ -2,7 +2,6 @@ using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.Controls;
 using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
 using XianYuLauncher.Models;
-using XianYuLauncher.ViewModels;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 

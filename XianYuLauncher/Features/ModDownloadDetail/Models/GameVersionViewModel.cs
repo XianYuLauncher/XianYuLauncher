@@ -2,7 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using System.Collections.ObjectModel;
 using System.Linq;
 
-namespace XianYuLauncher.ViewModels
+namespace XianYuLauncher.Features.ModDownloadDetail.Models
 {
     // 游戏版本视图模型
     public partial class GameVersionViewModel : ObservableObject

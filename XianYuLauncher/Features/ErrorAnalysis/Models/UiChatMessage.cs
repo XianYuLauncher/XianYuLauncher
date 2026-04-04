@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using XianYuLauncher.Core.Models;
 
-namespace XianYuLauncher.ViewModels
+namespace XianYuLauncher.Features.ErrorAnalysis.Models
 {
     public partial class UiChatMessage : ObservableObject
     {

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System;
 using XianYuLauncher.Core.Models;
 
-namespace XianYuLauncher.ViewModels
+namespace XianYuLauncher.Features.ModDownloadDetail.Models
 {
     // Mod版本视图模型
     public partial class ModVersionViewModel : ObservableObject

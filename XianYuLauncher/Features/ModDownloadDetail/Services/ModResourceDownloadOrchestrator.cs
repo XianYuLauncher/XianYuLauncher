@@ -2,9 +2,9 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Features.ModDownloadDetail.Models;
 using Serilog;
 using System.Security.Cryptography;
-using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Features.ModDownloadDetail.Services;
 

@@ -1,6 +1,6 @@
 using Microsoft.UI.Xaml;
 
-namespace XianYuLauncher.ViewModels
+namespace XianYuLauncher.Features.ModDownloadDetail.Models
 {
     /// <summary>
     /// 发布者信息模型

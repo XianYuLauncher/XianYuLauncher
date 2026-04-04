@@ -11,7 +11,6 @@ using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using XianYuLauncher.Models.VersionManagement;
-using XianYuLauncher.ViewModels;
 
 namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 

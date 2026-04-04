@@ -1,6 +1,6 @@
 using System;
 
-namespace XianYuLauncher.ViewModels
+namespace XianYuLauncher.Features.ModDownloadDetail.Models
 {
     // 依赖项目类，用于存储前置Mod的详细信息
     public class DependencyProject

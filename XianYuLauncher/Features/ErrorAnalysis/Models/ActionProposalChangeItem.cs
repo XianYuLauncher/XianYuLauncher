@@ -1,4 +1,4 @@
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.ErrorAnalysis.Models;
 
 public sealed class ActionProposalChangeItem
 {

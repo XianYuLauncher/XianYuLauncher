@@ -19,6 +19,8 @@ using XianYuLauncher.Features.News.ViewModels;
 using XianYuLauncher.Features.News.Views;
 using XianYuLauncher.Features.ResourceDownload.ViewModels;
 using XianYuLauncher.Features.ResourceDownload.Views;
+using XianYuLauncher.Features.Shell.ViewModels;
+using XianYuLauncher.Features.Shell.Views;
 using XianYuLauncher.Features.Settings.ViewModels;
 using XianYuLauncher.Features.Settings.Views;
 using XianYuLauncher.Features.Tutorial.ViewModels;
@@ -28,8 +30,6 @@ using XianYuLauncher.Features.VersionManagement.Views;
 using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Features.VersionList.Views;
 using XianYuLauncher.Services;
-using XianYuLauncher.ViewModels;
-using XianYuLauncher.Views;
 
 namespace XianYuLauncher.Extensions;
 
