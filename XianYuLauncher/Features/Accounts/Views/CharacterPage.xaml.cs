@@ -1,4 +1,28 @@
-using Microsoft.UI.Xaml; using Microsoft.UI.Xaml.Controls; using Microsoft.UI.Xaml.Input; using Microsoft.UI.Xaml.Navigation; using Microsoft.UI.Xaml.Media; using XianYuLauncher.Contracts.Services; using XianYuLauncher.Features.Accounts.ViewModels; using XianYuLauncher.Features.Dialogs.Contracts; using Microsoft.UI.Xaml.Media.Imaging; using System; using System.Linq; using System.IO; using System.Net.Http; using System.Net.Http.Headers; using System.Threading.Tasks; using Windows.ApplicationModel.DataTransfer; using Windows.Storage; using Windows.Storage.Streams; using Microsoft.Graphics.Canvas; using Microsoft.Graphics.Canvas.Geometry; using Microsoft.Graphics.Canvas.UI.Xaml; using System.Diagnostics; using XianYuLauncher.Helpers; using Serilog; using Newtonsoft.Json.Linq;
+using Microsoft.Graphics.Canvas;
+using Microsoft.Graphics.Canvas.Geometry;
+using Microsoft.Graphics.Canvas.UI.Xaml;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Navigation;
+using Newtonsoft.Json.Linq;
+using Serilog;
+using System;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Threading.Tasks;
+using Windows.ApplicationModel.DataTransfer;
+using Windows.Storage;
+using Windows.Storage.Streams;
+using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Accounts.ViewModels;
+using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Helpers;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=234238
 
