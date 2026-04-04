@@ -8,12 +8,12 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Models;
-using XianYuLauncher.Features.VersionManagement.ViewModels;
+using XianYuLauncher.Features.WorldManagement.Models;
+using XianYuLauncher.Features.WorldManagement.ViewModels;
 using XianYuLauncher.Helpers;
-using XianYuLauncher.Models;
 using System.Collections.ObjectModel;
 
-namespace XianYuLauncher.Features.VersionManagement.Views;
+namespace XianYuLauncher.Features.WorldManagement.Views;
 
 public sealed partial class WorldManagementPage : Page
 {
@@ -54,7 +54,7 @@ public sealed partial class WorldManagementPage : Page
             base.OnNavigatedTo(e);
             System.Diagnostics.Debug.WriteLine("[WorldManagementPage] base.OnNavigatedTo 完成");
             
-            if (e.Parameter is Models.WorldManagementParameter param)
+            if (e.Parameter is WorldManagementParameter param)
             {
                 System.Diagnostics.Debug.WriteLine($"[WorldManagementPage] 保存待加载路径: {param.WorldPath} 版本: {param.VersionId}");
                 _pendingWorldPath = param.WorldPath;

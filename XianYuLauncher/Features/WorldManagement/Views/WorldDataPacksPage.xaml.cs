@@ -1,9 +1,9 @@
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
-using XianYuLauncher.Features.VersionManagement.ViewModels;
-using XianYuLauncher.Models.VersionManagement;
+using XianYuLauncher.Features.WorldManagement.Models;
+using XianYuLauncher.Features.WorldManagement.ViewModels;
 
-namespace XianYuLauncher.Features.VersionManagement.Views;
+namespace XianYuLauncher.Features.WorldManagement.Views;
 
 public sealed partial class WorldDataPacksPage : Page
 {

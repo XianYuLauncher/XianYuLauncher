@@ -6,9 +6,9 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml.Media.Imaging;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Helpers;
-using XianYuLauncher.Models.VersionManagement;
+using XianYuLauncher.Features.WorldManagement.Models;
 
-namespace XianYuLauncher.Features.VersionManagement.ViewModels;
+namespace XianYuLauncher.Features.WorldManagement.ViewModels;
 
 public partial class WorldManagementViewModel
 {

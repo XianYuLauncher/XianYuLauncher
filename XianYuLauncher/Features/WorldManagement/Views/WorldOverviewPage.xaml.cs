@@ -1,10 +1,10 @@
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 using XianYuLauncher.Contracts.Services;
-using XianYuLauncher.Features.VersionManagement.ViewModels;
+using XianYuLauncher.Features.WorldManagement.ViewModels;
 using Windows.ApplicationModel.DataTransfer;
 
-namespace XianYuLauncher.Features.VersionManagement.Views;
+namespace XianYuLauncher.Features.WorldManagement.Views;
 
 public sealed partial class WorldOverviewPage : Page
 {

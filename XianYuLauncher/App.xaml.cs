@@ -107,6 +107,7 @@ public partial class App : Application
             services.AddContentFeaturePresentation();
             services.AddNewsFeaturePresentation();
             services.AddVersionFeaturePresentation();
+            services.AddWorldFeaturePresentation();
             services.AddMultiplayerFeaturePresentation();
             services.AddDiagnosticsFeaturePresentation();
 

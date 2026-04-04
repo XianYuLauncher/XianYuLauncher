@@ -1,4 +1,4 @@
-namespace XianYuLauncher.Models;
+namespace XianYuLauncher.Features.WorldManagement.Models;
 
 public class WorldManagementParameter
 {

@@ -8,6 +8,8 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.Launch.ViewModels;
+using XianYuLauncher.Features.WorldManagement.Models;
+using XianYuLauncher.Features.WorldManagement.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using XianYuLauncher.Models.VersionManagement;

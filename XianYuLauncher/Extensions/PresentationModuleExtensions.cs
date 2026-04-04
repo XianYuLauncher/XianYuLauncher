@@ -29,6 +29,8 @@ using XianYuLauncher.Features.VersionManagement.ViewModels;
 using XianYuLauncher.Features.VersionManagement.Views;
 using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Features.VersionList.Views;
+using XianYuLauncher.Features.WorldManagement.ViewModels;
+using XianYuLauncher.Features.WorldManagement.Views;
 using XianYuLauncher.Services;
 
 namespace XianYuLauncher.Extensions;
@@ -136,6 +138,11 @@ internal static class PresentationModuleExtensions
         services.AddTransient<VersionManagementPage>();
         services.AddPageMap<VersionManagementViewModel, VersionManagementPage>();
 
+        return services;
+    }
+
+    public static IServiceCollection AddWorldFeaturePresentation(this IServiceCollection services)
+    {
         services.AddTransient<WorldManagementViewModel>();
         services.AddTransient<WorldManagementPage>();
         services.AddPageMap<WorldManagementViewModel, WorldManagementPage>();

@@ -7,10 +7,11 @@ using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Launch.ViewModels;
+using XianYuLauncher.Features.WorldManagement.Models;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 
-namespace XianYuLauncher.Features.VersionManagement.ViewModels;
+namespace XianYuLauncher.Features.WorldManagement.ViewModels;
 
 public partial class WorldManagementViewModel : ObservableRecipient
 {

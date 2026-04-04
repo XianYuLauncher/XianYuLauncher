@@ -1,7 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml.Media.Imaging;
 
-namespace XianYuLauncher.Models.VersionManagement;
+namespace XianYuLauncher.Features.WorldManagement.Models;
 
 /// <summary>
 /// 数据包信息
