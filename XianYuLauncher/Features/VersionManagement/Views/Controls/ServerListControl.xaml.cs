@@ -2,7 +2,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.Features.VersionManagement.ViewModels;
 
-namespace XianYuLauncher.Views.VersionManagement;
+namespace XianYuLauncher.Features.VersionManagement.Views.Controls;
 
 public sealed partial class ServerListControl : UserControl
 {

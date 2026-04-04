@@ -4,7 +4,7 @@ using System.IO;
 using fNbt;
 using XianYuLauncher.Models.VersionManagement;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 
 internal static class VersionManagementServerDatOps
 {

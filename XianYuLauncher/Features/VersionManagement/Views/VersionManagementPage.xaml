@@ -1,16 +1,14 @@
 <Page
-    x:Class="XianYuLauncher.Views.VersionManagementPage"
+    x:Class="XianYuLauncher.Features.VersionManagement.Views.VersionManagementPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-    xmlns:viewModels="using:XianYuLauncher.ViewModels"
     xmlns:models="using:XianYuLauncher.Models.VersionManagement"
-    xmlns:local="using:XianYuLauncher.Views"
     xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:canvas="using:Microsoft.Graphics.Canvas.UI.Xaml"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
-    xmlns:vmviews="using:XianYuLauncher.Views.VersionManagement"
+    xmlns:vmviews="using:XianYuLauncher.Features.VersionManagement.Views.Controls"
     xmlns:appControls="using:XianYuLauncher.Controls"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     mc:Ignorable="d">

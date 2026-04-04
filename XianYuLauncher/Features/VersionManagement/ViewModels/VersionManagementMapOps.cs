@@ -6,7 +6,7 @@ using Windows.Storage;
 using Windows.Storage.Streams;
 using XianYuLauncher.Models.VersionManagement;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 
 internal static class VersionManagementMapOps
 {

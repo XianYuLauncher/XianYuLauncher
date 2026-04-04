@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.VersionList.ViewModels;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 
 internal static class VersionManagementUpdateOps
 {

@@ -6,7 +6,7 @@ using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Models.VersionManagement;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 
 internal static class VersionManagementShortcutOps
 {

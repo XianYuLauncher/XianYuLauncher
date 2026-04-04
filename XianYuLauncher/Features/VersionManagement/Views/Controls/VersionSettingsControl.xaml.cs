@@ -5,11 +5,11 @@ using Windows.Storage.Pickers;
 using WinRT.Interop;
 using XianYuLauncher.Controls;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Features.VersionManagement.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models.VersionManagement;
-using XianYuLauncher.ViewModels;
 
-namespace XianYuLauncher.Views.VersionManagement;
+namespace XianYuLauncher.Features.VersionManagement.Views.Controls;
 
 public sealed partial class VersionSettingsControl : UserControl
 {

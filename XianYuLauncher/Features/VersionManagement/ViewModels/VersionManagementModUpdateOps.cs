@@ -8,7 +8,7 @@ using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Models.VersionManagement;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 
 internal static class VersionManagementModUpdateOps
 {

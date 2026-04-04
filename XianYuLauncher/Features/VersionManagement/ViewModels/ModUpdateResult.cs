@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 
 internal class ModUpdateResult
 {

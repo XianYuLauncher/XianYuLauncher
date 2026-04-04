@@ -11,6 +11,7 @@ using System.Threading.Tasks;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Features.VersionManagement.ViewModels;
 using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.ViewModels;

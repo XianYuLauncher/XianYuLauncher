@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.VersionManagement.ViewModels;
 
 namespace XianYuLauncher.Controls;
 

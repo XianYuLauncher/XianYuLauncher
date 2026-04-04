@@ -32,9 +32,8 @@ using XianYuLauncher.Models.VersionManagement;
 using Microsoft.UI.Xaml;
 using XianYuLauncher.Features.ModDownloadDetail.Services;
 using XianYuLauncher.Features.VersionManagement.Services;
-using XianYuLauncher.Features.VersionManagement.ViewModels;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 
 public partial class VersionManagementViewModel : ObservableRecipient, INavigationAware, IVersionManagementContext, IVersionManagementResourceContext
 {

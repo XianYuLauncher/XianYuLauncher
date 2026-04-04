@@ -8,7 +8,7 @@ using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.VersionManagement.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models.VersionManagement;
 using XianYuLauncher.Contracts.Services;
@@ -20,7 +20,7 @@ using System.IO.Compression;
 using Windows.Foundation;
 using System.Collections.ObjectModel;
 
-namespace XianYuLauncher.Views;
+namespace XianYuLauncher.Features.VersionManagement.Views;
 
 public sealed partial class VersionManagementPage : Page
 {
