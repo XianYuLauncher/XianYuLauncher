@@ -6,9 +6,9 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
-using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
+using XianYuLauncher.ViewModels;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels;
 
 public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable
 {

@@ -9,8 +9,6 @@ using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
-using XianYuLauncher.ViewModels;
-using XianYuLauncher.Views;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Views
 {

@@ -111,7 +111,7 @@
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
                 <NavigationViewItem x:Uid="Shell_LauncherAI"
-                                    helpers:NavigationHelper.NavigateTo="XianYuLauncher.ViewModels.LauncherAIViewModel"
+                                    helpers:NavigationHelper.NavigateTo="XianYuLauncher.Features.ErrorAnalysis.ViewModels.LauncherAIViewModel"
                                     Visibility="{x:Bind ViewModel.LauncherAINavigationVisibility, Mode=OneWay}">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xF4A5;"/>

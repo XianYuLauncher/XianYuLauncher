@@ -1,7 +1,7 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels;
 
 public sealed partial class LauncherAIWorkspaceState : ObservableObject
 {

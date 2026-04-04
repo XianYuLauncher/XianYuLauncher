@@ -1,8 +1,8 @@
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
 
-namespace XianYuLauncher.Views;
+namespace XianYuLauncher.Features.ErrorAnalysis.Views;
 
 public sealed partial class LauncherAIWindowPage : Page
 {

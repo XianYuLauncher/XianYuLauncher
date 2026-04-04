@@ -4,9 +4,9 @@ using WinUIEx;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
 
-namespace XianYuLauncher.Views;
+namespace XianYuLauncher.Features.ErrorAnalysis.Views;
 
 public sealed partial class LauncherAIWindow : WindowEx
 {

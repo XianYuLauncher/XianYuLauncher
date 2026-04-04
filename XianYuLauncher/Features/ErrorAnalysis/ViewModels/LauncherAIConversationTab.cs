@@ -1,7 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels;
 
 public sealed partial class LauncherAIConversationTab : ObservableObject
 {
