@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Accounts.ViewModels;
+using XianYuLauncher.Features.Accounts.Views;
 using XianYuLauncher.Features.DownloadQueue.ViewModels;
 using XianYuLauncher.Features.DownloadQueue.Views;
 using XianYuLauncher.Features.Multiplayer.ViewModels;
@@ -56,7 +58,7 @@ internal static class PresentationModuleExtensions
         return services;
     }
 
-    public static IServiceCollection AddProfileFeaturePresentation(this IServiceCollection services)
+    public static IServiceCollection AddAccountsFeaturePresentation(this IServiceCollection services)
     {
         services.AddTransient<CharacterViewModel>();
         services.AddTransient<CharacterPage>();

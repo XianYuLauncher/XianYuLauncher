@@ -16,6 +16,7 @@ using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.UI;
 
 using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using Serilog;

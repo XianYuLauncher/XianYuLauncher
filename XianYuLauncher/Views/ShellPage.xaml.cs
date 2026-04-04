@@ -14,6 +14,8 @@ using Serilog;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Features.Accounts.ViewModels;
+using XianYuLauncher.Features.Accounts.Views;
 using XianYuLauncher.Features.Tutorial.Views;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.ViewModels;
@@ -212,14 +214,14 @@ public sealed partial class ShellPage : Page
                     if (!string.IsNullOrEmpty(draggedText))
                     {
                         var navigationService = App.GetService<Contracts.Services.INavigationService>();
-                        navigationService?.NavigateTo(typeof(ViewModels.CharacterViewModel).FullName!);
+                        navigationService?.NavigateTo(typeof(CharacterViewModel).FullName!);
 
                         _uiDispatcher.EnqueueAsync(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
                         {
                             try
                             {
                                 // After navigation, forward the text to the CharacterPage instance
-                                var page = NavigationFrame?.Content as Views.CharacterPage;
+                                var page = NavigationFrame?.Content as CharacterPage;
                                 if (page != null)
                                 {
                                     await page.HandleExternalLoginDropAsync(draggedText);

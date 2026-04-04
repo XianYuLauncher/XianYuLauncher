@@ -24,7 +24,7 @@ using Windows.ApplicationModel;
 using Windows.Storage;
 using Newtonsoft.Json.Linq;
 
-namespace XianYuLauncher.ViewModels
+namespace XianYuLauncher.Features.Accounts.ViewModels
 {
     /// <summary>
     /// 内置皮肤信息

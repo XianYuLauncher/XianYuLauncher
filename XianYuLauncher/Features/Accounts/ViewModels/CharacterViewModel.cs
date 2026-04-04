@@ -14,7 +14,7 @@ using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 
-namespace XianYuLauncher.ViewModels
+namespace XianYuLauncher.Features.Accounts.ViewModels
 {
     /// <summary>
     /// 角色管理页面的ViewModel

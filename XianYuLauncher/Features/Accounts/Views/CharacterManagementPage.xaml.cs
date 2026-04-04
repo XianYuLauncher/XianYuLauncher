@@ -18,6 +18,7 @@ using WinRT.Interop;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Helpers;
 using Microsoft.Graphics.Canvas;
@@ -26,7 +27,7 @@ using System.Diagnostics;
 using Microsoft.Web.WebView2.Core;
 using Serilog;
 
-namespace XianYuLauncher.Views
+namespace XianYuLauncher.Features.Accounts.Views
 {
     /// <summary>
     /// 角色管理页面
