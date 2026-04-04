@@ -14,6 +14,7 @@ using Serilog;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Features.Tutorial.Views;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.ViewModels;
 

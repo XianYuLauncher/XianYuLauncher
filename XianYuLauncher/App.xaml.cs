@@ -100,6 +100,7 @@ public partial class App : Application
             services.AddPresentationSupportServices();
             services.AddAppShellPresentation();
             services.AddLaunchFeaturePresentation();
+            services.AddTutorialFeaturePresentation();
             services.AddProfileFeaturePresentation();
             services.AddContentFeaturePresentation();
             services.AddNewsFeaturePresentation();

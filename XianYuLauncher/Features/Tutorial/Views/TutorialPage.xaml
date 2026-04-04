@@ -1,12 +1,12 @@
 <Page
-    x:Class="XianYuLauncher.Views.TutorialPage"
+    x:Class="XianYuLauncher.Features.Tutorial.Views.TutorialPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:viewModels="using:XianYuLauncher.ViewModels"
     xmlns:helpers="using:XianYuLauncher.Helpers"
-    xmlns:local="using:XianYuLauncher.Views"
+    xmlns:views="using:XianYuLauncher.Views"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
     xmlns:ui="using:CommunityToolkit.WinUI"
@@ -18,7 +18,7 @@
         <helpers:StringToBooleanConverter x:Key="StringToBooleanConverter" />
         <helpers:MaterialTypeToLocalizedStringConverter x:Key="MaterialTypeToLocalizedStringConverter" />
         <helpers:MaterialTypeToCustomBackgroundVisibilityConverter x:Key="MaterialTypeToCustomBackgroundVisibilityConverter" />
-        <local:ExternalLoginButtonTextConverter x:Key="ExternalLoginButtonTextConverter" />
+        <views:ExternalLoginButtonTextConverter x:Key="ExternalLoginButtonTextConverter" />
 
         <!-- 登录区域切换动画 -->
         <animations:ImplicitAnimationSet x:Name="LoginShowTransitions">

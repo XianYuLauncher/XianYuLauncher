@@ -3,6 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.News.ViewModels;
 using XianYuLauncher.Features.News.Views;
+using XianYuLauncher.Features.Tutorial.ViewModels;
+using XianYuLauncher.Features.Tutorial.Views;
 using XianYuLauncher.Services;
 using XianYuLauncher.ViewModels;
 using XianYuLauncher.Views;
@@ -38,6 +40,11 @@ internal static class PresentationModuleExtensions
         services.AddTransient<LaunchPage>();
         services.AddPageMap<LaunchViewModel, LaunchPage>();
 
+        return services;
+    }
+
+    public static IServiceCollection AddTutorialFeaturePresentation(this IServiceCollection services)
+    {
         services.AddTransient<TutorialPageViewModel>();
         services.AddTransient<TutorialPage>();
         services.AddPageMap<TutorialPageViewModel, TutorialPage>();

@@ -9,11 +9,11 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using Windows.Storage;
 using Windows.Storage.Streams;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.Tutorial.ViewModels;
 using XianYuLauncher.Helpers;
 using Newtonsoft.Json.Linq;
 
-namespace XianYuLauncher.Views
+namespace XianYuLauncher.Features.Tutorial.Views
 {
     public sealed partial class TutorialPage : Page
     {

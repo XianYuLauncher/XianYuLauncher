@@ -15,8 +15,9 @@ using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.ViewModels;
 
-namespace XianYuLauncher.ViewModels
+namespace XianYuLauncher.Features.Tutorial.ViewModels
 {
     public partial class TutorialPageViewModel : ObservableObject
     {
