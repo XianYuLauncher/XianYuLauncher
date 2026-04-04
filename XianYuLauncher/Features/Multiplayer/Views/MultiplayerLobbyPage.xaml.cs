@@ -5,9 +5,9 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.UI;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.Multiplayer.ViewModels;
 
-namespace XianYuLauncher.Views;
+namespace XianYuLauncher.Features.Multiplayer.Views;
 
 public sealed partial class MultiplayerLobbyPage : Page
 {

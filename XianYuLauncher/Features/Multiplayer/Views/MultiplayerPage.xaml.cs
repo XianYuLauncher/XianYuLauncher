@@ -1,7 +1,7 @@
 using Microsoft.UI.Xaml.Controls;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.Multiplayer.ViewModels;
 
-namespace XianYuLauncher.Views;
+namespace XianYuLauncher.Features.Multiplayer.Views;
 
 public sealed partial class MultiplayerPage : Page
 {

@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.Multiplayer.ViewModels;
+using XianYuLauncher.Features.Multiplayer.Views;
 using XianYuLauncher.Features.News.ViewModels;
 using XianYuLauncher.Features.News.Views;
 using XianYuLauncher.Features.Tutorial.ViewModels;

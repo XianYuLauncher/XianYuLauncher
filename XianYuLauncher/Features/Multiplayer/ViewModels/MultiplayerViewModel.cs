@@ -19,7 +19,7 @@ using XianYuLauncher.Helpers;
 using Newtonsoft.Json;
 using Serilog;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.Multiplayer.ViewModels;
 
 public partial class MultiplayerViewModel : ObservableRecipient, INavigationAware
 {

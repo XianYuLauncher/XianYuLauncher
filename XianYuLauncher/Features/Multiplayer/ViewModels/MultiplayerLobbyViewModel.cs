@@ -22,7 +22,7 @@ using XianYuLauncher.Core.Models;
 using XianYuLauncher.Helpers;
 using Serilog;
 
-namespace XianYuLauncher.ViewModels;
+namespace XianYuLauncher.Features.Multiplayer.ViewModels;
 
 // 玩家信息类，用于显示玩家列表
 public class RoomPlayer

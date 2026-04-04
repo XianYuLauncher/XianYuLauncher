@@ -105,7 +105,7 @@
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe77b;"/>
                     </NavigationViewItem.Icon>
                 </NavigationViewItem>
-                <NavigationViewItem x:Uid="Shell_联机" helpers:NavigationHelper.NavigateTo="XianYuLauncher.ViewModels.MultiplayerViewModel">
+                <NavigationViewItem x:Uid="Shell_联机" helpers:NavigationHelper.NavigateTo="XianYuLauncher.Features.Multiplayer.ViewModels.MultiplayerViewModel">
                     <NavigationViewItem.Icon>
                         <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE945;"/>
                     </NavigationViewItem.Icon>
