@@ -7,11 +7,12 @@ using XianYuLauncher.Core.Helpers;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Features.Settings.ViewModels;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.Models;
 
-namespace XianYuLauncher.Views;
+namespace XianYuLauncher.Features.Settings.Views;
 
 public sealed partial class SettingsPage : Page
 {
@@ -233,7 +234,7 @@ public sealed partial class SettingsPage : Page
     {
         System.Diagnostics.Debug.WriteLine("[SettingsPage] EditCustomSource_Click 事件触发");
         
-        if (sender is Button button && button.Tag is Models.CustomSourceViewModel source)
+        if (sender is Button button && button.Tag is CustomSourceViewModel source)
         {
             System.Diagnostics.Debug.WriteLine($"[SettingsPage] 编辑源: {source.Name}");
             await ViewModel.EditCustomSourceCommand.ExecuteAsync(source);
@@ -248,7 +249,7 @@ public sealed partial class SettingsPage : Page
     {
         System.Diagnostics.Debug.WriteLine("[SettingsPage] DeleteCustomSource_Click 事件触发");
         
-        if (sender is Button button && button.Tag is Models.CustomSourceViewModel source)
+        if (sender is Button button && button.Tag is CustomSourceViewModel source)
         {
             System.Diagnostics.Debug.WriteLine($"[SettingsPage] 删除源: {source.Name}");
             await ViewModel.DeleteCustomSourceCommand.ExecuteAsync(source);

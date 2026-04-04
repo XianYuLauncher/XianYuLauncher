@@ -29,6 +29,7 @@ using XianYuLauncher.ViewModels;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Models;
 using XianYuLauncher.Models.VersionManagement;
+using XianYuLauncher.Shared.Models;
 using Microsoft.UI.Xaml;
 using XianYuLauncher.Features.ModDownloadDetail.Services;
 using XianYuLauncher.Features.VersionManagement.Services;

@@ -9,7 +9,7 @@
     xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
-    xmlns:viewModels="using:XianYuLauncher.ViewModels"
+    xmlns:sharedModels="using:XianYuLauncher.Shared.Models"
     mc:Ignorable="d">
 
     <UserControl.Resources>
@@ -213,7 +213,7 @@
                                   MinWidth="180"
                                   PlaceholderText="跟随全局设置">
                             <ComboBox.ItemTemplate>
-                                <DataTemplate x:DataType="viewModels:GameIsolationModeOption">
+                                <DataTemplate x:DataType="sharedModels:GameIsolationModeOption">
                                     <TextBlock Text="{x:Bind DisplayName}" />
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>

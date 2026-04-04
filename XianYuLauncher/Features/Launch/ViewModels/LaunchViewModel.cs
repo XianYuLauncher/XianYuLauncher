@@ -29,6 +29,7 @@ using XianYuLauncher.Features.ErrorAnalysis.Services;
 using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
 using XianYuLauncher.Features.News.ViewModels;
+using XianYuLauncher.Features.Settings.ViewModels;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;

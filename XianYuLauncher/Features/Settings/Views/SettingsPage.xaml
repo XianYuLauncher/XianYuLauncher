@@ -1,12 +1,14 @@
 <Page
-    x:Class="XianYuLauncher.Views.SettingsPage"
+    x:Class="XianYuLauncher.Features.Settings.Views.SettingsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:helpers="using:XianYuLauncher.Helpers"
-    xmlns:viewModels="using:XianYuLauncher.ViewModels"
+    xmlns:viewModels="using:XianYuLauncher.Features.Settings.ViewModels"
+    xmlns:settingsModels="using:XianYuLauncher.Features.Settings.Models"
     xmlns:models="using:XianYuLauncher.Models"
+    xmlns:sharedModels="using:XianYuLauncher.Shared.Models"
     xmlns:xaml="using:Microsoft.UI.Xaml"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
@@ -276,7 +278,7 @@
                                     </Style>
                                 </ListBox.ItemContainerStyle>
                                 <ListBox.ItemTemplate>
-                                    <DataTemplate x:DataType="viewModels:JavaVersionInfo">
+                                    <DataTemplate x:DataType="sharedModels:JavaVersionInfo">
                                         <controls:SettingsCard HorizontalAlignment="Stretch"
                                                                 ContentAlignment="Vertical"
                                                                 Padding="16,10"
@@ -355,7 +357,7 @@
                                   SelectedItem="{x:Bind ViewModel.SelectedGameIsolationMode, Mode=TwoWay}"
                                   MinWidth="200">
                             <ComboBox.ItemTemplate>
-                                <DataTemplate x:DataType="viewModels:GameIsolationModeOption">
+                                <DataTemplate x:DataType="sharedModels:GameIsolationModeOption">
                                     <TextBlock Text="{x:Bind DisplayName, Mode=OneTime}" />
                                 </DataTemplate>
                             </ComboBox.ItemTemplate>
@@ -945,7 +947,7 @@
                                     </ItemsPanelTemplate>
                                 </ItemsControl.ItemsPanel>
                                 <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="viewModels:AcknowledgmentPerson">
+                                    <DataTemplate x:DataType="settingsModels:AcknowledgmentPerson">
                                         <StackPanel Width="88" HorizontalAlignment="Center">
                                             <Ellipse Width="40" Height="40" HorizontalAlignment="Center" Margin="0,0,0,8">
                                                 <Ellipse.Fill>

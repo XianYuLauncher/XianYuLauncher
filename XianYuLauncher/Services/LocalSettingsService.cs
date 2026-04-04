@@ -10,6 +10,7 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Services;
 
@@ -126,7 +127,7 @@ public class LocalSettingsService : ILocalSettingsService
                             Console.WriteLine($"  - {item.GetType().Name}: {item}");
                         }
                     }
-                    else if (obj is List<XianYuLauncher.ViewModels.JavaVersionInfo> typedList)
+                    else if (obj is List<JavaVersionInfo> typedList)
                     {
                         Console.WriteLine($"  类型化List元素数量: {typedList.Count}");
                         foreach (var item in typedList)
@@ -214,7 +215,7 @@ public class LocalSettingsService : ILocalSettingsService
                     Console.WriteLine($"  - {item.GetType().Name}: {item}");
                 }
             }
-            else if (key == "JavaVersions" && value is List<XianYuLauncher.ViewModels.JavaVersionInfo> typedList)
+            else if (key == "JavaVersions" && value is List<JavaVersionInfo> typedList)
             {
                 Console.WriteLine($"保存Java版本列表，数量: {typedList.Count}");
                 foreach (var item in typedList)

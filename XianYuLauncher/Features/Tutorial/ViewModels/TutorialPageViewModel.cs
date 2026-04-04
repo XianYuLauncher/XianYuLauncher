@@ -17,7 +17,7 @@ using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Helpers;
-using XianYuLauncher.ViewModels;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.Tutorial.ViewModels
 {

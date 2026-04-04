@@ -25,28 +25,13 @@ using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Services;
 using XianYuLauncher.Contracts.Services.Settings;
+using XianYuLauncher.Features.Settings.Models;
 using XianYuLauncher.Features.Tutorial.ViewModels;
-using XianYuLauncher.Views;
 using XianYuLauncher.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Shared.Models;
 
-namespace XianYuLauncher.ViewModels;
-
-/// <summary>
-/// Java版本信息类
-/// </summary>
-public class JavaVersionInfo
-{
-    public string Version { get; set; } = string.Empty;
-    public int MajorVersion { get; set; }
-    public string Path { get; set; } = string.Empty;
-    public bool IsJDK { get; set; }
-    
-    public override string ToString()
-    {
-        return $"Java {Version} {(IsJDK ? "(JDK)" : "(JRE)")} - {Path}";
-    }
-}
+namespace XianYuLauncher.Features.Settings.ViewModels;
 
 /// <summary>
 /// Java选择方式枚举
@@ -85,18 +70,6 @@ public partial class MinecraftPathItem : ObservableObject
     /// </summary>
     [ObservableProperty]
     private bool _isActive;
-}
-
-public class GameIsolationModeOption
-{
-    public string Key { get; init; } = string.Empty;
-
-    public string DisplayName { get; init; } = string.Empty;
-
-    public override string ToString()
-    {
-        return DisplayName;
-    }
 }
 
 public partial class SettingsViewModel : ObservableRecipient, IDisposable

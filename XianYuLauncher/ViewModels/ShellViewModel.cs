@@ -13,6 +13,7 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Views;
 using XianYuLauncher.Features.Launch.ViewModels;
+using XianYuLauncher.Features.Settings.Views;
 using XianYuLauncher.Views;
 
 namespace XianYuLauncher.ViewModels;
