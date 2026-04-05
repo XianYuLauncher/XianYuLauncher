@@ -1,96 +1,149 @@
 using System.Globalization;
-using Microsoft.Windows.ApplicationModel.Resources;
-using Windows.Globalization;
+using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json.Linq;
+using Windows.Storage;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
-using XianYuLauncher.Helpers;
+using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Core.Services;
+using XianYuLauncher.Models;
 
 namespace XianYuLauncher.Services;
 
 public class LanguageSelectorService : ILanguageSelectorService
 {
     private const string SettingsKey = "AppLanguage";
+    private const string DefaultApplicationDataFolder = "ApplicationData";
+    private const string DefaultLocalSettingsFile = "LocalSettings.json";
+    private const string ChineseLanguage = "zh-CN";
+    private const string EnglishLanguage = "en-US";
 
-    public string Language { get; set; } = "zh-CN";
+    public string Language { get; set; } = GetDefaultLanguage();
 
     private readonly ILocalSettingsService _localSettingsService;
-    private ResourceManager _resourceManager;
-    private ResourceContext _resourceContext;
 
     public LanguageSelectorService(ILocalSettingsService localSettingsService)
     {
         _localSettingsService = localSettingsService;
-        _resourceManager = new ResourceManager();
-        _resourceContext = _resourceManager.CreateResourceContext();
+    }
+
+    public static string BootstrapConfiguredLanguage(IConfiguration configuration)
+    {
+        return ApplyLanguage(TryReadSavedLanguage(configuration));
     }
 
     public async Task InitializeAsync()
     {
-        Language = await LoadLanguageFromSettingsAsync();
-        await ApplyLanguageAsync();
+        Language = NormalizeLanguage(await LoadLanguageFromSettingsAsync());
+        Language = ApplyLanguage(Language);
     }
 
     public async Task SetLanguageAsync(string language)
     {
-        Language = language;
-        await ApplyLanguageAsync();
+        Language = ApplyLanguage(language);
         await SaveLanguageInSettingsAsync(Language);
     }
 
     private async Task<string> LoadLanguageFromSettingsAsync()
     {
-        var languageName = await _localSettingsService.ReadSettingAsync<string>(SettingsKey);
-
-        if (!string.IsNullOrEmpty(languageName) && (languageName == "zh-CN" || languageName == "en-US"))
-        {
-            return languageName;
-        }
-
-        // No saved preference — detect from system language
-        var systemLanguage = CultureInfo.CurrentUICulture.Name;
-        if (systemLanguage.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
-        {
-            return "zh-CN";
-        }
-
-        return "en-US";
+        return NormalizeLanguage(await _localSettingsService.ReadSettingAsync<string>(SettingsKey));
     }
 
     private async Task SaveLanguageInSettingsAsync(string language)
     {
-        await _localSettingsService.SaveSettingAsync(SettingsKey, language);
+        await _localSettingsService.SaveSettingAsync(SettingsKey, NormalizeLanguage(language));
     }
 
-    private async Task ApplyLanguageAsync()
+    public static string ApplyLanguage(string? language)
     {
         try
         {
-            var culture = new CultureInfo(Language);
-            CultureInfo.CurrentUICulture = culture;
-            CultureInfo.CurrentCulture = culture;
-            ApplicationLanguages.PrimaryLanguageOverride = Language;
-            // 在 WinUI 3 中，ResourceContext 没有 Reset 方法，需要重新创建
-            _resourceContext = _resourceManager.CreateResourceContext();
-            
-            // 通知 TranslationService 语言已更改（解决跨程序集文化信息不同步问题）
-            XianYuLauncher.Core.Services.TranslationService.SetCurrentLanguage(Language);
-            
-            await Task.CompletedTask;
+            var normalizedLanguage = NormalizeLanguage(language);
+            ApplyLanguageCore(normalizedLanguage);
+            return normalizedLanguage;
         }
         catch (CultureNotFoundException)
         {
-            // 如果语言无效，使用默认语言
-            CultureInfo.CurrentUICulture = new CultureInfo("zh-CN");
-            CultureInfo.CurrentCulture = new CultureInfo("zh-CN");
-            ApplicationLanguages.PrimaryLanguageOverride = "zh-CN";
-            // 在 WinUI 3 中，ResourceContext 没有 Reset 方法，需要重新创建
-            _resourceContext = _resourceManager.CreateResourceContext();
-            
-            // 通知 TranslationService 语言已更改
-            XianYuLauncher.Core.Services.TranslationService.SetCurrentLanguage("zh-CN");
-            
-            await Task.CompletedTask;
+            ApplyLanguageCore(ChineseLanguage);
+            return ChineseLanguage;
         }
+    }
+
+    private static void ApplyLanguageCore(string language)
+    {
+        var culture = new CultureInfo(language);
+        CultureInfo.CurrentUICulture = culture;
+        CultureInfo.CurrentCulture = culture;
+        CultureInfo.DefaultThreadCurrentUICulture = culture;
+        CultureInfo.DefaultThreadCurrentCulture = culture;
+        Microsoft.Windows.Globalization.ApplicationLanguages.PrimaryLanguageOverride = language;
+        TranslationService.SetCurrentLanguage(language);
+    }
+
+    private static string? TryReadSavedLanguage(IConfiguration configuration)
+    {
+        if (AppEnvironment.IsMSIX)
+        {
+            if (ApplicationData.Current.LocalSettings.Values.TryGetValue(SettingsKey, out var storedValue)
+                && storedValue is string msixLanguage)
+            {
+                return LocalSettingsStoredStringCompatibilityHelper.UnwrapStoredString(msixLanguage);
+            }
+
+            return null;
+        }
+
+        var applicationDataFolder = configuration[$"{nameof(LocalSettingsOptions)}:{nameof(LocalSettingsOptions.ApplicationDataFolder)}"]
+            ?? DefaultApplicationDataFolder;
+        var localSettingsFile = configuration[$"{nameof(LocalSettingsOptions)}:{nameof(LocalSettingsOptions.LocalSettingsFile)}"]
+            ?? DefaultLocalSettingsFile;
+        var settingsPath = Path.Combine(AppEnvironment.SafeAppDataPath, applicationDataFolder, localSettingsFile);
+
+        if (!File.Exists(settingsPath))
+        {
+            return null;
+        }
+
+        try
+        {
+            var json = File.ReadAllText(settingsPath);
+            if (string.IsNullOrWhiteSpace(json))
+            {
+                return null;
+            }
+
+            var settingsObject = JObject.Parse(json);
+            var rawLanguage = settingsObject[SettingsKey]?.ToString();
+            return rawLanguage is null
+                ? null
+                : LocalSettingsStoredStringCompatibilityHelper.UnwrapStoredString(rawLanguage);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string NormalizeLanguage(string? language)
+    {
+        if (string.Equals(language, ChineseLanguage, StringComparison.OrdinalIgnoreCase))
+        {
+            return ChineseLanguage;
+        }
+
+        if (string.Equals(language, EnglishLanguage, StringComparison.OrdinalIgnoreCase))
+        {
+            return EnglishLanguage;
+        }
+
+        return GetDefaultLanguage();
+    }
+
+    private static string GetDefaultLanguage()
+    {
+        return CultureInfo.CurrentUICulture.Name.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
+            ? ChineseLanguage
+            : EnglishLanguage;
     }
 }
