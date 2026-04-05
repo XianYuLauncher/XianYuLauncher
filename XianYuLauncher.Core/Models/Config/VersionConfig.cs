@@ -108,7 +108,7 @@ public class VersionConfig
     public DateTime? LastLaunchTime { get; set; }
 
     /// <summary>
-    /// 版本图标路径（支持 ms-appx:/// 与本地绝对路径）
+    /// 版本图标路径（支持应用资源路径与本地绝对路径）
     /// </summary>
     public string? Icon { get; set; }
 

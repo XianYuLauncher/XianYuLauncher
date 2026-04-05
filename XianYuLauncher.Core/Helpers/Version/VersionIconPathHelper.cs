@@ -5,7 +5,7 @@ namespace XianYuLauncher.Core.Helpers;
 
 public static class VersionIconPathHelper
 {
-    public const string DefaultIconPath = "ms-appx:///Assets/Icons/Download_Options/Vanilla/icon_128x128.png";
+    public const string DefaultIconPath = AppAssetResolver.DefaultVersionIconAssetPath;
 
     public static string NormalizeOrDefault(string? iconPath)
     {
@@ -16,9 +16,9 @@ public static class VersionIconPathHelper
 
         var trimmed = iconPath.Trim();
 
-        if (trimmed.StartsWith("ms-appx:///", StringComparison.OrdinalIgnoreCase))
+        if (AppAssetResolver.IsAppAssetPath(trimmed))
         {
-            return trimmed;
+            return AppAssetResolver.NormalizePath(trimmed);
         }
 
         if (Path.IsPathRooted(trimmed) && File.Exists(trimmed))
@@ -31,7 +31,7 @@ public static class VersionIconPathHelper
             var localPath = uri.LocalPath;
             if (!string.IsNullOrWhiteSpace(localPath) && File.Exists(localPath))
             {
-                return localPath;
+                return Path.GetFullPath(localPath);
             }
         }
 

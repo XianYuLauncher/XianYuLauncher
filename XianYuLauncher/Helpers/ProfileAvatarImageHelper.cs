@@ -3,17 +3,16 @@ using Microsoft.Graphics.Canvas;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage;
 using Windows.Storage.Streams;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Helpers;
 
 public static class ProfileAvatarImageHelper
 {
-    private static readonly Uri DefaultAvatarUri = new("ms-appx:///Assets/Icons/Avatars/Steve.png");
-
     public static async Task<BitmapImage> CreateDefaultProfileAvatarAsync(int outputSize = 32)
     {
         var device = CanvasDevice.GetSharedDevice();
-        var file = await StorageFile.GetFileFromApplicationUriAsync(DefaultAvatarUri);
+        var file = await AppAssetResolver.GetStorageFileAsync(AppAssetResolver.DefaultAvatarAssetPath);
 
         using var stream = await file.OpenReadAsync();
         var originalBitmap = await CanvasBitmap.LoadAsync(device, stream);

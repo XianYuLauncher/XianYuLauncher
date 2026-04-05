@@ -1,7 +1,6 @@
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json.Linq;
-using Windows.Storage;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
@@ -83,22 +82,17 @@ public class LanguageSelectorService : ILanguageSelectorService
 
     private static string? TryReadSavedLanguage(IConfiguration configuration)
     {
-        if (AppEnvironment.IsMSIX)
+        if (AppEnvironment.TryReadPackagedLocalSetting(SettingsKey, out var storedValue)
+            && storedValue is string msixLanguage)
         {
-            if (ApplicationData.Current.LocalSettings.Values.TryGetValue(SettingsKey, out var storedValue)
-                && storedValue is string msixLanguage)
-            {
-                return LocalSettingsStoredStringCompatibilityHelper.UnwrapStoredString(msixLanguage);
-            }
-
-            return null;
+            return LocalSettingsStoredStringCompatibilityHelper.UnwrapStoredString(msixLanguage);
         }
 
         var applicationDataFolder = configuration[$"{nameof(LocalSettingsOptions)}:{nameof(LocalSettingsOptions.ApplicationDataFolder)}"]
             ?? DefaultApplicationDataFolder;
         var localSettingsFile = configuration[$"{nameof(LocalSettingsOptions)}:{nameof(LocalSettingsOptions.LocalSettingsFile)}"]
             ?? DefaultLocalSettingsFile;
-        var settingsPath = Path.Combine(AppEnvironment.SafeAppDataPath, applicationDataFolder, localSettingsFile);
+        var settingsPath = AppEnvironment.ResolveAppDataPath(applicationDataFolder, localSettingsFile);
 
         if (!File.Exists(settingsPath))
         {

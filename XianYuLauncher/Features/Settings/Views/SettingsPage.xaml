@@ -2,6 +2,7 @@
     x:Class="XianYuLauncher.Features.Settings.Views.SettingsPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:coreHelpers="using:XianYuLauncher.Core.Helpers"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:helpers="using:XianYuLauncher.Helpers"
@@ -929,7 +930,8 @@
                 <!-- 开发者信息 -->
                 <controls:SettingsCard x:Uid="Settings_ContributorsHeader" Header="SpiritStudio" Description="感谢所有作出贡献的成员" IsClickEnabled="False">
                     <controls:SettingsCard.HeaderIcon>
-                        <ImageIcon Source="ms-appx:///Assets/Icons/Contributors/SpiritStudio.png" />
+                        <BitmapIcon ShowAsMonochrome="False"
+                                    UriSource="{x:Bind coreHelpers:AppAssetResolver.ToUri(coreHelpers:AppAssetResolver.SpiritStudioAvatarAssetPath), Mode=OneTime}" />
                     </controls:SettingsCard.HeaderIcon>
                 </controls:SettingsCard>
 

@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml.Data;
 using Microsoft.UI.Xaml.Media.Imaging;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Helpers;
 
@@ -14,6 +15,11 @@ public class PathToImageSourceConverter : IValueConverter
 
         try
         {
+            if (AppAssetResolver.IsAppAssetPath(path))
+            {
+                return new BitmapImage(AppAssetResolver.ToUri(path));
+            }
+
             if (Uri.TryCreate(path, UriKind.Absolute, out var absoluteUri))
             {
                 return new BitmapImage(absoluteUri);

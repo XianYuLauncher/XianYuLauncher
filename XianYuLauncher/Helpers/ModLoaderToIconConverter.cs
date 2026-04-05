@@ -1,5 +1,6 @@
 using System;
 using Microsoft.UI.Xaml.Data;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Helpers;
 
@@ -20,23 +21,15 @@ public class ModLoaderToIconConverter : IValueConverter
     {
         if (value is string modLoaderName)
         {
-            switch (modLoaderName)
+            if (AppAssetResolver.TryGetLoaderIconAssetPath(modLoaderName, out var iconAssetPath))
             {
-                case "Fabric":
-                    return "ms-appx:///Assets/Icons/Download_Options/Fabric/Fabric_Icon.png";
-                case "LegacyFabric":
-                    return "ms-appx:///Assets/Icons/Download_Options/Legacy-Fabric/Legacy-Fabric.png";
-                case "Forge":
-                    return "ms-appx:///Assets/Icons/Download_Options/Forge/MinecraftForge_Icon.jpg";
-                case "NeoForge":
-                    return "ms-appx:///Assets/Icons/Download_Options/NeoForge/NeoForge_Icon.png";
-                case "LiteLoader":
-                    return "ms-appx:///Assets/Icons/Download_Options/Liteloader/Liteloader.ico";
-                default:
-                    return "ms-appx:///Assets/Icons/Download_Options/Fabric/fabric_Icon.png"; // 默认返回Fabric图标
+                return AppAssetResolver.ToUriString(iconAssetPath);
             }
+
+            return AppAssetResolver.ToUriString(AppAssetResolver.FabricIconAssetPath);
         }
-        return "ms-appx:///Assets/Icons/Download_Options/Fabric/fabric_Icon.png"; // 默认返回Fabric图标
+
+        return AppAssetResolver.ToUriString(AppAssetResolver.FabricIconAssetPath);
     }
 
     /// <summary>

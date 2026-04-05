@@ -826,7 +826,7 @@ public class ModpackInstallationService : IModpackInstallationService
             return null;
         }
 
-        if (modpackIconUrl.StartsWith("ms-appx://", StringComparison.OrdinalIgnoreCase))
+        if (AppAssetResolver.IsAppAssetPath(modpackIconUrl))
         {
             return null;
         }

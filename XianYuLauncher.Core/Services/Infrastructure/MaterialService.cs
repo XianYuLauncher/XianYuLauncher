@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Serilog;
 using XianYuLauncher.Core.Contracts.Services;
 
 namespace XianYuLauncher.Core.Services
@@ -79,7 +80,9 @@ namespace XianYuLauncher.Core.Services
         /// <returns>材质类型</returns>
         public async Task<MaterialType> LoadMaterialTypeAsync()
         {
-            return await _localSettingsService.ReadSettingAsync<MaterialType>(MaterialTypeKey);
+            var materialType = await _localSettingsService.ReadSettingAsync<MaterialType>(MaterialTypeKey);
+            Log.Information("[Material] Loaded material type. Key={Key}; MaterialType={MaterialType}", MaterialTypeKey, materialType);
+            return materialType;
         }
 
         /// <summary>
@@ -88,7 +91,9 @@ namespace XianYuLauncher.Core.Services
         /// <param name="materialType">材质类型</param>
         public async Task SaveMaterialTypeAsync(MaterialType materialType)
         {
+            Log.Information("[Material] Saving material type. Key={Key}; MaterialType={MaterialType}", MaterialTypeKey, materialType);
             await _localSettingsService.SaveSettingAsync(MaterialTypeKey, materialType);
+            Log.Information("[Material] Saved material type. Key={Key}; MaterialType={MaterialType}", MaterialTypeKey, materialType);
         }
         
         /// <summary>
@@ -156,15 +161,41 @@ namespace XianYuLauncher.Core.Services
         /// </summary>
         /// <param name="window">要应用材质的窗口对象</param>
         /// <param name="materialType">材质类型</param>
-        public void ApplyMaterialToWindow(object window, MaterialType materialType)
+        public void ApplyMaterialToWindow(object? window, MaterialType materialType)
         {
             try
             {
-                if (window == null) return;
+                if (window == null)
+                {
+                    Log.Warning("[Material] Apply requested with null window. MaterialType={MaterialType}", materialType);
+                    return;
+                }
+
+                Log.Information(
+                    "[Material] Apply requested. WindowType={WindowType}; MaterialType={MaterialType}; HasApplyAction={HasApplyAction}",
+                    window.GetType().FullName,
+                    materialType,
+                    ApplyMaterialAction is not null);
+
+                if (ApplyMaterialAction is null)
+                {
+                    Log.Warning(
+                        "[Material] ApplyMaterialAction is null. Material application will be skipped. WindowType={WindowType}; MaterialType={MaterialType}",
+                        window.GetType().FullName,
+                        materialType);
+                }
+
                 ApplyMaterialAction?.Invoke(window, materialType);
+
+                Log.Information(
+                    "[Material] Apply finished. WindowType={WindowType}; MaterialType={MaterialType}; HasApplyAction={HasApplyAction}",
+                    window.GetType().FullName,
+                    materialType,
+                    ApplyMaterialAction is not null);
             }
             catch (Exception ex)
             {
+                Log.Error(ex, "[Material] Apply window material failed. WindowType={WindowType}; MaterialType={MaterialType}", window?.GetType().FullName, materialType);
                 Console.WriteLine($"应用窗口材质失败: {ex.Message}");
             }
         }
@@ -173,19 +204,23 @@ namespace XianYuLauncher.Core.Services
         /// 从设置加载并应用材质到窗口
         /// </summary>
         /// <param name="window">要应用材质的窗口对象</param>
-        public async Task LoadAndApplyMaterialAsync(object window)
+        public async Task LoadAndApplyMaterialAsync(object? window)
         {
+            Log.Information("[Material] LoadAndApply start. WindowType={WindowType}", window?.GetType().FullName);
             var materialType = await LoadMaterialTypeAsync();
+            Log.Information("[Material] LoadAndApply resolved material. WindowType={WindowType}; MaterialType={MaterialType}", window?.GetType().FullName, materialType);
             ApplyMaterialToWindow(window, materialType);
             
             // 如果是自定义背景，触发事件通知 ShellPage 加载背景图片
             if (materialType == MaterialType.CustomBackground)
             {
                 var backgroundPath = await LoadBackgroundImagePathAsync();
+                Log.Information("[Material] LoadAndApply publishing background change. MaterialType={MaterialType}; BackgroundImagePath={BackgroundImagePath}", materialType, backgroundPath ?? string.Empty);
                 OnBackgroundChanged(materialType, backgroundPath);
             }
             else
             {
+                Log.Information("[Material] LoadAndApply publishing background change. MaterialType={MaterialType}; BackgroundImagePath=(none)", materialType);
                 OnBackgroundChanged(materialType, null);
             }
         }
@@ -195,6 +230,7 @@ namespace XianYuLauncher.Core.Services
         /// </summary>
         public void OnBackgroundChanged(MaterialType materialType, string? backgroundPath)
         {
+            Log.Information("[Material] BackgroundChanged raised. MaterialType={MaterialType}; BackgroundImagePath={BackgroundImagePath}", materialType, backgroundPath ?? string.Empty);
             BackgroundChanged?.Invoke(this, new BackgroundChangedEventArgs
             {
                 MaterialType = materialType,

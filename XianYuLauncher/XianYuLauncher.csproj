@@ -4,8 +4,12 @@
     <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
     <RootNamespace>XianYuLauncher</RootNamespace>
+    <Version>1.5.0.0</Version>
+    <AssemblyVersion>1.5.0.0</AssemblyVersion>
+    <FileVersion>1.5.0.0</FileVersion>
     <ApplicationIcon>Assets/WindowIcon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Configurations>Debug;Release;Debug-Unpackaged;Release-Unpackaged</Configurations>
     <Platforms>x86;x64;arm64</Platforms>
     <RuntimeIdentifiers>win-x86;win-x64;win-arm64</RuntimeIdentifiers>
     
@@ -28,6 +32,14 @@
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
           <!-- WinUIEx.WindowEx 会在 XAML 生成的 XamlTypeInfo.g.cs 中引入已过时的 WinUIEx.Icon 类型，故忽略 CS0612 警告。 -->
         <NoWarn>$(NoWarn);MVVMTK0045;0612</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)'=='Debug-Unpackaged' Or '$(Configuration)'=='Release-Unpackaged'">
+    <IsUnpackagedBuild>true</IsUnpackagedBuild>
+    <WindowsPackageType>None</WindowsPackageType>
+    <AppxPackage>false</AppxPackage>
+    <EnableMsixTooling>false</EnableMsixTooling>
+    <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
   </PropertyGroup>
 
   <ItemGroup>
@@ -63,10 +75,12 @@
     <Content Include="..\NOTICE\**\*">
       <Link>NOTICE\%(RecursiveDir)%(Filename)%(Extension)</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
     </Content>
     <Content Include="..\LICENSE">
       <Link>LICENSE</Link>
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
 
@@ -76,20 +90,53 @@
   <ItemGroup>
     <None Update="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
     </None>
     <None Update="secrets.json" Condition="Exists('secrets.json')">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
     </None>
     <None Update="secrets.enc" Condition="Exists('secrets.enc')">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
     </None>
     <None Update="plugins\**\*">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
     </None>
     <Content Update="Assets\Skin3DPreview.html">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
+    </Content>
+    <Content Update="Assets\Libs\**\*">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToPublishDirectory>Always</CopyToPublishDirectory>
     </Content>
   </ItemGroup>
+
+  <ItemGroup Condition="'$(IsUnpackagedBuild)'=='true'">
+    <Content Update="Assets\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+    <UnpackagedRequiredOutput Include="Assets\WindowIcon.ico" />
+    <UnpackagedRequiredOutput Include="Assets\Icons\Avatars\Steve.png" />
+    <UnpackagedRequiredOutput Include="Assets\Icons\Textures\steve.png" />
+    <UnpackagedRequiredOutput Include="Assets\Icons\Download_Options\Liteloader\Liteloader.ico" />
+    <UnpackagedRequiredOutput Include="Assets\Icons\Contributors\SpiritStudio.png" />
+    <UnpackagedRequiredOutput Include="Assets\Skin3DPreview.html" />
+    <UnpackagedRequiredOutput Include="Assets\Libs\skinview3d.bundle.js" />
+  </ItemGroup>
+
+  <Target Name="ValidateUnpackagedPublishOutput" AfterTargets="Publish" Condition="'$(IsUnpackagedBuild)'=='true'">
+    <ItemGroup>
+      <MissingUnpackagedPublishOutput Include="@(UnpackagedRequiredOutput)" Condition="!Exists('$(PublishDir)%(Identity)')" />
+    </ItemGroup>
+
+    <Error
+      Condition="'@(MissingUnpackagedPublishOutput)' != ''"
+      Text="Unpackaged 发布缺少关键资源: @(MissingUnpackagedPublishOutput, ', ')" />
+  </Target>
 
   <ItemGroup Condition="'$(DisableMsixProjectCapabilityAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <ProjectCapability Include="Msix" />

@@ -10,10 +10,10 @@ using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using System.Diagnostics;
 using Windows.Management.Deployment;
-using Windows.ApplicationModel;
 
 namespace XianYuLauncher.Core.Services;
 
@@ -252,17 +252,7 @@ public class UpdateService
     /// <returns>如果是 Dev 通道返回 true，否则返回 false</returns>
     public bool IsDevChannel()
     {
-        try
-        {
-            // 通过包名判断，Dev 包名通常以 .Dev 结尾
-            var packageName = Windows.ApplicationModel.Package.Current.Id.Name;
-            return packageName.EndsWith("Dev", StringComparison.OrdinalIgnoreCase);
-        }
-        catch
-        {
-            // 非打包环境或其他异常情况
-            return false;
-        }
+        return AppEnvironment.IsDevBuild;
     }
     
     /// <summary>
@@ -793,7 +783,13 @@ public class UpdateService
             // 3. 构建 PowerShell 脚本
             // 获取当前应用的 FamilyName!AppId 用于重启
             // 假设 AppId 默认为 "App" (大多数 WinUI/UWP 项目默认值)
-            string appFamilyName = Windows.ApplicationModel.Package.Current.Id.FamilyName;
+            string? appFamilyName = AppEnvironment.ApplicationFamilyName;
+            if (string.IsNullOrWhiteSpace(appFamilyName))
+            {
+                _logger.LogError("当前运行环境不具备 Package FamilyName，无法执行 MSIX 包更新重启流程。");
+                return false;
+            }
+
             string appStartUri = $"shell:AppsFolder\\{appFamilyName}!App";
             string logPath = Path.Combine(Path.GetTempPath(), "XianYuUpdate_PS.log");
             

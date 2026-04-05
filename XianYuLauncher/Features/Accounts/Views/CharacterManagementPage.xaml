@@ -52,7 +52,7 @@
                         x:Name="ProfileAvatar"
                         Width="40"
                         Height="40"
-                        Source="ms-appx:///Assets/DefaultAvatar.png"
+                        Source="Assets/Icons/Avatars/Steve.png"
                         Stretch="Fill"
                         HorizontalAlignment="Center"
                         VerticalAlignment="Center" />
@@ -154,7 +154,6 @@
                             VerticalAlignment="Stretch">
                             <WebView2
                                 x:Name="Skin3DPreviewWebView"
-                                Source="ms-appx:///Assets/Skin3DPreview.html"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Stretch"
                                 NavigationStarting="Skin3DPreviewWebView_NavigationStarting"

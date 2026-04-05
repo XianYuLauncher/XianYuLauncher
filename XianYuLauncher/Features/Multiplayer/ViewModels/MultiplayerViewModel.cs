@@ -155,7 +155,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 // 获取真实的物理路径（非虚拟化路径）
                 // 已经在 TerracottaService 中确保返回的是 SafeAppDataPath (LocalState)
                 // 所以这里无需再做任何复杂的转换逻辑，直接使用即可
-                string realTerracottaDir = Path.GetDirectoryName(terracottaPath) ?? Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+                string realTerracottaDir = Path.GetDirectoryName(terracottaPath) ?? AppEnvironment.SafeAppDataPath;
                 
                 // 临时文件目录
                 string realTempDir = Path.Combine(realTerracottaDir, "temp");
@@ -659,7 +659,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 if (!string.IsNullOrEmpty(terracottaPath) && File.Exists(terracottaPath))
                 {
                     // 获取真实的物理路径（与HostGame相同的逻辑）
-                    string terracottaDir = Path.GetDirectoryName(terracottaPath) ?? Windows.Storage.ApplicationData.Current.LocalFolder.Path;
+                    string terracottaDir = Path.GetDirectoryName(terracottaPath) ?? AppEnvironment.SafeAppDataPath;
                     string realTerracottaDir = terracottaDir;
                     string realTempDir;
                     
@@ -674,8 +674,19 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                             // 真实路径 -> 沙盒路径
                             try
                             {
-                                string packagePath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-                                string packagesRoot = packagePath.Substring(0, packagePath.LastIndexOf("LocalState"));
+                                if (!AppEnvironment.HasPackageIdentity)
+                                {
+                                    throw new InvalidOperationException("当前运行环境不存在沙盒 LocalState 路径。");
+                                }
+
+                                string packagePath = AppEnvironment.SafeAppDataPath;
+                                int localStateIndex = packagePath.LastIndexOf("LocalState", StringComparison.OrdinalIgnoreCase);
+                                if (localStateIndex < 0)
+                                {
+                                    throw new InvalidOperationException("无法从当前应用数据路径推导 Packages 根目录。");
+                                }
+
+                                string packagesRoot = packagePath[..localStateIndex];
                                 string sandboxPath = Path.Combine(packagesRoot, "LocalCache", "Local", "XianYuLauncher", "terracotta");
                                 if (Directory.Exists(sandboxPath) || File.Exists(Path.Combine(sandboxPath, Path.GetFileName(terracottaPath))))
                                 {

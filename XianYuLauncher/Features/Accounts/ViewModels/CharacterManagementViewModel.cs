@@ -23,6 +23,7 @@ using System.Linq;
 using Windows.ApplicationModel;
 using Windows.Storage;
 using Newtonsoft.Json.Linq;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Features.Accounts.ViewModels
 {
@@ -63,7 +64,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             try 
             {
                  // 获取文件
-                 var file = await StorageFile.GetFileFromApplicationUriAsync(new Uri(skin.TextureUri));
+                 var file = await AppAssetResolver.GetStorageFileAsync(skin.TextureUri);
                  // 上传
                  await UploadSkinAsync(file, skin.Variant);
                  
@@ -100,7 +101,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                 CanvasBitmap canvasBitmap;
                 
                 // 从 URI 加载
-                var file = await StorageFile.GetFileFromApplicationUriAsync(new Uri(textureUri));
+                var file = await AppAssetResolver.GetStorageFileAsync(textureUri);
                 using (var stream = await file.OpenReadAsync())
                 {
                     canvasBitmap = await CanvasBitmap.LoadAsync(device, stream);
@@ -142,7 +143,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                     // Double check in case another thread added items while we were setting up (rare but possible)
                     // But effectively _isBuiltInSkinsLoading protects us.
                     
-                    var uri = $"ms-appx:///Assets/Icons/Textures/{skin.FileName}";
+                    var uri = $"Assets/Icons/Textures/{skin.FileName}";
                     var headIcon = await ProcessHeadTextureAsync(uri);
                     
                     if (headIcon != null)

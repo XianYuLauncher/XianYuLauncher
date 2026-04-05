@@ -412,7 +412,7 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <Border Width="48" Height="48" CornerRadius="4" Margin="0,0,16,0">
-                                            <Image x:Name="MicrosoftProfileAvatar" Source="ms-appx:///Assets/Icons/Avatars/Steve.png" Stretch="UniformToFill"/>
+                                            <Image x:Name="MicrosoftProfileAvatar" Source="Assets/Icons/Avatars/Steve.png" Stretch="UniformToFill"/>
                                         </Border>
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                             <TextBlock x:Uid="TutorialPage_MicrosoftAccount_Label" Text="微软账户" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.6"/>
@@ -445,7 +445,7 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <Border Width="48" Height="48" CornerRadius="4" Margin="0,0,16,0">
-                                            <Image x:Name="ProfileAvatar" Source="ms-appx:///Assets/Icons/Avatars/Steve.png" Stretch="UniformToFill"/>
+                                            <Image x:Name="ProfileAvatar" Source="Assets/Icons/Avatars/Steve.png" Stretch="UniformToFill"/>
                                         </Border>
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                             <TextBox 
@@ -474,7 +474,7 @@
                                             <ColumnDefinition Width="*"/>
                                         </Grid.ColumnDefinitions>
                                         <Border Width="48" Height="48" CornerRadius="4" Margin="0,0,16,0">
-                                            <Image x:Name="ExternalProfileAvatar" Source="ms-appx:///Assets/Icons/Avatars/Steve.png" Stretch="UniformToFill"/>
+                                            <Image x:Name="ExternalProfileAvatar" Source="Assets/Icons/Avatars/Steve.png" Stretch="UniformToFill"/>
                                         </Border>
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                             <TextBlock x:Uid="TutorialPage_ExternalAccount_Label" Text="外置账户" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.6"/>

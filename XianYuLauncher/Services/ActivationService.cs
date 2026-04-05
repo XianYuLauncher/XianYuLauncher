@@ -9,6 +9,7 @@ using XianYuLauncher.Activation;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.Protocol;
@@ -19,6 +20,8 @@ namespace XianYuLauncher.Services;
 
 public class ActivationService : IActivationService
 {
+    private const string MicrosoftStorePublisherFragment = "CN=477122EB-593B-4C14-AA43-AD408DEE1452";
+
     private readonly ActivationHandler<LaunchActivatedEventArgs> _defaultHandler;
     private readonly IEnumerable<IActivationHandler> _activationHandlers;
     private readonly IThemeSelectorService _themeSelectorService;
@@ -382,10 +385,7 @@ public class ActivationService : IActivationService
             // 获取更新服务实例
             var updateService = App.GetService<UpdateService>();
             
-            // 设置当前应用版本（从 MSIX 包获取）
-            var packageVersion = Windows.ApplicationModel.Package.Current.Id.Version;
-            var currentVersion = new Version(packageVersion.Major, packageVersion.Minor, packageVersion.Build, packageVersion.Revision);
-            updateService.SetCurrentVersion(currentVersion);
+            updateService.SetCurrentVersion(AppEnvironment.ApplicationVersion);
             
             // 检查是否有更新
             UpdateInfo? updateInfo;
@@ -570,14 +570,14 @@ public class ActivationService : IActivationService
             // 检查应用的签名证书发布者
             // 微软商店应用使用商店证书签名，发布者为 CN=<GUID>
             // 自签名版本使用自定义证书
-            var package = Windows.ApplicationModel.Package.Current;
-            var publisherId = package.Id.Publisher;
+            var publisherId = AppEnvironment.ApplicationPublisher;
             
             Serilog.Log.Information("应用发布者: {Publisher}", publisherId);
             
             // 微软商店版本的发布者应该是 CN=477122EB-593B-4C14-AA43-AD408DEE1452
             // 这是在 Package.appxmanifest 中配置的商店证书
-            bool isStoreVersion = publisherId.Contains("CN=477122EB-593B-4C14-AA43-AD408DEE1452", StringComparison.OrdinalIgnoreCase);
+            bool isStoreVersion = AppEnvironment.HasPackageIdentity
+                && publisherId.Contains(MicrosoftStorePublisherFragment, StringComparison.OrdinalIgnoreCase);
             
             Serilog.Log.Information("是否为商店版本: {IsStoreVersion}", isStoreVersion);
             

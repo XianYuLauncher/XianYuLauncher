@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 
 namespace XianYuLauncher.Core.Models;
@@ -189,25 +190,12 @@ public class ModLoaderItem : INotifyPropertyChanged
         {
             get
             {
-                switch (_name)
+                if (AppAssetResolver.TryGetLoaderIconAssetPath(_name, out var iconAssetPath))
                 {
-                    case "Fabric":
-                        return "ms-appx:///Assets/Icons/Download_Options/Fabric/fabric_Icon.png";
-                    case "LegacyFabric":
-                        return "ms-appx:///Assets/Icons/Download_Options/Legacy-Fabric/Legacy-Fabric.png";
-                    case "Forge":
-                        return "ms-appx:///Assets/Icons/Download_Options/Forge/MinecraftForge_Icon.jpg";
-                    case "NeoForge":
-                        return "ms-appx:///Assets/Icons/Download_Options/NeoForge/NeoForge_Icon.png";
-                    case "Optifine":
-                        return "ms-appx:///Assets/Icons/Download_Options/Optifine/Optifine.ico";
-                    case "Quilt":
-                        return "ms-appx:///Assets/Icons/Download_Options/Quilt/Quilt.png";
-                    case "Cleanroom":
-                        return "ms-appx:///Assets/Icons/Download_Options/Cleanroom/Cleanroom.png";
-                    default:
-                        return "";
+                    return AppAssetResolver.ToUriString(iconAssetPath);
                 }
+
+                return string.Empty;
             }
         }
 

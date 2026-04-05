@@ -1,4 +1,5 @@
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Features.ModDownloadDetail.Models;
 
@@ -15,7 +16,7 @@ public abstract class ModDetailLoadResultBase
     public string ModDescriptionTranslated { get; init; } = string.Empty;
     public string ModDescriptionBody { get; init; } = string.Empty;
     public long ModDownloads { get; init; }
-    public string ModIconUrl { get; init; } = "ms-appx:///Assets/Placeholder.png";
+    public string ModIconUrl { get; init; } = AppAssetResolver.ToUriString(AppAssetResolver.PlaceholderAssetPath);
     public string ModLicense { get; init; } = string.Empty;
     public string ModAuthor { get; init; } = string.Empty;
     public string ModSlug { get; init; } = string.Empty;

@@ -58,31 +58,13 @@ internal static class VersionIconProcessingHelper
     }
 
     /// <summary>
-    /// 从给定路径（ms-appx:///、绝对路径或 file:// URI）加载 CanvasBitmap。
+    /// 从给定路径（逻辑资源路径、绝对路径或 file:// URI）加载 CanvasBitmap。
     /// </summary>
     public static async Task<CanvasBitmap?> LoadCanvasBitmapAsync(CanvasDevice device, string iconPath)
     {
         try
         {
-            StorageFile file;
-
-            if (iconPath.StartsWith("ms-appx:///", StringComparison.OrdinalIgnoreCase))
-            {
-                file = await StorageFile.GetFileFromApplicationUriAsync(new Uri(iconPath));
-            }
-            else if (System.IO.Path.IsPathRooted(iconPath))
-            {
-                file = await StorageFile.GetFileFromPathAsync(iconPath);
-            }
-            else if (Uri.TryCreate(iconPath, UriKind.Absolute, out var uri) && uri.IsFile)
-            {
-                file = await StorageFile.GetFileFromPathAsync(uri.LocalPath);
-            }
-            else
-            {
-                return null;
-            }
-
+            var file = await AppAssetResolver.GetStorageFileAsync(iconPath);
             using var stream = await file.OpenReadAsync();
             return await CanvasBitmap.LoadAsync(device, stream);
         }

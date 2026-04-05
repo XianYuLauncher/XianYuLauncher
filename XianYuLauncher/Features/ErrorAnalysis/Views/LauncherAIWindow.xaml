@@ -8,6 +8,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d"
     Title="Launcher AI"
+    PersistenceId="LauncherAIWindow"
     MinWidth="420"
     MinHeight="500"
     Width="520"

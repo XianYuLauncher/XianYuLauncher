@@ -44,6 +44,8 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         private readonly IGameDirResolver _gameDirResolver;
         private readonly IHttpImageSourceService _httpImageSourceService;
         private readonly ILogger<ModDownloadDetailViewModel> _logger;
+        private static readonly Uri PlaceholderModIconUri = AppAssetResolver.ToUri(AppAssetResolver.PlaceholderAssetPath);
+        private static readonly string PlaceholderModIconUrl = PlaceholderModIconUri.ToString();
         private string? _downloadPreparationTaskId;
         private string? _downloadTeachingTipGroupKey;
 
@@ -179,7 +181,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         }
 
         [ObservableProperty]
-        private string _modIconUrl = "ms-appx:///Assets/Placeholder.png";
+        private string _modIconUrl = PlaceholderModIconUrl;
 
         /// <summary>
         /// 详情页头部图标（预取并解码后再结束骨架屏，避免 Image 绑定远程 URI 时长时间空白）。
@@ -629,7 +631,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
                 {
                     if (ModHeaderIcon == null)
                     {
-                        ModHeaderIcon = new BitmapImage(new Uri("ms-appx:///Assets/Placeholder.png"));
+                        ModHeaderIcon = new BitmapImage(PlaceholderModIconUri);
                     }
 
                     IsLoading = false;
@@ -840,7 +842,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         {
             return _uiDispatcher.RunOnUiThreadAsync(() =>
             {
-                ModHeaderIcon = new BitmapImage(new Uri("ms-appx:///Assets/Placeholder.png"));
+                ModHeaderIcon = new BitmapImage(PlaceholderModIconUri);
             });
         }
 
@@ -859,7 +861,10 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
                     return;
                 }
 
-                if (url.StartsWith("ms-appx:", StringComparison.OrdinalIgnoreCase))
+                if (AppAssetResolver.TryCreateUri(url, out var resolvedUri)
+                    && resolvedUri is not null
+                    && !string.Equals(resolvedUri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase)
+                    && !string.Equals(resolvedUri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
                 {
                     await _uiDispatcher.RunOnUiThreadAsync(() =>
                     {
@@ -868,7 +873,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
                             return;
                         }
 
-                        ModHeaderIcon = new BitmapImage(new Uri(url));
+                        ModHeaderIcon = new BitmapImage(resolvedUri);
                     });
                     return;
                 }
@@ -882,7 +887,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
                         return;
                     }
 
-                    ModHeaderIcon = imageSource ?? new BitmapImage(new Uri("ms-appx:///Assets/Placeholder.png"));
+                    ModHeaderIcon = imageSource ?? new BitmapImage(PlaceholderModIconUri);
                 });
             }
             catch (Exception ex)

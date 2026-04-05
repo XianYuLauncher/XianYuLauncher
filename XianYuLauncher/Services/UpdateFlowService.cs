@@ -1,15 +1,17 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using Windows.ApplicationModel;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Features.Dialogs.Contracts;
 
 namespace XianYuLauncher.Services;
 
 public class UpdateFlowService : IUpdateFlowService
 {
+    private const string MicrosoftStorePublisherFragment = "CN=477122EB-593B-4C14-AA43-AD408DEE1452";
+
     private readonly ILogger<UpdateFlowService> _logger;
     private readonly UpdateService _updateService;
     private readonly ICommonDialogService _dialogService;
@@ -39,9 +41,7 @@ public class UpdateFlowService : IUpdateFlowService
                 return new UpdateFlowResult { Success = true, HasUpdate = false };
             }
 
-            var packageVersion = Package.Current.Id.Version;
-            var currentVersion = new Version(packageVersion.Major, packageVersion.Minor, packageVersion.Build, packageVersion.Revision);
-            _updateService.SetCurrentVersion(currentVersion);
+            _updateService.SetCurrentVersion(AppEnvironment.ApplicationVersion);
 
             UpdateInfo? updateInfo = isDevChannel
                 ? await _updateService.CheckForDevUpdateAsync()
@@ -98,16 +98,8 @@ public class UpdateFlowService : IUpdateFlowService
 
     private static bool IsInstalledFromMicrosoftStore()
     {
-        try
-        {
-            var package = Package.Current;
-            var publisherId = package.Id.Publisher;
-            return publisherId.Contains("CN=477122EB-593B-4C14-AA43-AD408DEE1452", StringComparison.OrdinalIgnoreCase);
-        }
-        catch
-        {
-            return false;
-        }
+        return AppEnvironment.HasPackageIdentity
+            && AppEnvironment.ApplicationPublisher.Contains(MicrosoftStorePublisherFragment, StringComparison.OrdinalIgnoreCase);
     }
 
     private async Task<bool> ShowUpdateInstallFlowAsync(UpdateInfo updateInfo, string primaryButtonText, string title)
