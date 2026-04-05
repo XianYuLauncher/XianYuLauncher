@@ -24,7 +24,7 @@
         <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToBoolConverter" />
         <helpers:GarbageCollectorModeDisplayConverter x:Key="GarbageCollectorModeDisplayConverter" />
     </Page.Resources>
-    <Grid x:Name="ContentArea" Padding="20">
+    <Grid x:Name="ContentArea" Padding="{StaticResource PageContentPadding}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />

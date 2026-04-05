@@ -13,7 +13,7 @@
             <helpers:StringEqualsConverter x:Key="StringEqualsConverter" />
         </Page.Resources>
 
-    <Grid x:Name="ContentArea" Padding="20" DataContext="{x:Bind ViewModel}">
+    <Grid x:Name="ContentArea" Padding="{StaticResource PageContentPadding}" DataContext="{x:Bind ViewModel}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />

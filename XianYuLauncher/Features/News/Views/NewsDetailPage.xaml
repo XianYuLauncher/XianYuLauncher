@@ -14,7 +14,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid Grid.Row="0" Padding="40,36,40,0" HorizontalAlignment="Stretch">
+        <Grid Grid.Row="0" Padding="{StaticResource PageHeaderPadding}" HorizontalAlignment="Stretch">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="100*" MaxWidth="1064" />
@@ -59,7 +59,7 @@
 
         <ScrollViewer
             Grid.Row="1"
-            Padding="40,24,40,24"
+            Padding="{StaticResource PageDetailScrollViewerPadding}"
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Auto">
             <Grid HorizontalAlignment="Stretch">

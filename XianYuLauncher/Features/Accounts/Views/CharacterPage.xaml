@@ -45,7 +45,7 @@
         </Style>
     </Page.Resources>
 
-    <Grid x:Name="ContentArea" Padding="24,48,24,24" DataContext="{x:Bind ViewModel}">
+    <Grid x:Name="ContentArea" Padding="{StaticResource PageContentPadding}" DataContext="{x:Bind ViewModel}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />

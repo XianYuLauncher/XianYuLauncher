@@ -13,7 +13,7 @@
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
     mc:Ignorable="d">
 
-    <Grid x:Name="ContentArea" Padding="40,60,40,20" AllowDrop="True" DragEnter="ContentArea_DragEnter" DragOver="ContentArea_DragOver" DragLeave="ContentArea_DragLeave" Drop="ContentArea_Drop">
+    <Grid x:Name="ContentArea" Padding="{StaticResource PageContentPadding}" AllowDrop="True" DragEnter="ContentArea_DragEnter" DragOver="ContentArea_DragOver" DragLeave="ContentArea_DragLeave" Drop="ContentArea_Drop">
         <Grid.Resources>
         
         <!-- 文本样式 -->

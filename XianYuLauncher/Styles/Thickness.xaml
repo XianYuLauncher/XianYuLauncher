@@ -23,6 +23,12 @@
     <Thickness x:Key="XXSmallTopMargin">0,4,0,0</Thickness>
     <Thickness x:Key="XXSmallLeftTopRightBottomMargin">4,4,4,4</Thickness>
 
+    <Thickness x:Key="PageContentPadding">24,48,24,24</Thickness>
+    <Thickness x:Key="PageHeaderPadding">24,48,24,0</Thickness>
+    <Thickness x:Key="PageScrollViewerPadding">24,0,24,24</Thickness>
+    <Thickness x:Key="PageDetailScrollViewerPadding">24,24,24,24</Thickness>
+    <Thickness x:Key="WindowPageContentPadding">24</Thickness>
+
     <Thickness x:Key="NavigationViewContentGridBorderThickness">1,1,0,0</Thickness>
     <CornerRadius x:Key="NavigationViewContentGridCornerRadius">8,0,0,0</CornerRadius>
     <Thickness x:Key="NavigationViewContentMargin">0,48,0,0</Thickness>

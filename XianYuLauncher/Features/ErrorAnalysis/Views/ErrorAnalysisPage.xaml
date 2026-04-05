@@ -9,7 +9,7 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     mc:Ignorable="d">
     
-        <Grid Background="Transparent" Padding="40,36,40,24">
+        <Grid Background="Transparent" Padding="{StaticResource PageContentPadding}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="100*" MaxWidth="1064" />
