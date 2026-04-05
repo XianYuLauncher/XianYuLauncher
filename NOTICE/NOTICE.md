@@ -66,12 +66,6 @@
 - 项目地址：https://github.com/microsoft/windowsappsdk
 - 归档位置：`NOTICE/license/Microsoft.WindowsAppSDK/`
 
-### Microsoft.Xaml.Behaviors.WinUI.Managed
-- 版权声明：Copyright (c) Microsoft Corporation
-- 许可证：MIT License
-- 项目地址：https://github.com/microsoft/XamlBehaviors
-- 归档位置：`NOTICE/license/Microsoft.Xaml.Behaviors.WinUI.Managed/`
-
 ### Serilog
 - 版权声明：Copyright (c) Serilog Contributors
 - 许可证：Apache License 2.0
