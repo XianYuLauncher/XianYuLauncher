@@ -55,7 +55,7 @@
         <helpers:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
     </Page.Resources>
 
-    <Grid x:Name="ContentArea" Padding="20">
+    <Grid x:Name="ContentArea" Padding="{StaticResource PageContentPadding}">
         <!-- 限制最大宽度，避免最大化时内容被拉得过宽，宽窗口时内容居中显示 -->
         <Grid MaxWidth="1064" HorizontalAlignment="Center" VerticalAlignment="Stretch">
             <Grid.RowDefinitions>

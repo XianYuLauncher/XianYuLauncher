@@ -25,7 +25,7 @@
         <ScrollViewer 
             VerticalScrollBarVisibility="Auto"
             HorizontalScrollBarVisibility="Disabled"
-            Padding="40,36,40,24">
+            Padding="{StaticResource PageContentPadding}">
             
             <!-- 不使用 RepositionThemeTransition，改为给每个需要平移动画的 child 单独加 Implicit OffsetAnimation。
                  这样进度条（不加 OffsetAnimation）在 Collapsed→Visible 时不会飞入，

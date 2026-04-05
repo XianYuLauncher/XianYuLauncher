@@ -41,7 +41,7 @@
         </Style>
     </Page.Resources>
 
-    <Grid Padding="24">
+    <Grid Padding="{StaticResource PageContentPadding}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />

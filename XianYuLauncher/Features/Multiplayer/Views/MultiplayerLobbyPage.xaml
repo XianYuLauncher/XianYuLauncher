@@ -9,7 +9,7 @@
 
 
 
-    <Grid x:Name="ContentArea" Padding="40,60,40,20">
+    <Grid x:Name="ContentArea" Padding="{StaticResource PageContentPadding}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="100*" MaxWidth="1064" />

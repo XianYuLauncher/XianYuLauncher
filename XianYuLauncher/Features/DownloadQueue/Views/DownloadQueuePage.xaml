@@ -205,7 +205,7 @@
         </Grid.RowDefinitions>
 
         <!-- 标题区域 -->
-        <Grid Grid.Row="0" HorizontalAlignment="Stretch" Padding="20,20,20,0">
+        <Grid Grid.Row="0" HorizontalAlignment="Stretch" Padding="{StaticResource PageHeaderPadding}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="100*" MaxWidth="1064" />
@@ -226,7 +226,7 @@
         </Grid>
 
         <!-- 主内容区 -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="20,0,20,20">
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="{StaticResource PageScrollViewerPadding}">
             <Grid HorizontalAlignment="Stretch">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

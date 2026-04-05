@@ -31,7 +31,7 @@
         </Style>
     </Page.Resources>
 
-    <Grid x:Name="ContentArea" Padding="24">
+    <Grid x:Name="ContentArea" Padding="{StaticResource PageContentPadding}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="100*" MaxWidth="1064" />

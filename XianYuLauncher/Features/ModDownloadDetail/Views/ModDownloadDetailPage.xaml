@@ -57,8 +57,13 @@
     </Page.Resources>
 
     <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
         <!-- 顶部导航栏 - 居中块(最大1064) + 块内居左 -->
-        <Grid Padding="0,16,0,0" HorizontalAlignment="Stretch">
+        <Grid Grid.Row="0" Padding="{StaticResource PageHeaderPadding}" HorizontalAlignment="Stretch">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="100*" MaxWidth="1064" />
@@ -69,21 +74,25 @@
                         Content="&lt; 返回" 
                         HorizontalAlignment="Left" 
                         VerticalAlignment="Top" 
-                        Margin="16,0,0,0" 
                         Click="BackButton_Click" 
                         Style="{StaticResource TextBlockButtonStyle}" />
             </Grid>
         </Grid>
         
         <!-- 主内容区 - ScrollViewer 全宽，滚动条贴页面右侧 -->
-        <ScrollViewer HorizontalScrollMode="Disabled" VerticalScrollMode="Enabled" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="0,48,0,0">
+        <ScrollViewer Grid.Row="1"
+                      HorizontalScrollMode="Disabled"
+                      VerticalScrollMode="Enabled"
+                      HorizontalScrollBarVisibility="Disabled"
+                      VerticalScrollBarVisibility="Auto"
+                      Padding="{StaticResource PageDetailScrollViewerPadding}">
             <Grid HorizontalAlignment="Stretch">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="100*" MaxWidth="1064" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="1" Spacing="16" Padding="16" HorizontalAlignment="Stretch">
+                <StackPanel Grid.Column="1" Spacing="16" HorizontalAlignment="Stretch">
                 <StackPanel.ChildrenTransitions>
                     <RepositionThemeTransition IsStaggeringEnabled="False" />
                 </StackPanel.ChildrenTransitions>
