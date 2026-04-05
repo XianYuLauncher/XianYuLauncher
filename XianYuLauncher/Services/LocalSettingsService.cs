@@ -335,19 +335,7 @@ public class LocalSettingsService : ILocalSettingsService
 
     private static string UnwrapStoredString(string rawValue)
     {
-        if (rawValue.Length < 2 || rawValue[0] != '"' || rawValue[^1] != '"')
-        {
-            return rawValue;
-        }
-
-        try
-        {
-            return JsonConvert.DeserializeObject<string>(rawValue) ?? string.Empty;
-        }
-        catch (JsonException)
-        {
-            return rawValue;
-        }
+        return LocalSettingsStoredStringCompatibilityHelper.UnwrapStoredString(rawValue);
     }
 
     private static bool TryParseStoredBool(string rawValue, out bool value)

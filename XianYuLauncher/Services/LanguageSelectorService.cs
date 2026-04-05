@@ -88,7 +88,7 @@ public class LanguageSelectorService : ILanguageSelectorService
             if (ApplicationData.Current.LocalSettings.Values.TryGetValue(SettingsKey, out var storedValue)
                 && storedValue is string msixLanguage)
             {
-                return msixLanguage;
+                return LocalSettingsStoredStringCompatibilityHelper.UnwrapStoredString(msixLanguage);
             }
 
             return null;
@@ -114,7 +114,10 @@ public class LanguageSelectorService : ILanguageSelectorService
             }
 
             var settingsObject = JObject.Parse(json);
-            return settingsObject[SettingsKey]?.ToString();
+            var rawLanguage = settingsObject[SettingsKey]?.ToString();
+            return rawLanguage is null
+                ? null
+                : LocalSettingsStoredStringCompatibilityHelper.UnwrapStoredString(rawLanguage);
         }
         catch
         {
