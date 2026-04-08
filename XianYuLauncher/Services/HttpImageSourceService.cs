@@ -18,8 +18,8 @@ namespace XianYuLauncher.Services;
 public sealed class HttpImageSourceService : IHttpImageSourceService
 {
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(15);
-    private static ReadOnlySpan<byte> Gif87aHeader => "GIF87a"u8;
-    private static ReadOnlySpan<byte> Gif89aHeader => "GIF89a"u8;
+    private static readonly byte[] Gif87aHeader = "GIF87a"u8.ToArray();
+    private static readonly byte[] Gif89aHeader = "GIF89a"u8.ToArray();
 
     /// <summary>单张图标允许的最大字节数（5 MB），防止超大文件导致 OOM。</summary>
     private const long MaxImageSizeBytes = 5 * 1024 * 1024;
@@ -143,7 +143,8 @@ public sealed class HttpImageSourceService : IHttpImageSourceService
             return true;
         }
 
-        return bytes.Length >= Gif87aHeader.Length
+        int headerLength = Math.Max(Gif87aHeader.Length, Gif89aHeader.Length);
+        return bytes.Length >= headerLength
             && (bytes[..Gif87aHeader.Length].SequenceEqual(Gif87aHeader)
                 || bytes[..Gif89aHeader.Length].SequenceEqual(Gif89aHeader));
     }
