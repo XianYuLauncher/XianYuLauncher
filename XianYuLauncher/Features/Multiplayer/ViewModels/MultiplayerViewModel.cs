@@ -12,6 +12,7 @@ using CommunityToolkit.Mvvm.Input;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
@@ -73,6 +74,23 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
         _terracottaService = terracottaService;
         _dialogService = dialogService;
         _progressDialogService = progressDialogService;
+    }
+
+    private static ProcessStartInfo CreateTerracottaProcessStartInfo(string terracottaDirectory, string terracottaPath, string tempFilePath)
+    {
+        return new ProcessStartInfo
+        {
+            FileName = "cmd.exe",
+            Arguments = TerracottaLaunchCommandHelper.BuildHmclStartupCommandArguments(
+                terracottaDirectory,
+                Path.GetFileName(terracottaPath),
+                tempFilePath),
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            WorkingDirectory = terracottaDirectory
+        };
     }
     
     /// <summary>
@@ -166,17 +184,8 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 // 启动联机服务，添加--hmcl参数
                 // 使用真实物理路径启动
                 string realExePath = Path.Combine(realTerracottaDir, Path.GetFileName(terracottaPath));
-                
-                var processStartInfo = new ProcessStartInfo
-                {
-                    FileName = "cmd.exe",
-                    Arguments = $"/c cd /d \"{realTerracottaDir}\" && \"{Path.GetFileName(terracottaPath)}\" --hmcl \"{tempFilePath}\"",
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    WorkingDirectory = realTerracottaDir
-                };
+
+                var processStartInfo = CreateTerracottaProcessStartInfo(realTerracottaDir, terracottaPath, tempFilePath);
                 
                 Log.Information($"[Multiplayer] 准备启动 Terracotta (通过CMD)");
                 Log.Information($"[Multiplayer] 真实可执行文件: {realExePath}");
@@ -718,20 +727,11 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     
                     // 保存临时文件路径，用于进程终止后清理
                     _tempFilePath = tempFilePath;
-                    
-                    // 启动联机服务，添加--hmcl参数（使用CMD启动，与HostGame相同）
-                    var processStartInfo = new ProcessStartInfo
-                    {
-                        FileName = "cmd.exe",
-                        Arguments = $"/c cd /d \"{realTerracottaDir}\" && \"{Path.GetFileName(terracottaPath)}\" --hmcl \"{tempFilePath}\" --client --id \"{roomId}\"",
-                        UseShellExecute = false,
-                        CreateNoWindow = true,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        WorkingDirectory = realTerracottaDir
-                    };
-                    
-                    Log.Information($"[Multiplayer-Join] 准备启动 Terracotta Client");
+
+                    // 加入房间时只启动本地 Terracotta 服务，房间号通过后续 HTTP 请求传递
+                    var processStartInfo = CreateTerracottaProcessStartInfo(realTerracottaDir, terracottaPath, tempFilePath);
+
+                    Log.Information($"[Multiplayer-Join] 准备启动 Terracotta 本地服务");
                     Log.Information($"[Multiplayer-Join] CMD命令: {processStartInfo.Arguments}");
                     
                     // 启动进程并保存引用
