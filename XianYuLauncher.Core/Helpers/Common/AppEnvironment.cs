@@ -5,6 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using Windows.ApplicationModel;
 using Windows.Storage;
+using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Helpers;
 
@@ -14,6 +15,7 @@ namespace XianYuLauncher.Core.Helpers;
 public static class AppEnvironment
 {
     private const int AppModelErrorNoPackage = 15700;
+    private const string MicrosoftStorePublisherFragment = "CN=477122EB-593B-4C14-AA43-AD408DEE1452";
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern int GetCurrentPackageFullName(ref int packageFullNameLength, StringBuilder? packageFullName);
@@ -21,9 +23,11 @@ public static class AppEnvironment
     private static bool? _hasPackageIdentity;
     private static string? _safeAppDataPath;
     private static Version? _applicationVersion;
+    private static string? _applicationDisplayVersion;
     private static string? _applicationIdentityName;
     private static string? _applicationPublisher;
     private static string? _applicationFamilyName;
+    private static DistributionChannel? _currentDistributionChannel;
 
     /// <summary>
     /// 检测当前是否运行在 MSIX 打包环境中
@@ -59,6 +63,11 @@ public static class AppEnvironment
     public static Version ApplicationVersion => _applicationVersion ??= ResolveApplicationVersion();
 
     /// <summary>
+    /// 当前应用显示版本。优先使用程序集 InformationalVersion，否则回退到数值版本。
+    /// </summary>
+    public static string ApplicationDisplayVersion => _applicationDisplayVersion ??= ResolveApplicationDisplayVersion();
+
+    /// <summary>
     /// 当前应用标识名。Packaged 使用包名，否则使用程序集名。
     /// </summary>
     public static string ApplicationIdentityName => _applicationIdentityName ??= ResolveApplicationIdentityName();
@@ -77,6 +86,11 @@ public static class AppEnvironment
     /// 当前是否为 Dev 构建。
     /// </summary>
     public static bool IsDevBuild => ApplicationIdentityName.EndsWith("Dev", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// 当前分发渠道。
+    /// </summary>
+    public static DistributionChannel CurrentDistributionChannel => _currentDistributionChannel ??= ResolveDistributionChannel();
 
     /// <summary>
     /// 获取安全的应用数据路径，外部进程可访问
@@ -238,6 +252,24 @@ public static class AppEnvironment
         return ResolveEntryAssembly().GetName().Name ?? "XianYuLauncher";
     }
 
+    private static string ResolveApplicationDisplayVersion()
+    {
+        var informationalVersion = ResolveEntryAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?
+            .InformationalVersion;
+
+        if (!string.IsNullOrWhiteSpace(informationalVersion))
+        {
+            var metadataSeparatorIndex = informationalVersion.IndexOf('+');
+            return metadataSeparatorIndex >= 0
+                ? informationalVersion[..metadataSeparatorIndex]
+                : informationalVersion;
+        }
+
+        var version = ApplicationVersion;
+        return $"{version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
+    }
+
     private static string ResolveApplicationPublisher()
     {
         if (HasPackageIdentity)
@@ -269,6 +301,19 @@ public static class AppEnvironment
         {
             return null;
         }
+    }
+
+    private static DistributionChannel ResolveDistributionChannel()
+    {
+        if (HasPackageIdentity &&
+            ApplicationPublisher.Contains(MicrosoftStorePublisherFragment, StringComparison.OrdinalIgnoreCase))
+        {
+            return DistributionChannel.Store;
+        }
+
+        return IsDevBuild
+            ? DistributionChannel.DevSideLoad
+            : DistributionChannel.SideLoad;
     }
 
     private static Assembly ResolveEntryAssembly()

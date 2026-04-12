@@ -26,9 +26,7 @@ public class AboutSettingsDomainService : IAboutSettingsDomainService
 
     public string GetVersionDescription()
     {
-        var version = AppEnvironment.ApplicationVersion;
-
-        return $"XianYu Launcher - {version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
+        return $"XianYu Launcher - {AppEnvironment.ApplicationDisplayVersion}";
     }
 
     public IReadOnlyList<AboutAcknowledgmentItem> GetDefaultAcknowledgments()

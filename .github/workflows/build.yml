@@ -39,9 +39,10 @@ jobs:
     with:
       upload_artifacts: false
 
-  package:
-    name: Package (${{ matrix.platform }})
+  store-package:
+    name: Store Packaged (${{ matrix.platform }})
     needs: validate
+    if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
     strategy:
       matrix:
         platform: [x86, x64, arm64]
@@ -125,10 +126,12 @@ jobs:
 
     # 4. 根据 Tag 判断通道并修改 Manifest (Dev/Stable)
     - name: Configure Channel
+      id: store_channel
       shell: powershell
       run: |
         .\scripts\ci\configure-build-channel.ps1 `
           -RefName "${{ github.ref_name }}" `
+          -UpdateManifest `
           -ManifestPath "XianYuLauncher/Package.appxmanifest"
 
     # 5. 还原包
@@ -142,7 +145,12 @@ jobs:
         msbuild ${{ env.Project_Path }} `
           /p:Configuration=${{ env.Configuration }} `
           /p:Platform=${{ env.Platform }} `
-          /p:DefineConstants="${{ env.Build_Constants }}" `
+          /p:Version=${{ steps.store_channel.outputs.package_version }} `
+          /p:AssemblyVersion=${{ steps.store_channel.outputs.package_version }} `
+          /p:FileVersion=${{ steps.store_channel.outputs.package_version }} `
+          /p:InformationalVersion=${{ steps.store_channel.outputs.display_version }} `
+          /p:IncludeSourceRevisionInInformationalVersion=false `
+          /p:DefineConstants="${{ steps.store_channel.outputs.build_constants }}" `
           /p:GenerateAppxPackageOnBuild=true `
           /p:UapAppxPackageBuildMode=SideloadOnly `
           /p:AppxBundle=Never `
@@ -160,7 +168,12 @@ jobs:
         msbuild ${{ env.Project_Path }} `
           /p:Configuration=${{ env.Configuration }} `
           /p:Platform=${{ env.Platform }} `
-          /p:DefineConstants="${{ env.Build_Constants }}" `
+          /p:Version=${{ steps.store_channel.outputs.package_version }} `
+          /p:AssemblyVersion=${{ steps.store_channel.outputs.package_version }} `
+          /p:FileVersion=${{ steps.store_channel.outputs.package_version }} `
+          /p:InformationalVersion=${{ steps.store_channel.outputs.display_version }} `
+          /p:IncludeSourceRevisionInInformationalVersion=false `
+          /p:DefineConstants="${{ steps.store_channel.outputs.build_constants }}" `
           /p:GenerateAppxPackageOnBuild=true `
           /p:UapAppxPackageBuildMode=StoreUpload `
           /p:AppxBundle=Never `
@@ -308,30 +321,15 @@ jobs:
         # 覆盖原始文件
         Copy-Item -Path $signedFile.FullName -Destination $originalMsix -Force
 
-    # 7. 重命名并打包 Zip (去除 _Test 后缀)
-    - name: Rename and Zip
-      shell: powershell
-      run: |
-        $sourceDir = "${{ github.workspace }}\AppPackages"
-        $dirs = Get-ChildItem -Path $sourceDir -Directory -Filter "*_Test"
-        
-        foreach ($dir in $dirs) {
-            # 新名称：去掉 _Test 后缀
-            $newName = $dir.Name -replace "_Test$", ""
-            $zipPath = Join-Path $sourceDir "$newName.zip"
-            
-            Write-Host "Zipping $($dir.FullName) to $zipPath"
-            
-            # 使用 Compress-Archive 打包目录内容
-            Compress-Archive -Path "$($dir.FullName)\*" -DestinationPath $zipPath -Force
-        }
-
-    # 8. 上传 Artifact (Zip文件)
-    - name: Upload Artifacts
+    # 7. 上传已签名 SideLoadOnly 包（仅供工作流留档，不参与 GitHub Release）
+    - name: Upload Store Packaged Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: Package-${{ matrix.platform }}
-        path: ${{ github.workspace }}\AppPackages\*.zip
+        name: StorePackaged-${{ matrix.platform }}
+        path: |
+          ${{ github.workspace }}\AppPackages\**\*.msix
+          ${{ github.workspace }}\AppPackages\**\*.appx
+        if-no-files-found: error
 
     # 9. 上传无签名 StoreUpload 包（仅稳定版，且不参与 GitHub Release）
     - name: Upload Store Unsigned Artifacts
@@ -342,12 +340,124 @@ jobs:
         path: ${{ github.workspace }}\AppPackagesStore\*.msixupload
         if-no-files-found: error
 
+  sideload-unpackaged:
+    name: SideLoad Unpackaged (${{ matrix.platform }})
+    needs: validate
+    strategy:
+      matrix:
+        include:
+          - platform: x64
+            runtime_identifier: win-x64
+
+    runs-on: windows-latest
+
+    env:
+      Solution_Name: XianYuLauncher.slnx
+      Project_Path: XianYuLauncher/XianYuLauncher.csproj
+      Platform: ${{ matrix.platform }}
+      Runtime_Identifier: ${{ matrix.runtime_identifier }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+
+    - name: Install .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+
+    - name: Prepare Application Config
+      shell: powershell
+      env:
+        AES_ENCRYPTION_KEY: ${{ secrets.AES_ENCRYPTION_KEY }}
+      run: |
+        $secretJson = '${{ secrets.APP_SECRETS_JSON }}'
+        if ([string]::IsNullOrWhiteSpace($secretJson)) {
+            Write-Warning "Configuration data not set"
+        }
+        New-Item -ItemType Directory -Force -Path XianYuLauncher | Out-Null
+        $secretJson | Out-File -FilePath XianYuLauncher/secrets.json -Encoding utf8
+        Write-Host "Configuration prepared"
+
+        .\scripts\prepare-config.ps1
+        Write-Host "Configuration ready"
+
+    - name: Generate Afdian Sponsors Manifest
+      shell: powershell
+      env:
+        AFDIAN_USER_ID: ${{ secrets.AFDIAN_USER_ID }}
+        AFDIAN_TOKEN: ${{ secrets.AFDIAN_TOKEN }}
+      run: |
+        .\scripts\generate-afdian-sponsors.ps1 -OutputPath "XianYuLauncher/Assets/Data/afdian-sponsors.json"
+
+    - name: Configure Channel
+      id: sideload_channel
+      shell: powershell
+      run: |
+        .\scripts\ci\configure-build-channel.ps1 `
+          -RefName "${{ github.ref_name }}"
+
+    - name: Restore
+      run: nuget restore ${{ env.Solution_Name }} -ConfigFile NuGet.config
+
+    - name: Publish Unpackaged
+      shell: powershell
+      run: |
+        $artifactBaseName = "XianYuLauncher-${{ steps.sideload_channel.outputs.display_version }}-${{ env.Runtime_Identifier }}"
+        $publishRoot = "$env:GITHUB_WORKSPACE\PublishOutput\$artifactBaseName"
+        $artifactRoot = "$env:GITHUB_WORKSPACE\Artifacts"
+
+        if (Test-Path $publishRoot) {
+            Remove-Item -Path $publishRoot -Recurse -Force
+        }
+
+        New-Item -ItemType Directory -Force -Path $publishRoot | Out-Null
+        New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
+
+        msbuild ${{ env.Project_Path }} `
+          -t:Publish `
+          -restore `
+          -p:PublishProfile=Release-Unpackaged `
+          -p:Platform=${{ env.Platform }} `
+          -p:RuntimeIdentifier=${{ env.Runtime_Identifier }} `
+          -p:Version=${{ steps.sideload_channel.outputs.package_version }} `
+          -p:AssemblyVersion=${{ steps.sideload_channel.outputs.package_version }} `
+          -p:FileVersion=${{ steps.sideload_channel.outputs.package_version }} `
+          -p:InformationalVersion=${{ steps.sideload_channel.outputs.display_version }} `
+          -p:IncludeSourceRevisionInInformationalVersion=false `
+          -p:DefineConstants="${{ steps.sideload_channel.outputs.build_constants }}" `
+          -p:PublishDir="$publishRoot\\" `
+          -p:GenerateAppInstallerFile=false
+
+        $zipPath = Join-Path $artifactRoot "$artifactBaseName.zip"
+        if (Test-Path $zipPath) {
+            Remove-Item -Path $zipPath -Force
+        }
+
+        Compress-Archive -Path "$publishRoot\*" -DestinationPath $zipPath -Force
+
+    - name: Upload SideLoad Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: SideLoadPackage-${{ steps.sideload_channel.outputs.channel }}-${{ matrix.platform }}
+        path: ${{ github.workspace }}\Artifacts\*.zip
+        if-no-files-found: error
+
   release:
     needs:
       - guard-dispatch
-      - package
+      - store-package
+      - sideload-unpackaged
     runs-on: ubuntu-latest
-    if: needs.guard-dispatch.outputs.publish_release == 'true'
+    if: ${{ always() && needs.guard-dispatch.outputs.publish_release == 'true' && needs.sideload-unpackaged.result == 'success' && (needs.store-package.result == 'success' || needs.store-package.result == 'skipped') }}
     permissions:
       contents: write
     
@@ -360,7 +470,7 @@ jobs:
     - name: Download Artifacts
       uses: actions/download-artifact@v4
       with:
-        pattern: Package-*
+        pattern: SideLoadPackage-*
         path: artifacts
         merge-multiple: true
         

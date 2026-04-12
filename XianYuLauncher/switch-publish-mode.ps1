@@ -1,3 +1,5 @@
+# 本脚本仅用于本地维护历史 Packaged/MSIX 分发配置。
+# CI/CD 主线已改为 Store 走 MSIX、SideLoad 走 Unpackaged Zip，不再调用本脚本。
 # 切换到商店模式: .\switch-publish-mode.ps1 -Mode Store
 # 切换到侧载模式: .\switch-publish-mode.ps1 -Mode Sideload
 
@@ -19,6 +21,7 @@ $sideloadPublisher = 'CN=XianYuLauncher'
 Write-Host "========================================"
 Write-Host "  切换发布模式: $Mode"
 Write-Host "========================================"
+Write-Warning '此脚本不再参与 SideLoad 主线发布，仅供维护历史 MSIX/AppInstaller 配置时使用。'
 
 $utf8 = [System.Text.Encoding]::UTF8
 

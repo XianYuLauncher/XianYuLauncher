@@ -130,3 +130,92 @@ jobs:
           name: validation-build-log
           path: artifacts/verify-app.binlog
           if-no-files-found: error
+
+  unpackaged-publish-smoke:
+    name: Unpackaged Publish Smoke
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: NuGet/setup-nuget@v2
+
+      - name: Install .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Configure Channel
+        id: sideload_channel
+        shell: pwsh
+        run: |
+          .\scripts\ci\configure-build-channel.ps1 `
+            -RefName "v0.0.0"
+
+      - name: Restore
+        shell: pwsh
+        run: |
+          nuget restore XianYuLauncher.slnx -ConfigFile NuGet.config
+
+      - name: Publish Unpackaged
+        shell: pwsh
+        run: |
+          $artifactDir = Join-Path $env:GITHUB_WORKSPACE "artifacts"
+          $publishDir = Join-Path $artifactDir "unpackaged-publish"
+
+          if (Test-Path $publishDir) {
+              Remove-Item -Path $publishDir -Recurse -Force
+          }
+
+            New-Item -ItemType Directory -Force -Path $artifactDir | Out-Null
+            New-Item -ItemType Directory -Force -Path $publishDir | Out-Null
+
+          msbuild XianYuLauncher/XianYuLauncher.csproj `
+            -t:Publish `
+            -restore `
+            -p:PublishProfile=Release-Unpackaged `
+            -p:Platform=x64 `
+            -p:RuntimeIdentifier=win-x64 `
+            -p:DefineConstants="${{ steps.sideload_channel.outputs.build_constants }}" `
+            -p:PublishDir="$publishDir\\" `
+            -bl:"$artifactDir\verify-unpackaged.binlog"
+
+          $requiredOutputs = @(
+              'XianYuLauncher.exe',
+              'resources.pri',
+              'Assets\WindowIcon.ico',
+              'Assets\Icons\Contributors\SpiritStudio.png',
+              'Assets\Libs\skinview3d.bundle.js'
+          )
+
+          foreach ($relativePath in $requiredOutputs) {
+              $fullPath = Join-Path $publishDir $relativePath
+              if (-not (Test-Path $fullPath)) {
+                  Write-Error "Missing unpackaged publish output: $relativePath"
+                  exit 1
+              }
+          }
+
+      - name: Upload unpackaged publish log
+        if: ${{ !cancelled() && github.event_name != 'workflow_call' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-unpackaged-build-log
+          path: artifacts/verify-unpackaged.binlog
+          if-no-files-found: error
+
+      - name: Upload unpackaged publish log (workflow_call)
+        if: ${{ !cancelled() && github.event_name == 'workflow_call' && inputs.upload_artifacts }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: validation-unpackaged-build-log
+          path: artifacts/verify-unpackaged.binlog
+          if-no-files-found: error
