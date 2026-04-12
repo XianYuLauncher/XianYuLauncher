@@ -20,6 +20,7 @@ using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using Windows.Storage.Streams;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
@@ -46,6 +47,11 @@ namespace XianYuLauncher.Features.Accounts.Views
         private readonly HttpClient _httpClient = new HttpClient();
         private const string AvatarCacheFolder = AppDataFileConsts.AvatarCacheFolder;
         private BitmapImage? _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
+
+        private static BitmapImage CreateDefaultAvatarBitmap()
+        {
+            return new BitmapImage(AppAssetResolver.ToUri(AppAssetResolver.DefaultAvatarAssetPath));
+        }
 
         public CharacterPage()
         {
@@ -208,7 +214,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 else
                 {
                     Debug.WriteLine($"[角色Page] 获取处理后的Steve头像失败");
-                    UpdateAvatarInList(profile, new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png")), profileIndex);
+                    UpdateAvatarInList(profile, CreateDefaultAvatarBitmap(), profileIndex);
                 }
                 return;
             }
@@ -242,7 +248,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 Debug.WriteLine($"[角色Page] 加载角色 {profile.Name} (索引: {profileIndex}) 头像失败: {ex.Message}");
                 Debug.WriteLine($"[角色Page] 异常堆栈: {ex.StackTrace}");
                 // 加载失败，使用默认头像
-                UpdateAvatarInList(profile, new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png")), profileIndex);
+                UpdateAvatarInList(profile, CreateDefaultAvatarBitmap(), profileIndex);
                 // 后台尝试刷新
                 _ = RefreshAvatarInBackgroundAsync(profile, profileIndex);
             }
@@ -255,10 +261,10 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                var cacheFolder = await ApplicationData.Current.LocalFolder.CreateFolderAsync(AvatarCacheFolder, CreationCollisionOption.OpenIfExists);
-                var avatarFile = await cacheFolder.TryGetItemAsync($"{uuid}.png") as StorageFile;
-                if (avatarFile != null)
+                var avatarFilePath = Path.Combine(AppEnvironment.EnsureAppDataDirectory(AvatarCacheFolder), $"{uuid}.png");
+                if (File.Exists(avatarFilePath))
                 {
+                    var avatarFile = await StorageFile.GetFileFromPathAsync(avatarFilePath);
                     using (var stream = await avatarFile.OpenReadAsync())
                     {
                         var bitmap = new BitmapImage();
@@ -307,7 +313,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                     {
                         // 处理失败，使用原始史蒂夫头像
                         Debug.WriteLine($"[角色Page] 临时生成处理过的史蒂夫头像失败，使用原始史蒂夫头像");
-                        UpdateAvatarInList(profile, new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png")), profileIndex);
+                        UpdateAvatarInList(profile, CreateDefaultAvatarBitmap(), profileIndex);
                     }
                 }
                 
@@ -342,14 +348,14 @@ namespace XianYuLauncher.Features.Accounts.Views
                 else
                 {
                     Debug.WriteLine($"[角色Page] 获取角色 {profile.Name} 的头像失败，使用默认头像");
-                    UpdateAvatarInList(profile, new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png")), profileIndex);
+                    UpdateAvatarInList(profile, CreateDefaultAvatarBitmap(), profileIndex);
                 }
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[角色Page] 从网络加载角色 {profile.Name} (索引: {profileIndex}) 头像失败: {ex.Message}");
                 Debug.WriteLine($"[角色Page] 异常堆栈: {ex.StackTrace}");
-                UpdateAvatarInList(profile, new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png")), profileIndex);
+                UpdateAvatarInList(profile, CreateDefaultAvatarBitmap(), profileIndex);
             }
         }
         
@@ -508,13 +514,13 @@ namespace XianYuLauncher.Features.Accounts.Views
                     return steveAvatar;
                 }
                 // 如果处理过的Steve头像也获取失败，使用原始史蒂夫头像
-                return new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+                return CreateDefaultAvatarBitmap();
             }
             catch (Exception ex)
             {
                 Debug.WriteLine($"[角色Page] 获取默认史蒂夫头像异常: {ex.Message}");
                 // 最终回退到默认头像
-                return new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png"));
+                return CreateDefaultAvatarBitmap();
             }
         }
         
@@ -532,15 +538,14 @@ namespace XianYuLauncher.Features.Accounts.Views
                 // 1. 创建CanvasDevice
                 var device = CanvasDevice.GetSharedDevice();
                 CanvasBitmap canvasBitmap;
-                
-                var skinUri = new Uri(skinUrl);
-                
+
                 // 2. 加载皮肤图片
-                if (skinUri.Scheme == "ms-appx")
+                if (AppAssetResolver.IsAppAssetPath(skinUrl)
+                    || (Uri.TryCreate(skinUrl, UriKind.Absolute, out var localUri) && localUri.IsFile)
+                    || Path.IsPathRooted(skinUrl))
                 {
-                    Debug.WriteLine($"[角色Page] 从应用包加载皮肤资源: {skinUrl}");
-                    // 从应用包中加载资源，使用StorageFile方式更可靠
-                    var file = await StorageFile.GetFileFromApplicationUriAsync(skinUri);
+                    Debug.WriteLine($"[角色Page] 从本地资源加载皮肤: {skinUrl}");
+                    var file = await AppAssetResolver.GetStorageFileAsync(skinUrl);
                     using (var stream = await file.OpenReadAsync())
                     {
                         canvasBitmap = await CanvasBitmap.LoadAsync(device, stream);
@@ -585,52 +590,9 @@ namespace XianYuLauncher.Features.Accounts.Views
             try
             {
                 Debug.WriteLine("[角色Page] 开始处理史蒂夫头像");
-                // 1. 创建CanvasDevice
-                var device = CanvasDevice.GetSharedDevice();
-                
-                // 2. 加载史蒂夫头像图片
-                var steveUri = new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png");
-                Debug.WriteLine($"[角色Page] 加载史蒂夫头像资源: {steveUri}");
-                var file = await StorageFile.GetFileFromApplicationUriAsync(steveUri);
-                CanvasBitmap canvasBitmap;
-                
-                using (var stream = await file.OpenReadAsync())
-                {
-                    canvasBitmap = await CanvasBitmap.LoadAsync(device, stream);
-                }
-                
-                Debug.WriteLine($"[角色Page] 成功加载史蒂夫头像图片，大小: {canvasBitmap.Size.Width}x{canvasBitmap.Size.Height}");
-                
-                // 3. 创建CanvasRenderTarget用于处理，使用合适的分辨率
-                var renderTarget = new CanvasRenderTarget(
-                    device,
-                    48, // 显示宽度
-                    48, // 显示高度
-                    96 // DPI
-                );
-                
-                // 4. 执行处理，使用最近邻插值保持像素锐利
-                using (var ds = renderTarget.CreateDrawingSession())
-                {
-                    // 绘制整个史蒂夫头像，并使用最近邻插值确保清晰
-                    PixelArtRenderHelper.DrawNearestNeighbor(
-                        ds,
-                        canvasBitmap,
-                        new Windows.Foundation.Rect(0, 0, 48, 48), // 目标位置和大小
-                        new Windows.Foundation.Rect(0, 0, canvasBitmap.Size.Width, canvasBitmap.Size.Height)); // 源位置和大小
-                }
-                
-                // 5. 转换为BitmapImage
-                using (var outputStream = new InMemoryRandomAccessStream())
-                {
-                    await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
-                    outputStream.Seek(0);
-                    
-                    var bitmapImage = new BitmapImage();
-                    await bitmapImage.SetSourceAsync(outputStream);
-                    Debug.WriteLine("[角色Page] 成功创建处理后的史蒂夫头像BitmapImage");
-                    return bitmapImage;
-                }
+                var bitmapImage = await ProfileAvatarImageHelper.CreateDefaultProfileAvatarAsync(48);
+                Debug.WriteLine("[角色Page] 成功创建处理后的史蒂夫头像BitmapImage");
+                return bitmapImage;
             }
             catch (Exception ex)
             {
@@ -1708,7 +1670,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 if (string.IsNullOrEmpty(authServer))
                 {
                     Log.Warning("[Avatar.CharacterPage] 外置角色 AuthServer 为空，角色: {Name}", profile.Name);
-                    return new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+                    return CreateDefaultAvatarBitmap();
                 }
                 // 确保认证服务器URL以/结尾
                 if (!authServer.EndsWith("/"))
@@ -1724,7 +1686,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             catch (Exception ex)
             {
                 Log.Error(ex, "[Avatar.CharacterPage] 加载外置角色头像异常，角色: {Name}, AuthServer: {AuthServer}", profile.Name, profile.AuthServer ?? "(null)");
-                return new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+                return CreateDefaultAvatarBitmap();
             }
         }
 

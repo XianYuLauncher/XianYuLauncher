@@ -27,6 +27,8 @@ namespace XianYuLauncher.Features.Launch.Views;
 
 public sealed partial class LaunchPage : Page
 {
+    private static readonly Uri DefaultAvatarUri = AppAssetResolver.ToUri(AppAssetResolver.DefaultAvatarAssetPath);
+
     public LaunchViewModel ViewModel
     {
         get;
@@ -34,7 +36,6 @@ public sealed partial class LaunchPage : Page
 
     private readonly HttpClient _httpClient = new HttpClient();
     private readonly IUiDispatcher _uiDispatcher;
-    private const string DefaultAvatarPath = "ms-appx:///Assets/Icons/Avatars/Steve.png";
     private const string AvatarCacheFolder = AppDataFileConsts.AvatarCacheFolder;
     private readonly INavigationService _navigationService;
     private BitmapImage? _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
@@ -358,7 +359,7 @@ public sealed partial class LaunchPage : Page
             else
             {
                 // 如果预加载的头像还没准备好，先显示原始头像，然后异步处理
-                ProfileAvatar.Source = new BitmapImage(new Uri(DefaultAvatarPath));
+                ProfileAvatar.Source = new BitmapImage(DefaultAvatarUri);
                 var steveAvatar = await ProcessSteveAvatarAsync();
                 if (steveAvatar != null)
                 {
@@ -379,7 +380,7 @@ public sealed partial class LaunchPage : Page
             else
             {
                 // 先显示原始Steve头像
-                ProfileAvatar.Source = new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+                ProfileAvatar.Source = new BitmapImage(DefaultAvatarUri);
                 
                 // 异步处理Steve头像，确保清晰显示
                 var steveAvatar = await ProcessSteveAvatarAsync();
@@ -418,7 +419,7 @@ public sealed partial class LaunchPage : Page
             // 加载失败，使用默认头像
             if (ProfileAvatar != null)
             {
-                ProfileAvatar.Source = new BitmapImage(new Uri(DefaultAvatarPath));
+                ProfileAvatar.Source = new BitmapImage(DefaultAvatarUri);
             }
             
             // 后台尝试刷新
@@ -463,7 +464,7 @@ public sealed partial class LaunchPage : Page
                 else
                 {
                     // 处理失败，使用原始史蒂夫头像
-                    ProfileAvatar.Source = new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+                    ProfileAvatar.Source = new BitmapImage(DefaultAvatarUri);
                 }
             }
             
@@ -489,14 +490,14 @@ public sealed partial class LaunchPage : Page
             }
             else
             {
-                ProfileAvatar.Source = new BitmapImage(new Uri(DefaultAvatarPath));
+                ProfileAvatar.Source = new BitmapImage(DefaultAvatarUri);
             }
         }
         catch (Exception)
         {
             if (ProfileAvatar != null)
             {
-                ProfileAvatar.Source = new BitmapImage(new Uri(DefaultAvatarPath));
+                ProfileAvatar.Source = new BitmapImage(DefaultAvatarUri);
             }
         }
     }
@@ -550,10 +551,10 @@ public sealed partial class LaunchPage : Page
     {
         try
         {
-            var cacheFolder = await ApplicationData.Current.LocalFolder.CreateFolderAsync(AvatarCacheFolder, CreationCollisionOption.OpenIfExists);
-            var avatarFile = await cacheFolder.TryGetItemAsync($"{uuid}.png") as StorageFile;
-            if (avatarFile != null)
+            var avatarFilePath = Path.Combine(AppEnvironment.EnsureAppDataDirectory(AvatarCacheFolder), $"{uuid}.png");
+            if (File.Exists(avatarFilePath))
             {
+                var avatarFile = await StorageFile.GetFileFromPathAsync(avatarFilePath);
                 using (var stream = await avatarFile.OpenReadAsync())
                 {
                     var bitmap = new BitmapImage();
@@ -663,14 +664,13 @@ public sealed partial class LaunchPage : Page
             // 1. 创建CanvasDevice
             var device = CanvasDevice.GetSharedDevice();
             CanvasBitmap canvasBitmap;
-            
-            var skinUri = new Uri(skinUrl);
-            
+
             // 2. 加载皮肤图片
-            if (skinUri.Scheme == "ms-appx")
+            if (AppAssetResolver.IsAppAssetPath(skinUrl)
+                || (Uri.TryCreate(skinUrl, UriKind.Absolute, out var localUri) && localUri.IsFile)
+                || Path.IsPathRooted(skinUrl))
             {
-                // 从应用包中加载资源，使用StorageFile方式更可靠
-                var file = await StorageFile.GetFileFromApplicationUriAsync(skinUri);
+                var file = await AppAssetResolver.GetStorageFileAsync(skinUrl);
                 using (var stream = await file.OpenReadAsync())
                 {
                     canvasBitmap = await CanvasBitmap.LoadAsync(device, stream);
@@ -714,8 +714,7 @@ public sealed partial class LaunchPage : Page
             var device = CanvasDevice.GetSharedDevice();
             
             // 2. 加载史蒂夫头像图片
-            var steveUri = new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png");
-            var file = await StorageFile.GetFileFromApplicationUriAsync(steveUri);
+            var file = await AppAssetResolver.GetStorageFileAsync(AppAssetResolver.DefaultAvatarAssetPath);
             CanvasBitmap canvasBitmap;
             
             using (var stream = await file.OpenReadAsync())
@@ -756,7 +755,7 @@ public sealed partial class LaunchPage : Page
         catch (Exception)
         {
             // 处理失败时回退到原始史蒂夫头像，避免调用方继续处理 null。
-            return new BitmapImage(new Uri(DefaultAvatarPath));
+            return new BitmapImage(DefaultAvatarUri);
         }
     }
 }

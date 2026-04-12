@@ -1,24 +1,25 @@
 using System.IO;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Models;
 
 namespace XianYuLauncher.Services;
 
 public sealed class ModLoaderIconPresentationService : IModLoaderIconPresentationService
 {
-    public string DefaultVersionIconPath => "ms-appx:///Assets/Icons/Download_Options/Vanilla/icon_128x128.png";
+    public string DefaultVersionIconPath => AppAssetResolver.ToUriString(AppAssetResolver.DefaultVersionIconAssetPath);
     private readonly object _builtInIconsLock = new();
     private IReadOnlyList<VersionIconOption>? _builtInIcons;
 
     private static readonly Dictionary<string, string> LoaderIconFallbackMap = new(StringComparer.OrdinalIgnoreCase)
     {
-        ["forge"] = "ms-appx:///Assets/Icons/Download_Options/Forge/MinecraftForge_Icon.jpg",
-        ["fabric"] = "ms-appx:///Assets/Icons/Download_Options/Fabric/fabric_Icon.png",
-        ["neoforge"] = "ms-appx:///Assets/Icons/Download_Options/NeoForge/NeoForge_Icon.png",
-        ["optifine"] = "ms-appx:///Assets/Icons/Download_Options/Optifine/Optifine.ico",
-        ["quilt"] = "ms-appx:///Assets/Icons/Download_Options/Quilt/Quilt.png",
-        ["legacyfabric"] = "ms-appx:///Assets/Icons/Download_Options/Legacy-Fabric/Legacy-Fabric.png",
-        ["cleanroom"] = "ms-appx:///Assets/Icons/Download_Options/Cleanroom/Cleanroom.png"
+        ["forge"] = AppAssetResolver.ForgeIconAssetPath,
+        ["fabric"] = AppAssetResolver.FabricIconAssetPath,
+        ["neoforge"] = AppAssetResolver.NeoForgeIconAssetPath,
+        ["optifine"] = AppAssetResolver.OptifineIconAssetPath,
+        ["quilt"] = AppAssetResolver.QuiltIconAssetPath,
+        ["legacyfabric"] = AppAssetResolver.LegacyFabricIconAssetPath,
+        ["cleanroom"] = AppAssetResolver.CleanroomIconAssetPath
     };
 
     public IReadOnlyList<VersionIconOption> LoadBuiltInIcons()
@@ -35,39 +36,39 @@ public sealed class ModLoaderIconPresentationService : IModLoaderIconPresentatio
                 return _builtInIcons;
             }
 
-        var result = new List<VersionIconOption>();
-        var baseDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "Icons", "Download_Options");
+            var result = new List<VersionIconOption>();
+            var baseDirectory = Path.Combine(AppContext.BaseDirectory, "Assets", "Icons", "Download_Options");
 
-        if (!Directory.Exists(baseDirectory))
-        {
-            _builtInIcons = result.AsReadOnly();
-            return _builtInIcons;
-        }
-
-        var iconFiles = Directory
-            .GetFiles(baseDirectory, "*.*", SearchOption.AllDirectories)
-            .Where(path => path.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
-                || path.EndsWith(".ico", StringComparison.OrdinalIgnoreCase)
-                || path.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
-                || path.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))
-            .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-
-        foreach (var file in iconFiles)
-        {
-            var relativeFromAssets = Path.GetRelativePath(
-                Path.Combine(AppContext.BaseDirectory, "Assets"),
-                file).Replace("\\", "/");
-
-            var fileNameWithoutExt = Path.GetFileNameWithoutExtension(file);
-            var parentFolderName = Directory.GetParent(file)?.Name ?? string.Empty;
-
-            result.Add(new VersionIconOption
+            if (!Directory.Exists(baseDirectory))
             {
-                DisplayName = BuildIconDisplayName(fileNameWithoutExt, parentFolderName),
-                IconPath = $"ms-appx:///Assets/{relativeFromAssets}"
-            });
-        }
+                _builtInIcons = result.AsReadOnly();
+                return _builtInIcons;
+            }
+
+            var iconFiles = Directory
+                .GetFiles(baseDirectory, "*.*", SearchOption.AllDirectories)
+                .Where(path => path.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+                    || path.EndsWith(".ico", StringComparison.OrdinalIgnoreCase)
+                    || path.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase)
+                    || path.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))
+                .OrderBy(path => path, StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            foreach (var file in iconFiles)
+            {
+                var relativeFromAssets = Path.GetRelativePath(
+                    Path.Combine(AppContext.BaseDirectory, "Assets"),
+                    file).Replace("\\", "/");
+
+                var fileNameWithoutExt = Path.GetFileNameWithoutExtension(file);
+                var parentFolderName = Directory.GetParent(file)?.Name ?? string.Empty;
+
+                result.Add(new VersionIconOption
+                {
+                    DisplayName = BuildIconDisplayName(fileNameWithoutExt, parentFolderName),
+                    IconPath = AppAssetResolver.ToUriString($"Assets/{relativeFromAssets}")
+                });
+            }
 
             _builtInIcons = result.AsReadOnly();
             return _builtInIcons;
@@ -132,7 +133,7 @@ public sealed class ModLoaderIconPresentationService : IModLoaderIconPresentatio
 
         if (LoaderIconFallbackMap.TryGetValue(normalizedLoaderName, out var fallbackPath))
         {
-            return fallbackPath;
+            return AppAssetResolver.ToUriString(fallbackPath);
         }
 
         return DefaultVersionIconPath;

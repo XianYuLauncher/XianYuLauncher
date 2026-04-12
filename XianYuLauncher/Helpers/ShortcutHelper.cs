@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Helpers
 {
@@ -31,8 +32,7 @@ namespace XianYuLauncher.Helpers
             {
                 try
                 {
-                    string installedLoc = Windows.ApplicationModel.Package.Current.InstalledLocation.Path;
-                    string assetIcon = Path.Combine(installedLoc, "Assets", "WindowIcon.ico");
+                    string assetIcon = AppAssetResolver.ToAbsolutePath(AppAssetResolver.WindowIconAssetPath);
                     if (File.Exists(assetIcon))
                     {
                         File.Copy(assetIcon, iconPath, true);

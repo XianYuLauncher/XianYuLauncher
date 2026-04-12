@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using Windows.ApplicationModel.DataTransfer;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
@@ -261,7 +262,7 @@ public sealed partial class WorldManagementPage : Page
         }
         catch
         {
-            avatar = new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+            avatar = new BitmapImage(AppAssetResolver.ToUri(AppAssetResolver.DefaultAvatarAssetPath));
         }
 
         var items = new ObservableCollection<ProfileSelectionItem>();

@@ -68,6 +68,7 @@ public sealed partial class ShellPage : Page
         
         // 设置材质应用委托（UI层实现）
         _materialService.ApplyMaterialAction = ApplyMaterialToWindowImpl;
+        Log.Information("[Material.Shell] ApplyMaterialAction assigned in ShellPage constructor.");
         
         // 初始化时加载背景设置
         LoadBackgroundAsync();
@@ -258,10 +259,15 @@ public sealed partial class ShellPage : Page
     /// </summary>
     private void ApplyMaterialToWindowImpl(object windowObj, MaterialType materialType)
     {
-        if (windowObj is not Window window) return;
+        if (windowObj is not Window window)
+        {
+            Log.Warning("[Material.Shell] ApplyMaterialToWindowImpl received unsupported window object. ObjectType={ObjectType}; MaterialType={MaterialType}", windowObj?.GetType().FullName, materialType);
+            return;
+        }
         
         try
         {
+            Log.Information("[Material.Shell] ApplyMaterialToWindowImpl begin. WindowType={WindowType}; RequestedMaterial={MaterialType}; BeforeBackdrop={BeforeBackdrop}", window.GetType().FullName, materialType, DescribeBackdrop(window.SystemBackdrop));
             switch (materialType)
             {
                 case MaterialType.Mica:
@@ -284,9 +290,12 @@ public sealed partial class ShellPage : Page
                     window.SystemBackdrop = null;
                     break;
             }
+
+            Log.Information("[Material.Shell] ApplyMaterialToWindowImpl end. WindowType={WindowType}; RequestedMaterial={MaterialType}; AfterBackdrop={AfterBackdrop}", window.GetType().FullName, materialType, DescribeBackdrop(window.SystemBackdrop));
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "[Material.Shell] ApplyMaterialToWindowImpl failed. WindowType={WindowType}; RequestedMaterial={MaterialType}", window.GetType().FullName, materialType);
             System.Diagnostics.Debug.WriteLine($"应用窗口材质失败: {ex.Message}");
         }
     }
@@ -299,13 +308,23 @@ public sealed partial class ShellPage : Page
         try
         {
             var materialType = await _materialService.LoadMaterialTypeAsync();
+            Log.Information("[Material.Shell] LoadBackgroundAsync loaded material. MaterialType={MaterialType}", materialType);
+
+            if (App.MainWindow is Window window)
+            {
+                Log.Information("[Material.Shell] Reapplying persisted material after ApplyMaterialAction registration. MaterialType={MaterialType}; CurrentBackdrop={CurrentBackdrop}", materialType, DescribeBackdrop(window.SystemBackdrop));
+                _materialService.ApplyMaterialToWindow(window, materialType);
+            }
+
             if (materialType == MaterialType.CustomBackground)
             {
                 var backgroundPath = await _materialService.LoadBackgroundImagePathAsync();
+                Log.Information("[Material.Shell] LoadBackgroundAsync applying custom background. MaterialType={MaterialType}; BackgroundImagePath={BackgroundImagePath}", materialType, backgroundPath ?? string.Empty);
                 ApplyBackground(materialType, backgroundPath);
             }
             else
             {
+                Log.Information("[Material.Shell] LoadBackgroundAsync applying non-custom background. MaterialType={MaterialType}", materialType);
                 ApplyBackground(materialType, null);
             }
             
@@ -313,6 +332,7 @@ public sealed partial class ShellPage : Page
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "[Material.Shell] LoadBackgroundAsync failed.");
             System.Diagnostics.Debug.WriteLine($"加载背景设置失败: {ex.Message}");
         }
     }
@@ -342,6 +362,7 @@ public sealed partial class ShellPage : Page
 
     private void OnMotionSettingsChanged(object? sender, EventArgs e)
     {
+        Log.Information("[Material.Shell] MotionSettingsChanged event received.");
         _uiDispatcher.TryEnqueue(() => LoadMotionSettingsAsync());
     }
 
@@ -369,10 +390,16 @@ public sealed partial class ShellPage : Page
     /// </summary>
     private void OnBackgroundChanged(object? sender, BackgroundChangedEventArgs e)
     {
+        Log.Information("[Material.Shell] BackgroundChanged event received. MaterialType={MaterialType}; BackgroundImagePath={BackgroundImagePath}", e.MaterialType, e.BackgroundImagePath ?? string.Empty);
         _uiDispatcher.TryEnqueue(() =>
         {
             ApplyBackground(e.MaterialType, e.BackgroundImagePath);
         });
+    }
+
+    private static string DescribeBackdrop(Microsoft.UI.Xaml.Media.SystemBackdrop? backdrop)
+    {
+        return backdrop?.GetType().Name ?? "(null)";
     }
     
     /// <summary>

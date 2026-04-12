@@ -1,4 +1,3 @@
-using System.Reflection;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
@@ -27,28 +26,16 @@ public class AboutSettingsDomainService : IAboutSettingsDomainService
 
     public string GetVersionDescription()
     {
-        Version version;
-
-        if (RuntimeHelper.IsMSIX)
-        {
-            var packageVersion = Windows.ApplicationModel.Package.Current.Id.Version;
-            version = new(packageVersion.Major, packageVersion.Minor, packageVersion.Build, packageVersion.Revision);
-        }
-        else
-        {
-            version = Assembly.GetExecutingAssembly().GetName().Version!;
-        }
-
-        return $"XianYu Launcher - {version.Major}.{version.Minor}.{version.Build}.{version.Revision}";
+        return $"XianYu Launcher - {AppEnvironment.ApplicationDisplayVersion}";
     }
 
     public IReadOnlyList<AboutAcknowledgmentItem> GetDefaultAcknowledgments()
     {
         return new List<AboutAcknowledgmentItem>
         {
-            new() { Name = "XianYu", SupportInfo = "Settings_XianYuSupportText".GetLocalized(), Avatar = "ms-appx:///Assets/WindowIcon.ico" },
-            new() { Name = "bangbang93", SupportInfo = "Settings_BmclapiSupportText".GetLocalized(), Avatar = "ms-appx:///Assets/Icons/Contributors/bangbang93.jpg" },
-            new() { Name = "Settings_McModName".GetLocalized(), SupportInfo = "Settings_McModSupportText".GetLocalized(), Avatar = "ms-appx:///Assets/Icons/Contributors/mcmod.ico" }
+            new() { Name = "XianYu", SupportInfo = "Settings_XianYuSupportText".GetLocalized(), Avatar = AppAssetResolver.ToUriString(AppAssetResolver.WindowIconAssetPath) },
+            new() { Name = "bangbang93", SupportInfo = "Settings_BmclapiSupportText".GetLocalized(), Avatar = AppAssetResolver.ToUriString(AppAssetResolver.Bangbang93AvatarAssetPath) },
+            new() { Name = "Settings_McModName".GetLocalized(), SupportInfo = "Settings_McModSupportText".GetLocalized(), Avatar = AppAssetResolver.ToUriString(AppAssetResolver.McModAvatarAssetPath) }
         };
     }
 
@@ -70,7 +57,7 @@ public class AboutSettingsDomainService : IAboutSettingsDomainService
             Name = sponsor.Name,
             SupportInfo = $"累计赞助 ¥{sponsor.AllSumAmount}",
             Avatar = string.IsNullOrEmpty(sponsor.Avatar)
-                ? "ms-appx:///Assets/Icons/Avatars/Steve.png"
+                ? AppAssetResolver.ToUriString(AppAssetResolver.DefaultAvatarAssetPath)
                 : sponsor.Avatar
         }).ToList();
     }

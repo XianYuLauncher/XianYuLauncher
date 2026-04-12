@@ -7,6 +7,7 @@ using Windows.Storage;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Helpers;
+using Serilog;
 
 namespace XianYuLauncher;
 
@@ -116,16 +117,24 @@ public sealed partial class MainWindow : WindowEx
     {
         try
         {
+            Log.Information("[Material.MainWindow] Startup material apply begin. CurrentBackdrop={CurrentBackdrop}", DescribeBackdrop(SystemBackdrop));
             var materialService = App.GetService<MaterialService>();
             await materialService.LoadAndApplyMaterialAsync(this);
+            Log.Information("[Material.MainWindow] Startup material apply finished. CurrentBackdrop={CurrentBackdrop}", DescribeBackdrop(SystemBackdrop));
             
             // 同时加载字体设置
             await LoadFontSettingsAsync();
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "[Material.MainWindow] Startup material apply failed.");
             Console.WriteLine($"应用材质设置失败: {ex.Message}");
         }
+    }
+
+    private static string DescribeBackdrop(Microsoft.UI.Xaml.Media.SystemBackdrop? backdrop)
+    {
+        return backdrop?.GetType().Name ?? "(null)";
     }
     
     /// <summary>

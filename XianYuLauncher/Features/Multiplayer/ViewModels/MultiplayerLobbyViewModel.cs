@@ -17,6 +17,7 @@ using Windows.Storage;
 using Windows.Storage.Streams;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Helpers;
@@ -270,54 +271,12 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
     {
         try
         {
-            // 1. 创建CanvasDevice
-            var device = CanvasDevice.GetSharedDevice();
-            
-            // 2. 加载史蒂夫头像图片
-            var steveUri = new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png");
-            var file = await StorageFile.GetFileFromApplicationUriAsync(steveUri);
-            CanvasBitmap canvasBitmap;
-            
-            using (var stream = await file.OpenReadAsync())
-            {
-                canvasBitmap = await CanvasBitmap.LoadAsync(device, stream);
-            }
-
-            // 3. 创建CanvasRenderTarget用于处理，使用合适的分辨率
-            var renderTarget = new CanvasRenderTarget(
-                device,
-                24, // 显示宽度
-                24, // 显示高度
-                96 // DPI
-            );
-
-            // 4. 执行处理，使用最近邻插值保持像素锐利
-            using (var ds = renderTarget.CreateDrawingSession())
-            {
-                // 绘制整个史蒂夫头像，并使用最近邻插值确保清晰
-                PixelArtRenderHelper.DrawNearestNeighbor(
-                    ds,
-                    canvasBitmap,
-                    new Windows.Foundation.Rect(0, 0, 24, 24), // 目标位置和大小
-                    new Windows.Foundation.Rect(0, 0, canvasBitmap.Size.Width, canvasBitmap.Size.Height)); // 源位置和大小
-            }
-
-            // 5. 转换为BitmapImage
-            using (var outputStream = new InMemoryRandomAccessStream())
-            {
-                await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
-                outputStream.Seek(0);
-                
-                var bitmapImage = new BitmapImage();
-                await bitmapImage.SetSourceAsync(outputStream);
-                return bitmapImage;
-            }
+            return await ProfileAvatarImageHelper.CreateDefaultProfileAvatarAsync(24);
         }
         catch (Exception ex)
         {
             Log.Error(ex, $"处理默认头像失败: {ex.Message}");
-            // 失败时返回简单的BitmapImage
-            return new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+            return new BitmapImage(AppAssetResolver.ToUri(AppAssetResolver.DefaultAvatarAssetPath));
         }
     }
     

@@ -20,7 +20,7 @@ namespace XianYuLauncher.Core.Services;
 public class DownloadTaskManager : IDownloadTaskManager
 {
     private const string DownloadQueueMaxConcurrentTasksKey = "DownloadQueueMaxConcurrentTasks";
-    private const string PlaceholderIconSource = "ms-appx:///Assets/Placeholder.png";
+    private static readonly string PlaceholderIconSource = AppAssetResolver.ToUriString(AppAssetResolver.PlaceholderAssetPath);
     private const int DefaultMaxConcurrentTasks = 2;
     private const int MaxConcurrentTasksUpperBound = 8;
 
@@ -2022,9 +2022,14 @@ public class DownloadTaskManager : IDownloadTaskManager
         }
 
         var normalizedIconSource = iconSource.Trim();
-        if (string.Equals(normalizedIconSource, PlaceholderIconSource, StringComparison.OrdinalIgnoreCase))
+        if (IsPlaceholderIconSource(normalizedIconSource))
         {
             return null;
+        }
+
+        if (AppAssetResolver.IsAppAssetPath(normalizedIconSource))
+        {
+            return AppAssetResolver.ToUriString(normalizedIconSource);
         }
 
         if (Path.IsPathRooted(normalizedIconSource))
@@ -2043,6 +2048,35 @@ public class DownloadTaskManager : IDownloadTaskManager
         }
 
         return normalizedIconSource;
+    }
+
+    private static bool IsPlaceholderIconSource(string iconSource)
+    {
+        if (AppAssetResolver.IsAppAssetPath(iconSource))
+        {
+            return string.Equals(
+                AppAssetResolver.NormalizePath(iconSource),
+                AppAssetResolver.PlaceholderAssetPath,
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (Path.IsPathRooted(iconSource))
+        {
+            return string.Equals(
+                Path.GetFullPath(iconSource),
+                AppAssetResolver.ToAbsolutePath(AppAssetResolver.PlaceholderAssetPath),
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (Uri.TryCreate(iconSource, UriKind.Absolute, out var iconUri) && iconUri.IsFile)
+        {
+            return string.Equals(
+                Path.GetFullPath(iconUri.LocalPath),
+                AppAssetResolver.ToAbsolutePath(AppAssetResolver.PlaceholderAssetPath),
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        return false;
     }
 
     private void NotifyTasksSnapshotChanged()

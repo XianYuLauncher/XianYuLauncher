@@ -11,6 +11,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Services;
 public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
 {
     private const int CurseForgePageSize = 50;
+    private static readonly string PlaceholderIconUrl = AppAssetResolver.ToUriString(AppAssetResolver.PlaceholderAssetPath);
 
     private readonly ModrinthService _modrinthService;
     private readonly CurseForgeService _curseForgeService;
@@ -56,7 +57,7 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
             ModDescriptionTranslated = translatedDescription,
             ModDescriptionBody = ModDescriptionMarkdownHelper.Preprocess(projectDetail.Body),
             ModDownloads = projectDetail.Downloads,
-            ModIconUrl = projectDetail.IconUrl?.ToString() ?? "ms-appx:///Assets/Placeholder.png",
+            ModIconUrl = projectDetail.IconUrl?.ToString() ?? PlaceholderIconUrl,
             ModLicense = projectDetail.License?.Name ?? "未知许可证",
             ModAuthor = "ModDownloadDetailPage_AuthorText".GetLocalized() + (passedModInfo?.Author ?? projectDetail.Author),
             ModSlug = projectDetail.Slug,
@@ -90,7 +91,7 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
             ModDescriptionTranslated = translatedDescription,
             ModDescriptionBody = ModDescriptionMarkdownHelper.Preprocess(modDetail.Description),
             ModDownloads = Math.Min(modDetail.DownloadCount, int.MaxValue),
-            ModIconUrl = modDetail.Logo?.Url ?? "ms-appx:///Assets/Placeholder.png",
+            ModIconUrl = modDetail.Logo?.Url ?? PlaceholderIconUrl,
             ModLicense = "CurseForge",
             ModAuthor = "ModDownloadDetailPage_AuthorText".GetLocalized() + (modDetail.Authors?.FirstOrDefault()?.Name ?? "Unknown"),
             ModSlug = modDetail.Slug,
@@ -103,7 +104,7 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
                 .Select(author => new ModDetailPublisherData(
                     author.Name,
                     "Author",
-                    "ms-appx:///Assets/Placeholder.png",
+                    PlaceholderIconUrl,
                     author.Url))
                 .ToList(),
             FirstPageFiles = firstPageFiles,
@@ -120,7 +121,7 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
             .Select(member => new ModDetailPublisherData(
                 member.User.Username,
                 member.Role,
-                member.User.AvatarUrl?.ToString() ?? "ms-appx:///Assets/Placeholder.png",
+                member.User.AvatarUrl?.ToString() ?? PlaceholderIconUrl,
                 $"https://modrinth.com/user/{member.User.Username}"))
             .ToList();
     }
@@ -150,7 +151,7 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
                 dependencyProjects.Add(new DependencyProject
                 {
                     ProjectId = dependency.ProjectId,
-                    IconUrl = projectDetail.IconUrl?.ToString() ?? "ms-appx:///Assets/Placeholder.png",
+                    IconUrl = projectDetail.IconUrl?.ToString() ?? PlaceholderIconUrl,
                     Title = projectDetail.Title,
                     Description = projectDetail.Description
                 });
@@ -205,7 +206,7 @@ public class ModDetailLoadOrchestrator : IModDetailLoadOrchestrator
             .Select(mod => new DependencyProject
             {
                 ProjectId = $"curseforge-{mod.Id}",
-                IconUrl = mod.Logo?.ThumbnailUrl ?? "ms-appx:///Assets/Placeholder.png",
+                IconUrl = mod.Logo?.ThumbnailUrl ?? PlaceholderIconUrl,
                 Title = mod.Name,
                 Description = mod.Summary
             })

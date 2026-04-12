@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Features.Settings.Models;
 
@@ -25,10 +26,12 @@ public partial class AcknowledgmentPerson : ObservableObject
     [ObservableProperty]
     private string _avatar;
 
-    public AcknowledgmentPerson(string name, string supportInfo, string avatar = "ms-appx:///Assets/Icons/Avatars/Steve.png")
+    public AcknowledgmentPerson(string name, string supportInfo, string? avatar = null)
     {
         _name = name;
         _supportInfo = supportInfo;
-        _avatar = avatar;
+        _avatar = string.IsNullOrWhiteSpace(avatar)
+            ? AppAssetResolver.ToUriString(AppAssetResolver.DefaultAvatarAssetPath)
+            : avatar;
     }
 }

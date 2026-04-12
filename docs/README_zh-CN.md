@@ -67,8 +67,8 @@
 
 1. **下载**：从 [Releases](https://github.com/XianYuLauncher/XianYuLauncher/releases) 页面获取最新版本。
 2. **解压**：将下载的压缩包解压到您喜欢的位置。
-3. **安装与运行**：参考 [安装侧载 MSIX 包](https://github.com/XianYuLauncher/XianYuLauncher/wiki/%E5%AE%89%E8%A3%85%E4%BE%A7%E8%BD%BD-MSIX-%E5%8C%85) 按照步骤完成安装。
-“`
+3. **运行**：直接从解压后的目录启动 `XianYuLauncher.exe`。
+4. **历史打包版说明**： [安装侧载 MSIX 包](https://github.com/XianYuLauncher/XianYuLauncher/wiki/%E5%AE%89%E8%A3%85%E4%BE%A7%E8%BD%BD-MSIX-%E5%8C%85) 现在仅适用于历史 MSIX/AppInstaller 分发，不再是默认的 SideLoad 安装路径。
 
 ## 技术栈
 

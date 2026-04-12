@@ -1,4 +1,5 @@
 ﻿using Microsoft.UI.Xaml.Data;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Helpers;
 
@@ -21,12 +22,16 @@ public class PathToUriConverter : IValueConverter
         {
             try
             {
+                if (AppAssetResolver.IsAppAssetPath(path))
+                {
+                    return AppAssetResolver.ToUri(path);
+                }
+
                 // 检查路径是否已经是Uri格式
                 if (Uri.TryCreate(path, UriKind.Absolute, out var uriResult) &&
                     uriResult is not null &&
                     (uriResult.Scheme == Uri.UriSchemeHttp || 
                      uriResult.Scheme == Uri.UriSchemeHttps || 
-                     uriResult.Scheme == "ms-appx" ||
                      uriResult.Scheme == "ms-appdata" ||
                      uriResult.Scheme == Uri.UriSchemeFile))
                 {
@@ -37,8 +42,7 @@ public class PathToUriConverter : IValueConverter
                 if (System.IO.Path.IsPathRooted(path))
                 {
                     // 添加时间戳参数以防止缓存
-                    var timestamp = DateTime.Now.Ticks;
-                    return new Uri($"file:///{path.Replace('\\', '/')}?t={timestamp}");
+                    return AppendCacheBust(new Uri(System.IO.Path.GetFullPath(path)));
                 }
                     
                 return null;
@@ -50,6 +54,12 @@ public class PathToUriConverter : IValueConverter
             }
         }
         return null;
+    }
+
+    private static Uri AppendCacheBust(Uri uri)
+    {
+        var builder = new UriBuilder(uri) { Query = $"t={DateTime.Now.Ticks}" };
+        return builder.Uri;
     }
 
     /// <summary>

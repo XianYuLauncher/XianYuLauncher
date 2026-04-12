@@ -66,7 +66,8 @@ A modern, feature-rich Minecraft Java Edition launcher with a polished user inte
 
 1. **Download**: Get the latest release from the [Releases](https://github.com/XianYuLauncher/XianYuLauncher/releases) page.
 2. **Extract**: Unzip the downloaded package to your preferred location.
-3. **Install & Run**: Refer to the [安装侧载 MSIX 包](https://github.com/XianYuLauncher/XianYuLauncher/wiki/%E5%AE%89%E8%A3%85%E4%BE%A7%E8%BD%BD-MSIX-%E5%8C%85) and follow the steps to complete the installation.
+3. **Run**: Launch `XianYuLauncher.exe` directly from the extracted folder.
+4. **Legacy packaged builds**: The [安装侧载 MSIX 包](https://github.com/XianYuLauncher/XianYuLauncher/wiki/%E5%AE%89%E8%A3%85%E4%BE%A7%E8%BD%BD-MSIX-%E5%8C%85) guide now applies only to historical MSIX/AppInstaller distributions and is no longer the default SideLoad path.
 
 ## Technology Stack
 

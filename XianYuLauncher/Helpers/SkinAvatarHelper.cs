@@ -1,7 +1,7 @@
 using Microsoft.Graphics.Canvas;
 using Microsoft.UI.Xaml.Media.Imaging;
+using System.IO;
 using Windows.Foundation;
-using Windows.Storage;
 using Windows.Storage.Streams;
 
 using XianYuLauncher.Core.Helpers;
@@ -69,12 +69,12 @@ public static class SkinAvatarHelper
             {
                 try
                 {
-                    var cacheFolder = await ApplicationData.Current.LocalFolder
-                        .CreateFolderAsync(AppDataFileConsts.AvatarCacheFolder, CreationCollisionOption.OpenIfExists);
-                    var avatarFile = await cacheFolder.CreateFileAsync($"{uuid}.png", CreationCollisionOption.ReplaceExisting);
-                    using (var fileStream = await avatarFile.OpenAsync(FileAccessMode.ReadWrite))
+                    var cacheFolderPath = AppEnvironment.EnsureAppDataDirectory(AppDataFileConsts.AvatarCacheFolder);
+                    var avatarFilePath = Path.Combine(cacheFolderPath, $"{uuid}.png");
+                    await using var fileStream = File.Open(avatarFilePath, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
+                    using (var randomAccessStream = fileStream.AsRandomAccessStream())
                     {
-                        await renderTarget.SaveAsync(fileStream, CanvasBitmapFileFormat.Png);
+                        await renderTarget.SaveAsync(randomAccessStream, CanvasBitmapFileFormat.Png);
                     }
                 }
                 catch

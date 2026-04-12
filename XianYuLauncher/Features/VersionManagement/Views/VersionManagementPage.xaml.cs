@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.VersionManagement.ViewModels;
@@ -342,7 +343,7 @@ public sealed partial class VersionManagementPage : Page
         }
         catch
         {
-            avatar = new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+            avatar = new BitmapImage(AppAssetResolver.ToUri(AppAssetResolver.DefaultAvatarAssetPath));
         }
 
         var items = new ObservableCollection<ProfileSelectionItem>();

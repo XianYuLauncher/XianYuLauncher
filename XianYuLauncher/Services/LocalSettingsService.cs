@@ -2,13 +2,9 @@ using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 using System.Globalization;
 
-using Windows.ApplicationModel;
-using Windows.Storage;
-
 using Serilog;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
-using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using XianYuLauncher.Shared.Models;
 
@@ -28,6 +24,7 @@ public class LocalSettingsService : ILocalSettingsService
     private IDictionary<string, object> _settings;
 
     private bool _isInitialized;
+    private readonly SemaphoreSlim _fileSettingsGate = new(1, 1);
 
     public LocalSettingsService(IFileService fileService, IOptions<LocalSettingsOptions> options)
     {
@@ -43,21 +40,24 @@ public class LocalSettingsService : ILocalSettingsService
         System.Diagnostics.Debug.WriteLine($"[LocalSettingsService] Settings path: {Path.Combine(_applicationDataFolder, _localsettingsFile)}");
     }
 
-    private async Task InitializeAsync()
+    private async Task EnsureFileSettingsInitializedAsync(CancellationToken cancellationToken = default)
     {
-        if (!_isInitialized)
+        if (_isInitialized)
         {
-            _settings = await Task.Run(() => _fileService.Read<IDictionary<string, object>>(_applicationDataFolder, _localsettingsFile)) ?? new Dictionary<string, object>();
-
-            _isInitialized = true;
+            return;
         }
+
+        _settings = await _fileService.ReadAsync<IDictionary<string, object>>(_applicationDataFolder, _localsettingsFile, cancellationToken).ConfigureAwait(false)
+            ?? new Dictionary<string, object>();
+
+        _isInitialized = true;
     }
 
     public async Task<T?> ReadSettingAsync<T>(string key)
     {
-        if (RuntimeHelper.IsMSIX)
+        if (AppEnvironment.HasPackageIdentity)
         {
-            if (ApplicationData.Current.LocalSettings.Values.TryGetValue(key, out var obj))
+            if (AppEnvironment.TryReadPackagedLocalSetting(key, out var obj) && obj is not null)
             {
                 LogJavaSelectionModeRead<T>(key, obj, storageMode: "MSIX", stage: "RawRead");
 
@@ -87,99 +87,108 @@ public class LocalSettingsService : ILocalSettingsService
         }
         else
         {
-            await InitializeAsync();
+            await _fileSettingsGate.WaitAsync().ConfigureAwait(false);
 
-            if (_settings != null && _settings.TryGetValue(key, out var obj))
+            try
             {
-                LogJavaSelectionModeRead<T>(key, obj, storageMode: "File", stage: "RawRead");
+                await EnsureFileSettingsInitializedAsync().ConfigureAwait(false);
 
-                // 特殊处理：兼容读取 JavaSelectionMode 的历史存储格式，但不在读取时改写存储。
-                if (TryReadJavaSelectionModeCompatibilityValue(key, obj, out T? compatibilityValue, out var compatibilityResolution))
+                if (_settings != null && _settings.TryGetValue(key, out var obj))
                 {
-                    Log.Warning("[LocalSettings.JavaSelectionMode] Compatibility read applied. StorageMode=File; Resolution={Resolution}; RequestedType={RequestedType}; RawType={RawType}; RawValue={RawValue}", compatibilityResolution, typeof(T).FullName, obj.GetType().FullName, obj);
-                    LogJavaSelectionModeResolved(key, typeof(T), compatibilityValue, storageMode: "File", resolution: compatibilityResolution);
-                    return compatibilityValue;
-                }
+                    LogJavaSelectionModeRead<T>(key, obj, storageMode: "File", stage: "RawRead");
 
-                if (TryReadDirectValue(obj, out T? directValue))
-                {
-                    LogJavaSelectionModeResolved(key, typeof(T), directValue, storageMode: "File", resolution: "DirectValue");
-                    return directValue;
-                }
-                
-                // 调试：检查读取的Java版本数据
-                if (key == "JavaVersions")
-                {
-                    Console.WriteLine($"读取Java版本列表，类型: {obj.GetType().Name}");
-                    if (obj is Newtonsoft.Json.Linq.JArray jArray)
+                    // 特殊处理：兼容读取 JavaSelectionMode 的历史存储格式，但不在读取时改写存储。
+                    if (TryReadJavaSelectionModeCompatibilityValue(key, obj, out T? compatibilityValue, out var compatibilityResolution))
                     {
-                        Console.WriteLine($"  JArray元素数量: {jArray.Count}");
-                        foreach (var item in jArray)
-                        {
-                            Console.WriteLine($"  - JObject: {item}");
-                        }
+                        Log.Warning("[LocalSettings.JavaSelectionMode] Compatibility read applied. StorageMode=File; Resolution={Resolution}; RequestedType={RequestedType}; RawType={RawType}; RawValue={RawValue}", compatibilityResolution, typeof(T).FullName, obj.GetType().FullName, obj);
+                        LogJavaSelectionModeResolved(key, typeof(T), compatibilityValue, storageMode: "File", resolution: compatibilityResolution);
+                        return compatibilityValue;
                     }
-                    else if (obj is List<object> list)
+
+                    if (TryReadDirectValue(obj, out T? directValue))
                     {
-                        Console.WriteLine($"  List元素数量: {list.Count}");
-                        foreach (var item in list)
-                        {
-                            Console.WriteLine($"  - {item.GetType().Name}: {item}");
-                        }
+                        LogJavaSelectionModeResolved(key, typeof(T), directValue, storageMode: "File", resolution: "DirectValue");
+                        return directValue;
                     }
-                    else if (obj is List<JavaVersionInfo> typedList)
-                    {
-                        Console.WriteLine($"  类型化List元素数量: {typedList.Count}");
-                        foreach (var item in typedList)
-                        {
-                            Console.WriteLine($"  - {item}");
-                        }
-                    }
-                }
-                
-                // 对于复杂类型，需要重新序列化再反序列化以确保类型正确
-                if (obj is not T && obj != null)
-                {
-                    Console.WriteLine($"  类型不匹配，需要转换: {obj.GetType().Name} -> {typeof(T).Name}");
                     
-                    try
+                    // 调试：检查读取的Java版本数据
+                    if (key == "JavaVersions")
                     {
-                        var json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, new Newtonsoft.Json.JsonSerializerSettings { NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore });
-                        var convertedValue = Newtonsoft.Json.JsonConvert.DeserializeObject<T>(json);
-                        LogJavaSelectionModeResolved(key, typeof(T), convertedValue, storageMode: "File", resolution: "JsonRoundtrip");
-                        return convertedValue;
-                    }
-                    catch (JsonException ex)
-                    {
-                        System.Diagnostics.Debug.WriteLine($"[LocalSettingsService] 类型转换失败 '{key}': {ex.Message}");
-                        
-                        // 尝试智能转换
-                        if (typeof(T) == typeof(int) || typeof(T) == typeof(int?))
+                        Console.WriteLine($"读取Java版本列表，类型: {obj.GetType().Name}");
+                        if (obj is Newtonsoft.Json.Linq.JArray jArray)
                         {
-                            var objStr = obj?.ToString();
-                            if (string.Equals(objStr, "Auto", StringComparison.OrdinalIgnoreCase))
+                            Console.WriteLine($"  JArray元素数量: {jArray.Count}");
+                            foreach (var item in jArray)
                             {
-                                System.Diagnostics.Debug.WriteLine($"[LocalSettingsService] 将 'Auto' 转换为 null (int?)");
-                                return default;
+                                Console.WriteLine($"  - JObject: {item}");
+                            }
+                        }
+                        else if (obj is List<object> list)
+                        {
+                            Console.WriteLine($"  List元素数量: {list.Count}");
+                            foreach (var item in list)
+                            {
+                                Console.WriteLine($"  - {item.GetType().Name}: {item}");
+                            }
+                        }
+                        else if (obj is List<JavaVersionInfo> typedList)
+                        {
+                            Console.WriteLine($"  类型化List元素数量: {typedList.Count}");
+                            foreach (var item in typedList)
+                            {
+                                Console.WriteLine($"  - {item}");
+                            }
+                        }
+                    }
+
+                    // 对于复杂类型，需要重新序列化再反序列化以确保类型正确
+                    if (obj is not T && obj != null)
+                    {
+                        Console.WriteLine($"  类型不匹配，需要转换: {obj.GetType().Name} -> {typeof(T).Name}");
+                        
+                        try
+                        {
+                            var json = Newtonsoft.Json.JsonConvert.SerializeObject(obj, new Newtonsoft.Json.JsonSerializerSettings { NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore });
+                            var convertedValue = Newtonsoft.Json.JsonConvert.DeserializeObject<T>(json);
+                            LogJavaSelectionModeResolved(key, typeof(T), convertedValue, storageMode: "File", resolution: "JsonRoundtrip");
+                            return convertedValue;
+                        }
+                        catch (JsonException ex)
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[LocalSettingsService] 类型转换失败 '{key}': {ex.Message}");
+                            
+                            // 尝试智能转换
+                            if (typeof(T) == typeof(int) || typeof(T) == typeof(int?))
+                            {
+                                var objStr = obj?.ToString();
+                                if (string.Equals(objStr, "Auto", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"[LocalSettingsService] 将 'Auto' 转换为 null (int?)");
+                                    return default;
+                                }
+                                
+                                if (int.TryParse(objStr, out int intValue))
+                                {
+                                    return (T)(object)intValue;
+                                }
                             }
                             
-                            if (int.TryParse(objStr, out int intValue))
-                            {
-                                return (T)(object)intValue;
-                            }
+                            return default;
                         }
-                        
-                        return default;
                     }
-                }
-                if (obj is T typedValue)
-                {
-                    LogJavaSelectionModeResolved(key, typeof(T), typedValue, storageMode: "File", resolution: "TypedValue");
-                    return typedValue;
-                }
+                    if (obj is T typedValue)
+                    {
+                        LogJavaSelectionModeResolved(key, typeof(T), typedValue, storageMode: "File", resolution: "TypedValue");
+                        return typedValue;
+                    }
 
-                LogJavaSelectionModeUnresolved<T>(key, obj, storageMode: "File");
-                return default;
+                    LogJavaSelectionModeUnresolved<T>(key, obj, storageMode: "File");
+                    return default;
+                }
+            }
+            finally
+            {
+                _fileSettingsGate.Release();
             }
         }
 
@@ -188,43 +197,54 @@ public class LocalSettingsService : ILocalSettingsService
 
     public async Task SaveSettingAsync<T>(string key, T value)
     {
-        LogJavaSelectionModeSave(key, value, RuntimeHelper.IsMSIX ? "MSIX" : "File");
+        LogJavaSelectionModeSave(key, value, AppEnvironment.HasPackageIdentity ? "MSIX" : "File");
 
-        if (RuntimeHelper.IsMSIX)
+        if (AppEnvironment.HasPackageIdentity)
         {
             if (TryCreateDirectStorageValue(value, out var directStorageValue))
             {
-                ApplicationData.Current.LocalSettings.Values[key] = directStorageValue;
+                AppEnvironment.SetPackagedLocalSetting(key, directStorageValue);
                 return;
             }
 
-            ApplicationData.Current.LocalSettings.Values[key] = await Json.StringifyAsync(value!);
+            AppEnvironment.SetPackagedLocalSetting(key, await Json.StringifyAsync(value!));
         }
         else
         {
-            await InitializeAsync();
+            await _fileSettingsGate.WaitAsync().ConfigureAwait(false);
 
-            _settings[key] = value!;
-            
-            // 调试：检查保存的Java版本数量
-            if (key == "JavaVersions" && value is List<object> javaList)
+            try
             {
-                Console.WriteLine($"保存Java版本列表，数量: {javaList.Count}");
-                foreach (var item in javaList)
-                {
-                    Console.WriteLine($"  - {item.GetType().Name}: {item}");
-                }
-            }
-            else if (key == "JavaVersions" && value is List<JavaVersionInfo> typedList)
-            {
-                Console.WriteLine($"保存Java版本列表，数量: {typedList.Count}");
-                foreach (var item in typedList)
-                {
-                    Console.WriteLine($"  - {item}");
-                }
-            }
+                await EnsureFileSettingsInitializedAsync().ConfigureAwait(false);
 
-            await Task.Run(() => _fileService.Save(_applicationDataFolder, _localsettingsFile, _settings));
+                _settings[key] = value!;
+                
+                // 调试：检查保存的Java版本数量
+                if (key == "JavaVersions" && value is List<object> javaList)
+                {
+                    Console.WriteLine($"保存Java版本列表，数量: {javaList.Count}");
+                    foreach (var item in javaList)
+                    {
+                        Console.WriteLine($"  - {item.GetType().Name}: {item}");
+                    }
+                }
+                else if (key == "JavaVersions" && value is List<JavaVersionInfo> typedList)
+                {
+                    Console.WriteLine($"保存Java版本列表，数量: {typedList.Count}");
+                    foreach (var item in typedList)
+                    {
+                        Console.WriteLine($"  - {item}");
+                    }
+                }
+
+                var persistedSettings = _settings.ToDictionary(static entry => entry.Key, static entry => entry.Value);
+                await _fileService.SaveAsync(_applicationDataFolder, _localsettingsFile, persistedSettings).ConfigureAwait(false);
+                _settings = persistedSettings;
+            }
+            finally
+            {
+                _fileSettingsGate.Release();
+            }
         }
     }
 

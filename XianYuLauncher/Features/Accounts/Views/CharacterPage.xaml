@@ -233,7 +233,7 @@
                                                         x:Name="ProfileAvatar" 
                                                         Width="32" 
                                                         Height="32" 
-                                                        Source="ms-appx:///Assets/DefaultAvatar.png" 
+                                                        Source="Assets/Icons/Avatars/Steve.png" 
                                                         Stretch="Fill" 
                                                         HorizontalAlignment="Center" 
                                                         VerticalAlignment="Center" 

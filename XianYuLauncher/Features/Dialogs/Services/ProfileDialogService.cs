@@ -8,6 +8,7 @@ using Serilog;
 using Windows.Storage;
 using Windows.Storage.Streams;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.Dialogs.Models;
@@ -20,6 +21,11 @@ public sealed class ProfileDialogService : IProfileDialogService
     private readonly HttpClient _httpClient = new();
     private readonly IContentDialogHostService _dialogHostService;
     private readonly IUiDispatcher _uiDispatcher;
+
+    private static BitmapImage CreateDefaultAvatarBitmap()
+    {
+        return new BitmapImage(AppAssetResolver.ToUri(AppAssetResolver.DefaultAvatarAssetPath));
+    }
 
     public ProfileDialogService(IContentDialogHostService dialogHostService, IUiDispatcher uiDispatcher)
     {
@@ -39,7 +45,7 @@ public sealed class ProfileDialogService : IProfileDialogService
         }
         catch
         {
-            defaultAvatar = new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+            defaultAvatar = CreateDefaultAvatarBitmap();
         }
 
         foreach (var profile in profiles)
@@ -178,7 +184,7 @@ public sealed class ProfileDialogService : IProfileDialogService
         }
         catch
         {
-            defaultAvatar = new BitmapImage(new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png"));
+            defaultAvatar = CreateDefaultAvatarBitmap();
         }
 
         foreach (var profile in profiles

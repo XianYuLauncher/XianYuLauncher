@@ -8,10 +8,13 @@ using System.IO;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Extensions;
+using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using XianYuLauncher.Services;
+using WinUIEx;
 
 namespace XianYuLauncher;
 
@@ -39,7 +42,9 @@ public partial class App : Application
         return service;
     }
 
-    public static WindowEx MainWindow { get; } = new MainWindow();
+    private static WindowEx? _mainWindow;
+
+    public static WindowEx MainWindow => _mainWindow ??= new MainWindow();
 
     public static UIElement? AppTitlebar { get; set; }
     
@@ -56,6 +61,13 @@ public partial class App : Application
             .Build();
 
         LanguageSelectorService.BootstrapConfiguredLanguage(configuration);
+
+        if (!AppEnvironment.HasPackageIdentity)
+        {
+            WindowManager.PersistenceStorage = PersistentObjectDictionary.Load(
+                AppEnvironment.ResolveAppDataPath("WindowPersistence.json"));
+        }
+
         InitializeComponent();
 
         // 执行缓存迁移（从旧的虚拟化路径迁移到新的安全路径）
@@ -63,8 +75,8 @@ public partial class App : Application
 
         // 配置Serilog
         // 使用统一的安全日志路径
-        string logDirectory = XianYuLauncher.Core.Helpers.AppEnvironment.SafeLogPath;
-        System.Diagnostics.Debug.WriteLine($"[App] Check IsMSIX: {XianYuLauncher.Core.Helpers.AppEnvironment.IsMSIX}");
+        string logDirectory = AppEnvironment.SafeLogPath;
+        System.Diagnostics.Debug.WriteLine($"[App] Check IsMSIX: {AppEnvironment.IsMSIX}");
         
         var logFilePath = Path.Combine(logDirectory, "log-.txt");
 
@@ -76,7 +88,7 @@ public partial class App : Application
                 outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
             .CreateLogger();
 
-        Log.Information($"[App] Startup environment check. IsMSIX: {XianYuLauncher.Core.Helpers.AppEnvironment.IsMSIX}");
+        Log.Information($"[App] Startup environment check. IsMSIX: {AppEnvironment.IsMSIX}");
         Log.Information($"[App] Log Directory: {logDirectory}");
 
         Host = Microsoft.Extensions.Hosting.Host.
@@ -189,7 +201,7 @@ public partial class App : Application
                 // 初始化Mod名称翻译服务
                 var translationService = App.GetService<ITranslationService>();
                 // 使用 AppData 本地缓存路径
-                var localDataPath = Path.Combine(Windows.Storage.ApplicationData.Current.LocalFolder.Path, AppDataFileConsts.ModDataFileName);
+                var localDataPath = AppEnvironment.ResolveAppDataPath(AppDataFileConsts.ModDataFileName);
 
                 // 1. 如果本地存在，先加载旧数据（保证启动速度）
                 if (File.Exists(localDataPath))

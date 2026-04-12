@@ -9,6 +9,8 @@ using XianYuLauncher.Activation;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.Protocol;
@@ -30,7 +32,7 @@ public class ActivationService : IActivationService
     private readonly IApplicationDialogService _dialogService;
     private readonly IAnnouncementDialogService _announcementDialogService;
     private readonly IProtocolActivationService _protocolActivationService;
-    private readonly IUpdateDialogFlowService _updateDialogFlowService;
+    private readonly IUpdateFlowService _updateFlowService;
     private UIElement? _shell = null;
 
     public ActivationService(
@@ -42,7 +44,7 @@ public class ActivationService : IActivationService
         IApplicationDialogService dialogService,
         IAnnouncementDialogService announcementDialogService,
         IProtocolActivationService protocolActivationService,
-        IUpdateDialogFlowService updateDialogFlowService,
+        IUpdateFlowService updateFlowService,
         XianYuLauncher.Core.Services.DownloadSource.DownloadSourceFactory downloadSourceFactory,
         XianYuLauncher.Core.Services.IAutoSpeedTestService? autoSpeedTestService = null,
         INetworkSettingsDomainService? networkSettingsDomainService = null)
@@ -55,7 +57,7 @@ public class ActivationService : IActivationService
         _dialogService = dialogService;
         _announcementDialogService = announcementDialogService;
         _protocolActivationService = protocolActivationService;
-        _updateDialogFlowService = updateDialogFlowService;
+        _updateFlowService = updateFlowService;
         _downloadSourceFactory = downloadSourceFactory;
         _autoSpeedTestService = autoSpeedTestService;
         _networkSettingsDomainService = networkSettingsDomainService;
@@ -359,101 +361,29 @@ public class ActivationService : IActivationService
     {
         try
         {
-            // 检查是否从微软商店安装
-            if (IsInstalledFromMicrosoftStore())
+            var updateFlowResult = await _updateFlowService.CheckForStartupUpdatesAsync();
+
+            if (!updateFlowResult.HasUpdate)
             {
-                Serilog.Log.Information("应用从微软商店安装，跳过更新检查");
+                Serilog.Log.Information("当前已是最新版本，或本次启动无需提示更新");
                 return;
             }
-            
-            // 获取自动检查更新设置
-            var localSettingsService = App.GetService<ILocalSettingsService>();
-            var autoUpdateCheckModeStr = await localSettingsService.ReadSettingAsync<string>("AutoUpdateCheckMode");
-            var autoUpdateCheckMode = AutoUpdateCheckModeType.Always; // 默认每次启动检查
-            
-            if (!string.IsNullOrEmpty(autoUpdateCheckModeStr) && 
-                Enum.TryParse<AutoUpdateCheckModeType>(autoUpdateCheckModeStr, out var mode))
-            {
-                autoUpdateCheckMode = mode;
-            }
-            
-            Serilog.Log.Information("自动检查更新模式: {Mode}", autoUpdateCheckMode);
-            
-            // 获取更新服务实例
-            var updateService = App.GetService<UpdateService>();
-            
-            // 设置当前应用版本（从 MSIX 包获取）
-            var packageVersion = Windows.ApplicationModel.Package.Current.Id.Version;
-            var currentVersion = new Version(packageVersion.Major, packageVersion.Minor, packageVersion.Build, packageVersion.Revision);
-            updateService.SetCurrentVersion(currentVersion);
-            
-            // 检查是否有更新
-            UpdateInfo? updateInfo;
-            if (updateService.IsDevChannel())
-            {
-                Serilog.Log.Information("Dev 通道：仅检查 Dev 更新...");
-                updateInfo = await updateService.CheckForDevUpdateAsync();
-            }
-            else
-            {
-                updateInfo = await updateService.CheckForUpdatesAsync();
-            }
-            
-            if (updateInfo != null)
-            {
-                // 根据设置决定是否显示更新弹窗
-                bool shouldShowUpdate = autoUpdateCheckMode == AutoUpdateCheckModeType.Always || 
-                                        updateInfo.important_update;
-                
-                if (!shouldShowUpdate)
-                {
-                    Serilog.Log.Information("发现新版本 {Version}，但设置为仅重要更新时提示，跳过", updateInfo.version);
-                    return;
-                }
-                
-                Serilog.Log.Information("发现新版本，显示更新弹窗");
-                
-                var installStarted = await _updateDialogFlowService.ShowUpdateInstallFlowAsync(
-                    updateInfo,
-                    string.Format("Version {0} 更新", updateInfo.version),
-                    "更新",
-                    !updateInfo.important_update ? "取消" : null);
 
-                if (installStarted)
-                {
-                    Serilog.Log.Information("用户同意更新");
-                    Debug.WriteLine("[DEBUG] 用户同意更新");
-                }
-                else
-                {
-                    Serilog.Log.Information("用户取消更新");
-                    Debug.WriteLine("[DEBUG] 用户取消更新");
-                }
+            if (updateFlowResult.InstallationStarted)
+            {
+                Serilog.Log.Information("用户同意更新");
+                Debug.WriteLine("[DEBUG] 用户同意更新");
             }
             else
             {
-                Serilog.Log.Information("当前已是最新版本");
+                Serilog.Log.Information("用户取消更新或当前仅完成后台检查");
+                Debug.WriteLine("[DEBUG] 用户取消更新或当前仅完成后台检查");
             }
         }
         catch (Exception ex)
         {
             Serilog.Log.Error(ex, "检查更新失败: {ErrorMessage}", ex.Message);
         }
-    }
-    
-    /// <summary>
-    /// 格式化更新日志
-    /// </summary>
-    /// <param name="changelog">更新日志列表</param>
-    /// <returns>格式化后的更新日志文本</returns>
-    private string FormatChangelog(System.Collections.Generic.List<string> changelog)
-    {
-        if (changelog == null || changelog.Count == 0)
-        {
-            return "暂无更新内容";
-        }
-        
-        return string.Join(System.Environment.NewLine + "• ", changelog.Prepend(""));
     }
     
     /// <summary>
@@ -559,36 +489,4 @@ public class ActivationService : IActivationService
         }
     }
     
-    /// <summary>
-    /// 检查应用是否从微软商店安装
-    /// </summary>
-    /// <returns>如果从商店安装返回true，否则返回false</returns>
-    private bool IsInstalledFromMicrosoftStore()
-    {
-        try
-        {
-            // 检查应用的签名证书发布者
-            // 微软商店应用使用商店证书签名，发布者为 CN=<GUID>
-            // 自签名版本使用自定义证书
-            var package = Windows.ApplicationModel.Package.Current;
-            var publisherId = package.Id.Publisher;
-            
-            Serilog.Log.Information("应用发布者: {Publisher}", publisherId);
-            
-            // 微软商店版本的发布者应该是 CN=477122EB-593B-4C14-AA43-AD408DEE1452
-            // 这是在 Package.appxmanifest 中配置的商店证书
-            bool isStoreVersion = publisherId.Contains("CN=477122EB-593B-4C14-AA43-AD408DEE1452", StringComparison.OrdinalIgnoreCase);
-            
-            Serilog.Log.Information("是否为商店版本: {IsStoreVersion}", isStoreVersion);
-            
-            return isStoreVersion;
-        }
-        catch (Exception ex)
-        {
-            Serilog.Log.Error(ex, "检查应用安装来源失败: {ErrorMessage}", ex.Message);
-            // 如果检查失败，为安全起见，假设不是商店版本，允许更新检查
-            return false;
-        }
-    }
-
 }

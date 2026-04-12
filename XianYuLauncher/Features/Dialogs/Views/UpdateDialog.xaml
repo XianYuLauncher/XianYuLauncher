@@ -5,7 +5,7 @@
     Width="500">
 
     <StackPanel Spacing="12" Padding="20">
-        <TextBlock Text="发现新版本" FontWeight="Bold" FontSize="18" />
+        <TextBlock Text="{x:Bind ViewModel.UpdateInfo.version, Mode=OneWay}" Style="{ThemeResource TitleTextBlockStyle}" />
         <TextBlock Text="新版本带来了以下更新：" />
 
         <ScrollViewer MaxHeight="200" BorderBrush="Transparent" BorderThickness="0" Padding="0">

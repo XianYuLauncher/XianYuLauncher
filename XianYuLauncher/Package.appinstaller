@@ -3,6 +3,8 @@
               Version="{Version}"
               xmlns="http://schemas.microsoft.com/appx/appinstaller/2017/2">
 
+  <!-- Legacy packaged distribution template only. SideLoad releases now ship as unpackaged zip artifacts. -->
+
   <!-- Read more about updating settings with Package.appinstaller at https://docs.microsoft.com/windows/msix/app-installer/update-settings -->
 
   <MainBundle Name="{Name}"

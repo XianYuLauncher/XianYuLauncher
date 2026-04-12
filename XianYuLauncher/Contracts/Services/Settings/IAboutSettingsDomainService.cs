@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Contracts.Services.Settings;
 
@@ -9,7 +10,7 @@ public sealed class AboutAcknowledgmentItem
 
     public string SupportInfo { get; init; } = string.Empty;
 
-    public string Avatar { get; init; } = "ms-appx:///Assets/Icons/Avatars/Steve.png";
+    public string Avatar { get; init; } = AppAssetResolver.ToUriString(AppAssetResolver.DefaultAvatarAssetPath);
 }
 
 public interface IAboutSettingsDomainService

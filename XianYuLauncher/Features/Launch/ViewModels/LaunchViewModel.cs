@@ -487,15 +487,7 @@ public partial class LaunchViewModel : ObservableRecipient
 
     private void CheckDevBuild()
     {
-        try
-        {
-            var packageName = Windows.ApplicationModel.Package.Current.Id.Name;
-            IsDevBuild = packageName.EndsWith("Dev", StringComparison.OrdinalIgnoreCase);
-        }
-        catch
-        {
-            IsDevBuild = false;
-        }
+        IsDevBuild = AppEnvironment.IsDevBuild;
     }
     
     /// <summary>
@@ -557,8 +549,19 @@ public partial class LaunchViewModel : ObservableRecipient
                             // 真实路径 -> 沙盒路径
                             try
                             {
-                                string packagePath = Windows.Storage.ApplicationData.Current.LocalFolder.Path;
-                                string packagesRoot = packagePath.Substring(0, packagePath.LastIndexOf("LocalState"));
+                                if (!AppEnvironment.HasPackageIdentity)
+                                {
+                                    continue;
+                                }
+
+                                string packagePath = AppEnvironment.SafeAppDataPath;
+                                int localStateIndex = packagePath.LastIndexOf("LocalState", StringComparison.OrdinalIgnoreCase);
+                                if (localStateIndex < 0)
+                                {
+                                    continue;
+                                }
+
+                                string packagesRoot = packagePath[..localStateIndex];
                                 
                                 // 从真实路径提取相对部分
                                 string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);

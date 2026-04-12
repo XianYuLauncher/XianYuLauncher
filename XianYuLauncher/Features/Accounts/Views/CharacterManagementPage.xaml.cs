@@ -17,6 +17,7 @@ using Windows.Storage.Streams;
 using WinRT.Interop;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Helpers;
@@ -45,6 +46,11 @@ namespace XianYuLauncher.Features.Accounts.Views
         private readonly ICommonDialogService _dialogService;
         private readonly IProfileDialogService _profileDialogService;
         private const string AvatarCacheFolder = AppDataFileConsts.AvatarCacheFolder;
+
+        private static BitmapImage CreateDefaultAvatarBitmap()
+        {
+            return new BitmapImage(AppAssetResolver.ToUri(AppAssetResolver.DefaultAvatarAssetPath));
+        }
 
         /// <summary>
         /// 构造函数
@@ -169,13 +175,13 @@ namespace XianYuLauncher.Features.Accounts.Views
                 
                 // 复制HTML文件
                 string destHtmlPath = Path.Combine(htmlFolderPath, "Skin3DPreview.html");
-                string sourceHtmlPath = Path.Combine(Package.Current.InstalledLocation.Path, "Assets", "Skin3DPreview.html");
+                string sourceHtmlPath = AppAssetResolver.ToAbsolutePath(AppAssetResolver.Skin3DPreviewHtmlAssetPath);
                 File.Copy(sourceHtmlPath, destHtmlPath, true);
                 Debug.WriteLine($"[角色管理Page] 已将HTML文件复制到应用数据目录");
                 
                 // 复制skinview3d.bundle.js文件
                 string destLibPath = Path.Combine(libsFolderPath, "skinview3d.bundle.js");
-                string sourceLibPath = Path.Combine(Package.Current.InstalledLocation.Path, "Assets", "Libs", "skinview3d.bundle.js");
+                string sourceLibPath = AppAssetResolver.ToAbsolutePath("Assets/Libs/skinview3d.bundle.js");
                 File.Copy(sourceLibPath, destLibPath, true);
                 Debug.WriteLine($"[角色管理Page] 已将skinview3d.bundle.js文件复制到应用数据目录");
                 
@@ -238,7 +244,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                         // 离线角色：使用本地Steve默认皮肤
                         Debug.WriteLine($"[角色管理Page] 当前是离线角色，使用本地Steve默认皮肤");
                         // 使用本地资源文件作为默认皮肤
-                        string defaultSkinPath = "ms-appx:///Assets/Icons/Textures/steve.png";
+                        string defaultSkinPath = AppAssetResolver.DefaultSkinTextureAssetPath;
                         // 从本地资源加载并转换为base64
                         skinUrl = await LoadLocalImageAsBase64Async(defaultSkinPath);
                         capeUrl = string.Empty;
@@ -348,16 +354,16 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// <summary>
         /// 从本地资源加载图片并转换为base64编码
         /// </summary>
-        /// <param name="localUri">本地资源URI，格式：ms-appx:///Assets/...</param>
+        /// <param name="assetPath">本地资源路径，支持应用资源路径与本地绝对路径</param>
         /// <returns>base64编码的图片数据</returns>
-        private async Task<string> LoadLocalImageAsBase64Async(string localUri)
+        private async Task<string> LoadLocalImageAsBase64Async(string assetPath)
         {
             try
             {
-                Debug.WriteLine($"[角色管理Page] 尝试加载本地图片: {localUri}");
+            Debug.WriteLine($"[角色管理Page] 尝试加载本地图片: {assetPath}");
                 
                 // 获取本地资源文件
-                var file = await Windows.Storage.StorageFile.GetFileFromApplicationUriAsync(new Uri(localUri));
+            var file = await AppAssetResolver.GetStorageFileAsync(assetPath);
                 
                 // 读取文件内容
                 using (var stream = await file.OpenReadAsync())
@@ -383,7 +389,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色管理Page] 加载本地图片失败: {ex.Message}, URI: {localUri}");
+                Debug.WriteLine($"[角色管理Page] 加载本地图片失败: {ex.Message}, 路径: {assetPath}");
                 return string.Empty;
             }
         }
@@ -611,7 +617,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                     }
                     else
                     {
-                        ProfileAvatar.Source = new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png"));
+                        ProfileAvatar.Source = CreateDefaultAvatarBitmap();
                     }
                 }
                 else
@@ -664,7 +670,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                         {
                             // 如果网络加载失败且我们是强制刷新，尝试回退到旧缓存（如果存在），或者默认头像
                             // 这里简单处理为默认头像，因为如果网络失败，可能也没法验证缓存有效性
-                             ProfileAvatar.Source = new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png"));
+                             ProfileAvatar.Source = CreateDefaultAvatarBitmap();
                         }
                     }
                 }
@@ -672,7 +678,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             catch (Exception ex)
             {
                 Debug.WriteLine($"[角色管理Page] 加载角色 {ViewModel.CurrentProfile.Name} 头像失败: {ex.Message}");
-                ProfileAvatar.Source = new BitmapImage(new Uri("ms-appx:///Assets/DefaultAvatar.png"));
+                ProfileAvatar.Source = CreateDefaultAvatarBitmap();
             }
         }
         
@@ -683,10 +689,10 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                var cacheFolder = await ApplicationData.Current.LocalFolder.CreateFolderAsync(AvatarCacheFolder, CreationCollisionOption.OpenIfExists);
-                var avatarFile = await cacheFolder.TryGetItemAsync($"{uuid}.png") as StorageFile;
-                if (avatarFile != null)
+                var avatarFilePath = Path.Combine(AppEnvironment.EnsureAppDataDirectory(AvatarCacheFolder), $"{uuid}.png");
+                if (File.Exists(avatarFilePath))
                 {
+                    var avatarFile = await StorageFile.GetFileFromPathAsync(avatarFilePath);
                     using (var stream = await avatarFile.OpenReadAsync())
                     {
                         var bitmap = new BitmapImage();
@@ -814,47 +820,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                // 创建CanvasDevice
-                var device = CanvasDevice.GetSharedDevice();
-                
-                // 加载史蒂夫头像图片
-                var steveUri = new Uri("ms-appx:///Assets/Icons/Avatars/Steve.png");
-                var file = await StorageFile.GetFileFromApplicationUriAsync(steveUri);
-                CanvasBitmap canvasBitmap;
-                
-                using (var stream = await file.OpenReadAsync())
-                {
-                    canvasBitmap = await CanvasBitmap.LoadAsync(device, stream);
-                }
-                
-                // 创建CanvasRenderTarget用于处理
-                var renderTarget = new CanvasRenderTarget(
-                    device,
-                    48, // 显示宽度
-                    48, // 显示高度
-                    96 // DPI
-                );
-                
-                // 执行处理，使用最近邻插值保持像素锐利
-                using (var ds = renderTarget.CreateDrawingSession())
-                {
-                    PixelArtRenderHelper.DrawNearestNeighbor(
-                        ds,
-                        canvasBitmap,
-                        new Windows.Foundation.Rect(0, 0, 48, 48), // 目标位置和大小
-                        new Windows.Foundation.Rect(0, 0, canvasBitmap.Size.Width, canvasBitmap.Size.Height)); // 源位置和大小
-                }
-                
-                // 转换为BitmapImage
-                using (var outputStream = new InMemoryRandomAccessStream())
-                {
-                    await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
-                    outputStream.Seek(0);
-                    
-                    var bitmapImage = new BitmapImage();
-                    await bitmapImage.SetSourceAsync(outputStream);
-                    return bitmapImage;
-                }
+                return await ProfileAvatarImageHelper.CreateDefaultProfileAvatarAsync(48);
             }
             catch (Exception ex)
             {

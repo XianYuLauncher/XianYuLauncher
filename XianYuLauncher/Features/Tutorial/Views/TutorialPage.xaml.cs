@@ -7,8 +7,7 @@ using System;
 using System.IO;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Windows.Storage;
-using Windows.Storage.Streams;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Features.Tutorial.ViewModels;
 using XianYuLauncher.Helpers;
 using Newtonsoft.Json.Linq;
@@ -19,7 +18,7 @@ namespace XianYuLauncher.Features.Tutorial.Views
     {
         public TutorialPageViewModel ViewModel { get; }
         private readonly HttpClient _httpClient = new HttpClient();
-        private const string DefaultAvatarPath = "ms-appx:///Assets/Icons/Avatars/Steve.png";
+        private const string DefaultAvatarPath = AppAssetResolver.DefaultAvatarAssetPath;
         private int _previousPageIndex = 0;
 
         public TutorialPage()
@@ -171,57 +170,15 @@ namespace XianYuLauncher.Features.Tutorial.Views
         {
             try
             {
-                // 1. 创建CanvasDevice
-                var device = CanvasDevice.GetSharedDevice();
-                
-                // 2. 加载史蒂夫头像图片
-                var steveUri = new Uri(DefaultAvatarPath);
-                var file = await StorageFile.GetFileFromApplicationUriAsync(steveUri);
-                CanvasBitmap canvasBitmap;
-                
-                using (var stream = await file.OpenReadAsync())
+                var bitmapImage = await ProfileAvatarImageHelper.CreateDefaultProfileAvatarAsync(48);
+
+                ProfileAvatar.Source = bitmapImage;
+                MicrosoftProfileAvatar.Source = bitmapImage;
+
+                var externalAvatar = FindName("ExternalProfileAvatar") as Image;
+                if (externalAvatar != null)
                 {
-                    canvasBitmap = await CanvasBitmap.LoadAsync(device, stream);
-                }
-
-                // 3. 创建CanvasRenderTarget用于处理，使用合适的分辨率
-                var renderTarget = new CanvasRenderTarget(
-                    device,
-                    48, // 显示宽度
-                    48, // 显示高度
-                    96 // DPI
-                );
-
-                // 4. 执行处理，使用最近邻插值保持像素锐利
-                using (var ds = renderTarget.CreateDrawingSession())
-                {
-                    // 绘制整个史蒂夫头像，并使用最近邻插值确保清晰
-                    PixelArtRenderHelper.DrawNearestNeighbor(
-                        ds,
-                        canvasBitmap,
-                        new Windows.Foundation.Rect(0, 0, 48, 48), // 目标位置和大小
-                        new Windows.Foundation.Rect(0, 0, canvasBitmap.SizeInPixels.Width, canvasBitmap.SizeInPixels.Height)); // 源位置和大小
-                }
-
-                // 5. 转换为BitmapImage并显示
-                using (var outputStream = new InMemoryRandomAccessStream())
-                {
-                    await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
-                    outputStream.Seek(0);
-
-                    var bitmapImage = new BitmapImage();
-                    await bitmapImage.SetSourceAsync(outputStream);
-                    
-                    // 更新两个页面的头像显示
-                    ProfileAvatar.Source = bitmapImage;
-                    MicrosoftProfileAvatar.Source = bitmapImage;
-                    
-                    // 同样初始化外置登录的头像，防止加载前显示模糊的原始图
-                    var externalAvatar = FindName("ExternalProfileAvatar") as Image;
-                    if (externalAvatar != null)
-                    {
-                        externalAvatar.Source = bitmapImage;
-                    }
+                    externalAvatar.Source = bitmapImage;
                 }
             }
             catch (Exception ex)

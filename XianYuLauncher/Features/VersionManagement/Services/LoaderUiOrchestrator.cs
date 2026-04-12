@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Text.Json;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models.VersionManagement;
 using XianYuLauncher.Features.VersionList.ViewModels;
@@ -89,7 +90,7 @@ public sealed class LoaderUiOrchestrator : ILoaderUiOrchestrator
             icons.Add(new LoaderIconInfo
             {
                 Name = "OptiFine",
-                IconUrl = "ms-appx:///Assets/Icons/Download_Options/Optifine/Optifine.ico",
+                IconUrl = AppAssetResolver.ToUriString(AppAssetResolver.OptifineIconAssetPath),
                 Version = settings.OptifineVersion
             });
         }
@@ -101,7 +102,7 @@ public sealed class LoaderUiOrchestrator : ILoaderUiOrchestrator
             icons.Add(new LoaderIconInfo
             {
                 Name = "LiteLoader",
-                IconUrl = "ms-appx:///Assets/Icons/Download_Options/Liteloader/Liteloader.ico",
+                IconUrl = AppAssetResolver.ToUriString(AppAssetResolver.LiteLoaderIconAssetPath),
                 Version = settings.LiteLoaderVersion
             });
         }
@@ -134,7 +135,7 @@ public sealed class LoaderUiOrchestrator : ILoaderUiOrchestrator
         {
             Name = "Fabric",
             LoaderType = "fabric",
-            IconUrl = "ms-appx:///Assets/Icons/Download_Options/Fabric/Fabric_Icon.png",
+            IconUrl = GetLoaderIconUrl("fabric") ?? string.Empty,
             IsInstalled = isLoaderInstalled("fabric")
         });
 
@@ -142,7 +143,7 @@ public sealed class LoaderUiOrchestrator : ILoaderUiOrchestrator
         {
             Name = "Forge",
             LoaderType = "forge",
-            IconUrl = "ms-appx:///Assets/Icons/Download_Options/Forge/MinecraftForge_Icon.jpg",
+            IconUrl = GetLoaderIconUrl("forge") ?? string.Empty,
             IsInstalled = isLoaderInstalled("forge")
         });
 
@@ -150,7 +151,7 @@ public sealed class LoaderUiOrchestrator : ILoaderUiOrchestrator
         {
             Name = "NeoForge",
             LoaderType = "neoforge",
-            IconUrl = "ms-appx:///Assets/Icons/Download_Options/NeoForge/NeoForge_Icon.png",
+            IconUrl = GetLoaderIconUrl("neoforge") ?? string.Empty,
             IsInstalled = isLoaderInstalled("neoforge")
         });
 
@@ -158,7 +159,7 @@ public sealed class LoaderUiOrchestrator : ILoaderUiOrchestrator
         {
             Name = "Quilt",
             LoaderType = "quilt",
-            IconUrl = "ms-appx:///Assets/Icons/Download_Options/Quilt/Quilt.png",
+            IconUrl = GetLoaderIconUrl("quilt") ?? string.Empty,
             IsInstalled = isLoaderInstalled("quilt")
         });
 
@@ -166,7 +167,7 @@ public sealed class LoaderUiOrchestrator : ILoaderUiOrchestrator
         {
             Name = "OptiFine",
             LoaderType = "optifine",
-            IconUrl = "ms-appx:///Assets/Icons/Download_Options/Optifine/Optifine.ico",
+            IconUrl = GetLoaderIconUrl("optifine") ?? string.Empty,
             IsInstalled = isLoaderInstalled("optifine")
         });
 
@@ -176,7 +177,7 @@ public sealed class LoaderUiOrchestrator : ILoaderUiOrchestrator
             {
                 Name = "Cleanroom",
                 LoaderType = "cleanroom",
-                IconUrl = "ms-appx:///Assets/Icons/Download_Options/Cleanroom/Cleanroom.png",
+                IconUrl = GetLoaderIconUrl("cleanroom") ?? string.Empty,
                 IsInstalled = isLoaderInstalled("cleanroom")
             });
         }
@@ -187,7 +188,7 @@ public sealed class LoaderUiOrchestrator : ILoaderUiOrchestrator
             {
                 Name = "Legacy Fabric",
                 LoaderType = "LegacyFabric",
-                IconUrl = "ms-appx:///Assets/Icons/Download_Options/Legacy-Fabric/Legacy-Fabric.png",
+                IconUrl = GetLoaderIconUrl("LegacyFabric") ?? string.Empty,
                 IsInstalled = isLoaderInstalled("legacyfabric")
             });
 
@@ -195,7 +196,7 @@ public sealed class LoaderUiOrchestrator : ILoaderUiOrchestrator
             {
                 Name = "LiteLoader",
                 LoaderType = "liteloader",
-                IconUrl = "ms-appx:///Assets/Icons/Download_Options/Liteloader/Liteloader.ico",
+                IconUrl = GetLoaderIconUrl("liteloader") ?? string.Empty,
                 IsInstalled = isLoaderInstalled("liteloader")
             });
         }
@@ -274,19 +275,11 @@ public sealed class LoaderUiOrchestrator : ILoaderUiOrchestrator
 
     private static string? GetLoaderIconUrl(string loaderType)
     {
-        return loaderType switch
+        if (AppAssetResolver.TryGetLoaderIconAssetPath(loaderType, out var iconAssetPath))
         {
-            "fabric" => "ms-appx:///Assets/Icons/Download_Options/Fabric/Fabric_Icon.png",
-            "legacyfabric" => "ms-appx:///Assets/Icons/Download_Options/Legacy-Fabric/Legacy-Fabric.png",
-            "LegacyFabric" => "ms-appx:///Assets/Icons/Download_Options/Legacy-Fabric/Legacy-Fabric.png",
-            "forge" => "ms-appx:///Assets/Icons/Download_Options/Forge/MinecraftForge_Icon.jpg",
-            "neoforge" => "ms-appx:///Assets/Icons/Download_Options/NeoForge/NeoForge_Icon.png",
-            "quilt" => "ms-appx:///Assets/Icons/Download_Options/Quilt/Quilt.png",
-            "cleanroom" => "ms-appx:///Assets/Icons/Download_Options/Cleanroom/Cleanroom.png",
-            "optifine" => "ms-appx:///Assets/Icons/Download_Options/Optifine/Optifine.ico",
-            "liteloader" => "ms-appx:///Assets/Icons/Download_Options/Liteloader/Liteloader.ico",
-            "LiteLoader" => "ms-appx:///Assets/Icons/Download_Options/Liteloader/Liteloader.ico",
-            _ => null
-        };
+            return AppAssetResolver.ToUriString(iconAssetPath);
+        }
+
+        return null;
     }
 }

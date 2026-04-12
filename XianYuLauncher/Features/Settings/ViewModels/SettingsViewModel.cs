@@ -1268,6 +1268,11 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
     {
         if (_disposed) return;
 
+        if (string.Equals(key, "MaterialType", StringComparison.Ordinal))
+        {
+            Log.Information("[Material.Settings] QueueSettingWrite scheduled. Key={Key}; DebounceMilliseconds={DebounceMilliseconds}", key, debounceMilliseconds);
+        }
+
         if (_saveDebounceTokens.TryRemove(key, out var previousCts))
         {
             previousCts.Cancel();
@@ -1289,10 +1294,25 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         {
             await Task.Delay(debounceMilliseconds, cancellationToken).ConfigureAwait(false);
             cancellationToken.ThrowIfCancellationRequested();
+
+            if (string.Equals(key, "MaterialType", StringComparison.Ordinal))
+            {
+                Log.Information("[Material.Settings] QueueSettingWrite executing. Key={Key}", key);
+            }
+
             await Task.Run(writeAction, cancellationToken).ConfigureAwait(false);
+
+            if (string.Equals(key, "MaterialType", StringComparison.Ordinal))
+            {
+                Log.Information("[Material.Settings] QueueSettingWrite completed. Key={Key}", key);
+            }
         }
         catch (OperationCanceledException)
         {
+            if (string.Equals(key, "MaterialType", StringComparison.Ordinal))
+            {
+                Log.Information("[Material.Settings] QueueSettingWrite canceled. Key={Key}", key);
+            }
         }
         finally
         {
@@ -1742,7 +1762,14 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
 
         try
         {
+            Log.Information("[Material.Settings] LoadMaterialSettings start. IsInitializingMaterial={IsInitializingMaterial}; CurrentMaterialType={CurrentMaterialType}", _isInitializingMaterial, MaterialType);
             var state = await _personalizationSettingsDomainService.LoadMaterialStateAsync();
+            Log.Information(
+                "[Material.Settings] LoadMaterialSettings loaded state. MaterialType={MaterialType}; MotionSpeed={MotionSpeed}; BackgroundImagePath={BackgroundImagePath}; BackgroundBlurAmount={BackgroundBlurAmount}",
+                state.MaterialType,
+                state.MotionSpeed,
+                state.BackgroundImagePath ?? string.Empty,
+                state.BackgroundBlurAmount);
             MaterialType = state.MaterialType;
             MotionSpeed = state.MotionSpeed;
             var colors = state.MotionColors;
@@ -1759,6 +1786,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
             // 材质在应用启动时已经由MainWindow.ApplyMaterialSettings()应用
             BackgroundImagePath = state.BackgroundImagePath;
             BackgroundBlurAmount = state.BackgroundBlurAmount;
+            Log.Information("[Material.Settings] LoadMaterialSettings applied to view model. MaterialType={MaterialType}; BackgroundImagePath={BackgroundImagePath}; BackgroundBlurAmount={BackgroundBlurAmount}; IsInitializingMaterial={IsInitializingMaterial}", MaterialType, BackgroundImagePath ?? string.Empty, BackgroundBlurAmount, _isInitializingMaterial);
         }
         finally
         {
@@ -1774,9 +1802,11 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         try
         {
             var isInitializing = _isInitializingMaterial;
+            Log.Information("[Material.Settings] MaterialType changed. Value={MaterialType}; IsInitializing={IsInitializing}; WindowAvailable={WindowAvailable}; BackgroundImagePath={BackgroundImagePath}", value, isInitializing, App.MainWindow is not null, BackgroundImagePath ?? string.Empty);
             if (!isInitializing)
             {
                 // 保存设置（异步调用，不等待完成，避免阻塞UI）
+                Log.Information("[Material.Settings] Queue material type save. MaterialType={MaterialType}", value);
                 QueueSettingWrite("MaterialType", () => _personalizationSettingsDomainService.SaveMaterialTypeAsync(value));
             }
             
@@ -1792,15 +1822,18 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
                 var window = App.MainWindow;
                 if (window != null)
                 {
+                    Log.Information("[Material.Settings] Applying material to main window immediately. MaterialType={MaterialType}", value);
                     _personalizationSettingsDomainService.ApplyMaterialToWindow(window, value);
                     
                     // 触发背景变更事件
                     if (value == XianYuLauncher.Core.Services.MaterialType.CustomBackground)
                     {
+                        Log.Information("[Material.Settings] Notifying custom background change. MaterialType={MaterialType}; BackgroundImagePath={BackgroundImagePath}", value, BackgroundImagePath ?? string.Empty);
                         _personalizationSettingsDomainService.NotifyBackgroundChanged(value, BackgroundImagePath);
                     }
                     else
                     {
+                        Log.Information("[Material.Settings] Notifying non-custom background change. MaterialType={MaterialType}", value);
                         _personalizationSettingsDomainService.NotifyBackgroundChanged(value, null);
                     }
                 }
@@ -1808,11 +1841,13 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
             else
             {
                 // 初始化完成，重置标志位
+                Log.Information("[Material.Settings] Initialization material change completed. MaterialType={MaterialType}; ResetInitializingFlag=true", value);
                 _isInitializingMaterial = false;
             }
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "[Material.Settings] MaterialType change handling failed. MaterialType={MaterialType}", value);
             Console.WriteLine($"切换窗口材质失败: {ex.Message}");
         }
     }

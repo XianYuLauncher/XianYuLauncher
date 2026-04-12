@@ -24,27 +24,27 @@ public sealed class UpdateDialogFlowService : IUpdateDialogFlowService
         _dialogHostService = dialogHostService;
     }
 
+    public Task<bool> ShowUpdatePreviewAsync(
+        UpdateInfo updateInfo,
+        string title,
+        string primaryButtonText,
+        string? closeButtonText = "取消")
+    {
+        return ShowUpdatePreviewCoreAsync(updateInfo, title, primaryButtonText, closeButtonText);
+    }
+
     public async Task<bool> ShowUpdateInstallFlowAsync(
         UpdateInfo updateInfo,
         string title,
         string primaryButtonText,
         string? closeButtonText = "取消")
     {
-        var viewModel = new UpdateDialogViewModel(_logger, _updateService, updateInfo);
-        var updateDialog = new ContentDialog
-        {
-            Title = title,
-            Content = new UpdateDialog(viewModel),
-            PrimaryButtonText = primaryButtonText,
-            CloseButtonText = closeButtonText,
-            DefaultButton = ContentDialogButton.Primary,
-        };
-
-        var result = await _dialogHostService.ShowAsync(updateDialog);
-        if (result != ContentDialogResult.Primary)
+        if (!await ShowUpdatePreviewCoreAsync(updateInfo, title, primaryButtonText, closeButtonText))
         {
             return false;
         }
+
+        var viewModel = new UpdateDialogViewModel(_logger, _updateService, updateInfo);
 
         var downloadDialog = new ContentDialog
         {
@@ -73,5 +73,25 @@ public sealed class UpdateDialogFlowService : IUpdateDialogFlowService
         {
             viewModel.CloseDialog -= OnCloseDialog;
         }
+    }
+
+    private async Task<bool> ShowUpdatePreviewCoreAsync(
+        UpdateInfo updateInfo,
+        string title,
+        string primaryButtonText,
+        string? closeButtonText)
+    {
+        var previewViewModel = new UpdateDialogViewModel(_logger, _updateService, updateInfo);
+        var previewDialog = new ContentDialog
+        {
+            Title = title,
+            Content = new UpdateDialog(previewViewModel),
+            PrimaryButtonText = primaryButtonText,
+            CloseButtonText = closeButtonText,
+            DefaultButton = ContentDialogButton.Primary,
+        };
+
+        var result = await _dialogHostService.ShowAsync(previewDialog);
+        return result == ContentDialogResult.Primary;
     }
 }

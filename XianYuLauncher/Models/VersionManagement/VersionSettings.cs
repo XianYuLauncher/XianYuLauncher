@@ -106,7 +106,7 @@ public class VersionSettings
     public string GarbageCollectorMode { get; set; } = XianYuLauncher.Core.Helpers.GarbageCollectorModeHelper.Auto;
 
     /// <summary>
-    /// 版本图标路径（支持 ms-appx:/// 与本地绝对路径）
+    /// 版本图标路径（支持应用资源路径与本地绝对路径）
     /// </summary>
     public string? Icon { get; set; }
 
