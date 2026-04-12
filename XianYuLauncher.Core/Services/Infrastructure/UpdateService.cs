@@ -22,6 +22,7 @@ namespace XianYuLauncher.Core.Services;
 /// </summary>
 public class UpdateService
 {
+    private const string GitHubReleasesApiUrl = "https://api.github.com/repos/XianYuLauncher/XianYuLauncher/releases?per_page=20";
     private readonly IDownloadManager _downloadManager;
     private readonly ILogger<UpdateService> _logger;
     private readonly ILocalSettingsService _localSettingsService;
@@ -241,6 +242,50 @@ public class UpdateService
         catch (Exception ex)
         {
             _logger.LogError(ex, "检查 Dev 更新失败");
+        }
+
+        return null;
+    }
+
+    public async Task<string?> TryGetGitHubReleaseNotesAsync(string version)
+    {
+        if (string.IsNullOrWhiteSpace(version))
+        {
+            return null;
+        }
+
+        try
+        {
+            var response = await _downloadManager.DownloadStringAsync(GitHubReleasesApiUrl);
+            var releases = JArray.Parse(response);
+            var normalizedTargetVersion = NormalizeReleaseVersion(version);
+
+            foreach (var release in releases.OfType<JObject>())
+            {
+                var tagName = release.Value<string>("tag_name");
+                if (string.IsNullOrWhiteSpace(tagName))
+                {
+                    continue;
+                }
+
+                if (!string.Equals(NormalizeReleaseVersion(tagName), normalizedTargetVersion, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var body = release.Value<string>("body");
+                if (!string.IsNullOrWhiteSpace(body))
+                {
+                    _logger.LogInformation("已从 GitHub Release 正文回退获取版本 {Version} 的更新日志", version);
+                    return body;
+                }
+
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "获取 GitHub Release 正文失败，版本: {Version}", version);
         }
 
         return null;
@@ -887,5 +932,57 @@ Stop-Transcript
             _logger.LogError(ex, "清理临时文件失败: {DirectoryPath}", directoryPath);
             Debug.WriteLine($"[DEBUG] 清理临时文件失败: {directoryPath}, 错误: {ex.Message}");
         }
+    }
+
+    private static string NormalizeReleaseVersion(string versionText)
+    {
+        var normalizedVersion = versionText;
+        if (normalizedVersion.StartsWith("v", StringComparison.OrdinalIgnoreCase))
+        {
+            normalizedVersion = normalizedVersion[1..];
+        }
+
+        var dashIndex = normalizedVersion.IndexOf('-');
+        if (dashIndex < 0)
+        {
+            return normalizedVersion.ToLowerInvariant();
+        }
+
+        var baseVersion = normalizedVersion[..dashIndex];
+        var suffix = normalizedVersion[(dashIndex + 1)..];
+        var identifiers = new List<string>();
+
+        foreach (var segment in suffix.Split(['-', '_', '.'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (string.IsNullOrWhiteSpace(segment))
+            {
+                continue;
+            }
+
+            var match = System.Text.RegularExpressions.Regex.Match(segment, "^(?<label>[A-Za-z-]+?)(?<number>\\d+)$");
+            if (match.Success)
+            {
+                var label = match.Groups["label"].Value.ToLowerInvariant();
+                if (!string.IsNullOrWhiteSpace(label))
+                {
+                    identifiers.Add(label);
+                }
+
+                identifiers.Add(int.Parse(match.Groups["number"].Value).ToString());
+                continue;
+            }
+
+            if (int.TryParse(segment, out var numericValue))
+            {
+                identifiers.Add(numericValue.ToString());
+                continue;
+            }
+
+            identifiers.Add(segment.ToLowerInvariant());
+        }
+
+        return identifiers.Count == 0
+            ? baseVersion.ToLowerInvariant()
+            : $"{baseVersion.ToLowerInvariant()}-{string.Join('.', identifiers)}";
     }
 }

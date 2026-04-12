@@ -18,7 +18,7 @@ param(
 
     [string]$PackId = 'SpiritStudio.XianYuLauncher',
 
-    [string]$PackTitle = 'XianYuLauncher',
+    [string]$PackTitle = '',
 
     [string]$PackAuthors = 'Spirit Studio',
 
@@ -97,6 +97,18 @@ $releaseDirectoryPath = Resolve-AbsolutePath -Path $ReleaseDirectory
 New-Item -ItemType Directory -Force -Path $releaseDirectoryPath | Out-Null
 
 $vpkPath = Resolve-CommandPath -CommandName $VpkExecutablePath
+$resolvedPackTitle = if ([string]::IsNullOrWhiteSpace($PackTitle)) {
+    if ($Channel.Equals('stable', [System.StringComparison]::OrdinalIgnoreCase)) {
+        'XianYu Launcher'
+    }
+    else {
+        'XianYu Launcher (Dev)'
+    }
+}
+else {
+    $PackTitle
+}
+
 $resolvedFrameworkRuntime = if ([string]::IsNullOrWhiteSpace($FrameworkRuntime)) {
     Resolve-FrameworkRuntime -Rid $RuntimeIdentifier
 }
@@ -121,7 +133,7 @@ $arguments.Add($Channel)
 $arguments.Add('--runtime')
 $arguments.Add($RuntimeIdentifier)
 $arguments.Add('--packTitle')
-$arguments.Add($PackTitle)
+$arguments.Add($resolvedPackTitle)
 $arguments.Add('--packAuthors')
 $arguments.Add($PackAuthors)
 $arguments.Add('--icon')
@@ -134,6 +146,7 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedFrameworkRuntime)) {
 }
 
 Write-Host "Packing Velopack release with channel '$Channel' and version '$PackVersion'."
+Write-Host "Using pack title: $resolvedPackTitle"
 Write-Host "Using vpk: $vpkPath"
 Write-Host "Publish directory: $publishDirectoryPath"
 Write-Host "Release directory: $releaseDirectoryPath"
@@ -158,6 +171,13 @@ $packageFiles = @(Get-ChildItem -Path $releaseDirectoryPath -Filter '*.nupkg' -F
 if ($packageFiles.Count -eq 0) {
     throw "Velopack pack output missing nupkg package: $releaseDirectoryPath"
 }
+
+$legacyPackageFiles = @($packageFiles | Where-Object { $_.Name -notlike "*$PackVersion*" })
+foreach ($legacyPackageFile in $legacyPackageFiles) {
+    Remove-Item -Path $legacyPackageFile.FullName -Force
+}
+
+$packageFiles = @(Get-ChildItem -Path $releaseDirectoryPath -Filter '*.nupkg' -File)
 
 $deltaPackageCount = @($packageFiles | Where-Object { $_.Name -match 'delta' }).Count
 Write-Host "Generated $($packageFiles.Count) nupkg package(s), including $deltaPackageCount delta package(s)."

@@ -1,4 +1,7 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
@@ -20,6 +23,8 @@ public class UpdateFlowService : IUpdateFlowService
 {
     private const string GitHubRepositoryUrl = "https://github.com/XianYuLauncher/XianYuLauncher";
     private const string ReleasesPageUrl = "https://github.com/XianYuLauncher/XianYuLauncher/releases";
+    private static readonly Regex MarkdownLinkRegex = new(@"\[(?<text>[^\]]+)\]\([^)]+\)", RegexOptions.Compiled);
+    private static readonly Regex OrderedListRegex = new(@"^\d+\.\s+", RegexOptions.Compiled);
 
     private sealed record AvailableAppUpdate(
         bool IsManaged,
@@ -31,7 +36,7 @@ public class UpdateFlowService : IUpdateFlowService
             ? ManagedUpdateInfo?.TargetFullRelease.Version.ToString() ?? string.Empty
             : LegacyUpdateInfo?.version ?? string.Empty;
 
-        public bool ImportantUpdate => LegacyUpdateInfo?.important_update ?? IsManaged;
+        public bool ImportantUpdate => LegacyUpdateInfo?.important_update ?? false;
 
         public static AvailableAppUpdate FromLegacy(CoreUpdateInfo updateInfo)
             => new(false, updateInfo, null, null);
@@ -44,6 +49,7 @@ public class UpdateFlowService : IUpdateFlowService
     private readonly UpdateService _updateService;
     private readonly ILocalSettingsService _localSettingsService;
     private readonly ICommonDialogService _dialogService;
+    private readonly IUpdateDialogFlowService _updateDialogFlowService;
     private readonly IProgressDialogService _progressDialogService;
     private readonly IApplicationLifecycleService _applicationLifecycleService;
 
@@ -52,6 +58,7 @@ public class UpdateFlowService : IUpdateFlowService
         UpdateService updateService,
         ILocalSettingsService localSettingsService,
         ICommonDialogService dialogService,
+        IUpdateDialogFlowService updateDialogFlowService,
         IProgressDialogService progressDialogService,
         IApplicationLifecycleService applicationLifecycleService)
     {
@@ -59,6 +66,7 @@ public class UpdateFlowService : IUpdateFlowService
         _updateService = updateService;
         _localSettingsService = localSettingsService;
         _dialogService = dialogService;
+        _updateDialogFlowService = updateDialogFlowService;
         _progressDialogService = progressDialogService;
         _applicationLifecycleService = applicationLifecycleService;
     }
@@ -261,12 +269,17 @@ public class UpdateFlowService : IUpdateFlowService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        // TODO: 后续补齐 Unpackaged SideLoad 的应用内更新链路，替代当前打开 Releases 页手动替换的过渡方案。
-        var confirmed = await _dialogService.ShowConfirmationDialogAsync(
-            title,
-            BuildSideLoadUpdateMessage(updateInfo),
-            primaryButtonText,
-            closeButtonText);
+        var confirmed = updateInfo.IsManaged
+            ? await _updateDialogFlowService.ShowUpdatePreviewAsync(
+                await BuildPreviewUpdateInfoAsync(updateInfo),
+                title,
+                primaryButtonText,
+                closeButtonText)
+            : await _dialogService.ShowConfirmationDialogAsync(
+                title,
+                BuildSideLoadUpdateMessage(updateInfo),
+                primaryButtonText,
+                closeButtonText);
 
         if (!confirmed)
         {
@@ -301,12 +314,14 @@ public class UpdateFlowService : IUpdateFlowService
 
         await _progressDialogService.ShowProgressDialogAsync(
             title: "下载更新",
-            message: $"正在下载新版本 {updateInfo.Version}...",
+            message: $"正在获取新版本 {updateInfo.Version} 的下载资源...",
             async (progress, status, dialogCancellationToken) =>
             {
                 try
                 {
-                    status.Report($"正在下载新版本 {updateInfo.Version}...");
+                    status.Report($"正在获取新版本 {updateInfo.Version} 的下载资源...");
+                    progress.Report(0);
+                    status.Report("正在下载更新... 0%");
                     await updateManager.DownloadUpdatesAsync(
                         managedUpdateInfo,
                         percent =>
@@ -382,5 +397,87 @@ public class UpdateFlowService : IUpdateFlowService
             : string.Empty;
 
         return $"发现新版本 {legacyUpdateInfo.version}。\n\n{importancePrefix}SideLoad 版本现在通过 Unpackaged Zip 分发，不再执行 MSIX 自动安装。\n请在浏览器中下载新版本，退出当前程序后替换当前安装目录，再重新启动应用。\n\n是否现在打开 Releases 页面？";
+    }
+
+    private async Task<CoreUpdateInfo> BuildPreviewUpdateInfoAsync(AvailableAppUpdate updateInfo)
+    {
+        if (!updateInfo.IsManaged)
+        {
+            return updateInfo.LegacyUpdateInfo
+                ?? throw new InvalidOperationException("缺少旧版更新信息。");
+        }
+
+        var managedUpdateInfo = updateInfo.ManagedUpdateInfo
+            ?? throw new InvalidOperationException("缺少受管更新信息。");
+        var targetRelease = managedUpdateInfo.TargetFullRelease;
+        var notesMarkdown = targetRelease.NotesMarkdown;
+
+        if (string.IsNullOrWhiteSpace(notesMarkdown))
+        {
+            notesMarkdown = await _updateService.TryGetGitHubReleaseNotesAsync(targetRelease.Version.ToString());
+        }
+
+        return new CoreUpdateInfo
+        {
+            version = targetRelease.Version.ToString(),
+            important_update = updateInfo.ImportantUpdate,
+            changelog = ParseManagedReleaseNotes(notesMarkdown),
+        };
+    }
+
+    private static List<string> ParseManagedReleaseNotes(string? notesMarkdown)
+    {
+        if (string.IsNullOrWhiteSpace(notesMarkdown))
+        {
+            return [];
+        }
+
+        var changelog = new List<string>();
+        var lines = notesMarkdown.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+        foreach (var rawLine in lines)
+        {
+            if (string.IsNullOrWhiteSpace(rawLine) || rawLine.StartsWith("```", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
+            var line = rawLine.Trim();
+
+            if (line.StartsWith("#", StringComparison.Ordinal))
+            {
+                line = line.TrimStart('#').Trim();
+            }
+            else if (line.StartsWith("- ", StringComparison.Ordinal)
+                || line.StartsWith("* ", StringComparison.Ordinal)
+                || line.StartsWith("+ ", StringComparison.Ordinal))
+            {
+                line = line[2..].Trim();
+            }
+            else
+            {
+                line = OrderedListRegex.Replace(line, string.Empty);
+            }
+
+            line = SanitizeMarkdownInline(line);
+            if (!string.IsNullOrWhiteSpace(line))
+            {
+                changelog.Add(line);
+            }
+        }
+
+        return changelog;
+    }
+
+    private static string SanitizeMarkdownInline(string text)
+    {
+        var sanitized = MarkdownLinkRegex.Replace(text, "${text}");
+        sanitized = sanitized
+            .Replace("**", string.Empty, StringComparison.Ordinal)
+            .Replace("__", string.Empty, StringComparison.Ordinal)
+            .Replace("`", string.Empty, StringComparison.Ordinal)
+            .Replace("~~", string.Empty, StringComparison.Ordinal);
+
+        return sanitized.Trim();
     }
 }

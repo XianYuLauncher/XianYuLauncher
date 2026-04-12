@@ -85,7 +85,9 @@ public static class AppEnvironment
     /// <summary>
     /// 当前是否为 Dev 构建。
     /// </summary>
-    public static bool IsDevBuild => ApplicationIdentityName.EndsWith("Dev", StringComparison.OrdinalIgnoreCase);
+    public static bool IsDevBuild
+        => HasPrereleaseBuildMarker(ApplicationDisplayVersion)
+           || ApplicationIdentityName.EndsWith("Dev", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// 当前分发渠道。
@@ -314,6 +316,11 @@ public static class AppEnvironment
         return IsDevBuild
             ? DistributionChannel.DevSideLoad
             : DistributionChannel.SideLoad;
+    }
+
+    private static bool HasPrereleaseBuildMarker(string versionText)
+    {
+        return versionText.Contains('-');
     }
 
     private static Assembly ResolveEntryAssembly()

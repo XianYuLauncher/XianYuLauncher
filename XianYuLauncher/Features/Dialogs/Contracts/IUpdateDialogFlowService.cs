@@ -4,6 +4,12 @@ namespace XianYuLauncher.Features.Dialogs.Contracts;
 
 public interface IUpdateDialogFlowService
 {
+    Task<bool> ShowUpdatePreviewAsync(
+        UpdateInfo updateInfo,
+        string title,
+        string primaryButtonText,
+        string? closeButtonText = "取消");
+
     Task<bool> ShowUpdateInstallFlowAsync(
         UpdateInfo updateInfo,
         string title,
