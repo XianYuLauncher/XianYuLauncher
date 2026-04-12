@@ -9,7 +9,9 @@
     <FileVersion>1.5.0.0</FileVersion>
     <InformationalVersion>$(Version)</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
-    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+    <BuildChannelConstant Condition="'$(BuildChannelConstant)' == ''"></BuildChannelConstant>
+    <ChannelDefineConstants Condition="'$(BuildChannelConstant)' != ''">;$(BuildChannelConstant)</ChannelDefineConstants>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN$(ChannelDefineConstants)</DefineConstants>
     <ApplicationIcon>Assets/WindowIcon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Configurations>Debug;Release;Debug-Unpackaged;Release-Unpackaged</Configurations>

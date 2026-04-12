@@ -155,7 +155,7 @@ jobs:
           /p:FileVersion=${{ steps.store_channel.outputs.package_version }} `
           /p:InformationalVersion=${{ steps.store_channel.outputs.display_version }} `
           /p:IncludeSourceRevisionInInformationalVersion=false `
-          /p:DefineConstants="DISABLE_XAML_GENERATED_MAIN;${{ steps.store_channel.outputs.build_constants }}" `
+          /p:BuildChannelConstant=${{ steps.store_channel.outputs.build_constants }} `
           /p:GenerateAppxPackageOnBuild=true `
           /p:UapAppxPackageBuildMode=SideloadOnly `
           /p:AppxBundle=Never `
@@ -178,7 +178,7 @@ jobs:
           /p:FileVersion=${{ steps.store_channel.outputs.package_version }} `
           /p:InformationalVersion=${{ steps.store_channel.outputs.display_version }} `
           /p:IncludeSourceRevisionInInformationalVersion=false `
-          /p:DefineConstants="DISABLE_XAML_GENERATED_MAIN;${{ steps.store_channel.outputs.build_constants }}" `
+          /p:BuildChannelConstant=${{ steps.store_channel.outputs.build_constants }} `
           /p:GenerateAppxPackageOnBuild=true `
           /p:UapAppxPackageBuildMode=StoreUpload `
           /p:AppxBundle=Never `
@@ -471,7 +471,7 @@ jobs:
           -p:FileVersion=${{ steps.sideload_channel.outputs.package_version }} `
           -p:InformationalVersion=${{ steps.sideload_channel.outputs.display_version }} `
           -p:IncludeSourceRevisionInInformationalVersion=false `
-          -p:DefineConstants="DISABLE_XAML_GENERATED_MAIN;${{ steps.sideload_channel.outputs.build_constants }}" `
+          -p:BuildChannelConstant=${{ steps.sideload_channel.outputs.build_constants }} `
           -p:PublishDir="$publishRoot\\" `
           -p:GenerateAppInstallerFile=false
 

@@ -54,7 +54,7 @@ function Resolve-CommandPath {
     if ($CommandName.IndexOfAny([char[]]@('\', '/')) -ge 0 -or $CommandName.EndsWith('.exe', [System.StringComparison]::OrdinalIgnoreCase)) {
         $resolvedPath = Resolve-AbsolutePath -Path $CommandName
         if (-not (Test-Path $resolvedPath -PathType Leaf)) {
-            throw "找不到 vpk 可执行文件: $resolvedPath"
+            throw "Velopack executable not found: $resolvedPath"
         }
 
         return $resolvedPath
@@ -80,17 +80,17 @@ function Resolve-FrameworkRuntime {
 
 $publishDirectoryPath = Resolve-AbsolutePath -Path $PublishDirectory
 if (-not (Test-Path $publishDirectoryPath -PathType Container)) {
-    throw "发布目录不存在: $publishDirectoryPath"
+    throw "Publish directory not found: $publishDirectoryPath"
 }
 
 $mainExecutablePath = Join-Path $publishDirectoryPath $MainExecutableName
 if (-not (Test-Path $mainExecutablePath -PathType Leaf)) {
-    throw "发布目录缺少主程序: $mainExecutablePath"
+    throw "Main executable missing from publish directory: $mainExecutablePath"
 }
 
 $iconFilePath = Resolve-AbsolutePath -Path $IconPath
 if (-not (Test-Path $iconFilePath -PathType Leaf)) {
-    throw "找不到 Velopack 打包图标: $iconFilePath"
+    throw "Velopack pack icon not found: $iconFilePath"
 }
 
 $releaseDirectoryPath = Resolve-AbsolutePath -Path $ReleaseDirectory
@@ -141,22 +141,22 @@ Write-Host "Release directory: $releaseDirectoryPath"
 & $vpkPath $arguments
 
 if ($LASTEXITCODE -ne 0) {
-    throw "vpk pack 执行失败，退出码: $LASTEXITCODE"
+    throw "vpk pack failed with exit code: $LASTEXITCODE"
 }
 
 $releaseMetadataPath = Join-Path $releaseDirectoryPath "releases.$Channel.json"
 if (-not (Test-Path $releaseMetadataPath -PathType Leaf)) {
-    throw "Velopack 打包后缺少 release 元数据: $releaseMetadataPath"
+    throw "Velopack pack output missing release metadata: $releaseMetadataPath"
 }
 
 $setupExecutables = @(Get-ChildItem -Path $releaseDirectoryPath -Filter '*Setup.exe' -File)
 if ($setupExecutables.Count -eq 0) {
-    throw "Velopack 打包后未生成 Setup.exe: $releaseDirectoryPath"
+    throw "Velopack pack output missing Setup.exe: $releaseDirectoryPath"
 }
 
 $packageFiles = @(Get-ChildItem -Path $releaseDirectoryPath -Filter '*.nupkg' -File)
 if ($packageFiles.Count -eq 0) {
-    throw "Velopack 打包后未生成 nupkg 包: $releaseDirectoryPath"
+    throw "Velopack pack output missing nupkg package: $releaseDirectoryPath"
 }
 
 $deltaPackageCount = @($packageFiles | Where-Object { $_.Name -match 'delta' }).Count

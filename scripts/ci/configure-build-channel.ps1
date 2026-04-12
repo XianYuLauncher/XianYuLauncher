@@ -148,7 +148,7 @@ function ConvertTo-UpdaterSemVer {
     }
 
     if ($normalizedVersion -notmatch '^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?<suffix>.*)$') {
-        throw "无法将 Tag 版本转换为 updater semver: $VersionText"
+        throw "Unable to convert tag version to updater semver: $VersionText"
     }
 
     $baseVersion = "$($matches['major']).$($matches['minor']).$($matches['patch'])"
