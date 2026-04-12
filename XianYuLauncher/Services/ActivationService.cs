@@ -361,71 +361,23 @@ public class ActivationService : IActivationService
     {
         try
         {
-            if (AppEnvironment.CurrentDistributionChannel == DistributionChannel.Store)
+            var updateFlowResult = await _updateFlowService.CheckForStartupUpdatesAsync();
+
+            if (!updateFlowResult.HasUpdate)
             {
-                Serilog.Log.Information("应用从微软商店安装，跳过更新检查");
+                Serilog.Log.Information("当前已是最新版本，或本次启动无需提示更新");
                 return;
             }
-            
-            // 获取自动检查更新设置
-            var localSettingsService = App.GetService<ILocalSettingsService>();
-            var autoUpdateCheckModeStr = await localSettingsService.ReadSettingAsync<string>("AutoUpdateCheckMode");
-            var autoUpdateCheckMode = AutoUpdateCheckModeType.Always; // 默认每次启动检查
-            
-            if (!string.IsNullOrEmpty(autoUpdateCheckModeStr) && 
-                Enum.TryParse<AutoUpdateCheckModeType>(autoUpdateCheckModeStr, out var mode))
-            {
-                autoUpdateCheckMode = mode;
-            }
-            
-            Serilog.Log.Information("自动检查更新模式: {Mode}", autoUpdateCheckMode);
-            
-            // 获取更新服务实例
-            var updateService = App.GetService<UpdateService>();
-            
-            updateService.SetCurrentVersion(AppEnvironment.ApplicationVersion);
-            
-            // 检查是否有更新
-            UpdateInfo? updateInfo;
-            if (AppEnvironment.CurrentDistributionChannel == DistributionChannel.DevSideLoad)
-            {
-                Serilog.Log.Information("Dev 通道：仅检查 Dev 更新...");
-                updateInfo = await updateService.CheckForDevUpdateAsync();
-            }
-            else
-            {
-                updateInfo = await updateService.CheckForUpdatesAsync();
-            }
-            
-            if (updateInfo != null)
-            {
-                // 根据设置决定是否显示更新弹窗
-                bool shouldShowUpdate = autoUpdateCheckMode == AutoUpdateCheckModeType.Always || 
-                                        updateInfo.important_update;
-                
-                if (!shouldShowUpdate)
-                {
-                    Serilog.Log.Information("发现新版本 {Version}，但设置为仅重要更新时提示，跳过", updateInfo.version);
-                    return;
-                }
-                
-                Serilog.Log.Information("发现新版本，显示更新弹窗");
-                var updateFlowResult = await _updateFlowService.HandleAvailableUpdateAsync(updateInfo, isStartupCheck: true);
 
-                if (updateFlowResult.InstallationStarted)
-                {
-                    Serilog.Log.Information("用户同意更新");
-                    Debug.WriteLine("[DEBUG] 用户同意更新");
-                }
-                else
-                {
-                    Serilog.Log.Information("用户取消更新");
-                    Debug.WriteLine("[DEBUG] 用户取消更新");
-                }
+            if (updateFlowResult.InstallationStarted)
+            {
+                Serilog.Log.Information("用户同意更新");
+                Debug.WriteLine("[DEBUG] 用户同意更新");
             }
             else
             {
-                Serilog.Log.Information("当前已是最新版本");
+                Serilog.Log.Information("用户取消更新或当前仅完成后台检查");
+                Debug.WriteLine("[DEBUG] 用户取消更新或当前仅完成后台检查");
             }
         }
         catch (Exception ex)

@@ -2,6 +2,8 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$RefName,
 
+    [string]$UpdaterRuntimeIdentifier,
+
     [string]$ManifestPath = "XianYuLauncher/Package.appxmanifest",
 
     [switch]$UpdateManifest,
@@ -63,7 +65,9 @@ function Remove-DevSuffix {
 function Get-ChannelMetadata {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$SourceRefName
+        [string]$SourceRefName,
+
+        [string]$UpdaterRuntimeIdentifier
     )
 
     $rawVersion = $SourceRefName
@@ -117,14 +121,91 @@ function Get-ChannelMetadata {
         'DEV_CHANNEL'
     }
 
+    $updaterVersion = ConvertTo-UpdaterSemVer -VersionText $rawVersion
+    $updaterChannel = Resolve-UpdaterChannel -RuntimeIdentifier $UpdaterRuntimeIdentifier -Channel $channel
+
     [pscustomobject]@{
         Channel = $channel
         BuildConstants = $buildConstants
         DisplayVersion = $displayVersion
         PackageVersion = $packageVersion
         ArtifactVersion = $artifactVersion
+        UpdaterVersion = $updaterVersion
+        UpdaterChannel = $updaterChannel
         UseDevBranding = $channel -ne 'stable'
     }
+}
+
+function ConvertTo-UpdaterSemVer {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$VersionText
+    )
+
+    $normalizedVersion = $VersionText
+    if ($normalizedVersion.StartsWith('v', [System.StringComparison]::OrdinalIgnoreCase)) {
+        $normalizedVersion = $normalizedVersion.Substring(1)
+    }
+
+    if ($normalizedVersion -notmatch '^(?<major>\d+)\.(?<minor>\d+)\.(?<patch>\d+)(?<suffix>.*)$') {
+        throw "无法将 Tag 版本转换为 updater semver: $VersionText"
+    }
+
+    $baseVersion = "$($matches['major']).$($matches['minor']).$($matches['patch'])"
+    $suffix = $matches['suffix']
+
+    if ([string]::IsNullOrWhiteSpace($suffix)) {
+        return $baseVersion
+    }
+
+    $normalizedSuffix = $suffix.TrimStart('-', '.', '_')
+    if ([string]::IsNullOrWhiteSpace($normalizedSuffix)) {
+        return $baseVersion
+    }
+
+    $identifiers = [System.Collections.Generic.List[string]]::new()
+    foreach ($segment in ($normalizedSuffix -split '[-_\.]')) {
+        if ([string]::IsNullOrWhiteSpace($segment)) {
+            continue
+        }
+
+        if ($segment -match '^(?<label>[A-Za-z-]+?)(?<number>\d+)$') {
+            $label = $matches['label'].ToLowerInvariant()
+            if (-not [string]::IsNullOrWhiteSpace($label)) {
+                $identifiers.Add($label)
+            }
+
+            $identifiers.Add(([int]$matches['number']).ToString())
+            continue
+        }
+
+        if ($segment -match '^\d+$') {
+            $identifiers.Add(([int]$segment).ToString())
+            continue
+        }
+
+        $identifiers.Add($segment.ToLowerInvariant())
+    }
+
+    if ($identifiers.Count -eq 0) {
+        return $baseVersion
+    }
+
+    return "$baseVersion-$([string]::Join('.', $identifiers))"
+}
+
+function Resolve-UpdaterChannel {
+    param(
+        [string]$RuntimeIdentifier,
+        [Parameter(Mandatory = $true)]
+        [string]$Channel
+    )
+
+    if ([string]::IsNullOrWhiteSpace($RuntimeIdentifier)) {
+        return $Channel
+    }
+
+    return "$($RuntimeIdentifier.ToLowerInvariant())-$Channel"
 }
 
 function Apply-DevAssets {
@@ -204,7 +285,7 @@ function Update-ChannelManifest {
     $xml.Save($Path)
 }
 
-$metadata = Get-ChannelMetadata -SourceRefName $RefName
+$metadata = Get-ChannelMetadata -SourceRefName $RefName -UpdaterRuntimeIdentifier $UpdaterRuntimeIdentifier
 Write-Host "Resolved channel: $($metadata.Channel)"
 Write-Host "Build constants: $($metadata.BuildConstants)"
 
@@ -221,16 +302,22 @@ Write-GitHubKeyValue -Path $GitHubEnvPath -Name 'Build_Channel' -Value $metadata
 Write-GitHubKeyValue -Path $GitHubEnvPath -Name 'Display_Version' -Value $metadata.DisplayVersion
 Write-GitHubKeyValue -Path $GitHubEnvPath -Name 'Artifact_Version' -Value $metadata.ArtifactVersion
 Write-GitHubKeyValue -Path $GitHubEnvPath -Name 'Package_Version' -Value $metadata.PackageVersion
+Write-GitHubKeyValue -Path $GitHubEnvPath -Name 'Updater_Version' -Value $metadata.UpdaterVersion
+Write-GitHubKeyValue -Path $GitHubEnvPath -Name 'Updater_Channel' -Value $metadata.UpdaterChannel
 
 Write-GitHubKeyValue -Path $GitHubOutputPath -Name 'build_constants' -Value $metadata.BuildConstants
 Write-GitHubKeyValue -Path $GitHubOutputPath -Name 'channel' -Value $metadata.Channel
 Write-GitHubKeyValue -Path $GitHubOutputPath -Name 'display_version' -Value $metadata.DisplayVersion
 Write-GitHubKeyValue -Path $GitHubOutputPath -Name 'artifact_version' -Value $metadata.ArtifactVersion
 Write-GitHubKeyValue -Path $GitHubOutputPath -Name 'package_version' -Value $metadata.PackageVersion
+Write-GitHubKeyValue -Path $GitHubOutputPath -Name 'updater_version' -Value $metadata.UpdaterVersion
+Write-GitHubKeyValue -Path $GitHubOutputPath -Name 'updater_channel' -Value $metadata.UpdaterChannel
 
 if ([string]::IsNullOrWhiteSpace($GitHubEnvPath) -and [string]::IsNullOrWhiteSpace($GitHubOutputPath)) {
     Write-Host "Build_Constants=$($metadata.BuildConstants)"
     Write-Host "Build_Channel=$($metadata.Channel)"
     Write-Host "Display_Version=$($metadata.DisplayVersion)"
     Write-Host "Artifact_Version=$($metadata.ArtifactVersion)"
+    Write-Host "Updater_Version=$($metadata.UpdaterVersion)"
+    Write-Host "Updater_Channel=$($metadata.UpdaterChannel)"
 }

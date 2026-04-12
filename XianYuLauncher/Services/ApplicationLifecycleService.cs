@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using Microsoft.UI.Xaml;
 using Windows.Storage;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
@@ -9,16 +10,27 @@ namespace XianYuLauncher.Services;
 
 public class ApplicationLifecycleService : IApplicationLifecycleService
 {
-    public Task RestartApplicationAsync()
+    private readonly IUiDispatcher _uiDispatcher;
+
+    public ApplicationLifecycleService(IUiDispatcher uiDispatcher)
+    {
+        _uiDispatcher = uiDispatcher;
+    }
+
+    public async Task RestartApplicationAsync()
     {
         var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
         if (!string.IsNullOrEmpty(exePath))
         {
             System.Diagnostics.Process.Start(exePath);
-            App.MainWindow.Close();
         }
 
-        return Task.CompletedTask;
+        await ShutdownApplicationAsync();
+    }
+
+    public Task ShutdownApplicationAsync()
+    {
+        return _uiDispatcher.RunOnUiThreadAsync(() => Application.Current.Exit());
     }
 
     public async Task<bool> OpenFolderAsync(string folderPath)

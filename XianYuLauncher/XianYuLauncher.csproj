@@ -9,6 +9,7 @@
     <FileVersion>1.5.0.0</FileVersion>
     <InformationalVersion>$(Version)</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
     <ApplicationIcon>Assets/WindowIcon.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <Configurations>Debug;Release;Debug-Unpackaged;Release-Unpackaged</Configurations>
@@ -34,6 +35,10 @@
     <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
           <!-- WinUIEx.WindowEx 会在 XAML 生成的 XamlTypeInfo.g.cs 中引入已过时的 WinUIEx.Icon 类型，故忽略 CS0612 警告。 -->
         <NoWarn>$(NoWarn);MVVMTK0045;0612</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Platform)' != ''">
+    <PlatformTarget>$(Platform)</PlatformTarget>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug-Unpackaged' Or '$(Configuration)'=='Release-Unpackaged'">
@@ -69,6 +74,7 @@
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
     <PackageReference Include="SharpCompress" Version="0.38.0" />
     <PackageReference Include="System.Drawing.Common" Version="10.0.3" />
+    <PackageReference Include="Velopack" Version="0.0.1298" />
     <PackageReference Include="WinUIEx" Version="2.9.0" />
     <PackageReference Include="CommunityToolkit.WinUI.UI.Controls" Version="7.1.2" />
   </ItemGroup>

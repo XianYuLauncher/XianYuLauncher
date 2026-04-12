@@ -10,6 +10,8 @@ public interface IApplicationLifecycleService
 {
     Task RestartApplicationAsync();
 
+    Task ShutdownApplicationAsync();
+
     Task<bool> OpenFolderAsync(string folderPath);
 
     bool OpenFolderInExplorer(string folderPath);

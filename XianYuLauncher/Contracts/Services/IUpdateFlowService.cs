@@ -25,6 +25,8 @@ public interface IUpdateFlowService
 {
     Task<UpdateFlowResult> CheckForUpdatesAsync(bool isDevChannel, CancellationToken cancellationToken = default);
 
+    Task<UpdateFlowResult> CheckForStartupUpdatesAsync(CancellationToken cancellationToken = default);
+
     Task<UpdateFlowResult> InstallDevChannelAsync(CancellationToken cancellationToken = default);
 
     Task<UpdateFlowResult> HandleAvailableUpdateAsync(UpdateInfo updateInfo, bool isStartupCheck = false, CancellationToken cancellationToken = default);
