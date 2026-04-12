@@ -43,6 +43,7 @@
     <PlatformTarget>$(Platform)</PlatformTarget>
   </PropertyGroup>
 
+  <!-- 不要把这个条件扩到 IsUnpackagedBuild=true。当前发布链必须通过 Release 配置保留 WinAppSDK 生成的 PRI/资源文件；直接切到 Release-Unpackaged 会得到运行即崩的发布目录。 -->
   <PropertyGroup Condition="'$(Configuration)'=='Debug-Unpackaged' Or '$(Configuration)'=='Release-Unpackaged'">
     <IsUnpackagedBuild>true</IsUnpackagedBuild>
     <WindowsPackageType>None</WindowsPackageType>

@@ -47,7 +47,13 @@ internal sealed class PersistentObjectDictionary : IDictionary<string, object>
 
     public object this[string key]
     {
-        get => _innerDictionary[key];
+        get
+        {
+            lock (_syncRoot)
+            {
+                return _innerDictionary[key];
+            }
+        }
         set
         {
             lock (_syncRoot)
@@ -58,11 +64,38 @@ internal sealed class PersistentObjectDictionary : IDictionary<string, object>
         }
     }
 
-    public ICollection<string> Keys => _innerDictionary.Keys;
+    public ICollection<string> Keys
+    {
+        get
+        {
+            lock (_syncRoot)
+            {
+                return _innerDictionary.Keys.ToArray();
+            }
+        }
+    }
 
-    public ICollection<object> Values => _innerDictionary.Values;
+    public ICollection<object> Values
+    {
+        get
+        {
+            lock (_syncRoot)
+            {
+                return _innerDictionary.Values.ToArray();
+            }
+        }
+    }
 
-    public int Count => _innerDictionary.Count;
+    public int Count
+    {
+        get
+        {
+            lock (_syncRoot)
+            {
+                return _innerDictionary.Count;
+            }
+        }
+    }
 
     public bool IsReadOnly => false;
 
@@ -91,22 +124,34 @@ internal sealed class PersistentObjectDictionary : IDictionary<string, object>
 
     public bool Contains(KeyValuePair<string, object> item)
     {
-        return ((ICollection<KeyValuePair<string, object>>)_innerDictionary).Contains(item);
+        lock (_syncRoot)
+        {
+            return ((ICollection<KeyValuePair<string, object>>)_innerDictionary).Contains(item);
+        }
     }
 
     public bool ContainsKey(string key)
     {
-        return _innerDictionary.ContainsKey(key);
+        lock (_syncRoot)
+        {
+            return _innerDictionary.ContainsKey(key);
+        }
     }
 
     public void CopyTo(KeyValuePair<string, object>[] array, int arrayIndex)
     {
-        ((ICollection<KeyValuePair<string, object>>)_innerDictionary).CopyTo(array, arrayIndex);
+        lock (_syncRoot)
+        {
+            ((ICollection<KeyValuePair<string, object>>)_innerDictionary).CopyTo(array, arrayIndex);
+        }
     }
 
     public IEnumerator<KeyValuePair<string, object>> GetEnumerator()
     {
-        return _innerDictionary.GetEnumerator();
+        lock (_syncRoot)
+        {
+            return _innerDictionary.ToArray().AsEnumerable().GetEnumerator();
+        }
     }
 
     public bool Remove(string key)
@@ -139,7 +184,10 @@ internal sealed class PersistentObjectDictionary : IDictionary<string, object>
 
     public bool TryGetValue(string key, out object value)
     {
-        return _innerDictionary.TryGetValue(key, out value!);
+        lock (_syncRoot)
+        {
+            return _innerDictionary.TryGetValue(key, out value!);
+        }
     }
 
     IEnumerator IEnumerable.GetEnumerator()
