@@ -1045,6 +1045,7 @@
                         <controls:SettingsCard Header="Microsoft.WindowsAppSDK" Description="Copyright (c) Microsoft Corporation | MIT" IsClickEnabled="True" Click="OpenSourceLink_Click" Tag="https://github.com/microsoft/windowsappsdk" />
                         <controls:SettingsCard Header="Serilog" Description="Copyright (c) Serilog Contributors | Apache-2.0" IsClickEnabled="True" Click="OpenSourceLink_Click" Tag="https://github.com/serilog/serilog" />
                         <controls:SettingsCard Header="WinUIEx" Description="Copyright (c) Morten Nielsen | MIT" IsClickEnabled="True" Click="OpenSourceLink_Click" Tag="https://github.com/dotMorten/WinUIEx" />
+                        <controls:SettingsCard Header="Velopack" Description="Copyright © 2021 Caelan Sayler; Copyright © 2024 Velopack Ltd. | MIT" IsClickEnabled="True" Click="OpenSourceLink_Click" Tag="https://github.com/velopack/velopack" />
                         <controls:SettingsCard Header="fNbt" Description="Copyright (c) 2012-2025, Matvei &quot;fragmer&quot; Stefarov &lt;me@matvei.org&gt; | BSD-3-Clause" IsClickEnabled="True" Click="OpenSourceLink_Click" Tag="https://github.com/mstefarov/fNbt" />
                         <controls:SettingsCard Header="SharpCompress" Description="Copyright (c) Adam Hathcock | MIT" IsClickEnabled="True" Click="OpenSourceLink_Click" Tag="https://github.com/adamhathcock/sharpcompress" />
                     </controls:SettingsExpander.Items>
