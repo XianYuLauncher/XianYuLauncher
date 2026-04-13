@@ -31,6 +31,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--published-at", help="Published timestamp for the update manifest, ISO 8601.")
     parser.add_argument("--notes-file", help="Text file containing release notes to project into the update manifest.")
     parser.add_argument("--important", action="store_true", help="Mark the generated update manifest as important.")
+    parser.add_argument("--strict", action="store_true", help="Fail when required targets or fields are missing.")
+    parser.add_argument("--expected-architectures", nargs="*", default=[], help="Architectures that must exist in the generated update manifest when strict mode is enabled.")
     parser.add_argument("--public-base-url", help="Public base URL used to compose mirrored asset URLs.")
     parser.add_argument("--output-file", required=True, help="Path to write the generated JSON index.")
     return parser.parse_args()
@@ -197,6 +199,38 @@ def build_manifest(index_payload: dict, release_tag: str, release_version: str, 
     }
 
 
+def validate_manifest(manifest_payload: dict, expected_architectures: list[str]) -> None:
+    required_target_fields = (
+        "channel",
+        "setup_url",
+        "setup_sha256",
+        "feed_url",
+        "package_url",
+        "package_sha256",
+        "package_size",
+    )
+
+    if manifest_payload.get("schema_version") != 2:
+        raise SystemExit("Manifest validation failed: schema_version must be 2.")
+
+    if manifest_payload.get("delivery") != "velopack":
+        raise SystemExit("Manifest validation failed: delivery must be 'velopack'.")
+
+    targets = manifest_payload.get("targets", {})
+    missing_architectures = [architecture for architecture in expected_architectures if architecture not in targets]
+    if missing_architectures:
+        raise SystemExit(
+            "Manifest validation failed: missing required targets: " + ", ".join(missing_architectures)
+        )
+
+    for architecture, target in targets.items():
+        missing_fields = [field for field in required_target_fields if not target.get(field)]
+        if missing_fields:
+            raise SystemExit(
+                f"Manifest validation failed: target {architecture} is missing required fields: {', '.join(missing_fields)}"
+            )
+
+
 def main() -> int:
     args = parse_args()
     output_file = Path(args.output_file)
@@ -223,6 +257,8 @@ def main() -> int:
         release_version = (args.release_version or args.release_tag).removeprefix("v")
         notes = load_notes(Path(args.notes_file) if args.notes_file else None)
         payload = build_manifest(index_payload, args.release_tag, release_version, args.published_at, args.important, notes)
+        if args.strict:
+            validate_manifest(payload, args.expected_architectures)
     else:
         raise SystemExit(f"Unsupported command: {args.command}")
 

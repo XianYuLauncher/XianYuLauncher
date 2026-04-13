@@ -169,7 +169,53 @@ jobs:
             --release-version "${{ steps.vars.outputs.tag }}" \
             --published-at "${{ steps.release.outputs.published_at }}" \
             --notes-file release-notes.txt \
+            --strict \
+            --expected-architectures win-x64 win-x86 win-arm64 \
             --output-file update-manifest.json
+
+      - name: Validate Update Manifest
+        env:
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+        run: |
+          python3 << 'PYEOF'
+          import json
+          import os
+
+          with open("update-manifest.json", "r", encoding="utf-8") as handle:
+              manifest = json.load(handle)
+
+          expected_architectures = ("win-x64", "win-x86", "win-arm64")
+          required_fields = (
+              "channel",
+              "setup_url",
+              "setup_sha256",
+              "feed_url",
+              "package_url",
+              "package_sha256",
+              "package_size",
+          )
+          public_base = os.environ["R2_PUBLIC_BASE_URL"].rstrip("/")
+
+          if manifest.get("schema_version") != 2 or manifest.get("delivery") != "velopack":
+              raise SystemExit("Update manifest validation failed: unexpected top-level protocol markers.")
+
+          for architecture in expected_architectures:
+              target = manifest["targets"].get(architecture)
+              if target is None:
+                  raise SystemExit(f"Update manifest validation failed: missing target {architecture}.")
+
+              for field in required_fields:
+                  if not target.get(field):
+                      raise SystemExit(f"Update manifest validation failed: target {architecture} missing {field}.")
+
+              for url_field in ("setup_url", "feed_url", "package_url"):
+                  if not target[url_field].startswith(public_base + "/"):
+                      raise SystemExit(
+                          f"Update manifest validation failed: target {architecture} field {url_field} does not use {public_base}."
+                      )
+
+          print("Update manifest validation passed.")
+          PYEOF
 
       - name: Sync Gitee update_manifest.json
         env:
