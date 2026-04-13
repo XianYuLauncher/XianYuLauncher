@@ -145,6 +145,15 @@ jobs:
           print(f"Uploaded {len(uploaded)} assets to Cloudflare R2.")
           PYEOF
 
+      - name: Build Release Asset Index
+        run: |
+          python3 scripts/ci/generate-update-manifest.py index \
+            --release-assets-dir release-assets \
+            --release-channel "${{ steps.vars.outputs.channel }}" \
+            --release-tag "${{ steps.vars.outputs.tag }}" \
+            --public-base-url "${{ secrets.R2_PUBLIC_BASE_URL }}" \
+            --output-file release-asset-index.json
+
       - name: Sync Gitee latest_version.json
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
