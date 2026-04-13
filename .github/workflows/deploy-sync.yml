@@ -47,9 +47,11 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BODY=$(gh release view "${{ inputs.tag_name }}" --repo "${{ github.repository }}" --json body -q .body)
+          PUBLISHED_AT=$(gh release view "${{ inputs.tag_name }}" --repo "${{ github.repository }}" --json publishedAt -q .publishedAt)
           echo "body<<EOF" >> $GITHUB_OUTPUT
           echo "$BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+          echo "published_at=$PUBLISHED_AT" >> $GITHUB_OUTPUT
 
       - name: Download Release Assets from GitHub
         env:
@@ -153,6 +155,20 @@ jobs:
             --release-tag "${{ steps.vars.outputs.tag }}" \
             --public-base-url "${{ secrets.R2_PUBLIC_BASE_URL }}" \
             --output-file release-asset-index.json
+
+      - name: Build Update Manifest Preview
+        env:
+          CHANGELOG: ${{ steps.release.outputs.body }}
+        run: |
+          printf '%s\n' "$CHANGELOG" > release-notes.txt
+
+          python3 scripts/ci/generate-update-manifest.py manifest \
+            --asset-index-file release-asset-index.json \
+            --release-tag "${{ steps.vars.outputs.tag }}" \
+            --release-version "${{ steps.vars.outputs.tag }}" \
+            --published-at "${{ steps.release.outputs.published_at }}" \
+            --notes-file release-notes.txt \
+            --output-file update-manifest.preview.json
 
       - name: Sync Gitee latest_version.json
         env:

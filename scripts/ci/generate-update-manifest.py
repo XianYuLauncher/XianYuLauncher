@@ -22,11 +22,16 @@ ZIP_PATTERN = re.compile(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build an indexed release asset inventory for update manifest generation.")
-    parser.add_argument("command", choices=["index"], help="Operation to perform.")
-    parser.add_argument("--release-assets-dir", required=True, help="Directory containing downloaded release assets.")
-    parser.add_argument("--release-channel", required=True, help="Release channel for object key generation, e.g. stable or dev.")
-    parser.add_argument("--release-tag", required=True, help="Git tag used for object key generation, e.g. v1.5.4.")
-    parser.add_argument("--public-base-url", required=True, help="Public base URL used to compose mirrored asset URLs.")
+    parser.add_argument("command", choices=["index", "manifest"], help="Operation to perform.")
+    parser.add_argument("--release-assets-dir", help="Directory containing downloaded release assets.")
+    parser.add_argument("--asset-index-file", help="Path to a previously generated asset index JSON file.")
+    parser.add_argument("--release-channel", help="Release channel for object key generation, e.g. stable or dev.")
+    parser.add_argument("--release-tag", help="Git tag used for object key generation, e.g. v1.5.4.")
+    parser.add_argument("--release-version", help="Human-readable release version for the update manifest, e.g. 1.5.4.")
+    parser.add_argument("--published-at", help="Published timestamp for the update manifest, ISO 8601.")
+    parser.add_argument("--notes-file", help="Text file containing release notes to project into the update manifest.")
+    parser.add_argument("--important", action="store_true", help="Mark the generated update manifest as important.")
+    parser.add_argument("--public-base-url", help="Public base URL used to compose mirrored asset URLs.")
     parser.add_argument("--output-file", required=True, help="Path to write the generated JSON index.")
     return parser.parse_args()
 
@@ -139,19 +144,89 @@ def build_index(release_assets_dir: Path, release_channel: str, release_tag: str
     }
 
 
+def load_notes(notes_file: Path | None) -> list[str]:
+    if notes_file is None or not notes_file.is_file():
+        return []
+
+    return [line.strip() for line in notes_file.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def build_manifest(index_payload: dict, release_tag: str, release_version: str, published_at: str, important: bool, notes: list[str]) -> dict:
+    release_channel = index_payload["release_channel"]
+    message = "Stable 通道已切换到 Velopack 受管更新。" if release_channel == "stable" else "Dev 通道已使用 Velopack 受管更新。"
+
+    targets = {}
+    for architecture, target in index_payload["targets"].items():
+        files = target["files"]
+        setup_asset = next((item for item in files if item["asset_type"] == "setup"), None)
+        feed_asset = next((item for item in files if item["asset_type"] == "feed"), None)
+        package_asset = next(
+            (item for item in files if item["asset_type"] == "package" and item.get("package_kind") == "full"),
+            None,
+        )
+
+        if setup_asset is None or feed_asset is None or package_asset is None:
+            continue
+
+        targets[architecture] = {
+            "channel": feed_asset["velopack_channel"],
+            "setup_url": setup_asset["public_url"],
+            "setup_sha256": setup_asset["sha256"],
+            "feed_url": feed_asset["public_url"],
+            "package_url": package_asset["public_url"],
+            "package_sha256": package_asset["sha256"],
+            "package_size": package_asset["size"],
+        }
+
+    return {
+        "schema_version": 2,
+        "delivery": "velopack",
+        "release": {
+            "channel": release_channel,
+            "tag": release_tag,
+            "version": release_version,
+            "published_at": published_at,
+            "important": important,
+        },
+        "migration": {
+            "required": False,
+            "message": message,
+        },
+        "notes": notes,
+        "targets": dict(sorted(targets.items())),
+    }
+
+
 def main() -> int:
     args = parse_args()
-    release_assets_dir = Path(args.release_assets_dir)
-    if not release_assets_dir.is_dir():
-        raise SystemExit(f"Release assets directory not found: {release_assets_dir}")
-
-    if args.command != "index":
-        raise SystemExit(f"Unsupported command: {args.command}")
-
-    index_payload = build_index(release_assets_dir, args.release_channel, args.release_tag, args.public_base_url)
     output_file = Path(args.output_file)
     output_file.parent.mkdir(parents=True, exist_ok=True)
-    output_file.write_text(json.dumps(index_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    if args.command == "index":
+        if not args.release_assets_dir or not args.release_channel or not args.release_tag or not args.public_base_url:
+            raise SystemExit("index command requires --release-assets-dir, --release-channel, --release-tag and --public-base-url.")
+
+        release_assets_dir = Path(args.release_assets_dir)
+        if not release_assets_dir.is_dir():
+            raise SystemExit(f"Release assets directory not found: {release_assets_dir}")
+
+        payload = build_index(release_assets_dir, args.release_channel, args.release_tag, args.public_base_url)
+    elif args.command == "manifest":
+        if not args.asset_index_file or not args.release_tag or not args.published_at:
+            raise SystemExit("manifest command requires --asset-index-file, --release-tag and --published-at.")
+
+        asset_index_file = Path(args.asset_index_file)
+        if not asset_index_file.is_file():
+            raise SystemExit(f"Asset index file not found: {asset_index_file}")
+
+        index_payload = json.loads(asset_index_file.read_text(encoding="utf-8"))
+        release_version = (args.release_version or args.release_tag).removeprefix("v")
+        notes = load_notes(Path(args.notes_file) if args.notes_file else None)
+        payload = build_manifest(index_payload, args.release_tag, release_version, args.published_at, args.important, notes)
+    else:
+        raise SystemExit(f"Unsupported command: {args.command}")
+
+    output_file.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
     return 0
 
 
