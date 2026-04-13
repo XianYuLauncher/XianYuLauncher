@@ -37,6 +37,7 @@ jobs:
           else
             FULL_VER="$FULL_VER_INPUT"
           fi
+
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "full_ver=$FULL_VER" >> $GITHUB_OUTPUT
           echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
@@ -59,10 +60,10 @@ jobs:
         run: |
           mkdir -p release-assets
           TAG="${{ steps.vars.outputs.tag }}"
-          
+
           echo "Downloading assets for $TAG..."
           gh release download "$TAG" --repo "${{ github.repository }}" --dir release-assets
-          
+
           cd release-assets
           ls -lh
 
@@ -156,7 +157,7 @@ jobs:
             --public-base-url "${{ secrets.R2_PUBLIC_BASE_URL }}" \
             --output-file release-asset-index.json
 
-      - name: Build Update Manifest Preview
+      - name: Build Update Manifest
         env:
           CHANGELOG: ${{ steps.release.outputs.body }}
         run: |
@@ -168,14 +169,12 @@ jobs:
             --release-version "${{ steps.vars.outputs.tag }}" \
             --published-at "${{ steps.release.outputs.published_at }}" \
             --notes-file release-notes.txt \
-            --output-file update-manifest.preview.json
+            --output-file update-manifest.json
 
-      - name: Sync Gitee latest_version.json
+      - name: Sync Gitee update_manifest.json
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           FULL_VER: ${{ steps.vars.outputs.full_ver }}
-          TAG: ${{ steps.vars.outputs.tag }}
-          CHANGELOG: ${{ steps.release.outputs.body }}
         run: |
           if [ -z "$GITEE_TOKEN" ]; then
             echo "GITEE_TOKEN is missing." >&2
@@ -186,72 +185,10 @@ jobs:
           git clone "https://oauth2:${GITEE_TOKEN}@gitee.com/${REPO}.git" gitee-repo
           cd gitee-repo
 
-          cp ../r2_links.json . 2>/dev/null || echo '{}' > r2_links.json
-
-          python3 << 'PYEOF'
-          import json, os
-          from datetime import datetime
-
-          path = "latest_version.json"
-          links_path = "r2_links.json"
-          
-          # Read existing version file
-          with open(path, "r", encoding="utf-8") as f:
-              data = json.load(f)
-              
-          # Read Cloudflare R2 links
-          links = {}
-          if os.path.exists(links_path):
-              with open(links_path, "r", encoding="utf-8") as f:
-                  links = json.load(f)
-
-          full_ver = os.environ.get("FULL_VER")
-          tag = os.environ.get("TAG", "")
-          changelog = os.environ.get("CHANGELOG", "")
-
-          data["version"] = full_ver
-          data["release_time"] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-
-          if changelog:
-              data["changelog"] = [line.strip() for line in changelog.split("\n") if line.strip()]
-          
-          # Helper to find link by arch
-          def get_link(arch):
-              candidates = [
-                f"XianYuLauncher_{full_ver}_{arch}.zip",
-                f"XianYuLauncher-{tag}-win-{arch}.zip",
-              ]
-
-              for candidate in candidates:
-                if candidate in links:
-                  return links[candidate]
-
-              return ""
-
-          mirrors = []
-          
-          r2_x64 = get_link("x64")
-          if r2_x64:
-              mirrors.append({
-                  "name": "Cloudflare R2",
-                  "url": r2_x64,
-                  "arch_urls": {
-                      "x64": r2_x64,
-                      "x86": get_link("x86"),
-                      "arm64": get_link("arm64")
-                  }
-              })
-          
-          data["download_mirrors"] = mirrors
-
-          with open(path, "w", encoding="utf-8") as f:
-              json.dump(data, f, ensure_ascii=False, indent=2)
-          
-          print(f"Updated latest_version.json with version={full_ver}")
-          PYEOF
+          cp ../update-manifest.json ./update_manifest.json
 
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
-          git add latest_version.json
-          git commit -m "chore: update version to $FULL_VER (Cloudflare R2)" || echo "No changes"
+          git add update_manifest.json
+          git commit -m "chore: update update_manifest.json for $FULL_VER" || echo "No changes"
           git push
