@@ -136,12 +136,12 @@ jobs:
                   check=True,
               )
 
-                  uploaded_count += 1
+              uploaded_count += 1
 
-                if uploaded_count == 0:
+          if uploaded_count == 0:
               raise SystemExit("No architecture-specific release assets were uploaded to Cloudflare R2.")
 
-                print(f"Uploaded {uploaded_count} assets to Cloudflare R2.")
+          print(f"Uploaded {uploaded_count} assets to Cloudflare R2.")
           PYEOF
 
       - name: Build Release Asset Index
