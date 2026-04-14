@@ -165,29 +165,7 @@ jobs:
           /p:PackageOutputPath="$env:GITHUB_WORKSPACE\AppPackages\" `
           /p:GenerateAppInstallerFile=false
 
-    # 6.1 仅稳定版额外构建无签名 StoreUpload 包（用于提交微软商店）
-    - name: Build StoreUpload (Unsigned)
-      if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
-      shell: powershell
-      run: |
-        msbuild ${{ env.Project_Path }} `
-          /p:Configuration=${{ env.Configuration }} `
-          /p:Platform=${{ env.Platform }} `
-          /p:Version=${{ steps.store_channel.outputs.package_version }} `
-          /p:AssemblyVersion=${{ steps.store_channel.outputs.package_version }} `
-          /p:FileVersion=${{ steps.store_channel.outputs.package_version }} `
-          /p:InformationalVersion=${{ steps.store_channel.outputs.display_version }} `
-          /p:IncludeSourceRevisionInInformationalVersion=false `
-          /p:BuildChannelConstant=${{ steps.store_channel.outputs.build_constants }} `
-          /p:GenerateAppxPackageOnBuild=true `
-          /p:UapAppxPackageBuildMode=StoreUpload `
-          /p:AppxBundle=Never `
-          /p:AppxPackageSigningEnabled=false `
-          /p:PackageCertificateThumbprint= `
-          /p:PackageCertificateKeyFile= `
-          /p:AppxPackageDir="$env:GITHUB_WORKSPACE\AppPackagesStore\" `
-          /p:PackageOutputPath="$env:GITHUB_WORKSPACE\AppPackagesStore\" `
-          /p:GenerateAppInstallerFile=false
+    # 稳定版 StoreUpload 构建已迁移到独立的手动发布工作流，这里仅保留签名的 Packaged 产物留档能力。
 
     # === NEW: SignPath Integration Logic ===
     
@@ -334,15 +312,6 @@ jobs:
         path: |
           ${{ github.workspace }}\AppPackages\**\*.msix
           ${{ github.workspace }}\AppPackages\**\*.appx
-        if-no-files-found: error
-
-    # 9. 上传无签名 StoreUpload 包（仅稳定版，且不参与 GitHub Release）
-    - name: Upload Store Unsigned Artifacts
-      if: startsWith(github.ref, 'refs/tags/v') && !contains(github.ref_name, '-')
-      uses: actions/upload-artifact@v4
-      with:
-        name: StoreUpload-${{ matrix.platform }}
-        path: ${{ github.workspace }}\AppPackagesStore\*.msixupload
         if-no-files-found: error
 
   sideload-unpackaged:

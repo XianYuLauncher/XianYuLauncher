@@ -1,0 +1,471 @@
+name: Publish To Microsoft Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Stable tag to publish, for example v1.5.0
+        required: true
+        type: string
+      existing_rollout_action:
+        description: Action to take if the current published Store submission is using gradual package rollout
+        required: true
+        type: choice
+        default: NoAction
+        options:
+        - NoAction
+        - Finalize
+        - Halt
+
+permissions:
+  contents: read
+
+concurrency:
+  group: store-publish-${{ github.event.inputs.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  validate-request:
+    name: Validate Publish Request
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.validate.outputs.tag_name }}
+      checkout_ref: ${{ steps.validate.outputs.checkout_ref }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Validate stable tag
+      id: validate
+      shell: pwsh
+      run: |
+        $tagName = "${{ inputs.tag_name }}".Trim()
+        if ([string]::IsNullOrWhiteSpace($tagName)) {
+            throw "tag_name cannot be empty."
+        }
+
+        if ($tagName.Contains('-')) {
+            throw "Only stable tags are allowed for Microsoft Store publishing."
+        }
+
+        if ($tagName -notmatch '^v\d+\.\d+\.\d+$') {
+            throw "tag_name must be a stable tag like v1.5.0."
+        }
+
+        git rev-parse --verify --quiet "refs/tags/$tagName" | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "Tag '$tagName' does not exist in this repository."
+        }
+
+        "tag_name=$tagName" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "checkout_ref=refs/tags/$tagName" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+  build-store-package:
+    name: Build StoreUpload (${{ matrix.platform }})
+    needs: validate-request
+    strategy:
+      matrix:
+        platform: [x86, x64, arm64]
+
+    runs-on: windows-latest
+
+    env:
+      Solution_Name: XianYuLauncher.slnx
+      Project_Path: XianYuLauncher/XianYuLauncher.csproj
+      Configuration: Release
+      Platform: ${{ matrix.platform }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        ref: ${{ needs.validate-request.outputs.checkout_ref }}
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+
+    - name: Install .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+
+    - name: Prepare Application Config
+      shell: powershell
+      env:
+        AES_ENCRYPTION_KEY: ${{ secrets.AES_ENCRYPTION_KEY }}
+      run: |
+        $secretJson = '${{ secrets.APP_SECRETS_JSON }}'
+        if ([string]::IsNullOrWhiteSpace($secretJson)) {
+            Write-Error "Secret APP_SECRETS_JSON missing"
+            exit 1
+        }
+
+        if ([string]::IsNullOrWhiteSpace($env:AES_ENCRYPTION_KEY)) {
+            Write-Error "Secret AES_ENCRYPTION_KEY missing"
+            exit 1
+        }
+
+        New-Item -ItemType Directory -Force -Path XianYuLauncher | Out-Null
+        $secretJson | Out-File -FilePath XianYuLauncher/secrets.json -Encoding utf8
+
+        .\scripts\prepare-config.ps1
+
+    - name: Generate Afdian Sponsors Manifest
+      shell: powershell
+      env:
+        AFDIAN_USER_ID: ${{ secrets.AFDIAN_USER_ID }}
+        AFDIAN_TOKEN: ${{ secrets.AFDIAN_TOKEN }}
+      run: |
+        .\scripts\generate-afdian-sponsors.ps1 -OutputPath "XianYuLauncher/Assets/Data/afdian-sponsors.json"
+
+    - name: Configure Channel
+      id: store_channel
+      shell: powershell
+      run: |
+        .\scripts\ci\configure-build-channel.ps1 `
+          -RefName "${{ needs.validate-request.outputs.tag_name }}" `
+          -UpdaterRuntimeIdentifier "win-${{ matrix.platform }}" `
+          -UpdateManifest `
+          -ManifestPath "XianYuLauncher/Package.appxmanifest"
+
+    - name: Restore
+      shell: powershell
+      run: |
+        nuget restore ${{ env.Solution_Name }} -ConfigFile NuGet.config
+
+    - name: Build StoreUpload Package
+      shell: powershell
+      run: |
+        msbuild ${{ env.Project_Path }} `
+          /p:Configuration=${{ env.Configuration }} `
+          /p:Platform=${{ env.Platform }} `
+          /p:Version=${{ steps.store_channel.outputs.package_version }} `
+          /p:AssemblyVersion=${{ steps.store_channel.outputs.package_version }} `
+          /p:FileVersion=${{ steps.store_channel.outputs.package_version }} `
+          /p:InformationalVersion=${{ steps.store_channel.outputs.display_version }} `
+          /p:IncludeSourceRevisionInInformationalVersion=false `
+          /p:BuildChannelConstant=${{ steps.store_channel.outputs.build_constants }} `
+          /p:GenerateAppxPackageOnBuild=true `
+          /p:UapAppxPackageBuildMode=StoreUpload `
+          /p:AppxBundle=Never `
+          /p:AppxPackageSigningEnabled=false `
+          /p:PackageCertificateThumbprint= `
+          /p:PackageCertificateKeyFile= `
+          /p:AppxPackageDir="$env:GITHUB_WORKSPACE\AppPackagesStore\" `
+          /p:PackageOutputPath="$env:GITHUB_WORKSPACE\AppPackagesStore\" `
+          /p:GenerateAppInstallerFile=false
+
+    - name: Collect Store package metadata
+      shell: powershell
+      run: |
+        $packageFile = Get-ChildItem -Path "$env:GITHUB_WORKSPACE\AppPackagesStore" -Filter "*.msixupload" -File -Recurse | Select-Object -First 1
+        if ($null -eq $packageFile) {
+            Write-Error "No .msixupload package was generated."
+            exit 1
+        }
+
+        [xml]$manifest = Get-Content "XianYuLauncher/Package.appxmanifest"
+        $artifactName = "StoreUpload-${{ matrix.platform }}"
+        $artifactRoot = Join-Path $env:GITHUB_WORKSPACE (Join-Path "StoreArtifacts" "${{ matrix.platform }}")
+        $previewPath = Join-Path $artifactRoot "store-preview-${{ matrix.platform }}.json"
+
+        New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
+        Copy-Item -Path $packageFile.FullName -Destination (Join-Path $artifactRoot $packageFile.Name) -Force
+
+        $preview = [ordered]@{
+            tagName = "${{ needs.validate-request.outputs.tag_name }}"
+            artifactName = $artifactName
+            platform = "${{ matrix.platform }}"
+            packageVersion = "${{ steps.store_channel.outputs.package_version }}"
+            displayVersion = "${{ steps.store_channel.outputs.display_version }}"
+            packageFileName = $packageFile.Name
+            packageRelativePath = $packageFile.Name
+            identityName = $manifest.Package.Identity.Name
+            publisher = $manifest.Package.Identity.Publisher
+        }
+
+        $previewJson = $preview | ConvertTo-Json -Depth 4
+        [System.IO.File]::WriteAllText($previewPath, $previewJson, [System.Text.UTF8Encoding]::new($false))
+
+    - name: Upload Store package artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: StoreUpload-${{ matrix.platform }}
+        path: ${{ github.workspace }}\StoreArtifacts\${{ matrix.platform }}\*
+        if-no-files-found: error
+
+  prepare-release-notes:
+    name: Prepare Store Release Notes
+    needs: validate-request
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Generate Store release notes
+      shell: pwsh
+      run: |
+        .\scripts\ci\generate-store-release-notes.ps1 `
+          -TagName "${{ needs.validate-request.outputs.tag_name }}" `
+          -Repository "${{ github.repository }}" `
+          -GitHubToken "${{ github.token }}" `
+          -OutputDirectory "store-release-notes"
+
+    - name: Upload Store release notes artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: StoreReleaseNotes
+        path: store-release-notes/*
+        if-no-files-found: error
+
+  preview:
+    name: Prepare Preview Summary
+    needs:
+      - validate-request
+      - build-store-package
+      - prepare-release-notes
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download Store package artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: StoreUpload-*
+        path: store-artifacts
+        merge-multiple: true
+
+    - name: Download Store release notes artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: StoreReleaseNotes
+        path: store-release-notes
+
+    - name: Build preview manifest
+      shell: pwsh
+      run: |
+        $previewFiles = Get-ChildItem -Path store-artifacts -Filter 'store-preview-*.json' -File | Sort-Object Name
+        if ($previewFiles.Count -eq 0) {
+            throw "No preview metadata files were downloaded."
+        }
+
+        if ($previewFiles.Count -ne 3) {
+            throw "Expected 3 preview metadata files, but found $($previewFiles.Count)."
+        }
+
+        $notesJsonPath = Join-Path $env:GITHUB_WORKSPACE 'store-release-notes/store-release-notes.json'
+        if (-not (Test-Path $notesJsonPath)) {
+          throw "Store release notes artifact is missing."
+        }
+
+        $packages = foreach ($file in $previewFiles) {
+            Get-Content $file.FullName -Raw | ConvertFrom-Json
+        }
+
+        $releaseNotes = Get-Content $notesJsonPath -Raw | ConvertFrom-Json
+
+        $summaryRoot = Join-Path $env:GITHUB_WORKSPACE 'store-preview'
+        $summaryJsonPath = Join-Path $summaryRoot 'store-package-preview.json'
+        New-Item -ItemType Directory -Force -Path $summaryRoot | Out-Null
+
+        $summary = [ordered]@{
+            tagName = "${{ needs.validate-request.outputs.tag_name }}"
+            packageVersion = $packages[0].packageVersion
+            displayVersion = $packages[0].displayVersion
+            packages = @($packages)
+          releaseNotes = @($releaseNotes.notes)
+        }
+
+        $summaryJson = $summary | ConvertTo-Json -Depth 5
+        [System.IO.File]::WriteAllText($summaryJsonPath, $summaryJson, [System.Text.UTF8Encoding]::new($false))
+
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '## Microsoft Store publish preview'
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Tag: $($summary.tagName)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Package version: $($summary.packageVersion)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Display version: $($summary.displayVersion)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '| Platform | Package | Identity | Publisher | Artifact |'
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '| --- | --- | --- | --- | --- |'
+
+        foreach ($package in $packages) {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| $($package.platform) | $($package.packageFileName) | $($package.identityName) | $($package.publisher) | $($package.artifactName) |"
+        }
+
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '### Release notes preview'
+
+        foreach ($note in $releaseNotes.notes) {
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "#### $($note.language)"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+
+          foreach ($line in ($note.content -split "`n")) {
+            if ([string]::IsNullOrWhiteSpace($line)) {
+              Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '>'
+            }
+            else {
+              Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "> $line"
+            }
+          }
+        }
+
+    - name: Upload preview summary artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: StorePreviewSummary
+        path: ${{ github.workspace }}/store-preview/store-package-preview.json
+        if-no-files-found: error
+
+  approval:
+    name: Await Store Submission Approval
+    needs:
+      - validate-request
+      - preview
+    runs-on: ubuntu-latest
+    environment:
+      name: microsoft-store-publish
+
+    steps:
+    - name: Approval checkpoint
+      shell: bash
+      run: |
+        echo "Approval received for ${{ needs.validate-request.outputs.tag_name }}."
+        echo "Later phases will submit packages and release notes after this gate."
+
+  submit:
+    name: Submit To Microsoft Store
+    needs:
+      - validate-request
+      - approval
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+        ref: ${{ needs.validate-request.outputs.checkout_ref }}
+
+    - name: Download Store package artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: StoreUpload-*
+        path: store-artifacts
+        merge-multiple: true
+
+    - name: Download Store release notes artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: StoreReleaseNotes
+        path: store-release-notes
+
+    - name: Install StoreBroker
+      shell: powershell
+      run: |
+        Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
+
+        $repository = Get-PSRepository -Name PSGallery
+        if ($repository.InstallationPolicy -ne 'Trusted') {
+            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+        }
+
+        Install-Module -Name StoreBroker -RequiredVersion 1.21.24 -Scope CurrentUser -Repository PSGallery -Force -AllowClobber
+
+    - name: Create Store submission payload
+      shell: powershell
+      env:
+        MICROSOFT_STORE_APP_ID: ${{ secrets.MICROSOFT_STORE_APP_ID }}
+        MICROSOFT_STORE_TENANT_ID: ${{ secrets.MICROSOFT_STORE_TENANT_ID }}
+        MICROSOFT_STORE_CLIENT_ID: ${{ secrets.MICROSOFT_STORE_CLIENT_ID }}
+        MICROSOFT_STORE_CLIENT_SECRET: ${{ secrets.MICROSOFT_STORE_CLIENT_SECRET }}
+      run: |
+        .\scripts\ci\new-store-submission-package.ps1 `
+          -AppId "$env:MICROSOFT_STORE_APP_ID" `
+          -TenantId "$env:MICROSOFT_STORE_TENANT_ID" `
+          -ClientId "$env:MICROSOFT_STORE_CLIENT_ID" `
+          -ClientSecret "$env:MICROSOFT_STORE_CLIENT_SECRET" `
+          -PackageDirectory "store-artifacts" `
+          -OutputDirectory "store-submission-payload"
+
+    - name: Submit packages and release notes to Microsoft Store
+      shell: powershell
+      env:
+        MICROSOFT_STORE_APP_ID: ${{ secrets.MICROSOFT_STORE_APP_ID }}
+        MICROSOFT_STORE_TENANT_ID: ${{ secrets.MICROSOFT_STORE_TENANT_ID }}
+        MICROSOFT_STORE_CLIENT_ID: ${{ secrets.MICROSOFT_STORE_CLIENT_ID }}
+        MICROSOFT_STORE_CLIENT_SECRET: ${{ secrets.MICROSOFT_STORE_CLIENT_SECRET }}
+      run: |
+        .\scripts\ci\submit-store-submission.ps1 `
+          -AppId "$env:MICROSOFT_STORE_APP_ID" `
+          -TenantId "$env:MICROSOFT_STORE_TENANT_ID" `
+          -ClientId "$env:MICROSOFT_STORE_CLIENT_ID" `
+          -ClientSecret "$env:MICROSOFT_STORE_CLIENT_SECRET" `
+          -SubmissionPayloadPath "store-submission-payload\StoreSubmission.json" `
+          -SubmissionPackagePath "store-submission-payload\StoreSubmission.zip" `
+          -ReleaseNotesPath "store-release-notes\store-release-notes.json" `
+          -TagName "${{ needs.validate-request.outputs.tag_name }}" `
+          -OutputDirectory "store-submission-result" `
+          -ExistingPackageRolloutAction "${{ inputs.existing_rollout_action }}"
+
+    - name: Write Store submission summary
+      shell: powershell
+      run: |
+        $resultPath = Join-Path $env:GITHUB_WORKSPACE 'store-submission-result\store-submission-result.json'
+        if (-not (Test-Path -Path $resultPath -PathType Leaf)) {
+            throw "Store submission result artifact is missing."
+        }
+
+        $result = Get-Content -Path $resultPath -Raw | ConvertFrom-Json
+
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '## Microsoft Store submission result'
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Tag: $($result.tagName)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Submission ID: $($result.submissionId)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Target publish mode: $($result.targetPublishMode)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Current status: $($result.status)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Timed out while polling: $($result.timedOut)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Partner Center: $($result.portalUrl)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '### Observed statuses'
+
+        foreach ($status in $result.observedStatuses) {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- $status"
+        }
+
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '### Submitted packages'
+
+        foreach ($package in $result.packageFiles) {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- $package"
+        }
+
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '### Release note languages'
+
+        foreach ($language in $result.releaseNoteLanguages) {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- $language"
+        }
+
+    - name: Upload Store submission payload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: StoreSubmissionPayload
+        path: store-submission-payload/*
+        if-no-files-found: error
+
+    - name: Upload Store submission result artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: StoreSubmissionResult
+        path: store-submission-result/*
+        if-no-files-found: error
