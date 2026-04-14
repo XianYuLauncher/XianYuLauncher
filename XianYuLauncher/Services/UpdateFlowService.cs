@@ -228,8 +228,12 @@ public class UpdateFlowService : IUpdateFlowService
             var managedUpdate = await updateManager.CheckForUpdatesAsync();
             if (managedUpdate == null)
             {
-                _logger.LogWarning("[UpdateFlowService] manifest 指示存在新版本，但 Velopack feed 未返回可用更新，通道: {Channel}", manifestUpdate.Channel);
-                return null;
+                _logger.LogWarning(
+                    "[UpdateFlowService] manifest 指示存在新版本，但 Velopack feed 未返回可用更新，将回退为使用 manifest 提供的 setup_url 作为更新入口，通道: {Channel}, SetupUrl={SetupUrl}, PackageUrl={PackageUrl}",
+                    manifestUpdate.Channel,
+                    manifestUpdate.Target.SetupUrl,
+                    manifestUpdate.Target.PackageUrl);
+                return AvailableAppUpdate.FromManifest(manifestUpdate);
             }
 
             return AvailableAppUpdate.FromManaged(manifestUpdate, managedUpdate, updateManager);
