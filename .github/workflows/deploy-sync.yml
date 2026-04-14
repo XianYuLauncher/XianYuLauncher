@@ -210,21 +210,21 @@ jobs:
               "package_size",
           )
           public_base = os.environ["R2_PUBLIC_BASE_URL"].rstrip("/")
-            expected_prefix = f"{public_base}/{release_channel}/"
+          expected_prefix = f"{public_base}/{release_channel}/"
 
           if manifest.get("schema_version") != 2 or manifest.get("delivery") != "velopack":
               raise SystemExit("Update manifest validation failed: unexpected top-level protocol markers.")
 
-            release = manifest.get("release", {})
-            if release.get("channel") != release_channel:
+          release = manifest.get("release", {})
+          if release.get("channel") != release_channel:
               raise SystemExit(
-                f"Update manifest validation failed: release.channel must be {release_channel}, actual {release.get('channel')}."
+                  f"Update manifest validation failed: release.channel must be {release_channel}, actual {release.get('channel')}."
               )
 
-            expected_manifest_name = f"update_manifest_{release_channel}.json"
-            if manifest_file != expected_manifest_name:
+          expected_manifest_name = f"update_manifest_{release_channel}.json"
+          if manifest_file != expected_manifest_name:
               raise SystemExit(
-                f"Update manifest validation failed: manifest file name must be {expected_manifest_name}, actual {manifest_file}."
+                  f"Update manifest validation failed: manifest file name must be {expected_manifest_name}, actual {manifest_file}."
               )
 
           for architecture in expected_architectures:
@@ -236,15 +236,15 @@ jobs:
                   if not target.get(field):
                       raise SystemExit(f"Update manifest validation failed: target {architecture} missing {field}.")
 
-                if not str(target["channel"]).endswith(f"-{release_channel}"):
+              if not str(target["channel"]).endswith(f"-{release_channel}"):
                   raise SystemExit(
-                    f"Update manifest validation failed: target {architecture} channel {target['channel']} does not end with -{release_channel}."
+                      f"Update manifest validation failed: target {architecture} channel {target['channel']} does not end with -{release_channel}."
                   )
 
               for url_field in ("setup_url", "feed_url", "package_url"):
                   if not target[url_field].startswith(expected_prefix):
                       raise SystemExit(
-                      f"Update manifest validation failed: target {architecture} field {url_field} does not use {expected_prefix}."
+                          f"Update manifest validation failed: target {architecture} field {url_field} does not use {expected_prefix}."
                       )
 
           print(f"Update manifest validation passed: {manifest_file}")
