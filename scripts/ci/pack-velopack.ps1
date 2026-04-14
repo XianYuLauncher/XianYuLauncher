@@ -81,6 +81,23 @@ function Resolve-FrameworkRuntime {
     }
 }
 
+function Resolve-LogicalChannel {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    $normalizedValue = $Value.ToLowerInvariant()
+    foreach ($candidate in @('stable', 'beta', 'dev', 'preview')) {
+        if ($normalizedValue.Equals($candidate, [System.StringComparison]::OrdinalIgnoreCase) -or
+            $normalizedValue.EndsWith("-$candidate", [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $candidate
+        }
+    }
+
+    return $normalizedValue
+}
+
 $publishDirectoryPath = Resolve-AbsolutePath -Path $PublishDirectory
 if (-not (Test-Path $publishDirectoryPath -PathType Container)) {
     throw "Publish directory not found: $publishDirectoryPath"
@@ -100,8 +117,9 @@ $releaseDirectoryPath = Resolve-AbsolutePath -Path $ReleaseDirectory
 New-Item -ItemType Directory -Force -Path $releaseDirectoryPath | Out-Null
 
 $vpkPath = Resolve-CommandPath -CommandName $VpkExecutablePath
+$logicalChannel = Resolve-LogicalChannel -Value $Channel
 $resolvedPackTitle = if ([string]::IsNullOrWhiteSpace($PackTitle)) {
-    if ($Channel.Equals('stable', [System.StringComparison]::OrdinalIgnoreCase)) {
+    if ($logicalChannel -eq 'stable') {
         'XianYu Launcher'
     }
     else {
@@ -151,6 +169,7 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedFrameworkRuntime)) {
 }
 
 Write-Host "Packing Velopack release with channel '$Channel' and version '$PackVersion'."
+Write-Host "Resolved logical channel: $logicalChannel"
 Write-Host "Using pack title: $resolvedPackTitle"
 Write-Host "Using vpk: $vpkPath"
 Write-Host "Publish directory: $publishDirectoryPath"
