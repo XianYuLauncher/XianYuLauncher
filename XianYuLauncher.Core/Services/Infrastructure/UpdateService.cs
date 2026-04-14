@@ -106,6 +106,18 @@ public class UpdateService
                 return null;
             }
 
+            _logger.LogInformation(
+                "更新清单解析成功: SchemaVersion={SchemaVersion}, Delivery={Delivery}, ReleaseChannel={ReleaseChannel}, ReleaseTag={ReleaseTag}, ReleaseVersion={ReleaseVersion}, PublishedAt={PublishedAt:O}, Important={Important}, NotesCount={NotesCount}, Targets={Targets}",
+                manifest.SchemaVersion,
+                manifest.Delivery,
+                manifest.Release.Channel,
+                manifest.Release.Tag,
+                manifest.Release.Version,
+                manifest.Release.PublishedAt,
+                manifest.Release.Important,
+                manifest.Notes.Count,
+                string.Join(", ", manifest.Targets.Keys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase)));
+
             if (!IsNewVersionAvailable(manifest.Release.Version))
             {
                 _logger.LogInformation("当前已是最新版本: {CurrentVersion}", _currentVersion);
@@ -116,12 +128,23 @@ public class UpdateService
             var currentArchitecture = GetManifestArchitectureKey();
             if (!manifest.Targets.TryGetValue(currentArchitecture, out var target) || target == null)
             {
-                _logger.LogWarning("更新清单缺少当前架构目标: {Architecture}", currentArchitecture);
+                _logger.LogWarning(
+                    "更新清单缺少当前架构目标: {Architecture}, AvailableTargets={AvailableTargets}",
+                    currentArchitecture,
+                    string.Join(", ", manifest.Targets.Keys.OrderBy(key => key, StringComparer.OrdinalIgnoreCase)));
                 Debug.WriteLine($"[DEBUG] 更新清单缺少当前架构目标: {currentArchitecture}");
                 return null;
             }
 
             _logger.LogInformation("发现新版本: {LatestVersion}，当前版本: {CurrentVersion}，通道: {Channel}，架构: {Architecture}", manifest.Release.Version, _currentVersion, manifest.Release.Channel, currentArchitecture);
+            _logger.LogInformation(
+                "更新清单目标解析成功: Architecture={Architecture}, TargetChannel={TargetChannel}, FeedUrl={FeedUrl}, PackageUrl={PackageUrl}, PackageSize={PackageSize}, SetupUrl={SetupUrl}",
+                currentArchitecture,
+                target.Channel,
+                target.FeedUrl,
+                target.PackageUrl,
+                target.PackageSize,
+                target.SetupUrl);
             Debug.WriteLine($"[DEBUG] 发现新版本: {manifest.Release.Version}，当前版本: {_currentVersion}，通道: {manifest.Release.Channel}，架构: {currentArchitecture}");
 
             return new ResolvedUpdateManifest

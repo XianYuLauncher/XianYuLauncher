@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -9,6 +10,7 @@ using Velopack;
 using Velopack.Locators;
 using Velopack.Sources;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Core.Services;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Helpers;
@@ -22,6 +24,7 @@ namespace XianYuLauncher.Services;
 public class UpdateFlowService : IUpdateFlowService
 {
     private const string ReleasesPageUrl = "https://github.com/XianYuLauncher/XianYuLauncher/releases";
+    private const int ProgressMilestoneStep = 10;
     private static readonly Regex MarkdownLinkRegex = new(@"\[(?<text>[^\]]+)\]\([^)]+\)", RegexOptions.Compiled);
     private static readonly Regex OrderedListRegex = new(@"^\d+\.\s+", RegexOptions.Compiled);
 
@@ -29,7 +32,8 @@ public class UpdateFlowService : IUpdateFlowService
         bool IsManaged,
         ResolvedUpdateManifest? ManifestUpdate = null,
         VelopackUpdateInfo? ManagedUpdateInfo = null,
-        UpdateManager? ManagedUpdateManager = null)
+        UpdateManager? ManagedUpdateManager = null,
+        IVelopackLocator? ManagedLocator = null)
     {
         public string Version => IsManaged
             ? ManagedUpdateInfo?.TargetFullRelease.Version.ToString() ?? string.Empty
@@ -44,9 +48,11 @@ public class UpdateFlowService : IUpdateFlowService
         public static AvailableAppUpdate FromManifest(ResolvedUpdateManifest manifestUpdate)
             => new(false, manifestUpdate, null, null);
 
-        public static AvailableAppUpdate FromManaged(ResolvedUpdateManifest manifestUpdate, VelopackUpdateInfo updateInfo, UpdateManager updateManager)
-            => new(true, manifestUpdate, updateInfo, updateManager);
+        public static AvailableAppUpdate FromManaged(ResolvedUpdateManifest manifestUpdate, VelopackUpdateInfo updateInfo, UpdateManager updateManager, IVelopackLocator locator)
+            => new(true, manifestUpdate, updateInfo, updateManager, locator);
     }
+
+    private sealed record ManagedUpdateSession(UpdateManager UpdateManager, IVelopackLocator Locator);
 
     private readonly ILogger<UpdateFlowService> _logger;
     private readonly UpdateService _updateService;
@@ -221,33 +227,83 @@ public class UpdateFlowService : IUpdateFlowService
             return null;
         }
 
-        var updateManager = CreateManagedUpdateManager(manifestUpdate);
-        if (updateManager != null)
+        _logger.LogInformation(
+            "[UpdateFlowService] manifest 已命中更新候选: DistributionChannel={DistributionChannel}, ReleaseVersion={ReleaseVersion}, ReleaseChannel={ReleaseChannel}, Important={Important}, PublishedAt={PublishedAt:O}, TargetChannel={TargetChannel}, FeedUrl={FeedUrl}, PackageUrl={PackageUrl}, PackageSize={PackageSize}, SetupUrl={SetupUrl}",
+            distributionChannel,
+            manifestUpdate.Version,
+            manifestUpdate.Channel,
+            manifestUpdate.Important,
+            manifestUpdate.PublishedAt,
+            manifestUpdate.Target.Channel,
+            manifestUpdate.Target.FeedUrl,
+            manifestUpdate.Target.PackageUrl,
+            manifestUpdate.Target.PackageSize,
+            manifestUpdate.Target.SetupUrl);
+
+        var managedUpdateSession = CreateManagedUpdateManager(manifestUpdate);
+        if (managedUpdateSession != null)
         {
             _logger.LogInformation("[UpdateFlowService] 检测到受管 SideLoad 安装，使用 Velopack + manifest feed 检查更新");
-            var managedUpdate = await updateManager.CheckForUpdatesAsync();
+            var managedUpdate = await managedUpdateSession.UpdateManager.CheckForUpdatesAsync();
             if (managedUpdate == null)
             {
-                _logger.LogWarning("[UpdateFlowService] manifest 指示存在新版本，但 Velopack feed 未返回可用更新，通道: {Channel}", manifestUpdate.Channel);
+                _logger.LogWarning(
+                    "[UpdateFlowService] manifest 指示存在新版本，但 Velopack feed 未返回可用更新，通道: {Channel}, FeedUrl={FeedUrl}, PackageUrl={PackageUrl}",
+                    manifestUpdate.Channel,
+                    manifestUpdate.Target.FeedUrl,
+                    manifestUpdate.Target.PackageUrl);
                 return null;
             }
 
-            return AvailableAppUpdate.FromManaged(manifestUpdate, managedUpdate, updateManager);
+            LogManagedUpdateCandidate(manifestUpdate, managedUpdate, managedUpdateSession.Locator);
+            return AvailableAppUpdate.FromManaged(manifestUpdate, managedUpdate, managedUpdateSession.UpdateManager, managedUpdateSession.Locator);
         }
 
-        _logger.LogInformation("[UpdateFlowService] 当前不是受管 SideLoad 安装，使用 manifest 提供的 setup_url 作为更新入口");
+        _logger.LogInformation(
+            "[UpdateFlowService] 当前不是受管 SideLoad 安装，使用 manifest 提供的 setup_url 作为更新入口: SetupUrl={SetupUrl}, PackageUrl={PackageUrl}",
+            manifestUpdate.Target.SetupUrl,
+            manifestUpdate.Target.PackageUrl);
         return AvailableAppUpdate.FromManifest(manifestUpdate);
     }
 
-    private UpdateManager? CreateManagedUpdateManager(ResolvedUpdateManifest manifestUpdate)
+    private ManagedUpdateSession? CreateManagedUpdateManager(ResolvedUpdateManifest manifestUpdate)
     {
         try
         {
             var locator = VelopackLocator.CreateDefaultForPlatform();
-            var source = new SimpleWebSource(GetFeedBaseUri(manifestUpdate.Target.FeedUrl), null, 5);
+            var feedBaseUri = GetFeedBaseUri(manifestUpdate.Target.FeedUrl);
+
+            _logger.LogInformation(
+                "[UpdateFlowService] 创建 Velopack 定位器: FeedBaseUri={FeedBaseUri}, AppId={AppId}, LocatorChannel={LocatorChannel}, InstalledVersion={InstalledVersion}, RootAppDir={RootAppDir}, PackagesDir={PackagesDir}, AppContentDir={AppContentDir}, AppTempDir={AppTempDir}, UpdateExePath={UpdateExePath}, ProcessExePath={ProcessExePath}, ProcessId={ProcessId}, IsPortable={IsPortable}",
+                feedBaseUri,
+                locator.AppId,
+                locator.Channel,
+                locator.CurrentlyInstalledVersion?.ToString(),
+                locator.RootAppDir,
+                locator.PackagesDir,
+                locator.AppContentDir,
+                locator.AppTempDir,
+                locator.UpdateExePath,
+                locator.ProcessExePath,
+                locator.ProcessId,
+                locator.IsPortable);
+
+            var source = new SimpleWebSource(feedBaseUri, null, 5);
             var updateManager = new UpdateManager(source, locator: locator);
 
-            return updateManager.IsInstalled ? updateManager : null;
+            _logger.LogInformation(
+                "[UpdateFlowService] Velopack UpdateManager 已创建: IsInstalled={IsInstalled}, ManifestChannel={ManifestChannel}, TargetArchitecture={TargetArchitecture}",
+                updateManager.IsInstalled,
+                manifestUpdate.Channel,
+                manifestUpdate.Architecture);
+
+            if (!updateManager.IsInstalled)
+            {
+                _logger.LogInformation("[UpdateFlowService] 当前进程不是 Velopack 受管安装，后续将回退到 setup_url 更新入口");
+                return null;
+            }
+
+            return new ManagedUpdateSession(updateManager, locator);
         }
         catch (Exception ex)
         {
@@ -328,10 +384,42 @@ public class UpdateFlowService : IUpdateFlowService
             ?? throw new InvalidOperationException("缺少受管更新信息。");
         var updateManager = updateInfo.ManagedUpdateManager
             ?? throw new InvalidOperationException("缺少受管更新管理器。");
+        var locator = updateInfo.ManagedLocator
+            ?? throw new InvalidOperationException("缺少受管更新定位器。");
+        var targetRelease = managedUpdateInfo.TargetFullRelease;
+        var targetPackagePath = BuildPackagePath(locator.PackagesDir, targetRelease.FileName);
+        var targetPartialPath = targetPackagePath + ".partial";
+        var basePackagePath = managedUpdateInfo.BaseRelease == null ? null : BuildPackagePath(locator.PackagesDir, managedUpdateInfo.BaseRelease.FileName);
+        var deltaTotalSize = managedUpdateInfo.DeltasToTarget.Sum(item => item.Size);
 
-        bool downloadCompleted = false;
-        bool canceled = false;
+        var downloadCompleted = false;
+        var canceled = false;
         Exception? downloadException = null;
+        var lastReportedProgress = 0;
+        var highestReportedProgress = 0;
+        var lastLoggedMilestone = -1;
+        var progressRollbackDetected = false;
+        var downloadStartedAt = DateTimeOffset.UtcNow;
+
+        _logger.LogInformation(
+            "[UpdateFlowService] 准备开始受管更新下载: Version={Version}, Important={Important}, ManifestChannel={ManifestChannel}, TargetChannel={TargetChannel}, FeedUrl={FeedUrl}, TargetRelease={TargetRelease}, TargetPackagePath={TargetPackagePath}, TargetPackageExists={TargetPackageExists}, TargetPartialPath={TargetPartialPath}, BaseRelease={BaseRelease}, BasePackagePath={BasePackagePath}, BasePackageExists={BasePackageExists}, DeltaCount={DeltaCount}, DeltaTotalSize={DeltaTotalSize}, DeltaReleases={DeltaReleases}, PackagesDir={PackagesDir}, PackageSnapshot={PackageSnapshot}",
+            updateInfo.Version,
+            updateInfo.ImportantUpdate,
+            updateInfo.ManifestUpdate?.Channel,
+            updateInfo.ManifestUpdate?.Target.Channel,
+            updateInfo.ManifestUpdate?.Target.FeedUrl,
+            FormatRelease(targetRelease),
+            targetPackagePath,
+            File.Exists(targetPackagePath),
+            targetPartialPath,
+            FormatRelease(managedUpdateInfo.BaseRelease),
+            basePackagePath,
+            basePackagePath != null && File.Exists(basePackagePath),
+            managedUpdateInfo.DeltasToTarget.Count(),
+            deltaTotalSize,
+            FormatReleases(managedUpdateInfo.DeltasToTarget),
+            locator.PackagesDir,
+            DescribePackageDirectorySnapshot(locator.PackagesDir));
 
         await _progressDialogService.ShowProgressDialogAsync(
             title: "下载更新",
@@ -347,12 +435,50 @@ public class UpdateFlowService : IUpdateFlowService
                         managedUpdateInfo,
                         percent =>
                         {
+                            if (percent < lastReportedProgress)
+                            {
+                                progressRollbackDetected = true;
+                                _logger.LogWarning(
+                                    "[UpdateFlowService] Velopack 下载进度回退: PreviousPercent={PreviousPercent}, CurrentPercent={CurrentPercent}, HighestPercent={HighestPercent}, TargetRelease={TargetRelease}, DeltaCount={DeltaCount}. 这通常表示 delta 阶段切换或回退到 full 包。",
+                                    lastReportedProgress,
+                                    percent,
+                                    highestReportedProgress,
+                                    FormatRelease(targetRelease),
+                                    managedUpdateInfo.DeltasToTarget.Count());
+                            }
+
+                            highestReportedProgress = Math.Max(highestReportedProgress, percent);
+                            var currentMilestone = percent / ProgressMilestoneStep;
+                            if (percent == 0 || percent == 70 || percent == 100 || percent < lastReportedProgress || currentMilestone > lastLoggedMilestone)
+                            {
+                                _logger.LogInformation(
+                                    "[UpdateFlowService] Velopack 下载进度: Percent={Percent}, HighestPercent={HighestPercent}, TargetFile={TargetFile}, BaseFile={BaseFile}, DeltaCount={DeltaCount}",
+                                    percent,
+                                    highestReportedProgress,
+                                    targetRelease.FileName,
+                                    managedUpdateInfo.BaseRelease?.FileName,
+                                    managedUpdateInfo.DeltasToTarget.Count());
+                                lastLoggedMilestone = currentMilestone;
+                            }
+
+                            lastReportedProgress = percent;
                             progress.Report(percent);
                             status.Report(percent >= 100
                                 ? "下载完成，正在准备安装..."
                                 : $"正在下载更新... {percent}%");
                         },
                         dialogCancellationToken);
+
+                    _logger.LogInformation(
+                        "[UpdateFlowService] Velopack 下载调用完成: DurationMs={DurationMs}, HighestPercent={HighestPercent}, FinalPercent={FinalPercent}, ProgressRollbackDetected={ProgressRollbackDetected}, TargetPackageExists={TargetPackageExists}, TargetPackageLength={TargetPackageLength}, PartialPackageExists={PartialPackageExists}, PackageSnapshot={PackageSnapshot}",
+                        (DateTimeOffset.UtcNow - downloadStartedAt).TotalMilliseconds,
+                        highestReportedProgress,
+                        lastReportedProgress,
+                        progressRollbackDetected,
+                        File.Exists(targetPackagePath),
+                        TryGetFileLength(targetPackagePath),
+                        File.Exists(targetPartialPath),
+                        DescribePackageDirectorySnapshot(locator.PackagesDir));
 
                     progress.Report(100);
                     status.Report("下载完成，正在准备安装...");
@@ -361,11 +487,27 @@ public class UpdateFlowService : IUpdateFlowService
                 catch (OperationCanceledException)
                 {
                     canceled = true;
+                    _logger.LogWarning(
+                        "[UpdateFlowService] 受管更新下载被取消: LastPercent={LastPercent}, HighestPercent={HighestPercent}, ProgressRollbackDetected={ProgressRollbackDetected}, PackageSnapshot={PackageSnapshot}",
+                        lastReportedProgress,
+                        highestReportedProgress,
+                        progressRollbackDetected,
+                        DescribePackageDirectorySnapshot(locator.PackagesDir));
                     throw;
                 }
                 catch (Exception ex)
                 {
                     downloadException = ex;
+                    _logger.LogError(
+                        ex,
+                        "[UpdateFlowService] Velopack 下载执行异常: LastPercent={LastPercent}, HighestPercent={HighestPercent}, ProgressRollbackDetected={ProgressRollbackDetected}, TargetPackagePath={TargetPackagePath}, TargetPackageExists={TargetPackageExists}, PartialPackageExists={PartialPackageExists}, PackageSnapshot={PackageSnapshot}",
+                        lastReportedProgress,
+                        highestReportedProgress,
+                        progressRollbackDetected,
+                        targetPackagePath,
+                        File.Exists(targetPackagePath),
+                        File.Exists(targetPartialPath),
+                        DescribePackageDirectorySnapshot(locator.PackagesDir));
                     throw;
                 }
             });
@@ -391,7 +533,17 @@ public class UpdateFlowService : IUpdateFlowService
 
         try
         {
+            _logger.LogInformation(
+                "[UpdateFlowService] 准备启动 Velopack 应用更新: TargetRelease={TargetRelease}, TargetPackagePath={TargetPackagePath}, TargetPackageExists={TargetPackageExists}, TargetPackageLength={TargetPackageLength}, UpdateExePath={UpdateExePath}, ProcessExePath={ProcessExePath}, ProcessId={ProcessId}",
+                FormatRelease(targetRelease),
+                targetPackagePath,
+                File.Exists(targetPackagePath),
+                TryGetFileLength(targetPackagePath),
+                locator.UpdateExePath,
+                locator.ProcessExePath,
+                locator.ProcessId);
             updateManager.WaitExitThenApplyUpdates(managedUpdateInfo.TargetFullRelease);
+            _logger.LogInformation("[UpdateFlowService] 已调用 Velopack WaitExitThenApplyUpdates，开始关闭应用以完成更新");
             await _applicationLifecycleService.ShutdownApplicationAsync();
             return new UpdateFlowResult { Success = true, HasUpdate = true, InstallationStarted = true };
         }
@@ -491,5 +643,79 @@ public class UpdateFlowService : IUpdateFlowService
             .Replace("~~", string.Empty, StringComparison.Ordinal);
 
         return sanitized.Trim();
+    }
+
+    private void LogManagedUpdateCandidate(ResolvedUpdateManifest manifestUpdate, VelopackUpdateInfo managedUpdate, IVelopackLocator locator)
+    {
+        var targetPackagePath = BuildPackagePath(locator.PackagesDir, managedUpdate.TargetFullRelease.FileName);
+        var basePackagePath = managedUpdate.BaseRelease == null ? null : BuildPackagePath(locator.PackagesDir, managedUpdate.BaseRelease.FileName);
+
+        _logger.LogInformation(
+            "[UpdateFlowService] Velopack 更新候选详情: ReleaseVersion={ReleaseVersion}, ManifestChannel={ManifestChannel}, TargetChannel={TargetChannel}, TargetRelease={TargetRelease}, TargetPackagePath={TargetPackagePath}, TargetPackageExists={TargetPackageExists}, BaseRelease={BaseRelease}, BasePackagePath={BasePackagePath}, BasePackageExists={BasePackageExists}, DeltaCount={DeltaCount}, DeltaTotalSize={DeltaTotalSize}, DeltaReleases={DeltaReleases}, IsDowngrade={IsDowngrade}, PackageSnapshot={PackageSnapshot}",
+            manifestUpdate.Version,
+            manifestUpdate.Channel,
+            manifestUpdate.Target.Channel,
+            FormatRelease(managedUpdate.TargetFullRelease),
+            targetPackagePath,
+            File.Exists(targetPackagePath),
+            FormatRelease(managedUpdate.BaseRelease),
+            basePackagePath,
+            basePackagePath != null && File.Exists(basePackagePath),
+            managedUpdate.DeltasToTarget.Count(),
+            managedUpdate.DeltasToTarget.Sum(item => item.Size),
+            FormatReleases(managedUpdate.DeltasToTarget),
+            managedUpdate.IsDowngrade,
+            DescribePackageDirectorySnapshot(locator.PackagesDir));
+    }
+
+    private static string BuildPackagePath(string? packagesDir, string fileName)
+    {
+        return string.IsNullOrWhiteSpace(packagesDir)
+            ? fileName
+            : Path.Combine(packagesDir, fileName);
+    }
+
+    private static string FormatRelease(VelopackAsset? release)
+    {
+        return release == null
+            ? "<none>"
+            : $"{release.FileName} | version={release.Version} | size={release.Size}";
+    }
+
+    private static string FormatReleases(IEnumerable<VelopackAsset> releases)
+    {
+        var items = releases.Select(FormatRelease).ToArray();
+        return items.Length == 0 ? "<none>" : string.Join("; ", items);
+    }
+
+    private static long? TryGetFileLength(string? path)
+    {
+        return !string.IsNullOrWhiteSpace(path) && File.Exists(path) ? new FileInfo(path).Length : null;
+    }
+
+    private static string DescribePackageDirectorySnapshot(string? packagesDir)
+    {
+        if (string.IsNullOrWhiteSpace(packagesDir))
+        {
+            return "<unknown>";
+        }
+
+        if (!Directory.Exists(packagesDir))
+        {
+            return $"目录不存在: {packagesDir}";
+        }
+
+        var files = Directory.EnumerateFiles(packagesDir)
+            .Select(path =>
+            {
+                var info = new FileInfo(path);
+                return $"{info.Name} ({info.Length} bytes)";
+            })
+            .OrderBy(item => item, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return files.Length == 0
+            ? $"目录为空: {packagesDir}"
+            : $"{packagesDir} => {string.Join(", ", files)}";
     }
 }
