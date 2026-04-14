@@ -1,0 +1,88 @@
+name: Publish To Microsoft Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: Stable tag to publish, for example v1.5.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: store-publish-${{ github.event.inputs.tag_name }}
+  cancel-in-progress: false
+
+jobs:
+  validate-request:
+    name: Validate Publish Request
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.validate.outputs.tag_name }}
+      checkout_ref: ${{ steps.validate.outputs.checkout_ref }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Validate stable tag
+      id: validate
+      shell: pwsh
+      run: |
+        $tagName = "${{ inputs.tag_name }}".Trim()
+        if ([string]::IsNullOrWhiteSpace($tagName)) {
+            throw "tag_name cannot be empty."
+        }
+
+        if ($tagName.Contains('-')) {
+            throw "Only stable tags are allowed for Microsoft Store publishing."
+        }
+
+        if ($tagName -notmatch '^v\d+\.\d+\.\d+$') {
+            throw "tag_name must be a stable tag like v1.5.0."
+        }
+
+        git rev-parse --verify --quiet "refs/tags/$tagName" | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "Tag '$tagName' does not exist in this repository."
+        }
+
+        "tag_name=$tagName" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+        "checkout_ref=refs/tags/$tagName" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+  preview:
+    name: Prepare Preview Summary
+    needs: validate-request
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Write job summary
+      shell: bash
+      run: |
+        {
+          echo "## Microsoft Store publish preview"
+          echo
+          echo "- Tag: ${{ needs.validate-request.outputs.tag_name }}"
+          echo "- Status: workflow scaffold ready"
+          echo "- Next phases will add package build, release notes preview and Store submission"
+        } >> "$GITHUB_STEP_SUMMARY"
+
+  approval:
+    name: Await Store Submission Approval
+    needs:
+      - validate-request
+      - preview
+    runs-on: ubuntu-latest
+    environment:
+      name: microsoft-store-publish
+
+    steps:
+    - name: Approval checkpoint
+      shell: bash
+      run: |
+        echo "Approval received for ${{ needs.validate-request.outputs.tag_name }}."
+        echo "Later phases will submit packages and release notes after this gate."
