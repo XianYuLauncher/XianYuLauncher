@@ -8,7 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
@@ -22,7 +21,6 @@ namespace XianYuLauncher.Core.Services;
 /// </summary>
 public class UpdateService
 {
-    private const string GitHubReleasesApiUrl = "https://api.github.com/repos/XianYuLauncher/XianYuLauncher/releases?per_page=20";
     private const string StableManifestUrl = "https://gitee.com/spiritos/XianYuLauncher-Resource/raw/main/update_manifest_stable.json";
     private const string DevManifestUrl = "https://gitee.com/spiritos/XianYuLauncher-Resource/raw/main/update_manifest_dev.json";
     private readonly IDownloadManager _downloadManager;
@@ -155,50 +153,6 @@ public class UpdateService
             Debug.WriteLine($"[DEBUG] 检查更新清单时发生未知错误: {ex.Message}");
             return null;
         }
-    }
-
-    public async Task<string?> TryGetGitHubReleaseNotesAsync(string version)
-    {
-        if (string.IsNullOrWhiteSpace(version))
-        {
-            return null;
-        }
-
-        try
-        {
-            var response = await _downloadManager.DownloadStringAsync(GitHubReleasesApiUrl);
-            var releases = JArray.Parse(response);
-            var normalizedTargetVersion = NormalizeReleaseVersion(version);
-
-            foreach (var release in releases.OfType<JObject>())
-            {
-                var tagName = release.Value<string>("tag_name");
-                if (string.IsNullOrWhiteSpace(tagName))
-                {
-                    continue;
-                }
-
-                if (!string.Equals(NormalizeReleaseVersion(tagName), normalizedTargetVersion, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                var body = release.Value<string>("body");
-                if (!string.IsNullOrWhiteSpace(body))
-                {
-                    _logger.LogInformation("已从 GitHub Release 正文回退获取版本 {Version} 的更新日志", version);
-                    return body;
-                }
-
-                return null;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "获取 GitHub Release 正文失败，版本: {Version}", version);
-        }
-
-        return null;
     }
 
     /// <summary>

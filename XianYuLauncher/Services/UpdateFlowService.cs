@@ -297,17 +297,13 @@ public class UpdateFlowService : IUpdateFlowService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var confirmed = updateInfo.IsManaged
-            ? await _updateDialogFlowService.ShowUpdatePreviewAsync(
-                await BuildPreviewUpdateInfoAsync(updateInfo),
-                title,
-                primaryButtonText,
-                closeButtonText)
-            : await _dialogService.ShowConfirmationDialogAsync(
-                title,
-                BuildSideLoadUpdateMessage(updateInfo),
-                primaryButtonText,
-                closeButtonText);
+        var resolvedCloseButtonText = updateInfo.ImportantUpdate ? null : closeButtonText;
+
+        var confirmed = await _updateDialogFlowService.ShowUpdatePreviewAsync(
+            await BuildPreviewUpdateInfoAsync(updateInfo),
+            title,
+            primaryButtonText,
+            resolvedCloseButtonText);
 
         if (!confirmed)
         {
@@ -416,28 +412,6 @@ public class UpdateFlowService : IUpdateFlowService
         }
     }
 
-    private static string BuildSideLoadUpdateMessage(AvailableAppUpdate updateInfo)
-    {
-        if (updateInfo.IsManaged)
-        {
-            return $"发现新版本 {updateInfo.Version}。\n\n当前安装已接入受管 SideLoad 更新。确认后，应用会先在后台下载更新包；下载完成后将自动关闭当前程序，并交给 Update.exe 完成替换与重启。\n\n是否现在开始更新？";
-        }
-
-        var importancePrefix = updateInfo.ImportantUpdate
-            ? "这是一个重要更新。\n\n"
-            : string.Empty;
-
-        if (updateInfo.SetupUri != null)
-        {
-            return $"发现新版本 {updateInfo.Version}。\n\n{importancePrefix}当前安装未接入受管更新。确认后会在浏览器中下载对应通道的安装器；下载完成后关闭当前程序并运行安装器完成覆盖安装。\n\n是否现在下载安装器？";
-        }
-
-        var legacyUpdateInfo = updateInfo.LegacyUpdateInfo
-            ?? throw new InvalidOperationException("缺少旧版 SideLoad 更新信息。");
-
-        return $"发现新版本 {legacyUpdateInfo.version}。\n\n{importancePrefix}SideLoad 版本现在通过 Unpackaged Zip 分发，不再执行 MSIX 自动安装。\n请在浏览器中下载新版本，退出当前程序后替换当前安装目录，再重新启动应用。\n\n是否现在打开 Releases 页面？";
-    }
-
     private async Task<CoreUpdateInfo> BuildPreviewUpdateInfoAsync(AvailableAppUpdate updateInfo)
     {
         if (!updateInfo.IsManaged)
@@ -469,18 +443,12 @@ public class UpdateFlowService : IUpdateFlowService
         var managedUpdateInfo = updateInfo.ManagedUpdateInfo
             ?? throw new InvalidOperationException("缺少受管更新信息。");
         var targetRelease = managedUpdateInfo.TargetFullRelease;
-        var notesMarkdown = targetRelease.NotesMarkdown;
-
-        if (string.IsNullOrWhiteSpace(notesMarkdown))
-        {
-            notesMarkdown = await _updateService.TryGetGitHubReleaseNotesAsync(targetRelease.Version.ToString());
-        }
 
         return new CoreUpdateInfo
         {
             version = updateInfo.Version,
             important_update = updateInfo.ImportantUpdate,
-            changelog = ParseManagedReleaseNotes(notesMarkdown),
+            changelog = ParseManagedReleaseNotes(targetRelease.NotesMarkdown),
         };
     }
 
