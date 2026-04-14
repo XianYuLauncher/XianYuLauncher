@@ -40,6 +40,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$storeReleaseNotesMaxLength = 1500
+
 function Assert-NotEmpty {
     param(
         [Parameter(Mandatory = $true)]
@@ -136,6 +138,54 @@ function Set-ListingReleaseNotes {
     }
 }
 
+function Normalize-ReleaseNotesForStore {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]]$ReleaseNotes,
+
+        [Parameter(Mandatory = $true)]
+        [int]$MaxLength
+    )
+
+    return @(
+        foreach ($note in @($ReleaseNotes)) {
+            $language = [string]$note.language
+            $content = if ($null -eq $note.content) { '' } else { [string]$note.content }
+            $originalLength = $content.Length
+
+            if ($originalLength -gt $MaxLength) {
+                $suffix = '...'
+                $maxContentLength = [Math]::Max(0, $MaxLength - $suffix.Length)
+                $candidate = $content.Substring(0, $maxContentLength)
+                $lastLineBreak = $candidate.LastIndexOf("`n", [System.StringComparison]::Ordinal)
+                if ($lastLineBreak -ge [Math]::Floor($maxContentLength * 0.6)) {
+                    $candidate = $candidate.Substring(0, $lastLineBreak)
+                }
+
+                $candidate = $candidate.TrimEnd()
+                if ([string]::IsNullOrWhiteSpace($candidate)) {
+                    $candidate = $content.Substring(0, $maxContentLength).TrimEnd()
+                }
+
+                $content = $candidate + $suffix
+                if ($content.Length -gt $MaxLength) {
+                    $content = $content.Substring(0, $MaxLength)
+                }
+
+                Write-Warning "$language release notes exceeded $MaxLength characters and were truncated from $originalLength to $($content.Length)."
+            }
+
+            [pscustomobject]@{
+                language = $language
+                content = $content
+                contentLength = $content.Length
+                originalLength = $originalLength
+                wasTruncated = ($originalLength -gt $content.Length)
+            }
+        }
+    )
+}
+
 function Wait-ForSubmissionStatus {
     param(
         [Parameter(Mandatory = $true)]
@@ -222,7 +272,7 @@ Connect-StoreBroker -TenantId $TenantId -ClientId $ClientId -ClientSecret $Clien
 
 $payload = Get-Content -Path $SubmissionPayloadPath -Raw | ConvertFrom-Json
 $releaseNotesDocument = Get-Content -Path $ReleaseNotesPath -Raw | ConvertFrom-Json
-$releaseNotes = @($releaseNotesDocument.notes)
+$releaseNotes = @(Normalize-ReleaseNotesForStore -ReleaseNotes @($releaseNotesDocument.notes) -MaxLength $storeReleaseNotesMaxLength)
 
 if ($releaseNotes.Count -eq 0) {
     throw "The release notes file does not contain any notes entries."
