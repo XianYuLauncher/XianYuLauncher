@@ -10,8 +10,8 @@ namespace XianYuLauncher.Core.Services;
 public static class CacheMigrationService
 {
     /// <summary>
-    /// 执行迁移（仅在 MSIX 环境下）
-    /// 将 LocalCache\Local\XianYuLauncher\ 迁移到 LocalState\
+    /// 执行迁移（仅在 MSIX 环境下）。
+    /// 将 LocalCache\Local\XianYuLauncher\ 迁移到 LocalState\。
     /// </summary>
     public static void MigrateIfNeeded()
     {

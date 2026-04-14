@@ -98,6 +98,30 @@ function Resolve-LogicalChannel {
     return $normalizedValue
 }
 
+function Resolve-PackId {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BasePackId,
+        [Parameter(Mandatory = $true)]
+        [string]$LogicalChannel
+    )
+
+    $devSuffix = '.Dev'
+    if ($LogicalChannel -eq 'stable') {
+        if ($BasePackId.EndsWith($devSuffix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            return $BasePackId.Substring(0, $BasePackId.Length - $devSuffix.Length)
+        }
+
+        return $BasePackId
+    }
+
+    if ($BasePackId.EndsWith($devSuffix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $BasePackId
+    }
+
+    return "$BasePackId$devSuffix"
+}
+
 $publishDirectoryPath = Resolve-AbsolutePath -Path $PublishDirectory
 if (-not (Test-Path $publishDirectoryPath -PathType Container)) {
     throw "Publish directory not found: $publishDirectoryPath"
@@ -118,6 +142,7 @@ New-Item -ItemType Directory -Force -Path $releaseDirectoryPath | Out-Null
 
 $vpkPath = Resolve-CommandPath -CommandName $VpkExecutablePath
 $logicalChannel = Resolve-LogicalChannel -Value $Channel
+$resolvedPackId = Resolve-PackId -BasePackId $PackId -LogicalChannel $logicalChannel
 $resolvedPackTitle = if ([string]::IsNullOrWhiteSpace($PackTitle)) {
     if ($logicalChannel -eq 'stable') {
         'XianYu Launcher'
@@ -140,7 +165,7 @@ else {
 $arguments = [System.Collections.Generic.List[string]]::new()
 $arguments.Add('pack')
 $arguments.Add('--packId')
-$arguments.Add($PackId)
+$arguments.Add($resolvedPackId)
 $arguments.Add('--packVersion')
 $arguments.Add($PackVersion)
 $arguments.Add('--packDir')
@@ -170,6 +195,7 @@ if (-not [string]::IsNullOrWhiteSpace($resolvedFrameworkRuntime)) {
 
 Write-Host "Packing Velopack release with channel '$Channel' and version '$PackVersion'."
 Write-Host "Resolved logical channel: $logicalChannel"
+Write-Host "Using pack id: $resolvedPackId"
 Write-Host "Using pack title: $resolvedPackTitle"
 Write-Host "Using vpk: $vpkPath"
 Write-Host "Publish directory: $publishDirectoryPath"
