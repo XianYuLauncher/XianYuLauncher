@@ -41,6 +41,7 @@ jobs:
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "full_ver=$FULL_VER" >> $GITHUB_OUTPUT
           echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
+          echo "manifest_file=update_manifest_${CHANNEL}.json" >> $GITHUB_OUTPUT
 
       - name: Fetch Release Notes
         id: release
@@ -167,17 +168,20 @@ jobs:
             --notes-file release-notes.txt \
             --strict \
             --expected-architectures win-x64 win-x86 win-arm64 \
-            --output-file update-manifest.json
+            --output-dir .
 
       - name: Validate Update Manifest
         env:
+          MANIFEST_FILE: ${{ steps.vars.outputs.manifest_file }}
           R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
         run: |
           python3 << 'PYEOF'
           import json
           import os
 
-          with open("update-manifest.json", "r", encoding="utf-8") as handle:
+          manifest_file = os.environ["MANIFEST_FILE"]
+
+          with open(manifest_file, "r", encoding="utf-8") as handle:
               manifest = json.load(handle)
 
           expected_architectures = ("win-x64", "win-x86", "win-arm64")
@@ -210,13 +214,14 @@ jobs:
                           f"Update manifest validation failed: target {architecture} field {url_field} does not use {public_base}."
                       )
 
-          print("Update manifest validation passed.")
+          print(f"Update manifest validation passed: {manifest_file}")
           PYEOF
 
-      - name: Sync Gitee update_manifest.json
+      - name: Sync Gitee Channel Manifest
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           FULL_VER: ${{ steps.vars.outputs.full_ver }}
+          MANIFEST_FILE: ${{ steps.vars.outputs.manifest_file }}
         run: |
           if [ -z "$GITEE_TOKEN" ]; then
             echo "GITEE_TOKEN is missing." >&2
@@ -227,10 +232,10 @@ jobs:
           git clone "https://oauth2:${GITEE_TOKEN}@gitee.com/${REPO}.git" gitee-repo
           cd gitee-repo
 
-          cp ../update-manifest.json ./update_manifest.json
+          cp "../${MANIFEST_FILE}" "./${MANIFEST_FILE}"
 
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
-          git add update_manifest.json
-          git commit -m "chore: update update_manifest.json for $FULL_VER" || echo "No changes"
+          git add "$MANIFEST_FILE"
+          git commit -m "chore: update ${MANIFEST_FILE} for $FULL_VER" || echo "No changes"
           git push
