@@ -28,28 +28,24 @@ public class UpdateFlowService : IUpdateFlowService
     private sealed record AvailableAppUpdate(
         bool IsManaged,
         ResolvedUpdateManifest? ManifestUpdate = null,
-        CoreUpdateInfo? LegacyUpdateInfo = null,
         VelopackUpdateInfo? ManagedUpdateInfo = null,
         UpdateManager? ManagedUpdateManager = null)
     {
         public string Version => IsManaged
             ? ManagedUpdateInfo?.TargetFullRelease.Version.ToString() ?? string.Empty
-            : ManifestUpdate?.Version ?? LegacyUpdateInfo?.version ?? string.Empty;
+            : ManifestUpdate?.Version ?? string.Empty;
 
-        public bool ImportantUpdate => ManifestUpdate?.Important ?? LegacyUpdateInfo?.important_update ?? false;
+        public bool ImportantUpdate => ManifestUpdate?.Important ?? false;
 
         public Uri? SetupUri => ManifestUpdate != null && Uri.TryCreate(ManifestUpdate.Target.SetupUrl, UriKind.Absolute, out var setupUri)
             ? setupUri
             : null;
 
-        public static AvailableAppUpdate FromLegacy(CoreUpdateInfo updateInfo)
-            => new(false, null, updateInfo, null, null);
-
         public static AvailableAppUpdate FromManifest(ResolvedUpdateManifest manifestUpdate)
-            => new(false, manifestUpdate, null, null, null);
+            => new(false, manifestUpdate, null, null);
 
         public static AvailableAppUpdate FromManaged(ResolvedUpdateManifest manifestUpdate, VelopackUpdateInfo updateInfo, UpdateManager updateManager)
-            => new(true, manifestUpdate, null, updateInfo, updateManager);
+            => new(true, manifestUpdate, updateInfo, updateManager);
     }
 
     private readonly ILogger<UpdateFlowService> _logger;
@@ -186,11 +182,6 @@ public class UpdateFlowService : IUpdateFlowService
         }
     }
 
-    public Task<UpdateFlowResult> HandleAvailableUpdateAsync(CoreUpdateInfo updateInfo, bool isStartupCheck = false, CancellationToken cancellationToken = default)
-    {
-        return HandleAvailableUpdateAsync(AvailableAppUpdate.FromLegacy(updateInfo), isStartupCheck, cancellationToken);
-    }
-
     private async Task<UpdateFlowResult> HandleAvailableUpdateAsync(AvailableAppUpdate updateInfo, bool isStartupCheck = false, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -300,7 +291,7 @@ public class UpdateFlowService : IUpdateFlowService
         var resolvedCloseButtonText = updateInfo.ImportantUpdate ? null : closeButtonText;
 
         var confirmed = await _updateDialogFlowService.ShowUpdatePreviewAsync(
-            await BuildPreviewUpdateInfoAsync(updateInfo),
+            BuildPreviewUpdateInfo(updateInfo),
             title,
             primaryButtonText,
             resolvedCloseButtonText);
@@ -412,25 +403,9 @@ public class UpdateFlowService : IUpdateFlowService
         }
     }
 
-    private async Task<CoreUpdateInfo> BuildPreviewUpdateInfoAsync(AvailableAppUpdate updateInfo)
+    private static CoreUpdateInfo BuildPreviewUpdateInfo(AvailableAppUpdate updateInfo)
     {
-        if (!updateInfo.IsManaged)
-        {
-            if (updateInfo.ManifestUpdate != null)
-            {
-                return new CoreUpdateInfo
-                {
-                    version = updateInfo.ManifestUpdate.Version,
-                    important_update = updateInfo.ManifestUpdate.Important,
-                    changelog = updateInfo.ManifestUpdate.Manifest.Notes.ToList(),
-                };
-            }
-
-            return updateInfo.LegacyUpdateInfo
-                ?? throw new InvalidOperationException("缺少旧版更新信息。");
-        }
-
-        if (updateInfo.ManifestUpdate != null && updateInfo.ManifestUpdate.Manifest.Notes.Count > 0)
+        if (updateInfo.ManifestUpdate != null)
         {
             return new CoreUpdateInfo
             {
@@ -444,11 +419,21 @@ public class UpdateFlowService : IUpdateFlowService
             ?? throw new InvalidOperationException("缺少受管更新信息。");
         var targetRelease = managedUpdateInfo.TargetFullRelease;
 
+        if (!string.IsNullOrWhiteSpace(targetRelease.NotesMarkdown))
+        {
+            return new CoreUpdateInfo
+            {
+                version = updateInfo.Version,
+                important_update = updateInfo.ImportantUpdate,
+                changelog = ParseManagedReleaseNotes(targetRelease.NotesMarkdown),
+            };
+        }
+
         return new CoreUpdateInfo
         {
             version = updateInfo.Version,
             important_update = updateInfo.ImportantUpdate,
-            changelog = ParseManagedReleaseNotes(targetRelease.NotesMarkdown),
+            changelog = [],
         };
     }
 
