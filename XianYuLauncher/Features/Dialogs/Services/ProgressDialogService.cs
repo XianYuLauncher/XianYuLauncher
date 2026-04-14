@@ -18,7 +18,11 @@ public sealed class ProgressDialogService : IProgressDialogService
         _dialogThemePaletteService = dialogThemePaletteService ?? throw new ArgumentNullException(nameof(dialogThemePaletteService));
     }
 
-    public async Task ShowProgressDialogAsync(string title, string message, Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback)
+    public async Task ShowProgressDialogAsync(
+        string title,
+        string message,
+        Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback,
+        string? closeButtonText = "取消")
     {
         var progressBar = new ProgressBar { Maximum = 100, Value = 0, MinHeight = 4, Margin = new Thickness(0, 10, 0, 10), IsIndeterminate = true };
         var statusText = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap };
@@ -31,20 +35,37 @@ public sealed class ProgressDialogService : IProgressDialogService
         {
             Title = title,
             Content = contentPanel,
-            CloseButtonText = "取消",
             DefaultButton = ContentDialogButton.None,
         };
 
+        if (!string.IsNullOrEmpty(closeButtonText))
+        {
+            dialog.CloseButtonText = closeButtonText;
+        }
+
         var cts = new CancellationTokenSource();
         Task? backgroundWork = null;
+        var allowDialogClose = false;
+        var allowUserCancel = !string.IsNullOrEmpty(closeButtonText);
 
-        dialog.CloseButtonClick += (_, _) =>
+        dialog.Closing += (_, args) =>
         {
-            if (!cts.IsCancellationRequested)
+            if (!allowDialogClose && !allowUserCancel)
             {
-                cts.Cancel();
+                args.Cancel = true;
             }
         };
+
+        if (allowUserCancel)
+        {
+            dialog.CloseButtonClick += (_, _) =>
+            {
+                if (!cts.IsCancellationRequested)
+                {
+                    cts.Cancel();
+                }
+            };
+        }
 
         var progress = new Progress<double>(p =>
         {
@@ -74,6 +95,7 @@ public sealed class ProgressDialogService : IProgressDialogService
                 {
                     dialog.DispatcherQueue.TryEnqueue(() =>
                     {
+                        allowDialogClose = true;
                         try
                         {
                             dialog.Hide();

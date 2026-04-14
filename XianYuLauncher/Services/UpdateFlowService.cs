@@ -391,6 +391,7 @@ public class UpdateFlowService : IUpdateFlowService
         var targetPartialPath = targetPackagePath + ".partial";
         var basePackagePath = managedUpdateInfo.BaseRelease == null ? null : BuildPackagePath(locator.PackagesDir, managedUpdateInfo.BaseRelease.FileName);
         var deltaTotalSize = managedUpdateInfo.DeltasToTarget.Sum(item => item.Size);
+        var allowUserCancel = !updateInfo.ImportantUpdate;
 
         var downloadCompleted = false;
         var canceled = false;
@@ -420,6 +421,10 @@ public class UpdateFlowService : IUpdateFlowService
             FormatReleases(managedUpdateInfo.DeltasToTarget),
             locator.PackagesDir,
             DescribePackageDirectorySnapshot(locator.PackagesDir));
+
+        _logger.LogInformation(
+            "[UpdateFlowService] 本次受管更新下载的用户取消能力: AllowUserCancel={AllowUserCancel}",
+            allowUserCancel);
 
         await _progressDialogService.ShowProgressDialogAsync(
             title: "下载更新",
@@ -510,7 +515,8 @@ public class UpdateFlowService : IUpdateFlowService
                         DescribePackageDirectorySnapshot(locator.PackagesDir));
                     throw;
                 }
-            });
+            },
+            closeButtonText: allowUserCancel ? "取消" : null);
 
         cancellationToken.ThrowIfCancellationRequested();
 

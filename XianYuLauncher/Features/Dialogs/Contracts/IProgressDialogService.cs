@@ -4,7 +4,11 @@ namespace XianYuLauncher.Features.Dialogs.Contracts;
 
 public interface IProgressDialogService
 {
-    Task ShowProgressDialogAsync(string title, string message, Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback);
+    Task ShowProgressDialogAsync(
+        string title,
+        string message,
+        Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback,
+        string? closeButtonText = "取消");
 
     Task<T> ShowProgressCallbackDialogAsync<T>(string title, string message, Func<IProgress<double>, Task<T>> workCallback);
 
