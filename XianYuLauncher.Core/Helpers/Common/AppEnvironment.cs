@@ -16,6 +16,8 @@ public static class AppEnvironment
 {
     private const int AppModelErrorNoPackage = 15700;
     private const string MicrosoftStorePublisherFragment = "CN=477122EB-593B-4C14-AA43-AD408DEE1452";
+    private const string StableUnpackagedDataDirectoryName = "XianYuLauncher";
+    private const string DevUnpackagedDataDirectoryName = "XianYuLauncher.Dev";
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     private static extern int GetCurrentPackageFullName(ref int packageFullNameLength, StringBuilder? packageFullName);
@@ -95,8 +97,8 @@ public static class AppEnvironment
     public static DistributionChannel CurrentDistributionChannel => _currentDistributionChannel ??= ResolveDistributionChannel();
 
     /// <summary>
-    /// 获取安全的应用数据路径，外部进程可访问
-    /// MSIX 环境下返回 LocalState 物理路径，非 MSIX 环境返回 LocalAppData\XianYuLauncher
+    /// 获取安全的应用数据路径，外部进程可访问。
+    /// MSIX 环境下返回 LocalState 物理路径，非 MSIX 环境按渠道分流：Stable 为 LocalAppData\XianYuLauncher，Dev 为 LocalAppData\XianYuLauncher.Dev。
     /// </summary>
     public static string SafeAppDataPath
     {
@@ -111,10 +113,7 @@ public static class AppEnvironment
                 }
                 else
                 {
-                    // 非 MSIX 环境：使用标准 LocalAppData 路径
-                    _safeAppDataPath = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                        "XianYuLauncher");
+                    _safeAppDataPath = ResolveUnpackagedAppDataPath(GetLocalAppDataRoot(), CurrentDistributionChannel);
                 }
 
                 // 确保目录存在
@@ -221,6 +220,18 @@ public static class AppEnvironment
         }
     }
 
+    internal static string GetUnpackagedAppDataDirectoryName(DistributionChannel distributionChannel)
+    {
+        return distributionChannel == DistributionChannel.DevSideLoad
+            ? DevUnpackagedDataDirectoryName
+            : StableUnpackagedDataDirectoryName;
+    }
+
+    internal static string ResolveUnpackagedAppDataPath(string localAppDataRoot, DistributionChannel distributionChannel)
+    {
+        return Path.Combine(localAppDataRoot, GetUnpackagedAppDataDirectoryName(distributionChannel));
+    }
+
     private static Version ResolveApplicationVersion()
     {
         if (HasPackageIdentity)
@@ -321,6 +332,11 @@ public static class AppEnvironment
     private static bool HasPrereleaseBuildMarker(string versionText)
     {
         return versionText.Contains('-');
+    }
+
+    private static string GetLocalAppDataRoot()
+    {
+        return Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
     }
 
     private static Assembly ResolveEntryAssembly()

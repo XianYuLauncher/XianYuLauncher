@@ -21,28 +21,31 @@ namespace XianYuLauncher.Services;
 
 public class UpdateFlowService : IUpdateFlowService
 {
-    private const string GitHubRepositoryUrl = "https://github.com/XianYuLauncher/XianYuLauncher";
     private const string ReleasesPageUrl = "https://github.com/XianYuLauncher/XianYuLauncher/releases";
     private static readonly Regex MarkdownLinkRegex = new(@"\[(?<text>[^\]]+)\]\([^)]+\)", RegexOptions.Compiled);
     private static readonly Regex OrderedListRegex = new(@"^\d+\.\s+", RegexOptions.Compiled);
 
     private sealed record AvailableAppUpdate(
         bool IsManaged,
-        CoreUpdateInfo? LegacyUpdateInfo = null,
+        ResolvedUpdateManifest? ManifestUpdate = null,
         VelopackUpdateInfo? ManagedUpdateInfo = null,
         UpdateManager? ManagedUpdateManager = null)
     {
         public string Version => IsManaged
             ? ManagedUpdateInfo?.TargetFullRelease.Version.ToString() ?? string.Empty
-            : LegacyUpdateInfo?.version ?? string.Empty;
+            : ManifestUpdate?.Version ?? string.Empty;
 
-        public bool ImportantUpdate => LegacyUpdateInfo?.important_update ?? false;
+        public bool ImportantUpdate => ManifestUpdate?.Important ?? false;
 
-        public static AvailableAppUpdate FromLegacy(CoreUpdateInfo updateInfo)
-            => new(false, updateInfo, null, null);
+        public Uri? SetupUri => ManifestUpdate != null && Uri.TryCreate(ManifestUpdate.Target.SetupUrl, UriKind.Absolute, out var setupUri)
+            ? setupUri
+            : null;
 
-        public static AvailableAppUpdate FromManaged(VelopackUpdateInfo updateInfo, UpdateManager updateManager)
-            => new(true, null, updateInfo, updateManager);
+        public static AvailableAppUpdate FromManifest(ResolvedUpdateManifest manifestUpdate)
+            => new(false, manifestUpdate, null, null);
+
+        public static AvailableAppUpdate FromManaged(ResolvedUpdateManifest manifestUpdate, VelopackUpdateInfo updateInfo, UpdateManager updateManager)
+            => new(true, manifestUpdate, updateInfo, updateManager);
     }
 
     private readonly ILogger<UpdateFlowService> _logger;
@@ -151,8 +154,9 @@ public class UpdateFlowService : IUpdateFlowService
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
+            _updateService.SetCurrentVersion(AppEnvironment.ApplicationVersion);
 
-            var updateInfo = await _updateService.CheckForDevUpdateAsync();
+            var updateInfo = await _updateService.GetResolvedManifestUpdateAsync(DistributionChannel.DevSideLoad, cancellationToken);
             if (updateInfo == null)
             {
                 await _dialogService.ShowMessageDialogAsync("Dev 通道", "当前没有可用的 Dev 版本。");
@@ -160,9 +164,9 @@ public class UpdateFlowService : IUpdateFlowService
             }
 
             return await ShowSideLoadReleasePromptAsync(
-                AvailableAppUpdate.FromLegacy(updateInfo),
+                AvailableAppUpdate.FromManifest(updateInfo),
                 title: "安装 Dev 通道",
-                primaryButtonText: "打开下载页",
+                primaryButtonText: "下载安装器",
                 closeButtonText: "取消",
                 cancellationToken: cancellationToken);
         }
@@ -178,16 +182,13 @@ public class UpdateFlowService : IUpdateFlowService
         }
     }
 
-    public Task<UpdateFlowResult> HandleAvailableUpdateAsync(CoreUpdateInfo updateInfo, bool isStartupCheck = false, CancellationToken cancellationToken = default)
-    {
-        return HandleAvailableUpdateAsync(AvailableAppUpdate.FromLegacy(updateInfo), isStartupCheck, cancellationToken);
-    }
-
     private async Task<UpdateFlowResult> HandleAvailableUpdateAsync(AvailableAppUpdate updateInfo, bool isStartupCheck = false, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var primaryButtonText = updateInfo.IsManaged ? "立即更新" : "打开下载页";
+        var primaryButtonText = updateInfo.IsManaged
+            ? "立即更新"
+            : updateInfo.SetupUri == null ? "打开下载页" : "下载安装器";
 
         return AppEnvironment.CurrentDistributionChannel switch
         {
@@ -212,30 +213,42 @@ public class UpdateFlowService : IUpdateFlowService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var updateManager = CreateManagedUpdateManager(isDevChannel);
-        if (updateManager != null)
+        _updateService.SetCurrentVersion(AppEnvironment.ApplicationVersion);
+        var distributionChannel = isDevChannel ? DistributionChannel.DevSideLoad : DistributionChannel.SideLoad;
+        var manifestUpdate = await _updateService.GetResolvedManifestUpdateAsync(distributionChannel, cancellationToken);
+        if (manifestUpdate == null)
         {
-            _logger.LogInformation("[UpdateFlowService] 检测到受管 SideLoad 安装，使用 Velopack + GitHub Releases 检查更新");
-            var managedUpdate = await updateManager.CheckForUpdatesAsync();
-            return managedUpdate == null ? null : AvailableAppUpdate.FromManaged(managedUpdate, updateManager);
+            return null;
         }
 
-        _logger.LogInformation("[UpdateFlowService] 当前不是受管 SideLoad 安装，继续使用旧版更新检查逻辑");
-        _updateService.SetCurrentVersion(AppEnvironment.ApplicationVersion);
+        var updateManager = CreateManagedUpdateManager(manifestUpdate);
+        if (updateManager != null)
+        {
+            _logger.LogInformation("[UpdateFlowService] 检测到受管 SideLoad 安装，使用 Velopack + manifest feed 检查更新");
+            var managedUpdate = await updateManager.CheckForUpdatesAsync();
+            if (managedUpdate == null)
+            {
+                _logger.LogWarning(
+                    "[UpdateFlowService] manifest 指示存在新版本，但 Velopack feed 未返回可用更新，将回退为使用 manifest 提供的 setup_url 作为更新入口，通道: {Channel}, SetupUrl={SetupUrl}, PackageUrl={PackageUrl}",
+                    manifestUpdate.Channel,
+                    manifestUpdate.Target.SetupUrl,
+                    manifestUpdate.Target.PackageUrl);
+                return AvailableAppUpdate.FromManifest(manifestUpdate);
+            }
 
-        var legacyUpdate = isDevChannel
-            ? await _updateService.CheckForDevUpdateAsync()
-            : await _updateService.CheckForUpdatesAsync();
+            return AvailableAppUpdate.FromManaged(manifestUpdate, managedUpdate, updateManager);
+        }
 
-        return legacyUpdate == null ? null : AvailableAppUpdate.FromLegacy(legacyUpdate);
+        _logger.LogInformation("[UpdateFlowService] 当前不是受管 SideLoad 安装，使用 manifest 提供的 setup_url 作为更新入口");
+        return AvailableAppUpdate.FromManifest(manifestUpdate);
     }
 
-    private UpdateManager? CreateManagedUpdateManager(bool isDevChannel)
+    private UpdateManager? CreateManagedUpdateManager(ResolvedUpdateManifest manifestUpdate)
     {
         try
         {
             var locator = VelopackLocator.CreateDefaultForPlatform();
-            var source = new GithubSource(GitHubRepositoryUrl, accessToken: null, prerelease: isDevChannel);
+            var source = new SimpleWebSource(GetFeedBaseUri(manifestUpdate.Target.FeedUrl), null, 5);
             var updateManager = new UpdateManager(source, locator: locator);
 
             return updateManager.IsInstalled ? updateManager : null;
@@ -245,6 +258,16 @@ public class UpdateFlowService : IUpdateFlowService
             _logger.LogWarning(ex, "[UpdateFlowService] 受管 SideLoad 安装定位失败，将回退到旧版更新检查逻辑");
             return null;
         }
+    }
+
+    private static Uri GetFeedBaseUri(string feedUrl)
+    {
+        if (!Uri.TryCreate(feedUrl, UriKind.Absolute, out var feedUri))
+        {
+            throw new InvalidOperationException($"无效的 feed_url: {feedUrl}");
+        }
+
+        return new Uri(feedUri, ".");
     }
 
     private async Task<AutoUpdateCheckModeType> ReadAutoUpdateCheckModeAsync()
@@ -269,17 +292,13 @@ public class UpdateFlowService : IUpdateFlowService
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        var confirmed = updateInfo.IsManaged
-            ? await _updateDialogFlowService.ShowUpdatePreviewAsync(
-                await BuildPreviewUpdateInfoAsync(updateInfo),
-                title,
-                primaryButtonText,
-                closeButtonText)
-            : await _dialogService.ShowConfirmationDialogAsync(
-                title,
-                BuildSideLoadUpdateMessage(updateInfo),
-                primaryButtonText,
-                closeButtonText);
+        var resolvedCloseButtonText = updateInfo.ImportantUpdate ? null : closeButtonText;
+
+        var confirmed = await _updateDialogFlowService.ShowUpdatePreviewAsync(
+            BuildPreviewUpdateInfo(updateInfo),
+            title,
+            primaryButtonText,
+            resolvedCloseButtonText);
 
         if (!confirmed)
         {
@@ -291,11 +310,17 @@ public class UpdateFlowService : IUpdateFlowService
             return await StartManagedUpdateAsync(updateInfo, cancellationToken);
         }
 
-        var opened = await _applicationLifecycleService.OpenUriAsync(new Uri(ReleasesPageUrl));
+        var targetUri = updateInfo.SetupUri ?? new Uri(ReleasesPageUrl);
+        var opened = await _applicationLifecycleService.OpenUriAsync(targetUri);
         if (!opened)
         {
-            await _dialogService.ShowMessageDialogAsync("打开下载页失败", "无法打开 Releases 页面，请稍后手动前往 GitHub Releases 下载新版本。");
-            return new UpdateFlowResult { Success = false, HasUpdate = true, ErrorMessage = "无法打开 Releases 页面" };
+            var dialogTitle = updateInfo.SetupUri == null ? "打开下载页失败" : "打开安装器链接失败";
+            var dialogMessage = updateInfo.SetupUri == null
+                ? "无法打开 Releases 页面，请稍后手动前往 GitHub Releases 下载新版本。"
+                : "无法打开安装器下载链接，请稍后重试。";
+            var errorMessage = updateInfo.SetupUri == null ? "无法打开 Releases 页面" : "无法打开安装器下载链接";
+            await _dialogService.ShowMessageDialogAsync(dialogTitle, dialogMessage);
+            return new UpdateFlowResult { Success = false, HasUpdate = true, ErrorMessage = errorMessage };
         }
 
         return new UpdateFlowResult { Success = true, HasUpdate = true, InstallationStarted = true };
@@ -307,10 +332,15 @@ public class UpdateFlowService : IUpdateFlowService
             ?? throw new InvalidOperationException("缺少受管更新信息。");
         var updateManager = updateInfo.ManagedUpdateManager
             ?? throw new InvalidOperationException("缺少受管更新管理器。");
+        var allowUserCancel = !updateInfo.ImportantUpdate;
 
         bool downloadCompleted = false;
         bool canceled = false;
         Exception? downloadException = null;
+
+        _logger.LogInformation(
+            "[UpdateFlowService] 本次受管更新下载的用户取消能力: AllowUserCancel={AllowUserCancel}",
+            allowUserCancel);
 
         await _progressDialogService.ShowProgressDialogAsync(
             title: "下载更新",
@@ -347,7 +377,8 @@ public class UpdateFlowService : IUpdateFlowService
                     downloadException = ex;
                     throw;
                 }
-            });
+            },
+            closeButtonText: allowUserCancel ? "取消" : null);
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -382,46 +413,37 @@ public class UpdateFlowService : IUpdateFlowService
         }
     }
 
-    private static string BuildSideLoadUpdateMessage(AvailableAppUpdate updateInfo)
+    private static CoreUpdateInfo BuildPreviewUpdateInfo(AvailableAppUpdate updateInfo)
     {
-        if (updateInfo.IsManaged)
+        if (updateInfo.ManifestUpdate != null)
         {
-            return $"发现新版本 {updateInfo.Version}。\n\n当前安装已接入受管 SideLoad 更新。确认后，应用会先在后台下载更新包；下载完成后将自动关闭当前程序，并交给 Update.exe 完成替换与重启。\n\n是否现在开始更新？";
-        }
-
-        var legacyUpdateInfo = updateInfo.LegacyUpdateInfo
-            ?? throw new InvalidOperationException("缺少旧版 SideLoad 更新信息。");
-
-        var importancePrefix = legacyUpdateInfo.important_update
-            ? "这是一个重要更新。\n\n"
-            : string.Empty;
-
-        return $"发现新版本 {legacyUpdateInfo.version}。\n\n{importancePrefix}SideLoad 版本现在通过 Unpackaged Zip 分发，不再执行 MSIX 自动安装。\n请在浏览器中下载新版本，退出当前程序后替换当前安装目录，再重新启动应用。\n\n是否现在打开 Releases 页面？";
-    }
-
-    private async Task<CoreUpdateInfo> BuildPreviewUpdateInfoAsync(AvailableAppUpdate updateInfo)
-    {
-        if (!updateInfo.IsManaged)
-        {
-            return updateInfo.LegacyUpdateInfo
-                ?? throw new InvalidOperationException("缺少旧版更新信息。");
+            return new CoreUpdateInfo
+            {
+                version = updateInfo.ManifestUpdate.Version,
+                important_update = updateInfo.ManifestUpdate.Important,
+                changelog = updateInfo.ManifestUpdate.Manifest.Notes.ToList(),
+            };
         }
 
         var managedUpdateInfo = updateInfo.ManagedUpdateInfo
             ?? throw new InvalidOperationException("缺少受管更新信息。");
         var targetRelease = managedUpdateInfo.TargetFullRelease;
-        var notesMarkdown = targetRelease.NotesMarkdown;
 
-        if (string.IsNullOrWhiteSpace(notesMarkdown))
+        if (!string.IsNullOrWhiteSpace(targetRelease.NotesMarkdown))
         {
-            notesMarkdown = await _updateService.TryGetGitHubReleaseNotesAsync(targetRelease.Version.ToString());
+            return new CoreUpdateInfo
+            {
+                version = updateInfo.Version,
+                important_update = updateInfo.ImportantUpdate,
+                changelog = ParseManagedReleaseNotes(targetRelease.NotesMarkdown),
+            };
         }
 
         return new CoreUpdateInfo
         {
-            version = targetRelease.Version.ToString(),
+            version = updateInfo.Version,
             important_update = updateInfo.ImportantUpdate,
-            changelog = ParseManagedReleaseNotes(notesMarkdown),
+            changelog = [],
         };
     }
 

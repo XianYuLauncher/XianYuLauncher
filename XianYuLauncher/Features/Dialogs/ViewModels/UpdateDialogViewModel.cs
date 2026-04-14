@@ -73,7 +73,7 @@ public partial class UpdateDialogViewModel : ObservableRecipient
         try
         {
             IsDownloading = true;
-            ShowCancelButton = true;
+            ShowCancelButton = !UpdateInfo.important_update;
             await Task.Delay(100);
 
             string tempPath = Path.GetTempPath();

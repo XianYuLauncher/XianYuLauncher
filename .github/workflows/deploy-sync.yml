@@ -1,4 +1,4 @@
-name: Publish Release (123Pan & Gitee)
+name: Publish Release (Cloudflare R2 & Gitee)
 
 on:
   workflow_dispatch:
@@ -11,14 +11,14 @@ on:
         description: 'Full version (e.g. 1.4.2.0). Leave empty to auto-append .0'
         required: false
         default: ''
-      skip_123pan:
-        description: 'Skip 123Pan upload (only sync Gitee with GitHub URLs)'
+      important_update:
+        description: 'Mark this release as an important update'
         required: false
-        type: boolean
         default: false
+        type: boolean
 
 jobs:
-  sync_to_123pan:
+  sync_to_r2:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
@@ -31,13 +31,22 @@ jobs:
           TAG_NAME="${{ inputs.tag_name }}"
           VER_NUM="${TAG_NAME#v}"
           FULL_VER_INPUT="${{ inputs.full_version }}"
+          CHANNEL="stable"
+
+          if [[ "$VER_NUM" == *"dev"* ]] || [[ "$VER_NUM" == *"beta"* ]] || [[ "$VER_NUM" == *"-"* ]]; then
+            CHANNEL="dev"
+          fi
+
           if [ -z "$FULL_VER_INPUT" ]; then
             FULL_VER="${VER_NUM}.0"
           else
             FULL_VER="$FULL_VER_INPUT"
           fi
+
           echo "tag=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "full_ver=$FULL_VER" >> $GITHUB_OUTPUT
+          echo "channel=$CHANNEL" >> $GITHUB_OUTPUT
+          echo "manifest_file=update_manifest_${CHANNEL}.json" >> $GITHUB_OUTPUT
 
       - name: Fetch Release Notes
         id: release
@@ -45,58 +54,207 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           BODY=$(gh release view "${{ inputs.tag_name }}" --repo "${{ github.repository }}" --json body -q .body)
+          PUBLISHED_AT=$(gh release view "${{ inputs.tag_name }}" --repo "${{ github.repository }}" --json publishedAt -q .publishedAt)
           echo "body<<EOF" >> $GITHUB_OUTPUT
           echo "$BODY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+          echo "published_at=$PUBLISHED_AT" >> $GITHUB_OUTPUT
 
       - name: Download Release Assets from GitHub
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p release-assets
-          FULL_VER="${{ steps.vars.outputs.full_ver }}"
           TAG="${{ steps.vars.outputs.tag }}"
-          
+
           echo "Downloading assets for $TAG..."
           gh release download "$TAG" --repo "${{ github.repository }}" --dir release-assets
-          
+
           cd release-assets
-          # 重命名以便统一管理，方便脚本识别
-          mv "XianYuLauncher_${FULL_VER}_x64.zip" "XianYuLauncher_${FULL_VER}_x64.zip" 2>/dev/null || true
-          mv "XianYuLauncher_${FULL_VER}_x86.zip" "XianYuLauncher_${FULL_VER}_x86.zip" 2>/dev/null || true
-          mv "XianYuLauncher_${FULL_VER}_arm64.zip" "XianYuLauncher_${FULL_VER}_arm64.zip" 2>/dev/null || true
           ls -lh
 
-      - name: Install Python Dependencies
-        run: pip install requests
-
-      - name: Upload to 123Pan
-        if: ${{ inputs.skip_123pan != true }}
+      - name: Upload Release Assets to Cloudflare R2
         env:
-          PAN123_CLIENT_ID: ${{ secrets.PAN123_CLIENT_ID }}
-          PAN123_CLIENT_SECRET: ${{ secrets.PAN123_CLIENT_SECRET }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_REGION: auto
+          AWS_EC2_METADATA_DISABLED: true
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_BUCKET_NAME: ${{ secrets.R2_BUCKET_NAME }}
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+          RELEASE_CHANNEL: ${{ steps.vars.outputs.channel }}
+          RELEASE_TAG: ${{ steps.vars.outputs.tag }}
         run: |
-          echo "Starting upload to 123Pan..."
-          # 遍历 release-assets 下的所有 zip 文件
-          for file in release-assets/*.zip; do
-            if [ -f "$file" ]; then
-              echo "----------------------------------------"
-              echo "Processing $file ..."
-              python3 scripts/upload_123pan.py \
-                --file "$file" \
-                --client_id "$PAN123_CLIENT_ID" \
-                --client_secret "$PAN123_CLIENT_SECRET" \
-                --parent_id "29037672" \
-                --output_json "123pan_links.json"
-            fi
-          done
+          echo "Starting upload to Cloudflare R2..."
+          aws --version
 
-      - name: Sync Gitee latest_version.json
+          export R2_ENDPOINT="https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com"
+
+          python3 << 'PYEOF'
+          import os
+          import re
+          import subprocess
+
+          release_dir = "release-assets"
+          channel = os.environ["RELEASE_CHANNEL"]
+          tag = os.environ["RELEASE_TAG"]
+          bucket = os.environ["R2_BUCKET_NAME"]
+          endpoint = os.environ["R2_ENDPOINT"]
+          public_base = os.environ["R2_PUBLIC_BASE_URL"].rstrip("/")
+
+          if not os.path.isdir(release_dir):
+              raise SystemExit(f"Release assets directory not found: {release_dir}")
+
+          uploaded_count = 0
+
+          for file_name in sorted(os.listdir(release_dir)):
+              file_path = os.path.join(release_dir, file_name)
+              if not os.path.isfile(file_path):
+                  continue
+
+              arch_match = re.search(r"win-(x64|x86|arm64)", file_name, re.IGNORECASE)
+              if arch_match:
+                  architecture = f"win-{arch_match.group(1).lower()}"
+              else:
+                  zip_match = re.search(r"_(x64|x86|arm64)\.zip$", file_name, re.IGNORECASE)
+                  if zip_match:
+                      architecture = f"win-{zip_match.group(1).lower()}"
+                  else:
+                      print(f"Skipping asset without architecture marker: {file_name}")
+                      continue
+
+              object_key = f"{channel}/{tag}/{architecture}/{file_name}"
+              destination = f"s3://{bucket}/{object_key}"
+
+              print(f"Uploading {file_name} -> {destination}")
+              subprocess.run(
+                  [
+                      "aws",
+                      "s3",
+                      "cp",
+                      file_path,
+                      destination,
+                      "--endpoint-url",
+                      endpoint,
+                      "--only-show-errors",
+                  ],
+                  check=True,
+              )
+
+              uploaded_count += 1
+
+          if uploaded_count == 0:
+              raise SystemExit("No architecture-specific release assets were uploaded to Cloudflare R2.")
+
+          print(f"Uploaded {uploaded_count} assets to Cloudflare R2.")
+          PYEOF
+
+      - name: Build Release Asset Index
+        run: |
+          python3 scripts/ci/generate-update-manifest.py index \
+            --release-assets-dir release-assets \
+            --release-channel "${{ steps.vars.outputs.channel }}" \
+            --release-tag "${{ steps.vars.outputs.tag }}" \
+            --public-base-url "${{ secrets.R2_PUBLIC_BASE_URL }}" \
+            --output-file release-asset-index.json
+
+      - name: Build Update Manifest
+        env:
+          CHANGELOG: ${{ steps.release.outputs.body }}
+        run: |
+          printf '%s\n' "$CHANGELOG" > release-notes.txt
+
+          manifest_args=(
+            --asset-index-file release-asset-index.json
+            --release-tag "${{ steps.vars.outputs.tag }}"
+            --release-version "${{ steps.vars.outputs.tag }}"
+            --published-at "${{ steps.release.outputs.published_at }}"
+            --notes-file release-notes.txt
+            --expected-release-channel "${{ steps.vars.outputs.channel }}"
+            --strict
+            --expected-architectures win-x64 win-x86 win-arm64
+            --output-dir .
+          )
+
+          if [ "${{ inputs.important_update }}" = "true" ]; then
+            manifest_args+=(--important)
+          fi
+
+          python3 scripts/ci/generate-update-manifest.py manifest "${manifest_args[@]}"
+
+      - name: Validate Update Manifest
+        env:
+          MANIFEST_FILE: ${{ steps.vars.outputs.manifest_file }}
+          RELEASE_CHANNEL: ${{ steps.vars.outputs.channel }}
+          R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
+        run: |
+          python3 << 'PYEOF'
+          import json
+          import os
+
+          manifest_file = os.environ["MANIFEST_FILE"]
+          release_channel = os.environ["RELEASE_CHANNEL"]
+
+          with open(manifest_file, "r", encoding="utf-8") as handle:
+              manifest = json.load(handle)
+
+          expected_architectures = ("win-x64", "win-x86", "win-arm64")
+          required_fields = (
+              "channel",
+              "setup_url",
+              "setup_sha256",
+              "feed_url",
+              "package_url",
+              "package_sha256",
+              "package_size",
+          )
+          public_base = os.environ["R2_PUBLIC_BASE_URL"].rstrip("/")
+          expected_prefix = f"{public_base}/{release_channel}/"
+
+          if manifest.get("schema_version") != 2 or manifest.get("delivery") != "velopack":
+              raise SystemExit("Update manifest validation failed: unexpected top-level protocol markers.")
+
+          release = manifest.get("release", {})
+          if release.get("channel") != release_channel:
+              raise SystemExit(
+                  f"Update manifest validation failed: release.channel must be {release_channel}, actual {release.get('channel')}."
+              )
+
+          expected_manifest_name = f"update_manifest_{release_channel}.json"
+          if manifest_file != expected_manifest_name:
+              raise SystemExit(
+                  f"Update manifest validation failed: manifest file name must be {expected_manifest_name}, actual {manifest_file}."
+              )
+
+          for architecture in expected_architectures:
+              target = manifest["targets"].get(architecture)
+              if target is None:
+                  raise SystemExit(f"Update manifest validation failed: missing target {architecture}.")
+
+              for field in required_fields:
+                  if not target.get(field):
+                      raise SystemExit(f"Update manifest validation failed: target {architecture} missing {field}.")
+
+              if not str(target["channel"]).endswith(f"-{release_channel}"):
+                  raise SystemExit(
+                      f"Update manifest validation failed: target {architecture} channel {target['channel']} does not end with -{release_channel}."
+                  )
+
+              for url_field in ("setup_url", "feed_url", "package_url"):
+                  if not target[url_field].startswith(expected_prefix):
+                      raise SystemExit(
+                          f"Update manifest validation failed: target {architecture} field {url_field} does not use {expected_prefix}."
+                      )
+
+          print(f"Update manifest validation passed: {manifest_file}")
+          PYEOF
+
+      - name: Sync Gitee Channel Manifest
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           FULL_VER: ${{ steps.vars.outputs.full_ver }}
-          TAG: ${{ steps.vars.outputs.tag }}
-          CHANGELOG: ${{ steps.release.outputs.body }}
+          MANIFEST_FILE: ${{ steps.vars.outputs.manifest_file }}
         run: |
           if [ -z "$GITEE_TOKEN" ]; then
             echo "GITEE_TOKEN is missing." >&2
@@ -107,84 +265,10 @@ jobs:
           git clone "https://oauth2:${GITEE_TOKEN}@gitee.com/${REPO}.git" gitee-repo
           cd gitee-repo
 
-          # Pass 123Pan links to the python script (may not exist if skipped)
-          cp ../123pan_links.json . 2>/dev/null || echo '{}' > 123pan_links.json
-
-          python3 << 'PYEOF'
-          import json, os
-          from datetime import datetime
-
-          path = "latest_version.json"
-          links_path = "123pan_links.json"
-          
-          # Read existing version file
-          with open(path, "r", encoding="utf-8") as f:
-              data = json.load(f)
-              
-          # Read 123Pan links
-          links = {}
-          if os.path.exists(links_path):
-              with open(links_path, "r", encoding="utf-8") as f:
-                  links = json.load(f)
-
-          full_ver = os.environ.get("FULL_VER")
-          tag = os.environ.get("TAG")
-          changelog = os.environ.get("CHANGELOG", "")
-
-          data["version"] = full_ver
-          data["release_time"] = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
-
-          if changelog:
-              data["changelog"] = [line.strip() for line in changelog.split("\n") if line.strip()]
-          
-          # Helper to find link by arch
-          def get_link(arch):
-              # Filename format: XianYuLauncher_{full_ver}_{arch}.zip
-              expected = f"XianYuLauncher_{full_ver}_{arch}.zip"
-              return links.get(expected, "")
-
-          # GitHub fallback URLs
-          github_base = f"https://github.com/N123999/XianYuLauncher/releases/download/{tag}"
-
-          mirrors = []
-          
-          pan_x64 = get_link("x64")
-          if pan_x64:
-              mirrors.append({
-                  "name": "123Pan (Fast)",
-                  "url": pan_x64,
-                  "arch_urls": {
-                      "x64": pan_x64,
-                      "x86": get_link("x86"),
-                      "arm64": get_link("arm64")
-                  }
-              })
-          
-          mirrors.append({
-              "name": "GitHub",
-              "url": f"{github_base}/XianYuLauncher_{full_ver}_x64.zip",
-              "arch_urls": {
-                  "x64": f"{github_base}/XianYuLauncher_{full_ver}_x64.zip",
-                  "x86": f"{github_base}/XianYuLauncher_{full_ver}_x86.zip",
-                  "arm64": f"{github_base}/XianYuLauncher_{full_ver}_arm64.zip"
-              }
-          })
-          
-          data["download_mirrors"] = mirrors
-
-          with open(path, "w", encoding="utf-8") as f:
-              json.dump(data, f, ensure_ascii=False, indent=2)
-          
-          print(f"Updated latest_version.json with version={full_ver}")
-          PYEOF
+          cp "../${MANIFEST_FILE}" "./${MANIFEST_FILE}"
 
           git config user.name "GitHub Action"
           git config user.email "action@github.com"
-          git add latest_version.json
-          SKIP_PAN="${{ inputs.skip_123pan }}"
-          if [ "$SKIP_PAN" = "true" ]; then
-            git commit -m "chore: update version to $FULL_VER (GitHub only)" || echo "No changes"
-          else
-            git commit -m "chore: update version to $FULL_VER (123Pan + GitHub)" || echo "No changes"
-          fi
+          git add "$MANIFEST_FILE"
+          git commit -m "chore: update ${MANIFEST_FILE} for $FULL_VER" || echo "No changes"
           git push

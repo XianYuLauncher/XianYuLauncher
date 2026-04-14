@@ -8,7 +8,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
@@ -22,17 +21,12 @@ namespace XianYuLauncher.Core.Services;
 /// </summary>
 public class UpdateService
 {
-    private const string GitHubReleasesApiUrl = "https://api.github.com/repos/XianYuLauncher/XianYuLauncher/releases?per_page=20";
+    private const string StableManifestUrl = "https://gitee.com/spiritos/XianYuLauncher-Resource/raw/main/update_manifest_stable.json";
+    private const string DevManifestUrl = "https://gitee.com/spiritos/XianYuLauncher-Resource/raw/main/update_manifest_dev.json";
     private readonly IDownloadManager _downloadManager;
     private readonly ILogger<UpdateService> _logger;
     private readonly ILocalSettingsService _localSettingsService;
     private readonly IFileService _fileService;
-    
-    // 版本检查URL列表，优先使用Gitee，备选GitHub
-    private readonly string[] _versionCheckUrls = {
-        "https://gitee.com/spiritos/XianYuLauncher-Resource/raw/main/latest_version.json",
-        "https://raw.githubusercontent.com/N123999/XianYuLauncher-Resource/refs/heads/main/latest_version.json"
-    };
     
     // 当前应用版本
     private Version _currentVersion;
@@ -74,221 +68,91 @@ public class UpdateService
     /// 检查是否有新版本可用
     /// </summary>
     /// <returns>更新信息，如果没有更新则返回null</returns>    
-    public async Task<UpdateInfo?> CheckForUpdatesAsync()
+    public async Task<UpdateInfo?> CheckForUpdatesAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("开始检查更新");
-        Debug.WriteLine("[DEBUG] 开始检查更新");
-        
-        // 遍历所有版本检查URL，直到成功获取版本信息
-        foreach (var url in _versionCheckUrls)
-        {
-            try
-            {
-                _logger.LogInformation("尝试从URL获取版本信息: {Url}", url);
-                Debug.WriteLine($"[DEBUG] 尝试从URL获取版本信息: {url}");
-                
-                var response = await _downloadManager.DownloadStringAsync(url);
-                _logger.LogDebug("成功获取版本信息: {Response}", response);
-                Debug.WriteLine($"[DEBUG] 成功获取版本信息: {response}");
-                
-                var updateInfo = JsonConvert.DeserializeObject<UpdateInfo>(response);
-                
-                if (updateInfo != null)
-                {
-                    _logger.LogInformation("成功解析版本信息，最新版本: {LatestVersion}", updateInfo.version);
-                    Debug.WriteLine($"[DEBUG] 成功解析版本信息，最新版本: {updateInfo.version}");
-                    
-                    // 比较版本号
-                    if (IsNewVersionAvailable(updateInfo.version))
-                    {
-                        _logger.LogInformation("发现新版本: {LatestVersion}，当前版本: {CurrentVersion}", updateInfo.version, _currentVersion);
-                        Debug.WriteLine($"[DEBUG] 发现新版本: {updateInfo.version}，当前版本: {_currentVersion}");
-                        return updateInfo;
-                    }
-                    else
-                    {
-                        _logger.LogInformation("当前已是最新版本: {CurrentVersion}", _currentVersion);
-                        Debug.WriteLine($"[DEBUG] 当前已是最新版本: {_currentVersion}");
-                        return null;
-                    }
-                }
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogWarning("从URL获取版本信息失败: {Url}，错误: {Error}", url, ex.Message);
-                Debug.WriteLine($"[DEBUG] 从URL获取版本信息失败: {url}，错误: {ex.Message}");
-            }
-            catch (JsonException ex)
-            {
-                _logger.LogError("解析版本信息失败: {Error}", ex.Message);
-                Debug.WriteLine($"[DEBUG] 解析版本信息失败: {ex.Message}");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "检查更新时发生未知错误");
-                Debug.WriteLine($"[DEBUG] 检查更新时发生未知错误: {ex.Message}");
-            }
-        }
-        
-        _logger.LogWarning("所有版本检查URL都失败，无法检查更新");
-        Debug.WriteLine("[DEBUG] 所有版本检查URL都失败，无法检查更新");
-        return null;
+        return await CheckForManifestUpdateAsync(DistributionChannel.SideLoad, cancellationToken);
     }
 
     /// <summary>
-    /// 检查 Dev 通道更新 (GitHub)
+    /// 检查 Dev 通道更新
     /// </summary>
     /// <returns>更新信息</returns>
-    public async Task<UpdateInfo?> CheckForDevUpdateAsync()
+    public async Task<UpdateInfo?> CheckForDevUpdateAsync(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            string url = "https://api.github.com/repos/XianYuLauncher/XianYuLauncher/releases";
-            _logger.LogInformation("检查 Dev 更新: {Url}", url);
-
-            var response = await _downloadManager.DownloadStringAsync(url);
-            var releases = JArray.Parse(response);
-
-            foreach (var release in releases.OfType<JObject>())
-            {
-                string? tagName = release.Value<string>("tag_name");
-                if (string.IsNullOrWhiteSpace(tagName))
-                {
-                    continue;
-                }
-                
-                // 寻找最新的 Pre-release (即 Dev/Beta)，或者Tag包含 dev/beta 的版本（防止CI未正确标记Prerelease）
-                bool isPrerelease = release.Value<bool?>("prerelease") == true;
-                if (isPrerelease || 
-                    tagName.Contains("dev", StringComparison.OrdinalIgnoreCase) || 
-                    tagName.Contains("beta", StringComparison.OrdinalIgnoreCase))
-                {
-                    string body = release.Value<string>("body") ?? "No changelog provided.";
-                    if (release.Value<string>("published_at") is not string publishedAt || !DateTime.TryParse(publishedAt, out var publishedAtValue))
-                    {
-                        continue;
-                    }
-                    
-                    string? downloadUrl = null;
-                    var archUrls = new Dictionary<string, string>();
-                    
-                    if (release["assets"] is not JArray assets)
-                    {
-                        continue;
-                    }
-
-                    foreach (var asset in assets.OfType<JObject>())
-                    {
-                        string? name = asset.Value<string>("name");
-                        string? assetUrl = asset.Value<string>("browser_download_url");
-                        if (string.IsNullOrWhiteSpace(name) || string.IsNullOrWhiteSpace(assetUrl))
-                        {
-                            continue;
-                        }
-                        
-                        if (name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (name.Contains("x64", StringComparison.OrdinalIgnoreCase))
-                            {
-                                archUrls["x64"] = assetUrl;
-                                if (downloadUrl == null) downloadUrl = assetUrl; // 默认回退
-                            }
-                            else if (name.Contains("arm64", StringComparison.OrdinalIgnoreCase))
-                            {
-                                archUrls["arm64"] = assetUrl;
-                            }
-                            else if (name.Contains("x86", StringComparison.OrdinalIgnoreCase))
-                            {
-                                archUrls["x86"] = assetUrl;
-                            }
-                            // 如果文件名没写架构，可能是默认包
-                            else if (downloadUrl == null)
-                            {
-                                downloadUrl = assetUrl;
-                            }
-                        }
-                    }
-
-                    if (archUrls.Count > 0 || !string.IsNullOrEmpty(downloadUrl))
-                    {
-                        string resolvedDownloadUrl = downloadUrl ?? archUrls.Values.First();
-
-                        // 构造 UpdateInfo
-                        var info = new UpdateInfo
-                        {
-                            version = tagName.StartsWith("v") ? tagName.Substring(1) : tagName,
-                            release_time = publishedAtValue,
-                            changelog = new List<string>(body.Split('\n')),
-                            download_mirrors = new List<DownloadMirror>
-                            {
-                                new DownloadMirror
-                                {
-                                    name = "GitHub (Dev)",
-                                    url = resolvedDownloadUrl,
-                                    arch_urls = archUrls
-                                }
-                            }
-                        };
-                        
-                        // 检查版本是否比当前版本新
-                        if (IsNewVersionAvailable(info.version))
-                        {
-                            return info;
-                        }
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "检查 Dev 更新失败");
-        }
-
-        return null;
+        return await CheckForManifestUpdateAsync(DistributionChannel.DevSideLoad, cancellationToken);
     }
 
-    public async Task<string?> TryGetGitHubReleaseNotesAsync(string version)
+    public async Task<ResolvedUpdateManifest?> GetResolvedManifestUpdateAsync(DistributionChannel distributionChannel, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(version))
+        cancellationToken.ThrowIfCancellationRequested();
+
+        if (distributionChannel == DistributionChannel.Store)
         {
-            return null;
+            throw new InvalidOperationException("商店版本不支持 SideLoad 更新清单检查。");
         }
+
+        var manifestUrl = GetManifestUrl(distributionChannel);
+        _logger.LogInformation("开始检查更新清单: {ManifestUrl}", manifestUrl);
+        Debug.WriteLine($"[DEBUG] 开始检查更新清单: {manifestUrl}");
 
         try
         {
-            var response = await _downloadManager.DownloadStringAsync(GitHubReleasesApiUrl);
-            var releases = JArray.Parse(response);
-            var normalizedTargetVersion = NormalizeReleaseVersion(version);
+            var response = await _downloadManager.DownloadStringAsync(manifestUrl, cancellationToken);
+            var manifest = JsonConvert.DeserializeObject<UpdateManifest>(response);
 
-            foreach (var release in releases.OfType<JObject>())
+            if (manifest == null)
             {
-                var tagName = release.Value<string>("tag_name");
-                if (string.IsNullOrWhiteSpace(tagName))
-                {
-                    continue;
-                }
-
-                if (!string.Equals(NormalizeReleaseVersion(tagName), normalizedTargetVersion, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                var body = release.Value<string>("body");
-                if (!string.IsNullOrWhiteSpace(body))
-                {
-                    _logger.LogInformation("已从 GitHub Release 正文回退获取版本 {Version} 的更新日志", version);
-                    return body;
-                }
-
+                _logger.LogWarning("更新清单解析结果为空: {ManifestUrl}", manifestUrl);
                 return null;
             }
+
+            if (!IsNewVersionAvailable(manifest.Release.Version))
+            {
+                _logger.LogInformation("当前已是最新版本: {CurrentVersion}", _currentVersion);
+                Debug.WriteLine($"[DEBUG] 当前已是最新版本: {_currentVersion}");
+                return null;
+            }
+
+            var currentArchitecture = GetManifestArchitectureKey();
+            if (!manifest.Targets.TryGetValue(currentArchitecture, out var target) || target == null)
+            {
+                _logger.LogWarning("更新清单缺少当前架构目标: {Architecture}", currentArchitecture);
+                Debug.WriteLine($"[DEBUG] 更新清单缺少当前架构目标: {currentArchitecture}");
+                return null;
+            }
+
+            _logger.LogInformation("发现新版本: {LatestVersion}，当前版本: {CurrentVersion}，通道: {Channel}，架构: {Architecture}", manifest.Release.Version, _currentVersion, manifest.Release.Channel, currentArchitecture);
+            Debug.WriteLine($"[DEBUG] 发现新版本: {manifest.Release.Version}，当前版本: {_currentVersion}，通道: {manifest.Release.Channel}，架构: {currentArchitecture}");
+
+            return new ResolvedUpdateManifest
+            {
+                Manifest = manifest,
+                Architecture = currentArchitecture,
+                Target = target,
+            };
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning("获取更新清单失败: {ManifestUrl}，错误: {Error}", manifestUrl, ex.Message);
+            Debug.WriteLine($"[DEBUG] 获取更新清单失败: {manifestUrl}，错误: {ex.Message}");
+            return null;
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError("解析更新清单失败: {Error}", ex.Message);
+            Debug.WriteLine($"[DEBUG] 解析更新清单失败: {ex.Message}");
+            return null;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "获取 GitHub Release 正文失败，版本: {Version}", version);
+            _logger.LogError(ex, "检查更新清单时发生未知错误");
+            Debug.WriteLine($"[DEBUG] 检查更新清单时发生未知错误: {ex.Message}");
+            return null;
         }
-
-        return null;
     }
 
     /// <summary>
@@ -298,6 +162,54 @@ public class UpdateService
     public bool IsDevChannel()
     {
         return AppEnvironment.IsDevBuild;
+    }
+
+    private async Task<UpdateInfo?> CheckForManifestUpdateAsync(DistributionChannel distributionChannel, CancellationToken cancellationToken)
+    {
+        var resolvedManifest = await GetResolvedManifestUpdateAsync(distributionChannel, cancellationToken);
+        return resolvedManifest == null ? null : MapToLegacyUpdateInfo(resolvedManifest);
+    }
+
+    private static UpdateInfo MapToLegacyUpdateInfo(ResolvedUpdateManifest resolvedManifest)
+    {
+        var archUrls = resolvedManifest.Manifest.Targets
+            .Where(item => item.Value != null && !string.IsNullOrWhiteSpace(item.Value.SetupUrl))
+            .ToDictionary(
+                item => item.Key.StartsWith("win-", StringComparison.OrdinalIgnoreCase) ? item.Key.Substring(4) : item.Key,
+                item => item.Value.SetupUrl,
+                StringComparer.OrdinalIgnoreCase);
+
+        return new UpdateInfo
+        {
+            version = resolvedManifest.Version,
+            release_time = resolvedManifest.PublishedAt.UtcDateTime,
+            changelog = resolvedManifest.Manifest.Notes.ToList(),
+            important_update = resolvedManifest.Important,
+            download_mirrors = new List<DownloadMirror>
+            {
+                new()
+                {
+                    name = $"Manifest ({resolvedManifest.Channel})",
+                    url = resolvedManifest.Target.SetupUrl,
+                    arch_urls = archUrls,
+                },
+            },
+        };
+    }
+
+    private static string GetManifestUrl(DistributionChannel distributionChannel)
+    {
+        return distributionChannel switch
+        {
+            DistributionChannel.SideLoad => StableManifestUrl,
+            DistributionChannel.DevSideLoad => DevManifestUrl,
+            _ => throw new InvalidOperationException($"不支持的更新清单通道: {distributionChannel}"),
+        };
+    }
+
+    private string GetManifestArchitectureKey()
+    {
+        return $"win-{GetCurrentArchitecture()}";
     }
     
     /// <summary>

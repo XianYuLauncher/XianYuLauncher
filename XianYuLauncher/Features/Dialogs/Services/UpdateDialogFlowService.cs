@@ -51,16 +51,20 @@ public sealed class UpdateDialogFlowService : IUpdateDialogFlowService
             Title = title,
             Content = new DownloadProgressDialog(viewModel),
             IsPrimaryButtonEnabled = false,
-            CloseButtonText = closeButtonText ?? "取消",
             DefaultButton = ContentDialogButton.None,
         };
+
+        if (!string.IsNullOrWhiteSpace(closeButtonText))
+        {
+            downloadDialog.CloseButtonText = closeButtonText;
+            downloadDialog.CloseButtonClick += (_, _) => viewModel.CancelCommand.Execute(null);
+        }
 
         void OnCloseDialog(object? sender, bool args)
         {
             downloadDialog.Hide();
         }
 
-        downloadDialog.CloseButtonClick += (_, _) => viewModel.CancelCommand.Execute(null);
         viewModel.CloseDialog += OnCloseDialog;
 
         try
@@ -87,9 +91,13 @@ public sealed class UpdateDialogFlowService : IUpdateDialogFlowService
             Title = title,
             Content = new UpdateDialog(previewViewModel),
             PrimaryButtonText = primaryButtonText,
-            CloseButtonText = closeButtonText,
             DefaultButton = ContentDialogButton.Primary,
         };
+
+        if (!string.IsNullOrWhiteSpace(closeButtonText))
+        {
+            previewDialog.CloseButtonText = closeButtonText;
+        }
 
         var result = await _dialogHostService.ShowAsync(previewDialog);
         return result == ContentDialogResult.Primary;
