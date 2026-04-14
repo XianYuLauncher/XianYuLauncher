@@ -7,6 +7,15 @@ on:
         description: Stable tag to publish, for example v1.5.0
         required: true
         type: string
+      existing_rollout_action:
+        description: Action to take if the current published Store submission is using gradual package rollout
+        required: true
+        type: choice
+        default: NoAction
+        options:
+        - NoAction
+        - Finalize
+        - Halt
 
 permissions:
   contents: read
@@ -332,3 +341,131 @@ jobs:
       run: |
         echo "Approval received for ${{ needs.validate-request.outputs.tag_name }}."
         echo "Later phases will submit packages and release notes after this gate."
+
+  submit:
+    name: Submit To Microsoft Store
+    needs:
+      - validate-request
+      - approval
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+        ref: ${{ needs.validate-request.outputs.checkout_ref }}
+
+    - name: Download Store package artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: StoreUpload-*
+        path: store-artifacts
+        merge-multiple: true
+
+    - name: Download Store release notes artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: StoreReleaseNotes
+        path: store-release-notes
+
+    - name: Install StoreBroker
+      shell: powershell
+      run: |
+        Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
+
+        $repository = Get-PSRepository -Name PSGallery
+        if ($repository.InstallationPolicy -ne 'Trusted') {
+            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+        }
+
+        Install-Module -Name StoreBroker -RequiredVersion 1.21.24 -Scope CurrentUser -Repository PSGallery -Force -AllowClobber
+
+    - name: Create Store submission payload
+      shell: powershell
+      env:
+        MICROSOFT_STORE_APP_ID: ${{ secrets.MICROSOFT_STORE_APP_ID }}
+        MICROSOFT_STORE_TENANT_ID: ${{ secrets.MICROSOFT_STORE_TENANT_ID }}
+        MICROSOFT_STORE_CLIENT_ID: ${{ secrets.MICROSOFT_STORE_CLIENT_ID }}
+        MICROSOFT_STORE_CLIENT_SECRET: ${{ secrets.MICROSOFT_STORE_CLIENT_SECRET }}
+      run: |
+        .\scripts\ci\new-store-submission-package.ps1 `
+          -AppId "$env:MICROSOFT_STORE_APP_ID" `
+          -TenantId "$env:MICROSOFT_STORE_TENANT_ID" `
+          -ClientId "$env:MICROSOFT_STORE_CLIENT_ID" `
+          -ClientSecret "$env:MICROSOFT_STORE_CLIENT_SECRET" `
+          -PackageDirectory "store-artifacts" `
+          -OutputDirectory "store-submission-payload"
+
+    - name: Submit packages and release notes to Microsoft Store
+      shell: powershell
+      env:
+        MICROSOFT_STORE_APP_ID: ${{ secrets.MICROSOFT_STORE_APP_ID }}
+        MICROSOFT_STORE_TENANT_ID: ${{ secrets.MICROSOFT_STORE_TENANT_ID }}
+        MICROSOFT_STORE_CLIENT_ID: ${{ secrets.MICROSOFT_STORE_CLIENT_ID }}
+        MICROSOFT_STORE_CLIENT_SECRET: ${{ secrets.MICROSOFT_STORE_CLIENT_SECRET }}
+      run: |
+        .\scripts\ci\submit-store-submission.ps1 `
+          -AppId "$env:MICROSOFT_STORE_APP_ID" `
+          -TenantId "$env:MICROSOFT_STORE_TENANT_ID" `
+          -ClientId "$env:MICROSOFT_STORE_CLIENT_ID" `
+          -ClientSecret "$env:MICROSOFT_STORE_CLIENT_SECRET" `
+          -SubmissionPayloadPath "store-submission-payload\StoreSubmission.json" `
+          -SubmissionPackagePath "store-submission-payload\StoreSubmission.zip" `
+          -ReleaseNotesPath "store-release-notes\store-release-notes.json" `
+          -TagName "${{ needs.validate-request.outputs.tag_name }}" `
+          -OutputDirectory "store-submission-result" `
+          -ExistingPackageRolloutAction "${{ inputs.existing_rollout_action }}"
+
+    - name: Write Store submission summary
+      shell: powershell
+      run: |
+        $resultPath = Join-Path $env:GITHUB_WORKSPACE 'store-submission-result\store-submission-result.json'
+        if (-not (Test-Path -Path $resultPath -PathType Leaf)) {
+            throw "Store submission result artifact is missing."
+        }
+
+        $result = Get-Content -Path $resultPath -Raw | ConvertFrom-Json
+
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '## Microsoft Store submission result'
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Tag: $($result.tagName)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Submission ID: $($result.submissionId)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Target publish mode: $($result.targetPublishMode)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Current status: $($result.status)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Timed out while polling: $($result.timedOut)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Partner Center: $($result.portalUrl)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '### Observed statuses'
+
+        foreach ($status in $result.observedStatuses) {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- $status"
+        }
+
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '### Submitted packages'
+
+        foreach ($package in $result.packageFiles) {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- $package"
+        }
+
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '### Release note languages'
+
+        foreach ($language in $result.releaseNoteLanguages) {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- $language"
+        }
+
+    - name: Upload Store submission payload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: StoreSubmissionPayload
+        path: store-submission-payload/*
+        if-no-files-found: error
+
+    - name: Upload Store submission result artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: StoreSubmissionResult
+        path: store-submission-result/*
+        if-no-files-found: error
