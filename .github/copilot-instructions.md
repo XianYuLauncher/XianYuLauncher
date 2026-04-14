@@ -1,5 +1,5 @@
 ### Background
-本项目技术栈为 .NET/C# ，专注 WinUI 3 桌面应用。目标：交付健壮、可维护、可验证的代码。
+本项目为开源项目，技术栈为 .NET/C# ，专注 WinUI 3 桌面应用。目标：交付健壮、可维护、可验证的代码。
 
 ### Core Protocols
 1. **反幻觉/反歧义**
@@ -35,3 +35,7 @@ feat(protocol): 将 xianyulauncher:// URI 协议激活抽离为可扩展 Protoco
 - 主项目：`msbuild XianYuLauncher/XianYuLauncher.csproj -p:Configuration=Debug -p:Platform=x64 -nologo -v:minimal`（正常输出 warning，同时避免 WinUI/MSIX 生成项长路径刷屏。）
 - Core：`dotnet build XianYuLauncher.Core/XianYuLauncher.Core.csproj`
 - 测试：`dotnet test <测试项目.csproj>`，禁止 `runTest` 和 `--no-build`。
+
+### Security
+- 处理敏感信息时，禁止直接暴露在代码或日志中，优先询问开发者。
+- 除开发者需求外，不要写入任何文档在项目中。
