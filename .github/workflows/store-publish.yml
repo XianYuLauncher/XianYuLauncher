@@ -192,11 +192,39 @@ jobs:
         path: ${{ github.workspace }}\StoreArtifacts\${{ matrix.platform }}\*
         if-no-files-found: error
 
+  prepare-release-notes:
+    name: Prepare Store Release Notes
+    needs: validate-request
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Generate Store release notes
+      shell: pwsh
+      run: |
+        .\scripts\ci\generate-store-release-notes.ps1 `
+          -TagName "${{ needs.validate-request.outputs.tag_name }}" `
+          -Repository "${{ github.repository }}" `
+          -GitHubToken "${{ github.token }}" `
+          -OutputDirectory "store-release-notes"
+
+    - name: Upload Store release notes artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: StoreReleaseNotes
+        path: store-release-notes/*
+        if-no-files-found: error
+
   preview:
     name: Prepare Preview Summary
     needs:
       - validate-request
       - build-store-package
+      - prepare-release-notes
     runs-on: ubuntu-latest
 
     steps:
@@ -206,6 +234,12 @@ jobs:
         pattern: StoreUpload-*
         path: store-artifacts
         merge-multiple: true
+
+    - name: Download Store release notes artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: StoreReleaseNotes
+        path: store-release-notes
 
     - name: Build preview manifest
       shell: pwsh
@@ -219,9 +253,16 @@ jobs:
             throw "Expected 3 preview metadata files, but found $($previewFiles.Count)."
         }
 
+        $notesJsonPath = Join-Path $env:GITHUB_WORKSPACE 'store-release-notes/store-release-notes.json'
+        if (-not (Test-Path $notesJsonPath)) {
+          throw "Store release notes artifact is missing."
+        }
+
         $packages = foreach ($file in $previewFiles) {
             Get-Content $file.FullName -Raw | ConvertFrom-Json
         }
+
+        $releaseNotes = Get-Content $notesJsonPath -Raw | ConvertFrom-Json
 
         $summaryRoot = Join-Path $env:GITHUB_WORKSPACE 'store-preview'
         $summaryJsonPath = Join-Path $summaryRoot 'store-package-preview.json'
@@ -232,6 +273,7 @@ jobs:
             packageVersion = $packages[0].packageVersion
             displayVersion = $packages[0].displayVersion
             packages = @($packages)
+          releaseNotes = @($releaseNotes.notes)
         }
 
         $summaryJson = $summary | ConvertTo-Json -Depth 5
@@ -248,6 +290,24 @@ jobs:
 
         foreach ($package in $packages) {
             Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| $($package.platform) | $($package.packageFileName) | $($package.identityName) | $($package.publisher) | $($package.artifactName) |"
+        }
+
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '### Release notes preview'
+
+        foreach ($note in $releaseNotes.notes) {
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "#### $($note.language)"
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+
+          foreach ($line in ($note.content -split "`n")) {
+            if ([string]::IsNullOrWhiteSpace($line)) {
+              Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '>'
+            }
+            else {
+              Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "> $line"
+            }
+          }
         }
 
     - name: Upload preview summary artifact
