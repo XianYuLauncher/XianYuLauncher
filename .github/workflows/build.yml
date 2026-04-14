@@ -494,40 +494,101 @@ jobs:
             'X-GitHub-Api-Version' = '2022-11-28'
         }
 
+        function Get-ChannelTags {
+            param(
+                [string[]]$Tags,
+                [string]$Channel
+            )
+
+            switch ($Channel) {
+                'stable' {
+                    return @($Tags | Where-Object { $_ -notmatch '-' })
+                }
+                'dev' {
+                    return @($Tags | Where-Object { $_ -match '-dev' })
+                }
+                'beta' {
+                    return @($Tags | Where-Object { $_ -match '-beta' })
+                }
+                default {
+                    return @($Tags | Where-Object { $_ -match '-' -and $_ -notmatch '-dev' -and $_ -notmatch '-beta' })
+                }
+            }
+        }
+
         $repository = '${{ github.repository }}'
         $currentTag = '${{ github.ref_name }}'
+        $channelKind = '${{ steps.sideload_channel.outputs.channel }}'
         $channel = '${{ steps.sideload_channel.outputs.updater_channel }}'
         $releaseDirectory = $env:SIDELOAD_RELEASE_ROOT
-        $releases = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$repository/releases?per_page=20"
         $downloadedAssets = [System.Collections.Generic.List[string]]::new()
+        Add-Content -Path $env:GITHUB_ENV -Value 'SIDELOAD_DELTA_MODE=None'
 
-        foreach ($release in $releases) {
-            if ($release.tag_name -eq $currentTag) {
-                continue
+        $allTags = @(git tag --list 'v*' --sort=-v:refname)
+        $channelTags = @(Get-ChannelTags -Tags $allTags -Channel $channelKind)
+        $currentIndex = [System.Array]::IndexOf($channelTags, $currentTag)
+        if ($currentIndex -lt 0) {
+            throw "Current tag '$currentTag' was not found in channel tag history."
+        }
+
+        $previousTag = if (($currentIndex + 1) -lt $channelTags.Count) {
+            $channelTags[$currentIndex + 1]
+        }
+        else {
+            $null
+        }
+
+        if ([string]::IsNullOrWhiteSpace($previousTag)) {
+            Write-Host "No previous tag found for channel '$channelKind'. Delta generation will be skipped for this build."
+            return
+        }
+
+        Write-Host "Expected previous tag for delta generation: $previousTag"
+
+        try {
+            $previousTagEncoded = [System.Uri]::EscapeDataString($previousTag)
+            $release = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/$repository/releases/tags/$previousTagEncoded"
+        }
+        catch {
+            $statusCode = $null
+            if ($_.Exception.Response) {
+                $statusCode = [int]$_.Exception.Response.StatusCode
             }
 
-            $matchingAssets = @($release.assets | Where-Object {
-                $_.name -eq "releases.$channel.json" -or $_.name -like "*$channel*.nupkg"
-            })
-
-            if ($matchingAssets.Count -eq 0) {
-                continue
+            if ($statusCode -eq 404) {
+                Write-Host "Release assets for previous tag '$previousTag' are not published yet. Delta generation will be skipped for this build."
+                return
             }
 
-            foreach ($asset in $matchingAssets) {
-                $targetPath = Join-Path $releaseDirectory $asset.name
-                Invoke-WebRequest -Headers $headers -Uri $asset.browser_download_url -OutFile $targetPath
-                $downloadedAssets.Add($asset.name)
-            }
+            throw
+        }
 
-            break
+        $fullAsset = $release.assets | Where-Object { $_.name -like "*$channel-full.nupkg" } | Select-Object -First 1
+        if ($null -eq $fullAsset) {
+            Write-Host "Previous tag '$previousTag' does not have a full package for channel '$channel'. Delta generation will be skipped for this build."
+            return
+        }
+
+        $assetsToDownload = [System.Collections.Generic.List[object]]::new()
+        $releaseFeedAsset = $release.assets | Where-Object { $_.name -eq "releases.$channel.json" } | Select-Object -First 1
+        if ($null -ne $releaseFeedAsset) {
+            $assetsToDownload.Add($releaseFeedAsset)
+        }
+
+        $assetsToDownload.Add($fullAsset)
+
+        foreach ($asset in $assetsToDownload) {
+            $targetPath = Join-Path $releaseDirectory $asset.name
+            Invoke-WebRequest -Headers $headers -Uri $asset.browser_download_url -OutFile $targetPath
+            $downloadedAssets.Add($asset.name)
         }
 
         if ($downloadedAssets.Count -eq 0) {
-            Write-Host "No previous Velopack assets found for channel $channel. Delta generation will be skipped for this build."
+            Write-Host "No previous Velopack assets were downloaded for channel $channel. Delta generation will be skipped for this build."
         }
         else {
             Write-Host "Seeded Velopack history: $([string]::Join(', ', $downloadedAssets))"
+            Add-Content -Path $env:GITHUB_ENV -Value 'SIDELOAD_DELTA_MODE=BestSpeed'
         }
 
     - name: Pack Velopack Assets
@@ -539,7 +600,8 @@ jobs:
           -PackVersion "${{ steps.sideload_channel.outputs.updater_version }}" `
           -Channel "${{ steps.sideload_channel.outputs.updater_channel }}" `
           -RuntimeIdentifier "${{ env.Runtime_Identifier }}" `
-          -VpkExecutablePath "$env:VPK_EXE"
+          -VpkExecutablePath "$env:VPK_EXE" `
+          -DeltaMode "$env:SIDELOAD_DELTA_MODE"
 
     - name: Upload SideLoad Artifacts
       uses: actions/upload-artifact@v4

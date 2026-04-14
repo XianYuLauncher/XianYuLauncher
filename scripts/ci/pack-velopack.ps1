@@ -26,7 +26,10 @@ param(
 
     [string]$IconPath = 'XianYuLauncher/Assets/WindowIcon.ico',
 
-    [string]$FrameworkRuntime
+    [string]$FrameworkRuntime,
+
+    [ValidateSet('BestSize', 'BestSpeed', 'None')]
+    [string]$DeltaMode = 'BestSpeed'
 )
 
 Set-StrictMode -Version Latest
@@ -138,6 +141,8 @@ $arguments.Add('--packAuthors')
 $arguments.Add($PackAuthors)
 $arguments.Add('--icon')
 $arguments.Add($iconFilePath)
+$arguments.Add('--delta')
+$arguments.Add($DeltaMode)
 $arguments.Add('--noPortable')
 
 if (-not [string]::IsNullOrWhiteSpace($resolvedFrameworkRuntime)) {
@@ -150,6 +155,7 @@ Write-Host "Using pack title: $resolvedPackTitle"
 Write-Host "Using vpk: $vpkPath"
 Write-Host "Publish directory: $publishDirectoryPath"
 Write-Host "Release directory: $releaseDirectoryPath"
+Write-Host "Using delta mode: $DeltaMode"
 
 & $vpkPath $arguments
 
