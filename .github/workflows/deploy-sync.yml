@@ -11,6 +11,11 @@ on:
         description: 'Full version (e.g. 1.4.2.0). Leave empty to auto-append .0'
         required: false
         default: ''
+      important_update:
+        description: 'Mark this release as an important update'
+        required: false
+        default: false
+        type: boolean
 
 jobs:
   sync_to_r2:
@@ -160,19 +165,28 @@ jobs:
         run: |
           printf '%s\n' "$CHANGELOG" > release-notes.txt
 
-          python3 scripts/ci/generate-update-manifest.py manifest \
-            --asset-index-file release-asset-index.json \
-            --release-tag "${{ steps.vars.outputs.tag }}" \
-            --release-version "${{ steps.vars.outputs.tag }}" \
-            --published-at "${{ steps.release.outputs.published_at }}" \
-            --notes-file release-notes.txt \
-            --strict \
-            --expected-architectures win-x64 win-x86 win-arm64 \
+          manifest_args=(
+            --asset-index-file release-asset-index.json
+            --release-tag "${{ steps.vars.outputs.tag }}"
+            --release-version "${{ steps.vars.outputs.tag }}"
+            --published-at "${{ steps.release.outputs.published_at }}"
+            --notes-file release-notes.txt
+            --expected-release-channel "${{ steps.vars.outputs.channel }}"
+            --strict
+            --expected-architectures win-x64 win-x86 win-arm64
             --output-dir .
+          )
+
+          if [ "${{ inputs.important_update }}" = "true" ]; then
+            manifest_args+=(--important)
+          fi
+
+          python3 scripts/ci/generate-update-manifest.py manifest "${manifest_args[@]}"
 
       - name: Validate Update Manifest
         env:
           MANIFEST_FILE: ${{ steps.vars.outputs.manifest_file }}
+          RELEASE_CHANNEL: ${{ steps.vars.outputs.channel }}
           R2_PUBLIC_BASE_URL: ${{ secrets.R2_PUBLIC_BASE_URL }}
         run: |
           python3 << 'PYEOF'
@@ -180,6 +194,7 @@ jobs:
           import os
 
           manifest_file = os.environ["MANIFEST_FILE"]
+          release_channel = os.environ["RELEASE_CHANNEL"]
 
           with open(manifest_file, "r", encoding="utf-8") as handle:
               manifest = json.load(handle)
@@ -195,9 +210,22 @@ jobs:
               "package_size",
           )
           public_base = os.environ["R2_PUBLIC_BASE_URL"].rstrip("/")
+            expected_prefix = f"{public_base}/{release_channel}/"
 
           if manifest.get("schema_version") != 2 or manifest.get("delivery") != "velopack":
               raise SystemExit("Update manifest validation failed: unexpected top-level protocol markers.")
+
+            release = manifest.get("release", {})
+            if release.get("channel") != release_channel:
+              raise SystemExit(
+                f"Update manifest validation failed: release.channel must be {release_channel}, actual {release.get('channel')}."
+              )
+
+            expected_manifest_name = f"update_manifest_{release_channel}.json"
+            if manifest_file != expected_manifest_name:
+              raise SystemExit(
+                f"Update manifest validation failed: manifest file name must be {expected_manifest_name}, actual {manifest_file}."
+              )
 
           for architecture in expected_architectures:
               target = manifest["targets"].get(architecture)
@@ -208,10 +236,15 @@ jobs:
                   if not target.get(field):
                       raise SystemExit(f"Update manifest validation failed: target {architecture} missing {field}.")
 
+                if not str(target["channel"]).endswith(f"-{release_channel}"):
+                  raise SystemExit(
+                    f"Update manifest validation failed: target {architecture} channel {target['channel']} does not end with -{release_channel}."
+                  )
+
               for url_field in ("setup_url", "feed_url", "package_url"):
-                  if not target[url_field].startswith(public_base + "/"):
+                  if not target[url_field].startswith(expected_prefix):
                       raise SystemExit(
-                          f"Update manifest validation failed: target {architecture} field {url_field} does not use {public_base}."
+                      f"Update manifest validation failed: target {architecture} field {url_field} does not use {expected_prefix}."
                       )
 
           print(f"Update manifest validation passed: {manifest_file}")

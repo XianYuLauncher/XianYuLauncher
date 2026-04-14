@@ -37,6 +37,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--important", action="store_true", help="Mark the generated update manifest as important.")
     parser.add_argument("--strict", action="store_true", help="Fail when required targets or fields are missing.")
     parser.add_argument("--expected-architectures", nargs="*", default=[], help="Architectures that must exist in the generated update manifest when strict mode is enabled.")
+    parser.add_argument("--expected-release-channel", help="Expected release channel for strict manifest validation.")
     parser.add_argument("--public-base-url", help="Public base URL used to compose mirrored asset URLs.")
     parser.add_argument("--output-file", help="Path to write the generated JSON output.")
     parser.add_argument("--output-dir", help="Directory for manifest output; fixed stable/dev file names will be derived from the release channel.")
@@ -242,7 +243,7 @@ def build_manifest(index_payload: dict, release_tag: str, release_version: str, 
     }
 
 
-def validate_manifest(manifest_payload: dict, expected_architectures: list[str]) -> None:
+def validate_manifest(manifest_payload: dict, expected_architectures: list[str], expected_release_channel: str | None = None) -> None:
     required_target_fields = (
         "channel",
         "setup_url",
@@ -259,6 +260,20 @@ def validate_manifest(manifest_payload: dict, expected_architectures: list[str])
     if manifest_payload.get("delivery") != "velopack":
         raise SystemExit("Manifest validation failed: delivery must be 'velopack'.")
 
+    release = manifest_payload.get("release", {})
+    release_channel = release.get("channel")
+    if not release_channel:
+        raise SystemExit("Manifest validation failed: release.channel is required.")
+
+    normalize_release_channel(release_channel)
+
+    if expected_release_channel:
+        expected_release_channel = normalize_release_channel(expected_release_channel)
+        if release_channel != expected_release_channel:
+            raise SystemExit(
+                f"Manifest validation failed: release.channel must be '{expected_release_channel}', actual '{release_channel}'."
+            )
+
     targets = manifest_payload.get("targets", {})
     missing_architectures = [architecture for architecture in expected_architectures if architecture not in targets]
     if missing_architectures:
@@ -271,6 +286,12 @@ def validate_manifest(manifest_payload: dict, expected_architectures: list[str])
         if missing_fields:
             raise SystemExit(
                 f"Manifest validation failed: target {architecture} is missing required fields: {', '.join(missing_fields)}"
+            )
+
+        target_channel = target.get("channel")
+        if not isinstance(target_channel, str) or not target_channel.endswith(f"-{release_channel}"):
+            raise SystemExit(
+                f"Manifest validation failed: target {architecture} channel must end with '-{release_channel}'."
             )
 
 
@@ -299,10 +320,14 @@ def main() -> int:
         release_version = (args.release_version or args.release_tag).removeprefix("v")
         notes = load_notes(Path(args.notes_file) if args.notes_file else None)
         payload = build_manifest(index_payload, args.release_tag, release_version, args.published_at, args.important, notes)
-        if args.strict:
-            validate_manifest(payload, args.expected_architectures)
-
         output_file = resolve_output_file(args, payload["release"]["channel"])
+        if args.strict:
+            validate_manifest(payload, args.expected_architectures, args.expected_release_channel)
+            expected_manifest_file_name = resolve_manifest_file_name(payload["release"]["channel"])
+            if output_file.name != expected_manifest_file_name:
+                raise SystemExit(
+                    f"Manifest validation failed: output file must be '{expected_manifest_file_name}', actual '{output_file.name}'."
+                )
     else:
         raise SystemExit(f"Unsupported command: {args.command}")
 
