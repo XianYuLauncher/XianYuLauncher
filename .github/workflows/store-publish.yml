@@ -372,14 +372,14 @@ jobs:
     - name: Install StoreBroker
       shell: powershell
       run: |
-        Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force | Out-Null
+        Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Scope CurrentUser -Force | Out-Null
 
         $repository = Get-PSRepository -Name PSGallery
         if ($repository.InstallationPolicy -ne 'Trusted') {
             Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
         }
 
-        Install-Module -Name StoreBroker -RequiredVersion 1.21.24 -Scope CurrentUser -Repository PSGallery -Force -AllowClobber
+        Install-Module -Name StoreBroker -RequiredVersion 1.21.2 -Scope CurrentUser -Repository PSGallery -Force -AllowClobber
 
     - name: Create Store submission payload
       shell: powershell
