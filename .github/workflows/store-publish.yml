@@ -54,22 +54,208 @@ jobs:
         "tag_name=$tagName" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
         "checkout_ref=refs/tags/$tagName" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
 
+  build-store-package:
+    name: Build StoreUpload (${{ matrix.platform }})
+    needs: validate-request
+    strategy:
+      matrix:
+        platform: [x86, x64, arm64]
+
+    runs-on: windows-latest
+
+    env:
+      Solution_Name: XianYuLauncher.slnx
+      Project_Path: XianYuLauncher/XianYuLauncher.csproj
+      Configuration: Release
+      Platform: ${{ matrix.platform }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        ref: ${{ needs.validate-request.outputs.checkout_ref }}
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+
+    - name: Install .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: 10.0.x
+
+    - name: Prepare Application Config
+      shell: powershell
+      env:
+        AES_ENCRYPTION_KEY: ${{ secrets.AES_ENCRYPTION_KEY }}
+      run: |
+        $secretJson = '${{ secrets.APP_SECRETS_JSON }}'
+        if ([string]::IsNullOrWhiteSpace($secretJson)) {
+            Write-Error "Secret APP_SECRETS_JSON missing"
+            exit 1
+        }
+
+        if ([string]::IsNullOrWhiteSpace($env:AES_ENCRYPTION_KEY)) {
+            Write-Error "Secret AES_ENCRYPTION_KEY missing"
+            exit 1
+        }
+
+        New-Item -ItemType Directory -Force -Path XianYuLauncher | Out-Null
+        $secretJson | Out-File -FilePath XianYuLauncher/secrets.json -Encoding utf8
+
+        .\scripts\prepare-config.ps1
+
+    - name: Generate Afdian Sponsors Manifest
+      shell: powershell
+      env:
+        AFDIAN_USER_ID: ${{ secrets.AFDIAN_USER_ID }}
+        AFDIAN_TOKEN: ${{ secrets.AFDIAN_TOKEN }}
+      run: |
+        .\scripts\generate-afdian-sponsors.ps1 -OutputPath "XianYuLauncher/Assets/Data/afdian-sponsors.json"
+
+    - name: Configure Channel
+      id: store_channel
+      shell: powershell
+      run: |
+        .\scripts\ci\configure-build-channel.ps1 `
+          -RefName "${{ needs.validate-request.outputs.tag_name }}" `
+          -UpdaterRuntimeIdentifier "win-${{ matrix.platform }}" `
+          -UpdateManifest `
+          -ManifestPath "XianYuLauncher/Package.appxmanifest"
+
+    - name: Restore
+      shell: powershell
+      run: |
+        nuget restore ${{ env.Solution_Name }} -ConfigFile NuGet.config
+
+    - name: Build StoreUpload Package
+      shell: powershell
+      run: |
+        msbuild ${{ env.Project_Path }} `
+          /p:Configuration=${{ env.Configuration }} `
+          /p:Platform=${{ env.Platform }} `
+          /p:Version=${{ steps.store_channel.outputs.package_version }} `
+          /p:AssemblyVersion=${{ steps.store_channel.outputs.package_version }} `
+          /p:FileVersion=${{ steps.store_channel.outputs.package_version }} `
+          /p:InformationalVersion=${{ steps.store_channel.outputs.display_version }} `
+          /p:IncludeSourceRevisionInInformationalVersion=false `
+          /p:BuildChannelConstant=${{ steps.store_channel.outputs.build_constants }} `
+          /p:GenerateAppxPackageOnBuild=true `
+          /p:UapAppxPackageBuildMode=StoreUpload `
+          /p:AppxBundle=Never `
+          /p:AppxPackageSigningEnabled=false `
+          /p:PackageCertificateThumbprint= `
+          /p:PackageCertificateKeyFile= `
+          /p:AppxPackageDir="$env:GITHUB_WORKSPACE\AppPackagesStore\" `
+          /p:PackageOutputPath="$env:GITHUB_WORKSPACE\AppPackagesStore\" `
+          /p:GenerateAppInstallerFile=false
+
+    - name: Collect Store package metadata
+      shell: powershell
+      run: |
+        $packageFile = Get-ChildItem -Path "$env:GITHUB_WORKSPACE\AppPackagesStore" -Filter "*.msixupload" -File -Recurse | Select-Object -First 1
+        if ($null -eq $packageFile) {
+            Write-Error "No .msixupload package was generated."
+            exit 1
+        }
+
+        [xml]$manifest = Get-Content "XianYuLauncher/Package.appxmanifest"
+        $artifactName = "StoreUpload-${{ matrix.platform }}"
+        $artifactRoot = Join-Path $env:GITHUB_WORKSPACE (Join-Path "StoreArtifacts" "${{ matrix.platform }}")
+        $previewPath = Join-Path $artifactRoot "store-preview-${{ matrix.platform }}.json"
+
+        New-Item -ItemType Directory -Force -Path $artifactRoot | Out-Null
+        Copy-Item -Path $packageFile.FullName -Destination (Join-Path $artifactRoot $packageFile.Name) -Force
+
+        $preview = [ordered]@{
+            tagName = "${{ needs.validate-request.outputs.tag_name }}"
+            artifactName = $artifactName
+            platform = "${{ matrix.platform }}"
+            packageVersion = "${{ steps.store_channel.outputs.package_version }}"
+            displayVersion = "${{ steps.store_channel.outputs.display_version }}"
+            packageFileName = $packageFile.Name
+            packageRelativePath = $packageFile.Name
+            identityName = $manifest.Package.Identity.Name
+            publisher = $manifest.Package.Identity.Publisher
+        }
+
+        $previewJson = $preview | ConvertTo-Json -Depth 4
+        [System.IO.File]::WriteAllText($previewPath, $previewJson, [System.Text.UTF8Encoding]::new($false))
+
+    - name: Upload Store package artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: StoreUpload-${{ matrix.platform }}
+        path: ${{ github.workspace }}\StoreArtifacts\${{ matrix.platform }}\*
+        if-no-files-found: error
+
   preview:
     name: Prepare Preview Summary
-    needs: validate-request
+    needs:
+      - validate-request
+      - build-store-package
     runs-on: ubuntu-latest
 
     steps:
-    - name: Write job summary
-      shell: bash
+    - name: Download Store package artifacts
+      uses: actions/download-artifact@v4
+      with:
+        pattern: StoreUpload-*
+        path: store-artifacts
+        merge-multiple: true
+
+    - name: Build preview manifest
+      shell: pwsh
       run: |
-        {
-          echo "## Microsoft Store publish preview"
-          echo
-          echo "- Tag: ${{ needs.validate-request.outputs.tag_name }}"
-          echo "- Status: workflow scaffold ready"
-          echo "- Next phases will add package build, release notes preview and Store submission"
-        } >> "$GITHUB_STEP_SUMMARY"
+        $previewFiles = Get-ChildItem -Path store-artifacts -Filter 'store-preview-*.json' -File | Sort-Object Name
+        if ($previewFiles.Count -eq 0) {
+            throw "No preview metadata files were downloaded."
+        }
+
+        if ($previewFiles.Count -ne 3) {
+            throw "Expected 3 preview metadata files, but found $($previewFiles.Count)."
+        }
+
+        $packages = foreach ($file in $previewFiles) {
+            Get-Content $file.FullName -Raw | ConvertFrom-Json
+        }
+
+        $summaryRoot = Join-Path $env:GITHUB_WORKSPACE 'store-preview'
+        $summaryJsonPath = Join-Path $summaryRoot 'store-package-preview.json'
+        New-Item -ItemType Directory -Force -Path $summaryRoot | Out-Null
+
+        $summary = [ordered]@{
+            tagName = "${{ needs.validate-request.outputs.tag_name }}"
+            packageVersion = $packages[0].packageVersion
+            displayVersion = $packages[0].displayVersion
+            packages = @($packages)
+        }
+
+        $summaryJson = $summary | ConvertTo-Json -Depth 5
+        [System.IO.File]::WriteAllText($summaryJsonPath, $summaryJson, [System.Text.UTF8Encoding]::new($false))
+
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '## Microsoft Store publish preview'
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Tag: $($summary.tagName)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Package version: $($summary.packageVersion)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Display version: $($summary.displayVersion)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '| Platform | Package | Identity | Publisher | Artifact |'
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '| --- | --- | --- | --- | --- |'
+
+        foreach ($package in $packages) {
+            Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "| $($package.platform) | $($package.packageFileName) | $($package.identityName) | $($package.publisher) | $($package.artifactName) |"
+        }
+
+    - name: Upload preview summary artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: StorePreviewSummary
+        path: ${{ github.workspace }}/store-preview/store-package-preview.json
+        if-no-files-found: error
 
   approval:
     name: Await Store Submission Approval
