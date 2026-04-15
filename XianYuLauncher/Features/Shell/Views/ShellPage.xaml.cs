@@ -458,14 +458,11 @@ public sealed partial class ShellPage : Page
     {
         var isTutorial = e.SourcePageType == typeof(TutorialPage);
         NavigationViewControl.IsPaneVisible = !isTutorial;
-        NavigationViewControl.IsBackButtonVisible = isTutorial 
-            ? NavigationViewBackButtonVisible.Collapsed 
+        NavigationViewControl.IsBackButtonVisible = isTutorial
+            ? NavigationViewBackButtonVisible.Collapsed
             : NavigationViewBackButtonVisible.Visible;
-        NavigationViewControl.AlwaysShowHeader = !isTutorial;
-        if (isTutorial)
-        {
-            NavigationViewControl.Header = null;
-        }
+        NavigationViewControl.AlwaysShowHeader = false;
+        NavigationViewControl.Header = null;
         
         // 订阅设置页的导航栏风格变更事件
         if (e.SourcePageType == typeof(SettingsPage))
@@ -474,13 +471,6 @@ public sealed partial class ShellPage : Page
             {
                 settingsPage.ViewModel.NavigationStyleChanged -= OnNavigationStyleChanged;
                 settingsPage.ViewModel.NavigationStyleChanged += OnNavigationStyleChanged;
-            }
-            
-            // Top 模式下，NavigationView 内置 Settings 项的 Content 为空，
-            // 导致 Header 绑定拿不到值，需要手动补上
-            if (NavigationViewControl.PaneDisplayMode == NavigationViewPaneDisplayMode.Top)
-            {
-                NavigationViewControl.Header = "Shell_Settings".GetLocalized();
             }
         }
     }
@@ -506,7 +496,7 @@ public sealed partial class ShellPage : Page
             AppTitleBar.Margin = new Thickness(0, AppTitleBar.Margin.Top, AppTitleBar.Margin.Right, AppTitleBar.Margin.Bottom);
             return;
         }
-        
+
         AppTitleBar.Margin = new Thickness()
         {
             Left = sender.CompactPaneLength * (sender.DisplayMode == NavigationViewDisplayMode.Minimal ? 2 : 1),
@@ -657,20 +647,16 @@ public sealed partial class ShellPage : Page
         if (style == "Top")
         {
             NavigationViewControl.PaneDisplayMode = NavigationViewPaneDisplayMode.Top;
-            // 顶部模式：标题栏需要留出空间，导航栏在标题栏下方
             NavigationViewControl.Margin = new Thickness(0, 48, 0, 0);
-            
-            // Top 模式下 Settings 项的 Content 为空，如果当前在设置页需要手动补 Header
-            if (NavigationFrame.Content is SettingsPage)
-            {
-                NavigationViewControl.Header = "Shell_Settings".GetLocalized();
-            }
         }
         else
         {
             NavigationViewControl.PaneDisplayMode = NavigationViewPaneDisplayMode.Auto;
             NavigationViewControl.Margin = new Thickness(0);
         }
+
+        NavigationViewControl.AlwaysShowHeader = false;
+        NavigationViewControl.Header = null;
     }
     
     /// <summary>

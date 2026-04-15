@@ -42,7 +42,7 @@
         </Rectangle>
 
         <!-- 自定义背景图片层 -->
-        <Image x:Name="BackgroundImage"
+                <Image x:Name="BackgroundImage"
                Stretch="UniformToFill"
                Visibility="Collapsed"
                Canvas.ZIndex="-1" />
@@ -70,6 +70,7 @@
             Background="Transparent"
             IsBackButtonVisible="Visible"
             IsBackEnabled="{x:Bind ViewModel.IsBackEnabled, Mode=OneWay}"
+            AlwaysShowHeader="False"
             SelectedItem="{x:Bind ViewModel.Selected, Mode=OneWay}"
             IsSettingsVisible="True"
             ExpandedModeThresholdWidth="1280"
