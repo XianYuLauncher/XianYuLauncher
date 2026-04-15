@@ -1488,62 +1488,11 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         Directory.CreateDirectory(worldDir);
 
         await Task.Run(() =>
-        {
-            using var archive = ZipFile.OpenRead(zipPath);
-            var entries = archive.Entries.ToList();
-            var hasRootFolder = false;
-            string? rootFolderName = null;
-
-            if (entries.Count > 0)
-            {
-                var firstEntry = entries.FirstOrDefault(e => !string.IsNullOrEmpty(e.FullName));
-                if (firstEntry != null)
-                {
-                    var parts = firstEntry.FullName.Split('/');
-                    if (parts.Length > 1)
-                    {
-                        rootFolderName = parts[0];
-                        hasRootFolder = entries.All(e =>
-                            string.IsNullOrEmpty(e.FullName) ||
-                            e.FullName.StartsWith(rootFolderName + "/") ||
-                            e.FullName == rootFolderName);
-                    }
-                }
-            }
-
-            if (hasRootFolder && !string.IsNullOrEmpty(rootFolderName))
-            {
-                foreach (var entry in entries)
-                {
-                    if (string.IsNullOrEmpty(entry.FullName) || entry.FullName == rootFolderName + "/")
-                        continue;
-
-                    var relativePath = entry.FullName.Substring(rootFolderName.Length + 1);
-                    if (string.IsNullOrEmpty(relativePath))
-                        continue;
-
-                    var destPath = Path.Combine(worldDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
-
-                    if (entry.FullName.EndsWith("/"))
-                    {
-                        Directory.CreateDirectory(destPath);
-                    }
-                    else
-                    {
-                        var destDir = Path.GetDirectoryName(destPath);
-                        if (!string.IsNullOrEmpty(destDir))
-                        {
-                            Directory.CreateDirectory(destDir);
-                        }
-                        entry.ExtractToFile(destPath, true);
-                    }
-                }
-            }
-            else
-            {
-                archive.ExtractToDirectory(worldDir);
-            }
-        });
+            ZipExtractionHelper.ExtractToDirectorySafely(
+                zipPath,
+                worldDir,
+                stripSingleRootDirectory: true,
+                entryPathDescription: "世界存档条目路径"));
     }
 
     private string GetUniqueDirectoryPath(string baseDir, string folderName)

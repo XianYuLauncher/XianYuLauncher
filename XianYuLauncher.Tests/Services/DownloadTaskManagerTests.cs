@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Collections.Concurrent;
+using System.IO.Compression;
 using System.Text;
 using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
@@ -2054,6 +2055,22 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
         return memoryStream.ToArray();
     }
 
+    private byte[] CreateTestZipContentWithEntries(params (string EntryName, string Content)[] entries)
+    {
+        using var memoryStream = new MemoryStream();
+        using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
+        {
+            foreach (var (entryName, content) in entries)
+            {
+                var entry = archive.CreateEntry(entryName);
+                using var writer = new StreamWriter(entry.Open());
+                writer.Write(content);
+            }
+        }
+
+        return memoryStream.ToArray();
+    }
+
     private static string ComputeSha1(string content)
     {
         using var sha1 = System.Security.Cryptography.SHA1.Create();
@@ -2227,6 +2244,80 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
         requests.Should().Contain(request => request.Path.EndsWith("TestWorld.zip", StringComparison.OrdinalIgnoreCase) && request.Sha1 == null);
         File.Exists(dependencyPath).Should().BeTrue();
         File.Exists(Path.Combine(savesDir, "TestWorld", "level.dat")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task StartWorldDownloadAsync_WhenArchiveEntryEscapesWorldDirectory_ShouldFailWithoutWritingOutsideTarget()
+    {
+        // Arrange
+        var zipContent = CreateTestZipContentWithEntries(
+            ("TestWorld/level.dat", "test level data"),
+            ("TestWorld/../../escaped.txt", "malicious content"));
+
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>(
+                async (url, path, sha1, progress, ct) =>
+                {
+                    var dir = Path.GetDirectoryName(path);
+                    if (!string.IsNullOrEmpty(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                    }
+
+                    await File.WriteAllBytesAsync(path, zipContent, ct);
+                    return DownloadResult.Succeeded(path, url);
+                });
+
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            downloadManagerMock.Object);
+
+        var savesDir = Path.Combine(_tempDirectory, "saves");
+        var escapedFilePath = Path.Combine(_tempDirectory, "escaped.txt");
+        var stateReached = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        void OnTaskStateChanged(object? _, DownloadTaskInfo task)
+        {
+            if (task.TaskName == "Test World"
+                && task.State is DownloadTaskState.Failed or DownloadTaskState.Completed or DownloadTaskState.Cancelled)
+            {
+                stateReached.TrySetResult(task);
+            }
+        }
+
+        downloadTaskManager.TaskStateChanged += OnTaskStateChanged;
+
+        try
+        {
+            // Act
+            await downloadTaskManager.StartWorldDownloadAsync(
+                "Test World",
+                "https://example.com/world.zip",
+                savesDir,
+                "TestWorld.zip");
+
+            var completedTask = await Task.WhenAny(stateReached.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+
+            // Assert
+            completedTask.Should().Be(stateReached.Task, "应在超时时间内收到任务终态事件");
+
+            var finalTask = await stateReached.Task;
+            finalTask.State.Should().Be(DownloadTaskState.Failed);
+            File.Exists(escapedFilePath).Should().BeFalse();
+        }
+        finally
+        {
+            downloadTaskManager.TaskStateChanged -= OnTaskStateChanged;
+        }
     }
 
     /// <summary>

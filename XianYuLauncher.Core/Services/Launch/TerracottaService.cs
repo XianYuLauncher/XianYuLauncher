@@ -316,7 +316,10 @@ namespace XianYuLauncher.Core.Services
                                 continue;
                             }
 
-                            string entryDestinationPath = Path.Combine(destinationPath, reader.Entry.Key);
+                            string entryDestinationPath = PathContainmentHelper.GetValidatedPathUnderRoot(
+                                destinationPath,
+                                reader.Entry.Key,
+                                "Terracotta 压缩包条目路径");
                             
                             // 创建目录
                             string? entryDirectory = Path.GetDirectoryName(entryDestinationPath);
