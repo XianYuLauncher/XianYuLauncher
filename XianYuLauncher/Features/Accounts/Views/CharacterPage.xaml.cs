@@ -10,6 +10,7 @@ using Microsoft.UI.Xaml.Navigation;
 using Newtonsoft.Json.Linq;
 using Serilog;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -47,6 +48,11 @@ namespace XianYuLauncher.Features.Accounts.Views
         private readonly HttpClient _httpClient = new HttpClient();
         private const string AvatarCacheFolder = AppDataFileConsts.AvatarCacheFolder;
         private BitmapImage? _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
+        private readonly Dictionary<string, BitmapImage?> _avatarImageCache = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Task<AvatarLoadResult>> _avatarLoadingTasks = new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, Task<BitmapImage?>> _avatarRefreshTasks = new(StringComparer.OrdinalIgnoreCase);
+
+        private sealed record AvatarLoadResult(BitmapImage? Avatar, bool FromDiskCache);
 
         private static BitmapImage CreateDefaultAvatarBitmap()
         {
@@ -69,12 +75,6 @@ namespace XianYuLauncher.Features.Accounts.Views
             {
                 ShowOfflineLoginDialog();
             };
-            
-            // 订阅角色列表变化事件（整个集合替换）
-            ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-            
-            // 订阅角色列表内容变化事件（添加、删除等）
-            ViewModel.Profiles.CollectionChanged += Profiles_CollectionChanged;
             
             // 拖拽由 ShellPage 全局处理（避免重复拦截）
             
@@ -151,8 +151,6 @@ namespace XianYuLauncher.Features.Accounts.Views
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
-            // 页面导航到时时的初始化逻辑
-            LoadAllAvatars();
         }
 
         protected override void OnNavigatingFrom(NavigatingCancelEventArgs e)
@@ -161,6 +159,183 @@ namespace XianYuLauncher.Features.Accounts.Views
             // 页面导航离开时的清理逻辑
             ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
             ViewModel.Profiles.CollectionChanged -= Profiles_CollectionChanged;
+        }
+
+        private async void ProfileAvatar_DataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
+        {
+            if (sender is not Image image || image.DataContext is not MinecraftProfile profile)
+            {
+                return;
+            }
+
+            var avatarKey = BuildAvatarCacheKey(profile);
+            if (Equals(image.Tag, avatarKey) && image.Source != null)
+            {
+                return;
+            }
+
+            image.Tag = avatarKey;
+
+            if (_avatarImageCache.TryGetValue(avatarKey, out var cachedAvatar) && cachedAvatar != null)
+            {
+                image.Source = cachedAvatar;
+
+                if (!profile.IsOffline && _avatarRefreshTasks.TryGetValue(avatarKey, out var pendingRefreshTask))
+                {
+                    var refreshedAvatar = await pendingRefreshTask;
+                    if (refreshedAvatar != null)
+                    {
+                        _avatarImageCache[avatarKey] = refreshedAvatar;
+                        if (Equals(image.Tag, avatarKey))
+                        {
+                            image.Source = refreshedAvatar;
+                        }
+                    }
+                }
+
+                return;
+            }
+
+            if (profile.IsOffline && _processedSteveAvatar != null)
+            {
+                image.Source = _processedSteveAvatar;
+            }
+
+            try
+            {
+                var loadResult = await GetOrLoadAvatarAsync(profile, avatarKey);
+                if (loadResult.Avatar == null)
+                {
+                    if (Equals(image.Tag, avatarKey))
+                    {
+                        image.Source = CreateDefaultAvatarBitmap();
+                    }
+
+                    return;
+                }
+
+                _avatarImageCache[avatarKey] = loadResult.Avatar;
+                if (Equals(image.Tag, avatarKey))
+                {
+                    image.Source = loadResult.Avatar;
+                }
+
+                if (loadResult.FromDiskCache && !profile.IsOffline)
+                {
+                    var refreshedAvatar = await GetOrRefreshAvatarAsync(profile, avatarKey);
+                    if (refreshedAvatar != null)
+                    {
+                        _avatarImageCache[avatarKey] = refreshedAvatar;
+                        if (Equals(image.Tag, avatarKey))
+                        {
+                            image.Source = refreshedAvatar;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[Avatar.CharacterPage] 头像绑定加载失败，角色: {Name}, Key: {Key}", profile.Name, avatarKey);
+                if (Equals(image.Tag, avatarKey))
+                {
+                    image.Source = CreateDefaultAvatarBitmap();
+                }
+            }
+        }
+
+        private async Task<AvatarLoadResult> GetOrLoadAvatarAsync(MinecraftProfile profile, string avatarKey)
+        {
+            if (_avatarLoadingTasks.TryGetValue(avatarKey, out var existingTask))
+            {
+                return await existingTask;
+            }
+
+            var loadingTask = LoadAvatarAsync(profile);
+            _avatarLoadingTasks[avatarKey] = loadingTask;
+
+            try
+            {
+                return await loadingTask;
+            }
+            finally
+            {
+                _avatarLoadingTasks.Remove(avatarKey);
+            }
+        }
+
+        private async Task<AvatarLoadResult> LoadAvatarAsync(MinecraftProfile profile)
+        {
+            if (profile.IsOffline)
+            {
+                return new AvatarLoadResult(await GetDefaultSteveAvatarAsync(), false);
+            }
+
+            var cachedAvatar = await LoadAvatarFromCache(profile.Id);
+            if (cachedAvatar != null)
+            {
+                return new AvatarLoadResult(cachedAvatar, true);
+            }
+
+            return new AvatarLoadResult(await DownloadAvatarAsync(profile), false);
+        }
+
+        private async Task<BitmapImage?> GetOrRefreshAvatarAsync(MinecraftProfile profile, string avatarKey)
+        {
+            if (_avatarRefreshTasks.TryGetValue(avatarKey, out var existingTask))
+            {
+                return await existingTask;
+            }
+
+            var refreshTask = DownloadAvatarAsync(profile);
+            _avatarRefreshTasks[avatarKey] = refreshTask;
+
+            try
+            {
+                return await refreshTask;
+            }
+            finally
+            {
+                _avatarRefreshTasks.Remove(avatarKey);
+            }
+        }
+
+        private async Task<BitmapImage?> DownloadAvatarAsync(MinecraftProfile profile)
+        {
+            try
+            {
+                return await GetAvatarFromMojangApiAsync(BuildSessionServerUri(profile), profile.Id);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[Avatar.CharacterPage] 下载头像失败，角色: {Name}, ID: {Id}", profile.Name, profile.Id);
+                return await GetDefaultSteveAvatarAsync();
+            }
+        }
+
+        private static string BuildAvatarCacheKey(MinecraftProfile profile)
+        {
+            if (profile.IsOffline)
+            {
+                return "offline:steve";
+            }
+
+            return string.Join('|', profile.TokenType ?? "microsoft", profile.AuthServer ?? string.Empty, profile.Id);
+        }
+
+        private static Uri BuildSessionServerUri(MinecraftProfile profile)
+        {
+            if (profile.TokenType == "external" && !string.IsNullOrWhiteSpace(profile.AuthServer))
+            {
+                var authServer = profile.AuthServer;
+                if (!authServer.EndsWith('/'))
+                {
+                    authServer += "/";
+                }
+
+                return new Uri($"{authServer}sessionserver/session/minecraft/profile/{profile.Id}");
+            }
+
+            return new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{profile.Id}");
         }
         
         /// <summary>
@@ -269,6 +444,11 @@ namespace XianYuLauncher.Features.Accounts.Views
                     {
                         var bitmap = new BitmapImage();
                         await bitmap.SetSourceAsync(stream);
+                        if (bitmap.PixelWidth < 32 || bitmap.PixelHeight < 32)
+                        {
+                            return null;
+                        }
+
                         return bitmap;
                     }
                 }
@@ -428,7 +608,6 @@ namespace XianYuLauncher.Features.Accounts.Views
                 
                 // 2. 解析JSON响应
                 var jsonResponse = await response.Content.ReadAsStringAsync();
-                Debug.WriteLine($"[角色Page] API响应内容: {jsonResponse}");
                 var profileData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(jsonResponse);
                 var properties = profileData?["properties"] as JArray;
                 if (properties == null || properties.Count == 0)
@@ -457,7 +636,6 @@ namespace XianYuLauncher.Features.Accounts.Views
                 // 4. 解码base64数据
                 byte[] texturesBytes = Convert.FromBase64String(texturesBase64);
                 string texturesJson = System.Text.Encoding.UTF8.GetString(texturesBytes);
-                Debug.WriteLine($"[角色Page] 解码后的textures JSON: {texturesJson}");
                 var texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(texturesJson);
                 
                 // 5. 提取皮肤URL
@@ -473,17 +651,15 @@ namespace XianYuLauncher.Features.Accounts.Views
                 }
                 
                 // 6. 下载皮肤纹理
-                Debug.WriteLine($"[角色Page] 开始下载皮肤纹理，URL: {skinUrl}");
                 var skinResponse = await _httpClient.GetAsync(skinUrl);
-                Debug.WriteLine($"[角色Page] 皮肤下载响应状态码: {skinResponse.StatusCode}");
                 if (!skinResponse.IsSuccessStatusCode)
                 {
                     Debug.WriteLine($"[角色Page] 皮肤下载失败，状态码: {skinResponse.StatusCode}，使用默认史蒂夫图标");
                     return await GetDefaultSteveAvatarAsync();
                 }
                 
-                // 7. 使用Win2D裁剪头像区域
-                var avatarBitmap = await CropAvatarFromSkinAsync(skinUrl, uuid);
+                var skinBytes = await skinResponse.Content.ReadAsByteArrayAsync();
+                var avatarBitmap = await CropAvatarFromSkinBytesAsync(skinBytes, uuid);
                 if (avatarBitmap == null)
                 {
                     Debug.WriteLine($"[角色Page] 裁剪头像失败，使用默认史蒂夫图标");
@@ -524,6 +700,28 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
         }
         
+        /// <summary>
+        /// 从皮肤纹理字节裁剪头像区域
+        /// </summary>
+        /// <param name="skinBytes">皮肤原始字节</param>
+        /// <param name="uuid">玩家UUID，用于保存头像到缓存</param>
+        /// <returns>裁剪后的头像</returns>
+        private async Task<BitmapImage?> CropAvatarFromSkinBytesAsync(byte[] skinBytes, string? uuid = null)
+        {
+            try
+            {
+                var device = CanvasDevice.GetSharedDevice();
+                using var stream = new MemoryStream(skinBytes);
+                var canvasBitmap = await CanvasBitmap.LoadAsync(device, stream.AsRandomAccessStream());
+                return await SkinAvatarHelper.CropHeadFromSkinAsync(canvasBitmap, outputSize: 48, includeOverlay: false, uuid);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色Page] 从皮肤字节裁剪头像失败: {ex.Message}");
+                return null;
+            }
+        }
+
         /// <summary>
         /// 从皮肤纹理中裁剪头像区域
         /// </summary>

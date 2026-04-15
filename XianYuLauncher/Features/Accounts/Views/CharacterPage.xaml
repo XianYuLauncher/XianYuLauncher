@@ -231,13 +231,13 @@
                                                     HorizontalAlignment="Center">
                                                     <Image 
                                                         x:Name="ProfileAvatar" 
+                                                        DataContextChanged="ProfileAvatar_DataContextChanged"
                                                         Width="32" 
                                                         Height="32" 
                                                         Source="Assets/Icons/Avatars/Steve.png" 
                                                         Stretch="Fill" 
                                                         HorizontalAlignment="Center" 
-                                                        VerticalAlignment="Center" 
-                                                        Tag="{Binding}" />
+                                                        VerticalAlignment="Center" />
                                                 </Border>
                                                 
                                                 <TextBlock 
