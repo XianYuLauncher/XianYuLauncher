@@ -27,7 +27,8 @@ public interface IResourceDialogService
         Func<T, double>? opacityFunc = null,
         string? tip = null,
         string? primaryButtonText = null,
-        string? closeButtonText = null) where T : class;
+        string? closeButtonText = null,
+        Func<T, string>? primaryButtonTextSelector = null) where T : class;
 
     Task<T?> ShowModVersionSelectionDialogAsync<T>(
         string title,

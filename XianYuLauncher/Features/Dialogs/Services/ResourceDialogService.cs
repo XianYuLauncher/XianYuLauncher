@@ -273,7 +273,8 @@ public sealed class ResourceDialogService : IResourceDialogService
         Func<T, double>? opacityFunc = null,
         string? tip = null,
         string? primaryButtonText = null,
-        string? closeButtonText = null) where T : class
+        string? closeButtonText = null,
+        Func<T, string>? primaryButtonTextSelector = null) where T : class
     {
         var primaryTextBrush = _dialogThemePaletteService.GetPrimaryTextBrush();
         var secondaryTextBrush = _dialogThemePaletteService.GetSecondaryTextBrush();
@@ -317,14 +318,40 @@ public sealed class ResourceDialogService : IResourceDialogService
             });
         }
 
+        var defaultPrimaryButtonText = primaryButtonText ?? "Dialog_Confirm".GetLocalized();
+
         var dialog = new ContentDialog
         {
             Title = title,
             Content = panel,
-            PrimaryButtonText = primaryButtonText ?? "Dialog_Confirm".GetLocalized(),
+            PrimaryButtonText = defaultPrimaryButtonText,
             CloseButtonText = closeButtonText ?? "Msg_Cancel".GetLocalized(),
             DefaultButton = ContentDialogButton.Primary,
         };
+
+        void UpdatePrimaryButtonText()
+        {
+            if (primaryButtonTextSelector is null)
+            {
+                dialog.PrimaryButtonText = defaultPrimaryButtonText;
+                return;
+            }
+
+            if (listView.SelectedItem is ListViewItem selectedItem
+                && selectedItem.Tag is T selectedValue)
+            {
+                var resolvedPrimaryButtonText = primaryButtonTextSelector(selectedValue);
+                dialog.PrimaryButtonText = string.IsNullOrWhiteSpace(resolvedPrimaryButtonText)
+                    ? defaultPrimaryButtonText
+                    : resolvedPrimaryButtonText;
+                return;
+            }
+
+            dialog.PrimaryButtonText = defaultPrimaryButtonText;
+        }
+
+        listView.SelectionChanged += (_, _) => UpdatePrimaryButtonText();
+        UpdatePrimaryButtonText();
 
         var result = await _dialogHostService.ShowAsync(dialog);
         if (result == ContentDialogResult.Primary && listView.SelectedItem is ListViewItem selectedItem)
