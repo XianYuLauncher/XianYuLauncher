@@ -1778,69 +1778,13 @@ public class DownloadTaskManager : IDownloadTaskManager
 
             Directory.CreateDirectory(worldDir);
 
-            await Task.Run(() =>
-            {
-                using var archive = ZipFile.OpenRead(zipPath);
-
-                var entries = archive.Entries.ToList();
-                var hasRootFolder = false;
-                string? rootFolderName = null;
-
-                if (entries.Count > 0)
-                {
-                    var firstEntry = entries.FirstOrDefault(entry => !string.IsNullOrEmpty(entry.FullName));
-                    if (firstEntry != null)
-                    {
-                        var parts = firstEntry.FullName.Split('/');
-                        if (parts.Length > 1)
-                        {
-                            rootFolderName = parts[0];
-                            hasRootFolder = entries.All(entry =>
-                                string.IsNullOrEmpty(entry.FullName)
-                                || entry.FullName.StartsWith(rootFolderName + "/", StringComparison.Ordinal)
-                                || entry.FullName == rootFolderName);
-                        }
-                    }
-                }
-
-                if (hasRootFolder && !string.IsNullOrEmpty(rootFolderName))
-                {
-                    foreach (var entry in entries)
-                    {
-                        if (string.IsNullOrEmpty(entry.FullName) || entry.FullName == rootFolderName + "/")
-                        {
-                            continue;
-                        }
-
-                        var relativePath = entry.FullName.Substring(rootFolderName.Length + 1);
-                        if (string.IsNullOrEmpty(relativePath))
-                        {
-                            continue;
-                        }
-
-                        var destinationPath = Path.Combine(worldDir, relativePath.Replace('/', Path.DirectorySeparatorChar));
-
-                        if (entry.FullName.EndsWith("/", StringComparison.Ordinal))
-                        {
-                            Directory.CreateDirectory(destinationPath);
-                        }
-                        else
-                        {
-                            var destinationDirectory = Path.GetDirectoryName(destinationPath);
-                            if (!string.IsNullOrEmpty(destinationDirectory))
-                            {
-                                Directory.CreateDirectory(destinationDirectory);
-                            }
-
-                            entry.ExtractToFile(destinationPath, true);
-                        }
-                    }
-                }
-                else
-                {
-                    archive.ExtractToDirectory(worldDir);
-                }
-            }, cancellationToken).ConfigureAwait(false);
+            await Task.Run(
+                () => ZipExtractionHelper.ExtractToDirectorySafely(
+                    zipPath,
+                    worldDir,
+                    stripSingleRootDirectory: true,
+                    entryPathDescription: "世界存档条目路径"),
+                cancellationToken).ConfigureAwait(false);
 
             cancellationToken.ThrowIfCancellationRequested();
             _logger.LogInformation("世界存档下载完成: {WorldName} -> {WorldDir}", worldName, worldDir);

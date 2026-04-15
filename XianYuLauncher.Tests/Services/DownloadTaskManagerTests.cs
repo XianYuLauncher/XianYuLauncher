@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Collections.Concurrent;
+using System.IO.Compression;
 using System.Text;
 using Xunit;
 using XianYuLauncher.Core.Contracts.Services;
@@ -2054,6 +2055,22 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
         return memoryStream.ToArray();
     }
 
+    private byte[] CreateTestZipContentWithEntries(params (string EntryName, string Content)[] entries)
+    {
+        using var memoryStream = new MemoryStream();
+        using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
+        {
+            foreach (var (entryName, content) in entries)
+            {
+                var entry = archive.CreateEntry(entryName);
+                using var writer = new StreamWriter(entry.Open());
+                writer.Write(content);
+            }
+        }
+
+        return memoryStream.ToArray();
+    }
+
     private static string ComputeSha1(string content)
     {
         using var sha1 = System.Security.Cryptography.SHA1.Create();
@@ -2227,6 +2244,62 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
         requests.Should().Contain(request => request.Path.EndsWith("TestWorld.zip", StringComparison.OrdinalIgnoreCase) && request.Sha1 == null);
         File.Exists(dependencyPath).Should().BeTrue();
         File.Exists(Path.Combine(savesDir, "TestWorld", "level.dat")).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task StartWorldDownloadAsync_WhenArchiveEntryEscapesWorldDirectory_ShouldFailWithoutWritingOutsideTarget()
+    {
+        // Arrange
+        var zipContent = CreateTestZipContentWithEntries(
+            ("TestWorld/level.dat", "test level data"),
+            ("TestWorld/../../escaped.txt", "malicious content"));
+
+        var downloadManagerMock = new Mock<IDownloadManager>();
+        downloadManagerMock
+            .Setup(m => m.DownloadFileAsync(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string?>(),
+                It.IsAny<Action<DownloadProgressStatus>?>(),
+                It.IsAny<CancellationToken>()))
+            .Returns<string, string, string?, Action<DownloadProgressStatus>?, CancellationToken>(
+                async (url, path, sha1, progress, ct) =>
+                {
+                    var dir = Path.GetDirectoryName(path);
+                    if (!string.IsNullOrEmpty(dir))
+                    {
+                        Directory.CreateDirectory(dir);
+                    }
+
+                    await File.WriteAllBytesAsync(path, zipContent, ct);
+                    return DownloadResult.Succeeded(path, url);
+                });
+
+        var downloadTaskManager = new DownloadTaskManager(
+            _minecraftVersionServiceMock.Object,
+            _fileServiceMock.Object,
+            _loggerMock.Object,
+            downloadManagerMock.Object);
+
+        DownloadTaskInfo? finalTask = null;
+        downloadTaskManager.TaskStateChanged += (_, task) => finalTask = task;
+
+        var savesDir = Path.Combine(_tempDirectory, "saves");
+        var escapedFilePath = Path.Combine(_tempDirectory, "escaped.txt");
+
+        // Act
+        await downloadTaskManager.StartWorldDownloadAsync(
+            "Test World",
+            "https://example.com/world.zip",
+            savesDir,
+            "TestWorld.zip");
+
+        await Task.Delay(500);
+
+        // Assert
+        finalTask.Should().NotBeNull();
+        finalTask!.State.Should().Be(DownloadTaskState.Failed);
+        File.Exists(escapedFilePath).Should().BeFalse();
     }
 
     /// <summary>
