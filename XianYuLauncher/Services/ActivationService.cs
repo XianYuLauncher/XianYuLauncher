@@ -158,10 +158,9 @@ public class ActivationService : IActivationService
             else
             {
                 // 首次运行，根据地区自动选择
-                var region = System.Globalization.RegionInfo.CurrentRegion;
-                var culture = System.Globalization.CultureInfo.CurrentCulture;
+                var regionContext = SystemRegionHelper.GetCurrentRegionContext();
                 
-                if (region.Name == "CN" || culture.Name.StartsWith("zh-CN"))
+                if (regionContext.IsChinaMainland)
                 {
                     sourceKey = "bmclapi";
                 }
@@ -169,7 +168,7 @@ public class ActivationService : IActivationService
                 {
                     sourceKey = "official";
                 }
-                Serilog.Log.Information($"[ActivationService] 首次运行，根据地区自动选择: {sourceKey} (Region: {region.Name})");
+                Serilog.Log.Information("[ActivationService] 首次运行，根据地区自动选择: {SourceKey} (HomeGeographicRegion: {HomeGeographicRegion})", sourceKey, regionContext.HomeGeographicRegion);
             }
 
             // 检查下载源是否存在，如果不存在则回退到 official

@@ -1325,21 +1325,9 @@ public partial class VersionListViewModel : ObservableRecipient
     {
         try
         {
-            // 获取当前CultureInfo
-            var currentCulture = System.Globalization.CultureInfo.CurrentCulture;
-            var currentUICulture = System.Globalization.CultureInfo.CurrentUICulture;
-            
-            // 使用RegionInfo检测地区
-            var regionInfo = new System.Globalization.RegionInfo(currentCulture.Name);
-            bool isCN = regionInfo.TwoLetterISORegionName == "CN";
-            
-            // 添加Debug输出，显示详细信息
-            System.Diagnostics.Debug.WriteLine($"[地区检测-VersionList] 当前CultureInfo: {currentCulture.Name} ({currentCulture.DisplayName})");
-            System.Diagnostics.Debug.WriteLine($"[地区检测-VersionList] 当前RegionInfo: {regionInfo.Name} ({regionInfo.DisplayName})");
-            System.Diagnostics.Debug.WriteLine($"[地区检测-VersionList] 两字母ISO代码: {regionInfo.TwoLetterISORegionName}");
-            System.Diagnostics.Debug.WriteLine($"[地区检测-VersionList] 是否为中国大陆: {isCN}");
-            
-            return isCN;
+            var regionContext = SystemRegionHelper.GetCurrentRegionContext();
+            regionContext.WriteDebugDiagnostics("[地区检测-VersionList]");
+            return regionContext.IsChinaMainland;
         }
         catch (Exception ex)
         {

@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Services.DownloadSource;
 using XianYuLauncher.Helpers;
@@ -359,15 +359,7 @@ public sealed class DownloadSourceSettingsService : IDownloadSourceSettingsServi
 
     private static string ResolveDefaultByRegion(string cnDefault, string otherDefault)
     {
-        var region = RegionInfo.CurrentRegion;
-        var culture = CultureInfo.CurrentCulture;
-
-        if (region.Name == "CN" || culture.Name.StartsWith("zh-CN", StringComparison.OrdinalIgnoreCase))
-        {
-            return cnDefault;
-        }
-
-        return otherDefault;
+        return SystemRegionHelper.IsChinaMainland() ? cnDefault : otherDefault;
     }
 
     private async Task SaveWhenExistsAsync(string key, string selectedKey, List<DownloadSourceOption> sourcePool)

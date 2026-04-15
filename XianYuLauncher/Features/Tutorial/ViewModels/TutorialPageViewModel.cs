@@ -11,6 +11,7 @@ using Microsoft.UI.Xaml;
 using Microsoft.Win32;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.Accounts.ViewModels;
@@ -244,22 +245,9 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
         {
             try
             {
-                // 获取当前文化和UI文化信息
-                var currentCulture = System.Globalization.CultureInfo.CurrentCulture;
-                var currentUICulture = System.Globalization.CultureInfo.CurrentUICulture;
-                
-                // 使用RegionInfo检测地区
-                var regionInfo = new System.Globalization.RegionInfo(currentCulture.Name);
-                bool isCN = regionInfo.TwoLetterISORegionName == "CN";
-                
-                // 添加Debug输出，显示详细信息
-                System.Diagnostics.Debug.WriteLine($"[地区检测] 当前CultureInfo: {currentCulture.Name} ({currentCulture.DisplayName})");
-                System.Diagnostics.Debug.WriteLine($"[地区检测] 当前UICulture: {currentUICulture.Name} ({currentUICulture.DisplayName})");
-                System.Diagnostics.Debug.WriteLine($"[地区检测] 当前RegionInfo: {regionInfo.Name} ({regionInfo.DisplayName})");
-                System.Diagnostics.Debug.WriteLine($"[地区检测] 两字母ISO代码: {regionInfo.TwoLetterISORegionName}");
-                System.Diagnostics.Debug.WriteLine($"[地区检测] 是否为中国大陆: {isCN}");
-                
-                return isCN;
+                var regionContext = SystemRegionHelper.GetCurrentRegionContext();
+                regionContext.WriteDebugDiagnostics("[地区检测]");
+                return regionContext.IsChinaMainland;
             }
             catch (Exception ex)
             {

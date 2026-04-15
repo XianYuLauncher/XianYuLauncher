@@ -1250,18 +1250,9 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                // 获取当前CultureInfo
-                var currentCulture = System.Globalization.CultureInfo.CurrentCulture;
-                
-                // 使用RegionInfo检测地区
-                var regionInfo = new System.Globalization.RegionInfo(currentCulture.Name);
-                bool isCN = regionInfo.TwoLetterISORegionName == "CN";
-                
-                Debug.WriteLine($"[地区检测-CharacterPage] 当前CultureInfo: {currentCulture.Name}");
-                Debug.WriteLine($"[地区检测-CharacterPage] 两字母ISO代码: {regionInfo.TwoLetterISORegionName}");
-                Debug.WriteLine($"[地区检测-CharacterPage] 是否为中国大陆: {isCN}");
-                
-                return isCN;
+                var regionContext = SystemRegionHelper.GetCurrentRegionContext();
+                regionContext.WriteDebugDiagnostics("[地区检测-CharacterPage]");
+                return regionContext.IsChinaMainland;
             }
             catch (Exception ex)
             {
