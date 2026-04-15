@@ -102,6 +102,32 @@ function ConvertTo-MinimalApplicationPackages {
     return $minimalPackages
 }
 
+function Merge-ApplicationPackagesForReplacement {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]]$ExistingPackages,
+
+        [Parameter(Mandatory = $true)]
+        [object[]]$NewPackages
+    )
+
+    $mergedPackages = @()
+
+    foreach ($package in @($ExistingPackages)) {
+        if ($package.PSObject.Properties['fileStatus']) {
+            $package.fileStatus = 'PendingDelete'
+        }
+        else {
+            $package | Add-Member -MemberType NoteProperty -Name 'fileStatus' -Value 'PendingDelete'
+        }
+
+        $mergedPackages += $package
+    }
+
+    $mergedPackages += @($NewPackages)
+    return $mergedPackages
+}
+
 function Set-ListingReleaseNotes {
     param(
         [Parameter(Mandatory = $true)]
@@ -284,7 +310,16 @@ $clonedSubmission = New-ApplicationSubmission `
     -ExistingPackageRolloutAction $ExistingPackageRolloutAction `
     -NoStatus
 
-$clonedSubmission.applicationPackages = @(ConvertTo-MinimalApplicationPackages -Packages @($payload.applicationPackages))
+$newApplicationPackages = @(ConvertTo-MinimalApplicationPackages -Packages @($payload.applicationPackages))
+$existingPackageIdsToDelete = @(
+    foreach ($package in @($clonedSubmission.applicationPackages)) {
+        $packageId = [string]$package.id
+        if (-not [string]::IsNullOrWhiteSpace($packageId)) {
+            $packageId
+        }
+    }
+)
+$clonedSubmission.applicationPackages = @(Merge-ApplicationPackagesForReplacement -ExistingPackages @($clonedSubmission.applicationPackages) -NewPackages $newApplicationPackages)
 
 if ($TargetPublishMode -ne 'Default') {
     $clonedSubmission.targetPublishMode = $TargetPublishMode
@@ -328,7 +363,8 @@ $result = [ordered]@{
     status = [string]$statusResult.status
     timedOut = [bool]$statusResult.timedOut
     observedStatuses = @($statusResult.observedStatuses)
-    packageFiles = @($clonedSubmission.applicationPackages | ForEach-Object { [string]$_.fileName })
+    packageFiles = @($newApplicationPackages | ForEach-Object { [string]$_.fileName })
+    pendingDeletePackageIds = @($existingPackageIdsToDelete)
     releaseNoteLanguages = @($releaseNotes | ForEach-Object { [string]$_.language })
     portalUrl = $portalUrl
     submittedAtUtc = (Get-Date).ToUniversalTime().ToString('o')
