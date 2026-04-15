@@ -2281,25 +2281,43 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
             _loggerMock.Object,
             downloadManagerMock.Object);
 
-        DownloadTaskInfo? finalTask = null;
-        downloadTaskManager.TaskStateChanged += (_, task) => finalTask = task;
-
         var savesDir = Path.Combine(_tempDirectory, "saves");
         var escapedFilePath = Path.Combine(_tempDirectory, "escaped.txt");
+        var stateReached = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-        // Act
-        await downloadTaskManager.StartWorldDownloadAsync(
-            "Test World",
-            "https://example.com/world.zip",
-            savesDir,
-            "TestWorld.zip");
+        void OnTaskStateChanged(object? _, DownloadTaskInfo task)
+        {
+            if (task.TaskName == "Test World"
+                && task.State is DownloadTaskState.Failed or DownloadTaskState.Completed or DownloadTaskState.Cancelled)
+            {
+                stateReached.TrySetResult(task);
+            }
+        }
 
-        await Task.Delay(500);
+        downloadTaskManager.TaskStateChanged += OnTaskStateChanged;
 
-        // Assert
-        finalTask.Should().NotBeNull();
-        finalTask!.State.Should().Be(DownloadTaskState.Failed);
-        File.Exists(escapedFilePath).Should().BeFalse();
+        try
+        {
+            // Act
+            await downloadTaskManager.StartWorldDownloadAsync(
+                "Test World",
+                "https://example.com/world.zip",
+                savesDir,
+                "TestWorld.zip");
+
+            var completedTask = await Task.WhenAny(stateReached.Task, Task.Delay(TimeSpan.FromSeconds(5)));
+
+            // Assert
+            completedTask.Should().Be(stateReached.Task, "应在超时时间内收到任务终态事件");
+
+            var finalTask = await stateReached.Task;
+            finalTask.State.Should().Be(DownloadTaskState.Failed);
+            File.Exists(escapedFilePath).Should().BeFalse();
+        }
+        finally
+        {
+            downloadTaskManager.TaskStateChanged -= OnTaskStateChanged;
+        }
     }
 
     /// <summary>
