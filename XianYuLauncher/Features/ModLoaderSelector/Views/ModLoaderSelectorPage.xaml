@@ -32,8 +32,49 @@
             <Setter Property="Margin" Value="0,2,0,2" />
         </Style>
 
+        <Style x:Key="ProminentBreadcrumbTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="28" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
         <DataTemplate x:Key="NavigationBreadcrumbItemTemplate" x:DataType="shared:NavigationBreadcrumbItem">
-            <TextBlock Text="{x:Bind DisplayText}" />
+            <Grid>
+                <TextBlock Text="{x:Bind DisplayText, Mode=OneWay}"
+                           Style="{StaticResource ProminentBreadcrumbTextStyle}"
+                           Visibility="{x:Bind CanShowInlineAction, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+
+                <DropDownButton Padding="12,8"
+                                FontSize="28"
+                                FontWeight="SemiBold"
+                                VerticalAlignment="Center"
+                                CornerRadius="4"
+                                BorderThickness="0"
+                                Background="Transparent"
+                                Visibility="{x:Bind CanShowInlineAction, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <DropDownButton.Content>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <Image Source="{x:Bind IconPath, Mode=OneWay, Converter={StaticResource PathToImageSourceConverter}}"
+                                   Width="20"
+                                   Height="20"
+                                   Stretch="UniformToFill"
+                                   VerticalAlignment="Center" />
+                            <TextBlock Text="{x:Bind DisplayText, Mode=OneWay}"
+                                       Style="{StaticResource ProminentBreadcrumbTextStyle}"
+                                       Margin="0,0,4,0" />
+                        </StackPanel>
+                    </DropDownButton.Content>
+                    <DropDownButton.Flyout>
+                        <Flyout Placement="BottomEdgeAlignedLeft">
+                            <controls:VersionIconPickerFlyoutContent
+                                AvailableIcons="{x:Bind AvailableIcons, Mode=OneWay}"
+                                BuiltInIconSelected="VersionIconPicker_BuiltInIconSelected"
+                                CustomIconRequested="VersionIconPicker_CustomIconRequested" />
+                        </Flyout>
+                    </DropDownButton.Flyout>
+                </DropDownButton>
+            </Grid>
         </DataTemplate>
     </Page.Resources>
 
@@ -57,37 +98,12 @@
             Title="{x:Bind ViewModel.HeaderMetadata.Title, Mode=OneWay}"
             Subtitle="{x:Bind ViewModel.HeaderMetadata.Subtitle, Mode=OneWay}"
             ShowBreadcrumb="{x:Bind ViewModel.HeaderMetadata.ShowBreadcrumb, Mode=OneWay}"
+            ShowPrimaryHeading="False"
+            BreadcrumbFontSize="28"
+            BreadcrumbMargin="-2,-11,0,12"
             BreadcrumbItems="{x:Bind ViewModel.HeaderMetadata.BreadcrumbItems, Mode=OneWay}"
             BreadcrumbItemTemplate="{StaticResource NavigationBreadcrumbItemTemplate}"
-            BreadcrumbItemClicked="PageHeader_BreadcrumbItemClicked">
-            <controls:PageHeader.HeaderSupplementalContent>
-                <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                    <TextBlock x:Uid="ModLoaderSelectionPage_CurrentVersionText" Text="当前版本:" Style="{StaticResource BodyTextStyle}" Opacity="0.7" VerticalAlignment="Center" Margin="0,0,0,2" />
-
-                    <DropDownButton Padding="8,4" VerticalAlignment="Center" CornerRadius="4" BorderThickness="0" Background="Transparent" Margin="-8,0,0,0">
-                        <DropDownButton.Content>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <Image
-                                    Source="{x:Bind ViewModel.SelectedIconPath, Mode=OneWay, Converter={StaticResource PathToImageSourceConverter}}"
-                                    Width="16" Height="16" Stretch="UniformToFill" VerticalAlignment="Center" />
-                                <TextBlock
-                                    Text="{x:Bind ViewModel.SelectedVersionDisplayText, Mode=OneWay}"
-                                    Style="{StaticResource BodyStrongTextBlockStyle}"
-                                    VerticalAlignment="Center" Margin="0,0,4,0" />
-                            </StackPanel>
-                        </DropDownButton.Content>
-                        <DropDownButton.Flyout>
-                            <Flyout Placement="BottomEdgeAlignedLeft">
-                                <controls:VersionIconPickerFlyoutContent
-                                    AvailableIcons="{x:Bind ViewModel.AvailableIcons, Mode=OneWay}"
-                                    BuiltInIconSelected="VersionIconPicker_BuiltInIconSelected"
-                                    CustomIconRequested="VersionIconPicker_CustomIconRequested" />
-                            </Flyout>
-                        </DropDownButton.Flyout>
-                    </DropDownButton>
-                </StackPanel>
-            </controls:PageHeader.HeaderSupplementalContent>
-        </controls:PageHeader>
+            BreadcrumbItemClicked="PageHeader_BreadcrumbItemClicked" />
 
         <featureControls:ModLoaderSelectorContentView
             Grid.Row="1"

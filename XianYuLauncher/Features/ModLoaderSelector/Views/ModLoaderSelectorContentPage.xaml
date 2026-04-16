@@ -12,6 +12,6 @@
     <Grid x:Name="ContentArea" mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
         <controls:ModLoaderSelectorContentView Margin="24,0,24,24"
                                                ViewModel="{x:Bind ViewModel}"
-                                               ShowVersionSelector="True" />
+                                               ShowVersionSelector="False" />
     </Grid>
 </Page>

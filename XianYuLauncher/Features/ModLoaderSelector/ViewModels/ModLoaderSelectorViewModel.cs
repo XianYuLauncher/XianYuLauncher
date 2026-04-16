@@ -516,14 +516,9 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
 
     private static object? CreateReturnNavigationParameter(string returnTabKey)
     {
-        if (string.IsNullOrWhiteSpace(returnTabKey))
-        {
-            return null;
-        }
-
         return new Dictionary<string, string>
         {
-            ["tab"] = returnTabKey,
+            ["tab"] = string.IsNullOrWhiteSpace(returnTabKey) ? "version" : returnTabKey,
         };
     }
 

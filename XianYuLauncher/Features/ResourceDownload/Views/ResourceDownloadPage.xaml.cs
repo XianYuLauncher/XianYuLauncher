@@ -22,6 +22,8 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using CommunityToolkit.Labs.WinUI;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
 
 namespace XianYuLauncher.Features.ResourceDownload.Views;
 
@@ -315,6 +317,47 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
         if (args.Item is NavigationBreadcrumbItem breadcrumbItem)
         {
             GetActiveModLoaderSelectorPage()?.ViewModel.NavigateBreadcrumb(breadcrumbItem);
+        }
+    }
+
+    private async void VersionIconPicker_CustomIconRequested(object? sender, EventArgs e)
+    {
+        var modLoaderPage = GetActiveModLoaderSelectorPage();
+        if (modLoaderPage is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var picker = new FileOpenPicker();
+            picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
+            picker.FileTypeFilter.Add(".png");
+            picker.FileTypeFilter.Add(".jpg");
+            picker.FileTypeFilter.Add(".jpeg");
+            picker.FileTypeFilter.Add(".bmp");
+            picker.FileTypeFilter.Add(".ico");
+
+            var hwnd = WindowNative.GetWindowHandle(App.MainWindow);
+            InitializeWithWindow.Initialize(picker, hwnd);
+
+            var file = await picker.PickSingleFileAsync();
+            if (file != null)
+            {
+                modLoaderPage.ViewModel.SetCustomIcon(file.Path);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ResourceDownloadPage] 自定义图标选择失败: {ex.Message}");
+        }
+    }
+
+    private void VersionIconPicker_BuiltInIconSelected(object? sender, VersionIconSelectedEventArgs e)
+    {
+        if (e.IconOption != null)
+        {
+            GetActiveModLoaderSelectorPage()?.ViewModel.SelectBuiltInIconCommand.Execute(e.IconOption);
         }
     }
 
