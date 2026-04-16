@@ -6,9 +6,12 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Helpers;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.DownloadQueue.ViewModels;
 
@@ -199,8 +202,12 @@ public partial class DownloadQueueTaskGroupViewModel : ObservableObject
     }
 }
 
-public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
+public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable, IPageHeaderAware
 {
+    public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+    public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
+
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IDownloadTaskPresentationService _downloadTaskPresentationService;
     private readonly IUiDispatcher _uiDispatcher;
@@ -247,6 +254,8 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable
         _downloadTaskManager = downloadTaskManager;
         _downloadTaskPresentationService = downloadTaskPresentationService;
         _uiDispatcher = uiDispatcher;
+        HeaderMetadata.Title = "DownloadQueuePage_HeaderTitle".GetLocalized();
+        HeaderMetadata.Subtitle = "DownloadQueuePage_HeaderSubtitle".GetLocalized();
         _downloadTaskManager.TasksSnapshotChanged += DownloadTaskManager_TasksSnapshotChanged;
         RefreshFromSnapshot();
     }

@@ -4,40 +4,39 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:mediaAnimation="using:Microsoft.UI.Xaml.Media.Animation"
+    xmlns:localControls="using:XianYuLauncher.Controls"
     xmlns:viewModels="using:XianYuLauncher.Features.Multiplayer.ViewModels"
     mc:Ignorable="d">
 
-    <Grid x:Name="ContentArea" Padding="{StaticResource PageContentPadding}">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="100*" MaxWidth="1064" />
-            <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-        <!-- 三列居中布局：中间列最大宽度 1064，窄窗口填满，宽窗口内容居中且不被拉得过宽 -->
-        <Grid Grid.Column="1" VerticalAlignment="Stretch">
+    <Grid x:Name="ContentArea"
+          mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <localControls:PageHeader
+            Grid.Row="0"
+            Title="{x:Bind ViewModel.HeaderMetadata.Title, Mode=OneWay}"
+            Subtitle="{x:Bind ViewModel.HeaderMetadata.Subtitle, Mode=OneWay}" />
+
+        <Grid Grid.Row="1" Margin="24,0,24,24">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <!-- 三列居中布局：中间列最大宽度 1064，窄窗口填满，宽窗口内容居中且不被拉得过宽 -->
+            <Grid Grid.Column="1" VerticalAlignment="Stretch">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-        <!-- 页面标题 -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock
-                x:Uid="联机Page_Title"
-                Text="Terracotta 陶瓦联机"
-                Style="{ThemeResource TitleTextBlockStyle}" />
-            <TextBlock
-                x:Uid="联机Page_Subtitle"
-                Text="选择房主/房客"
-                Style="{ThemeResource BodyTextBlockStyle}" 
-                Margin="0,8,0,0" 
-                Opacity="0.7"/>
-        </StackPanel>
-
         <!-- 警告InfoBar -->
         <InfoBar
-            Grid.Row="1"
+            Grid.Row="0"
             IsOpen="True"
             IsClosable="True"
             Margin="0,0,0,30"
@@ -49,7 +48,7 @@
         <!-- 卡片区域 -->
         <Grid
             x:Name="ActionCardsGrid"
-            Grid.Row="2"
+            Grid.Row="1"
             HorizontalAlignment="Stretch"
             VerticalAlignment="Top"
             Margin="0,10,0,0"
@@ -139,6 +138,7 @@
                     </Border>
                 </Grid>
             </Button>
+        </Grid>
         </Grid>
         </Grid>
     </Grid>

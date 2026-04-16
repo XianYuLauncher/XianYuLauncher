@@ -156,6 +156,12 @@
   <data name="DownloadQueuePage_Subtitle.Text" xml:space="preserve">
     <value>Current downloads and queued tasks will appear here.</value>
   </data>
+  <data name="DownloadQueuePage_HeaderTitle" xml:space="preserve">
+    <value>Download Queue</value>
+  </data>
+  <data name="DownloadQueuePage_HeaderSubtitle" xml:space="preserve">
+    <value>Current downloads and queued tasks will appear here.</value>
+  </data>
   <data name="DownloadQueuePage_SummaryRunning.Text" xml:space="preserve">
     <value>Active</value>
   </data>
@@ -825,6 +831,12 @@
   <data name="联机Page_Subtitle.Text" xml:space="preserve">
     <value>Choose Host/Guest</value>
   </data>
+  <data name="联机Page_HeaderTitle" xml:space="preserve">
+    <value>Terracotta | 陶瓦联机</value>
+  </data>
+  <data name="联机Page_HeaderSubtitle" xml:space="preserve">
+    <value>Choose Host/Guest</value>
+  </data>
   <data name="联机Page_WarningTitle.Text" xml:space="preserve">
     <value>Warning</value>
   </data>
@@ -1463,6 +1475,12 @@ Continue downloading?</value>
     <value>Version List</value>
   </data>
   <data name="VersionListPage_Subtitle.Text" xml:space="preserve">
+    <value>Manage installed Minecraft versions</value>
+  </data>
+  <data name="VersionListPage_HeaderTitle" xml:space="preserve">
+    <value>Version List</value>
+  </data>
+  <data name="VersionListPage_HeaderSubtitle" xml:space="preserve">
     <value>Manage installed Minecraft versions</value>
   </data>
   <data name="VersionListPage_RefreshButton.Content" xml:space="preserve">
@@ -2915,6 +2933,12 @@ Continue downloading?</value>
     <value>Launcher AI</value>
   </data>
   <data name="LauncherAIPage_Subtitle.Text" xml:space="preserve">
+    <value>Talk to the launcher agent to handle launches, versions, mods, and troubleshooting tasks.</value>
+  </data>
+  <data name="LauncherAIPage_HeaderTitle" xml:space="preserve">
+    <value>Launcher AI</value>
+  </data>
+  <data name="LauncherAIPage_HeaderSubtitle" xml:space="preserve">
     <value>Talk to the launcher agent to handle launches, versions, mods, and troubleshooting tasks.</value>
   </data>
   <data name="LauncherAIPage_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">

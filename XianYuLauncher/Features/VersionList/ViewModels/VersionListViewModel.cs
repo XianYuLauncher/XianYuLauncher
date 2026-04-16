@@ -8,6 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using XianYuLauncher.Contracts.ViewModels;
 using Windows.Storage;
 using Windows.Storage.Pickers;
 using Windows.System;
@@ -22,11 +23,16 @@ using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.VersionManagement.ViewModels;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.VersionList.ViewModels;
 
-public partial class VersionListViewModel : ObservableRecipient
+public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAware
 {
+    public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+    public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.ControlStrip;
+
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IFileService _fileService;
     private readonly Core.Services.ModrinthService _modrinthService;
@@ -195,6 +201,8 @@ public partial class VersionListViewModel : ObservableRecipient
         _profileDialogService = profileDialogService;
         _profileManager = profileManager;
         _uiDispatcher = uiDispatcher;
+        HeaderMetadata.Title = "VersionListPage_HeaderTitle".GetLocalized();
+        HeaderMetadata.Subtitle = "VersionListPage_HeaderSubtitle".GetLocalized();
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;

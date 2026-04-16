@@ -156,6 +156,12 @@
   <data name="DownloadQueuePage_Subtitle.Text" xml:space="preserve">
     <value>当前下载任务和排队任务将在这里显示</value>
   </data>
+  <data name="DownloadQueuePage_HeaderTitle" xml:space="preserve">
+    <value>下载队列</value>
+  </data>
+  <data name="DownloadQueuePage_HeaderSubtitle" xml:space="preserve">
+    <value>当前下载任务和排队任务将在这里显示</value>
+  </data>
   <data name="DownloadQueuePage_SummaryRunning.Text" xml:space="preserve">
     <value>运行中</value>
   </data>
@@ -825,6 +831,12 @@
   <data name="联机Page_Subtitle.Text" xml:space="preserve">
     <value>选择房主/房客</value>
   </data>
+  <data name="联机Page_HeaderTitle" xml:space="preserve">
+    <value>Terracotta 陶瓦联机</value>
+  </data>
+  <data name="联机Page_HeaderSubtitle" xml:space="preserve">
+    <value>选择房主/房客</value>
+  </data>
   <data name="联机Page_WarningTitle.Text" xml:space="preserve">
     <value>警告</value>
   </data>
@@ -1463,6 +1475,12 @@
     <value>版本列表</value>
   </data>
   <data name="VersionListPage_Subtitle.Text" xml:space="preserve">
+    <value>管理已安装的 Minecraft 版本</value>
+  </data>
+  <data name="VersionListPage_HeaderTitle" xml:space="preserve">
+    <value>版本列表</value>
+  </data>
+  <data name="VersionListPage_HeaderSubtitle" xml:space="preserve">
     <value>管理已安装的 Minecraft 版本</value>
   </data>
   <data name="VersionListPage_RefreshButton.Content" xml:space="preserve">
@@ -2912,6 +2930,12 @@
     <value>Launcher AI</value>
   </data>
   <data name="LauncherAIPage_Subtitle.Text" xml:space="preserve">
+    <value>与启动器 Agent 对话，处理启动、版本、模组和排障任务</value>
+  </data>
+  <data name="LauncherAIPage_HeaderTitle" xml:space="preserve">
+    <value>Launcher AI</value>
+  </data>
+  <data name="LauncherAIPage_HeaderSubtitle" xml:space="preserve">
     <value>与启动器 Agent 对话，处理启动、版本、模组和排障任务</value>
   </data>
   <data name="LauncherAIPage_PopOutButton.ToolTipService.ToolTip" xml:space="preserve">

@@ -19,6 +19,8 @@ namespace XianYuLauncher.Features.VersionList.Views;
 
 public sealed partial class VersionListPage : Page
 {
+    public VersionListViewModel ViewModel { get; }
+
     private readonly INavigationService _navigationService;
     private readonly ICommonDialogService _dialogService;
     private readonly IProgressDialogService _progressDialogService;
@@ -96,7 +98,8 @@ public sealed partial class VersionListPage : Page
 
     public VersionListPage()
     {
-        this.DataContext = App.GetService<VersionListViewModel>();
+        ViewModel = App.GetService<VersionListViewModel>();
+        DataContext = ViewModel;
         _navigationService = App.GetService<INavigationService>();
         _dialogService = App.GetService<ICommonDialogService>();
         _progressDialogService = App.GetService<IProgressDialogService>();

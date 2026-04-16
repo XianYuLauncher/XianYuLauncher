@@ -5,7 +5,9 @@
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:helpers="using:XianYuLauncher.Helpers"
+    xmlns:mediaAnimation="using:Microsoft.UI.Xaml.Media.Animation"
     xmlns:vm="using:XianYuLauncher.Features.VersionList.ViewModels"
+    xmlns:localControls="using:XianYuLauncher.Controls"
     mc:Ignorable="d">
     <Page.Resources>
         <!-- 简化的CheckBox样式，精确控制点击区域 -->
@@ -117,94 +119,76 @@
         </DataTemplate>
     </Page.Resources>
 
-    <Grid x:Name="ContentArea" Padding="{StaticResource PageContentPadding}">
+    <Grid x:Name="ContentArea"
+          mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 标题区域 - 居中块(最大1064) + 块内文字居左 -->
-        <Grid Grid.Row="0" HorizontalAlignment="Stretch">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="100*" MaxWidth="1064" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="1" HorizontalAlignment="Stretch" Margin="0,0,0,20">
-            <TextBlock x:Uid="VersionListPage_Title" Style="{ThemeResource TitleTextBlockStyle}" />
-            <TextBlock x:Uid="VersionListPage_Subtitle" Style="{StaticResource BodyTextStyle}" Margin="0,8,0,0" Opacity="0.7" />
-            </StackPanel>
-        </Grid>
+        <localControls:PageHeader
+            Grid.Row="0"
+            Title="{x:Bind ViewModel.HeaderMetadata.Title, Mode=OneWay}"
+            Subtitle="{x:Bind ViewModel.HeaderMetadata.Subtitle, Mode=OneWay}">
+            <localControls:PageHeader.HeaderSupplementalContent>
+                <Grid Margin="0,12,0,4" HorizontalAlignment="Stretch">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
 
-        <!-- 控制区域 - 居中块(最大1064) + 块内居左 -->
-        <Grid Grid.Row="1" Margin="0,0,0,24" HorizontalAlignment="Stretch">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="100*" MaxWidth="1064" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <Grid Grid.Column="1" HorizontalAlignment="Stretch">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            
-            <!-- 搜索框 -->
-            <AutoSuggestBox
-                x:Uid="VersionListPage_SearchBox"
-                QueryIcon="Find"
-                PlaceholderText="搜索版本..."
-                Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                IsEnabled="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
-                VerticalAlignment="Center" />
+                    <AutoSuggestBox
+                        x:Uid="VersionListPage_SearchBox"
+                        QueryIcon="Find"
+                        PlaceholderText="搜索版本..."
+                        Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        IsEnabled="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
+                        VerticalAlignment="Center" />
 
-            <!-- 加载器筛选 -->
-            <ComboBox
-                Grid.Column="1"
-                x:Uid="VersionListPage_LoaderFilter"
-                Margin="8,0,0,0"
-                SelectedValue="{Binding SelectedLoaderFilter, Mode=TwoWay}"
-                SelectedValuePath="Tag"
-                IsEnabled="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
-                VerticalAlignment="Center">
-                <ComboBoxItem x:Uid="VersionListPage_AllLoaders" Content="全部" Tag="all" IsSelected="True" />
-                <ComboBoxItem Content="Release" Tag="Release" />
-                <ComboBoxItem Content="Forge" Tag="Forge" />
-                <ComboBoxItem Content="Fabric" Tag="Fabric" />
-                <ComboBoxItem Content="NeoForge" Tag="NeoForge" />
-                <ComboBoxItem Content="Quilt" Tag="Quilt" />
-                <ComboBoxItem Content="OptiFine" Tag="OptiFine" />
-                <ComboBoxItem Content="LiteLoader" Tag="LiteLoader" />
-                <ComboBoxItem Content="LegacyFabric" Tag="LegacyFabric" />
-            </ComboBox>
-            
-            <!-- 导入整合包按钮 -->
-            <Button 
-                Grid.Column="2"
-                x:Uid="VersionListPage_ImportModpackButton"
-                Content="导入整合包"
-                Command="{Binding ImportModpackCommand}"
-                IsEnabled="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
-                Style="{StaticResource DefaultButtonStyle}"
-                HorizontalAlignment="Right"
-                Margin="8,0,8,0" />            
-            
-            <!-- 刷新按钮 -->
-            <Button 
-                Grid.Column="3"
-                x:Uid="VersionListPage_RefreshButton"
-                Command="{Binding LoadVersionsCommand}"
-                IsEnabled="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
-                Style="{StaticResource DefaultButtonStyle}"
-                HorizontalAlignment="Right" />
-            </Grid>
-        </Grid>
+                    <ComboBox
+                        Grid.Column="1"
+                        x:Uid="VersionListPage_LoaderFilter"
+                        Margin="8,0,0,0"
+                        SelectedValue="{Binding SelectedLoaderFilter, Mode=TwoWay}"
+                        SelectedValuePath="Tag"
+                        IsEnabled="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
+                        VerticalAlignment="Center">
+                        <ComboBoxItem x:Uid="VersionListPage_AllLoaders" Content="全部" Tag="all" IsSelected="True" />
+                        <ComboBoxItem Content="Release" Tag="Release" />
+                        <ComboBoxItem Content="Forge" Tag="Forge" />
+                        <ComboBoxItem Content="Fabric" Tag="Fabric" />
+                        <ComboBoxItem Content="NeoForge" Tag="NeoForge" />
+                        <ComboBoxItem Content="Quilt" Tag="Quilt" />
+                        <ComboBoxItem Content="OptiFine" Tag="OptiFine" />
+                        <ComboBoxItem Content="LiteLoader" Tag="LiteLoader" />
+                        <ComboBoxItem Content="LegacyFabric" Tag="LegacyFabric" />
+                    </ComboBox>
+
+                    <Button 
+                        Grid.Column="2"
+                        x:Uid="VersionListPage_ImportModpackButton"
+                        Content="导入整合包"
+                        Command="{Binding ImportModpackCommand}"
+                        IsEnabled="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
+                        Style="{StaticResource DefaultButtonStyle}"
+                        HorizontalAlignment="Right"
+                        Margin="8,0,8,0" />
+
+                    <Button 
+                        Grid.Column="3"
+                        x:Uid="VersionListPage_RefreshButton"
+                        Command="{Binding LoadVersionsCommand}"
+                        IsEnabled="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolNegationConverter}}"
+                        Style="{StaticResource DefaultButtonStyle}"
+                        HorizontalAlignment="Right" />
+                </Grid>
+            </localControls:PageHeader.HeaderSupplementalContent>
+        </localControls:PageHeader>
 
         <!-- 版本列表 - 居中块(最大1064)，ListView 宽度受限，焦点框与卡片一致；无外层 ScrollViewer 以支持虚拟化 -->
-        <Grid Grid.Row="2" HorizontalAlignment="Stretch">
+        <Grid Grid.Row="1" Margin="24,0,24,24" HorizontalAlignment="Stretch">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="100*" MaxWidth="1064" />
