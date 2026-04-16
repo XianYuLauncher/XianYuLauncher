@@ -8,8 +8,11 @@ using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Features.ModLoaderSelector.Models;
+using XianYuLauncher.Features.ResourceDownload.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
+using XianYuLauncher.Shared.Models;
 using System.IO;
 
 namespace XianYuLauncher.Features.ModLoaderSelector.ViewModels;
@@ -23,8 +26,11 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     private readonly IModLoaderVersionLoaderService _versionLoaderService;
     private readonly IModLoaderVersionNameService _versionNameService;
     private readonly IModLoaderIconPresentationService _modLoaderIconPresentationService;
+    private ModLoaderSelectorNavigationParameter _navigationParameter = CreateDefaultNavigationParameter();
     private bool _isIconManuallySelected;
     private string? _lastSelectedLoaderName;
+
+    public PageHeaderMetadata HeaderMetadata { get; } = new();
 
     [ObservableProperty]
     private ObservableCollection<VersionIconOption> _availableIcons = new();
@@ -145,6 +151,16 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         UpdateVersionName();
     }
 
+    partial void OnSelectedIconPathChanged(string value)
+    {
+        RefreshCurrentBreadcrumbItem();
+    }
+
+    partial void OnSelectedVersionDisplayTextChanged(string value)
+    {
+        RefreshCurrentBreadcrumbItem();
+    }
+
     // 计算属性：当前选中的ModLoader名称
     public string? SelectedModLoader => SelectedModLoaderItem?.Name;
 
@@ -213,6 +229,9 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         _modLoaderIconPresentationService = App.GetService<IModLoaderIconPresentationService>();
         _uiDispatcher = App.GetService<IUiDispatcher>();
         SelectedIconPath = _modLoaderIconPresentationService.DefaultVersionIconPath;
+        HeaderMetadata.Title = "ModLoaderSelectionPage_TitleText.Text".GetLocalized();
+        HeaderMetadata.Subtitle = string.Empty;
+        HeaderMetadata.ShowBreadcrumb = true;
     }
     
     /// <summary>
@@ -309,19 +328,64 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
 
     public void OnNavigatedTo(object parameter)
     {
-        if (parameter is string version)
+        ModLoaderSelectorNavigationParameter navigationParameter = parameter switch
+        {
+            ModLoaderSelectorNavigationParameter typedParameter => NormalizeNavigationParameter(typedParameter),
+            string version when !string.IsNullOrWhiteSpace(version) => CreateNavigationParameter(version),
+            _ => CreateDefaultNavigationParameter(),
+        };
+
+        if (!string.IsNullOrWhiteSpace(navigationParameter.VersionId))
         {
             _isIconManuallySelected = false;
             _lastSelectedLoaderName = null;
+            _navigationParameter = navigationParameter;
 
-            SelectedMinecraftVersion = version;
+            SelectedMinecraftVersion = navigationParameter.VersionId;
             SelectedVersionDisplayText = SelectedMinecraftVersion;
             VersionName = SelectedMinecraftVersion; // 初始化版本名称
             SelectedIconPath = _modLoaderIconPresentationService.DefaultVersionIconPath;
             InitializeBuiltInIcons();
+            RebuildHeaderMetadata();
 
             LoadModLoaders();
         }
+    }
+
+    public bool NavigateBreadcrumb(NavigationBreadcrumbItem? breadcrumbItem)
+    {
+        if (breadcrumbItem is null || !breadcrumbItem.CanNavigate || string.IsNullOrWhiteSpace(breadcrumbItem.PageKey))
+        {
+            return false;
+        }
+
+        if (TryGoBackToReturnTarget(breadcrumbItem))
+        {
+            return true;
+        }
+
+        return _navigationService.NavigateTo(breadcrumbItem.PageKey, breadcrumbItem.NavigationParameter);
+    }
+
+    private bool TryGoBackToReturnTarget(NavigationBreadcrumbItem breadcrumbItem)
+    {
+        var returnTarget = HeaderMetadata.ReturnTarget;
+        if (returnTarget is null)
+        {
+            return false;
+        }
+
+        if (!string.Equals(returnTarget.PageKey, breadcrumbItem.PageKey, StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (_navigationService.CanGoBack)
+        {
+            return _navigationService.GoBack();
+        }
+
+        return _navigationService.NavigateTo(returnTarget.PageKey, returnTarget.Parameter);
     }
 
     [RelayCommand]
@@ -360,6 +424,101 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         {
             SelectedIconPath = _modLoaderIconPresentationService.DefaultVersionIconPath;
         }
+    }
+
+    private void RebuildHeaderMetadata()
+    {
+        HeaderMetadata.ReturnTarget = CreateReturnTarget(_navigationParameter);
+        HeaderMetadata.BreadcrumbItems.Clear();
+        HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+        {
+            DisplayText = _navigationParameter.BreadcrumbRootLabel,
+            PageKey = _navigationParameter.ReturnPageKey,
+            NavigationParameter = CreateReturnNavigationParameter(_navigationParameter.ReturnTabKey),
+        });
+        HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+        {
+            DisplayText = GetCurrentBreadcrumbDisplayText(),
+            IconPath = SelectedIconPath,
+            AvailableIcons = AvailableIcons,
+            IsCurrent = true,
+            IsInteractiveCurrent = true,
+        });
+    }
+
+    private void RefreshCurrentBreadcrumbItem()
+    {
+        if (HeaderMetadata.BreadcrumbItems.Count < 2)
+        {
+            return;
+        }
+
+        HeaderMetadata.BreadcrumbItems[1].DisplayText = GetCurrentBreadcrumbDisplayText();
+        HeaderMetadata.BreadcrumbItems[1].IconPath = SelectedIconPath;
+        HeaderMetadata.BreadcrumbItems[1].AvailableIcons = AvailableIcons;
+    }
+
+    private string GetCurrentBreadcrumbDisplayText()
+    {
+        return string.IsNullOrWhiteSpace(SelectedVersionDisplayText)
+            ? SelectedMinecraftVersion
+            : SelectedVersionDisplayText;
+    }
+
+    private static ModLoaderSelectorNavigationParameter CreateDefaultNavigationParameter()
+    {
+        return new ModLoaderSelectorNavigationParameter();
+    }
+
+    private static ModLoaderSelectorNavigationParameter CreateNavigationParameter(string versionId)
+    {
+        return new ModLoaderSelectorNavigationParameter
+        {
+            VersionId = versionId,
+            BreadcrumbRootLabel = "ResourceDownloadPage_HeaderTitle".GetLocalized(),
+            ReturnPageKey = typeof(ResourceDownloadViewModel).FullName!,
+            ReturnTabKey = "version",
+        };
+    }
+
+    private static ModLoaderSelectorNavigationParameter NormalizeNavigationParameter(ModLoaderSelectorNavigationParameter navigationParameter)
+    {
+        return new ModLoaderSelectorNavigationParameter
+        {
+            VersionId = navigationParameter.VersionId,
+            BreadcrumbRootLabel = string.IsNullOrWhiteSpace(navigationParameter.BreadcrumbRootLabel)
+                ? "ResourceDownloadPage_HeaderTitle".GetLocalized()
+                : navigationParameter.BreadcrumbRootLabel,
+            ReturnPageKey = string.IsNullOrWhiteSpace(navigationParameter.ReturnPageKey)
+                ? typeof(ResourceDownloadViewModel).FullName!
+                : navigationParameter.ReturnPageKey,
+            ReturnTabKey = string.IsNullOrWhiteSpace(navigationParameter.ReturnTabKey)
+                ? "version"
+                : navigationParameter.ReturnTabKey,
+            CloseHandler = navigationParameter.CloseHandler,
+        };
+    }
+
+    private static PageNavigationTarget CreateReturnTarget(ModLoaderSelectorNavigationParameter navigationParameter)
+    {
+        return new PageNavigationTarget
+        {
+            PageKey = navigationParameter.ReturnPageKey,
+            Parameter = CreateReturnNavigationParameter(navigationParameter.ReturnTabKey),
+        };
+    }
+
+    private static object? CreateReturnNavigationParameter(string returnTabKey)
+    {
+        if (string.IsNullOrWhiteSpace(returnTabKey))
+        {
+            return null;
+        }
+
+        return new Dictionary<string, string>
+        {
+            ["tab"] = returnTabKey,
+        };
     }
 
     private void LoadModLoaders()

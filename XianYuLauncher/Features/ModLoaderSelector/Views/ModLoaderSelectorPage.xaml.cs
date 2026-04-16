@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.Controls;
+using XianYuLauncher.Shared.Models;
 using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
 using XianYuLauncher.Models;
 using Windows.Storage.Pickers;
@@ -70,6 +71,14 @@ public sealed partial class ModLoaderSelectorPage : Page
         if (e.IconOption != null)
         {
             ViewModel.SelectBuiltInIconCommand.Execute(e.IconOption);
+        }
+    }
+
+    private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
+    {
+        if (args.Item is NavigationBreadcrumbItem breadcrumbItem)
+        {
+            ViewModel.NavigateBreadcrumb(breadcrumbItem);
         }
     }
     

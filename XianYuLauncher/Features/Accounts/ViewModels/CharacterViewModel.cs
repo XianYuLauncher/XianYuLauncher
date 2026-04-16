@@ -8,19 +8,21 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.Accounts.ViewModels
 {
     /// <summary>
     /// 角色管理页面的ViewModel
     /// </summary>
-    public partial class CharacterViewModel : ObservableObject
+    public partial class CharacterViewModel : ObservableObject, IPageHeaderAware
     {
         private readonly MicrosoftAuthService _microsoftAuthService;
         private readonly IFileService _fileService;
@@ -91,6 +93,10 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         [ObservableProperty]
         private bool _isProfilesEmpty;
 
+        public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+        public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
+
 
 
         /// <summary>
@@ -110,6 +116,8 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             _profileManager = profileManager;
             _dialogService = dialogService;
             _profileDialogService = profileDialogService;
+            HeaderMetadata.Title = "ProfilePage_HeaderTitle".GetLocalized();
+            HeaderMetadata.Subtitle = "ProfilePage_HeaderSubtitle".GetLocalized();
             
             // 手动注册CollectionChanged事件
             Profiles.CollectionChanged += Profiles_CollectionChanged;

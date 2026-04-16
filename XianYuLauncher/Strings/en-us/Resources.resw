@@ -945,6 +945,12 @@
   <data name="ResourceDownloadPage_PageSubtitle.Text" xml:space="preserve">
     <value>Download and manage Minecraft resources</value>
   </data>
+  <data name="ResourceDownloadPage_HeaderTitle" xml:space="preserve">
+    <value>Resource Download</value>
+  </data>
+  <data name="ResourceDownloadPage_HeaderSubtitle" xml:space="preserve">
+    <value>Download and manage Minecraft resources</value>
+  </data>
   <data name="ResourceDownloadPage_VersionTabHeader.Text" xml:space="preserve">
     <value>Versions</value>
   </data>
@@ -1940,6 +1946,12 @@ Continue downloading?</value>
     <value>Profile Management</value>
   </data>
   <data name="ProfilePage_Subtitle.Text" xml:space="preserve">
+    <value>Manage your Minecraft profiles</value>
+  </data>
+  <data name="ProfilePage_HeaderTitle" xml:space="preserve">
+    <value>Profile Management</value>
+  </data>
+  <data name="ProfilePage_HeaderSubtitle" xml:space="preserve">
     <value>Manage your Minecraft profiles</value>
   </data>
   <data name="ProfilePage_AddedProfilesText.Text" xml:space="preserve">

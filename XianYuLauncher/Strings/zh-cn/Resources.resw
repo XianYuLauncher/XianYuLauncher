@@ -945,6 +945,12 @@
   <data name="ResourceDownloadPage_PageSubtitle.Text" xml:space="preserve">
     <value>下载和管理 Minecraft 资源</value>
   </data>
+  <data name="ResourceDownloadPage_HeaderTitle" xml:space="preserve">
+    <value>资源下载</value>
+  </data>
+  <data name="ResourceDownloadPage_HeaderSubtitle" xml:space="preserve">
+    <value>下载和管理 Minecraft 资源</value>
+  </data>
   <data name="ResourceDownloadPage_VersionTabHeader.Text" xml:space="preserve">
     <value>版本下载</value>
   </data>
@@ -1943,6 +1949,12 @@
     <value>角色管理</value>
   </data>
   <data name="ProfilePage_Subtitle.Text" xml:space="preserve">
+    <value>管理您的 Minecraft 角色</value>
+  </data>
+  <data name="ProfilePage_HeaderTitle" xml:space="preserve">
+    <value>角色管理</value>
+  </data>
+  <data name="ProfilePage_HeaderSubtitle" xml:space="preserve">
     <value>管理您的 Minecraft 角色</value>
   </data>
   <data name="ProfilePage_AddedProfilesText.Text" xml:space="preserve">

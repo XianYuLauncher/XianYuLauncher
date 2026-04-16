@@ -11,20 +11,23 @@ using System.Collections.Concurrent;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.ModDownloadDetail.Models;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
+using XianYuLauncher.Features.ModLoaderSelector.Models;
 using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
 using XianYuLauncher.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.ResourceDownload.ViewModels;
 
-public partial class ResourceDownloadViewModel : ObservableRecipient
+public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeaderAware
 {
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IGameManifestQueryService _gameManifestQueryService;
@@ -46,6 +49,10 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private readonly IGameDirResolver _gameDirResolver;
     private readonly ICommunityResourceInstallPlanner _communityResourceInstallPlanner;
     private readonly ICommunityResourceFilterMetadataService _communityResourceFilterMetadataService;
+
+    public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+    public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
 
     // 版本下载相关属性和命令
     [ObservableProperty]
@@ -1779,6 +1786,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         _gameDirResolver = gameDirResolver;
         _communityResourceInstallPlanner = communityResourceInstallPlanner;
         _communityResourceFilterMetadataService = communityResourceFilterMetadataService;
+        HeaderMetadata.Title = "ResourceDownloadPage_HeaderTitle".GetLocalized();
+        HeaderMetadata.Subtitle = "ResourceDownloadPage_HeaderSubtitle".GetLocalized();
 
         // Load saved favorites
         foreach (var item in _favoritesService.Load())
@@ -2506,7 +2515,15 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         {
             IsVersionLoading = true;
             // 导航到版本选择页面
-            _navigationService.NavigateTo(typeof(ModLoaderSelectorViewModel).FullName!, versionId);
+            _navigationService.NavigateTo(
+                typeof(ModLoaderSelectorViewModel).FullName!,
+                new ModLoaderSelectorNavigationParameter
+                {
+                    VersionId = versionId,
+                    BreadcrumbRootLabel = "ResourceDownloadPage_HeaderTitle".GetLocalized(),
+                    ReturnPageKey = typeof(ResourceDownloadViewModel).FullName!,
+                    ReturnTabKey = "version",
+                });
         }
         catch (Exception)
         {
