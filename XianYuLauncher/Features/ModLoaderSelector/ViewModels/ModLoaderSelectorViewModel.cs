@@ -380,12 +380,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             return false;
         }
 
-        if (_navigationService.CanGoBack)
-        {
-            return _navigationService.GoBack();
-        }
-
-        return _navigationService.NavigateTo(returnTarget.PageKey, returnTarget.Parameter);
+        return RequestClose();
     }
 
     [RelayCommand]
@@ -465,9 +460,15 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             : SelectedVersionDisplayText;
     }
 
-    private static ModLoaderSelectorNavigationParameter CreateDefaultNavigationParameter()
+    private static ModLoaderSelectorNavigationParameter CreateDefaultNavigationParameter(string versionId = "")
     {
-        return new ModLoaderSelectorNavigationParameter();
+        return new ModLoaderSelectorNavigationParameter
+        {
+            VersionId = versionId,
+            BreadcrumbRootLabel = "ResourceDownloadPage_HeaderTitle".GetLocalized(),
+            ReturnPageKey = typeof(ResourceDownloadViewModel).FullName!,
+            ReturnTabKey = "version",
+        };
     }
 
     private static ModLoaderSelectorNavigationParameter CreateNavigationParameter(string versionId)
@@ -479,6 +480,11 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             ReturnPageKey = typeof(ResourceDownloadViewModel).FullName!,
             ReturnTabKey = "version",
         };
+    }
+
+    private bool RequestClose()
+    {
+        return _navigationParameter.CloseHandler?.Invoke() ?? _navigationService.GoBack();
     }
 
     private static ModLoaderSelectorNavigationParameter NormalizeNavigationParameter(ModLoaderSelectorNavigationParameter navigationParameter)
@@ -907,7 +913,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     [RelayCommand]
     private void Cancel()
     {
-        _navigationService.GoBack();
+        RequestClose();
     }
 
     [RelayCommand]
@@ -1063,7 +1069,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                 }
             }
             // 返回上一页
-            _navigationService.GoBack();
+            RequestClose();
         }
         catch (Exception ex)
         {

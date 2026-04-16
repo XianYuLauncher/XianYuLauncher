@@ -14,6 +14,7 @@
     xmlns:media="using:CommunityToolkit.WinUI.Media"
     xmlns:mediaAnimation="using:Microsoft.UI.Xaml.Media.Animation"
     xmlns:localControls="using:XianYuLauncher.Controls"
+    xmlns:shared="using:XianYuLauncher.Shared.Models"
     NavigationCacheMode="Required"
     mc:Ignorable="d">
 
@@ -54,6 +55,15 @@
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
         </Style>
         <helpers:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
+        <Style x:Key="ProminentBreadcrumbTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="28" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <DataTemplate x:Key="HeaderBreadcrumbItemTemplate" x:DataType="shared:NavigationBreadcrumbItem">
+            <TextBlock Text="{x:Bind DisplayText, Mode=OneWay}" Style="{StaticResource ProminentBreadcrumbTextStyle}" />
+        </DataTemplate>
     </Page.Resources>
 
     <Grid x:Name="ContentArea" mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
@@ -66,12 +76,19 @@
 
         <!-- 顶部标题和收藏夹区域 -->
         <localControls:PageHeader
+            x:Name="PageHeaderControl"
             Grid.Row="0"
-            Title="{x:Bind ViewModel.HeaderMetadata.Title, Mode=OneWay}"
-            Subtitle="{x:Bind ViewModel.HeaderMetadata.Subtitle, Mode=OneWay}"
-            ShowBreadcrumb="{x:Bind ViewModel.HeaderMetadata.ShowBreadcrumb, Mode=OneWay}"
-            BreadcrumbItems="{x:Bind ViewModel.HeaderMetadata.BreadcrumbItems, Mode=OneWay}">
+            Title="{x:Bind CurrentHeaderMetadata.Title, Mode=OneWay}"
+            Subtitle="{x:Bind CurrentHeaderMetadata.Subtitle, Mode=OneWay}"
+            ShowBreadcrumb="{x:Bind CurrentHeaderMetadata.ShowBreadcrumb, Mode=OneWay}"
+            ShowPrimaryHeading="{x:Bind IsPageHeaderPrimaryHeadingVisible, Mode=OneWay}"
+            BreadcrumbFontSize="28"
+            BreadcrumbMargin="-2,-11,0,12"
+            BreadcrumbItems="{x:Bind CurrentHeaderMetadata.BreadcrumbItems, Mode=OneWay}"
+            BreadcrumbItemTemplate="{StaticResource HeaderBreadcrumbItemTemplate}"
+            BreadcrumbItemClicked="PageHeader_BreadcrumbItemClicked">
             <localControls:PageHeader.TrailingActions>
+                <Grid x:Name="FavoritesHeaderActionContainer" VerticalAlignment="Bottom" Margin="0,0,20,0">
                 <Button x:Name="FavoritesDropArea"
                         x:Uid="ResourceDownloadPage_FavoritesButton"
                         AllowDrop="True"
@@ -172,11 +189,12 @@
                         </Flyout>
                     </Button.Flyout>
                 </Button>
+                </Grid>
             </localControls:PageHeader.TrailingActions>
         </localControls:PageHeader>
 
         <!-- 主要内容区域 -->
-        <Grid Grid.Row="1">
+        <Grid x:Name="ResourceMainContent" Grid.Row="1">
             <!-- TabView 控件 -->
             <TabView 
                 x:Name="ResourceTabView" 
@@ -1617,6 +1635,18 @@
                 </TabView.TabItems>
             </TabView>
         </Grid>
+
+        <Frame x:Name="InternalContentFrame"
+               Grid.Row="1"
+               Visibility="Collapsed"
+               IsHitTestVisible="False"
+               Background="Transparent">
+            <Frame.ContentTransitions>
+                <TransitionCollection>
+                    <NavigationThemeTransition />
+                </TransitionCollection>
+            </Frame.ContentTransitions>
+        </Frame>
         </Grid>
     </Grid>
 </Page>

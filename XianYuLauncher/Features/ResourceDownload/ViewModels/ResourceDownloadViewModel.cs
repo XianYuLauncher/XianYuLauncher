@@ -50,6 +50,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
     private readonly ICommunityResourceInstallPlanner _communityResourceInstallPlanner;
     private readonly ICommunityResourceFilterMetadataService _communityResourceFilterMetadataService;
 
+    public event Action<string>? ModLoaderSelectorRequested;
+
     public PageHeaderMetadata HeaderMetadata { get; } = new();
 
     public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
@@ -2514,16 +2516,22 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
         try
         {
             IsVersionLoading = true;
-            // 导航到版本选择页面
-            _navigationService.NavigateTo(
-                typeof(ModLoaderSelectorViewModel).FullName!,
-                new ModLoaderSelectorNavigationParameter
-                {
-                    VersionId = versionId,
-                    BreadcrumbRootLabel = "ResourceDownloadPage_HeaderTitle".GetLocalized(),
-                    ReturnPageKey = typeof(ResourceDownloadViewModel).FullName!,
-                    ReturnTabKey = "version",
-                });
+            if (ModLoaderSelectorRequested is not null)
+            {
+                ModLoaderSelectorRequested.Invoke(versionId);
+            }
+            else
+            {
+                _navigationService.NavigateTo(
+                    typeof(ModLoaderSelectorViewModel).FullName!,
+                    new ModLoaderSelectorNavigationParameter
+                    {
+                        VersionId = versionId,
+                        BreadcrumbRootLabel = "ResourceDownloadPage_HeaderTitle".GetLocalized(),
+                        ReturnPageKey = typeof(ResourceDownloadViewModel).FullName!,
+                        ReturnTabKey = "version",
+                    });
+            }
         }
         catch (Exception)
         {

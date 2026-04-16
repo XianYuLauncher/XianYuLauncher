@@ -2,16 +2,21 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using Serilog;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.Features.ModLoaderSelector.Models;
+using XianYuLauncher.Features.ModLoaderSelector.Views;
 using XianYuLauncher.Features.ResourceDownload.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Models;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Controls;
+using XianYuLauncher.Helpers;
+using XianYuLauncher.Shared.Models;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -20,7 +25,7 @@ using CommunityToolkit.Labs.WinUI;
 
 namespace XianYuLauncher.Features.ResourceDownload.Views;
 
-public sealed partial class ResourceDownloadPage : Page, INavigationAware
+public sealed partial class ResourceDownloadPage : Page, INavigationAware, INotifyPropertyChanged
 {
     private string _modFilterSelectionSnapshot = string.Empty;
 
@@ -80,19 +85,31 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     private bool _datapackLoadMoreCheckPending;
     private bool _modpackLoadMoreCheckPending;
     private bool _worldLoadMoreCheckPending;
+    private bool _isInternalModLoaderActive;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public PageHeaderMetadata CurrentHeaderMetadata { get; private set; }
+
+    public bool IsPageHeaderPrimaryHeadingVisible => !_isInternalModLoaderActive;
 
     public ResourceDownloadPage()
     {
         ViewModel = App.GetService<ResourceDownloadViewModel>();
+        CurrentHeaderMetadata = ViewModel.HeaderMetadata;
         DataContext = ViewModel;
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+        ViewModel.ModLoaderSelectorRequested += ViewModel_ModLoaderSelectorRequested;
         InitializeComponent();
         _uiDispatcher = App.GetService<IUiDispatcher>();
         _uiDispatcher.TryEnqueue(TryRefreshModFilterTokenItems);
+        InternalContentFrame.Navigated += InternalContentFrame_Navigated;
         
         // 在页面加载完成后检查是否需要切换标签页
         Loaded += (sender, e) =>
         {
+            _uiDispatcher.TryEnqueue(EnsureInternalContentHostInitialized);
+
             // 使用静态属性 TargetTabIndex 来控制标签页切换
             if (TargetTabIndex > 0)
             {
@@ -142,7 +159,163 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     public void OnNavigatedFrom()
     {
+        TearDownInternalContentHost();
         // 清理资源
+    }
+
+    private void OnPropertyChanged(string propertyName)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
+    private void SetCurrentHeaderMetadata(PageHeaderMetadata metadata)
+    {
+        if (ReferenceEquals(CurrentHeaderMetadata, metadata))
+        {
+            return;
+        }
+
+        CurrentHeaderMetadata = metadata;
+        OnPropertyChanged(nameof(CurrentHeaderMetadata));
+    }
+
+    private void SetInternalModLoaderActive(bool isActive)
+    {
+        if (_isInternalModLoaderActive == isActive)
+        {
+            return;
+        }
+
+        _isInternalModLoaderActive = isActive;
+        FavoritesHeaderActionContainer.Visibility = isActive ? Visibility.Collapsed : Visibility.Visible;
+        OnPropertyChanged(nameof(IsPageHeaderPrimaryHeadingVisible));
+    }
+
+    private void EnsureInternalContentHostInitialized()
+    {
+        if (!IsLoaded || InternalContentFrame.XamlRoot is null || InternalContentFrame.Content is not null)
+        {
+            return;
+        }
+
+        InternalContentFrame.Navigate(typeof(InternalNavigationPlaceholderPage), null, new SuppressNavigationTransitionInfo());
+    }
+
+    private void TearDownInternalContentHost()
+    {
+        if (InternalContentFrame.Content is ModLoaderSelectorContentPage modLoaderSelectorPage)
+        {
+            modLoaderSelectorPage.ViewModel.OnNavigatedFrom();
+        }
+
+        InternalContentFrame.Content = null;
+        InternalContentFrame.BackStack.Clear();
+        ResourceMainContent.Visibility = Visibility.Visible;
+        InternalContentFrame.Visibility = Visibility.Collapsed;
+        InternalContentFrame.IsHitTestVisible = false;
+        SetInternalModLoaderActive(false);
+        SetCurrentHeaderMetadata(ViewModel.HeaderMetadata);
+    }
+
+    private void ResetInternalContentHost()
+    {
+        if (InternalContentFrame.Content is null)
+        {
+            ResourceMainContent.Visibility = Visibility.Visible;
+            InternalContentFrame.Visibility = Visibility.Collapsed;
+            InternalContentFrame.IsHitTestVisible = false;
+            SetInternalModLoaderActive(false);
+            SetCurrentHeaderMetadata(ViewModel.HeaderMetadata);
+            return;
+        }
+
+        if (InternalContentFrame.Content is not InternalNavigationPlaceholderPage)
+        {
+            InternalContentFrame.Navigate(typeof(InternalNavigationPlaceholderPage), null, new SuppressNavigationTransitionInfo());
+            return;
+        }
+
+        ResourceMainContent.Visibility = Visibility.Visible;
+        InternalContentFrame.Visibility = Visibility.Collapsed;
+        InternalContentFrame.IsHitTestVisible = false;
+        SetInternalModLoaderActive(false);
+        SetCurrentHeaderMetadata(ViewModel.HeaderMetadata);
+    }
+
+    private void ViewModel_ModLoaderSelectorRequested(string versionId)
+    {
+        EnsureInternalContentHostInitialized();
+
+        ResourceMainContent.Visibility = Visibility.Visible;
+        InternalContentFrame.Visibility = Visibility.Visible;
+        InternalContentFrame.IsHitTestVisible = true;
+
+        var navigationParameter = new ModLoaderSelectorNavigationParameter
+        {
+            VersionId = versionId,
+            BreadcrumbRootLabel = "ResourceDownloadPage_HeaderTitle".GetLocalized(),
+            ReturnPageKey = typeof(ResourceDownloadViewModel).FullName!,
+            ReturnTabKey = "version",
+            CloseHandler = CloseInternalModLoaderSelector,
+        };
+
+        InternalContentFrame.Navigate(typeof(ModLoaderSelectorContentPage), navigationParameter, new DrillInNavigationTransitionInfo());
+    }
+
+    private bool CloseInternalModLoaderSelector()
+    {
+        if (InternalContentFrame.Content is InternalNavigationPlaceholderPage)
+        {
+            ResetInternalContentHost();
+            return true;
+        }
+
+        ResourceMainContent.Visibility = Visibility.Visible;
+
+        if (InternalContentFrame.CanGoBack)
+        {
+            InternalContentFrame.GoBack(new DrillInNavigationTransitionInfo());
+        }
+        else
+        {
+            InternalContentFrame.Navigate(typeof(InternalNavigationPlaceholderPage), null, new SuppressNavigationTransitionInfo());
+        }
+
+        return true;
+    }
+
+    private void InternalContentFrame_Navigated(object sender, NavigationEventArgs e)
+    {
+        switch (InternalContentFrame.Content)
+        {
+            case ModLoaderSelectorContentPage modLoaderSelectorPage:
+                InternalContentFrame.Visibility = Visibility.Visible;
+                InternalContentFrame.IsHitTestVisible = true;
+                ResourceMainContent.Visibility = Visibility.Collapsed;
+                SetInternalModLoaderActive(true);
+                SetCurrentHeaderMetadata(modLoaderSelectorPage.ViewModel.HeaderMetadata);
+                break;
+            default:
+                InternalContentFrame.Visibility = Visibility.Collapsed;
+                InternalContentFrame.IsHitTestVisible = false;
+                ResourceMainContent.Visibility = Visibility.Visible;
+                SetInternalModLoaderActive(false);
+                SetCurrentHeaderMetadata(ViewModel.HeaderMetadata);
+                break;
+        }
+    }
+
+    private ModLoaderSelectorContentPage? GetActiveModLoaderSelectorPage()
+    {
+        return InternalContentFrame.Content as ModLoaderSelectorContentPage;
+    }
+
+    private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
+    {
+        if (args.Item is NavigationBreadcrumbItem breadcrumbItem)
+        {
+            GetActiveModLoaderSelectorPage()?.ViewModel.NavigateBreadcrumb(breadcrumbItem);
+        }
     }
 
     private void ApplyProtocolNavigationParameter(object parameter)
