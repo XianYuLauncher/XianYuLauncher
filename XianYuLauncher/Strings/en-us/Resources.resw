@@ -426,6 +426,12 @@
   <data name="SettingsPage_Subtitle.Text" xml:space="preserve">
     <value>Configure launcher settings</value>
   </data>
+  <data name="SettingsPage_HeaderTitle" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="SettingsPage_HeaderSubtitle" xml:space="preserve">
+    <value>Configure launcher settings</value>
+  </data>
   <data name="Settings_BasicTitle.Text" xml:space="preserve">
     <value>Basic Settings</value>
   </data>

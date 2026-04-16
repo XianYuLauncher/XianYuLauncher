@@ -12,7 +12,9 @@
     xmlns:sharedModels="using:XianYuLauncher.Shared.Models"
     xmlns:xaml="using:Microsoft.UI.Xaml"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
+    xmlns:mediaAnimation="using:Microsoft.UI.Xaml.Media.Animation"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:localControls="using:XianYuLauncher.Controls"
     mc:Ignorable="d">
     <Page.Resources>
         <helpers:EnumToBooleanConverter x:Key="EnumToBooleanConverter" />
@@ -25,27 +27,24 @@
         <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToBoolConverter" />
         <helpers:GarbageCollectorModeDisplayConverter x:Key="GarbageCollectorModeDisplayConverter" />
     </Page.Resources>
-    <Grid x:Name="ContentArea" Padding="{StaticResource PageContentPadding}">
+    <Grid x:Name="ContentArea"
+          mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 标题区域 - 居中块(最大1064) + 块内文字居左 -->
-        <Grid Grid.Row="0" HorizontalAlignment="Stretch">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="100*" MaxWidth="1064" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="1" HorizontalAlignment="Stretch" Margin="0,0,0,20">
-                <TextBlock x:Name="PageTitle" x:Uid="SettingsPage_Title" Text="设置" Style="{ThemeResource TitleTextBlockStyle}" />
-                <TextBlock x:Name="PageSubtitle" x:Uid="SettingsPage_Subtitle" Text="配置启动器设置" Style="{ThemeResource BodyTextBlockStyle}" Margin="0,8,0,0" Opacity="0.7" />
-            </StackPanel>
-        </Grid>
+        <localControls:PageHeader
+            Grid.Row="0"
+            Title="{x:Bind ViewModel.HeaderMetadata.Title, Mode=OneWay}"
+            Subtitle="{x:Bind ViewModel.HeaderMetadata.Subtitle, Mode=OneWay}" />
 
         <!-- 主要内容区域 - ScrollViewer 全宽，滚动条贴页面右侧 -->
-        <ScrollViewer x:Name="MainScrollViewer" Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+        <ScrollViewer x:Name="MainScrollViewer"
+                      Grid.Row="1"
+                      VerticalScrollBarVisibility="Auto"
+                      HorizontalScrollBarVisibility="Disabled"
+                      Padding="{StaticResource PageScrollViewerPadding}">
             <Grid HorizontalAlignment="Stretch">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

@@ -426,6 +426,12 @@
   <data name="SettingsPage_Subtitle.Text" xml:space="preserve">
     <value>配置启动器设置</value>
   </data>
+  <data name="SettingsPage_HeaderTitle" xml:space="preserve">
+    <value>设置</value>
+  </data>
+  <data name="SettingsPage_HeaderSubtitle" xml:space="preserve">
+    <value>配置启动器设置</value>
+  </data>
   <data name="Settings_BasicTitle.Text" xml:space="preserve">
     <value>基础设置</value>
   </data>
