@@ -124,7 +124,13 @@
                 </NavigationViewItem>
             </NavigationView.FooterMenuItems>
             <Grid Margin="{StaticResource NavigationViewPageContentMargin}">
-                <Frame x:Name="NavigationFrame" />
+                <Frame x:Name="NavigationFrame">
+                    <Frame.ContentTransitions>
+                        <TransitionCollection>
+                            <NavigationThemeTransition />
+                        </TransitionCollection>
+                    </Frame.ContentTransitions>
+                </Frame>
             </Grid>
         </NavigationView>
         
