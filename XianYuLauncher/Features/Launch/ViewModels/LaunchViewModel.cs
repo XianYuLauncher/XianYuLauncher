@@ -24,6 +24,7 @@ using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
 using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
@@ -34,13 +35,18 @@ using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using XianYuLauncher.Services;
+using XianYuLauncher.Shared.Models;
 using System.Collections.Specialized;
 using System.Text;
 
 namespace XianYuLauncher.Features.Launch.ViewModels;
 
-public partial class LaunchViewModel : ObservableRecipient
+public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
 {
+    public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+    public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Hero;
+
     [ObservableProperty]
     private string? _quickPlayWorld;
 
@@ -468,6 +474,8 @@ public partial class LaunchViewModel : ObservableRecipient
         _tokenRefreshService = App.GetService<ITokenRefreshService>();
         _versionConfigService = App.GetService<IVersionConfigService>();
         _versionInfoManager = App.GetService<IVersionInfoManager>(); // Inject this service
+        HeaderMetadata.Subtitle = "XianYu Launcher";
+        UpdateHeaderMetadata();
 
         // ... existing code ...
         
@@ -1228,10 +1236,16 @@ public partial class LaunchViewModel : ObservableRecipient
         // 保存选中的版本到本地设置
         _localSettingsService.SaveSettingAsync(SelectedVersionKey, value).ConfigureAwait(false);
         ShowMinecraftPathInfo();
+        UpdateHeaderMetadata();
         // 通知UI更新版本显示文本、页面标题和字体大小
         OnPropertyChanged(nameof(SelectedVersionDisplay));
         OnPropertyChanged(nameof(PageTitle));
         OnPropertyChanged(nameof(PageTitleFontSize));
+    }
+
+    private void UpdateHeaderMetadata()
+    {
+        HeaderMetadata.Title = PageTitle;
     }
 
     public async Task<string> GetVersionIconPathAsync(string? versionName)
