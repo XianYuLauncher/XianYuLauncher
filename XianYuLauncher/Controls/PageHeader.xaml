@@ -1,0 +1,62 @@
+<UserControl
+    x:Class="XianYuLauncher.Controls.PageHeader"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    xmlns:helpers="using:XianYuLauncher.Helpers"
+    mc:Ignorable="d">
+
+    <UserControl.Resources>
+        <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+    </UserControl.Resources>
+
+    <Grid x:Name="RootGrid" Padding="{StaticResource PageHeaderPadding}" HorizontalAlignment="Stretch">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="100*" MaxWidth="{x:Bind MaxContentWidth, Mode=OneWay}" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <Grid Grid.Column="1" Margin="0,0,0,20" HorizontalAlignment="Stretch">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <BreadcrumbBar
+                x:Name="HeaderBreadcrumbBar"
+                ItemsSource="{x:Bind BreadcrumbItems, Mode=OneWay}"
+                ItemTemplate="{x:Bind BreadcrumbItemTemplate, Mode=OneWay}"
+                FontSize="{x:Bind BreadcrumbFontSize, Mode=OneWay}"
+                FontWeight="SemiBold"
+                Margin="{x:Bind BreadcrumbMargin, Mode=OneWay}"
+                ItemClicked="BreadcrumbBar_ItemClicked"
+                Visibility="{x:Bind ShowBreadcrumb, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+            <Grid Grid.Row="1" ColumnSpacing="16" Visibility="{x:Bind ShowPrimaryHeading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0" Spacing="8" HorizontalAlignment="Stretch">
+                    <TextBlock
+                        Text="{x:Bind Title, Mode=OneWay}"
+                        Style="{ThemeResource TitleTextBlockStyle}"
+                        TextWrapping="WrapWholeWords" />
+
+                    <ContentPresenter
+                        Content="{x:Bind HeaderSupplementalContent, Mode=OneWay}"
+                        HorizontalAlignment="Stretch" />
+                </StackPanel>
+
+                <ContentPresenter
+                    Grid.Column="1"
+                    Content="{x:Bind TrailingActions, Mode=OneWay}"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top" />
+            </Grid>
+        </Grid>
+    </Grid>
+</UserControl>
