@@ -8,6 +8,7 @@ using Serilog;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Features.ModLoaderSelector.Models;
+using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
 using XianYuLauncher.Features.ModLoaderSelector.Views;
 using XianYuLauncher.Features.ResourceDownload.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
@@ -89,6 +90,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
     private bool _modpackLoadMoreCheckPending;
     private bool _worldLoadMoreCheckPending;
     private bool _isInternalModLoaderActive;
+    private ModLoaderSelectorViewModel? _activeModLoaderSelectorViewModel;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -231,10 +233,12 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
 
     private void SyncSecondaryContentState()
     {
-        if (GetActiveModLoaderSelectorPage() is ModLoaderSelectorPage modLoaderSelectorPage)
+        _activeModLoaderSelectorViewModel = _secondaryContentNavigationService.GetCurrentViewModel<ModLoaderSelectorViewModel>(ResourceMainContent);
+
+        if (_activeModLoaderSelectorViewModel is not null)
         {
             SetInternalModLoaderActive(true);
-            SetCurrentHeaderMetadata(modLoaderSelectorPage.ViewModel.HeaderMetadata);
+            SetCurrentHeaderMetadata(_activeModLoaderSelectorViewModel.HeaderMetadata);
             return;
         }
 
@@ -242,25 +246,17 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
         SetCurrentHeaderMetadata(ViewModel.HeaderMetadata);
     }
 
-    private ModLoaderSelectorPage? GetActiveModLoaderSelectorPage()
-    {
-        return _secondaryContentNavigationService.ActiveHost == ResourceMainContent
-            ? _secondaryContentNavigationService.Content as ModLoaderSelectorPage
-            : null;
-    }
-
     private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
     {
         if (args.Item is NavigationBreadcrumbItem breadcrumbItem)
         {
-            GetActiveModLoaderSelectorPage()?.ViewModel.NavigateBreadcrumb(breadcrumbItem);
+            _activeModLoaderSelectorViewModel?.NavigateBreadcrumb(breadcrumbItem);
         }
     }
 
     private async void VersionIconPicker_CustomIconRequested(object? sender, EventArgs e)
     {
-        var modLoaderPage = GetActiveModLoaderSelectorPage();
-        if (modLoaderPage is null)
+        if (_activeModLoaderSelectorViewModel is null)
         {
             return;
         }
@@ -281,7 +277,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
             var file = await picker.PickSingleFileAsync();
             if (file != null)
             {
-                modLoaderPage.ViewModel.SetCustomIcon(file.Path);
+                _activeModLoaderSelectorViewModel.SetCustomIcon(file.Path);
             }
         }
         catch (Exception ex)
@@ -294,7 +290,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
     {
         if (e.IconOption != null)
         {
-            GetActiveModLoaderSelectorPage()?.ViewModel.SelectBuiltInIconCommand.Execute(e.IconOption);
+            _activeModLoaderSelectorViewModel?.SelectBuiltInIconCommand.Execute(e.IconOption);
         }
     }
 

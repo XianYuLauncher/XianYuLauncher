@@ -20,11 +20,9 @@ public sealed class SecondaryContentNavigationService : ISecondaryContentNavigat
 
     public event EventHandler? StateChanged;
 
-    public bool IsActive => Content is not null;
+    public bool IsActive => _overlayFrame?.Content is not null;
 
     public FrameworkElement? ActiveHost => _activeHost;
-
-    public object? Content => _overlayFrame?.Content;
 
     public void Initialize(Canvas overlayCanvas, Border overlayHost, Frame overlayFrame, FrameworkElement coordinateRoot)
     {
@@ -73,7 +71,7 @@ public sealed class SecondaryContentNavigationService : ISecondaryContentNavigat
 
     public bool GoBack(NavigationTransitionInfo? transitionInfo = null)
     {
-        if (_overlayFrame is null || Content is null)
+        if (_overlayFrame?.Content is null)
         {
             return false;
         }
@@ -85,6 +83,16 @@ public sealed class SecondaryContentNavigationService : ISecondaryContentNavigat
 
         _ = PlayCloseAnimationAndCleanupAsync();
         return true;
+    }
+
+    public TViewModel? GetCurrentViewModel<TViewModel>(FrameworkElement hostElement) where TViewModel : class
+    {
+        if (_activeHost != hostElement || _overlayFrame is null)
+        {
+            return null;
+        }
+
+        return _overlayFrame.GetPageViewModel() as TViewModel;
     }
 
     public void Close()

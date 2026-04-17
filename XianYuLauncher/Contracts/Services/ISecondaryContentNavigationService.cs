@@ -12,13 +12,13 @@ public interface ISecondaryContentNavigationService
 
     FrameworkElement? ActiveHost { get; }
 
-    object? Content { get; }
-
     void Initialize(Canvas overlayCanvas, Border overlayHost, Frame overlayFrame, FrameworkElement coordinateRoot);
 
     bool Navigate(FrameworkElement hostElement, Type pageType, object? parameter = null, NavigationTransitionInfo? transitionInfo = null);
 
     bool GoBack(NavigationTransitionInfo? transitionInfo = null);
+
+    TViewModel? GetCurrentViewModel<TViewModel>(FrameworkElement hostElement) where TViewModel : class;
 
     void Close();
 }
