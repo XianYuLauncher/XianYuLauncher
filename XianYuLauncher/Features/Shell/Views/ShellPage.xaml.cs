@@ -45,7 +45,6 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
     
     private readonly MaterialService _materialService;
     private readonly IUiDispatcher _uiDispatcher;
-    private readonly IShellNavigationOrchestrator _shellNavigationOrchestrator;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -55,18 +54,14 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
 
     public DataTemplate? CurrentHeaderBreadcrumbItemTemplate { get; private set; }
 
-    public ShellPage(ShellViewModel viewModel, IShellNavigationOrchestrator shellNavigationOrchestrator)
+    public ShellPage(ShellViewModel viewModel)
     {
         ViewModel = viewModel;
-        _shellNavigationOrchestrator = shellNavigationOrchestrator;
         InitializeComponent();
-
-        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
 
         ViewModel.NavigationService.Frame = NavigationFrame;
         ViewModel.NavigationViewService.Initialize(NavigationViewControl);
         _uiDispatcher = App.GetService<IUiDispatcher>();
-        SyncNavigationBackButtonStateFromFrame("ShellPage.Constructor");
 
         // 监听导航事件，教程页隐藏侧边栏
         NavigationFrame.Navigated += OnFrameNavigated;
@@ -480,7 +475,6 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
     private void OnFrameNavigated(object sender, NavigationEventArgs e)
     {
         RefreshShellHeaderContent();
-        SyncNavigationBackButtonStateFromFrame("NavigationFrame.Navigated");
 
         var isTutorial = e.SourcePageType == typeof(TutorialPage);
         NavigationViewControl.IsPaneVisible = !isTutorial;
@@ -501,51 +495,14 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
         }
 
         Log.Information(
-            "[Shell.NavBack] Frame navigated. sourcePage={SourcePage}, navMode={NavigationMode}, frameCanGoBack={FrameCanGoBack}, controlIsBackEnabled={ControlIsBackEnabled}, backStackDepth={BackStackDepth}, isTutorial={IsTutorial}",
+            "[Shell.NavBack] Frame navigated. sourcePage={SourcePage}, navMode={NavigationMode}, frameCanGoBack={FrameCanGoBack}, viewModelIsBackEnabled={ViewModelIsBackEnabled}, controlIsBackEnabled={ControlIsBackEnabled}, backStackDepth={BackStackDepth}, isTutorial={IsTutorial}",
             e.SourcePageType?.Name ?? "<null>",
             e.NavigationMode,
             NavigationFrame.CanGoBack,
+            ViewModel.IsBackEnabled,
             NavigationViewControl.IsBackEnabled,
             NavigationFrame.BackStack.Count,
             isTutorial);
-    }
-
-    private void SyncNavigationBackButtonStateFromFrame(string reason)
-    {
-        var canGoBack = NavigationFrame.CanGoBack;
-        ViewModel.SyncBackEnabled(canGoBack, reason);
-        ApplyNavigationBackButtonState(reason, canGoBack);
-    }
-
-    private void ApplyNavigationBackButtonState(string reason, bool targetCanGoBack)
-    {
-        var controlBefore = NavigationViewControl.IsBackEnabled;
-        var frameCanGoBack = NavigationFrame.CanGoBack;
-        var viewModelValue = ViewModel.IsBackEnabled;
-
-        NavigationViewControl.IsBackEnabled = targetCanGoBack;
-
-        Log.Information(
-            "[Shell.NavBack] Apply back button state. reason={Reason}, targetCanGoBack={TargetCanGoBack}, frameCanGoBack={FrameCanGoBack}, viewModelCanGoBack={ViewModelCanGoBack}, controlBefore={ControlBefore}, controlAfter={ControlAfter}, backStackDepth={BackStackDepth}, currentPage={CurrentPage}, lastNavigationKind={LastNavigationKind}",
-            reason,
-            targetCanGoBack,
-            frameCanGoBack,
-            viewModelValue,
-            controlBefore,
-            NavigationViewControl.IsBackEnabled,
-            NavigationFrame.BackStack.Count,
-            NavigationFrame.Content?.GetType().Name ?? "<null>",
-            _shellNavigationOrchestrator.LastNavigationKind);
-    }
-
-    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName != nameof(ShellViewModel.IsBackEnabled))
-        {
-            return;
-        }
-
-        ApplyNavigationBackButtonState("ShellViewModel.PropertyChanged", ViewModel.IsBackEnabled);
     }
 
     private void RefreshShellHeaderContent()
@@ -646,15 +603,6 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
 
         KeyboardAccelerators.Add(BuildKeyboardAccelerator(VirtualKey.Left, VirtualKeyModifiers.Menu));
         KeyboardAccelerators.Add(BuildKeyboardAccelerator(VirtualKey.GoBack));
-        SyncNavigationBackButtonStateFromFrame("ShellPage.Loaded");
-    }
-
-    private void OnUnloaded(object sender, RoutedEventArgs e)
-    {
-        ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
-        NavigationFrame.Navigated -= OnFrameNavigated;
-        ViewModel.NavigationViewService.UnregisterEvents();
-        Log.Information("[Shell.NavBack] ShellPage unloaded. currentPage={CurrentPage}, controlIsBackEnabled={ControlIsBackEnabled}", NavigationFrame.Content?.GetType().Name ?? "<null>", NavigationViewControl.IsBackEnabled);
     }
 
     private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)

@@ -22,7 +22,7 @@ public sealed class ShellNavigationOrchestrator : IShellNavigationOrchestrator
     {
         LastNavigationKind = ShellNavigationKind.TopLevel;
         Log.Information("[ShellNavigationOrchestrator] NavigateToTopLevel requested. pageKey={PageKey}, parameter={Parameter}", pageKey, DescribeParameter(parameter));
-        var result = _navigationService.NavigateTo(pageKey, parameter, clearNavigation: true);
+        var result = _navigationService.NavigateTo(pageKey, parameter, clearNavigation: false);
         Log.Information("[ShellNavigationOrchestrator] NavigateToTopLevel completed. pageKey={PageKey}, result={Result}, canGoBack={CanGoBack}", pageKey, result, _navigationService.CanGoBack);
         return result;
     }

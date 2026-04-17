@@ -9,8 +9,7 @@
     xmlns:shared="using:XianYuLauncher.Shared.Models"
     xmlns:viewModels="using:XianYuLauncher.Features.Shell.Models"
     xmlns:media="using:CommunityToolkit.WinUI.Media"
-    Loaded="OnLoaded"
-    Unloaded="OnUnloaded">
+    Loaded="OnLoaded">
 
     <Page.Resources>
         <ResourceDictionary>

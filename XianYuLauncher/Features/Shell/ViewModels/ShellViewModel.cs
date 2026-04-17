@@ -441,15 +441,4 @@ public partial class ShellViewModel : ObservableRecipient
         IsBackEnabled = canGoBack;
     }
 
-    public void SyncBackEnabled(bool canGoBack, string? reason = null)
-    {
-        Log.Information(
-            "[Shell.NavBack] SyncBackEnabled requested. reason={Reason}, target={Target}, frameCanGoBack={FrameCanGoBack}, backStackDepth={BackStackDepth}, currentPage={CurrentPage}",
-            reason ?? "<unspecified>",
-            canGoBack,
-            NavigationService.Frame?.CanGoBack ?? false,
-            NavigationService.Frame?.BackStack.Count ?? 0,
-            NavigationService.Frame?.Content?.GetType().Name ?? "<null>");
-        IsBackEnabled = canGoBack;
-    }
 }
