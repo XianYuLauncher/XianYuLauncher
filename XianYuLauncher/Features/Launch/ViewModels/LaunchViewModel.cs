@@ -24,7 +24,6 @@ using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.Services;
-using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
 using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
@@ -41,14 +40,8 @@ using System.Text;
 
 namespace XianYuLauncher.Features.Launch.ViewModels;
 
-public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
+public partial class LaunchViewModel : ObservableRecipient
 {
-    private static readonly PageHeaderHostConfiguration LaunchHeaderHostConfiguration = new()
-    {
-        UseShellHeader = true,
-        SupplementalContentKind = PageHeaderSupplementalContentKind.LaunchTitle,
-    };
-
     [ObservableProperty]
     private string? _quickPlayWorld;
 
@@ -211,12 +204,6 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     public string PageTitle => string.IsNullOrEmpty(SelectedVersion) 
         ? "LaunchPage_DefaultTitle".GetLocalized() 
         : SelectedVersion;
-
-    public PageHeaderMetadata HeaderMetadata { get; } = new();
-
-    public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
-
-    public PageHeaderHostConfiguration HeaderHostConfiguration => LaunchHeaderHostConfiguration;
 
     /// <summary>
     /// 页面标题字体大小，根据文本长度自适应
@@ -493,8 +480,6 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
-
-        RefreshHeaderMetadata();
         
         InitializeAsync().ConfigureAwait(false);
 
@@ -1244,18 +1229,10 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
         // 保存选中的版本到本地设置
         _localSettingsService.SaveSettingAsync(SelectedVersionKey, value).ConfigureAwait(false);
         ShowMinecraftPathInfo();
-        RefreshHeaderMetadata();
         // 通知UI更新版本显示文本、页面标题和字体大小
         OnPropertyChanged(nameof(SelectedVersionDisplay));
         OnPropertyChanged(nameof(PageTitle));
         OnPropertyChanged(nameof(PageTitleFontSize));
-    }
-
-    private void RefreshHeaderMetadata()
-    {
-        HeaderMetadata.Title = string.Empty;
-        HeaderMetadata.Subtitle = string.Empty;
-        HeaderMetadata.ShowBreadcrumb = false;
     }
 
     public async Task<string> GetVersionIconPathAsync(string? versionName)

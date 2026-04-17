@@ -10,7 +10,6 @@
     <UserControl.Resources>
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <helpers:ObjectNullToVisibilityConverter x:Key="ObjectNullToVisibilityConverter" />
-        <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToBoolConverter" />
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" Padding="{StaticResource PageHeaderPadding}" HorizontalAlignment="Stretch">
@@ -42,18 +41,25 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" HorizontalAlignment="Stretch" Spacing="8">
+                <Grid Grid.Column="0" HorizontalAlignment="Stretch">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
                     <TextBlock
+                        Grid.Row="0"
                         Text="{x:Bind Title, Mode=OneWay}"
                         Style="{ThemeResource TitleTextBlockStyle}"
-                        TextWrapping="WrapWholeWords"
-                        Visibility="{x:Bind Title, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToBoolConverter}}" />
+                        TextWrapping="WrapWholeWords" />
 
                     <ContentPresenter
+                        Grid.Row="1"
                         Content="{x:Bind HeaderSupplementalContent, Mode=OneWay}"
                         HorizontalAlignment="Stretch"
+                        Margin="0,8,0,0"
                         Visibility="{x:Bind HeaderSupplementalContent, Mode=OneWay, Converter={StaticResource ObjectNullToVisibilityConverter}}" />
-                </StackPanel>
+                </Grid>
 
                 <ContentPresenter
                     Grid.Column="1"

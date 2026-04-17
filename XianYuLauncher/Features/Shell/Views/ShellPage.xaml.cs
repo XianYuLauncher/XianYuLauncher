@@ -19,9 +19,6 @@ using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Features.ErrorAnalysis.Controls;
 using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
-using XianYuLauncher.Features.Launch.Controls;
-using XianYuLauncher.Features.Launch.ViewModels;
-using XianYuLauncher.Features.Launch.Views;
 using XianYuLauncher.Features.Accounts.Views;
 using XianYuLauncher.Features.ResourceDownload.Controls;
 using XianYuLauncher.Features.ResourceDownload.ViewModels;
@@ -33,7 +30,6 @@ using XianYuLauncher.Features.Tutorial.Views;
 using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Controls;
-using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Shared.Models;
 using WinRT.Interop;
 
@@ -42,88 +38,21 @@ namespace XianYuLauncher.Features.Shell.Views;
 // Update NavigationViewItem titles and icons in ShellPage.xaml.
 public sealed partial class ShellPage : Page, INotifyPropertyChanged
 {
-    private const string PageContentAreaName = "ContentArea";
-    private const int LaunchHeaderDeferredRevealMillisecondsValue = 220;
-
-    private CancellationTokenSource? _pendingDisplayedHeaderSwitchCancellationTokenSource;
-    private bool _delayLaunchHeaderSwitchOnNextNavigation;
-
     public ShellViewModel ViewModel
     {
         get;
     }
-
+    
     private readonly MaterialService _materialService;
     private readonly IUiDispatcher _uiDispatcher;
 
     public event PropertyChangedEventHandler? PropertyChanged;
-
-    private void ReserveDisplayedHeaderHeightForDelayedSwitch(object? supplementalContent)
-    {
-        var reservedHeight = MeasureDelayedLaunchHeaderHeight(supplementalContent);
-        if (reservedHeight <= 0)
-        {
-            return;
-        }
-
-        if (Math.Abs(SharedPageHeader.MinHeight - reservedHeight) < 0.5)
-        {
-            return;
-        }
-
-        SharedPageHeader.MinHeight = reservedHeight;
-
-        Log.Information(
-            "[Shell.HeaderDisplay] Reserved target header height for delayed switch. reservedHeight={ReservedHeight:F1}, supplementalContent={SupplementalContentType}",
-            reservedHeight,
-            supplementalContent?.GetType().Name ?? "<null>");
-    }
-
-    private void ClearDisplayedHeaderHeightReservation()
-    {
-        if (SharedPageHeader.MinHeight <= 0.5)
-        {
-            return;
-        }
-
-        SharedPageHeader.MinHeight = 0d;
-
-        Log.Information("[Shell.HeaderDisplay] Cleared reserved header height.");
-    }
-
-    private double MeasureDelayedLaunchHeaderHeight(object? supplementalContent)
-    {
-        if (supplementalContent is not LaunchHeaderContent launchHeaderContent)
-        {
-            return SharedPageHeader.ActualHeight;
-        }
-
-        var probeHeader = new PageHeader
-        {
-            ShowPrimaryHeading = true,
-            ShowBreadcrumb = false,
-            HeaderSupplementalContent = new LaunchHeaderContent(launchHeaderContent.ViewModel),
-        };
-
-        var availableWidth = Math.Max(SharedPageHeader.ActualWidth, NavigationFrame.ActualWidth);
-        probeHeader.Measure(new Windows.Foundation.Size(
-            availableWidth > 0 ? availableWidth : 1064d,
-            double.PositiveInfinity));
-
-        return probeHeader.DesiredSize.Height;
-    }
 
     public object? CurrentHeaderTrailingActions { get; private set; }
 
     public object? CurrentHeaderSupplementalContent { get; private set; }
 
     public DataTemplate? CurrentHeaderBreadcrumbItemTemplate { get; private set; }
-
-    public PageHeaderMetadata DisplayedHeaderMetadata { get; private set; } = new();
-
-    public PageHeaderHostConfiguration DisplayedHeaderHostConfiguration { get; private set; } = PageHeaderHostConfiguration.Disabled;
-
-    public bool IsDisplayedShellHeaderVisible => DisplayedHeaderHostConfiguration.UseShellHeader;
 
     public ShellPage(ShellViewModel viewModel)
     {
@@ -135,7 +64,6 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
         _uiDispatcher = App.GetService<IUiDispatcher>();
 
         // 监听导航事件，教程页隐藏侧边栏
-        NavigationFrame.Navigating += OnFrameNavigating;
         NavigationFrame.Navigated += OnFrameNavigated;
 
         // Set the title bar icon by updating /Assets/WindowIcon.ico.
@@ -544,53 +472,9 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
     /// <summary>
     /// 导航事件：教程页隐藏侧边栏，离开时恢复
     /// </summary>
-    private void OnFrameNavigating(object sender, NavigatingCancelEventArgs e)
-    {
-        CancelPendingDisplayedHeaderSwitch();
-
-        var currentPageType = NavigationFrame.Content?.GetType();
-        _delayLaunchHeaderSwitchOnNextNavigation = currentPageType != null
-            && currentPageType != typeof(LaunchPage)
-            && e.SourcePageType == typeof(LaunchPage);
-
-        Log.Information(
-            "[Shell.HeaderDisplay] Frame navigating. currentPage={CurrentPage}, targetPage={TargetPage}, delayLaunchSwitch={DelayLaunchSwitch}",
-            currentPageType?.Name ?? "<null>",
-            e.SourcePageType?.Name ?? "<null>",
-            _delayLaunchHeaderSwitchOnNextNavigation);
-    }
-
     private void OnFrameNavigated(object sender, NavigationEventArgs e)
     {
-        var targetMetadata = ViewModel.CurrentHeaderMetadata;
-        var targetHostConfiguration = ViewModel.CurrentHeaderHostConfiguration;
-        var targetTrailingActions = CreateTrailingActionsContent();
-        var targetSupplementalContent = CreateSupplementalContent();
-        var targetBreadcrumbItemTemplate = CreateBreadcrumbItemTemplate();
-
-        if (_delayLaunchHeaderSwitchOnNextNavigation && targetHostConfiguration.UseShellHeader)
-        {
-            ScheduleDisplayedHeaderSwitch(
-                targetMetadata,
-                targetHostConfiguration,
-                targetTrailingActions,
-                targetSupplementalContent,
-                targetBreadcrumbItemTemplate);
-        }
-        else
-        {
-            ClearDisplayedHeaderHeightReservation();
-            ApplyDisplayedHeaderState(
-                targetMetadata,
-                targetHostConfiguration,
-                targetTrailingActions,
-                targetSupplementalContent,
-                targetBreadcrumbItemTemplate);
-        }
-
-        _delayLaunchHeaderSwitchOnNextNavigation = false;
-        SharedPageHeader.UpdateLayout();
-        ApplyCurrentPageHeaderInset();
+        RefreshShellHeaderContent();
 
         var isTutorial = e.SourcePageType == typeof(TutorialPage);
         NavigationViewControl.IsPaneVisible = !isTutorial;
@@ -621,143 +505,14 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
             isTutorial);
     }
 
-    private void SharedPageHeader_SizeChanged(object sender, SizeChangedEventArgs e)
+    private void RefreshShellHeaderContent()
     {
-        ApplyCurrentPageHeaderInset();
-    }
-
-    private void ApplyDisplayedHeaderState(
-        PageHeaderMetadata metadata,
-        PageHeaderHostConfiguration hostConfiguration,
-        object? trailingActions,
-        object? supplementalContent,
-        DataTemplate? breadcrumbItemTemplate)
-    {
-        DisplayedHeaderMetadata = metadata;
-        DisplayedHeaderHostConfiguration = hostConfiguration;
-        CurrentHeaderTrailingActions = trailingActions;
-        CurrentHeaderSupplementalContent = supplementalContent;
-        CurrentHeaderBreadcrumbItemTemplate = breadcrumbItemTemplate;
-
-        OnPropertyChanged(nameof(DisplayedHeaderMetadata));
-        OnPropertyChanged(nameof(DisplayedHeaderHostConfiguration));
-        OnPropertyChanged(nameof(IsDisplayedShellHeaderVisible));
+        CurrentHeaderTrailingActions = CreateTrailingActionsContent();
+        CurrentHeaderSupplementalContent = CreateSupplementalContent();
+        CurrentHeaderBreadcrumbItemTemplate = CreateBreadcrumbItemTemplate();
         OnPropertyChanged(nameof(CurrentHeaderTrailingActions));
         OnPropertyChanged(nameof(CurrentHeaderSupplementalContent));
         OnPropertyChanged(nameof(CurrentHeaderBreadcrumbItemTemplate));
-
-        Log.Information(
-            "[Shell.HeaderDisplay] Applied displayed header. currentPage={CurrentPage}, visible={IsVisible}, title={Title}, supplementalContent={SupplementalContentType}",
-            NavigationFrame.Content?.GetType().Name ?? "<null>",
-            IsDisplayedShellHeaderVisible,
-            DisplayedHeaderMetadata.Title,
-            CurrentHeaderSupplementalContent?.GetType().Name ?? "<null>");
-    }
-
-    private void ScheduleDisplayedHeaderSwitch(
-        PageHeaderMetadata metadata,
-        PageHeaderHostConfiguration hostConfiguration,
-        object? trailingActions,
-        object? supplementalContent,
-        DataTemplate? breadcrumbItemTemplate)
-    {
-        CancelPendingDisplayedHeaderSwitch();
-        ReserveDisplayedHeaderHeightForDelayedSwitch(supplementalContent);
-
-        _pendingDisplayedHeaderSwitchCancellationTokenSource = new CancellationTokenSource();
-        _ = ApplyDisplayedHeaderStateAfterDelayAsync(
-            metadata,
-            hostConfiguration,
-            trailingActions,
-            supplementalContent,
-            breadcrumbItemTemplate,
-            _pendingDisplayedHeaderSwitchCancellationTokenSource.Token);
-
-        Log.Information(
-            "[Shell.HeaderDisplay] Scheduled delayed header switch. currentPage={CurrentPage}, delayMs={DelayMilliseconds}, keepingPreviousHeader={KeepingPreviousHeader}",
-            NavigationFrame.Content?.GetType().Name ?? "<null>",
-            LaunchHeaderDeferredRevealMillisecondsValue,
-            IsDisplayedShellHeaderVisible);
-    }
-
-    private void CancelPendingDisplayedHeaderSwitch()
-    {
-        _pendingDisplayedHeaderSwitchCancellationTokenSource?.Cancel();
-        _pendingDisplayedHeaderSwitchCancellationTokenSource?.Dispose();
-        _pendingDisplayedHeaderSwitchCancellationTokenSource = null;
-    }
-
-    private async Task ApplyDisplayedHeaderStateAfterDelayAsync(
-        PageHeaderMetadata metadata,
-        PageHeaderHostConfiguration hostConfiguration,
-        object? trailingActions,
-        object? supplementalContent,
-        DataTemplate? breadcrumbItemTemplate,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await Task.Delay(LaunchHeaderDeferredRevealMillisecondsValue, cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            return;
-        }
-
-        if (cancellationToken.IsCancellationRequested)
-        {
-            return;
-        }
-
-        ApplyDisplayedHeaderState(
-            metadata,
-            hostConfiguration,
-            trailingActions,
-            supplementalContent,
-            breadcrumbItemTemplate);
-
-        ClearDisplayedHeaderHeightReservation();
-        SharedPageHeader.UpdateLayout();
-        ApplyCurrentPageHeaderInset();
-        CancelPendingDisplayedHeaderSwitch();
-    }
-
-    private void ApplyCurrentPageHeaderInset()
-    {
-        if (NavigationFrame.Content is not FrameworkElement pageRoot)
-        {
-            return;
-        }
-
-        if (pageRoot.FindName(PageContentAreaName) is not FrameworkElement contentArea)
-        {
-            Log.Debug(
-                "[Shell.HeaderInset] Current page does not expose ContentArea. pageType={PageType}",
-                pageRoot.GetType().Name);
-            return;
-        }
-
-        var targetTopInset = ViewModel.CurrentHeaderHostConfiguration.UseShellHeader
-            ? SharedPageHeader.ActualHeight
-            : 0d;
-        var currentMargin = contentArea.Margin;
-
-        if (Math.Abs(currentMargin.Top - targetTopInset) < 0.5)
-        {
-            return;
-        }
-
-        contentArea.Margin = new Thickness(
-            currentMargin.Left,
-            targetTopInset,
-            currentMargin.Right,
-            currentMargin.Bottom);
-
-        Log.Information(
-            "[Shell.HeaderInset] Applied content inset. pageType={PageType}, useShellHeader={UseShellHeader}, topInset={TopInset:F1}",
-            pageRoot.GetType().Name,
-            ViewModel.CurrentHeaderHostConfiguration.UseShellHeader,
-            targetTopInset);
     }
 
     private object? CreateTrailingActionsContent()
@@ -774,7 +529,6 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
     {
         return (ViewModel.CurrentHeaderHostConfiguration.SupplementalContentKind, ViewModel.NavigationService.Frame?.GetPageViewModel()) switch
         {
-            (Contracts.ViewModels.PageHeaderSupplementalContentKind.LaunchTitle, LaunchViewModel launchViewModel) => new LaunchHeaderContent(launchViewModel),
             _ => null,
         };
     }
