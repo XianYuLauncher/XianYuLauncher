@@ -12,6 +12,7 @@
 
     <Page.Resources>
         <ResourceDictionary>
+            <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
             <ResourceDictionary.ThemeDictionaries>
                 <ResourceDictionary x:Key="Light">
                     <Color x:Key="MotionOverlayColor">#CCFFFFFF</Color>
@@ -124,7 +125,27 @@
                 </NavigationViewItem>
             </NavigationView.FooterMenuItems>
             <Grid Margin="{StaticResource NavigationViewPageContentMargin}">
-                <Frame x:Name="NavigationFrame">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <controls:PageHeader
+                    x:Name="SharedPageHeader"
+                    Grid.Row="0"
+                    Title="{x:Bind ViewModel.CurrentHeaderMetadata.Title, Mode=OneWay}"
+                    Subtitle="{x:Bind ViewModel.CurrentHeaderMetadata.Subtitle, Mode=OneWay}"
+                    ShowBreadcrumb="{x:Bind ViewModel.CurrentHeaderMetadata.ShowBreadcrumb, Mode=OneWay}"
+                    ShowPrimaryHeading="{x:Bind ViewModel.CurrentHeaderHostConfiguration.ShowPrimaryHeading, Mode=OneWay}"
+                    BreadcrumbFontSize="{x:Bind ViewModel.CurrentHeaderHostConfiguration.BreadcrumbFontSize, Mode=OneWay}"
+                    BreadcrumbMargin="{x:Bind ViewModel.CurrentHeaderHostConfiguration.BreadcrumbMargin, Mode=OneWay}"
+                    BreadcrumbItems="{x:Bind ViewModel.CurrentHeaderMetadata.BreadcrumbItems, Mode=OneWay}"
+                    BreadcrumbItemTemplate="{x:Bind CurrentHeaderBreadcrumbItemTemplate, Mode=OneWay}"
+                    HeaderSupplementalContent="{x:Bind CurrentHeaderSupplementalContent, Mode=OneWay}"
+                    TrailingActions="{x:Bind CurrentHeaderTrailingActions, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.IsShellHeaderVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+                <Frame x:Name="NavigationFrame" Grid.Row="1">
                     <Frame.ContentTransitions>
                         <TransitionCollection>
                             <NavigationThemeTransition />

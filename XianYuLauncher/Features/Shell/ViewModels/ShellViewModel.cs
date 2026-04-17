@@ -9,12 +9,15 @@ using Microsoft.UI.Xaml.Navigation;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Views;
 using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.Shell.Models;
 using XianYuLauncher.Features.Settings.Views;
+using XianYuLauncher.Helpers;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.Shell.ViewModels;
 
@@ -39,12 +42,23 @@ public partial class ShellViewModel : ObservableRecipient
     [ObservableProperty]
     private bool isLauncherAIVisible;
 
+    [ObservableProperty]
+    private PageHeaderMetadata currentHeaderMetadata = new();
+
+    [ObservableProperty]
+    private PageHeaderPresentationMode currentHeaderPresentationMode = PageHeaderPresentationMode.Standard;
+
+    [ObservableProperty]
+    private PageHeaderHostConfiguration currentHeaderHostConfiguration = PageHeaderHostConfiguration.Disabled;
+
     /// <summary>
     /// 右下角下载 TeachingTip 列表（可多任务同时展示）。
     /// </summary>
     public ObservableCollection<ShellDownloadTipItem> DownloadTeachingTips { get; } = new();
 
     public Visibility LauncherAINavigationVisibility => IsLauncherAIVisible ? Visibility.Visible : Visibility.Collapsed;
+
+    public bool IsShellHeaderVisible => CurrentHeaderHostConfiguration.UseShellHeader;
 
     public INavigationService NavigationService
     {
@@ -91,6 +105,11 @@ public partial class ShellViewModel : ObservableRecipient
         {
             NavigationService.NavigateTo(typeof(LaunchViewModel).FullName!);
         }
+    }
+
+    partial void OnCurrentHeaderHostConfigurationChanged(PageHeaderHostConfiguration value)
+    {
+        OnPropertyChanged(nameof(IsShellHeaderVisible));
     }
 
     private async Task InitializeLauncherAIVisibilityAsync()
@@ -357,6 +376,7 @@ public partial class ShellViewModel : ObservableRecipient
 
     private void OnNavigated(object sender, NavigationEventArgs e)
     {
+        UpdateHeaderState();
         UpdateBackEnabled();
 
         if (e.SourcePageType == typeof(SettingsPage))
@@ -375,6 +395,21 @@ public partial class ShellViewModel : ObservableRecipient
     private void OnSecondaryContentStateChanged(object? sender, EventArgs e)
     {
         UpdateBackEnabled();
+    }
+
+    private void UpdateHeaderState()
+    {
+        if (NavigationService.Frame?.GetPageViewModel() is not IPageHeaderAware pageHeaderAware)
+        {
+            CurrentHeaderMetadata = new PageHeaderMetadata();
+            CurrentHeaderPresentationMode = PageHeaderPresentationMode.Standard;
+            CurrentHeaderHostConfiguration = PageHeaderHostConfiguration.Disabled;
+            return;
+        }
+
+        CurrentHeaderMetadata = pageHeaderAware.HeaderMetadata;
+        CurrentHeaderPresentationMode = pageHeaderAware.HeaderPresentationMode;
+        CurrentHeaderHostConfiguration = pageHeaderAware.HeaderHostConfiguration;
     }
 
     private void UpdateBackEnabled()

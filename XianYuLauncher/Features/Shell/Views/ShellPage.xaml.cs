@@ -4,11 +4,12 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
 
 using Windows.System;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
-using System.ComponentModel;
 using System.Linq;
 using Serilog;
 
@@ -26,7 +27,7 @@ using XianYuLauncher.Helpers;
 namespace XianYuLauncher.Features.Shell.Views;
 
 // Update NavigationViewItem titles and icons in ShellPage.xaml.
-public sealed partial class ShellPage : Page
+public sealed partial class ShellPage : Page, INotifyPropertyChanged
 {
     public ShellViewModel ViewModel
     {
@@ -36,6 +37,14 @@ public sealed partial class ShellPage : Page
     private readonly MaterialService _materialService;
     private readonly IUiDispatcher _uiDispatcher;
     private readonly ISecondaryContentNavigationService _secondaryContentNavigationService;
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    public object? CurrentHeaderTrailingActions { get; private set; }
+
+    public object? CurrentHeaderSupplementalContent { get; private set; }
+
+    public DataTemplate? CurrentHeaderBreadcrumbItemTemplate { get; private set; }
 
     public ShellPage(ShellViewModel viewModel, ISecondaryContentNavigationService secondaryContentNavigationService)
     {
@@ -459,6 +468,8 @@ public sealed partial class ShellPage : Page
     /// </summary>
     private void OnFrameNavigated(object sender, NavigationEventArgs e)
     {
+        RefreshShellHeaderContent();
+
         var isTutorial = e.SourcePageType == typeof(TutorialPage);
         NavigationViewControl.IsPaneVisible = !isTutorial;
         NavigationViewControl.IsBackButtonVisible = isTutorial
@@ -476,6 +487,45 @@ public sealed partial class ShellPage : Page
                 settingsPage.ViewModel.NavigationStyleChanged += OnNavigationStyleChanged;
             }
         }
+    }
+
+    private void RefreshShellHeaderContent()
+    {
+        CurrentHeaderTrailingActions = CreateTrailingActionsContent();
+        CurrentHeaderSupplementalContent = CreateSupplementalContent();
+        CurrentHeaderBreadcrumbItemTemplate = CreateBreadcrumbItemTemplate();
+        OnPropertyChanged(nameof(CurrentHeaderTrailingActions));
+        OnPropertyChanged(nameof(CurrentHeaderSupplementalContent));
+        OnPropertyChanged(nameof(CurrentHeaderBreadcrumbItemTemplate));
+    }
+
+    private object? CreateTrailingActionsContent()
+    {
+        return ViewModel.CurrentHeaderHostConfiguration.TrailingActionsKind switch
+        {
+            _ => null,
+        };
+    }
+
+    private object? CreateSupplementalContent()
+    {
+        return ViewModel.CurrentHeaderHostConfiguration.SupplementalContentKind switch
+        {
+            _ => null,
+        };
+    }
+
+    private DataTemplate? CreateBreadcrumbItemTemplate()
+    {
+        return ViewModel.CurrentHeaderHostConfiguration.BreadcrumbTemplateKind switch
+        {
+            _ => null,
+        };
+    }
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
     private void OnLoaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
