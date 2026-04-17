@@ -6,6 +6,8 @@ public sealed class PageHeaderHostConfiguration
 {
     public static PageHeaderHostConfiguration Disabled { get; } = new();
 
+    public static PageHeaderHostConfiguration Enabled { get; } = new() { UseShellHeader = true };
+
     public bool UseShellHeader { get; init; }
 
     public bool ShowPrimaryHeading { get; init; } = true;

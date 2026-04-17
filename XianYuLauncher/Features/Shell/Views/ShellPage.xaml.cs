@@ -16,11 +16,14 @@ using Serilog;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.Accounts.ViewModels;
+using XianYuLauncher.Features.ErrorAnalysis.Controls;
+using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
 using XianYuLauncher.Features.Accounts.Views;
 using XianYuLauncher.Features.Shell.Models;
 using XianYuLauncher.Features.Shell.ViewModels;
 using XianYuLauncher.Features.Settings.Views;
 using XianYuLauncher.Features.Tutorial.Views;
+using XianYuLauncher.Features.VersionList.Controls;
 using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Helpers;
 
@@ -501,16 +504,18 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
 
     private object? CreateTrailingActionsContent()
     {
-        return ViewModel.CurrentHeaderHostConfiguration.TrailingActionsKind switch
+        return (ViewModel.CurrentHeaderHostConfiguration.TrailingActionsKind, ViewModel.NavigationService.Frame?.GetPageViewModel()) switch
         {
+            (Contracts.ViewModels.PageHeaderTrailingActionsKind.LauncherAIPopOut, LauncherAIViewModel) => new LauncherAIHeaderActionsControl(),
             _ => null,
         };
     }
 
     private object? CreateSupplementalContent()
     {
-        return ViewModel.CurrentHeaderHostConfiguration.SupplementalContentKind switch
+        return (ViewModel.CurrentHeaderHostConfiguration.SupplementalContentKind, ViewModel.NavigationService.Frame?.GetPageViewModel()) switch
         {
+            (Contracts.ViewModels.PageHeaderSupplementalContentKind.VersionListControls, VersionListViewModel versionListViewModel) => new VersionListHeaderControls(versionListViewModel),
             _ => null,
         };
     }

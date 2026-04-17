@@ -50,19 +50,11 @@
     <Grid x:Name="ContentArea" DataContext="{x:Bind ViewModel}" mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <controls:PageHeader
-            Grid.Row="0"
-            Title="{x:Bind ViewModel.HeaderMetadata.Title, Mode=OneWay}"
-            Subtitle="{x:Bind ViewModel.HeaderMetadata.Subtitle, Mode=OneWay}"
-            ShowBreadcrumb="{x:Bind ViewModel.HeaderMetadata.ShowBreadcrumb, Mode=OneWay}"
-            BreadcrumbItems="{x:Bind ViewModel.HeaderMetadata.BreadcrumbItems, Mode=OneWay}" />
-
         <!-- 登录状态显示 - 居中块 + 块内居左 -->
-        <Grid Grid.Row="1" HorizontalAlignment="Stretch" Margin="24,0,24,0">
+        <Grid Grid.Row="0" HorizontalAlignment="Stretch" Margin="24,0,24,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="100*" MaxWidth="1064" />
@@ -91,7 +83,7 @@
 
         <!-- 主要内容区域 - ScrollViewer 全宽，滚动条贴页面右侧 -->
         <ScrollViewer 
-            Grid.Row="2" 
+            Grid.Row="1" 
             VerticalScrollBarVisibility="Auto" 
             HorizontalScrollBarVisibility="Disabled">
             <Grid HorizontalAlignment="Stretch" Margin="24,0,24,24">

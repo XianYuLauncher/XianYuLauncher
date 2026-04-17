@@ -79,7 +79,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
 
         public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
 
-        public PageHeaderHostConfiguration HeaderHostConfiguration => PageHeaderHostConfiguration.Disabled;
+        public PageHeaderHostConfiguration HeaderHostConfiguration => PageHeaderHostConfiguration.Enabled;
 
         private readonly IFileService _fileService;
         private readonly INavigationService _navigationService;

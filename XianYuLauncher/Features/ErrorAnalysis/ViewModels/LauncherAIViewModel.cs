@@ -16,6 +16,7 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable,
 {
     private static readonly PageHeaderHostConfiguration LauncherAIHeaderHostConfiguration = new()
     {
+        UseShellHeader = true,
         TrailingActionsKind = PageHeaderTrailingActionsKind.LauncherAIPopOut,
     };
 

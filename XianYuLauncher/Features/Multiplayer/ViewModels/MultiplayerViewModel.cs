@@ -29,7 +29,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
 
     public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.ControlStrip;
 
-    public PageHeaderHostConfiguration HeaderHostConfiguration => PageHeaderHostConfiguration.Disabled;
+    public PageHeaderHostConfiguration HeaderHostConfiguration => PageHeaderHostConfiguration.Enabled;
 
     private readonly INavigationService _navigationService;
     private readonly TerracottaService _terracottaService;

@@ -202,18 +202,8 @@
 
     <Grid x:Name="ContentArea"
           mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <localControls:PageHeader
-            Grid.Row="0"
-            Title="{x:Bind ViewModel.HeaderMetadata.Title, Mode=OneWay}"
-            Subtitle="{x:Bind ViewModel.HeaderMetadata.Subtitle, Mode=OneWay}" />
-
         <!-- 主内容区 -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="{StaticResource PageScrollViewerPadding}">
+        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="{StaticResource PageScrollViewerPadding}">
             <Grid HorizontalAlignment="Stretch">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

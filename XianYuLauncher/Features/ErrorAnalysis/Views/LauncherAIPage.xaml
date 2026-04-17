@@ -11,27 +11,7 @@
     <Grid x:Name="ContentArea"
           Background="Transparent"
           mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <controls:PageHeader
-            Grid.Row="0"
-            Title="{x:Bind ViewModel.HeaderMetadata.Title, Mode=OneWay}"
-            Subtitle="{x:Bind ViewModel.HeaderMetadata.Subtitle, Mode=OneWay}">
-            <controls:PageHeader.TrailingActions>
-                <Button x:Uid="LauncherAIPage_PopOutButton"
-                        Click="PopOutButton_Click"
-                        VerticalAlignment="Center"
-                        Style="{StaticResource SubtleButtonStyle}"
-                        Padding="6">
-                    <FontIcon Glyph="&#xE8A7;" FontSize="14" />
-                </Button>
-            </controls:PageHeader.TrailingActions>
-        </controls:PageHeader>
-
-        <Grid Grid.Row="1" Margin="24,0,24,24" HorizontalAlignment="Stretch">
+        <Grid Margin="24,0,24,24" HorizontalAlignment="Stretch">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="100*" MaxWidth="1064" />

@@ -29,19 +29,8 @@
     </Page.Resources>
     <Grid x:Name="ContentArea"
           mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
-
-        <localControls:PageHeader
-            Grid.Row="0"
-            Title="{x:Bind ViewModel.HeaderMetadata.Title, Mode=OneWay}"
-            Subtitle="{x:Bind ViewModel.HeaderMetadata.Subtitle, Mode=OneWay}" />
-
         <!-- 主要内容区域 - ScrollViewer 全宽，滚动条贴页面右侧 -->
         <ScrollViewer x:Name="MainScrollViewer"
-                      Grid.Row="1"
                       VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled"
                       Padding="{StaticResource PageScrollViewerPadding}">

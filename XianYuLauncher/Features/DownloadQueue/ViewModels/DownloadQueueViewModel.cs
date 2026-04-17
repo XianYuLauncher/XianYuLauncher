@@ -208,7 +208,7 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable, 
 
     public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
 
-    public PageHeaderHostConfiguration HeaderHostConfiguration => PageHeaderHostConfiguration.Disabled;
+    public PageHeaderHostConfiguration HeaderHostConfiguration => PageHeaderHostConfiguration.Enabled;
 
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IDownloadTaskPresentationService _downloadTaskPresentationService;

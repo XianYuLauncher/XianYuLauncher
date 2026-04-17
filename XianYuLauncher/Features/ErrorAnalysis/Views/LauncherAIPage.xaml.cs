@@ -19,9 +19,4 @@ public sealed partial class LauncherAIPage : Page
         base.OnNavigatedTo(e);
         _ = ViewModel.InitializeAsync();
     }
-
-    private void PopOutButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
-    {
-        LauncherAIWindow.ShowOrActivate();
-    }
 }
