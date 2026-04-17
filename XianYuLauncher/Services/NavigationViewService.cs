@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Settings.ViewModels;
 using XianYuLauncher.Helpers;
+using Serilog;
 
 namespace XianYuLauncher.Services;
 
@@ -32,6 +33,7 @@ public class NavigationViewService : INavigationViewService
         _navigationView = navigationView;
         _navigationView.BackRequested += OnBackRequested;
         _navigationView.ItemInvoked += OnItemInvoked;
+        Log.Information("[NavigationViewService] Initialized. menuItemCount={MenuItemCount}, footerItemCount={FooterItemCount}, isBackEnabled={IsBackEnabled}", _navigationView.MenuItems.Count, _navigationView.FooterMenuItems.Count, _navigationView.IsBackEnabled);
     }
 
     public void UnregisterEvents()
@@ -40,6 +42,7 @@ public class NavigationViewService : INavigationViewService
         {
             _navigationView.BackRequested -= OnBackRequested;
             _navigationView.ItemInvoked -= OnItemInvoked;
+            Log.Information("[NavigationViewService] Unregistered events. isBackEnabled={IsBackEnabled}", _navigationView.IsBackEnabled);
         }
     }
 
@@ -53,12 +56,18 @@ public class NavigationViewService : INavigationViewService
         return null;
     }
 
-    private void OnBackRequested(NavigationView sender, NavigationViewBackRequestedEventArgs args) => _shellNavigationOrchestrator.GoBack();
+    private void OnBackRequested(NavigationView sender, NavigationViewBackRequestedEventArgs args)
+    {
+        Log.Information("[NavigationViewService] BackRequested. senderIsBackEnabled={IsBackEnabled}, paneDisplayMode={PaneDisplayMode}, selectedItemType={SelectedItemType}", sender.IsBackEnabled, sender.PaneDisplayMode, sender.SelectedItem?.GetType().Name ?? "<null>");
+        var result = _shellNavigationOrchestrator.GoBack();
+        Log.Information("[NavigationViewService] BackRequested handled. result={Result}, senderIsBackEnabled={IsBackEnabled}", result, sender.IsBackEnabled);
+    }
 
     private void OnItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
     {
         if (args.IsSettingsInvoked)
         {
+            Log.Information("[NavigationViewService] Settings item invoked.");
             _shellNavigationOrchestrator.NavigateToTopLevel(typeof(SettingsViewModel).FullName!);
         }
         else
@@ -67,6 +76,7 @@ public class NavigationViewService : INavigationViewService
 
             if (selectedItem?.GetValue(NavigationHelper.NavigateToProperty) is string pageKey)
             {
+                Log.Information("[NavigationViewService] Menu item invoked. pageKey={PageKey}, itemType={ItemType}", pageKey, selectedItem.GetType().Name);
                 _shellNavigationOrchestrator.NavigateToTopLevel(pageKey);
             }
         }

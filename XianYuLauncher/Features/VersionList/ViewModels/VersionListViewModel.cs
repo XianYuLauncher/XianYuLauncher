@@ -32,7 +32,6 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
     private static readonly PageHeaderHostConfiguration VersionListHeaderHostConfiguration = new()
     {
         UseShellHeader = true,
-        SupplementalContentKind = PageHeaderSupplementalContentKind.VersionListControls,
     };
 
     public PageHeaderMetadata HeaderMetadata { get; } = new();

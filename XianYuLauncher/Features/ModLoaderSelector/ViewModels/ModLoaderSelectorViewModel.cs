@@ -25,7 +25,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         UseShellHeader = true,
         ShowPrimaryHeading = false,
         BreadcrumbFontSize = 28d,
-        BreadcrumbMargin = new Thickness(-2, -11, 0, 12),
+        BreadcrumbMargin = new Thickness(-2, -11, 0, 0),
         BreadcrumbTemplateKind = PageHeaderBreadcrumbTemplateKind.InteractiveCurrentItem,
     };
 
@@ -243,7 +243,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         _modLoaderIconPresentationService = App.GetService<IModLoaderIconPresentationService>();
         _uiDispatcher = App.GetService<IUiDispatcher>();
         SelectedIconPath = _modLoaderIconPresentationService.DefaultVersionIconPath;
-        HeaderMetadata.Title = "ModLoaderSelectionPage_TitleText.Text".GetLocalized();
+        HeaderMetadata.Title = "ModLoaderSelector_HeaderTitle".GetLocalized();
         HeaderMetadata.Subtitle = string.Empty;
         HeaderMetadata.ShowBreadcrumb = true;
     }

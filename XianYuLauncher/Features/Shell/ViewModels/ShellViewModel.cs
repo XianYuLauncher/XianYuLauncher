@@ -18,6 +18,7 @@ using XianYuLauncher.Features.Shell.Models;
 using XianYuLauncher.Features.Settings.Views;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Shared.Models;
+using Serilog;
 
 namespace XianYuLauncher.Features.Shell.ViewModels;
 
@@ -109,6 +110,16 @@ public partial class ShellViewModel : ObservableRecipient
     partial void OnCurrentHeaderHostConfigurationChanged(PageHeaderHostConfiguration value)
     {
         OnPropertyChanged(nameof(IsShellHeaderVisible));
+    }
+
+    partial void OnIsBackEnabledChanged(bool value)
+    {
+        Log.Information(
+            "[Shell.NavBack] ViewModel.IsBackEnabled changed. value={Value}, currentPage={CurrentPage}, backStackDepth={BackStackDepth}, selectedItemType={SelectedItemType}",
+            value,
+            NavigationService.Frame?.Content?.GetType().Name ?? "<null>",
+            NavigationService.Frame?.BackStack.Count ?? 0,
+            Selected?.GetType().Name ?? "<null>");
     }
 
     private async Task InitializeLauncherAIVisibilityAsync()
@@ -378,9 +389,22 @@ public partial class ShellViewModel : ObservableRecipient
         UpdateHeaderState();
         UpdateBackEnabled();
 
+        Log.Information(
+            "[Shell.NavBack] ShellViewModel observed navigation. sourcePage={SourcePage}, navMode={NavigationMode}, canGoBack={CanGoBack}, backStackDepth={BackStackDepth}",
+            e.SourcePageType?.Name ?? "<null>",
+            e.NavigationMode,
+            _shellNavigationOrchestrator.CanGoBack,
+            NavigationService.Frame?.BackStack.Count ?? 0);
+
         if (e.SourcePageType == typeof(SettingsPage))
         {
             Selected = NavigationViewService.SettingsItem;
+            return;
+        }
+
+        if (e.SourcePageType == null)
+        {
+            Log.Warning("[Shell.NavBack] Navigation event has null SourcePageType. canGoBack={CanGoBack}, backStackDepth={BackStackDepth}", _shellNavigationOrchestrator.CanGoBack, NavigationService.Frame?.BackStack.Count ?? 0);
             return;
         }
 
@@ -408,6 +432,24 @@ public partial class ShellViewModel : ObservableRecipient
 
     private void UpdateBackEnabled()
     {
-        IsBackEnabled = _shellNavigationOrchestrator.CanGoBack;
+        var canGoBack = _shellNavigationOrchestrator.CanGoBack;
+        Log.Information(
+            "[Shell.NavBack] UpdateBackEnabled computed. canGoBack={CanGoBack}, currentPage={CurrentPage}, backStackDepth={BackStackDepth}",
+            canGoBack,
+            NavigationService.Frame?.Content?.GetType().Name ?? "<null>",
+            NavigationService.Frame?.BackStack.Count ?? 0);
+        IsBackEnabled = canGoBack;
+    }
+
+    public void SyncBackEnabled(bool canGoBack, string? reason = null)
+    {
+        Log.Information(
+            "[Shell.NavBack] SyncBackEnabled requested. reason={Reason}, target={Target}, frameCanGoBack={FrameCanGoBack}, backStackDepth={BackStackDepth}, currentPage={CurrentPage}",
+            reason ?? "<unspecified>",
+            canGoBack,
+            NavigationService.Frame?.CanGoBack ?? false,
+            NavigationService.Frame?.BackStack.Count ?? 0,
+            NavigationService.Frame?.Content?.GetType().Name ?? "<null>");
+        IsBackEnabled = canGoBack;
     }
 }

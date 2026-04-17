@@ -8,6 +8,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
+using Serilog;
 
 namespace XianYuLauncher.Services;
 
@@ -29,6 +30,7 @@ public class NavigationService : INavigationService
             if (_frame == null)
             {
                 _frame = App.MainWindow.Content as Frame;
+                Log.Information("[NavigationService] Frame lazily resolved from MainWindow.Content. frameType={FrameType}", _frame?.GetType().Name ?? "<null>");
                 RegisterFrameEvents();
             }
 
@@ -38,6 +40,7 @@ public class NavigationService : INavigationService
         set
         {
             UnregisterFrameEvents();
+            Log.Information("[NavigationService] Frame updated. oldFrameType={OldFrameType}, newFrameType={NewFrameType}", _frame?.GetType().Name ?? "<null>", value?.GetType().Name ?? "<null>");
             _frame = value;
             RegisterFrameEvents();
         }
@@ -57,6 +60,7 @@ public class NavigationService : INavigationService
         if (_frame != null)
         {
             _frame.Navigated += OnNavigated;
+            Log.Information("[NavigationService] Registered frame navigation events. currentPage={CurrentPage}, backStackDepth={BackStackDepth}", _frame.Content?.GetType().Name ?? "<null>", _frame.BackStack.Count);
         }
     }
 
@@ -65,11 +69,14 @@ public class NavigationService : INavigationService
         if (_frame != null)
         {
             _frame.Navigated -= OnNavigated;
+            Log.Information("[NavigationService] Unregistered frame navigation events. currentPage={CurrentPage}, backStackDepth={BackStackDepth}", _frame.Content?.GetType().Name ?? "<null>", _frame.BackStack.Count);
         }
     }
 
     public bool GoBack()
     {
+        Log.Information("[NavigationService] GoBack requested. canGoBack={CanGoBack}, currentPage={CurrentPage}, backStackDepth={BackStackDepth}", CanGoBack, _frame?.Content?.GetType().Name ?? "<null>", _frame?.BackStack.Count ?? 0);
+
         if (CanGoBack)
         {
             var vmBeforeNavigation = _frame.GetPageViewModel();
@@ -79,8 +86,12 @@ public class NavigationService : INavigationService
                 navigationAware.OnNavigatedFrom();
             }
 
+            Log.Information("[NavigationService] GoBack dispatched. newCurrentPage={CurrentPage}, backStackDepth={BackStackDepth}", _frame.Content?.GetType().Name ?? "<null>", _frame.BackStack.Count);
+
             return true;
         }
+
+        Log.Warning("[NavigationService] GoBack ignored because frame cannot go back. currentPage={CurrentPage}, backStackDepth={BackStackDepth}", _frame?.Content?.GetType().Name ?? "<null>", _frame?.BackStack.Count ?? 0);
 
         return false;
     }
@@ -94,6 +105,15 @@ public class NavigationService : INavigationService
         try
         {
             var pageType = _pageService.GetPageType(pageKey);
+            Log.Information(
+                "[NavigationService] NavigateTo requested. pageKey={PageKey}, pageType={PageType}, clearNavigation={ClearNavigation}, currentPage={CurrentPage}, backStackDepth={BackStackDepth}, parameter={Parameter}, transition={Transition}",
+                pageKey,
+                pageType.Name,
+                clearNavigation,
+                _frame?.Content?.GetType().Name ?? "<null>",
+                _frame?.BackStack.Count ?? 0,
+                DescribeParameter(parameter),
+                transitionInfo?.GetType().Name ?? "<default>");
 
             if (_frame != null && (_frame.Content?.GetType() != pageType || (parameter != null && !parameter.Equals(_lastParameterUsed))))
             {
@@ -109,15 +129,25 @@ public class NavigationService : INavigationService
                     {
                         navigationAware.OnNavigatedFrom();
                     }
+
+                    Log.Information("[NavigationService] NavigateTo dispatched successfully. targetPage={TargetPage}, backStackDepth={BackStackDepth}, frameTag={FrameTag}", pageType.Name, _frame.BackStack.Count, _frame.Tag);
+                }
+
+                if (!navigated)
+                {
+                    Log.Warning("[NavigationService] NavigateTo returned false. targetPage={TargetPage}, currentPage={CurrentPage}, backStackDepth={BackStackDepth}", pageType.Name, _frame.Content?.GetType().Name ?? "<null>", _frame.BackStack.Count);
                 }
 
                 return navigated;
             }
 
+            Log.Information("[NavigationService] NavigateTo skipped because target matches current page and parameter. pageType={PageType}, parameter={Parameter}", pageType.Name, DescribeParameter(parameter));
+
             return false;
         }
         catch (Exception ex)
         {
+            Log.Error(ex, "[NavigationService] NavigateTo failed. pageKey={PageKey}, parameter={Parameter}", pageKey, DescribeParameter(parameter));
             _ = _dialogService.ShowMessageDialogAsync(
                 "导航错误",
                 $"无法导航到页面: {pageKey}\n\n错误信息: {ex.Message}\n\n堆栈跟踪: {ex.StackTrace}",
@@ -134,9 +164,11 @@ public class NavigationService : INavigationService
             _lastParameterUsed = e.Parameter;
 
             var clearNavigation = frame.Tag is bool b && b;
+            var backStackDepthBeforeClear = frame.BackStack.Count;
             if (clearNavigation)
             {
                 frame.BackStack.Clear();
+                frame.Tag = false;
             }
 
             if (frame.GetPageViewModel() is INavigationAware navigationAware)
@@ -144,7 +176,26 @@ public class NavigationService : INavigationService
                 navigationAware.OnNavigatedTo(e.Parameter);
             }
 
+            Log.Information(
+                "[NavigationService] Frame navigated. sourcePage={SourcePage}, navMode={NavigationMode}, clearNavigation={ClearNavigation}, backStackBeforeClear={BackStackBeforeClear}, backStackAfterClear={BackStackAfterClear}, parameter={Parameter}",
+                e.SourcePageType?.Name ?? "<null>",
+                e.NavigationMode,
+                clearNavigation,
+                backStackDepthBeforeClear,
+                frame.BackStack.Count,
+                DescribeParameter(e.Parameter));
+
             Navigated?.Invoke(sender, e);
         }
+    }
+
+    private static string DescribeParameter(object? parameter)
+    {
+        return parameter switch
+        {
+            null => "<null>",
+            string text => $"string:{text}",
+            _ => parameter.GetType().Name,
+        };
     }
 }

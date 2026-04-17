@@ -23,52 +23,57 @@
         </Style>
     </Page.Resources>
 
-        <Grid x:Name="ContentArea"
-            mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
-          <Grid Margin="24,0,24,24"
-              HorizontalAlignment="Stretch"
-              VerticalAlignment="Stretch">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-            </Grid.RowDefinitions>
+    <Grid x:Name="ContentArea"
+          mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
+        <Grid Margin="24,0,24,24" HorizontalAlignment="Stretch">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
 
-            <Grid Grid.Row="0" Margin="0,0,0,24">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-                <TextBlock x:Uid="ModLoaderSelectionPage_VersionNameText" Text="版本名称:" Margin="0,0,0,12" FontWeight="SemiBold" FontSize="16" />
-                <Border Grid.Row="1"
-                        Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
-                        BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="16">
-                    <StackPanel>
-                        <TextBlock Text="{x:Bind ViewModel.VersionNameDescription, Mode=OneWay}"
-                                   FontSize="14"
-                                   Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                                   Margin="0,0,0,8" />
-                        <TextBox x:Uid="ModLoaderSelectionPage_VersionNameTextBox"
-                                 Text="{x:Bind ViewModel.VersionName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                 PlaceholderText="例如: 1.21.10-fabric-0.15.3"
-                                 FontSize="16"
-                                 Padding="12"
-                                 Background="{ThemeResource TextControlBackground}"
-                                 BorderBrush="{ThemeResource TextControlBorderBrush}"
-                                 BorderThickness="1"
-                                 CornerRadius="4" />
-                    </StackPanel>
-                </Border>
-            </Grid>
-
-            <Grid Grid.Row="1" Margin="0,0,0,24">
+            <Grid Grid.Column="1" VerticalAlignment="Stretch">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,24">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <TextBlock x:Uid="ModLoaderSelectionPage_VersionNameText" Text="版本名称:" Margin="0,0,0,12" FontWeight="SemiBold" FontSize="16" />
+                    <Border Grid.Row="1"
+                            Background="{ThemeResource CardBackgroundFillColorSecondaryBrush}"
+                            BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}"
+                            BorderThickness="1"
+                            CornerRadius="4"
+                            Padding="16">
+                        <StackPanel>
+                            <TextBlock Text="{x:Bind ViewModel.VersionNameDescription, Mode=OneWay}"
+                                       FontSize="14"
+                                       Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                                       Margin="0,0,0,8" />
+                            <TextBox x:Uid="ModLoaderSelectionPage_VersionNameTextBox"
+                                     Text="{x:Bind ViewModel.VersionName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     PlaceholderText="例如: 1.21.10-fabric-0.15.3"
+                                     FontSize="16"
+                                     Padding="12"
+                                     Background="{ThemeResource TextControlBackground}"
+                                     BorderBrush="{ThemeResource TextControlBorderBrush}"
+                                     BorderThickness="1"
+                                     CornerRadius="4" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <Grid Grid.Row="1" Margin="0,0,0,24">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
 
                 <TextBlock x:Uid="ModLoaderSelectionPage_SelectComponentsText" Text="选择附属组件:" Margin="0,0,0,16" FontWeight="SemiBold" FontSize="16" />
 
@@ -296,19 +301,20 @@
                         </Expander>
                     </StackPanel>
                 </ScrollViewer>
-            </Grid>
+                </Grid>
 
-            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
-                <Button x:Uid="ModLoaderSelectionPage_CancelButton"
-                        Content="取消"
-                        Command="{x:Bind ViewModel.CancelCommand}"
-                        MinWidth="100" />
-                <Button x:Uid="ModLoaderSelectionPage_ConfirmDownloadButton"
-                        Content="确认下载"
-                        Command="{x:Bind ViewModel.ConfirmSelectionCommand}"
-                        IsEnabled="{x:Bind ViewModel.IsVersionNameValid, Mode=OneWay}"
-                        MinWidth="120" />
-            </StackPanel>
+                <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="12">
+                    <Button x:Uid="ModLoaderSelectionPage_CancelButton"
+                            Content="取消"
+                            Command="{x:Bind ViewModel.CancelCommand}"
+                            MinWidth="100" />
+                    <Button x:Uid="ModLoaderSelectionPage_ConfirmDownloadButton"
+                            Content="确认下载"
+                            Command="{x:Bind ViewModel.ConfirmSelectionCommand}"
+                            IsEnabled="{x:Bind ViewModel.IsVersionNameValid, Mode=OneWay}"
+                            MinWidth="120" />
+                </StackPanel>
+            </Grid>
         </Grid>
     </Grid>
 </Page>

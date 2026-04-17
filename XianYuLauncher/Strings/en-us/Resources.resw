@@ -1164,6 +1164,9 @@
   <data name="ModLoaderSelectionPage_CurrentVersionText.Text" xml:space="preserve">
     <value>Current Minecraft Version: </value>
   </data>
+  <data name="ModLoaderSelector_HeaderTitle" xml:space="preserve">
+    <value>Download Minecraft</value>
+  </data>
   <data name="ModLoaderSelectionPage_VersionNameText.Text" xml:space="preserve">
     <value>Version Name:</value>
   </data>

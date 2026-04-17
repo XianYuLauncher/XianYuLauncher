@@ -1,7 +1,6 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
@@ -28,7 +27,6 @@ using XianYuLauncher.Features.Shell.Models;
 using XianYuLauncher.Features.Shell.ViewModels;
 using XianYuLauncher.Features.Settings.Views;
 using XianYuLauncher.Features.Tutorial.Views;
-using XianYuLauncher.Features.VersionList.Controls;
 using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Controls;
@@ -40,8 +38,6 @@ namespace XianYuLauncher.Features.Shell.Views;
 // Update NavigationViewItem titles and icons in ShellPage.xaml.
 public sealed partial class ShellPage : Page, INotifyPropertyChanged
 {
-    private int _headerTransitionGeneration;
-
     public ShellViewModel ViewModel
     {
         get;
@@ -65,9 +61,12 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
         _shellNavigationOrchestrator = shellNavigationOrchestrator;
         InitializeComponent();
 
+        ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+
         ViewModel.NavigationService.Frame = NavigationFrame;
         ViewModel.NavigationViewService.Initialize(NavigationViewControl);
         _uiDispatcher = App.GetService<IUiDispatcher>();
+        SyncNavigationBackButtonStateFromFrame("ShellPage.Constructor");
 
         // 监听导航事件，教程页隐藏侧边栏
         NavigationFrame.Navigated += OnFrameNavigated;
@@ -481,7 +480,7 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
     private void OnFrameNavigated(object sender, NavigationEventArgs e)
     {
         RefreshShellHeaderContent();
-        ScheduleSharedHeaderNavigationTransitionIfNeeded();
+        SyncNavigationBackButtonStateFromFrame("NavigationFrame.Navigated");
 
         var isTutorial = e.SourcePageType == typeof(TutorialPage);
         NavigationViewControl.IsPaneVisible = !isTutorial;
@@ -500,131 +499,53 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
                 settingsPage.ViewModel.NavigationStyleChanged += OnNavigationStyleChanged;
             }
         }
+
+        Log.Information(
+            "[Shell.NavBack] Frame navigated. sourcePage={SourcePage}, navMode={NavigationMode}, frameCanGoBack={FrameCanGoBack}, controlIsBackEnabled={ControlIsBackEnabled}, backStackDepth={BackStackDepth}, isTutorial={IsTutorial}",
+            e.SourcePageType?.Name ?? "<null>",
+            e.NavigationMode,
+            NavigationFrame.CanGoBack,
+            NavigationViewControl.IsBackEnabled,
+            NavigationFrame.BackStack.Count,
+            isTutorial);
     }
 
-    private void ScheduleSharedHeaderNavigationTransitionIfNeeded()
+    private void SyncNavigationBackButtonStateFromFrame(string reason)
     {
-        _headerTransitionGeneration++;
-
-        if (_shellNavigationOrchestrator.LastNavigationKind != ShellNavigationKind.TopLevel
-            || SharedPageHeader.Visibility != Visibility.Visible)
-        {
-            ResetSharedHeaderNavigationTransitionState();
-            return;
-        }
-
-        var transitionGeneration = _headerTransitionGeneration;
-
-        if (NavigationFrame.Content is not FrameworkElement contentRoot)
-        {
-            PlaySharedHeaderNavigationTransition();
-            return;
-        }
-
-        void QueueTransitionAfterRenderBarrier()
-        {
-            void OnLayoutUpdated(object? sender, object args)
-            {
-                contentRoot.LayoutUpdated -= OnLayoutUpdated;
-
-                if (transitionGeneration != _headerTransitionGeneration)
-                {
-                    return;
-                }
-
-                var remainingRenderFrames = 1;
-
-                void OnRendering(object? renderingSender, object renderingArgs)
-                {
-                    if (transitionGeneration != _headerTransitionGeneration)
-                    {
-                        CompositionTarget.Rendering -= OnRendering;
-                        return;
-                    }
-
-                    if (remainingRenderFrames-- > 0)
-                    {
-                        return;
-                    }
-
-                    CompositionTarget.Rendering -= OnRendering;
-
-                    PlaySharedHeaderNavigationTransition();
-                }
-
-                CompositionTarget.Rendering += OnRendering;
-            }
-
-            contentRoot.LayoutUpdated += OnLayoutUpdated;
-        }
-
-        if (!contentRoot.IsLoaded)
-        {
-            RoutedEventHandler? onLoaded = null;
-            onLoaded = (_, _) =>
-            {
-                contentRoot.Loaded -= onLoaded;
-
-                if (transitionGeneration != _headerTransitionGeneration)
-                {
-                    return;
-                }
-
-                QueueTransitionAfterRenderBarrier();
-            };
-
-            contentRoot.Loaded += onLoaded;
-            return;
-        }
-
-        QueueTransitionAfterRenderBarrier();
+        var canGoBack = NavigationFrame.CanGoBack;
+        ViewModel.SyncBackEnabled(canGoBack, reason);
+        ApplyNavigationBackButtonState(reason, canGoBack);
     }
 
-    private void ResetSharedHeaderNavigationTransitionState()
+    private void ApplyNavigationBackButtonState(string reason, bool targetCanGoBack)
     {
-        SharedPageHeaderHost.Opacity = 1;
-        SharedPageHeaderTranslateTransform.Y = 0;
+        var controlBefore = NavigationViewControl.IsBackEnabled;
+        var frameCanGoBack = NavigationFrame.CanGoBack;
+        var viewModelValue = ViewModel.IsBackEnabled;
+
+        NavigationViewControl.IsBackEnabled = targetCanGoBack;
+
+        Log.Information(
+            "[Shell.NavBack] Apply back button state. reason={Reason}, targetCanGoBack={TargetCanGoBack}, frameCanGoBack={FrameCanGoBack}, viewModelCanGoBack={ViewModelCanGoBack}, controlBefore={ControlBefore}, controlAfter={ControlAfter}, backStackDepth={BackStackDepth}, currentPage={CurrentPage}, lastNavigationKind={LastNavigationKind}",
+            reason,
+            targetCanGoBack,
+            frameCanGoBack,
+            viewModelValue,
+            controlBefore,
+            NavigationViewControl.IsBackEnabled,
+            NavigationFrame.BackStack.Count,
+            NavigationFrame.Content?.GetType().Name ?? "<null>",
+            _shellNavigationOrchestrator.LastNavigationKind);
     }
 
-    private void PlaySharedHeaderNavigationTransition()
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (SharedPageHeader.Visibility != Visibility.Visible)
+        if (e.PropertyName != nameof(ShellViewModel.IsBackEnabled))
         {
-            ResetSharedHeaderNavigationTransitionState();
             return;
         }
 
-        SharedPageHeaderHost.Opacity = 0;
-        SharedPageHeaderTranslateTransform.Y = 18;
-
-        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
-        var storyboard = new Storyboard();
-
-        var opacityAnimation = new DoubleAnimation
-        {
-            From = 0,
-            To = 1,
-            Duration = TimeSpan.FromMilliseconds(240),
-            EasingFunction = easing,
-            EnableDependentAnimation = true,
-        };
-        Storyboard.SetTarget(opacityAnimation, SharedPageHeaderHost);
-        Storyboard.SetTargetProperty(opacityAnimation, nameof(Opacity));
-
-        var translateAnimation = new DoubleAnimation
-        {
-            From = 18,
-            To = 0,
-            Duration = TimeSpan.FromMilliseconds(280),
-            EasingFunction = easing,
-            EnableDependentAnimation = true,
-        };
-        Storyboard.SetTarget(translateAnimation, SharedPageHeaderTranslateTransform);
-        Storyboard.SetTargetProperty(translateAnimation, nameof(TranslateTransform.Y));
-
-        storyboard.Children.Add(opacityAnimation);
-        storyboard.Children.Add(translateAnimation);
-        storyboard.Begin();
+        ApplyNavigationBackButtonState("ShellViewModel.PropertyChanged", ViewModel.IsBackEnabled);
     }
 
     private void RefreshShellHeaderContent()
@@ -651,7 +572,6 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
     {
         return (ViewModel.CurrentHeaderHostConfiguration.SupplementalContentKind, ViewModel.NavigationService.Frame?.GetPageViewModel()) switch
         {
-            (Contracts.ViewModels.PageHeaderSupplementalContentKind.VersionListControls, VersionListViewModel versionListViewModel) => new VersionListHeaderControls(versionListViewModel),
             _ => null,
         };
     }
@@ -726,6 +646,15 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
 
         KeyboardAccelerators.Add(BuildKeyboardAccelerator(VirtualKey.Left, VirtualKeyModifiers.Menu));
         KeyboardAccelerators.Add(BuildKeyboardAccelerator(VirtualKey.GoBack));
+        SyncNavigationBackButtonStateFromFrame("ShellPage.Loaded");
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e)
+    {
+        ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        NavigationFrame.Navigated -= OnFrameNavigated;
+        ViewModel.NavigationViewService.UnregisterEvents();
+        Log.Information("[Shell.NavBack] ShellPage unloaded. currentPage={CurrentPage}, controlIsBackEnabled={ControlIsBackEnabled}", NavigationFrame.Content?.GetType().Name ?? "<null>", NavigationViewControl.IsBackEnabled);
     }
 
     private void MainWindow_Activated(object sender, WindowActivatedEventArgs args)

@@ -1164,6 +1164,9 @@
   <data name="ModLoaderSelectionPage_CurrentVersionText.Text" xml:space="preserve">
     <value>当前 Minecraft 版本: </value>
   </data>
+  <data name="ModLoaderSelector_HeaderTitle" xml:space="preserve">
+    <value>下载 Minecraft</value>
+  </data>
   <data name="ModLoaderSelectionPage_VersionNameText.Text" xml:space="preserve">
     <value>版本名称:</value>
   </data>

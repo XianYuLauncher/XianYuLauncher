@@ -9,7 +9,7 @@
 
     <UserControl.Resources>
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-        <helpers:StringNullOrEmptyToVisibilityConverter x:Key="StringNullOrEmptyToVisibilityConverter" />
+        <helpers:ObjectNullToVisibilityConverter x:Key="ObjectNullToVisibilityConverter" />
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" Padding="{StaticResource PageHeaderPadding}" HorizontalAlignment="Stretch">
@@ -41,23 +41,25 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" Spacing="8" HorizontalAlignment="Stretch">
+                <Grid Grid.Column="0" HorizontalAlignment="Stretch">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
                     <TextBlock
+                        Grid.Row="0"
                         Text="{x:Bind Title, Mode=OneWay}"
                         Style="{ThemeResource TitleTextBlockStyle}"
                         TextWrapping="WrapWholeWords" />
 
-                    <TextBlock
-                        Text="{x:Bind Subtitle, Mode=OneWay}"
-                        Style="{ThemeResource BodyTextBlockStyle}"
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
-                        TextWrapping="WrapWholeWords"
-                        Visibility="{x:Bind Subtitle, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}" />
-
                     <ContentPresenter
+                        Grid.Row="1"
                         Content="{x:Bind HeaderSupplementalContent, Mode=OneWay}"
-                        HorizontalAlignment="Stretch" />
-                </StackPanel>
+                        HorizontalAlignment="Stretch"
+                        Margin="0,8,0,0"
+                        Visibility="{x:Bind HeaderSupplementalContent, Mode=OneWay, Converter={StaticResource ObjectNullToVisibilityConverter}}" />
+                </Grid>
 
                 <ContentPresenter
                     Grid.Column="1"
