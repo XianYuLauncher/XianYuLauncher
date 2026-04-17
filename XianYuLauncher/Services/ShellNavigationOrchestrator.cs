@@ -8,6 +8,8 @@ public sealed class ShellNavigationOrchestrator : IShellNavigationOrchestrator
 {
     private readonly INavigationService _navigationService;
 
+    public ShellNavigationKind LastNavigationKind { get; private set; }
+
     public bool CanGoBack => _navigationService.CanGoBack;
 
     public ShellNavigationOrchestrator(INavigationService navigationService)
@@ -17,11 +19,13 @@ public sealed class ShellNavigationOrchestrator : IShellNavigationOrchestrator
 
     public bool NavigateToTopLevel(string pageKey, object? parameter = null)
     {
+        LastNavigationKind = ShellNavigationKind.TopLevel;
         return _navigationService.NavigateTo(pageKey, parameter, clearNavigation: true);
     }
 
     public bool NavigateToDrill(string pageKey, object? parameter = null)
     {
+        LastNavigationKind = ShellNavigationKind.Drill;
         return _navigationService.NavigateTo(
             pageKey,
             parameter,
@@ -31,6 +35,7 @@ public sealed class ShellNavigationOrchestrator : IShellNavigationOrchestrator
 
     public bool GoBack()
     {
+        LastNavigationKind = ShellNavigationKind.Drill;
         return _navigationService.GoBack();
     }
 }

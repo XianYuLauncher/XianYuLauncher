@@ -176,21 +176,26 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
 
-                <controls:PageHeader
-                    x:Name="SharedPageHeader"
-                    Grid.Row="0"
-                    Title="{x:Bind ViewModel.CurrentHeaderMetadata.Title, Mode=OneWay}"
-                    Subtitle="{x:Bind ViewModel.CurrentHeaderMetadata.Subtitle, Mode=OneWay}"
-                    ShowBreadcrumb="{x:Bind ViewModel.CurrentHeaderMetadata.ShowBreadcrumb, Mode=OneWay}"
-                    ShowPrimaryHeading="{x:Bind ViewModel.CurrentHeaderHostConfiguration.ShowPrimaryHeading, Mode=OneWay}"
-                    BreadcrumbFontSize="{x:Bind ViewModel.CurrentHeaderHostConfiguration.BreadcrumbFontSize, Mode=OneWay}"
-                    BreadcrumbMargin="{x:Bind ViewModel.CurrentHeaderHostConfiguration.BreadcrumbMargin, Mode=OneWay}"
-                    BreadcrumbItems="{x:Bind ViewModel.CurrentHeaderMetadata.BreadcrumbItems, Mode=OneWay}"
-                    BreadcrumbItemTemplate="{x:Bind CurrentHeaderBreadcrumbItemTemplate, Mode=OneWay}"
-                    HeaderSupplementalContent="{x:Bind CurrentHeaderSupplementalContent, Mode=OneWay}"
-                    TrailingActions="{x:Bind CurrentHeaderTrailingActions, Mode=OneWay}"
-                    BreadcrumbItemClicked="SharedPageHeader_BreadcrumbItemClicked"
-                    Visibility="{x:Bind ViewModel.IsShellHeaderVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                <Grid x:Name="SharedPageHeaderHost" Grid.Row="0">
+                    <Grid.RenderTransform>
+                        <TranslateTransform x:Name="SharedPageHeaderTranslateTransform" />
+                    </Grid.RenderTransform>
+
+                    <controls:PageHeader
+                        x:Name="SharedPageHeader"
+                        Title="{x:Bind ViewModel.CurrentHeaderMetadata.Title, Mode=OneWay}"
+                        Subtitle="{x:Bind ViewModel.CurrentHeaderMetadata.Subtitle, Mode=OneWay}"
+                        ShowBreadcrumb="{x:Bind ViewModel.CurrentHeaderMetadata.ShowBreadcrumb, Mode=OneWay}"
+                        ShowPrimaryHeading="{x:Bind ViewModel.CurrentHeaderHostConfiguration.ShowPrimaryHeading, Mode=OneWay}"
+                        BreadcrumbFontSize="{x:Bind ViewModel.CurrentHeaderHostConfiguration.BreadcrumbFontSize, Mode=OneWay}"
+                        BreadcrumbMargin="{x:Bind ViewModel.CurrentHeaderHostConfiguration.BreadcrumbMargin, Mode=OneWay}"
+                        BreadcrumbItems="{x:Bind ViewModel.CurrentHeaderMetadata.BreadcrumbItems, Mode=OneWay}"
+                        BreadcrumbItemTemplate="{x:Bind CurrentHeaderBreadcrumbItemTemplate, Mode=OneWay}"
+                        HeaderSupplementalContent="{x:Bind CurrentHeaderSupplementalContent, Mode=OneWay}"
+                        TrailingActions="{x:Bind CurrentHeaderTrailingActions, Mode=OneWay}"
+                        BreadcrumbItemClicked="SharedPageHeader_BreadcrumbItemClicked"
+                        Visibility="{x:Bind ViewModel.IsShellHeaderVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+                </Grid>
 
                 <Frame x:Name="NavigationFrame" Grid.Row="1">
                     <Frame.ContentTransitions>

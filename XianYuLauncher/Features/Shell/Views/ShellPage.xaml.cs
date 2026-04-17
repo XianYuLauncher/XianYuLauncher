@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
@@ -46,6 +47,7 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
     
     private readonly MaterialService _materialService;
     private readonly IUiDispatcher _uiDispatcher;
+    private readonly IShellNavigationOrchestrator _shellNavigationOrchestrator;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -55,9 +57,10 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
 
     public DataTemplate? CurrentHeaderBreadcrumbItemTemplate { get; private set; }
 
-    public ShellPage(ShellViewModel viewModel)
+    public ShellPage(ShellViewModel viewModel, IShellNavigationOrchestrator shellNavigationOrchestrator)
     {
         ViewModel = viewModel;
+        _shellNavigationOrchestrator = shellNavigationOrchestrator;
         InitializeComponent();
 
         ViewModel.NavigationService.Frame = NavigationFrame;
@@ -476,6 +479,7 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
     private void OnFrameNavigated(object sender, NavigationEventArgs e)
     {
         RefreshShellHeaderContent();
+        PlaySharedHeaderNavigationTransitionIfNeeded();
 
         var isTutorial = e.SourcePageType == typeof(TutorialPage);
         NavigationViewControl.IsPaneVisible = !isTutorial;
@@ -494,6 +498,49 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
                 settingsPage.ViewModel.NavigationStyleChanged += OnNavigationStyleChanged;
             }
         }
+    }
+
+    private void PlaySharedHeaderNavigationTransitionIfNeeded()
+    {
+        if (_shellNavigationOrchestrator.LastNavigationKind != ShellNavigationKind.TopLevel
+            || SharedPageHeader.Visibility != Visibility.Visible)
+        {
+            SharedPageHeaderHost.Opacity = 1;
+            SharedPageHeaderTranslateTransform.Y = 0;
+            return;
+        }
+
+        SharedPageHeaderHost.Opacity = 0;
+        SharedPageHeaderTranslateTransform.Y = 18;
+
+        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var storyboard = new Storyboard();
+
+        var opacityAnimation = new DoubleAnimation
+        {
+            From = 0,
+            To = 1,
+            Duration = TimeSpan.FromMilliseconds(240),
+            EasingFunction = easing,
+            EnableDependentAnimation = true,
+        };
+        Storyboard.SetTarget(opacityAnimation, SharedPageHeaderHost);
+        Storyboard.SetTargetProperty(opacityAnimation, nameof(Opacity));
+
+        var translateAnimation = new DoubleAnimation
+        {
+            From = 18,
+            To = 0,
+            Duration = TimeSpan.FromMilliseconds(280),
+            EasingFunction = easing,
+            EnableDependentAnimation = true,
+        };
+        Storyboard.SetTarget(translateAnimation, SharedPageHeaderTranslateTransform);
+        Storyboard.SetTargetProperty(translateAnimation, nameof(TranslateTransform.Y));
+
+        storyboard.Children.Add(opacityAnimation);
+        storyboard.Children.Add(translateAnimation);
+        storyboard.Begin();
     }
 
     private void RefreshShellHeaderContent()

@@ -9,6 +9,7 @@
 
     <UserControl.Resources>
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <helpers:StringNullOrEmptyToVisibilityConverter x:Key="StringNullOrEmptyToVisibilityConverter" />
     </UserControl.Resources>
 
     <Grid x:Name="RootGrid" Padding="{StaticResource PageHeaderPadding}" HorizontalAlignment="Stretch">
@@ -45,6 +46,13 @@
                         Text="{x:Bind Title, Mode=OneWay}"
                         Style="{ThemeResource TitleTextBlockStyle}"
                         TextWrapping="WrapWholeWords" />
+
+                    <TextBlock
+                        Text="{x:Bind Subtitle, Mode=OneWay}"
+                        Style="{ThemeResource BodyTextBlockStyle}"
+                        Foreground="{ThemeResource TextFillColorSecondaryBrush}"
+                        TextWrapping="WrapWholeWords"
+                        Visibility="{x:Bind Subtitle, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}" />
 
                     <ContentPresenter
                         Content="{x:Bind HeaderSupplementalContent, Mode=OneWay}"
