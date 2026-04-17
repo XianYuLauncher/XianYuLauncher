@@ -14,7 +14,6 @@
     xmlns:media="using:CommunityToolkit.WinUI.Media"
     xmlns:mediaAnimation="using:Microsoft.UI.Xaml.Media.Animation"
     xmlns:localControls="using:XianYuLauncher.Controls"
-    xmlns:shared="using:XianYuLauncher.Shared.Models"
     NavigationCacheMode="Required"
     mc:Ignorable="d">
 
@@ -58,180 +57,13 @@
         <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
         <helpers:PathToImageSourceConverter x:Key="PathToImageSourceConverter" />
         <helpers:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
-        <Style x:Key="ProminentBreadcrumbTextStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="28" />
-            <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
-            <Setter Property="VerticalAlignment" Value="Center" />
-        </Style>
-        <DataTemplate x:Key="HeaderBreadcrumbItemTemplate" x:DataType="shared:NavigationBreadcrumbItem">
-            <Grid>
-                <TextBlock Text="{x:Bind DisplayText, Mode=OneWay}"
-                           Style="{StaticResource ProminentBreadcrumbTextStyle}"
-                           Visibility="{x:Bind CanShowInlineAction, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
-
-                <DropDownButton Padding="12,8"
-                                FontSize="28"
-                                FontWeight="SemiBold"
-                                VerticalAlignment="Center"
-                                CornerRadius="4"
-                                BorderThickness="0"
-                                Background="Transparent"
-                                Visibility="{x:Bind CanShowInlineAction, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                    <DropDownButton.Content>
-                        <StackPanel Orientation="Horizontal" Spacing="8">
-                            <Image Source="{x:Bind IconPath, Mode=OneWay, Converter={StaticResource PathToImageSourceConverter}}"
-                                   Width="20"
-                                   Height="20"
-                                   Stretch="UniformToFill"
-                                   VerticalAlignment="Center" />
-                            <TextBlock Text="{x:Bind DisplayText, Mode=OneWay}"
-                                       Style="{StaticResource ProminentBreadcrumbTextStyle}"
-                                       Margin="0,0,4,0" />
-                        </StackPanel>
-                    </DropDownButton.Content>
-                    <DropDownButton.Flyout>
-                        <Flyout Placement="BottomEdgeAlignedLeft">
-                            <localControls:VersionIconPickerFlyoutContent
-                                AvailableIcons="{x:Bind AvailableIcons, Mode=OneWay}"
-                                BuiltInIconSelected="VersionIconPicker_BuiltInIconSelected"
-                                CustomIconRequested="VersionIconPicker_CustomIconRequested" />
-                        </Flyout>
-                    </DropDownButton.Flyout>
-                </DropDownButton>
-            </Grid>
-        </DataTemplate>
     </Page.Resources>
 
     <Grid x:Name="ContentArea" mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
         <!-- 限制最大宽度，避免最大化时内容被拉得过宽，宽窗口时内容居中显示 -->
         <Grid MaxWidth="1064" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="24,0,24,24">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
-
-        <!-- 顶部标题和收藏夹区域 -->
-        <localControls:PageHeader
-            x:Name="PageHeaderControl"
-            Grid.Row="0"
-            Title="{x:Bind CurrentHeaderMetadata.Title, Mode=OneWay}"
-            Subtitle="{x:Bind CurrentHeaderMetadata.Subtitle, Mode=OneWay}"
-            ShowBreadcrumb="{x:Bind CurrentHeaderMetadata.ShowBreadcrumb, Mode=OneWay}"
-            ShowPrimaryHeading="{x:Bind IsPageHeaderPrimaryHeadingVisible, Mode=OneWay}"
-            BreadcrumbFontSize="28"
-            BreadcrumbMargin="-2,-11,0,12"
-            BreadcrumbItems="{x:Bind CurrentHeaderMetadata.BreadcrumbItems, Mode=OneWay}"
-            BreadcrumbItemTemplate="{StaticResource HeaderBreadcrumbItemTemplate}"
-            BreadcrumbItemClicked="PageHeader_BreadcrumbItemClicked">
-            <localControls:PageHeader.TrailingActions>
-                <Grid x:Name="FavoritesHeaderActionContainer" VerticalAlignment="Bottom" Margin="0,0,20,0">
-                <Button x:Name="FavoritesDropArea"
-                        x:Uid="ResourceDownloadPage_FavoritesButton"
-                        AllowDrop="True"
-                        DragOver="FavoritesDropArea_DragOver"
-                        DragLeave="FavoritesDropArea_DragLeave"
-                        Drop="FavoritesDropArea_Drop"
-                        Background="Transparent"
-                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                        BorderThickness="1"
-                        CornerRadius="4"
-                        Padding="12,6"
-                        ToolTipService.ToolTip="拖拽资源到此处以收藏">
-
-                    <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon Glyph="&#xE734;" FontSize="16" />
-                        <TextBlock x:Uid="ResourceDownloadPage_FavoritesText" Text="收藏夹" />
-                    </StackPanel>
-
-                    <Button.Flyout>
-                        <Flyout Placement="BottomEdgeAlignedRight">
-                            <Grid Width="320" Height="400">
-                                <Grid.RowDefinitions>
-                                    <RowDefinition Height="Auto"/>
-                                    <RowDefinition Height="*"/>
-                                    <RowDefinition Height="Auto"/>
-                                </Grid.RowDefinitions>
-                                <TextBlock x:Uid="ResourceDownloadPage_FavoritesFlyoutTitle" Text="收藏的资源" Style="{StaticResource SubtitleTextBlockStyle}" Margin="12,12,12,6"/>
-
-                                <ListView Grid.Row="1" 
-                                          ItemsSource="{x:Bind ViewModel.FavoriteItems, Mode=OneWay}" 
-                                          SelectionMode="{x:Bind GetSelectionMode(ViewModel.IsFavoritesSelectionMode), Mode=OneWay}"
-                                          SelectionChanged="FavoritesListView_SelectionChanged"
-                                          IsItemClickEnabled="True"
-                                          ItemClick="FavoritesListView_ItemClick">
-                                    <ListView.ItemTemplate>
-                                        <DataTemplate x:DataType="models:ModrinthProject">
-                                            <Grid Margin="0,8" AutomationProperties.Name="{x:Bind DisplayTitle}">
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="32"/>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <Border CornerRadius="4" Width="32" Height="32" Background="{ThemeResource LayerFillColorDefaultBrush}">
-                                                    <Image Stretch="UniformToFill">
-                                                        <Image.Source>
-                                                            <BitmapImage UriSource="{x:Bind IconUrl}" />
-                                                        </Image.Source>
-                                                    </Image>
-                                                </Border>
-                                                <StackPanel Grid.Column="1" Margin="12,0,8,0" VerticalAlignment="Center">
-                                                    <TextBlock Text="{x:Bind DisplayTitle}" MaxLines="1" TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
-                                                    <TextBlock Text="{x:Bind Author}" MaxLines="1" TextTrimming="CharacterEllipsis" Style="{ThemeResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
-                                                </StackPanel>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ListView.ItemTemplate>
-                                </ListView>
-
-                                <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" 
-                                            Visibility="{x:Bind ViewModel.IsFavoritesEmpty, Mode=OneWay}" Spacing="8">
-                                    <FontIcon Glyph="&#xE734;" FontSize="24" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
-                                    <TextBlock x:Uid="ResourceDownloadPage_FavoritesEmpty" Text="暂无收藏" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
-                                    <TextBlock x:Uid="ResourceDownloadPage_FavoritesDragHint" Text="拖拽列表项到收藏夹按钮" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center"/>
-                                </StackPanel>
-
-                                <Grid Grid.Row="2" Background="Transparent" Padding="12,8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <StackPanel Orientation="Horizontal" Spacing="4">
-                                        <Button x:Uid="ResourceDownloadPage_ImportFavoritesButton" ToolTipService.ToolTip="导入收藏到版本"
-                                                IsEnabled="{x:Bind ViewModel.IsImportFavoritesEnabled, Mode=OneWay}"
-                                                Command="{x:Bind ViewModel.OpenFavoritesImportCommand}" 
-                                                Padding="8,4" Background="Transparent" BorderThickness="0">
-                                            <FontIcon Glyph="&#xE896;" FontSize="14" />
-                                        </Button>
-                                    </StackPanel>
-
-                                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
-                                        <Button x:Uid="ResourceDownloadPage_RemoveFavoritesButton" ToolTipService.ToolTip="删除选中项" Command="{x:Bind ViewModel.RemoveSelectedFavoritesCommand}" Padding="8,4" Background="Transparent" BorderThickness="0">
-                                            <FontIcon Glyph="&#xE74D;" FontSize="14" />
-                                        </Button>
-                                        <Button ToolTipService.ToolTip="导入分享码" Command="{x:Bind ViewModel.OpenShareCodeImportCommand}" Padding="8,4" Background="Transparent" BorderThickness="0">
-                                            <FontIcon Glyph="&#xE7A7;" FontSize="14" />
-                                        </Button>
-                                        <Button ToolTipService.ToolTip="复制分享码" Command="{x:Bind ViewModel.CopyShareCodeCommand}" Padding="8,4" Background="Transparent" BorderThickness="0">
-                                            <FontIcon Glyph="&#xE8C8;" FontSize="14" />
-                                        </Button>
-                                        <ToggleButton ToolTipService.ToolTip="多选模式" IsChecked="{x:Bind ViewModel.IsFavoritesSelectionMode, Mode=OneWay}" Command="{x:Bind ViewModel.ToggleFavoritesSelectionModeCommand}" Padding="8,4" Background="Transparent" BorderThickness="0">
-                                            <FontIcon Glyph="&#xE762;" FontSize="14" />
-                                        </ToggleButton>
-                                    </StackPanel>
-                                </Grid>
-                            </Grid>
-                        </Flyout>
-                    </Button.Flyout>
-                </Button>
-                </Grid>
-            </localControls:PageHeader.TrailingActions>
-        </localControls:PageHeader>
-
         <!-- 主要内容区域 -->
-        <Grid x:Name="ResourceMainContent" Grid.Row="1">
+        <Grid x:Name="ResourceMainContent">
             <!-- TabView 控件 -->
             <TabView 
                 x:Name="ResourceTabView" 

@@ -2,14 +2,10 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
-using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using Serilog;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.ViewModels;
-using XianYuLauncher.Features.ModLoaderSelector.Models;
-using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
-using XianYuLauncher.Features.ModLoaderSelector.Views;
 using XianYuLauncher.Features.ResourceDownload.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
@@ -17,18 +13,15 @@ using XianYuLauncher.Models;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Controls;
 using XianYuLauncher.Helpers;
-using XianYuLauncher.Shared.Models;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using CommunityToolkit.Labs.WinUI;
-using Windows.Storage.Pickers;
-using WinRT.Interop;
 
 namespace XianYuLauncher.Features.ResourceDownload.Views;
 
-public sealed partial class ResourceDownloadPage : Page, INavigationAware, INotifyPropertyChanged
+public sealed partial class ResourceDownloadPage : Page, INavigationAware
 {
     private string _modFilterSelectionSnapshot = string.Empty;
 
@@ -80,7 +73,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
     private bool _worldsLoaded = false;
 
     private IUiDispatcher _uiDispatcher = null!;
-    private ISecondaryContentNavigationService _secondaryContentNavigationService = null!;
 
     // LayoutUpdated 防抖：避免高频触发时重复入队
     private bool _resourcePackLoadMoreCheckPending;
@@ -89,26 +81,14 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
     private bool _datapackLoadMoreCheckPending;
     private bool _modpackLoadMoreCheckPending;
     private bool _worldLoadMoreCheckPending;
-    private bool _isInternalModLoaderActive;
-    private ModLoaderSelectorViewModel? _activeModLoaderSelectorViewModel;
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    public PageHeaderMetadata CurrentHeaderMetadata { get; private set; }
-
-    public bool IsPageHeaderPrimaryHeadingVisible => !_isInternalModLoaderActive;
 
     public ResourceDownloadPage()
     {
         ViewModel = App.GetService<ResourceDownloadViewModel>();
-        CurrentHeaderMetadata = ViewModel.HeaderMetadata;
         DataContext = ViewModel;
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-        ViewModel.ModLoaderSelectorRequested += ViewModel_ModLoaderSelectorRequested;
         InitializeComponent();
         _uiDispatcher = App.GetService<IUiDispatcher>();
-        _secondaryContentNavigationService = App.GetService<ISecondaryContentNavigationService>();
-        _secondaryContentNavigationService.StateChanged += SecondaryContentNavigationService_StateChanged;
         _uiDispatcher.TryEnqueue(TryRefreshModFilterTokenItems);
         
         // 在页面加载完成后检查是否需要切换标签页
@@ -121,8 +101,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
                 // 重置 TargetTabIndex，避免下次打开时仍然使用旧值
                 TargetTabIndex = 0;
             }
-
-            SyncSecondaryContentState();
         };
     }
     
@@ -152,8 +130,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
                 _ = ViewModel.EnsureAvailableVersionsAsync();
             }
         });
-
-        _uiDispatcher.TryEnqueue(SyncSecondaryContentState);
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -173,125 +149,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
     /// </summary>
     public void OnNavigatedFrom()
     {
-        if (_secondaryContentNavigationService.ActiveHost == ResourceMainContent)
-        {
-            _secondaryContentNavigationService.Close();
-        }
-
         // 清理资源
-    }
-
-    private void OnPropertyChanged(string propertyName)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-
-    private void SetCurrentHeaderMetadata(PageHeaderMetadata metadata)
-    {
-        if (ReferenceEquals(CurrentHeaderMetadata, metadata))
-        {
-            return;
-        }
-
-        CurrentHeaderMetadata = metadata;
-        OnPropertyChanged(nameof(CurrentHeaderMetadata));
-    }
-
-    private void SetInternalModLoaderActive(bool isActive)
-    {
-        if (_isInternalModLoaderActive == isActive)
-        {
-            return;
-        }
-
-        _isInternalModLoaderActive = isActive;
-        FavoritesHeaderActionContainer.Visibility = isActive ? Visibility.Collapsed : Visibility.Visible;
-        OnPropertyChanged(nameof(IsPageHeaderPrimaryHeadingVisible));
-    }
-
-    private void ViewModel_ModLoaderSelectorRequested(string versionId)
-    {
-        var navigationParameter = new ModLoaderSelectorNavigationParameter
-        {
-            VersionId = versionId,
-            BreadcrumbRootLabel = "ResourceDownloadPage_HeaderTitle".GetLocalized(),
-            ReturnPageKey = typeof(ResourceDownloadViewModel).FullName!,
-            ReturnTabKey = "version",
-            CloseHandler = () => _secondaryContentNavigationService.GoBack(new DrillInNavigationTransitionInfo()),
-        };
-
-        if (_secondaryContentNavigationService.Navigate(ResourceMainContent, typeof(ModLoaderSelectorPage), navigationParameter, new DrillInNavigationTransitionInfo()))
-        {
-            SyncSecondaryContentState();
-        }
-    }
-
-    private void SecondaryContentNavigationService_StateChanged(object? sender, EventArgs e)
-    {
-        SyncSecondaryContentState();
-    }
-
-    private void SyncSecondaryContentState()
-    {
-        _activeModLoaderSelectorViewModel = _secondaryContentNavigationService.GetCurrentViewModel<ModLoaderSelectorViewModel>(ResourceMainContent);
-
-        if (_activeModLoaderSelectorViewModel is not null)
-        {
-            SetInternalModLoaderActive(true);
-            SetCurrentHeaderMetadata(_activeModLoaderSelectorViewModel.HeaderMetadata);
-            return;
-        }
-
-        SetInternalModLoaderActive(false);
-        SetCurrentHeaderMetadata(ViewModel.HeaderMetadata);
-    }
-
-    private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
-    {
-        if (args.Item is NavigationBreadcrumbItem breadcrumbItem)
-        {
-            _activeModLoaderSelectorViewModel?.NavigateBreadcrumb(breadcrumbItem);
-        }
-    }
-
-    private async void VersionIconPicker_CustomIconRequested(object? sender, EventArgs e)
-    {
-        if (_activeModLoaderSelectorViewModel is null)
-        {
-            return;
-        }
-
-        try
-        {
-            var picker = new FileOpenPicker();
-            picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
-            picker.FileTypeFilter.Add(".png");
-            picker.FileTypeFilter.Add(".jpg");
-            picker.FileTypeFilter.Add(".jpeg");
-            picker.FileTypeFilter.Add(".bmp");
-            picker.FileTypeFilter.Add(".ico");
-
-            var hwnd = WindowNative.GetWindowHandle(App.MainWindow);
-            InitializeWithWindow.Initialize(picker, hwnd);
-
-            var file = await picker.PickSingleFileAsync();
-            if (file != null)
-            {
-                _activeModLoaderSelectorViewModel.SetCustomIcon(file.Path);
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ResourceDownloadPage] 自定义图标选择失败: {ex.Message}");
-        }
-    }
-
-    private void VersionIconPicker_BuiltInIconSelected(object? sender, VersionIconSelectedEventArgs e)
-    {
-        if (e.IconOption != null)
-        {
-            _activeModLoaderSelectorViewModel?.SelectBuiltInIconCommand.Execute(e.IconOption);
-        }
     }
 
     private void ApplyProtocolNavigationParameter(object parameter)

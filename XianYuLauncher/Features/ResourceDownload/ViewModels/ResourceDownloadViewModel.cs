@@ -31,12 +31,14 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
 {
     private static readonly PageHeaderHostConfiguration ResourceDownloadHeaderHostConfiguration = new()
     {
+        UseShellHeader = true,
         TrailingActionsKind = PageHeaderTrailingActionsKind.ResourceDownloadFavorites,
     };
 
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IGameManifestQueryService _gameManifestQueryService;
     private readonly INavigationService _navigationService;
+    private readonly IShellNavigationOrchestrator _shellNavigationOrchestrator;
     private readonly ModrinthService _modrinthService;
     private readonly CurseForgeService _curseForgeService;
     private readonly FabricService _fabricService;
@@ -54,9 +56,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
     private readonly IGameDirResolver _gameDirResolver;
     private readonly ICommunityResourceInstallPlanner _communityResourceInstallPlanner;
     private readonly ICommunityResourceFilterMetadataService _communityResourceFilterMetadataService;
-
-    public event Action<string>? ModLoaderSelectorRequested;
-
     public PageHeaderMetadata HeaderMetadata { get; } = new();
 
     public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
@@ -1757,6 +1756,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
         IMinecraftVersionService minecraftVersionService,
         IGameManifestQueryService gameManifestQueryService,
         INavigationService navigationService,
+        IShellNavigationOrchestrator shellNavigationOrchestrator,
         ModrinthService modrinthService,
         CurseForgeService curseForgeService,
         FabricService fabricService,
@@ -1778,6 +1778,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
         _minecraftVersionService = minecraftVersionService;
         _gameManifestQueryService = gameManifestQueryService;
         _navigationService = navigationService;
+        _shellNavigationOrchestrator = shellNavigationOrchestrator;
         _modrinthService = modrinthService;
         _curseForgeService = curseForgeService;
         _fabricService = fabricService;
@@ -2523,22 +2524,15 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
         try
         {
             IsVersionLoading = true;
-            if (ModLoaderSelectorRequested is not null)
-            {
-                ModLoaderSelectorRequested.Invoke(versionId);
-            }
-            else
-            {
-                _navigationService.NavigateTo(
-                    typeof(ModLoaderSelectorViewModel).FullName!,
-                    new ModLoaderSelectorNavigationParameter
-                    {
-                        VersionId = versionId,
-                        BreadcrumbRootLabel = "ResourceDownloadPage_HeaderTitle".GetLocalized(),
-                        ReturnPageKey = typeof(ResourceDownloadViewModel).FullName!,
-                        ReturnTabKey = "version",
-                    });
-            }
+            _shellNavigationOrchestrator.NavigateToDrill(
+                typeof(ModLoaderSelectorViewModel).FullName!,
+                new ModLoaderSelectorNavigationParameter
+                {
+                    VersionId = versionId,
+                    BreadcrumbRootLabel = "ResourceDownloadPage_HeaderTitle".GetLocalized(),
+                    ReturnPageKey = typeof(ResourceDownloadViewModel).FullName!,
+                    ReturnTabKey = "version",
+                });
         }
         catch (Exception)
         {

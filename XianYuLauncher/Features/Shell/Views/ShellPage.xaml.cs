@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 using Windows.System;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
+using Windows.Storage.Pickers;
 using System.Linq;
 using Serilog;
 
@@ -19,6 +20,9 @@ using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Features.ErrorAnalysis.Controls;
 using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
 using XianYuLauncher.Features.Accounts.Views;
+using XianYuLauncher.Features.ResourceDownload.Controls;
+using XianYuLauncher.Features.ResourceDownload.ViewModels;
+using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
 using XianYuLauncher.Features.Shell.Models;
 using XianYuLauncher.Features.Shell.ViewModels;
 using XianYuLauncher.Features.Settings.Views;
@@ -26,6 +30,9 @@ using XianYuLauncher.Features.Tutorial.Views;
 using XianYuLauncher.Features.VersionList.Controls;
 using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.Controls;
+using XianYuLauncher.Shared.Models;
+using WinRT.Interop;
 
 namespace XianYuLauncher.Features.Shell.Views;
 
@@ -507,6 +514,7 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
         return (ViewModel.CurrentHeaderHostConfiguration.TrailingActionsKind, ViewModel.NavigationService.Frame?.GetPageViewModel()) switch
         {
             (Contracts.ViewModels.PageHeaderTrailingActionsKind.LauncherAIPopOut, LauncherAIViewModel) => new LauncherAIHeaderActionsControl(),
+            (Contracts.ViewModels.PageHeaderTrailingActionsKind.ResourceDownloadFavorites, ResourceDownloadViewModel resourceDownloadViewModel) => new ResourceDownloadHeaderActionsControl(resourceDownloadViewModel),
             _ => null,
         };
     }
@@ -524,8 +532,59 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
     {
         return ViewModel.CurrentHeaderHostConfiguration.BreadcrumbTemplateKind switch
         {
+            Contracts.ViewModels.PageHeaderBreadcrumbTemplateKind.InteractiveCurrentItem => Resources["InteractiveBreadcrumbItemTemplate"] as DataTemplate,
             _ => null,
         };
+    }
+
+    private void SharedPageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
+    {
+        if (args.Item is NavigationBreadcrumbItem breadcrumbItem
+            && ViewModel.NavigationService.Frame?.GetPageViewModel() is ModLoaderSelectorViewModel modLoaderSelectorViewModel)
+        {
+            modLoaderSelectorViewModel.NavigateBreadcrumb(breadcrumbItem);
+        }
+    }
+
+    private async void VersionIconPicker_CustomIconRequested(object? sender, EventArgs e)
+    {
+        if (ViewModel.NavigationService.Frame?.GetPageViewModel() is not ModLoaderSelectorViewModel modLoaderSelectorViewModel)
+        {
+            return;
+        }
+
+        try
+        {
+            var picker = new FileOpenPicker();
+            picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
+            picker.FileTypeFilter.Add(".png");
+            picker.FileTypeFilter.Add(".jpg");
+            picker.FileTypeFilter.Add(".jpeg");
+            picker.FileTypeFilter.Add(".bmp");
+            picker.FileTypeFilter.Add(".ico");
+
+            var hwnd = WindowNative.GetWindowHandle(App.MainWindow);
+            InitializeWithWindow.Initialize(picker, hwnd);
+
+            var file = await picker.PickSingleFileAsync();
+            if (file != null)
+            {
+                modLoaderSelectorViewModel.SetCustomIcon(file.Path);
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ShellPage] 自定义图标选择失败: {ex.Message}");
+        }
+    }
+
+    private void VersionIconPicker_BuiltInIconSelected(object? sender, VersionIconSelectedEventArgs e)
+    {
+        if (e.IconOption != null
+            && ViewModel.NavigationService.Frame?.GetPageViewModel() is ModLoaderSelectorViewModel modLoaderSelectorViewModel)
+        {
+            modLoaderSelectorViewModel.SelectBuiltInIconCommand.Execute(e.IconOption);
+        }
     }
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)

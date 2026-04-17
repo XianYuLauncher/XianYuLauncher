@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Threading;
+using Microsoft.UI.Xaml;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using XianYuLauncher.Contracts.Services;
@@ -17,8 +18,17 @@ using System.IO;
 
 namespace XianYuLauncher.Features.ModLoaderSelector.ViewModels;
 
-public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigationAware
+public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigationAware, IPageHeaderAware
 {
+    private static readonly PageHeaderHostConfiguration ModLoaderSelectorHeaderHostConfiguration = new()
+    {
+        UseShellHeader = true,
+        ShowPrimaryHeading = false,
+        BreadcrumbFontSize = 28d,
+        BreadcrumbMargin = new Thickness(-2, -11, 0, 12),
+        BreadcrumbTemplateKind = PageHeaderBreadcrumbTemplateKind.InteractiveCurrentItem,
+    };
+
     private readonly INavigationService _navigationService;
     private readonly ICommonDialogService _dialogService;
     private readonly IDownloadTaskManager _downloadTaskManager;
@@ -31,6 +41,10 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     private string? _lastSelectedLoaderName;
 
     public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+    public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
+
+    public PageHeaderHostConfiguration HeaderHostConfiguration => ModLoaderSelectorHeaderHostConfiguration;
 
     [ObservableProperty]
     private ObservableCollection<VersionIconOption> _availableIcons = new();
@@ -484,7 +498,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
 
     private bool RequestClose()
     {
-        return _navigationParameter.CloseHandler?.Invoke() ?? _navigationService.GoBack();
+        return _navigationService.GoBack();
     }
 
     private static ModLoaderSelectorNavigationParameter NormalizeNavigationParameter(ModLoaderSelectorNavigationParameter navigationParameter)
@@ -501,7 +515,6 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             ReturnTabKey = string.IsNullOrWhiteSpace(navigationParameter.ReturnTabKey)
                 ? "version"
                 : navigationParameter.ReturnTabKey,
-            CloseHandler = navigationParameter.CloseHandler,
         };
     }
 

@@ -1,5 +1,3 @@
-using System;
-
 namespace XianYuLauncher.Features.ModLoaderSelector.Models;
 
 public sealed class ModLoaderSelectorNavigationParameter
@@ -11,6 +9,4 @@ public sealed class ModLoaderSelectorNavigationParameter
     public string ReturnPageKey { get; init; } = string.Empty;
 
     public string ReturnTabKey { get; init; } = "version";
-
-    public Func<bool>? CloseHandler { get; init; }
 }
