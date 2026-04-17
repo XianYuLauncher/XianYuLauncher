@@ -140,9 +140,9 @@
                 IsHitTestVisible="False">
             <Border x:Name="SecondaryContentOverlayHost"
                     Visibility="Collapsed"
-                    Background="Transparent">
+                    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
                 <Frame x:Name="SecondaryContentFrame"
-                       Background="Transparent"
+                       Background="{ThemeResource ApplicationPageBackgroundThemeBrush}"
                        IsHitTestVisible="False">
                     <Frame.ContentTransitions>
                         <TransitionCollection>
