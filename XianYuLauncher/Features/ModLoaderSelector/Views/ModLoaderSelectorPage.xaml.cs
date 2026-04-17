@@ -1,10 +1,7 @@
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Navigation;
 using XianYuLauncher.Controls;
-using XianYuLauncher.Shared.Models;
 using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
-using XianYuLauncher.Models;
-using Windows.Storage.Pickers;
-using WinRT.Interop;
 
 namespace XianYuLauncher.Features.ModLoaderSelector.Views;
 
@@ -16,6 +13,18 @@ public sealed partial class ModLoaderSelectorPage : Page
     {
         ViewModel = App.GetService<ModLoaderSelectorViewModel>();
         InitializeComponent();
+    }
+
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        ViewModel.OnNavigatedTo(e.Parameter!);
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        base.OnNavigatedFrom(e);
+        ViewModel.OnNavigatedFrom();
     }
     
     /// <summary>
@@ -39,49 +48,6 @@ public sealed partial class ModLoaderSelectorPage : Page
         ViewModel.SelectedLiteLoaderVersion = null;
     }
 
-    private async void VersionIconPicker_CustomIconRequested(object? sender, EventArgs e)
-    {
-        try
-        {
-            var picker = new FileOpenPicker();
-            picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
-            picker.FileTypeFilter.Add(".png");
-            picker.FileTypeFilter.Add(".jpg");
-            picker.FileTypeFilter.Add(".jpeg");
-            picker.FileTypeFilter.Add(".bmp");
-            picker.FileTypeFilter.Add(".ico");
-
-            var hwnd = WindowNative.GetWindowHandle(App.MainWindow);
-            InitializeWithWindow.Initialize(picker, hwnd);
-
-            var file = await picker.PickSingleFileAsync();
-            if (file != null)
-            {
-                ViewModel.SetCustomIcon(file.Path);
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[ModLoaderSelectorPage] 自定义图标选择失败: {ex.Message}");
-        }
-    }
-
-    private void VersionIconPicker_BuiltInIconSelected(object? sender, VersionIconSelectedEventArgs e)
-    {
-        if (e.IconOption != null)
-        {
-            ViewModel.SelectBuiltInIconCommand.Execute(e.IconOption);
-        }
-    }
-
-    private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
-    {
-        if (args.Item is NavigationBreadcrumbItem breadcrumbItem)
-        {
-            ViewModel.NavigateBreadcrumb(breadcrumbItem);
-        }
-    }
-    
     /// <summary>
     /// Optifine兼容信息文本块加载事件处理
     /// </summary>

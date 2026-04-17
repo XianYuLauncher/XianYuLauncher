@@ -218,7 +218,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
             CloseHandler = () => _secondaryContentNavigationService.GoBack(new DrillInNavigationTransitionInfo()),
         };
 
-        if (_secondaryContentNavigationService.Navigate(ResourceMainContent, typeof(ModLoaderSelectorContentPage), navigationParameter, new DrillInNavigationTransitionInfo()))
+        if (_secondaryContentNavigationService.Navigate(ResourceMainContent, typeof(ModLoaderSelectorPage), navigationParameter, new DrillInNavigationTransitionInfo()))
         {
             SyncSecondaryContentState();
         }
@@ -231,7 +231,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
 
     private void SyncSecondaryContentState()
     {
-        if (GetActiveModLoaderSelectorPage() is ModLoaderSelectorContentPage modLoaderSelectorPage)
+        if (GetActiveModLoaderSelectorPage() is ModLoaderSelectorPage modLoaderSelectorPage)
         {
             SetInternalModLoaderActive(true);
             SetCurrentHeaderMetadata(modLoaderSelectorPage.ViewModel.HeaderMetadata);
@@ -242,10 +242,10 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
         SetCurrentHeaderMetadata(ViewModel.HeaderMetadata);
     }
 
-    private ModLoaderSelectorContentPage? GetActiveModLoaderSelectorPage()
+    private ModLoaderSelectorPage? GetActiveModLoaderSelectorPage()
     {
         return _secondaryContentNavigationService.ActiveHost == ResourceMainContent
-            ? _secondaryContentNavigationService.Content as ModLoaderSelectorContentPage
+            ? _secondaryContentNavigationService.Content as ModLoaderSelectorPage
             : null;
     }
 
