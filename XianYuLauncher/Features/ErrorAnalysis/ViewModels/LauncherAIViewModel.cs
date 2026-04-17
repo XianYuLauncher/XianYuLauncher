@@ -14,9 +14,16 @@ namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels;
 
 public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable, IPageHeaderAware
 {
+    private static readonly PageHeaderHostConfiguration LauncherAIHeaderHostConfiguration = new()
+    {
+        TrailingActionsKind = PageHeaderTrailingActionsKind.LauncherAIPopOut,
+    };
+
     public PageHeaderMetadata HeaderMetadata { get; } = new();
 
     public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.ControlStrip;
+
+    public PageHeaderHostConfiguration HeaderHostConfiguration => LauncherAIHeaderHostConfiguration;
 
     private readonly IAISettingsDomainService _aiSettingsDomainService;
     private readonly ILanguageSelectorService _languageSelectorService;

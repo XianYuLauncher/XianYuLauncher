@@ -29,6 +29,11 @@ namespace XianYuLauncher.Features.ResourceDownload.ViewModels;
 
 public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeaderAware
 {
+    private static readonly PageHeaderHostConfiguration ResourceDownloadHeaderHostConfiguration = new()
+    {
+        TrailingActionsKind = PageHeaderTrailingActionsKind.ResourceDownloadFavorites,
+    };
+
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IGameManifestQueryService _gameManifestQueryService;
     private readonly INavigationService _navigationService;
@@ -55,6 +60,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
     public PageHeaderMetadata HeaderMetadata { get; } = new();
 
     public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
+
+    public PageHeaderHostConfiguration HeaderHostConfiguration => ResourceDownloadHeaderHostConfiguration;
 
     // 版本下载相关属性和命令
     [ObservableProperty]

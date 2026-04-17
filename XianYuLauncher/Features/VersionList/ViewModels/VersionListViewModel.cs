@@ -29,9 +29,16 @@ namespace XianYuLauncher.Features.VersionList.ViewModels;
 
 public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAware
 {
+    private static readonly PageHeaderHostConfiguration VersionListHeaderHostConfiguration = new()
+    {
+        SupplementalContentKind = PageHeaderSupplementalContentKind.VersionListControls,
+    };
+
     public PageHeaderMetadata HeaderMetadata { get; } = new();
 
     public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.ControlStrip;
+
+    public PageHeaderHostConfiguration HeaderHostConfiguration => VersionListHeaderHostConfiguration;
 
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IFileService _fileService;

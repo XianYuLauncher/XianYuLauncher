@@ -97,6 +97,8 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
 
         public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
 
+        public PageHeaderHostConfiguration HeaderHostConfiguration => PageHeaderHostConfiguration.Disabled;
+
 
 
         /// <summary>

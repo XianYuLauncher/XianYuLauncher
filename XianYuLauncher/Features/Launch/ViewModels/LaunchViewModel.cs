@@ -47,6 +47,8 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
 
     public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Hero;
 
+    public PageHeaderHostConfiguration HeaderHostConfiguration => PageHeaderHostConfiguration.Disabled;
+
     [ObservableProperty]
     private string? _quickPlayWorld;
 
