@@ -40,6 +40,8 @@ namespace XianYuLauncher.Features.Shell.Views;
 // Update NavigationViewItem titles and icons in ShellPage.xaml.
 public sealed partial class ShellPage : Page, INotifyPropertyChanged
 {
+    private int _headerTransitionGeneration;
+
     public ShellViewModel ViewModel
     {
         get;
@@ -479,7 +481,7 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
     private void OnFrameNavigated(object sender, NavigationEventArgs e)
     {
         RefreshShellHeaderContent();
-        PlaySharedHeaderNavigationTransitionIfNeeded();
+        ScheduleSharedHeaderNavigationTransitionIfNeeded();
 
         var isTutorial = e.SourcePageType == typeof(TutorialPage);
         NavigationViewControl.IsPaneVisible = !isTutorial;
@@ -500,13 +502,95 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
         }
     }
 
-    private void PlaySharedHeaderNavigationTransitionIfNeeded()
+    private void ScheduleSharedHeaderNavigationTransitionIfNeeded()
     {
+        _headerTransitionGeneration++;
+
         if (_shellNavigationOrchestrator.LastNavigationKind != ShellNavigationKind.TopLevel
             || SharedPageHeader.Visibility != Visibility.Visible)
         {
-            SharedPageHeaderHost.Opacity = 1;
-            SharedPageHeaderTranslateTransform.Y = 0;
+            ResetSharedHeaderNavigationTransitionState();
+            return;
+        }
+
+        var transitionGeneration = _headerTransitionGeneration;
+
+        if (NavigationFrame.Content is not FrameworkElement contentRoot)
+        {
+            PlaySharedHeaderNavigationTransition();
+            return;
+        }
+
+        void QueueTransitionAfterRenderBarrier()
+        {
+            void OnLayoutUpdated(object? sender, object args)
+            {
+                contentRoot.LayoutUpdated -= OnLayoutUpdated;
+
+                if (transitionGeneration != _headerTransitionGeneration)
+                {
+                    return;
+                }
+
+                var remainingRenderFrames = 1;
+
+                void OnRendering(object? renderingSender, object renderingArgs)
+                {
+                    if (transitionGeneration != _headerTransitionGeneration)
+                    {
+                        CompositionTarget.Rendering -= OnRendering;
+                        return;
+                    }
+
+                    if (remainingRenderFrames-- > 0)
+                    {
+                        return;
+                    }
+
+                    CompositionTarget.Rendering -= OnRendering;
+
+                    PlaySharedHeaderNavigationTransition();
+                }
+
+                CompositionTarget.Rendering += OnRendering;
+            }
+
+            contentRoot.LayoutUpdated += OnLayoutUpdated;
+        }
+
+        if (!contentRoot.IsLoaded)
+        {
+            RoutedEventHandler? onLoaded = null;
+            onLoaded = (_, _) =>
+            {
+                contentRoot.Loaded -= onLoaded;
+
+                if (transitionGeneration != _headerTransitionGeneration)
+                {
+                    return;
+                }
+
+                QueueTransitionAfterRenderBarrier();
+            };
+
+            contentRoot.Loaded += onLoaded;
+            return;
+        }
+
+        QueueTransitionAfterRenderBarrier();
+    }
+
+    private void ResetSharedHeaderNavigationTransitionState()
+    {
+        SharedPageHeaderHost.Opacity = 1;
+        SharedPageHeaderTranslateTransform.Y = 0;
+    }
+
+    private void PlaySharedHeaderNavigationTransition()
+    {
+        if (SharedPageHeader.Visibility != Visibility.Visible)
+        {
+            ResetSharedHeaderNavigationTransitionState();
             return;
         }
 

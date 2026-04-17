@@ -23,10 +23,9 @@
         </Style>
     </Page.Resources>
 
-    <Grid x:Name="ContentArea"
-            Background="{ThemeResource SolidBackgroundFillColorBaseBrush}"
-          mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
-        <Grid Margin="24,0,24,24"
+        <Grid x:Name="ContentArea"
+            mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
+          <Grid Margin="24,0,24,24"
               HorizontalAlignment="Stretch"
               VerticalAlignment="Stretch">
             <Grid.RowDefinitions>
