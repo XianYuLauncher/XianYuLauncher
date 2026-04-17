@@ -30,7 +30,6 @@ public partial class ShellViewModel : ObservableRecipient
     private readonly IDownloadTaskPresentationService _downloadTaskPresentationService;
     private readonly IAISettingsDomainService _aiSettingsDomainService;
     private readonly IShellNavigationOrchestrator _shellNavigationOrchestrator;
-    private readonly ISecondaryContentNavigationService _secondaryContentNavigationService;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly Dictionary<ShellDownloadTipItem, CancellationTokenSource> _pendingTipCloseOperations = new();
 
@@ -77,8 +76,7 @@ public partial class ShellViewModel : ObservableRecipient
         IDownloadTaskManager downloadTaskManager,
         IDownloadTaskPresentationService downloadTaskPresentationService,
         IAISettingsDomainService aiSettingsDomainService,
-        IShellNavigationOrchestrator shellNavigationOrchestrator,
-        ISecondaryContentNavigationService secondaryContentNavigationService)
+        IShellNavigationOrchestrator shellNavigationOrchestrator)
     {
         NavigationService = navigationService;
         NavigationService.Navigated += OnNavigated;
@@ -87,8 +85,6 @@ public partial class ShellViewModel : ObservableRecipient
         _downloadTaskPresentationService = downloadTaskPresentationService;
         _aiSettingsDomainService = aiSettingsDomainService;
         _shellNavigationOrchestrator = shellNavigationOrchestrator;
-        _secondaryContentNavigationService = secondaryContentNavigationService;
-        _secondaryContentNavigationService.StateChanged += OnSecondaryContentStateChanged;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
         DownloadTeachingTips.CollectionChanged += OnDownloadTeachingTipsCollectionChanged;
@@ -395,11 +391,6 @@ public partial class ShellViewModel : ObservableRecipient
         }
     }
 
-    private void OnSecondaryContentStateChanged(object? sender, EventArgs e)
-    {
-        UpdateBackEnabled();
-    }
-
     private void UpdateHeaderState()
     {
         if (NavigationService.Frame?.GetPageViewModel() is not IPageHeaderAware pageHeaderAware)
@@ -417,6 +408,6 @@ public partial class ShellViewModel : ObservableRecipient
 
     private void UpdateBackEnabled()
     {
-        IsBackEnabled = _secondaryContentNavigationService.IsActive || _shellNavigationOrchestrator.CanGoBack;
+        IsBackEnabled = _shellNavigationOrchestrator.CanGoBack;
     }
 }

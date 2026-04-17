@@ -46,7 +46,6 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
     
     private readonly MaterialService _materialService;
     private readonly IUiDispatcher _uiDispatcher;
-    private readonly ISecondaryContentNavigationService _secondaryContentNavigationService;
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -56,16 +55,14 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
 
     public DataTemplate? CurrentHeaderBreadcrumbItemTemplate { get; private set; }
 
-    public ShellPage(ShellViewModel viewModel, ISecondaryContentNavigationService secondaryContentNavigationService)
+    public ShellPage(ShellViewModel viewModel)
     {
         ViewModel = viewModel;
-        _secondaryContentNavigationService = secondaryContentNavigationService;
         InitializeComponent();
 
         ViewModel.NavigationService.Frame = NavigationFrame;
         ViewModel.NavigationViewService.Initialize(NavigationViewControl);
         _uiDispatcher = App.GetService<IUiDispatcher>();
-        _secondaryContentNavigationService.Initialize(SecondaryContentOverlayCanvas, SecondaryContentOverlayHost, SecondaryContentFrame, RootGrid);
 
         // 监听导航事件，教程页隐藏侧边栏
         NavigationFrame.Navigated += OnFrameNavigated;

@@ -202,25 +202,6 @@
             </Grid>
         </NavigationView>
 
-        <Canvas x:Name="SecondaryContentOverlayCanvas"
-                Canvas.ZIndex="1"
-                Visibility="Collapsed"
-                IsHitTestVisible="False">
-            <Border x:Name="SecondaryContentOverlayHost"
-                    Visibility="Collapsed"
-                    Background="Transparent">
-                <Frame x:Name="SecondaryContentFrame"
-                       Background="Transparent"
-                       IsHitTestVisible="False">
-                    <Frame.ContentTransitions>
-                        <TransitionCollection>
-                            <NavigationThemeTransition />
-                        </TransitionCollection>
-                    </Frame.ContentTransitions>
-                </Frame>
-            </Border>
-        </Canvas>
-        
         <!-- 下载 TeachingTip：TopRight 时右缘与锚点右对齐，底缘在锚点上方，故「窗缘→气泡底」≈ Padding.Bottom+锚点+PlacementMargin.Top，「窗缘→气泡右」≈ Padding.Right。右略加大使与底观感对齐。 -->
         <Border HorizontalAlignment="Stretch"
                 VerticalAlignment="Stretch"
