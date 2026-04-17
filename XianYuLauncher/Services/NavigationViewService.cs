@@ -10,7 +10,7 @@ namespace XianYuLauncher.Services;
 
 public class NavigationViewService : INavigationViewService
 {
-    private readonly INavigationService _navigationService;
+    private readonly IShellNavigationOrchestrator _shellNavigationOrchestrator;
 
     private readonly IPageService _pageService;
 
@@ -20,9 +20,9 @@ public class NavigationViewService : INavigationViewService
 
     public object? SettingsItem => _navigationView?.SettingsItem;
 
-    public NavigationViewService(INavigationService navigationService, IPageService pageService)
+    public NavigationViewService(IShellNavigationOrchestrator shellNavigationOrchestrator, IPageService pageService)
     {
-        _navigationService = navigationService;
+        _shellNavigationOrchestrator = shellNavigationOrchestrator;
         _pageService = pageService;
     }
 
@@ -53,13 +53,13 @@ public class NavigationViewService : INavigationViewService
         return null;
     }
 
-    private void OnBackRequested(NavigationView sender, NavigationViewBackRequestedEventArgs args) => _navigationService.GoBack();
+    private void OnBackRequested(NavigationView sender, NavigationViewBackRequestedEventArgs args) => _shellNavigationOrchestrator.GoBack();
 
     private void OnItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
     {
         if (args.IsSettingsInvoked)
         {
-            _navigationService.NavigateTo(typeof(SettingsViewModel).FullName!);
+            _shellNavigationOrchestrator.NavigateToTopLevel(typeof(SettingsViewModel).FullName!);
         }
         else
         {
@@ -67,7 +67,7 @@ public class NavigationViewService : INavigationViewService
 
             if (selectedItem?.GetValue(NavigationHelper.NavigateToProperty) is string pageKey)
             {
-                _navigationService.NavigateTo(pageKey);
+                _shellNavigationOrchestrator.NavigateToTopLevel(pageKey);
             }
         }
     }

@@ -575,9 +575,9 @@ public sealed partial class ShellPage : Page, INotifyPropertyChanged
 
     private static void OnKeyboardAcceleratorInvoked(KeyboardAccelerator sender, KeyboardAcceleratorInvokedEventArgs args)
     {
-        var navigationService = App.GetService<INavigationService>();
+        var shellNavigationOrchestrator = App.GetService<IShellNavigationOrchestrator>();
 
-        var result = navigationService.GoBack();
+        var result = shellNavigationOrchestrator.GoBack();
 
         args.Handled = result;
     }

@@ -29,6 +29,7 @@ public partial class ShellViewModel : ObservableRecipient
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IDownloadTaskPresentationService _downloadTaskPresentationService;
     private readonly IAISettingsDomainService _aiSettingsDomainService;
+    private readonly IShellNavigationOrchestrator _shellNavigationOrchestrator;
     private readonly ISecondaryContentNavigationService _secondaryContentNavigationService;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly Dictionary<ShellDownloadTipItem, CancellationTokenSource> _pendingTipCloseOperations = new();
@@ -76,6 +77,7 @@ public partial class ShellViewModel : ObservableRecipient
         IDownloadTaskManager downloadTaskManager,
         IDownloadTaskPresentationService downloadTaskPresentationService,
         IAISettingsDomainService aiSettingsDomainService,
+        IShellNavigationOrchestrator shellNavigationOrchestrator,
         ISecondaryContentNavigationService secondaryContentNavigationService)
     {
         NavigationService = navigationService;
@@ -84,6 +86,7 @@ public partial class ShellViewModel : ObservableRecipient
         _downloadTaskManager = downloadTaskManager;
         _downloadTaskPresentationService = downloadTaskPresentationService;
         _aiSettingsDomainService = aiSettingsDomainService;
+        _shellNavigationOrchestrator = shellNavigationOrchestrator;
         _secondaryContentNavigationService = secondaryContentNavigationService;
         _secondaryContentNavigationService.StateChanged += OnSecondaryContentStateChanged;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
@@ -103,7 +106,7 @@ public partial class ShellViewModel : ObservableRecipient
 
         if (!value && NavigationService.Frame?.Content?.GetType() == typeof(LauncherAIPage))
         {
-            NavigationService.NavigateTo(typeof(LaunchViewModel).FullName!);
+            _shellNavigationOrchestrator.NavigateToTopLevel(typeof(LaunchViewModel).FullName!);
         }
     }
 
@@ -414,6 +417,6 @@ public partial class ShellViewModel : ObservableRecipient
 
     private void UpdateBackEnabled()
     {
-        IsBackEnabled = _secondaryContentNavigationService.IsActive || NavigationService.CanGoBack;
+        IsBackEnabled = _secondaryContentNavigationService.IsActive || _shellNavigationOrchestrator.CanGoBack;
     }
 }
