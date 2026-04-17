@@ -171,34 +171,30 @@
                 </NavigationViewItem>
             </NavigationView.FooterMenuItems>
             <Grid Margin="{StaticResource NavigationViewPageContentMargin}">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
-
-                <controls:PageHeader
-                    x:Name="SharedPageHeader"
-                    Grid.Row="0"
-                    Title="{x:Bind ViewModel.CurrentHeaderMetadata.Title, Mode=OneWay}"
-                    Subtitle="{x:Bind ViewModel.CurrentHeaderMetadata.Subtitle, Mode=OneWay}"
-                    ShowBreadcrumb="{x:Bind ViewModel.CurrentHeaderMetadata.ShowBreadcrumb, Mode=OneWay}"
-                    ShowPrimaryHeading="{x:Bind ViewModel.CurrentHeaderHostConfiguration.ShowPrimaryHeading, Mode=OneWay}"
-                    BreadcrumbFontSize="{x:Bind ViewModel.CurrentHeaderHostConfiguration.BreadcrumbFontSize, Mode=OneWay}"
-                    BreadcrumbMargin="{x:Bind ViewModel.CurrentHeaderHostConfiguration.BreadcrumbMargin, Mode=OneWay}"
-                    BreadcrumbItems="{x:Bind ViewModel.CurrentHeaderMetadata.BreadcrumbItems, Mode=OneWay}"
-                    BreadcrumbItemTemplate="{x:Bind CurrentHeaderBreadcrumbItemTemplate, Mode=OneWay}"
-                    HeaderSupplementalContent="{x:Bind CurrentHeaderSupplementalContent, Mode=OneWay}"
-                    TrailingActions="{x:Bind CurrentHeaderTrailingActions, Mode=OneWay}"
-                    BreadcrumbItemClicked="SharedPageHeader_BreadcrumbItemClicked"
-                    Visibility="{x:Bind ViewModel.IsShellHeaderVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-
-                <Frame x:Name="NavigationFrame" Grid.Row="1">
+                <Frame x:Name="NavigationFrame">
                     <Frame.ContentTransitions>
                         <TransitionCollection>
                             <NavigationThemeTransition />
                         </TransitionCollection>
                     </Frame.ContentTransitions>
                 </Frame>
+
+                <controls:PageHeader
+                    x:Name="SharedPageHeader"
+                    Title="{x:Bind DisplayedHeaderMetadata.Title, Mode=OneWay}"
+                    Subtitle="{x:Bind DisplayedHeaderMetadata.Subtitle, Mode=OneWay}"
+                    ShowBreadcrumb="{x:Bind DisplayedHeaderMetadata.ShowBreadcrumb, Mode=OneWay}"
+                    ShowPrimaryHeading="{x:Bind DisplayedHeaderHostConfiguration.ShowPrimaryHeading, Mode=OneWay}"
+                    BreadcrumbFontSize="{x:Bind DisplayedHeaderHostConfiguration.BreadcrumbFontSize, Mode=OneWay}"
+                    BreadcrumbMargin="{x:Bind DisplayedHeaderHostConfiguration.BreadcrumbMargin, Mode=OneWay}"
+                    BreadcrumbItems="{x:Bind DisplayedHeaderMetadata.BreadcrumbItems, Mode=OneWay}"
+                    BreadcrumbItemTemplate="{x:Bind CurrentHeaderBreadcrumbItemTemplate, Mode=OneWay}"
+                    HeaderSupplementalContent="{x:Bind CurrentHeaderSupplementalContent, Mode=OneWay}"
+                    TrailingActions="{x:Bind CurrentHeaderTrailingActions, Mode=OneWay}"
+                    VerticalAlignment="Top"
+                    BreadcrumbItemClicked="SharedPageHeader_BreadcrumbItemClicked"
+                    SizeChanged="SharedPageHeader_SizeChanged"
+                    Visibility="{x:Bind IsDisplayedShellHeaderVisible, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
             </Grid>
         </NavigationView>
 

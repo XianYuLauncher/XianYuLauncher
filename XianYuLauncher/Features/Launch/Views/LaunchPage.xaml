@@ -7,6 +7,7 @@
     xmlns:viewModels="using:XianYuLauncher.Features.Launch.ViewModels"
     xmlns:models="using:XianYuLauncher.Models"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
+    xmlns:mediaAnimation="using:Microsoft.UI.Xaml.Media.Animation"
     mc:Ignorable="d">
 
     <Page.Resources>
@@ -21,43 +22,28 @@
     </Page.Resources>
 
     <Grid x:Name="ContentArea">
-        <!-- 主内容 -->
-        <ScrollViewer
-            VerticalScrollBarVisibility="Auto"
-            HorizontalScrollBarVisibility="Disabled"
-            Padding="{StaticResource PageContentPadding}">
-            <!-- 不使用 RepositionThemeTransition，改为给每个需要平移动画的 child 单独加 Implicit OffsetAnimation。
-                 这样进度条（不加 OffsetAnimation）在 Collapsed→Visible 时不会飞入，
-                 同时也彻底规避了 RepositionThemeTransition 在 Release 模式下对异步数据控件的概率性失效问题。 -->
-            <StackPanel x:Name="MainContentPanel" Spacing="24" Width="420" HorizontalAlignment="Left">
-                <!-- 页面标题 -->
-                <StackPanel Spacing="4">
-                    <animations:Implicit.Animations>
-                        <animations:OffsetAnimation Duration="0:0:0.3" EasingMode="EaseOut" EasingType="Default" />
-                    </animations:Implicit.Animations>
-                    <TextBlock 
-                        Text="{x:Bind ViewModel.PageTitle, Mode=OneWay}" 
-                        FontSize="{x:Bind ViewModel.PageTitleFontSize, Mode=OneWay}"
-                        Style="{StaticResource TitleTextBlockStyle}" 
-                        FontWeight="SemiBold" />
-                    <TextBlock 
-                        Text="XianYu Launcher" 
-                        Style="{StaticResource CaptionTextBlockStyle}" 
-                        Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
-                </StackPanel>
-
-                <!-- 选择卡片 -->
-                <Border 
-                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                    BorderThickness="1"
-                    CornerRadius="8"
-                    Padding="4">
-                    <animations:Implicit.Animations>
-                        <animations:OffsetAnimation Duration="0:0:0.3" EasingMode="EaseOut" EasingType="Default" />
-                    </animations:Implicit.Animations>
-                    <StackPanel>
-                        <!-- 版本选择行 -->
+        <Grid x:Name="AnimatedContentHost"
+              mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
+            <!-- 主内容 -->
+            <ScrollViewer
+                VerticalScrollBarVisibility="Auto"
+                HorizontalScrollBarVisibility="Disabled"
+                Padding="{StaticResource PageScrollViewerPadding}">
+                <!-- 不使用 RepositionThemeTransition，改为给每个需要平移动画的 child 单独加 Implicit OffsetAnimation。
+                     这样进度条（不加 OffsetAnimation）在 Collapsed→Visible 时不会飞入，
+                     同时也彻底规避了 RepositionThemeTransition 在 Release 模式下对异步数据控件的概率性失效问题。 -->
+                <StackPanel x:Name="MainContentPanel" Spacing="24" Width="420" HorizontalAlignment="Left">
+                    <!-- 选择卡片 -->
+                    <Border 
+                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Padding="4">
+                        <animations:Implicit.Animations>
+                            <animations:OffsetAnimation Duration="0:0:0.3" EasingMode="EaseOut" EasingType="Default" />
+                        </animations:Implicit.Animations>
+                        <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -311,6 +297,7 @@
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>
+        </Grid>
 
         <TeachingTip
             x:Name="ActivityNewsTeachingTip"
