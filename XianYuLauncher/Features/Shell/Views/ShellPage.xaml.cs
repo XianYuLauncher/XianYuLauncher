@@ -35,15 +35,18 @@ public sealed partial class ShellPage : Page
     
     private readonly MaterialService _materialService;
     private readonly IUiDispatcher _uiDispatcher;
+    private readonly ISecondaryContentNavigationService _secondaryContentNavigationService;
 
-    public ShellPage(ShellViewModel viewModel)
+    public ShellPage(ShellViewModel viewModel, ISecondaryContentNavigationService secondaryContentNavigationService)
     {
         ViewModel = viewModel;
+        _secondaryContentNavigationService = secondaryContentNavigationService;
         InitializeComponent();
 
         ViewModel.NavigationService.Frame = NavigationFrame;
         ViewModel.NavigationViewService.Initialize(NavigationViewControl);
         _uiDispatcher = App.GetService<IUiDispatcher>();
+        _secondaryContentNavigationService.Initialize(SecondaryContentOverlayCanvas, SecondaryContentOverlayHost, SecondaryContentFrame, RootGrid);
 
         // 监听导航事件，教程页隐藏侧边栏
         NavigationFrame.Navigated += OnFrameNavigated;

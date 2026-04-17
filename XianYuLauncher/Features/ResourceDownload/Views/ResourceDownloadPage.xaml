@@ -1673,17 +1673,6 @@
             </TabView>
         </Grid>
 
-        <Frame x:Name="InternalContentFrame"
-               Grid.Row="1"
-               Visibility="Collapsed"
-               IsHitTestVisible="False"
-               Background="Transparent">
-            <Frame.ContentTransitions>
-                <TransitionCollection>
-                    <NavigationThemeTransition />
-                </TransitionCollection>
-            </Frame.ContentTransitions>
-        </Frame>
         </Grid>
     </Grid>
 </Page>

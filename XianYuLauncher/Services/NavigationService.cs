@@ -16,6 +16,7 @@ public class NavigationService : INavigationService
 {
     private readonly IPageService _pageService;
     private readonly ICommonDialogService _dialogService;
+    private readonly ISecondaryContentNavigationService _secondaryContentNavigationService;
     private object? _lastParameterUsed;
     private Frame? _frame;
 
@@ -45,10 +46,11 @@ public class NavigationService : INavigationService
     [MemberNotNullWhen(true, nameof(Frame), nameof(_frame))]
     public bool CanGoBack => Frame != null && Frame.CanGoBack;
 
-    public NavigationService(IPageService pageService, ICommonDialogService dialogService)
+    public NavigationService(IPageService pageService, ICommonDialogService dialogService, ISecondaryContentNavigationService secondaryContentNavigationService)
     {
         _pageService = pageService;
         _dialogService = dialogService;
+        _secondaryContentNavigationService = secondaryContentNavigationService;
     }
 
     private void RegisterFrameEvents()
@@ -69,6 +71,11 @@ public class NavigationService : INavigationService
 
     public bool GoBack()
     {
+        if (_secondaryContentNavigationService.GoBack())
+        {
+            return true;
+        }
+
         if (CanGoBack)
         {
             var vmBeforeNavigation = _frame.GetPageViewModel();
@@ -89,6 +96,11 @@ public class NavigationService : INavigationService
         try
         {
             var pageType = _pageService.GetPageType(pageKey);
+
+            if (_secondaryContentNavigationService.IsActive)
+            {
+                _secondaryContentNavigationService.Close();
+            }
 
             if (_frame != null && (_frame.Content?.GetType() != pageType || (parameter != null && !parameter.Equals(_lastParameterUsed))))
             {

@@ -79,6 +79,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
     private bool _worldsLoaded = false;
 
     private IUiDispatcher _uiDispatcher = null!;
+    private ISecondaryContentNavigationService _secondaryContentNavigationService = null!;
 
     // LayoutUpdated 防抖：避免高频触发时重复入队
     private bool _resourcePackLoadMoreCheckPending;
@@ -104,14 +105,13 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
         ViewModel.ModLoaderSelectorRequested += ViewModel_ModLoaderSelectorRequested;
         InitializeComponent();
         _uiDispatcher = App.GetService<IUiDispatcher>();
+        _secondaryContentNavigationService = App.GetService<ISecondaryContentNavigationService>();
+        _secondaryContentNavigationService.StateChanged += SecondaryContentNavigationService_StateChanged;
         _uiDispatcher.TryEnqueue(TryRefreshModFilterTokenItems);
-        InternalContentFrame.Navigated += InternalContentFrame_Navigated;
         
         // 在页面加载完成后检查是否需要切换标签页
         Loaded += (sender, e) =>
         {
-            _uiDispatcher.TryEnqueue(EnsureInternalContentHostInitialized);
-
             // 使用静态属性 TargetTabIndex 来控制标签页切换
             if (TargetTabIndex > 0)
             {
@@ -119,6 +119,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
                 // 重置 TargetTabIndex，避免下次打开时仍然使用旧值
                 TargetTabIndex = 0;
             }
+
+            SyncSecondaryContentState();
         };
     }
     
@@ -148,6 +150,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
                 _ = ViewModel.EnsureAvailableVersionsAsync();
             }
         });
+
+        _uiDispatcher.TryEnqueue(SyncSecondaryContentState);
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -155,13 +159,23 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
         base.OnNavigatedTo(e);
         OnNavigatedTo(e.Parameter);
     }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        base.OnNavigatedFrom(e);
+        OnNavigatedFrom();
+    }
     
     /// <summary>
     /// 从页面导航离开时调用
     /// </summary>
     public void OnNavigatedFrom()
     {
-        TearDownInternalContentHost();
+        if (_secondaryContentNavigationService.ActiveHost == ResourceMainContent)
+        {
+            _secondaryContentNavigationService.Close();
+        }
+
         // 清理资源
     }
 
@@ -193,123 +207,46 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, INoti
         OnPropertyChanged(nameof(IsPageHeaderPrimaryHeadingVisible));
     }
 
-    private void EnsureInternalContentHostInitialized()
-    {
-        if (!IsLoaded || InternalContentFrame.XamlRoot is null || InternalContentFrame.Content is not null)
-        {
-            return;
-        }
-
-        InternalContentFrame.Navigate(typeof(InternalNavigationPlaceholderPage), null, new SuppressNavigationTransitionInfo());
-    }
-
-    private void TearDownInternalContentHost()
-    {
-        if (InternalContentFrame.Content is ModLoaderSelectorContentPage modLoaderSelectorPage)
-        {
-            modLoaderSelectorPage.ViewModel.OnNavigatedFrom();
-        }
-
-        InternalContentFrame.Content = null;
-        InternalContentFrame.BackStack.Clear();
-        ResourceMainContent.Visibility = Visibility.Visible;
-        InternalContentFrame.Visibility = Visibility.Collapsed;
-        InternalContentFrame.IsHitTestVisible = false;
-        SetInternalModLoaderActive(false);
-        SetCurrentHeaderMetadata(ViewModel.HeaderMetadata);
-    }
-
-    private void ResetInternalContentHost()
-    {
-        if (InternalContentFrame.Content is null)
-        {
-            ResourceMainContent.Visibility = Visibility.Visible;
-            InternalContentFrame.Visibility = Visibility.Collapsed;
-            InternalContentFrame.IsHitTestVisible = false;
-            SetInternalModLoaderActive(false);
-            SetCurrentHeaderMetadata(ViewModel.HeaderMetadata);
-            return;
-        }
-
-        if (InternalContentFrame.Content is not InternalNavigationPlaceholderPage)
-        {
-            InternalContentFrame.Navigate(typeof(InternalNavigationPlaceholderPage), null, new SuppressNavigationTransitionInfo());
-            return;
-        }
-
-        ResourceMainContent.Visibility = Visibility.Visible;
-        InternalContentFrame.Visibility = Visibility.Collapsed;
-        InternalContentFrame.IsHitTestVisible = false;
-        SetInternalModLoaderActive(false);
-        SetCurrentHeaderMetadata(ViewModel.HeaderMetadata);
-    }
-
     private void ViewModel_ModLoaderSelectorRequested(string versionId)
     {
-        EnsureInternalContentHostInitialized();
-
-        ResourceMainContent.Visibility = Visibility.Visible;
-        InternalContentFrame.Visibility = Visibility.Visible;
-        InternalContentFrame.IsHitTestVisible = true;
-
         var navigationParameter = new ModLoaderSelectorNavigationParameter
         {
             VersionId = versionId,
             BreadcrumbRootLabel = "ResourceDownloadPage_HeaderTitle".GetLocalized(),
             ReturnPageKey = typeof(ResourceDownloadViewModel).FullName!,
             ReturnTabKey = "version",
-            CloseHandler = CloseInternalModLoaderSelector,
+            CloseHandler = () => _secondaryContentNavigationService.GoBack(new DrillInNavigationTransitionInfo()),
         };
 
-        InternalContentFrame.Navigate(typeof(ModLoaderSelectorContentPage), navigationParameter, new DrillInNavigationTransitionInfo());
+        if (_secondaryContentNavigationService.Navigate(ResourceMainContent, typeof(ModLoaderSelectorContentPage), navigationParameter, new DrillInNavigationTransitionInfo()))
+        {
+            SyncSecondaryContentState();
+        }
     }
 
-    private bool CloseInternalModLoaderSelector()
+    private void SecondaryContentNavigationService_StateChanged(object? sender, EventArgs e)
     {
-        if (InternalContentFrame.Content is InternalNavigationPlaceholderPage)
-        {
-            ResetInternalContentHost();
-            return true;
-        }
-
-        ResourceMainContent.Visibility = Visibility.Visible;
-
-        if (InternalContentFrame.CanGoBack)
-        {
-            InternalContentFrame.GoBack(new DrillInNavigationTransitionInfo());
-        }
-        else
-        {
-            InternalContentFrame.Navigate(typeof(InternalNavigationPlaceholderPage), null, new SuppressNavigationTransitionInfo());
-        }
-
-        return true;
+        SyncSecondaryContentState();
     }
 
-    private void InternalContentFrame_Navigated(object sender, NavigationEventArgs e)
+    private void SyncSecondaryContentState()
     {
-        switch (InternalContentFrame.Content)
+        if (GetActiveModLoaderSelectorPage() is ModLoaderSelectorContentPage modLoaderSelectorPage)
         {
-            case ModLoaderSelectorContentPage modLoaderSelectorPage:
-                InternalContentFrame.Visibility = Visibility.Visible;
-                InternalContentFrame.IsHitTestVisible = true;
-                ResourceMainContent.Visibility = Visibility.Collapsed;
-                SetInternalModLoaderActive(true);
-                SetCurrentHeaderMetadata(modLoaderSelectorPage.ViewModel.HeaderMetadata);
-                break;
-            default:
-                InternalContentFrame.Visibility = Visibility.Collapsed;
-                InternalContentFrame.IsHitTestVisible = false;
-                ResourceMainContent.Visibility = Visibility.Visible;
-                SetInternalModLoaderActive(false);
-                SetCurrentHeaderMetadata(ViewModel.HeaderMetadata);
-                break;
+            SetInternalModLoaderActive(true);
+            SetCurrentHeaderMetadata(modLoaderSelectorPage.ViewModel.HeaderMetadata);
+            return;
         }
+
+        SetInternalModLoaderActive(false);
+        SetCurrentHeaderMetadata(ViewModel.HeaderMetadata);
     }
 
     private ModLoaderSelectorContentPage? GetActiveModLoaderSelectorPage()
     {
-        return InternalContentFrame.Content as ModLoaderSelectorContentPage;
+        return _secondaryContentNavigationService.ActiveHost == ResourceMainContent
+            ? _secondaryContentNavigationService.Content as ModLoaderSelectorContentPage
+            : null;
     }
 
     private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)

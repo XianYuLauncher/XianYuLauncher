@@ -26,6 +26,7 @@ public partial class ShellViewModel : ObservableRecipient
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IDownloadTaskPresentationService _downloadTaskPresentationService;
     private readonly IAISettingsDomainService _aiSettingsDomainService;
+    private readonly ISecondaryContentNavigationService _secondaryContentNavigationService;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly Dictionary<ShellDownloadTipItem, CancellationTokenSource> _pendingTipCloseOperations = new();
 
@@ -60,7 +61,8 @@ public partial class ShellViewModel : ObservableRecipient
         INavigationViewService navigationViewService,
         IDownloadTaskManager downloadTaskManager,
         IDownloadTaskPresentationService downloadTaskPresentationService,
-        IAISettingsDomainService aiSettingsDomainService)
+        IAISettingsDomainService aiSettingsDomainService,
+        ISecondaryContentNavigationService secondaryContentNavigationService)
     {
         NavigationService = navigationService;
         NavigationService.Navigated += OnNavigated;
@@ -68,6 +70,8 @@ public partial class ShellViewModel : ObservableRecipient
         _downloadTaskManager = downloadTaskManager;
         _downloadTaskPresentationService = downloadTaskPresentationService;
         _aiSettingsDomainService = aiSettingsDomainService;
+        _secondaryContentNavigationService = secondaryContentNavigationService;
+        _secondaryContentNavigationService.StateChanged += OnSecondaryContentStateChanged;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
         DownloadTeachingTips.CollectionChanged += OnDownloadTeachingTipsCollectionChanged;
@@ -353,7 +357,7 @@ public partial class ShellViewModel : ObservableRecipient
 
     private void OnNavigated(object sender, NavigationEventArgs e)
     {
-        IsBackEnabled = NavigationService.CanGoBack;
+        UpdateBackEnabled();
 
         if (e.SourcePageType == typeof(SettingsPage))
         {
@@ -366,5 +370,15 @@ public partial class ShellViewModel : ObservableRecipient
         {
             Selected = selectedItem;
         }
+    }
+
+    private void OnSecondaryContentStateChanged(object? sender, EventArgs e)
+    {
+        UpdateBackEnabled();
+    }
+
+    private void UpdateBackEnabled()
+    {
+        IsBackEnabled = _secondaryContentNavigationService.IsActive || NavigationService.CanGoBack;
     }
 }

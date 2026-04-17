@@ -8,6 +8,10 @@
     xmlns:core="using:XianYuLauncher.Core.Models"
     xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:controls="using:XianYuLauncher.Controls"
+    HorizontalAlignment="Stretch"
+    VerticalAlignment="Stretch"
+    HorizontalContentAlignment="Stretch"
+    VerticalContentAlignment="Stretch"
     mc:Ignorable="d">
 
     <UserControl.Resources>
@@ -23,7 +27,8 @@
         </Style>
     </UserControl.Resources>
 
-    <Grid>
+        <Grid HorizontalAlignment="Stretch"
+            VerticalAlignment="Stretch">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />

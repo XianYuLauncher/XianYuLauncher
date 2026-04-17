@@ -22,6 +22,7 @@ internal static class UiServiceExtensions
 
         services.AddSingleton<IPageService, PageService>();
         services.AddSingleton<INavigationService, NavigationService>();
+        services.AddSingleton<ISecondaryContentNavigationService, SecondaryContentNavigationService>();
         services.AddSingleton<IContentDialogHostService, ContentDialogHostService>();
         services.AddSingleton<IDialogThemePaletteService, DialogThemePaletteService>();
         services.AddSingleton<ICommonDialogService, CommonDialogService>();
