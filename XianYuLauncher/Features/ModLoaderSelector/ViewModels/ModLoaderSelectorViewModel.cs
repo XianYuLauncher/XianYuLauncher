@@ -157,6 +157,16 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         UpdateVersionName();
     }
 
+    partial void OnSelectedIconPathChanged(string value)
+    {
+        RefreshCurrentBreadcrumbItem();
+    }
+
+    partial void OnSelectedVersionDisplayTextChanged(string value)
+    {
+        RefreshCurrentBreadcrumbItem();
+    }
+
     // 计算属性：当前选中的ModLoader名称
     public string? SelectedModLoader => SelectedModLoaderItem?.Name;
 
@@ -367,10 +377,9 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             "ModLoaderSelectionPage_CurrentVersionText.Text".GetLocalized(),
             SelectedMinecraftVersion);
 
-        HeaderMetadata.BreadcrumbItems.Clear();
-
         if (_navigationParameter == null)
         {
+            HeaderMetadata.BreadcrumbItems.Clear();
             HeaderMetadata.ShowBreadcrumb = false;
             HeaderMetadata.ReturnTarget = null;
             return;
@@ -383,6 +392,17 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             Parameter = _navigationParameter.ReturnTabKey,
         };
 
+        RebuildHeaderMetadata();
+    }
+
+    private void RebuildHeaderMetadata()
+    {
+        if (_navigationParameter == null)
+        {
+            return;
+        }
+
+        HeaderMetadata.BreadcrumbItems.Clear();
         HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
         {
             DisplayText = _navigationParameter.BreadcrumbRootLabel,
@@ -392,9 +412,31 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
 
         HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
         {
-            DisplayText = SelectedMinecraftVersion,
+            DisplayText = GetCurrentBreadcrumbDisplayText(),
+            IconPath = SelectedIconPath,
+            AvailableIcons = AvailableIcons,
             IsCurrent = true,
+            IsInteractiveCurrent = true,
         });
+    }
+
+    private void RefreshCurrentBreadcrumbItem()
+    {
+        if (HeaderMetadata.BreadcrumbItems.Count < 2)
+        {
+            return;
+        }
+
+        HeaderMetadata.BreadcrumbItems[1].DisplayText = GetCurrentBreadcrumbDisplayText();
+        HeaderMetadata.BreadcrumbItems[1].IconPath = SelectedIconPath;
+        HeaderMetadata.BreadcrumbItems[1].AvailableIcons = AvailableIcons;
+    }
+
+    private string GetCurrentBreadcrumbDisplayText()
+    {
+        return string.IsNullOrWhiteSpace(SelectedVersionDisplayText)
+            ? SelectedMinecraftVersion
+            : SelectedVersionDisplayText;
     }
 
     [RelayCommand]

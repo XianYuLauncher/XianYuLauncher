@@ -7,6 +7,8 @@ public interface INavigationService
 {
     event NavigatedEventHandler Navigated;
 
+    event EventHandler? NavigationStateChanged;
+
     bool CanGoBack
     {
         get;

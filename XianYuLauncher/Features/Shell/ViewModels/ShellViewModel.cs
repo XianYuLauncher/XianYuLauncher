@@ -64,6 +64,7 @@ public partial class ShellViewModel : ObservableRecipient
     {
         NavigationService = navigationService;
         NavigationService.Navigated += OnNavigated;
+        NavigationService.NavigationStateChanged += OnNavigationStateChanged;
         NavigationViewService = navigationViewService;
         _downloadTaskManager = downloadTaskManager;
         _downloadTaskPresentationService = downloadTaskPresentationService;
@@ -366,5 +367,10 @@ public partial class ShellViewModel : ObservableRecipient
         {
             Selected = selectedItem;
         }
+    }
+
+    private void OnNavigationStateChanged(object? sender, EventArgs e)
+    {
+        IsBackEnabled = NavigationService.CanGoBack;
     }
 }
