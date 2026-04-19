@@ -194,12 +194,12 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
 
     private void ActiveDetailHeaderMetadata_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (_activeInnerDetailPage == null)
+        if (!TryGetActiveDetailPage(out var detailPage))
         {
             return;
         }
 
-        ApplyHostedPageHeaderState(_activeInnerDetailPage.ViewModel);
+        ApplyHostedPageHeaderState(detailPage.ViewModel);
     }
 
     private void ApplyRootHeaderState()
@@ -241,7 +241,12 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
     private void ResetInnerContentFrameVisualState()
     {
         ResourceDownloadInnerContentFrame.Opacity = 1;
-        _activeInnerDetailPage?.ResetEmbeddedVisualState();
+        if (!TryGetActiveDetailPage(out var detailPage))
+        {
+            return;
+        }
+
+        detailPage.ResetEmbeddedVisualState();
     }
 
     private void NotifyLocalNavigationStateChanged()
@@ -251,17 +256,28 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
 
     private void DetailHeader_BuiltInIconSelected(object? sender, VersionIconSelectedEventArgs e)
     {
-        _activeInnerDetailPage?.ApplyBuiltInIcon(e.IconOption);
-    }
-
-    private async void DetailHeader_CustomIconRequested(object? sender, EventArgs e)
-    {
-        if (_activeInnerDetailPage == null)
+        if (!TryGetActiveDetailPage(out var detailPage))
         {
             return;
         }
 
-        await _activeInnerDetailPage.RequestCustomIconAsync();
+        detailPage.ApplyBuiltInIcon(e.IconOption);
+    }
+
+    private async void DetailHeader_CustomIconRequested(object? sender, EventArgs e)
+    {
+        if (!TryGetActiveDetailPage(out var detailPage))
+        {
+            return;
+        }
+
+        await detailPage.RequestCustomIconAsync();
+    }
+
+    private bool TryGetActiveDetailPage(out ModLoaderSelectorPage? detailPage)
+    {
+        detailPage = _activeInnerDetailPage;
+        return detailPage is not null;
     }
 
     private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
