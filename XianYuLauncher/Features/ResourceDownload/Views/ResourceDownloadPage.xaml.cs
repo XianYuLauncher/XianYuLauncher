@@ -91,8 +91,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
     private bool _isNavigatingToInnerContent;
     private bool _isReturningToRootContent;
     private ModLoaderSelectorPage? _activeInnerModLoaderSelectorPage;
-    private Storyboard? _activeDrillInStoryboard;
-    private Storyboard? _activeDrillOutStoryboard;
     private readonly string _rootHeaderTitle;
     private readonly string _rootHeaderSubtitle;
 
@@ -134,6 +132,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
     public void OnNavigatedTo(object parameter)
     {
         EnsureInnerContentFrame();
+        // 顶层重新进入资源下载页时再统一收回页内 detail，避免缓存页在离场动画阶段被同步改写。
+        ResetLocalNavigation();
         ApplyProtocolNavigationParameter(parameter);
 
         // 直接使用 Dispatcher 延迟执行，确保 TabView 已经初始化完成
@@ -167,7 +167,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
     /// </summary>
     public void OnNavigatedFrom()
     {
-        ReturnToRootContent();
+        StopActiveInnerAnimations();
     }
 
     private void EnsureInnerContentFrame()
@@ -184,11 +184,13 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         _isInnerContentFrameInitialized = true;
     }
 
-    private void ShowRootContent()
+    private void ShowRootContent(bool collapseInnerContent = true)
     {
         ResourceDownloadRootContentHost.Visibility = Visibility.Visible;
-        ResourceDownloadInnerContentHost.Visibility = Visibility.Collapsed;
-        ResourceDownloadInnerContentFrame.Visibility = Visibility.Collapsed;
+        ResourceDownloadInnerContentHost.Visibility = collapseInnerContent ? Visibility.Collapsed : Visibility.Visible;
+        ResourceDownloadInnerContentHost.IsHitTestVisible = false;
+        ResourceDownloadInnerContentFrame.Visibility = collapseInnerContent ? Visibility.Collapsed : Visibility.Visible;
+        ResourceDownloadInnerContentFrame.IsHitTestVisible = false;
         FavoritesDropArea.Visibility = Visibility.Visible;
         ApplyRootHeaderMetadata();
         NotifyLocalNavigationStateChanged();
@@ -200,13 +202,14 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         StopActiveInnerAnimations();
         ResetInnerContentFrameVisualState();
         DetachInnerModLoaderSelectorPage();
-        // 进入 detail 时先保留 root，可让 DrillIn 以稳定的起始布局执行；过早隐藏会触发一次错误重测量。
         _isNavigatingToInnerContent = true;
         ResourceDownloadRootContentHost.Visibility = Visibility.Visible;
         ResourceDownloadInnerContentHost.Visibility = Visibility.Visible;
+        ResourceDownloadInnerContentHost.IsHitTestVisible = true;
         ResourceDownloadInnerContentFrame.Visibility = Visibility.Visible;
+        ResourceDownloadInnerContentFrame.IsHitTestVisible = true;
         FavoritesDropArea.Visibility = Visibility.Collapsed;
-        ResourceDownloadInnerContentFrame.Navigate(typeof(ModLoaderSelectorPage), e, new SuppressNavigationTransitionInfo());
+        ResourceDownloadInnerContentFrame.Navigate(typeof(ModLoaderSelectorPage), e, new DrillInNavigationTransitionInfo());
     }
 
     private void ResourceDownloadInnerContentFrame_Navigated(object sender, NavigationEventArgs e)
@@ -215,7 +218,9 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         {
             DetachInnerModLoaderSelectorPage();
             _activeInnerModLoaderSelectorPage = null;
-            ShowRootContent();
+            var keepPlaceholderOverlay = _isReturningToRootContent;
+            _isReturningToRootContent = false;
+            ShowRootContent(collapseInnerContent: !keepPlaceholderOverlay);
             return;
         }
 
@@ -232,13 +237,15 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         ApplyHeaderMetadata(page.ViewModel);
         ResourceDownloadRootContentHost.Visibility = Visibility.Visible;
         ResourceDownloadInnerContentHost.Visibility = Visibility.Visible;
+        ResourceDownloadInnerContentHost.IsHitTestVisible = true;
         ResourceDownloadInnerContentFrame.Visibility = Visibility.Visible;
+        ResourceDownloadInnerContentFrame.IsHitTestVisible = true;
         FavoritesDropArea.Visibility = Visibility.Collapsed;
 
         if (_isNavigatingToInnerContent)
         {
             NotifyLocalNavigationStateChanged();
-            StartDrillInStoryboard(page);
+            CompleteForwardToInnerContent();
             return;
         }
 
@@ -266,13 +273,15 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         }
 
         _isNavigatingToInnerContent = false;
-        StopActiveDrillInStoryboard();
+        StopActiveInnerAnimations();
 
         ApplyRootHeaderMetadata();
         FavoritesDropArea.Visibility = Visibility.Visible;
         ResourceDownloadRootContentHost.Visibility = Visibility.Visible;
         ResourceDownloadInnerContentHost.Visibility = Visibility.Visible;
+        ResourceDownloadInnerContentHost.IsHitTestVisible = true;
         ResourceDownloadInnerContentFrame.Visibility = Visibility.Visible;
+        ResourceDownloadInnerContentFrame.IsHitTestVisible = true;
 
         if (!ResourceDownloadInnerContentFrame.CanGoBack)
         {
@@ -281,18 +290,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         }
 
         _isReturningToRootContent = true;
-
-        var exitTarget = _activeInnerModLoaderSelectorPage.DrillOutExitTarget;
-        if (exitTarget is null)
-        {
-            CompleteReturnToRootContent();
-            return;
-        }
-
-        _activeDrillOutStoryboard?.Stop();
-        _activeDrillOutStoryboard = CreateDrillOutStoryboard(exitTarget);
-        _activeDrillOutStoryboard.Completed += DrillOutStoryboard_Completed;
-        _activeDrillOutStoryboard.Begin();
+        NotifyLocalNavigationStateChanged();
+        ResourceDownloadInnerContentFrame.GoBack();
     }
 
     private void DetachInnerModLoaderSelectorPage()
@@ -317,37 +316,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         ApplyHeaderMetadata(_activeInnerModLoaderSelectorPage.ViewModel);
     }
 
-    private void DrillOutStoryboard_Completed(object? sender, object e)
-    {
-        if (sender is Storyboard storyboard)
-        {
-            storyboard.Completed -= DrillOutStoryboard_Completed;
-            if (ReferenceEquals(_activeDrillOutStoryboard, storyboard))
-            {
-                _activeDrillOutStoryboard = null;
-            }
-        }
-
-        CompleteReturnToRootContent();
-    }
-
-    private void DrillInStoryboard_Completed(object? sender, object e)
-    {
-        if (sender is Storyboard storyboard)
-        {
-            storyboard.Completed -= DrillInStoryboard_Completed;
-            if (ReferenceEquals(_activeDrillInStoryboard, storyboard))
-            {
-                _activeDrillInStoryboard = null;
-            }
-        }
-
-        CompleteForwardToInnerContent();
-    }
-
     private void CompleteForwardToInnerContent()
     {
-        // 等 DrillIn 完成后再切走 root，避免动画结束时 detail 重新吃到 root 容器的收缩宽度。
         _isNavigatingToInnerContent = false;
         ResourceDownloadRootContentHost.Visibility = Visibility.Collapsed;
         ResourceDownloadInnerContentHost.Visibility = Visibility.Visible;
@@ -355,21 +325,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         FavoritesDropArea.Visibility = Visibility.Collapsed;
         _activeInnerModLoaderSelectorPage?.ResetEmbeddedVisualState();
         NotifyLocalNavigationStateChanged();
-    }
-
-    private void CompleteReturnToRootContent()
-    {
-        _isReturningToRootContent = false;
-        ResetInnerContentFrameVisualState();
-        _activeInnerModLoaderSelectorPage?.ResetEmbeddedVisualState();
-
-        if (ResourceDownloadInnerContentFrame.CanGoBack)
-        {
-            ResourceDownloadInnerContentFrame.GoBack(new SuppressNavigationTransitionInfo());
-            return;
-        }
-
-        ShowRootContent();
     }
 
     private void ApplyRootHeaderMetadata()
@@ -404,30 +359,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         ResourceDownloadPageHeader.BreadcrumbFontSize = 15;
         ResourceDownloadPageHeader.BreadcrumbMargin = new Thickness(0, 0, 0, 12);
         ResourceDownloadPageHeader.BreadcrumbItemTemplate = null;
-    }
-
-    private Storyboard CreateDrillOutStoryboard(UIElement exitTarget)
-    {
-        var storyboard = new Storyboard();
-        storyboard.Children.Add(new DrillOutThemeAnimation
-        {
-            EntranceTarget = ResourceDownloadRootContentHost,
-            ExitTarget = exitTarget,
-        });
-
-        return storyboard;
-    }
-
-    private Storyboard CreateDrillInStoryboard(UIElement entranceTarget)
-    {
-        var storyboard = new Storyboard();
-        storyboard.Children.Add(new DrillInThemeAnimation
-        {
-            ExitTarget = ResourceDownloadRootContentHost,
-            EntranceTarget = entranceTarget,
-        });
-
-        return storyboard;
     }
 
     private void ResetInnerContentFrameVisualState()
@@ -476,46 +407,10 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         ShowRootContent();
     }
 
-    private void StartDrillInStoryboard(ModLoaderSelectorPage page)
-    {
-        StopActiveDrillInStoryboard();
-        page.ResetEmbeddedVisualState();
-        var entranceTarget = page.DrillInEntranceTarget;
-        _activeDrillInStoryboard = CreateDrillInStoryboard(entranceTarget);
-        _activeDrillInStoryboard.Completed += DrillInStoryboard_Completed;
-        _activeDrillInStoryboard.Begin();
-    }
-
     private void StopActiveInnerAnimations()
     {
-        StopActiveDrillInStoryboard();
-        StopActiveDrillOutStoryboard();
         _isNavigatingToInnerContent = false;
         _isReturningToRootContent = false;
-    }
-
-    private void StopActiveDrillInStoryboard()
-    {
-        if (_activeDrillInStoryboard == null)
-        {
-            return;
-        }
-
-        _activeDrillInStoryboard.Completed -= DrillInStoryboard_Completed;
-        _activeDrillInStoryboard.Stop();
-        _activeDrillInStoryboard = null;
-    }
-
-    private void StopActiveDrillOutStoryboard()
-    {
-        if (_activeDrillOutStoryboard == null)
-        {
-            return;
-        }
-
-        _activeDrillOutStoryboard.Completed -= DrillOutStoryboard_Completed;
-        _activeDrillOutStoryboard.Stop();
-        _activeDrillOutStoryboard = null;
     }
 
     private void NotifyLocalNavigationStateChanged()

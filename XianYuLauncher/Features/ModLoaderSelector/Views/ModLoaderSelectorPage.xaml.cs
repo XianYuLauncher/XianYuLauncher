@@ -17,10 +17,6 @@ public sealed partial class ModLoaderSelectorPage : Page
 {
     public ModLoaderSelectorViewModel ViewModel { get; }
 
-    public UIElement DrillInEntranceTarget => PageLayoutRoot;
-
-    public UIElement DrillOutExitTarget => PageLayoutRoot;
-
     public ModLoaderSelectorPage()
     {
         ViewModel = App.GetService<ModLoaderSelectorViewModel>();

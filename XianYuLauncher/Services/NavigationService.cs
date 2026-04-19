@@ -119,11 +119,6 @@ public class NavigationService : INavigationService
                 return false;
             }
 
-            if (currentLocalNavigationHost != null && _frame?.Content?.GetType() != pageType)
-            {
-                currentLocalNavigationHost.ResetLocalNavigation();
-            }
-
             if (_frame != null && (_frame.Content?.GetType() != pageType || (parameter != null && !parameter.Equals(_lastParameterUsed))))
             {
                 _frame.Tag = clearNavigation;
