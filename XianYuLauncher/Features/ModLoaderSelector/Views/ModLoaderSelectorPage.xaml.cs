@@ -3,7 +3,6 @@ using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
-using XianYuLauncher.Controls;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ModLoaderSelector.Models;
 using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
@@ -85,16 +84,6 @@ public sealed partial class ModLoaderSelectorPage : Page
         {
             System.Diagnostics.Debug.WriteLine($"[ModLoaderSelectorPage] 自定义图标选择失败: {ex.Message}");
         }
-    }
-
-    private void VersionIconPicker_BuiltInIconSelected(object? sender, VersionIconSelectedEventArgs e)
-    {
-        ApplyBuiltInIcon(e.IconOption);
-    }
-
-    private async void VersionIconPicker_CustomIconRequested(object? sender, EventArgs e)
-    {
-        await RequestCustomIconAsync();
     }
 
     private void CancelModLoader_Click(object sender, RoutedEventArgs e)
