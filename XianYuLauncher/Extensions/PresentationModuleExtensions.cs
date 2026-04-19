@@ -102,7 +102,6 @@ internal static class PresentationModuleExtensions
     {
         services.AddTransient<ModLoaderSelectorViewModel>();
         services.AddTransient<ModLoaderSelectorPage>();
-        services.AddPageMap<ModLoaderSelectorViewModel, ModLoaderSelectorPage>();
 
         return services;
     }

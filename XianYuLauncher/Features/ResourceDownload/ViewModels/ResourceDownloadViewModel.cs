@@ -18,7 +18,6 @@ using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.ModDownloadDetail.Models;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
 using XianYuLauncher.Features.ModLoaderSelector.Models;
-using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
 using XianYuLauncher.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
@@ -2526,14 +2525,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
                 ReturnTabKey = "version",
             };
 
-            if (ModLoaderSelectorRequested != null)
-            {
-                ModLoaderSelectorRequested.Invoke(this, navigationParameter);
-            }
-            else
-            {
-                _navigationService.NavigateTo(typeof(ModLoaderSelectorViewModel).FullName!, versionId);
-            }
+            ModLoaderSelectorRequested?.Invoke(this, navigationParameter);
         }
         catch (Exception)
         {
