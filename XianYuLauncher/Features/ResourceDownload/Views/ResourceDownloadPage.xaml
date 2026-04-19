@@ -220,13 +220,14 @@
             </localControls:PageHeader.TrailingActions>
         </localControls:PageHeader>
 
-        <!-- root/detail 使用独立内容壳，避免 detail 在动画完成后接管 root 的自适应宽度容器 -->
         <Grid Grid.Row="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-            <Grid x:Name="ResourceDownloadRootContentHost"
-                  MaxWidth="1064"
-                  HorizontalAlignment="Center"
-                  VerticalAlignment="Stretch"
-                  Margin="{StaticResource PageScrollViewerPadding}">
+            <Grid x:Name="ResourceDownloadRootContentStagingHost"
+                Visibility="Collapsed"
+                IsHitTestVisible="False">
+                <Grid x:Name="ResourceDownloadRootContentHost"
+                    MaxWidth="1064"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Stretch">
                 <!-- TabView 控件 -->
                 <TabView 
                     x:Name="ResourceTabView" 
@@ -1666,14 +1667,13 @@
                     </TabViewItem>
                 </TabView.TabItems>
                 </TabView>
+                                </Grid>
             </Grid>
 
-            <!-- detail 单独占一个内容壳，避免 root 在隐藏后由 detail 继承其测量结果并再次收缩 -->
             <Grid x:Name="ResourceDownloadInnerContentHost"
                   HorizontalAlignment="Stretch"
                   VerticalAlignment="Stretch"
-                  Padding="{StaticResource PageScrollViewerPadding}"
-                  Visibility="Collapsed">
+                                    Padding="{StaticResource PageScrollViewerPadding}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="100*" MaxWidth="1064" />
@@ -1684,8 +1684,7 @@
                        Grid.Column="1"
                        Background="Transparent"
                        HorizontalAlignment="Stretch"
-                       VerticalAlignment="Stretch"
-                       Visibility="Collapsed">
+                       VerticalAlignment="Stretch">
                     <Frame.ContentTransitions>
                         <TransitionCollection>
                             <NavigationThemeTransition />

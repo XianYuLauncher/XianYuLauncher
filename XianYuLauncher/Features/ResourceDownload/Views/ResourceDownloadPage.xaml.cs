@@ -88,15 +88,14 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
     private bool _modpackLoadMoreCheckPending;
     private bool _worldLoadMoreCheckPending;
     private bool _isInnerContentFrameInitialized;
-    private bool _isNavigatingToInnerContent;
-    private bool _isReturningToRootContent;
     private ModLoaderSelectorPage? _activeInnerModLoaderSelectorPage;
+    private ResourceDownloadRootPage? _activeInnerRootPage;
     private readonly string _rootHeaderTitle;
     private readonly string _rootHeaderSubtitle;
 
     public event EventHandler? LocalNavigationStateChanged;
 
-    public bool CanGoBackLocally => _activeInnerModLoaderSelectorPage != null || _isNavigatingToInnerContent || _isReturningToRootContent;
+    public bool CanGoBackLocally => _activeInnerModLoaderSelectorPage != null && ResourceDownloadInnerContentFrame.CanGoBack;
 
     public ResourceDownloadPage()
     {
@@ -116,12 +115,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         Loaded += (sender, e) =>
         {
             // 使用静态属性 TargetTabIndex 来控制标签页切换
-            if (TargetTabIndex > 0)
-            {
-                ResourceTabView.SelectedIndex = TargetTabIndex;
-                // 重置 TargetTabIndex，避免下次打开时仍然使用旧值
-                TargetTabIndex = 0;
-            }
+            ApplyPendingSelectedTab();
         };
     }
     
@@ -139,11 +133,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         // 直接使用 Dispatcher 延迟执行，确保 TabView 已经初始化完成
         _uiDispatcher.TryEnqueue(() =>
         {
-            // 导航缓存场景下，恢复上次选中的标签页
-            if (ViewModel.SelectedTabIndex >= 0 && ViewModel.SelectedTabIndex < ResourceTabView.TabItems.Count)
-            {
-                ResourceTabView.SelectedIndex = ViewModel.SelectedTabIndex;
-            }
+            ApplyPendingSelectedTab();
         });
 
         // 确保资源筛选版本列表可用
@@ -167,7 +157,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
     /// </summary>
     public void OnNavigatedFrom()
     {
-        StopActiveInnerAnimations();
+        // 保持 inner Frame journal 原样，由重新进入页面时的 ResetLocalNavigation 统一收口。
     }
 
     private void EnsureInnerContentFrame()
@@ -178,79 +168,88 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         }
 
         ResourceDownloadInnerContentFrame.Navigated += ResourceDownloadInnerContentFrame_Navigated;
-        ResourceDownloadInnerContentFrame.Navigate(typeof(ResourceDownloadDrillPlaceholderPage), null, new SuppressNavigationTransitionInfo());
-        ResourceDownloadInnerContentHost.Visibility = Visibility.Collapsed;
-        ResourceDownloadInnerContentFrame.Visibility = Visibility.Collapsed;
+        ResourceDownloadInnerContentFrame.Navigate(typeof(ResourceDownloadRootPage), null, new SuppressNavigationTransitionInfo());
         _isInnerContentFrameInitialized = true;
     }
 
-    private void ShowRootContent(bool collapseInnerContent = true)
+    private void ShowRootContent()
     {
-        ResourceDownloadRootContentHost.Visibility = Visibility.Visible;
-        ResourceDownloadInnerContentHost.Visibility = collapseInnerContent ? Visibility.Collapsed : Visibility.Visible;
-        ResourceDownloadInnerContentHost.IsHitTestVisible = false;
-        ResourceDownloadInnerContentFrame.Visibility = collapseInnerContent ? Visibility.Collapsed : Visibility.Visible;
-        ResourceDownloadInnerContentFrame.IsHitTestVisible = false;
         FavoritesDropArea.Visibility = Visibility.Visible;
         ApplyRootHeaderMetadata();
         NotifyLocalNavigationStateChanged();
     }
 
+    private void AttachRootContent(ResourceDownloadRootPage page)
+    {
+        if (ReferenceEquals(ResourceDownloadRootContentHost.Parent, ResourceDownloadRootContentStagingHost))
+        {
+            ResourceDownloadRootContentStagingHost.Children.Remove(ResourceDownloadRootContentHost);
+        }
+
+        if (_activeInnerRootPage is not null && !ReferenceEquals(_activeInnerRootPage, page))
+        {
+            _activeInnerRootPage.DetachContent();
+        }
+
+        page.AttachContent(ResourceDownloadRootContentHost);
+        _activeInnerRootPage = page;
+    }
+
+    private void ApplyPendingSelectedTab()
+    {
+        if (ResourceTabView.TabItems.Count == 0)
+        {
+            return;
+        }
+
+        var selectedIndex = ViewModel.SelectedTabIndex;
+
+        if (TargetTabIndex > 0)
+        {
+            selectedIndex = TargetTabIndex;
+            TargetTabIndex = 0;
+        }
+
+        if (selectedIndex >= 0 && selectedIndex < ResourceTabView.TabItems.Count)
+        {
+            ResourceTabView.SelectedIndex = selectedIndex;
+        }
+    }
+
     private void ViewModel_ModLoaderSelectorRequested(object? sender, ModLoaderSelectorNavigationParameter e)
     {
         EnsureInnerContentFrame();
-        StopActiveInnerAnimations();
         ResetInnerContentFrameVisualState();
         DetachInnerModLoaderSelectorPage();
-        _isNavigatingToInnerContent = true;
-        ResourceDownloadRootContentHost.Visibility = Visibility.Visible;
-        ResourceDownloadInnerContentHost.Visibility = Visibility.Visible;
-        ResourceDownloadInnerContentHost.IsHitTestVisible = true;
-        ResourceDownloadInnerContentFrame.Visibility = Visibility.Visible;
-        ResourceDownloadInnerContentFrame.IsHitTestVisible = true;
         FavoritesDropArea.Visibility = Visibility.Collapsed;
         ResourceDownloadInnerContentFrame.Navigate(typeof(ModLoaderSelectorPage), e, new DrillInNavigationTransitionInfo());
     }
 
     private void ResourceDownloadInnerContentFrame_Navigated(object sender, NavigationEventArgs e)
     {
-        if (e.Content is ResourceDownloadDrillPlaceholderPage)
+        if (e.Content is ResourceDownloadRootPage rootPage)
         {
             DetachInnerModLoaderSelectorPage();
-            _activeInnerModLoaderSelectorPage = null;
-            var keepPlaceholderOverlay = _isReturningToRootContent;
-            _isReturningToRootContent = false;
-            ShowRootContent(collapseInnerContent: !keepPlaceholderOverlay);
+            AttachRootContent(rootPage);
+            ApplyPendingSelectedTab();
+            ShowRootContent();
             return;
         }
 
         if (e.Content is not ModLoaderSelectorPage page)
         {
+            DetachInnerModLoaderSelectorPage();
             _activeInnerModLoaderSelectorPage = null;
             return;
         }
 
+        DetachInnerModLoaderSelectorPage();
         _activeInnerModLoaderSelectorPage = page;
         page.ResetEmbeddedVisualState();
         page.ViewModel.CloseRequested += ModLoaderSelectorViewModel_CloseRequested;
         page.ViewModel.HeaderMetadata.PropertyChanged += ActiveInnerHeaderMetadata_PropertyChanged;
         ApplyHeaderMetadata(page.ViewModel);
-        ResourceDownloadRootContentHost.Visibility = Visibility.Visible;
-        ResourceDownloadInnerContentHost.Visibility = Visibility.Visible;
-        ResourceDownloadInnerContentHost.IsHitTestVisible = true;
-        ResourceDownloadInnerContentFrame.Visibility = Visibility.Visible;
-        ResourceDownloadInnerContentFrame.IsHitTestVisible = true;
         FavoritesDropArea.Visibility = Visibility.Collapsed;
-
-        if (_isNavigatingToInnerContent)
-        {
-            NotifyLocalNavigationStateChanged();
-            CompleteForwardToInnerContent();
-            return;
-        }
-
-        ResourceDownloadRootContentHost.Visibility = Visibility.Collapsed;
-        ResourceDownloadInnerContentHost.Visibility = Visibility.Visible;
         NotifyLocalNavigationStateChanged();
     }
 
@@ -261,35 +260,14 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
 
     private void ReturnToRootContent()
     {
-        if (_activeInnerModLoaderSelectorPage == null)
-        {
-            ShowRootContent();
-            return;
-        }
-
-        if (_isReturningToRootContent)
-        {
-            return;
-        }
-
-        _isNavigatingToInnerContent = false;
-        StopActiveInnerAnimations();
-
-        ApplyRootHeaderMetadata();
-        FavoritesDropArea.Visibility = Visibility.Visible;
-        ResourceDownloadRootContentHost.Visibility = Visibility.Visible;
-        ResourceDownloadInnerContentHost.Visibility = Visibility.Visible;
-        ResourceDownloadInnerContentHost.IsHitTestVisible = true;
-        ResourceDownloadInnerContentFrame.Visibility = Visibility.Visible;
-        ResourceDownloadInnerContentFrame.IsHitTestVisible = true;
-
         if (!ResourceDownloadInnerContentFrame.CanGoBack)
         {
             ShowRootContent();
             return;
         }
 
-        _isReturningToRootContent = true;
+        ApplyRootHeaderMetadata();
+        FavoritesDropArea.Visibility = Visibility.Visible;
         NotifyLocalNavigationStateChanged();
         ResourceDownloadInnerContentFrame.GoBack();
     }
@@ -314,17 +292,6 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         }
 
         ApplyHeaderMetadata(_activeInnerModLoaderSelectorPage.ViewModel);
-    }
-
-    private void CompleteForwardToInnerContent()
-    {
-        _isNavigatingToInnerContent = false;
-        ResourceDownloadRootContentHost.Visibility = Visibility.Collapsed;
-        ResourceDownloadInnerContentHost.Visibility = Visibility.Visible;
-        ResourceDownloadInnerContentFrame.Visibility = Visibility.Visible;
-        FavoritesDropArea.Visibility = Visibility.Collapsed;
-        _activeInnerModLoaderSelectorPage?.ResetEmbeddedVisualState();
-        NotifyLocalNavigationStateChanged();
     }
 
     private void ApplyRootHeaderMetadata()
@@ -380,37 +347,25 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
 
     public void ResetLocalNavigation()
     {
-        if (!CanGoBackLocally && ResourceDownloadInnerContentFrame.Content is ResourceDownloadDrillPlaceholderPage)
+        if (!CanGoBackLocally && ResourceDownloadInnerContentFrame.Content is ResourceDownloadRootPage)
         {
             ShowRootContent();
             return;
         }
 
-        // 一级页切换时把局部 Frame 还原到占位页并清空历史，避免 Shell 返回状态被旧 detail 污染。
-        StopActiveInnerAnimations();
         DetachInnerModLoaderSelectorPage();
         ResetInnerContentFrameVisualState();
 
-        if (ResourceDownloadInnerContentFrame.CanGoBack)
+        if (ResourceDownloadInnerContentFrame.Content is not ResourceDownloadRootPage
+            || ResourceDownloadInnerContentFrame.CanGoBack)
         {
-            ResourceDownloadInnerContentFrame.GoBack(new SuppressNavigationTransitionInfo());
+            ResourceDownloadInnerContentFrame.Navigate(typeof(ResourceDownloadRootPage), null, new SuppressNavigationTransitionInfo());
             ResourceDownloadInnerContentFrame.BackStack.Clear();
             ResourceDownloadInnerContentFrame.ForwardStack.Clear();
-        }
-        else if (ResourceDownloadInnerContentFrame.Content is not ResourceDownloadDrillPlaceholderPage)
-        {
-            ResourceDownloadInnerContentFrame.Navigate(typeof(ResourceDownloadDrillPlaceholderPage), null, new SuppressNavigationTransitionInfo());
-            ResourceDownloadInnerContentFrame.BackStack.Clear();
-            ResourceDownloadInnerContentFrame.ForwardStack.Clear();
+            return;
         }
 
         ShowRootContent();
-    }
-
-    private void StopActiveInnerAnimations()
-    {
-        _isNavigatingToInnerContent = false;
-        _isReturningToRootContent = false;
     }
 
     private void NotifyLocalNavigationStateChanged()
