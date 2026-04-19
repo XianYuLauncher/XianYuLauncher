@@ -80,6 +80,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     private bool _datapackLoadMoreCheckPending;
     private bool _modpackLoadMoreCheckPending;
     private bool _worldLoadMoreCheckPending;
+    private bool _isInnerContentFrameInitialized;
 
     public ResourceDownloadPage()
     {
@@ -88,6 +89,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         InitializeComponent();
         _uiDispatcher = App.GetService<IUiDispatcher>();
+        EnsureInnerContentFrame();
+        ShowRootContent();
         _uiDispatcher.TryEnqueue(TryRefreshModFilterTokenItems);
         
         // 在页面加载完成后检查是否需要切换标签页
@@ -109,6 +112,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// <param name="parameter">导航参数</param>
     public void OnNavigatedTo(object parameter)
     {
+        EnsureInnerContentFrame();
         ApplyProtocolNavigationParameter(parameter);
 
         // 直接使用 Dispatcher 延迟执行，确保 TabView 已经初始化完成
@@ -143,6 +147,23 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     public void OnNavigatedFrom()
     {
         // 清理资源
+    }
+
+    private void EnsureInnerContentFrame()
+    {
+        if (_isInnerContentFrameInitialized)
+        {
+            return;
+        }
+
+        ResourceDownloadInnerContentFrame.Visibility = Visibility.Collapsed;
+        _isInnerContentFrameInitialized = true;
+    }
+
+    private void ShowRootContent()
+    {
+        ResourceDownloadRootContentHost.Visibility = Visibility.Visible;
+        ResourceDownloadInnerContentFrame.Visibility = Visibility.Collapsed;
     }
 
     private void ApplyProtocolNavigationParameter(object parameter)

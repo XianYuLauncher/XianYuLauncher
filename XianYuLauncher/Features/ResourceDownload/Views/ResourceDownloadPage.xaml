@@ -178,18 +178,19 @@
             </Grid.RowDefinitions>
 
         <!-- 主要内容区域 -->
-        <Grid>
-            <!-- TabView 控件 -->
-            <TabView 
-                x:Name="ResourceTabView" 
-                HorizontalAlignment="Stretch" 
-                VerticalAlignment="Stretch" 
-                Height="Auto" 
-                SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
-                SelectionChanged="ResourceTabView_SelectionChanged"
-                IsAddTabButtonVisible="False"
-                CanDragTabs="False"
-                CanReorderTabs="False">
+        <Grid x:Name="ResourceDownloadContentHost">
+            <Grid x:Name="ResourceDownloadRootContentHost">
+                <!-- TabView 控件 -->
+                <TabView 
+                    x:Name="ResourceTabView" 
+                    HorizontalAlignment="Stretch" 
+                    VerticalAlignment="Stretch" 
+                    Height="Auto" 
+                    SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
+                    SelectionChanged="ResourceTabView_SelectionChanged"
+                    IsAddTabButtonVisible="False"
+                    CanDragTabs="False"
+                    CanReorderTabs="False">
                 <TabView.Resources>
                     <Style TargetType="TabViewItem">
                         <Setter Property="IsClosable" Value="False" />
@@ -1617,7 +1618,12 @@
                         </Grid>
                     </TabViewItem>
                 </TabView.TabItems>
-            </TabView>
+                </TabView>
+            </Grid>
+
+            <Frame x:Name="ResourceDownloadInnerContentFrame"
+                   Background="Transparent"
+                   Visibility="Collapsed" />
         </Grid>
         </Grid>
     </Grid>
