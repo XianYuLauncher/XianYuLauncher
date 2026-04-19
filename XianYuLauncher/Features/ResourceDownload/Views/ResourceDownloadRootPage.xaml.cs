@@ -1,14 +1,17 @@
 using CommunityToolkit.Labs.WinUI;
+using CommunityToolkit.WinUI.Animations;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using XianYuLauncher.Controls;
@@ -22,6 +25,8 @@ namespace XianYuLauncher.Features.ResourceDownload.Views;
 public sealed partial class ResourceDownloadRootPage : Page
 {
     private const string DefaultCategoryIconGlyph = "\uE8FD";
+    private static readonly TimeSpan TabContentEntranceDuration = TimeSpan.FromMilliseconds(500);
+    private static readonly Vector3 TabContentEntranceFromTranslation = new(0, 40, 0);
 
     private string _modFilterSelectionSnapshot = string.Empty;
     private string _shaderPackFilterSelectionSnapshot = string.Empty;
@@ -47,6 +52,7 @@ public sealed partial class ResourceDownloadRootPage : Page
 
     private readonly IUiDispatcher _uiDispatcher;
     private bool _isViewModelInitialized;
+    private bool _suppressNextSelectedTabContentAnimation;
 
     public ResourceDownloadViewModel ViewModel { get; private set; } = null!;
 
@@ -121,7 +127,21 @@ public sealed partial class ResourceDownloadRootPage : Page
 
         if (selectedIndex >= 0 && selectedIndex < ResourceTabView.TabItems.Count)
         {
-            ResourceTabView.SelectedIndex = selectedIndex;
+            if (ResourceTabView.SelectedIndex == selectedIndex)
+            {
+                return;
+            }
+
+            _suppressNextSelectedTabContentAnimation = true;
+
+            try
+            {
+                ResourceTabView.SelectedIndex = selectedIndex;
+            }
+            finally
+            {
+                _suppressNextSelectedTabContentAnimation = false;
+            }
         }
     }
 
@@ -159,7 +179,41 @@ public sealed partial class ResourceDownloadRootPage : Page
 
     private async void ResourceTabView_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
+        if (ShouldAnimateSelectedTabContent(e))
+        {
+            PlaySelectedTabContentEntranceAnimation();
+        }
+
         await EnsureCurrentTabStateAsync();
+    }
+
+    private bool ShouldAnimateSelectedTabContent(SelectionChangedEventArgs e)
+    {
+        return _isViewModelInitialized
+            && !_suppressNextSelectedTabContentAnimation
+            && e.AddedItems.Count > 0
+            && e.RemovedItems.Count > 0;
+    }
+
+    private void PlaySelectedTabContentEntranceAnimation()
+    {
+        if (ResourceTabView.SelectedItem is not TabViewItem { Content: UIElement selectedTabContent })
+        {
+            return;
+        }
+
+        AnimationBuilder
+            .Create()
+            .Translation(
+                to: Vector3.Zero,
+                from: TabContentEntranceFromTranslation,
+                duration: TabContentEntranceDuration,
+                easingMode: EasingMode.EaseOut)
+            .Opacity(
+                to: 1,
+                from: 0,
+                duration: TabContentEntranceDuration)
+            .Start(selectedTabContent);
     }
 
     private async Task EnsureSelectedTabLoadedAsync(int selectedIndex)
