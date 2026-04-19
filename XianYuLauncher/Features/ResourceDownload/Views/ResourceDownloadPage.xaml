@@ -66,7 +66,10 @@
         <localControls:PageHeader
             Grid.Row="0"
             Title="{x:Bind ViewModel.HeaderMetadata.Title, Mode=OneWay}"
-            Subtitle="{x:Bind ViewModel.HeaderMetadata.Subtitle, Mode=OneWay}">
+            Subtitle="{x:Bind ViewModel.HeaderMetadata.Subtitle, Mode=OneWay}"
+            ShowBreadcrumb="{x:Bind ViewModel.HeaderMetadata.ShowBreadcrumb, Mode=OneWay}"
+            BreadcrumbItems="{x:Bind ViewModel.HeaderMetadata.BreadcrumbItems, Mode=OneWay}"
+            BreadcrumbItemClicked="PageHeader_BreadcrumbItemClicked">
             <localControls:PageHeader.TrailingActions>
                 <Button x:Name="FavoritesDropArea"
                         x:Uid="ResourceDownloadPage_FavoritesButton"

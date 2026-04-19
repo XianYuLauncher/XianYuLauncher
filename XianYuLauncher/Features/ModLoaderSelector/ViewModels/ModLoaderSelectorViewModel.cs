@@ -12,10 +12,11 @@ using XianYuLauncher.Features.ModLoaderSelector.Models;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using System.IO;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.ModLoaderSelector.ViewModels;
 
-public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigationAware
+public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigationAware, IPageHeaderAware
 {
     private readonly INavigationService _navigationService;
     private readonly ICommonDialogService _dialogService;
@@ -26,8 +27,13 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     private readonly IModLoaderIconPresentationService _modLoaderIconPresentationService;
     private bool _isIconManuallySelected;
     private string? _lastSelectedLoaderName;
+    private ModLoaderSelectorNavigationParameter? _navigationParameter;
 
     public event EventHandler? CloseRequested;
+
+    public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+    public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
 
     [ObservableProperty]
     private bool _isEmbeddedHostNavigation;
@@ -305,6 +311,11 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     public void OnNavigatedFrom()
     {
         IsEmbeddedHostNavigation = false;
+        _navigationParameter = null;
+
+        HeaderMetadata.ShowBreadcrumb = false;
+        HeaderMetadata.BreadcrumbItems.Clear();
+        HeaderMetadata.ReturnTarget = null;
 
         // 取消所有正在进行的任务
         foreach (var cts in _ctsMap.Values)
@@ -320,14 +331,18 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         if (parameter is ModLoaderSelectorNavigationParameter navigationParameter)
         {
             IsEmbeddedHostNavigation = true;
+            _navigationParameter = navigationParameter;
             InitializeForVersion(navigationParameter.VersionId);
+            UpdateHeaderMetadata();
             return;
         }
 
         if (parameter is string version)
         {
             IsEmbeddedHostNavigation = false;
+            _navigationParameter = null;
             InitializeForVersion(version);
+            UpdateHeaderMetadata();
         }
     }
 
@@ -343,6 +358,43 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         InitializeBuiltInIcons();
 
         LoadModLoaders();
+    }
+
+    private void UpdateHeaderMetadata()
+    {
+        HeaderMetadata.Title = "ModLoaderSelectionPage_TitleText.Text".GetLocalized();
+        HeaderMetadata.Subtitle = string.Concat(
+            "ModLoaderSelectionPage_CurrentVersionText.Text".GetLocalized(),
+            SelectedMinecraftVersion);
+
+        HeaderMetadata.BreadcrumbItems.Clear();
+
+        if (_navigationParameter == null)
+        {
+            HeaderMetadata.ShowBreadcrumb = false;
+            HeaderMetadata.ReturnTarget = null;
+            return;
+        }
+
+        HeaderMetadata.ShowBreadcrumb = true;
+        HeaderMetadata.ReturnTarget = new PageNavigationTarget
+        {
+            PageKey = _navigationParameter.ReturnPageKey,
+            Parameter = _navigationParameter.ReturnTabKey,
+        };
+
+        HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+        {
+            DisplayText = _navigationParameter.BreadcrumbRootLabel,
+            PageKey = _navigationParameter.ReturnPageKey,
+            NavigationParameter = _navigationParameter.ReturnTabKey,
+        });
+
+        HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+        {
+            DisplayText = SelectedMinecraftVersion,
+            IsCurrent = true,
+        });
     }
 
     [RelayCommand]

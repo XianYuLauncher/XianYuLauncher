@@ -19,6 +19,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 using CommunityToolkit.Labs.WinUI;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.ResourceDownload.Views;
 
@@ -84,10 +85,14 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     private bool _worldLoadMoreCheckPending;
     private bool _isInnerContentFrameInitialized;
     private ModLoaderSelectorPage? _activeInnerModLoaderSelectorPage;
+    private readonly string _rootHeaderTitle;
+    private readonly string _rootHeaderSubtitle;
 
     public ResourceDownloadPage()
     {
         ViewModel = App.GetService<ResourceDownloadViewModel>();
+        _rootHeaderTitle = ViewModel.HeaderMetadata.Title;
+        _rootHeaderSubtitle = ViewModel.HeaderMetadata.Subtitle;
         DataContext = ViewModel;
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         ViewModel.ModLoaderSelectorRequested += ViewModel_ModLoaderSelectorRequested;
@@ -169,12 +174,15 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     {
         ResourceDownloadRootContentHost.Visibility = Visibility.Visible;
         ResourceDownloadInnerContentFrame.Visibility = Visibility.Collapsed;
+        FavoritesDropArea.Visibility = Visibility.Visible;
+        ApplyRootHeaderMetadata();
     }
 
     private void ShowInnerContent()
     {
         ResourceDownloadRootContentHost.Visibility = Visibility.Collapsed;
         ResourceDownloadInnerContentFrame.Visibility = Visibility.Visible;
+        FavoritesDropArea.Visibility = Visibility.Collapsed;
     }
 
     private void ViewModel_ModLoaderSelectorRequested(object? sender, ModLoaderSelectorNavigationParameter e)
@@ -195,6 +203,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
         _activeInnerModLoaderSelectorPage = page;
         page.ViewModel.CloseRequested += ModLoaderSelectorViewModel_CloseRequested;
+        ApplyHeaderMetadata(page.ViewModel);
     }
 
     private void ModLoaderSelectorViewModel_CloseRequested(object? sender, EventArgs e)
@@ -219,6 +228,39 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         _activeInnerModLoaderSelectorPage.ViewModel.CloseRequested -= ModLoaderSelectorViewModel_CloseRequested;
         _activeInnerModLoaderSelectorPage.ViewModel.OnNavigatedFrom();
         _activeInnerModLoaderSelectorPage = null;
+    }
+
+    private void ApplyRootHeaderMetadata()
+    {
+        ViewModel.HeaderMetadata.Title = _rootHeaderTitle;
+        ViewModel.HeaderMetadata.Subtitle = _rootHeaderSubtitle;
+        ViewModel.HeaderMetadata.ShowBreadcrumb = false;
+        ViewModel.HeaderMetadata.BreadcrumbItems.Clear();
+        ViewModel.HeaderMetadata.ReturnTarget = null;
+    }
+
+    private void ApplyHeaderMetadata(IPageHeaderAware pageHeaderAware)
+    {
+        ViewModel.HeaderMetadata.Title = pageHeaderAware.HeaderMetadata.Title;
+        ViewModel.HeaderMetadata.Subtitle = pageHeaderAware.HeaderMetadata.Subtitle;
+        ViewModel.HeaderMetadata.ShowBreadcrumb = pageHeaderAware.HeaderMetadata.ShowBreadcrumb;
+        ViewModel.HeaderMetadata.ReturnTarget = pageHeaderAware.HeaderMetadata.ReturnTarget;
+
+        ViewModel.HeaderMetadata.BreadcrumbItems.Clear();
+        foreach (var item in pageHeaderAware.HeaderMetadata.BreadcrumbItems)
+        {
+            ViewModel.HeaderMetadata.BreadcrumbItems.Add(item);
+        }
+    }
+
+    private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
+    {
+        if (args.Item is not NavigationBreadcrumbItem breadcrumbItem || !breadcrumbItem.CanNavigate)
+        {
+            return;
+        }
+
+        ReturnToRootContent();
     }
 
     private void ApplyProtocolNavigationParameter(object parameter)
