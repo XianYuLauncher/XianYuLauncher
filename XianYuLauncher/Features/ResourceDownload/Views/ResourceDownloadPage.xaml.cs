@@ -208,10 +208,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         ResourceDownloadPageHeader.Subtitle = _rootHeaderSubtitle;
         ResourceDownloadPageHeader.ShowBreadcrumb = false;
         ResourceDownloadPageHeader.BreadcrumbItems = null;
-        ResourceDownloadPageHeader.ShowPrimaryHeading = true;
-        ResourceDownloadPageHeader.BreadcrumbFontSize = 15;
-        ResourceDownloadPageHeader.BreadcrumbMargin = new Thickness(0, 0, 0, 12);
-        ResourceDownloadPageHeader.BreadcrumbItemTemplate = null;
+        ApplyHeaderPresentationMode(ViewModel.HeaderPresentationMode);
     }
 
     private void ApplyHostedPageHeaderState(IPageHeaderAware pageHeaderAware)
@@ -220,13 +217,19 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         ResourceDownloadPageHeader.Subtitle = pageHeaderAware.HeaderMetadata.Subtitle;
         ResourceDownloadPageHeader.ShowBreadcrumb = pageHeaderAware.HeaderMetadata.ShowBreadcrumb;
         ResourceDownloadPageHeader.BreadcrumbItems = pageHeaderAware.HeaderMetadata.BreadcrumbItems;
-        if (pageHeaderAware is ModLoaderSelectorViewModel)
+        ApplyHeaderPresentationMode(pageHeaderAware.HeaderPresentationMode);
+    }
+
+    private void ApplyHeaderPresentationMode(PageHeaderPresentationMode headerPresentationMode)
+    {
+        switch (headerPresentationMode)
         {
-            ResourceDownloadPageHeader.ShowPrimaryHeading = false;
-            ResourceDownloadPageHeader.BreadcrumbFontSize = 28;
-            ResourceDownloadPageHeader.BreadcrumbMargin = new Thickness(-2, -11, 0, 12);
-            ResourceDownloadPageHeader.BreadcrumbItemTemplate = Resources[HostedDetailBreadcrumbItemTemplateKey] as DataTemplate;
-            return;
+            case PageHeaderPresentationMode.ProminentBreadcrumb:
+                ResourceDownloadPageHeader.ShowPrimaryHeading = false;
+                ResourceDownloadPageHeader.BreadcrumbFontSize = 28;
+                ResourceDownloadPageHeader.BreadcrumbMargin = new Thickness(-2, -11, 0, 12);
+                ResourceDownloadPageHeader.BreadcrumbItemTemplate = Resources[HostedDetailBreadcrumbItemTemplateKey] as DataTemplate;
+                return;
         }
 
         ResourceDownloadPageHeader.ShowPrimaryHeading = true;

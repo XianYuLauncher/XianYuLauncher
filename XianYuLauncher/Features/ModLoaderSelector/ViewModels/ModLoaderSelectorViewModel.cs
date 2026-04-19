@@ -33,7 +33,9 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
 
     public PageHeaderMetadata HeaderMetadata { get; } = new();
 
-    public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
+    public PageHeaderPresentationMode HeaderPresentationMode => IsEmbeddedHostNavigation
+        ? PageHeaderPresentationMode.ProminentBreadcrumb
+        : PageHeaderPresentationMode.Standard;
 
     [ObservableProperty]
     private bool _isEmbeddedHostNavigation;

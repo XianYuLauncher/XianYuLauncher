@@ -5,4 +5,5 @@ public enum PageHeaderPresentationMode
     Standard,
     ControlStrip,
     Hero,
+    ProminentBreadcrumb,
 }
