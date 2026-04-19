@@ -17,7 +17,4 @@ public partial class PageHeaderMetadata : ObservableObject
 
     [ObservableProperty]
     private ObservableCollection<NavigationBreadcrumbItem> _breadcrumbItems = new();
-
-    [ObservableProperty]
-    private PageNavigationTarget? _returnTarget;
 }

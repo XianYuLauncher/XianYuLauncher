@@ -620,9 +620,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
     [ObservableProperty]
     private string _selectedDatapackVersion = string.Empty;
     
-    // 兼容旧页面的数据包列表
-    public ObservableCollection<ModrinthProject> DatapackList => Datapacks;
-    
     // 世界相关属性
     [ObservableProperty]
     private string _worldSearchQuery = string.Empty;

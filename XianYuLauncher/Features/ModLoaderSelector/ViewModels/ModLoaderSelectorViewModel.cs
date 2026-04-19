@@ -327,7 +327,6 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
 
         HeaderMetadata.ShowBreadcrumb = false;
         HeaderMetadata.BreadcrumbItems.Clear();
-        HeaderMetadata.ReturnTarget = null;
 
         // 取消所有正在进行的任务
         foreach (var cts in _ctsMap.Values)
@@ -383,17 +382,10 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         {
             HeaderMetadata.BreadcrumbItems.Clear();
             HeaderMetadata.ShowBreadcrumb = false;
-            HeaderMetadata.ReturnTarget = null;
             return;
         }
 
         HeaderMetadata.ShowBreadcrumb = true;
-        HeaderMetadata.ReturnTarget = new PageNavigationTarget
-        {
-            PageKey = _navigationParameter.ReturnPageKey,
-            Parameter = _navigationParameter.ReturnTabKey,
-        };
-
         RebuildHeaderMetadata();
     }
 
