@@ -2,6 +2,7 @@ using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using Serilog;
 using XianYuLauncher.Core.Helpers;
@@ -166,6 +167,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         }
 
         ResourceDownloadInnerContentFrame.Navigated += ResourceDownloadInnerContentFrame_Navigated;
+        ResourceDownloadInnerContentFrame.Navigate(typeof(ResourceDownloadDrillPlaceholderPage), null, new SuppressNavigationTransitionInfo());
         ResourceDownloadInnerContentFrame.Visibility = Visibility.Collapsed;
         _isInnerContentFrameInitialized = true;
     }
@@ -178,23 +180,25 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         ApplyRootHeaderMetadata();
     }
 
-    private void ShowInnerContent()
-    {
-        ResourceDownloadRootContentHost.Visibility = Visibility.Collapsed;
-        ResourceDownloadInnerContentFrame.Visibility = Visibility.Visible;
-        FavoritesDropArea.Visibility = Visibility.Collapsed;
-    }
-
     private void ViewModel_ModLoaderSelectorRequested(object? sender, ModLoaderSelectorNavigationParameter e)
     {
         EnsureInnerContentFrame();
         DetachInnerModLoaderSelectorPage();
-        ResourceDownloadInnerContentFrame.Navigate(typeof(ModLoaderSelectorPage), e);
-        ShowInnerContent();
+        ResourceDownloadRootContentHost.Visibility = Visibility.Visible;
+        ResourceDownloadInnerContentFrame.Visibility = Visibility.Visible;
+        FavoritesDropArea.Visibility = Visibility.Collapsed;
+        ResourceDownloadInnerContentFrame.Navigate(typeof(ModLoaderSelectorPage), e, new DrillInNavigationTransitionInfo());
     }
 
     private void ResourceDownloadInnerContentFrame_Navigated(object sender, NavigationEventArgs e)
     {
+        if (e.Content is ResourceDownloadDrillPlaceholderPage)
+        {
+            _activeInnerModLoaderSelectorPage = null;
+            ShowRootContent();
+            return;
+        }
+
         if (e.Content is not ModLoaderSelectorPage page)
         {
             _activeInnerModLoaderSelectorPage = null;
@@ -204,6 +208,9 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
         _activeInnerModLoaderSelectorPage = page;
         page.ViewModel.CloseRequested += ModLoaderSelectorViewModel_CloseRequested;
         ApplyHeaderMetadata(page.ViewModel);
+        ResourceDownloadRootContentHost.Visibility = Visibility.Collapsed;
+        ResourceDownloadInnerContentFrame.Visibility = Visibility.Visible;
+        FavoritesDropArea.Visibility = Visibility.Collapsed;
     }
 
     private void ModLoaderSelectorViewModel_CloseRequested(object? sender, EventArgs e)
@@ -213,8 +220,22 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
 
     private void ReturnToRootContent()
     {
+        if (_activeInnerModLoaderSelectorPage == null)
+        {
+            ShowRootContent();
+            return;
+        }
+
         DetachInnerModLoaderSelectorPage();
-        ResourceDownloadInnerContentFrame.Content = null;
+        ResourceDownloadRootContentHost.Visibility = Visibility.Visible;
+        ResourceDownloadInnerContentFrame.Visibility = Visibility.Visible;
+
+        if (ResourceDownloadInnerContentFrame.CanGoBack)
+        {
+            ResourceDownloadInnerContentFrame.GoBack(new DrillInNavigationTransitionInfo());
+            return;
+        }
+
         ShowRootContent();
     }
 
