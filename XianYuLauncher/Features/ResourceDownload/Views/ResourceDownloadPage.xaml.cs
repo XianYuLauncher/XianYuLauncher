@@ -4,6 +4,7 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using Serilog;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Controls;
 using XianYuLauncher.Core.Helpers;
@@ -274,7 +275,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         await detailPage.RequestCustomIconAsync();
     }
 
-    private bool TryGetActiveDetailPage(out ModLoaderSelectorPage? detailPage)
+    private bool TryGetActiveDetailPage([NotNullWhen(true)] out ModLoaderSelectorPage? detailPage)
     {
         detailPage = _activeInnerDetailPage;
         return detailPage is not null;
