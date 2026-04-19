@@ -8,6 +8,7 @@ using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Features.ModLoaderSelector.Models;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using System.IO;
@@ -25,6 +26,11 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     private readonly IModLoaderIconPresentationService _modLoaderIconPresentationService;
     private bool _isIconManuallySelected;
     private string? _lastSelectedLoaderName;
+
+    public event EventHandler? CloseRequested;
+
+    [ObservableProperty]
+    private bool _isEmbeddedHostNavigation;
 
     [ObservableProperty]
     private ObservableCollection<VersionIconOption> _availableIcons = new();
@@ -298,6 +304,8 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
 
     public void OnNavigatedFrom()
     {
+        IsEmbeddedHostNavigation = false;
+
         // 取消所有正在进行的任务
         foreach (var cts in _ctsMap.Values)
         {
@@ -309,19 +317,32 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
 
     public void OnNavigatedTo(object parameter)
     {
+        if (parameter is ModLoaderSelectorNavigationParameter navigationParameter)
+        {
+            IsEmbeddedHostNavigation = true;
+            InitializeForVersion(navigationParameter.VersionId);
+            return;
+        }
+
         if (parameter is string version)
         {
-            _isIconManuallySelected = false;
-            _lastSelectedLoaderName = null;
-
-            SelectedMinecraftVersion = version;
-            SelectedVersionDisplayText = SelectedMinecraftVersion;
-            VersionName = SelectedMinecraftVersion; // 初始化版本名称
-            SelectedIconPath = _modLoaderIconPresentationService.DefaultVersionIconPath;
-            InitializeBuiltInIcons();
-
-            LoadModLoaders();
+            IsEmbeddedHostNavigation = false;
+            InitializeForVersion(version);
         }
+    }
+
+    private void InitializeForVersion(string version)
+    {
+        _isIconManuallySelected = false;
+        _lastSelectedLoaderName = null;
+
+        SelectedMinecraftVersion = version;
+        SelectedVersionDisplayText = SelectedMinecraftVersion;
+        VersionName = SelectedMinecraftVersion;
+        SelectedIconPath = _modLoaderIconPresentationService.DefaultVersionIconPath;
+        InitializeBuiltInIcons();
+
+        LoadModLoaders();
     }
 
     [RelayCommand]
@@ -748,7 +769,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     [RelayCommand]
     private void Cancel()
     {
-        _navigationService.GoBack();
+        RequestClose();
     }
 
     [RelayCommand]
@@ -903,13 +924,23 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                     return;
                 }
             }
-            // 返回上一页
-            _navigationService.GoBack();
+            RequestClose();
         }
         catch (Exception ex)
         {
             await ShowMessageAsync(string.Format("{0}: {1}", "ModLoaderSelectionPage_DownloadFailedText".GetLocalized(), ex.Message));
         }
+    }
+
+    private void RequestClose()
+    {
+        if (IsEmbeddedHostNavigation)
+        {
+            CloseRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
+        _navigationService.GoBack();
     }
     
     private async Task ShowMessageAsync(string message)

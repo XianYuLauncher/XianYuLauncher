@@ -47,7 +47,10 @@
             </Grid.RowDefinitions>
 
         <!-- 页面标题 -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,24" Spacing="8">
+        <StackPanel Grid.Row="0"
+                    Margin="0,0,0,24"
+                    Spacing="8"
+                    Visibility="{x:Bind ViewModel.IsEmbeddedHostNavigation, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
             <TextBlock x:Uid="ModLoaderSelectionPage_TitleText" Text="下载 Minecraft" Style="{ThemeResource TitleTextBlockStyle}" />
             
             <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">

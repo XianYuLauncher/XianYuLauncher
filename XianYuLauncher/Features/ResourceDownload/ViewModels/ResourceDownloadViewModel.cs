@@ -17,6 +17,7 @@ using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.ModDownloadDetail.Models;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
+using XianYuLauncher.Features.ModLoaderSelector.Models;
 using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
 using XianYuLauncher.Services;
 using XianYuLauncher.Core.Models;
@@ -52,6 +53,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
     public PageHeaderMetadata HeaderMetadata { get; } = new();
 
     public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
+
+    public event EventHandler<ModLoaderSelectorNavigationParameter>? ModLoaderSelectorRequested;
 
     // 版本下载相关属性和命令
     [ObservableProperty]
@@ -2514,8 +2517,23 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
         try
         {
             IsVersionLoading = true;
-            // 导航到版本选择页面
-            _navigationService.NavigateTo(typeof(ModLoaderSelectorViewModel).FullName!, versionId);
+
+            var navigationParameter = new ModLoaderSelectorNavigationParameter
+            {
+                VersionId = versionId,
+                BreadcrumbRootLabel = HeaderMetadata.Title,
+                ReturnPageKey = typeof(ResourceDownloadViewModel).FullName ?? string.Empty,
+                ReturnTabKey = "version",
+            };
+
+            if (ModLoaderSelectorRequested != null)
+            {
+                ModLoaderSelectorRequested.Invoke(this, navigationParameter);
+            }
+            else
+            {
+                _navigationService.NavigateTo(typeof(ModLoaderSelectorViewModel).FullName!, versionId);
+            }
         }
         catch (Exception)
         {

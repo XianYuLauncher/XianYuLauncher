@@ -6,6 +6,8 @@ using Microsoft.UI.Xaml.Navigation;
 using Serilog;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.Features.ModLoaderSelector.Models;
+using XianYuLauncher.Features.ModLoaderSelector.Views;
 using XianYuLauncher.Features.ResourceDownload.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
@@ -81,12 +83,14 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     private bool _modpackLoadMoreCheckPending;
     private bool _worldLoadMoreCheckPending;
     private bool _isInnerContentFrameInitialized;
+    private ModLoaderSelectorPage? _activeInnerModLoaderSelectorPage;
 
     public ResourceDownloadPage()
     {
         ViewModel = App.GetService<ResourceDownloadViewModel>();
         DataContext = ViewModel;
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
+        ViewModel.ModLoaderSelectorRequested += ViewModel_ModLoaderSelectorRequested;
         InitializeComponent();
         _uiDispatcher = App.GetService<IUiDispatcher>();
         EnsureInnerContentFrame();
@@ -146,7 +150,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     /// </summary>
     public void OnNavigatedFrom()
     {
-        // 清理资源
+        ReturnToRootContent();
     }
 
     private void EnsureInnerContentFrame()
@@ -156,6 +160,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
             return;
         }
 
+        ResourceDownloadInnerContentFrame.Navigated += ResourceDownloadInnerContentFrame_Navigated;
         ResourceDownloadInnerContentFrame.Visibility = Visibility.Collapsed;
         _isInnerContentFrameInitialized = true;
     }
@@ -164,6 +169,56 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware
     {
         ResourceDownloadRootContentHost.Visibility = Visibility.Visible;
         ResourceDownloadInnerContentFrame.Visibility = Visibility.Collapsed;
+    }
+
+    private void ShowInnerContent()
+    {
+        ResourceDownloadRootContentHost.Visibility = Visibility.Collapsed;
+        ResourceDownloadInnerContentFrame.Visibility = Visibility.Visible;
+    }
+
+    private void ViewModel_ModLoaderSelectorRequested(object? sender, ModLoaderSelectorNavigationParameter e)
+    {
+        EnsureInnerContentFrame();
+        DetachInnerModLoaderSelectorPage();
+        ResourceDownloadInnerContentFrame.Navigate(typeof(ModLoaderSelectorPage), e);
+        ShowInnerContent();
+    }
+
+    private void ResourceDownloadInnerContentFrame_Navigated(object sender, NavigationEventArgs e)
+    {
+        if (e.Content is not ModLoaderSelectorPage page)
+        {
+            _activeInnerModLoaderSelectorPage = null;
+            return;
+        }
+
+        _activeInnerModLoaderSelectorPage = page;
+        page.ViewModel.CloseRequested += ModLoaderSelectorViewModel_CloseRequested;
+    }
+
+    private void ModLoaderSelectorViewModel_CloseRequested(object? sender, EventArgs e)
+    {
+        ReturnToRootContent();
+    }
+
+    private void ReturnToRootContent()
+    {
+        DetachInnerModLoaderSelectorPage();
+        ResourceDownloadInnerContentFrame.Content = null;
+        ShowRootContent();
+    }
+
+    private void DetachInnerModLoaderSelectorPage()
+    {
+        if (_activeInnerModLoaderSelectorPage == null)
+        {
+            return;
+        }
+
+        _activeInnerModLoaderSelectorPage.ViewModel.CloseRequested -= ModLoaderSelectorViewModel_CloseRequested;
+        _activeInnerModLoaderSelectorPage.ViewModel.OnNavigatedFrom();
+        _activeInnerModLoaderSelectorPage = null;
     }
 
     private void ApplyProtocolNavigationParameter(object parameter)

@@ -1,5 +1,8 @@
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Navigation;
 using XianYuLauncher.Controls;
+using XianYuLauncher.Features.ModLoaderSelector.Models;
 using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
 using XianYuLauncher.Models;
 using Windows.Storage.Pickers;
@@ -15,6 +18,26 @@ public sealed partial class ModLoaderSelectorPage : Page
     {
         ViewModel = App.GetService<ModLoaderSelectorViewModel>();
         InitializeComponent();
+        ApplyNavigationLayoutMode();
+    }
+
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+
+        if (e.Parameter is ModLoaderSelectorNavigationParameter)
+        {
+            ViewModel.OnNavigatedTo(e.Parameter);
+        }
+
+        ApplyNavigationLayoutMode();
+    }
+
+    private void ApplyNavigationLayoutMode()
+    {
+        ContentArea.Padding = ViewModel.IsEmbeddedHostNavigation
+            ? new Thickness(24, 0, 24, 24)
+            : (Thickness)Application.Current.Resources["PageContentPadding"];
     }
     
     /// <summary>
