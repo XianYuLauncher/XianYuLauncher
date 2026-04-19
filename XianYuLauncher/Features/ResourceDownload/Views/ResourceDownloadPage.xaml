@@ -23,7 +23,7 @@
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
 
-        <DataTemplate x:Key="ModLoaderSelectorBreadcrumbItemTemplate" x:DataType="shared:NavigationBreadcrumbItem">
+        <DataTemplate x:Key="HostedDetailBreadcrumbItemTemplate" x:DataType="shared:NavigationBreadcrumbItem">
             <Grid>
                 <TextBlock Text="{x:Bind DisplayText, Mode=OneWay}"
                            Style="{StaticResource ProminentBreadcrumbTextStyle}"
@@ -53,8 +53,8 @@
                         <Flyout Placement="BottomEdgeAlignedLeft">
                             <localControls:VersionIconPickerFlyoutContent
                                 AvailableIcons="{x:Bind AvailableIcons, Mode=OneWay}"
-                                BuiltInIconSelected="ModLoaderSelectorBreadcrumb_BuiltInIconSelected"
-                                CustomIconRequested="ModLoaderSelectorBreadcrumb_CustomIconRequested" />
+                                BuiltInIconSelected="DetailHeader_BuiltInIconSelected"
+                                CustomIconRequested="DetailHeader_CustomIconRequested" />
                         </Flyout>
                     </DropDownButton.Flyout>
                 </DropDownButton>

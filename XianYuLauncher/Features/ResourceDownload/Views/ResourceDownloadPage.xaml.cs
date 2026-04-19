@@ -19,18 +19,19 @@ namespace XianYuLauncher.Features.ResourceDownload.Views;
 public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILocalNavigationHost
 {
     public static int TargetTabIndex { get; set; }
+    private const string HostedDetailBreadcrumbItemTemplateKey = "HostedDetailBreadcrumbItemTemplate";
 
     private readonly string _rootHeaderTitle;
     private readonly string _rootHeaderSubtitle;
     private bool _isInnerContentFrameInitialized;
-    private ModLoaderSelectorPage? _activeInnerModLoaderSelectorPage;
+    private ModLoaderSelectorPage? _activeInnerDetailPage;
     private ResourceDownloadRootPage? _activeInnerRootPage;
 
     public ResourceDownloadViewModel ViewModel { get; }
 
     public event EventHandler? LocalNavigationStateChanged;
 
-    public bool CanGoBackLocally => _activeInnerModLoaderSelectorPage != null && ResourceDownloadInnerContentFrame.CanGoBack;
+    public bool CanGoBackLocally => _activeInnerDetailPage != null && ResourceDownloadInnerContentFrame.CanGoBack;
 
     public ResourceDownloadPage()
     {
@@ -41,7 +42,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         ViewModel.ModLoaderSelectorRequested += ViewModel_ModLoaderSelectorRequested;
         InitializeComponent();
         EnsureInnerContentFrame();
-        ShowRootContent();
+        ShowRootPageState();
     }
 
     public void OnNavigatedTo(object parameter)
@@ -79,11 +80,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         if (!CanGoBackLocally && ResourceDownloadInnerContentFrame.Content is ResourceDownloadRootPage)
         {
             _activeInnerRootPage?.ApplyPendingNavigationState();
-            ShowRootContent();
+            ShowRootPageState();
             return;
         }
 
-        DetachInnerModLoaderSelectorPage();
+        DetachInnerDetailPage();
         ResetInnerContentFrameVisualState();
 
         if (ResourceDownloadInnerContentFrame.Content is not ResourceDownloadRootPage || ResourceDownloadInnerContentFrame.CanGoBack)
@@ -95,7 +96,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         }
 
         _activeInnerRootPage?.ApplyPendingNavigationState();
-        ShowRootContent();
+        ShowRootPageState();
     }
 
     public ListViewSelectionMode GetSelectionMode(bool isSelectionMode)
@@ -115,10 +116,10 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         _isInnerContentFrameInitialized = true;
     }
 
-    private void ShowRootContent()
+    private void ShowRootPageState()
     {
         FavoritesDropArea.Visibility = Visibility.Visible;
-        ApplyRootHeaderMetadata();
+        ApplyRootHeaderState();
         NotifyLocalNavigationStateChanged();
     }
 
@@ -126,7 +127,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
     {
         EnsureInnerContentFrame();
         ResetInnerContentFrameVisualState();
-        DetachInnerModLoaderSelectorPage();
+        DetachInnerDetailPage();
         FavoritesDropArea.Visibility = Visibility.Collapsed;
         ResourceDownloadInnerContentFrame.Navigate(typeof(ModLoaderSelectorPage), e, new DrillInNavigationTransitionInfo());
     }
@@ -135,26 +136,26 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
     {
         if (e.Content is ResourceDownloadRootPage rootPage)
         {
-            DetachInnerModLoaderSelectorPage();
+            DetachInnerDetailPage();
             _activeInnerRootPage = rootPage;
             rootPage.ApplyPendingNavigationState();
-            ShowRootContent();
+            ShowRootPageState();
             return;
         }
 
         if (e.Content is not ModLoaderSelectorPage detailPage)
         {
-            DetachInnerModLoaderSelectorPage();
-            _activeInnerModLoaderSelectorPage = null;
+            DetachInnerDetailPage();
+            _activeInnerDetailPage = null;
             return;
         }
 
-        DetachInnerModLoaderSelectorPage();
-        _activeInnerModLoaderSelectorPage = detailPage;
+        DetachInnerDetailPage();
+        _activeInnerDetailPage = detailPage;
         detailPage.ResetEmbeddedVisualState();
-        detailPage.ViewModel.CloseRequested += ModLoaderSelectorViewModel_CloseRequested;
-        detailPage.ViewModel.HeaderMetadata.PropertyChanged += ActiveInnerHeaderMetadata_PropertyChanged;
-        ApplyHeaderMetadata(detailPage.ViewModel);
+        detailPage.ViewModel.CloseRequested += DetailPage_CloseRequested;
+        detailPage.ViewModel.HeaderMetadata.PropertyChanged += ActiveDetailHeaderMetadata_PropertyChanged;
+        ApplyHostedPageHeaderState(detailPage.ViewModel);
         FavoritesDropArea.Visibility = Visibility.Collapsed;
         NotifyLocalNavigationStateChanged();
     }
@@ -164,44 +165,44 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         if (!ResourceDownloadInnerContentFrame.CanGoBack)
         {
             _activeInnerRootPage?.ApplyPendingNavigationState();
-            ShowRootContent();
+            ShowRootPageState();
             return;
         }
 
-        ApplyRootHeaderMetadata();
+        ApplyRootHeaderState();
         FavoritesDropArea.Visibility = Visibility.Visible;
         NotifyLocalNavigationStateChanged();
         ResourceDownloadInnerContentFrame.GoBack();
     }
 
-    private void DetachInnerModLoaderSelectorPage()
+    private void DetachInnerDetailPage()
     {
-        if (_activeInnerModLoaderSelectorPage == null)
+        if (_activeInnerDetailPage == null)
         {
             return;
         }
 
-        _activeInnerModLoaderSelectorPage.ViewModel.CloseRequested -= ModLoaderSelectorViewModel_CloseRequested;
-        _activeInnerModLoaderSelectorPage.ViewModel.HeaderMetadata.PropertyChanged -= ActiveInnerHeaderMetadata_PropertyChanged;
-        _activeInnerModLoaderSelectorPage = null;
+        _activeInnerDetailPage.ViewModel.CloseRequested -= DetailPage_CloseRequested;
+        _activeInnerDetailPage.ViewModel.HeaderMetadata.PropertyChanged -= ActiveDetailHeaderMetadata_PropertyChanged;
+        _activeInnerDetailPage = null;
     }
 
-    private void ModLoaderSelectorViewModel_CloseRequested(object? sender, EventArgs e)
+    private void DetailPage_CloseRequested(object? sender, EventArgs e)
     {
         ReturnToRootContent();
     }
 
-    private void ActiveInnerHeaderMetadata_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    private void ActiveDetailHeaderMetadata_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (_activeInnerModLoaderSelectorPage == null)
+        if (_activeInnerDetailPage == null)
         {
             return;
         }
 
-        ApplyHeaderMetadata(_activeInnerModLoaderSelectorPage.ViewModel);
+        ApplyHostedPageHeaderState(_activeInnerDetailPage.ViewModel);
     }
 
-    private void ApplyRootHeaderMetadata()
+    private void ApplyRootHeaderState()
     {
         ResourceDownloadPageHeader.Title = _rootHeaderTitle;
         ResourceDownloadPageHeader.Subtitle = _rootHeaderSubtitle;
@@ -213,19 +214,18 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         ResourceDownloadPageHeader.BreadcrumbItemTemplate = null;
     }
 
-    private void ApplyHeaderMetadata(IPageHeaderAware pageHeaderAware)
+    private void ApplyHostedPageHeaderState(IPageHeaderAware pageHeaderAware)
     {
         ResourceDownloadPageHeader.Title = pageHeaderAware.HeaderMetadata.Title;
         ResourceDownloadPageHeader.Subtitle = pageHeaderAware.HeaderMetadata.Subtitle;
         ResourceDownloadPageHeader.ShowBreadcrumb = pageHeaderAware.HeaderMetadata.ShowBreadcrumb;
         ResourceDownloadPageHeader.BreadcrumbItems = pageHeaderAware.HeaderMetadata.BreadcrumbItems;
-
         if (pageHeaderAware is ModLoaderSelectorViewModel)
         {
             ResourceDownloadPageHeader.ShowPrimaryHeading = false;
             ResourceDownloadPageHeader.BreadcrumbFontSize = 28;
             ResourceDownloadPageHeader.BreadcrumbMargin = new Thickness(-2, -11, 0, 12);
-            ResourceDownloadPageHeader.BreadcrumbItemTemplate = Resources["ModLoaderSelectorBreadcrumbItemTemplate"] as DataTemplate;
+            ResourceDownloadPageHeader.BreadcrumbItemTemplate = Resources[HostedDetailBreadcrumbItemTemplateKey] as DataTemplate;
             return;
         }
 
@@ -238,7 +238,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
     private void ResetInnerContentFrameVisualState()
     {
         ResourceDownloadInnerContentFrame.Opacity = 1;
-        _activeInnerModLoaderSelectorPage?.ResetEmbeddedVisualState();
+        _activeInnerDetailPage?.ResetEmbeddedVisualState();
     }
 
     private void NotifyLocalNavigationStateChanged()
@@ -246,19 +246,19 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         LocalNavigationStateChanged?.Invoke(this, EventArgs.Empty);
     }
 
-    private void ModLoaderSelectorBreadcrumb_BuiltInIconSelected(object? sender, VersionIconSelectedEventArgs e)
+    private void DetailHeader_BuiltInIconSelected(object? sender, VersionIconSelectedEventArgs e)
     {
-        _activeInnerModLoaderSelectorPage?.ApplyBuiltInIcon(e.IconOption);
+        _activeInnerDetailPage?.ApplyBuiltInIcon(e.IconOption);
     }
 
-    private async void ModLoaderSelectorBreadcrumb_CustomIconRequested(object? sender, EventArgs e)
+    private async void DetailHeader_CustomIconRequested(object? sender, EventArgs e)
     {
-        if (_activeInnerModLoaderSelectorPage == null)
+        if (_activeInnerDetailPage == null)
         {
             return;
         }
 
-        await _activeInnerModLoaderSelectorPage.RequestCustomIconAsync();
+        await _activeInnerDetailPage.RequestCustomIconAsync();
     }
 
     private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
