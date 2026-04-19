@@ -7,6 +7,7 @@
     xmlns:viewModels="using:XianYuLauncher.Features.Launch.ViewModels"
     xmlns:models="using:XianYuLauncher.Models"
     xmlns:animations="using:CommunityToolkit.WinUI.Animations"
+    xmlns:mediaAnimation="using:Microsoft.UI.Xaml.Media.Animation"
     mc:Ignorable="d">
 
     <Page.Resources>
@@ -30,19 +31,20 @@
             <!-- 不使用 RepositionThemeTransition，改为给每个需要平移动画的 child 单独加 Implicit OffsetAnimation。
                  这样进度条（不加 OffsetAnimation）在 Collapsed→Visible 时不会飞入，
                  同时也彻底规避了 RepositionThemeTransition 在 Release 模式下对异步数据控件的概率性失效问题。 -->
-            <StackPanel x:Name="MainContentPanel" Spacing="24" Width="420" HorizontalAlignment="Left">
+            <StackPanel x:Name="MainContentPanel"
+                        Spacing="24"
+                        Width="420"
+                        HorizontalAlignment="Left"
+                        mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
                 <!-- 页面标题 -->
                 <StackPanel Spacing="4">
-                    <animations:Implicit.Animations>
-                        <animations:OffsetAnimation Duration="0:0:0.3" EasingMode="EaseOut" EasingType="Default" />
-                    </animations:Implicit.Animations>
                     <TextBlock 
-                        Text="{x:Bind ViewModel.PageTitle, Mode=OneWay}" 
+                        Text="{x:Bind ViewModel.HeaderMetadata.Title, Mode=OneWay}" 
                         FontSize="{x:Bind ViewModel.PageTitleFontSize, Mode=OneWay}"
                         Style="{StaticResource TitleTextBlockStyle}" 
                         FontWeight="SemiBold" />
                     <TextBlock 
-                        Text="XianYu Launcher" 
+                        Text="{x:Bind ViewModel.HeaderMetadata.Subtitle, Mode=OneWay}" 
                         Style="{StaticResource CaptionTextBlockStyle}" 
                         Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                 </StackPanel>

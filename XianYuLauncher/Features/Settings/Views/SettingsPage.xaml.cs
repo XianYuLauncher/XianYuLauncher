@@ -1,6 +1,8 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Dispatching;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using Serilog;
 using XianYuLauncher.Core.Helpers;
@@ -28,7 +30,10 @@ public sealed partial class SettingsPage : Page
     private readonly IAutoSpeedTestService _autoSpeedTestService;
     private readonly ICommonDialogService _dialogService;
     private readonly IUiDispatcher _uiDispatcher;
+    private readonly TransitionCollection? _settingsContentTransitions;
+    private CancellationTokenSource? _settingsContentTransitionsInitializationCancellationTokenSource;
     private string? _pendingProtocolSection;
+    private bool _isSettingsContentTransitionsInitialized;
 
     public SettingsPage()
     {
@@ -37,6 +42,9 @@ public sealed partial class SettingsPage : Page
         _dialogService = App.GetService<ICommonDialogService>();
         _uiDispatcher = App.GetService<IUiDispatcher>();
         InitializeComponent();
+
+        _settingsContentTransitions = SettingsContentPanel.ChildrenTransitions;
+        SuspendSettingsContentTransitions();
         
         // 页面加载时刷新自定义源列表
         Loaded += SettingsPage_Loaded;
@@ -61,6 +69,7 @@ public sealed partial class SettingsPage : Page
 
     private async void SettingsPage_Loaded(object sender, RoutedEventArgs e)
     {
+        SuspendSettingsContentTransitions();
         TryApplyPendingSectionNavigation();
 
         try
@@ -83,12 +92,59 @@ public sealed partial class SettingsPage : Page
         {
             Log.Error(ex, "[SettingsPage] 刷新设置页初始化数据失败");
         }
+        finally
+        {
+            await RestoreSettingsContentTransitionsAfterInitializationAsync();
+        }
     }
 
     private void SettingsPage_Unloaded(object sender, RoutedEventArgs e)
     {
+        SuspendSettingsContentTransitions();
         _autoSpeedTestService.SpeedTestCompleted -= AutoSpeedTestService_SpeedTestCompleted;
         ViewModel?.Dispose();
+    }
+
+    private void SuspendSettingsContentTransitions()
+    {
+        _settingsContentTransitionsInitializationCancellationTokenSource?.Cancel();
+        _settingsContentTransitionsInitializationCancellationTokenSource?.Dispose();
+        _settingsContentTransitionsInitializationCancellationTokenSource = null;
+        _isSettingsContentTransitionsInitialized = false;
+        SettingsContentPanel.ChildrenTransitions = null;
+    }
+
+    private async Task RestoreSettingsContentTransitionsAfterInitializationAsync()
+    {
+        if (_isSettingsContentTransitionsInitialized || _settingsContentTransitions is null)
+        {
+            return;
+        }
+
+        _settingsContentTransitionsInitializationCancellationTokenSource?.Cancel();
+        _settingsContentTransitionsInitializationCancellationTokenSource?.Dispose();
+        _settingsContentTransitionsInitializationCancellationTokenSource = new CancellationTokenSource();
+        var cancellationToken = _settingsContentTransitionsInitializationCancellationTokenSource.Token;
+
+        try
+        {
+            await _uiDispatcher.EnqueueAsync(DispatcherQueuePriority.Low, () => Task.CompletedTask);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            await _uiDispatcher.EnqueueAsync(DispatcherQueuePriority.Low, () => Task.CompletedTask);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (cancellationToken.IsCancellationRequested || !IsLoaded || _isSettingsContentTransitionsInitialized)
+        {
+            return;
+        }
+
+        SettingsContentPanel.ChildrenTransitions = _settingsContentTransitions;
+        _isSettingsContentTransitionsInitialized = true;
     }
 
     private void AutoSpeedTestService_SpeedTestCompleted(object? sender, EventArgs e)

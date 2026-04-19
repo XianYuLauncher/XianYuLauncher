@@ -1,15 +1,18 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
+using XianYuLauncher.Helpers;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels;
 
-public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable
+public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable, IPageHeaderAware
 {
     private readonly IAISettingsDomainService _aiSettingsDomainService;
     private readonly ILanguageSelectorService _languageSelectorService;
@@ -28,6 +31,10 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable
     private long _dirtyWorkspaceStamp;
     private long _nextDirtyStamp;
     private long _workspaceSaveRequestVersion;
+
+    public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+    public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.ControlStrip;
 
     public LauncherAIViewModel(
         ErrorAnalysisViewModel chatViewModel,
@@ -49,6 +56,9 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable
         _sessionState.PropertyChanged += SessionState_PropertyChanged;
         AttachSessionMessageHandlers(_sessionState.ChatMessages);
         _sessionState.ChatMessages.CollectionChanged += SessionMessages_Changed;
+
+        HeaderMetadata.Title = "LauncherAIPage_HeaderTitle".GetLocalized();
+        HeaderMetadata.Subtitle = "LauncherAIPage_HeaderSubtitle".GetLocalized();
     }
 
     public ErrorAnalysisViewModel ChatViewModel { get; }

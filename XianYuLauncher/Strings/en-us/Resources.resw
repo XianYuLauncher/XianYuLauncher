@@ -4222,4 +4222,46 @@ You can double-click the file to launch the game.</value>
   <data name="Dialog_CustomSource_EnableHeader" xml:space="preserve">
     <value>Enable</value>
   </data>
+  <data name="DownloadQueuePage_HeaderTitle" xml:space="preserve">
+    <value>Download Queue</value>
+  </data>
+  <data name="DownloadQueuePage_HeaderSubtitle" xml:space="preserve">
+    <value>Current downloads and queued tasks will appear here.</value>
+  </data>
+  <data name="SettingsPage_HeaderTitle" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="SettingsPage_HeaderSubtitle" xml:space="preserve">
+    <value>Configure launcher settings</value>
+  </data>
+  <data name="联机Page_HeaderTitle" xml:space="preserve">
+    <value>Terracotta | 陶瓦联机</value>
+  </data>
+  <data name="联机Page_HeaderSubtitle" xml:space="preserve">
+    <value>Choose Host/Guest</value>
+  </data>
+  <data name="ResourceDownloadPage_HeaderTitle" xml:space="preserve">
+    <value>Resource Download</value>
+  </data>
+  <data name="ResourceDownloadPage_HeaderSubtitle" xml:space="preserve">
+    <value>Download and manage Minecraft resources</value>
+  </data>
+  <data name="VersionListPage_HeaderTitle" xml:space="preserve">
+    <value>Version List</value>
+  </data>
+  <data name="VersionListPage_HeaderSubtitle" xml:space="preserve">
+    <value>Manage installed Minecraft versions</value>
+  </data>
+  <data name="ProfilePage_HeaderTitle" xml:space="preserve">
+    <value>Profile Management</value>
+  </data>
+  <data name="ProfilePage_HeaderSubtitle" xml:space="preserve">
+    <value>Manage your Minecraft profiles</value>
+  </data>
+  <data name="LauncherAIPage_HeaderTitle" xml:space="preserve">
+    <value>Launcher AI</value>
+  </data>
+  <data name="LauncherAIPage_HeaderSubtitle" xml:space="preserve">
+    <value>Talk to the launcher agent to handle launches, versions, mods, and troubleshooting tasks.</value>
+  </data>
 </root>

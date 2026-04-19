@@ -7,6 +7,8 @@
     xmlns:viewModels="using:XianYuLauncher.Features.Accounts.ViewModels"
     xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:models="using:XianYuLauncher.Core.Models"
+    xmlns:localControls="using:XianYuLauncher.Controls"
+    xmlns:mediaAnimation="using:Microsoft.UI.Xaml.Media.Animation"
     mc:Ignorable="d">
     
     <Page.Resources>
@@ -45,36 +47,22 @@
         </Style>
     </Page.Resources>
 
-    <Grid x:Name="ContentArea" Padding="{StaticResource PageContentPadding}" DataContext="{x:Bind ViewModel}">
+    <Grid x:Name="ContentArea"
+          DataContext="{x:Bind ViewModel}"
+          mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 标题区域 - 居中块(最大1064) + 块内文字居左 -->
-        <Grid Grid.Row="0" HorizontalAlignment="Stretch">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="100*" MaxWidth="1064" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="1" HorizontalAlignment="Stretch" Margin="0,0,0,32">
-                <TextBlock 
-                    x:Uid="ProfilePage_Title" 
-                    Text="角色管理" 
-                    Style="{ThemeResource TitleTextBlockStyle}" />
-                <TextBlock 
-                    x:Uid="ProfilePage_Subtitle" 
-                    Text="管理您的Minecraft角色" 
-                    Style="{StaticResource SubtitleTextBlockStyle}" 
-                    Margin="0,8,0,0"
-                    Opacity="0.7" />
-            </StackPanel>
-        </Grid>
+        <localControls:PageHeader
+            Grid.Row="0"
+            Title="{x:Bind ViewModel.HeaderMetadata.Title, Mode=OneWay}"
+            Subtitle="{x:Bind ViewModel.HeaderMetadata.Subtitle, Mode=OneWay}" />
 
         <!-- 登录状态显示 - 居中块 + 块内居左 -->
-        <Grid Grid.Row="1" HorizontalAlignment="Stretch">
+        <Grid Grid.Row="1" Margin="24,0,24,24" HorizontalAlignment="Stretch">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="100*" MaxWidth="1064" />
@@ -105,7 +93,8 @@
         <ScrollViewer 
             Grid.Row="2" 
             VerticalScrollBarVisibility="Auto" 
-            HorizontalScrollBarVisibility="Disabled">
+            HorizontalScrollBarVisibility="Disabled"
+            Padding="{StaticResource PageScrollViewerPadding}">
             <Grid HorizontalAlignment="Stretch">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

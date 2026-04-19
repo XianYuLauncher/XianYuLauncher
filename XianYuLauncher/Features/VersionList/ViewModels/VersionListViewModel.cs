@@ -15,6 +15,7 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.ModDownloadDetail.Models;
@@ -22,10 +23,11 @@ using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.VersionManagement.ViewModels;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.VersionList.ViewModels;
 
-public partial class VersionListViewModel : ObservableRecipient
+public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAware
 {
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IFileService _fileService;
@@ -176,6 +178,10 @@ public partial class VersionListViewModel : ObservableRecipient
     public event EventHandler<VersionInfoItem>? ExportModpackRequested;
 
     private readonly IVersionInfoService _versionInfoService;
+
+    public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+    public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.ControlStrip;
     
     public VersionListViewModel(
         IMinecraftVersionService minecraftVersionService,
@@ -195,6 +201,9 @@ public partial class VersionListViewModel : ObservableRecipient
         _profileDialogService = profileDialogService;
         _profileManager = profileManager;
         _uiDispatcher = uiDispatcher;
+
+        HeaderMetadata.Title = "VersionListPage_HeaderTitle".GetLocalized();
+        HeaderMetadata.Subtitle = "VersionListPage_HeaderSubtitle".GetLocalized();
         
         // 订阅Minecraft路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;

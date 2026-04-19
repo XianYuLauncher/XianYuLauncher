@@ -12,6 +12,7 @@
     xmlns:controls="using:CommunityToolkit.WinUI.UI.Controls"
     xmlns:labs="using:CommunityToolkit.Labs.WinUI"
     xmlns:media="using:CommunityToolkit.WinUI.Media"
+    xmlns:mediaAnimation="using:Microsoft.UI.Xaml.Media.Animation"
     xmlns:localControls="using:XianYuLauncher.Controls"
     NavigationCacheMode="Required"
     mc:Ignorable="d">
@@ -55,29 +56,18 @@
         <helpers:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
     </Page.Resources>
 
-    <Grid x:Name="ContentArea" Padding="{StaticResource PageContentPadding}">
-        <!-- 限制最大宽度，避免最大化时内容被拉得过宽，宽窗口时内容居中显示 -->
-        <Grid MaxWidth="1064" HorizontalAlignment="Center" VerticalAlignment="Stretch">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
+    <Grid x:Name="ContentArea"
+          mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
-        <!-- 顶部标题和收藏夹区域 -->
-        <Grid Grid.Row="0" Margin="0,0,0,20">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-
-            <!-- 标题区域 -->
-            <StackPanel Grid.Column="0">
-                <TextBlock x:Name="PageTitle" x:Uid="ResourceDownloadPage_PageTitle" Text="资源下载" Style="{ThemeResource TitleTextBlockStyle}" />
-                <TextBlock x:Name="PageSubtitle" x:Uid="ResourceDownloadPage_PageSubtitle" Text="下载和管理 Minecraft 资源" Style="{StaticResource BodyTextStyle}" Margin="0,8,0,0" Opacity="0.7" />
-            </StackPanel>
-
-            <!-- 收藏夹拖放区域 -->
-            <Grid Grid.Column="1" VerticalAlignment="Bottom" Margin="0,0,20,0">
+        <localControls:PageHeader
+            Grid.Row="0"
+            Title="{x:Bind ViewModel.HeaderMetadata.Title, Mode=OneWay}"
+            Subtitle="{x:Bind ViewModel.HeaderMetadata.Subtitle, Mode=OneWay}">
+            <localControls:PageHeader.TrailingActions>
                 <Button x:Name="FavoritesDropArea"
                         x:Uid="ResourceDownloadPage_FavoritesButton"
                         AllowDrop="True"
@@ -136,7 +126,6 @@
                                     </ListView.ItemTemplate>
                                 </ListView>
 
-                                <!-- Empty State -->
                                 <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center" 
                                             Visibility="{x:Bind ViewModel.IsFavoritesEmpty, Mode=OneWay}" Spacing="8">
                                     <FontIcon Glyph="&#xE734;" FontSize="24" Foreground="{ThemeResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center"/>
@@ -144,7 +133,6 @@
                                     <TextBlock x:Uid="ResourceDownloadPage_FavoritesDragHint" Text="拖拽列表项到收藏夹按钮" FontSize="12" Foreground="{ThemeResource TextFillColorTertiaryBrush}" HorizontalAlignment="Center"/>
                                 </StackPanel>
                                 
-                                <!-- Function Bar（背景透明，避免 Card 样式被遮挡） -->
                                 <Grid Grid.Row="2" Background="Transparent" Padding="12,8">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
@@ -152,7 +140,6 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     
-                                    <!-- Left: Actions -->
                                     <StackPanel Orientation="Horizontal" Spacing="4">
                                         <Button x:Uid="ResourceDownloadPage_ImportFavoritesButton" ToolTipService.ToolTip="导入收藏到版本"
                                                 IsEnabled="{x:Bind ViewModel.IsImportFavoritesEnabled, Mode=OneWay}"
@@ -162,7 +149,6 @@
                                         </Button>
                                     </StackPanel>
                                     
-                                    <!-- Right: Tools -->
                                     <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
                                         <Button x:Uid="ResourceDownloadPage_RemoveFavoritesButton" ToolTipService.ToolTip="删除选中项" Command="{x:Bind ViewModel.RemoveSelectedFavoritesCommand}" Padding="8,4" Background="Transparent" BorderThickness="0">
                                             <FontIcon Glyph="&#xE74D;" FontSize="14" />
@@ -182,11 +168,17 @@
                         </Flyout>
                     </Button.Flyout>
                 </Button>
-            </Grid>
-        </Grid>
+            </localControls:PageHeader.TrailingActions>
+        </localControls:PageHeader>
+
+        <!-- 限制最大宽度，避免最大化时内容被拉得过宽，宽窗口时内容居中显示 -->
+        <Grid Grid.Row="1" MaxWidth="1064" HorizontalAlignment="Center" VerticalAlignment="Stretch" Margin="{StaticResource PageScrollViewerPadding}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
         <!-- 主要内容区域 -->
-        <Grid Grid.Row="1">
+        <Grid>
             <!-- TabView 控件 -->
             <TabView 
                 x:Name="ResourceTabView" 
