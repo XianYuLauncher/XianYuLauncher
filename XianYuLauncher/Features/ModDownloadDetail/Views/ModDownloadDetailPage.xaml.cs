@@ -403,6 +403,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
             {
                 ProjectId = projectId,
                 Project = project,
+                DisplayTitleHint = project?.DisplayTitle ?? string.Empty,
                 SourceType = sourceType,
             };
 
@@ -415,6 +416,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
             {
                 ProjectId = projectId,
                 Project = project,
+                DisplayTitleHint = project?.DisplayTitle ?? string.Empty,
                 SourceType = sourceType,
                 BreadcrumbRootLabel = rootLabel,
                 BreadcrumbRootPageKey = rootPageKey,

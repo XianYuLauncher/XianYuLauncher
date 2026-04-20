@@ -4960,6 +4960,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
             {
                 ProjectId = project.ProjectId,
                 Project = project,
+                DisplayTitleHint = project.DisplayTitle,
                 SourceType = sourceType,
                 BreadcrumbRootLabel = HeaderMetadata.Title,
                 BreadcrumbRootTarget = new LocalNavigationTarget

@@ -12,6 +12,8 @@ public sealed class ModDownloadDetailNavigationParameter
 
     public ModrinthProject? Project { get; init; }
 
+    public string DisplayTitleHint { get; init; } = string.Empty;
+
     public string? SourceType { get; init; }
 
     public string BreadcrumbRootLabel { get; init; } = string.Empty;
@@ -27,19 +29,22 @@ public sealed class ModDownloadDetailNavigationParameter
     public bool HasBreadcrumbRoot => !string.IsNullOrWhiteSpace(BreadcrumbRootLabel)
         && ((BreadcrumbRootTarget?.HasTarget ?? false) || !string.IsNullOrWhiteSpace(BreadcrumbRootPageKey));
 
-    public ModDownloadDetailNavigationParameter CreateChildParameter(string currentDisplayText, string nextProjectId)
+    public ModDownloadDetailNavigationParameter CreateChildParameter(string currentDisplayText, string nextProjectId, string? nextDisplayTitle = null)
     {
         var breadcrumbTrail = new List<ModDownloadDetailBreadcrumbSegment>(LocalBreadcrumbTrail)
         {
             new()
             {
-                DisplayText = string.IsNullOrWhiteSpace(currentDisplayText) ? ProjectId : currentDisplayText,
+                DisplayText = string.IsNullOrWhiteSpace(currentDisplayText)
+                    ? (string.IsNullOrWhiteSpace(DisplayTitleHint) ? ProjectId : DisplayTitleHint)
+                    : currentDisplayText,
             }
         };
 
         return new ModDownloadDetailNavigationParameter
         {
             ProjectId = nextProjectId,
+            DisplayTitleHint = nextDisplayTitle ?? string.Empty,
             SourceType = SourceType,
             BreadcrumbRootLabel = BreadcrumbRootLabel,
             BreadcrumbRootPageKey = BreadcrumbRootPageKey,

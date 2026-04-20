@@ -255,7 +255,14 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
             {
                 if (_navigationParameter is not null)
                 {
-                    var childNavigationParameter = _navigationParameter.CreateChildParameter(GetCurrentBreadcrumbDisplayText(), projectId);
+                    var dependencyDisplayTitle = DependencyProjects
+                        .FirstOrDefault(project => string.Equals(project.ProjectId, projectId, StringComparison.OrdinalIgnoreCase))
+                        ?.Title;
+
+                    var childNavigationParameter = _navigationParameter.CreateChildParameter(
+                        GetCurrentBreadcrumbDisplayText(),
+                        projectId,
+                        dependencyDisplayTitle);
                     DetailNavigationRequested?.Invoke(this, new ModDownloadDetailNavigationRequestedEventArgs(childNavigationParameter));
                     return;
                 }
@@ -596,6 +603,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
             {
                 ProjectId = mod.ProjectId,
                 Project = mod,
+                DisplayTitleHint = mod.DisplayTitle,
                 SourceType = sourceType,
             });
             await LoadModDetailsAsync(mod.ProjectId);
@@ -894,22 +902,9 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
 
         private string BuildHeaderSubtitle()
         {
-            if (string.IsNullOrWhiteSpace(PlatformName) && string.IsNullOrWhiteSpace(ModAuthor))
-            {
-                return _passedModInfo?.Author ?? string.Empty;
-            }
-
-            if (string.IsNullOrWhiteSpace(PlatformName))
-            {
-                return ModAuthor;
-            }
-
-            if (string.IsNullOrWhiteSpace(ModAuthor))
-            {
-                return PlatformName;
-            }
-
-            return $"{PlatformName} · {ModAuthor}";
+            // 详情正文自身已经展示平台入口与发布者信息；Header 再重复一行“平台 · 发布者”
+            // 只会挤占标题层级，尤其在 ResourceDownload 宿主页里会显得更冗余。
+            return string.Empty;
         }
 
         private void RebuildHeaderMetadata()
@@ -974,6 +969,11 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
             if (!string.IsNullOrWhiteSpace(ModName))
             {
                 return ModName;
+            }
+
+            if (!string.IsNullOrWhiteSpace(_navigationParameter?.DisplayTitleHint))
+            {
+                return _navigationParameter.DisplayTitleHint;
             }
 
             if (_passedModInfo is { DisplayTitle.Length: > 0 } prefetchedProject)
