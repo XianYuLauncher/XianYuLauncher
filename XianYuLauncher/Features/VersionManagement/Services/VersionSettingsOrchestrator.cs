@@ -1,6 +1,8 @@
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Core.VersionAnalysis;
+using XianYuLauncher.Core.VersionAnalysis.Models;
 using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Models.VersionManagement;
 using System.Text.Json;
@@ -577,8 +579,8 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
 
         try
         {
-            var versionConfig = await _versionInfoService.GetFullVersionInfoAsync(minecraftVersion, baseVersionDirectory);
-            return IsVanillaBaseVersion(versionConfig);
+            var jsonContent = await File.ReadAllTextAsync(baseVersionJsonPath);
+            return IsVanillaBaseVersionJson(jsonContent);
         }
         catch
         {
@@ -586,20 +588,33 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
         }
     }
 
-    private static bool IsVanillaBaseVersion(VersionConfig? versionConfig)
+    private static bool IsVanillaBaseVersionJson(string jsonContent)
     {
-        if (versionConfig == null)
+        if (string.IsNullOrWhiteSpace(jsonContent))
         {
             return false;
         }
 
-        var modLoaderType = versionConfig.ModLoaderType;
-        var hasPrimaryLoader = !string.IsNullOrWhiteSpace(modLoaderType)
-            && !string.Equals(modLoaderType, "vanilla", StringComparison.OrdinalIgnoreCase);
-        var hasAddonLoader = !string.IsNullOrWhiteSpace(versionConfig.OptifineVersion)
-            || !string.IsNullOrWhiteSpace(versionConfig.LiteLoaderVersion);
+        var manifest = VersionManifestJsonHelper.DeserializeMinecraftVersionManifest(jsonContent);
+        var modLoaderDetector = new ModLoaderDetector();
+        var (loaderType, _) = modLoaderDetector.Detect(manifest);
 
-        return !hasPrimaryLoader && !hasAddonLoader;
+        if (!string.Equals(loaderType, "vanilla", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return !HasLiteLoaderSignature(jsonContent, manifest);
+    }
+
+    private static bool HasLiteLoaderSignature(string jsonContent, MinecraftVersionManifest? manifest)
+    {
+        return jsonContent.Contains("com.mumfrey.liteloader.launch.LiteLoaderTweaker", StringComparison.OrdinalIgnoreCase)
+            || jsonContent.Contains("com.mumfrey:liteloader", StringComparison.OrdinalIgnoreCase)
+            || (!string.IsNullOrWhiteSpace(manifest?.MainClass)
+                && manifest.MainClass.Contains("LiteLoaderTweaker", StringComparison.OrdinalIgnoreCase))
+            || (!string.IsNullOrWhiteSpace(manifest?.MinecraftArguments)
+                && manifest.MinecraftArguments.Contains("LiteLoaderTweaker", StringComparison.OrdinalIgnoreCase));
     }
 
     private static LoaderInstallPlan BuildLoaderInstallPlan(IReadOnlyList<LoaderSelection> selectedLoaders)

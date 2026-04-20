@@ -467,6 +467,25 @@ public class VersionInfoManagerTests : IDisposable
         Assert.Equal(remoteJson, result);
     }
 
+    [Fact]
+    public async Task GetVersionInfoJsonAsync_PreferLocalFalse_AndNetworkDisabled_ThrowsVersionNotFoundException()
+    {
+        var versionId = "1.20.4";
+        var versionDir = Path.Combine(_testDirectory, "versions", versionId);
+        Directory.CreateDirectory(versionDir);
+
+        await File.WriteAllTextAsync(
+            Path.Combine(versionDir, $"{versionId}.json"),
+            "{\"id\":\"local\"}");
+
+        await Assert.ThrowsAsync<VersionNotFoundException>(() =>
+            _versionInfoManager.GetVersionInfoJsonAsync(
+                versionId,
+                _testDirectory,
+                allowNetwork: false,
+                preferLocal: false));
+    }
+
     #endregion
 
     #region GetVersionManifestAsync 测试
