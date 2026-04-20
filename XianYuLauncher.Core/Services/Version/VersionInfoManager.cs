@@ -145,6 +145,7 @@ public class VersionInfoManager : IVersionInfoManager
         string versionId,
         string? minecraftDirectory = null,
         bool allowNetwork = true,
+        bool preferLocal = true,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(versionId))
@@ -153,7 +154,7 @@ public class VersionInfoManager : IVersionInfoManager
         }
 
         // 1. 尝试从本地读取
-        if (!string.IsNullOrEmpty(minecraftDirectory))
+        if (preferLocal && !string.IsNullOrEmpty(minecraftDirectory))
         {
             var jsonPath = GetVersionJsonPath(versionId, minecraftDirectory);
             if (File.Exists(jsonPath))

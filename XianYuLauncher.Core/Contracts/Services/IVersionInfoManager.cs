@@ -39,12 +39,14 @@ public interface IVersionInfoManager
     /// <param name="versionId">版本ID</param>
     /// <param name="minecraftDirectory">Minecraft目录（可选）</param>
     /// <param name="allowNetwork">是否允许网络请求</param>
+    /// <param name="preferLocal">是否优先使用本地版本JSON。为 false 时将跳过本地文件；若 allowNetwork 为 true 则回退到网络清单，否则按未找到版本处理。</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>JSON字符串</returns>
     Task<string> GetVersionInfoJsonAsync(
         string versionId, 
         string? minecraftDirectory = null,
         bool allowNetwork = true,
+        bool preferLocal = true,
         CancellationToken cancellationToken = default);
     
     /// <summary>

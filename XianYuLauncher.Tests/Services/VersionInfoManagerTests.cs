@@ -432,6 +432,60 @@ public class VersionInfoManagerTests : IDisposable
             _versionInfoManager.GetVersionInfoAsync("", _testDirectory));
     }
 
+    [Fact]
+    public async Task GetVersionInfoJsonAsync_PreferLocalFalse_SkipsLocalJsonAndUsesNetwork()
+    {
+        var versionId = "1.20.4";
+        var versionDir = Path.Combine(_testDirectory, "versions", versionId);
+        Directory.CreateDirectory(versionDir);
+
+        await File.WriteAllTextAsync(
+            Path.Combine(versionDir, $"{versionId}.json"),
+            "{\"id\":\"local\"}");
+
+        var manifest = new VersionManifest
+        {
+            Versions = new List<VersionEntry>
+            {
+                new() { Id = versionId, Url = $"https://example.com/{versionId}.json" }
+            }
+        };
+
+        var remoteJson = "{\"id\":\"remote\"}";
+
+        _mockDownloadManager
+            .SetupSequence(manager => manager.DownloadStringAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(JsonConvert.SerializeObject(manifest))
+            .ReturnsAsync(remoteJson);
+
+        var result = await _versionInfoManager.GetVersionInfoJsonAsync(
+            versionId,
+            _testDirectory,
+            allowNetwork: true,
+            preferLocal: false);
+
+        Assert.Equal(remoteJson, result);
+    }
+
+    [Fact]
+    public async Task GetVersionInfoJsonAsync_PreferLocalFalse_AndNetworkDisabled_ThrowsVersionNotFoundException()
+    {
+        var versionId = "1.20.4";
+        var versionDir = Path.Combine(_testDirectory, "versions", versionId);
+        Directory.CreateDirectory(versionDir);
+
+        await File.WriteAllTextAsync(
+            Path.Combine(versionDir, $"{versionId}.json"),
+            "{\"id\":\"local\"}");
+
+        await Assert.ThrowsAsync<VersionNotFoundException>(() =>
+            _versionInfoManager.GetVersionInfoJsonAsync(
+                versionId,
+                _testDirectory,
+                allowNetwork: false,
+                preferLocal: false));
+    }
+
     #endregion
 
     #region GetVersionManifestAsync 测试

@@ -1,9 +1,12 @@
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Core.VersionAnalysis;
+using XianYuLauncher.Core.VersionAnalysis.Models;
 using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Models.VersionManagement;
 using System.Text.Json;
+using System.IO;
 
 namespace XianYuLauncher.Features.VersionManagement.Services;
 
@@ -241,10 +244,9 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
             {
                 onProgress?.Invoke("正在下载原版版本信息...", currentStep / (double)totalSteps * 100);
 
-                var originalVersionJsonContent = await _versionInfoManager.GetVersionInfoJsonAsync(
+                var originalVersionJsonContent = await GetOriginalVersionJsonContentAsync(
                     minecraftVersion,
-                    minecraftDirectory,
-                    allowNetwork: true);
+                    minecraftDirectory);
 
                 var versionJsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
                 await File.WriteAllTextAsync(versionJsonPath, originalVersionJsonContent);
@@ -547,6 +549,72 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
                 var mapped = stepStartProgress + (status.Percent / 100.0) * (stepEndProgress - stepStartProgress);
                 onProgress?.Invoke($"正在安装 {loader.Name} {loader.SelectedVersion}...", mapped);
             });
+    }
+
+    private async Task<string> GetOriginalVersionJsonContentAsync(string minecraftVersion, string minecraftDirectory)
+    {
+        var preferLocal = await ShouldPreferLocalBaseVersionJsonAsync(minecraftVersion, minecraftDirectory);
+
+        return await _versionInfoManager.GetVersionInfoJsonAsync(
+            minecraftVersion,
+            minecraftDirectory,
+            allowNetwork: true,
+            preferLocal: preferLocal);
+    }
+
+    private async Task<bool> ShouldPreferLocalBaseVersionJsonAsync(string minecraftVersion, string minecraftDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(minecraftVersion) || string.IsNullOrWhiteSpace(minecraftDirectory))
+        {
+            return true;
+        }
+
+        var baseVersionDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions, minecraftVersion);
+        var baseVersionJsonPath = Path.Combine(baseVersionDirectory, $"{minecraftVersion}.json");
+
+        if (!File.Exists(baseVersionJsonPath))
+        {
+            return true;
+        }
+
+        try
+        {
+            var jsonContent = await File.ReadAllTextAsync(baseVersionJsonPath);
+            return IsVanillaBaseVersionJson(jsonContent);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsVanillaBaseVersionJson(string jsonContent)
+    {
+        if (string.IsNullOrWhiteSpace(jsonContent))
+        {
+            return false;
+        }
+
+        var manifest = VersionManifestJsonHelper.DeserializeMinecraftVersionManifest(jsonContent);
+        var modLoaderDetector = new ModLoaderDetector();
+        var (loaderType, _) = modLoaderDetector.Detect(manifest);
+
+        if (!string.Equals(loaderType, "vanilla", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        return !HasLiteLoaderSignature(jsonContent, manifest);
+    }
+
+    private static bool HasLiteLoaderSignature(string jsonContent, MinecraftVersionManifest? manifest)
+    {
+        return jsonContent.Contains("com.mumfrey.liteloader.launch.LiteLoaderTweaker", StringComparison.OrdinalIgnoreCase)
+            || jsonContent.Contains("com.mumfrey:liteloader", StringComparison.OrdinalIgnoreCase)
+            || (!string.IsNullOrWhiteSpace(manifest?.MainClass)
+                && manifest.MainClass.Contains("LiteLoaderTweaker", StringComparison.OrdinalIgnoreCase))
+            || (!string.IsNullOrWhiteSpace(manifest?.MinecraftArguments)
+                && manifest.MinecraftArguments.Contains("LiteLoaderTweaker", StringComparison.OrdinalIgnoreCase));
     }
 
     private static LoaderInstallPlan BuildLoaderInstallPlan(IReadOnlyList<LoaderSelection> selectedLoaders)
