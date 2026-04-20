@@ -18,6 +18,7 @@ using System.Collections.Concurrent;
 using System.Threading;
 
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
@@ -72,7 +73,7 @@ public partial class MinecraftPathItem : ObservableObject
     private bool _isActive;
 }
 
-public partial class SettingsViewModel : ObservableRecipient, IDisposable
+public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPageHeaderAware
     {
         private readonly IFileService _fileService;
         private readonly INavigationService _navigationService;
@@ -103,6 +104,10 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         private CancellationTokenSource _downloadSourcesLoadCts = new();
         private bool _isApplyingDownloadSourceState;
         private bool _disposed;
+
+        public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+        public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
 
         [ObservableProperty]
         private bool _isAIAnalysisEnabled;
@@ -1157,6 +1162,9 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable
         _speedTestService = speedTestService;
         _elementTheme = _personalizationSettingsDomainService.GetCurrentTheme();
         _versionDescription = _aboutSettingsDomainService.GetVersionDescription();
+
+        HeaderMetadata.Title = "SettingsPage_HeaderTitle".GetLocalized();
+        HeaderMetadata.Subtitle = "SettingsPage_HeaderSubtitle".GetLocalized();
         
         // 初始化 Dev 通道状态
         try

@@ -10,21 +10,24 @@ using System.Threading;
 using System.Collections.Concurrent;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Serilog;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.ModDownloadDetail.Models;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
-using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
+using XianYuLauncher.Features.ModLoaderSelector.Models;
 using XianYuLauncher.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.ResourceDownload.ViewModels;
 
-public partial class ResourceDownloadViewModel : ObservableRecipient
+public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeaderAware
 {
     private readonly IMinecraftVersionService _minecraftVersionService;
     private readonly IGameManifestQueryService _gameManifestQueryService;
@@ -46,6 +49,12 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     private readonly IGameDirResolver _gameDirResolver;
     private readonly ICommunityResourceInstallPlanner _communityResourceInstallPlanner;
     private readonly ICommunityResourceFilterMetadataService _communityResourceFilterMetadataService;
+
+    public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+    public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
+
+    public event EventHandler<ModLoaderSelectorNavigationParameter>? ModLoaderSelectorRequested;
 
     // 版本下载相关属性和命令
     [ObservableProperty]
@@ -611,9 +620,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
     
     [ObservableProperty]
     private string _selectedDatapackVersion = string.Empty;
-    
-    // 兼容旧页面的数据包列表
-    public ObservableCollection<ModrinthProject> DatapackList => Datapacks;
     
     // 世界相关属性
     [ObservableProperty]
@@ -1780,6 +1786,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         _communityResourceInstallPlanner = communityResourceInstallPlanner;
         _communityResourceFilterMetadataService = communityResourceFilterMetadataService;
 
+        HeaderMetadata.Title = "ResourceDownloadPage_HeaderTitle".GetLocalized();
+        HeaderMetadata.Subtitle = "ResourceDownloadPage_HeaderSubtitle".GetLocalized();
+
         // Load saved favorites
         foreach (var item in _favoritesService.Load())
         {
@@ -2505,12 +2514,21 @@ public partial class ResourceDownloadViewModel : ObservableRecipient
         try
         {
             IsVersionLoading = true;
-            // 导航到版本选择页面
-            _navigationService.NavigateTo(typeof(ModLoaderSelectorViewModel).FullName!, versionId);
+
+            var navigationParameter = new ModLoaderSelectorNavigationParameter
+            {
+                VersionId = versionId,
+                BreadcrumbRootLabel = HeaderMetadata.Title,
+                ReturnPageKey = typeof(ResourceDownloadViewModel).FullName ?? string.Empty,
+                ReturnTabKey = "version",
+            };
+
+            ModLoaderSelectorRequested?.Invoke(this, navigationParameter);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // 处理异常
+            Log.Warning(ex, "[ResourceDownload] 打开 ModLoader 选择页失败，VersionId={VersionId}", versionId);
+            ErrorMessage = $"打开 Mod 加载器选择页失败: {ex.Message}";
         }
         finally
         {

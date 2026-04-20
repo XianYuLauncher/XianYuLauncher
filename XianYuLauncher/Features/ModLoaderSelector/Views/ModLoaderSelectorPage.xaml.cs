@@ -1,5 +1,10 @@
+using System;
+using System.Threading.Tasks;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using XianYuLauncher.Controls;
+using Microsoft.UI.Xaml.Navigation;
+using XianYuLauncher.Core.Models;
+using XianYuLauncher.Features.ModLoaderSelector.Models;
 using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
 using XianYuLauncher.Models;
 using Windows.Storage.Pickers;
@@ -15,33 +20,49 @@ public sealed partial class ModLoaderSelectorPage : Page
     {
         ViewModel = App.GetService<ModLoaderSelectorViewModel>();
         InitializeComponent();
-    }
-    
-    /// <summary>
-    /// 取消选择ModLoader事件处理
-    /// </summary>
-    private void CancelModLoader_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
-    {
-        if (sender is Microsoft.UI.Xaml.Controls.Button button && button.Tag is XianYuLauncher.Core.Models.ModLoaderItem modLoaderItem)
-        {
-            // 直接调用ViewModel的ClearSelectionCommand
-            ViewModel.ClearSelectionCommand.Execute(modLoaderItem);
-        }
-    }
-    
-    /// <summary>
-    /// 取消选择LiteLoader事件处理
-    /// </summary>
-    private void CancelLiteLoader_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
-    {
-        ViewModel.IsLiteLoaderSelected = false;
-        ViewModel.SelectedLiteLoaderVersion = null;
+        ApplyNavigationLayoutMode();
     }
 
-    private async void VersionIconPicker_CustomIconRequested(object? sender, EventArgs e)
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        ViewModel.OnNavigatedTo(e.Parameter);
+        ApplyNavigationLayoutMode();
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        base.OnNavigatedFrom(e);
+        ViewModel.OnNavigatedFrom();
+    }
+
+    private void ApplyNavigationLayoutMode()
+    {
+        // 嵌入 ResourceDownload 时由外层宿主统一提供页边距，这里不能再叠一层内边距。
+        ContentArea.Padding = ViewModel.IsEmbeddedHostNavigation
+            ? new Thickness(0)
+            : (Thickness)Application.Current.Resources["PageContentPadding"];
+    }
+
+    public void ResetEmbeddedVisualState()
+    {
+        // Frame 会复用页面实例，显式重置动画遗留的透明度和位移，避免下一次进入时带入旧状态。
+        ContentArea.Opacity = 1;
+        ContentArea.Translation = default;
+        PageLayoutRoot.Opacity = 1;
+        PageLayoutRoot.Translation = default;
+    }
+
+    public void ApplyBuiltInIcon(VersionIconOption iconOption)
+    {
+        ViewModel.SelectBuiltInIconCommand.Execute(iconOption);
+    }
+
+    public async Task RequestCustomIconAsync()
     {
         try
         {
+            // FileOpenPicker 仍然需要在 View 层拿窗口句柄初始化，不能完全下沉到 ViewModel。
             var picker = new FileOpenPicker();
             picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
             picker.FileTypeFilter.Add(".png");
@@ -65,51 +86,43 @@ public sealed partial class ModLoaderSelectorPage : Page
         }
     }
 
-    private void VersionIconPicker_BuiltInIconSelected(object? sender, VersionIconSelectedEventArgs e)
+    private void CancelModLoader_Click(object sender, RoutedEventArgs e)
     {
-        if (e.IconOption != null)
+        if (sender is Button button && button.Tag is ModLoaderItem modLoaderItem)
         {
-            ViewModel.SelectBuiltInIconCommand.Execute(e.IconOption);
+            ViewModel.ClearSelectionCommand.Execute(modLoaderItem);
         }
     }
-    
-    /// <summary>
-    /// Optifine兼容信息文本块加载事件处理
-    /// </summary>
-    private void CompatibleInfoTextBlock_Loaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+
+    private void CancelLiteLoader_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Microsoft.UI.Xaml.Controls.TextBlock textBlock)
-        {
-            // 获取ListView
-            var listView = FindParent<Microsoft.UI.Xaml.Controls.ListView>(textBlock);
-            if (listView != null && listView.Tag is XianYuLauncher.Core.Models.ModLoaderItem modLoaderItem)
-            {
-                // 获取版本名称
-                if (textBlock.Tag is string versionName)
-                {
-                    // 如果是Optifine，获取兼容信息
-                    if (modLoaderItem.Name == "Optifine")
-                    {
-                        var compatibleInfo = modLoaderItem.GetOptifineCompatibleInfo(versionName);
-                        textBlock.Text = compatibleInfo;
-                    }
-                    else
-                    {
-                        // 不是Optifine，隐藏文本块
-                        textBlock.Visibility = Microsoft.UI.Xaml.Visibility.Collapsed;
-                    }
-                }
-            }
-        }
+        ViewModel.IsLiteLoaderSelected = false;
+        ViewModel.SelectedLiteLoaderVersion = null;
     }
-    
-    /// <summary>
-    /// 查找父元素
-    /// </summary>
-    /// <typeparam name="T">父元素类型</typeparam>
-    /// <param name="element">子元素</param>
-    /// <returns>父元素或null</returns>
-    private T? FindParent<T>(Microsoft.UI.Xaml.DependencyObject element) where T : Microsoft.UI.Xaml.DependencyObject
+
+    private void CompatibleInfoTextBlock_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not TextBlock textBlock)
+        {
+            return;
+        }
+
+        var listView = FindParent<ListView>(textBlock);
+        if (listView?.Tag is not ModLoaderItem modLoaderItem || textBlock.Tag is not string versionName)
+        {
+            return;
+        }
+
+        if (modLoaderItem.Name == "Optifine")
+        {
+            textBlock.Text = modLoaderItem.GetOptifineCompatibleInfo(versionName);
+            return;
+        }
+
+        textBlock.Visibility = Visibility.Collapsed;
+    }
+
+    private T? FindParent<T>(DependencyObject element) where T : DependencyObject
     {
         while (element != null)
         {
@@ -117,8 +130,10 @@ public sealed partial class ModLoaderSelectorPage : Page
             {
                 return parent;
             }
+
             element = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(element);
         }
+
         return null;
     }
 }

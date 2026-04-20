@@ -24,6 +24,7 @@ using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
 using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
@@ -36,10 +37,11 @@ using XianYuLauncher.Models;
 using XianYuLauncher.Services;
 using System.Collections.Specialized;
 using System.Text;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.Launch.ViewModels;
 
-public partial class LaunchViewModel : ObservableRecipient
+public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
 {
     [ObservableProperty]
     private string? _quickPlayWorld;
@@ -196,6 +198,10 @@ public partial class LaunchViewModel : ObservableRecipient
 
     [ObservableProperty]
     private string _selectedVersion = "";
+
+    public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+    public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Hero;
 
     /// <summary>
     /// 页面标题，显示当前选中的版本或默认文本
@@ -468,6 +474,9 @@ public partial class LaunchViewModel : ObservableRecipient
         _tokenRefreshService = App.GetService<ITokenRefreshService>();
         _versionConfigService = App.GetService<IVersionConfigService>();
         _versionInfoManager = App.GetService<IVersionInfoManager>(); // Inject this service
+
+        HeaderMetadata.Title = PageTitle;
+        HeaderMetadata.Subtitle = "AppDisplayName".GetLocalized();
 
         // ... existing code ...
         
@@ -1232,6 +1241,7 @@ public partial class LaunchViewModel : ObservableRecipient
         OnPropertyChanged(nameof(SelectedVersionDisplay));
         OnPropertyChanged(nameof(PageTitle));
         OnPropertyChanged(nameof(PageTitleFontSize));
+        HeaderMetadata.Title = PageTitle;
     }
 
     public async Task<string> GetVersionIconPathAsync(string? versionName)

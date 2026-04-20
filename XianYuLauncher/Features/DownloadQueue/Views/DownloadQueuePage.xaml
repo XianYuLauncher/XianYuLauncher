@@ -7,6 +7,8 @@
     xmlns:viewModels="using:XianYuLauncher.Features.DownloadQueue.ViewModels"
     xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:controls="using:CommunityToolkit.WinUI.Controls"
+    xmlns:localControls="using:XianYuLauncher.Controls"
+    xmlns:mediaAnimation="using:Microsoft.UI.Xaml.Media.Animation"
     mc:Ignorable="d">
 
     <Page.Resources>
@@ -198,32 +200,17 @@
         </DataTemplate>
     </Page.Resources>
 
-    <Grid x:Name="ContentArea">
+    <Grid x:Name="ContentArea"
+          mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 标题区域 -->
-        <Grid Grid.Row="0" HorizontalAlignment="Stretch" Padding="{StaticResource PageHeaderPadding}">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="100*" MaxWidth="1064" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="1" HorizontalAlignment="Stretch" Margin="0,0,0,20">
-                <TextBlock
-                    x:Uid="DownloadQueuePage_Title"
-                    Text="下载队列"
-                    Style="{ThemeResource TitleTextBlockStyle}" />
-                <TextBlock
-                    x:Uid="DownloadQueuePage_Subtitle"
-                    Text="当前下载任务和排队任务将在这里显示"
-                    Style="{ThemeResource BodyTextBlockStyle}"
-                    Margin="0,8,0,0"
-                    Opacity="0.7" />
-            </StackPanel>
-        </Grid>
+        <localControls:PageHeader
+            Grid.Row="0"
+            Title="{x:Bind ViewModel.HeaderMetadata.Title, Mode=OneWay}"
+            Subtitle="{x:Bind ViewModel.HeaderMetadata.Subtitle, Mode=OneWay}" />
 
         <!-- 主内容区 -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="{StaticResource PageScrollViewerPadding}">

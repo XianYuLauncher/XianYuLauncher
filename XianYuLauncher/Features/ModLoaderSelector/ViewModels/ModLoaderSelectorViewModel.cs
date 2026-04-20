@@ -8,13 +8,15 @@ using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Features.ModLoaderSelector.Models;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using System.IO;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.ModLoaderSelector.ViewModels;
 
-public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigationAware
+public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigationAware, IPageHeaderAware
 {
     private readonly INavigationService _navigationService;
     private readonly ICommonDialogService _dialogService;
@@ -25,6 +27,18 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     private readonly IModLoaderIconPresentationService _modLoaderIconPresentationService;
     private bool _isIconManuallySelected;
     private string? _lastSelectedLoaderName;
+    private ModLoaderSelectorNavigationParameter? _navigationParameter;
+
+    public event EventHandler? CloseRequested;
+
+    public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+    public PageHeaderPresentationMode HeaderPresentationMode => IsEmbeddedHostNavigation
+        ? PageHeaderPresentationMode.ProminentBreadcrumb
+        : PageHeaderPresentationMode.Standard;
+
+    [ObservableProperty]
+    private bool _isEmbeddedHostNavigation;
 
     [ObservableProperty]
     private ObservableCollection<VersionIconOption> _availableIcons = new();
@@ -143,6 +157,16 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     {
         // 更新版本名称
         UpdateVersionName();
+    }
+
+    partial void OnSelectedIconPathChanged(string value)
+    {
+        RefreshCurrentBreadcrumbItem();
+    }
+
+    partial void OnSelectedVersionDisplayTextChanged(string value)
+    {
+        RefreshCurrentBreadcrumbItem();
     }
 
     // 计算属性：当前选中的ModLoader名称
@@ -298,6 +322,12 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
 
     public void OnNavigatedFrom()
     {
+        IsEmbeddedHostNavigation = false;
+        _navigationParameter = null;
+
+        HeaderMetadata.ShowBreadcrumb = false;
+        HeaderMetadata.BreadcrumbItems.Clear();
+
         // 取消所有正在进行的任务
         foreach (var cts in _ctsMap.Values)
         {
@@ -309,19 +339,98 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
 
     public void OnNavigatedTo(object parameter)
     {
+        if (parameter is ModLoaderSelectorNavigationParameter navigationParameter)
+        {
+            IsEmbeddedHostNavigation = true;
+            _navigationParameter = navigationParameter;
+            InitializeForVersion(navigationParameter.VersionId);
+            UpdateHeaderMetadata();
+            return;
+        }
+
         if (parameter is string version)
         {
-            _isIconManuallySelected = false;
-            _lastSelectedLoaderName = null;
-
-            SelectedMinecraftVersion = version;
-            SelectedVersionDisplayText = SelectedMinecraftVersion;
-            VersionName = SelectedMinecraftVersion; // 初始化版本名称
-            SelectedIconPath = _modLoaderIconPresentationService.DefaultVersionIconPath;
-            InitializeBuiltInIcons();
-
-            LoadModLoaders();
+            IsEmbeddedHostNavigation = false;
+            _navigationParameter = null;
+            InitializeForVersion(version);
+            UpdateHeaderMetadata();
         }
+    }
+
+    private void InitializeForVersion(string version)
+    {
+        _isIconManuallySelected = false;
+        _lastSelectedLoaderName = null;
+
+        SelectedMinecraftVersion = version;
+        SelectedVersionDisplayText = SelectedMinecraftVersion;
+        VersionName = SelectedMinecraftVersion;
+        SelectedIconPath = _modLoaderIconPresentationService.DefaultVersionIconPath;
+        InitializeBuiltInIcons();
+
+        LoadModLoaders();
+    }
+
+    private void UpdateHeaderMetadata()
+    {
+        HeaderMetadata.Title = "ModLoaderSelectionPage_TitleText.Text".GetLocalized();
+        HeaderMetadata.Subtitle = string.Concat(
+            "ModLoaderSelectionPage_CurrentVersionText.Text".GetLocalized(),
+            SelectedMinecraftVersion);
+
+        if (_navigationParameter == null)
+        {
+            HeaderMetadata.BreadcrumbItems.Clear();
+            HeaderMetadata.ShowBreadcrumb = false;
+            return;
+        }
+
+        HeaderMetadata.ShowBreadcrumb = true;
+        RebuildHeaderMetadata();
+    }
+
+    private void RebuildHeaderMetadata()
+    {
+        if (_navigationParameter == null)
+        {
+            return;
+        }
+
+        HeaderMetadata.BreadcrumbItems.Clear();
+        HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+        {
+            DisplayText = _navigationParameter.BreadcrumbRootLabel,
+            PageKey = _navigationParameter.ReturnPageKey,
+            NavigationParameter = _navigationParameter.ReturnTabKey,
+        });
+
+        HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+        {
+            DisplayText = GetCurrentBreadcrumbDisplayText(),
+            IconPath = SelectedIconPath,
+            AvailableIcons = AvailableIcons,
+            IsCurrent = true,
+            IsInteractiveCurrent = true,
+        });
+    }
+
+    private void RefreshCurrentBreadcrumbItem()
+    {
+        if (HeaderMetadata.BreadcrumbItems.Count < 2)
+        {
+            return;
+        }
+
+        HeaderMetadata.BreadcrumbItems[1].DisplayText = GetCurrentBreadcrumbDisplayText();
+        HeaderMetadata.BreadcrumbItems[1].IconPath = SelectedIconPath;
+        HeaderMetadata.BreadcrumbItems[1].AvailableIcons = AvailableIcons;
+    }
+
+    private string GetCurrentBreadcrumbDisplayText()
+    {
+        return string.IsNullOrWhiteSpace(SelectedVersionDisplayText)
+            ? SelectedMinecraftVersion
+            : SelectedVersionDisplayText;
     }
 
     [RelayCommand]
@@ -748,7 +857,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     [RelayCommand]
     private void Cancel()
     {
-        _navigationService.GoBack();
+        RequestClose();
     }
 
     [RelayCommand]
@@ -903,13 +1012,23 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                     return;
                 }
             }
-            // 返回上一页
-            _navigationService.GoBack();
+            RequestClose();
         }
         catch (Exception ex)
         {
             await ShowMessageAsync(string.Format("{0}: {1}", "ModLoaderSelectionPage_DownloadFailedText".GetLocalized(), ex.Message));
         }
+    }
+
+    private void RequestClose()
+    {
+        if (IsEmbeddedHostNavigation)
+        {
+            CloseRequested?.Invoke(this, EventArgs.Empty);
+            return;
+        }
+
+        _navigationService.GoBack();
     }
     
     private async Task ShowMessageAsync(string message)

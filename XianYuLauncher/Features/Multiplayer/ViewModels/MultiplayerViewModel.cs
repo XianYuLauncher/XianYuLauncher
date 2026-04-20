@@ -19,10 +19,11 @@ using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 using Newtonsoft.Json;
 using Serilog;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.Multiplayer.ViewModels;
 
-public partial class MultiplayerViewModel : ObservableRecipient, INavigationAware
+public partial class MultiplayerViewModel : ObservableRecipient, INavigationAware, IPageHeaderAware
 {
     private readonly INavigationService _navigationService;
     private readonly TerracottaService _terracottaService;
@@ -62,6 +63,10 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
     private readonly ICommonDialogService _dialogService;
     private readonly IProgressDialogService _progressDialogService;
 
+    public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+    public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.ControlStrip;
+
     public MultiplayerViewModel(
         INavigationService navigationService,
         IFileService fileService,
@@ -74,6 +79,9 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
         _terracottaService = terracottaService;
         _dialogService = dialogService;
         _progressDialogService = progressDialogService;
+
+        HeaderMetadata.Title = "联机Page_HeaderTitle".GetLocalized();
+        HeaderMetadata.Subtitle = "联机Page_HeaderSubtitle".GetLocalized();
     }
 
     private static ProcessStartInfo CreateTerracottaProcessStartInfo(string terracottaDirectory, string terracottaPath, string tempFilePath)
