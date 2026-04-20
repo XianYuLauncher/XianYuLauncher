@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ModLoaderSelector.Models;
 using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
@@ -12,9 +13,17 @@ using WinRT.Interop;
 
 namespace XianYuLauncher.Features.ModLoaderSelector.Views;
 
-public sealed partial class ModLoaderSelectorPage : Page
+public sealed partial class ModLoaderSelectorPage : Page, IHostedLocalPage, IHostedHeaderActionHandler
 {
     public ModLoaderSelectorViewModel ViewModel { get; }
+
+    public IPageHeaderAware HeaderSource => ViewModel;
+
+    public event EventHandler? CloseRequested
+    {
+        add => ViewModel.CloseRequested += value;
+        remove => ViewModel.CloseRequested -= value;
+    }
 
     public ModLoaderSelectorPage()
     {

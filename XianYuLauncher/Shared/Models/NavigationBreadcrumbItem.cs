@@ -2,11 +2,12 @@ using System.Collections.ObjectModel;
 
 using CommunityToolkit.Mvvm.ComponentModel;
 
+using XianYuLauncher.Core.Contracts.Navigation;
 using XianYuLauncher.Models;
 
 namespace XianYuLauncher.Shared.Models;
 
-public partial class NavigationBreadcrumbItem : ObservableObject
+public partial class NavigationBreadcrumbItem : ObservableObject, ILocalBreadcrumbNavigationItem
 {
     [ObservableProperty]
     private string _displayText = string.Empty;
@@ -24,12 +25,19 @@ public partial class NavigationBreadcrumbItem : ObservableObject
     private object? _navigationParameter;
 
     [ObservableProperty]
+    private LocalNavigationTarget? _localNavigationTarget;
+
+    [ObservableProperty]
     private bool _isCurrent;
 
     [ObservableProperty]
     private bool _isInteractiveCurrent;
 
-    public bool CanNavigate => !string.IsNullOrWhiteSpace(PageKey) && !IsCurrent;
+    public bool HasGlobalNavigationTarget => !string.IsNullOrWhiteSpace(PageKey);
+
+    public bool HasLocalNavigationTarget => LocalNavigationTarget?.HasTarget == true;
+
+    public bool CanNavigate => (HasGlobalNavigationTarget || HasLocalNavigationTarget) && !IsCurrent;
 
     public bool CanShowInlineAction => IsCurrent && IsInteractiveCurrent;
 
@@ -40,6 +48,13 @@ public partial class NavigationBreadcrumbItem : ObservableObject
 
     partial void OnPageKeyChanged(string? value)
     {
+        OnPropertyChanged(nameof(HasGlobalNavigationTarget));
+        OnPropertyChanged(nameof(CanNavigate));
+    }
+
+    partial void OnLocalNavigationTargetChanged(LocalNavigationTarget? value)
+    {
+        OnPropertyChanged(nameof(HasLocalNavigationTarget));
         OnPropertyChanged(nameof(CanNavigate));
     }
 

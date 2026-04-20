@@ -1,5 +1,7 @@
 using System;
 
+using XianYuLauncher.Shared.Models;
+
 namespace XianYuLauncher.Contracts.ViewModels;
 
 /// <summary>
@@ -12,6 +14,10 @@ public interface ILocalNavigationHost
     bool CanGoBackLocally { get; }
 
     bool TryGoBackLocally();
+
+    bool CanNavigateLocally(NavigationBreadcrumbItem breadcrumbItem);
+
+    bool TryNavigateLocally(NavigationBreadcrumbItem breadcrumbItem, bool useReturnTransition = false);
 
     void ResetLocalNavigation(bool useReturnTransition = false);
 }
