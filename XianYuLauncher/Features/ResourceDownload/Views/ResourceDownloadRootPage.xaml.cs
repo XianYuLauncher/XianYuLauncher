@@ -57,6 +57,8 @@ public sealed partial class ResourceDownloadRootPage : Page
 
     public ResourceDownloadViewModel ViewModel { get; private set; } = null!;
 
+    public bool IsLocalNavigationTargetElementEnabled => EntranceNavigationTransitionInfo.GetIsTargetElement(ContentArea);
+
     public ResourceDownloadRootPage()
     {
         InitializeComponent();
@@ -80,6 +82,37 @@ public sealed partial class ResourceDownloadRootPage : Page
 
         ApplyPendingSelectedTab();
         _ = EnsureCurrentTabStateAsync();
+    }
+
+    public void SetLocalNavigationTargetElementEnabled(bool enabled)
+    {
+        var current = EntranceNavigationTransitionInfo.GetIsTargetElement(ContentArea);
+        if (current == enabled)
+        {
+            return;
+        }
+
+        EntranceNavigationTransitionInfo.SetIsTargetElement(ContentArea, enabled);
+    }
+
+    public void ResetEmbeddedVisualState()
+    {
+        // ResourceDownloadRootPage 会在 inner Frame 和外层 Shell 的组合缓存里被反复复用。
+        // 只要它曾经参与过一次本地 Drill 返回，宿主 Frame、root 容器或内容宿主都可能残留
+        // Opacity / Translation / Scale 的中间值；这些值在下一次外层 Default 导航回场时不会
+        // 重新触发 inner 导航日志，但视觉上会表现成“页面内部又轻微 Drill 了一下”。
+        // 因此 root 稳态每次重新显示前，都要把这三层视觉状态显式归零。
+        ContentArea.Opacity = 1;
+        ContentArea.Translation = default;
+        ContentArea.Scale = new Vector3(1f, 1f, 1f);
+
+        ResourceDownloadRootContentHost.Opacity = 1;
+        ResourceDownloadRootContentHost.Translation = default;
+        ResourceDownloadRootContentHost.Scale = new Vector3(1f, 1f, 1f);
+
+        ResourceTabView.Opacity = 1;
+        ResourceTabView.Translation = default;
+        ResourceTabView.Scale = new Vector3(1f, 1f, 1f);
     }
 
     private void ResourceDownloadRootPage_Loaded(object sender, RoutedEventArgs e)
