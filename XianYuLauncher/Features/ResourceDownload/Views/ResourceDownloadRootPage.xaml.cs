@@ -6,6 +6,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -344,26 +345,15 @@ public sealed partial class ResourceDownloadRootPage : Page
         }
 
         _modLoadMoreCheckPending = true;
-        var dispatcherQueue = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
-        dispatcherQueue?.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        EnqueueDeferredLoadMoreCheck(() =>
         {
-            try
+            if (ResourceTabView.SelectedIndex != 1 || ModListScrollViewer == null || ModListScrollViewer.ViewportHeight <= 0)
             {
-                if (ResourceTabView.SelectedIndex != 1 || ModListScrollViewer == null || ModListScrollViewer.ViewportHeight <= 0)
-                {
-                    return;
-                }
+                return;
+            }
 
-                CheckModLoadMore(ModListScrollViewer);
-            }
-            catch (COMException)
-            {
-            }
-            finally
-            {
-                _modLoadMoreCheckPending = false;
-            }
-        });
+            CheckModLoadMore(ModListScrollViewer);
+        }, () => _modLoadMoreCheckPending = false, "mod");
     }
 
     private void CheckModLoadMore(ScrollViewer scrollViewer)
@@ -373,7 +363,7 @@ public sealed partial class ResourceDownloadRootPage : Page
             return;
         }
 
-        var shouldLoadMore = (scrollViewer.ScrollableHeight <= 0 || scrollViewer.VerticalOffset + scrollViewer.ViewportHeight >= scrollViewer.ScrollableHeight - 100)
+        var shouldLoadMore = IsNearScrollableBottom(scrollViewer)
             && ViewModel.LoadMoreModsCommand.CanExecute(null);
 
         if (shouldLoadMore)
@@ -973,26 +963,15 @@ public sealed partial class ResourceDownloadRootPage : Page
         }
 
         _resourcePackLoadMoreCheckPending = true;
-        var dispatcherQueue = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
-        dispatcherQueue?.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        EnqueueDeferredLoadMoreCheck(() =>
         {
-            try
+            if (ResourceTabView.SelectedIndex != 3 || ResourcePackListScrollViewer == null || ResourcePackListScrollViewer.ViewportHeight <= 0)
             {
-                if (ResourceTabView.SelectedIndex != 3 || ResourcePackListScrollViewer == null || ResourcePackListScrollViewer.ViewportHeight <= 0)
-                {
-                    return;
-                }
+                return;
+            }
 
-                CheckResourcePackLoadMore(ResourcePackListScrollViewer);
-            }
-            catch (COMException)
-            {
-            }
-            finally
-            {
-                _resourcePackLoadMoreCheckPending = false;
-            }
-        });
+            CheckResourcePackLoadMore(ResourcePackListScrollViewer);
+        }, () => _resourcePackLoadMoreCheckPending = false, "resourcepack");
     }
 
     private void CheckResourcePackLoadMore(ScrollViewer scrollViewer)
@@ -1002,7 +981,7 @@ public sealed partial class ResourceDownloadRootPage : Page
             return;
         }
 
-        var shouldLoadMore = (scrollViewer.ScrollableHeight <= 0 || scrollViewer.VerticalOffset + scrollViewer.ViewportHeight >= scrollViewer.ScrollableHeight - 100)
+        var shouldLoadMore = IsNearScrollableBottom(scrollViewer)
             && ViewModel.LoadMoreResourcePacksCommand.CanExecute(null);
 
         if (shouldLoadMore)
@@ -1055,26 +1034,15 @@ public sealed partial class ResourceDownloadRootPage : Page
         }
 
         _shaderPackLoadMoreCheckPending = true;
-        var dispatcherQueue = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
-        dispatcherQueue?.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        EnqueueDeferredLoadMoreCheck(() =>
         {
-            try
+            if (ResourceTabView.SelectedIndex != 2 || ShaderPackListScrollViewer == null || ShaderPackListScrollViewer.ViewportHeight <= 0)
             {
-                if (ResourceTabView.SelectedIndex != 2 || ShaderPackListScrollViewer == null || ShaderPackListScrollViewer.ViewportHeight <= 0)
-                {
-                    return;
-                }
+                return;
+            }
 
-                CheckShaderPackLoadMore(ShaderPackListScrollViewer);
-            }
-            catch (COMException)
-            {
-            }
-            finally
-            {
-                _shaderPackLoadMoreCheckPending = false;
-            }
-        });
+            CheckShaderPackLoadMore(ShaderPackListScrollViewer);
+        }, () => _shaderPackLoadMoreCheckPending = false, "shaderpack");
     }
 
     private void CheckShaderPackLoadMore(ScrollViewer scrollViewer)
@@ -1084,7 +1052,7 @@ public sealed partial class ResourceDownloadRootPage : Page
             return;
         }
 
-        var shouldLoadMore = (scrollViewer.ScrollableHeight <= 0 || scrollViewer.VerticalOffset + scrollViewer.ViewportHeight >= scrollViewer.ScrollableHeight - 100)
+        var shouldLoadMore = IsNearScrollableBottom(scrollViewer)
             && ViewModel.LoadMoreShaderPacksCommand.CanExecute(null);
 
         if (shouldLoadMore)
@@ -1137,26 +1105,15 @@ public sealed partial class ResourceDownloadRootPage : Page
         }
 
         _datapackLoadMoreCheckPending = true;
-        var dispatcherQueue = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
-        dispatcherQueue?.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        EnqueueDeferredLoadMoreCheck(() =>
         {
-            try
+            if (ResourceTabView.SelectedIndex != 4 || DatapackListScrollViewer == null || DatapackListScrollViewer.ViewportHeight <= 0)
             {
-                if (ResourceTabView.SelectedIndex != 4 || DatapackListScrollViewer == null || DatapackListScrollViewer.ViewportHeight <= 0)
-                {
-                    return;
-                }
+                return;
+            }
 
-                CheckDatapackLoadMore(DatapackListScrollViewer);
-            }
-            catch (COMException)
-            {
-            }
-            finally
-            {
-                _datapackLoadMoreCheckPending = false;
-            }
-        });
+            CheckDatapackLoadMore(DatapackListScrollViewer);
+        }, () => _datapackLoadMoreCheckPending = false, "datapack");
     }
 
     private void CheckDatapackLoadMore(ScrollViewer scrollViewer)
@@ -1166,7 +1123,7 @@ public sealed partial class ResourceDownloadRootPage : Page
             return;
         }
 
-        var shouldLoadMore = (scrollViewer.ScrollableHeight <= 0 || scrollViewer.VerticalOffset + scrollViewer.ViewportHeight >= scrollViewer.ScrollableHeight - 100)
+        var shouldLoadMore = IsNearScrollableBottom(scrollViewer)
             && ViewModel.LoadMoreDatapacksCommand.CanExecute(null);
 
         if (shouldLoadMore)
@@ -1219,26 +1176,15 @@ public sealed partial class ResourceDownloadRootPage : Page
         }
 
         _modpackLoadMoreCheckPending = true;
-        var dispatcherQueue = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
-        dispatcherQueue?.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        EnqueueDeferredLoadMoreCheck(() =>
         {
-            try
+            if (ResourceTabView.SelectedIndex != 5 || ModpackListScrollViewer == null || ModpackListScrollViewer.ViewportHeight <= 0)
             {
-                if (ResourceTabView.SelectedIndex != 5 || ModpackListScrollViewer == null || ModpackListScrollViewer.ViewportHeight <= 0)
-                {
-                    return;
-                }
+                return;
+            }
 
-                CheckModpackLoadMore(ModpackListScrollViewer);
-            }
-            catch (COMException)
-            {
-            }
-            finally
-            {
-                _modpackLoadMoreCheckPending = false;
-            }
-        });
+            CheckModpackLoadMore(ModpackListScrollViewer);
+        }, () => _modpackLoadMoreCheckPending = false, "modpack");
     }
 
     private void CheckModpackLoadMore(ScrollViewer scrollViewer)
@@ -1248,7 +1194,7 @@ public sealed partial class ResourceDownloadRootPage : Page
             return;
         }
 
-        var shouldLoadMore = (scrollViewer.ScrollableHeight <= 0 || scrollViewer.VerticalOffset + scrollViewer.ViewportHeight >= scrollViewer.ScrollableHeight - 100)
+        var shouldLoadMore = IsNearScrollableBottom(scrollViewer)
             && ViewModel.LoadMoreModpacksCommand.CanExecute(null);
 
         if (shouldLoadMore)
@@ -1336,26 +1282,15 @@ public sealed partial class ResourceDownloadRootPage : Page
         }
 
         _worldLoadMoreCheckPending = true;
-        var dispatcherQueue = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
-        dispatcherQueue?.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        EnqueueDeferredLoadMoreCheck(() =>
         {
-            try
+            if (ResourceTabView.SelectedIndex != 6 || WorldListScrollViewer == null || WorldListScrollViewer.ViewportHeight <= 0)
             {
-                if (ResourceTabView.SelectedIndex != 6 || WorldListScrollViewer == null || WorldListScrollViewer.ViewportHeight <= 0)
-                {
-                    return;
-                }
+                return;
+            }
 
-                CheckWorldLoadMore(WorldListScrollViewer);
-            }
-            catch (COMException)
-            {
-            }
-            finally
-            {
-                _worldLoadMoreCheckPending = false;
-            }
-        });
+            CheckWorldLoadMore(WorldListScrollViewer);
+        }, () => _worldLoadMoreCheckPending = false, "world");
     }
 
     private void CheckWorldLoadMore(ScrollViewer scrollViewer)
@@ -1365,13 +1300,45 @@ public sealed partial class ResourceDownloadRootPage : Page
             return;
         }
 
-        var shouldLoadMore = (scrollViewer.ScrollableHeight <= 0 || scrollViewer.VerticalOffset >= scrollViewer.ScrollableHeight - 100)
+        var shouldLoadMore = IsNearScrollableBottom(scrollViewer)
             && ViewModel.LoadMoreWorldsCommand.CanExecute(null);
 
         if (shouldLoadMore)
         {
             ViewModel.LoadMoreWorldsCommand.Execute(null);
         }
+    }
+
+    private static void EnqueueDeferredLoadMoreCheck(Action executeCheck, Action clearPendingFlag, string resourceType)
+    {
+        var dispatcherQueue = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
+        if (dispatcherQueue == null)
+        {
+            clearPendingFlag();
+            return;
+        }
+
+        dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            try
+            {
+                executeCheck();
+            }
+            catch (COMException ex)
+            {
+                Log.Debug(ex, "[ResourceDownloadRootPage] 延迟检查 {ResourceType} 加载更多时捕获可忽略 COMException。", resourceType);
+            }
+            finally
+            {
+                clearPendingFlag();
+            }
+        });
+    }
+
+    private static bool IsNearScrollableBottom(ScrollViewer scrollViewer)
+    {
+        return scrollViewer.ScrollableHeight <= 0
+            || scrollViewer.VerticalOffset >= scrollViewer.ScrollableHeight - 100;
     }
 
     private async void WorldListView_ItemClick(object sender, ItemClickEventArgs e)

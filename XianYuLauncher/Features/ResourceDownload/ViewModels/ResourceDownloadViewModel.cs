@@ -10,6 +10,7 @@ using System.Threading;
 using System.Collections.Concurrent;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Serilog;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
@@ -2524,9 +2525,10 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
 
             ModLoaderSelectorRequested?.Invoke(this, navigationParameter);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // 处理异常
+            Log.Warning(ex, "[ResourceDownload] 打开 ModLoader 选择页失败，VersionId={VersionId}", versionId);
+            ErrorMessage = $"打开 Mod 加载器选择页失败: {ex.Message}";
         }
         finally
         {
