@@ -4,6 +4,7 @@ using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Features.VersionList.ViewModels;
 using XianYuLauncher.Models.VersionManagement;
 using System.Text.Json;
+using System.IO;
 
 namespace XianYuLauncher.Features.VersionManagement.Services;
 
@@ -241,10 +242,9 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
             {
                 onProgress?.Invoke("正在下载原版版本信息...", currentStep / (double)totalSteps * 100);
 
-                var originalVersionJsonContent = await _versionInfoManager.GetVersionInfoJsonAsync(
+                var originalVersionJsonContent = await GetOriginalVersionJsonContentAsync(
                     minecraftVersion,
-                    minecraftDirectory,
-                    allowNetwork: true);
+                    minecraftDirectory);
 
                 var versionJsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
                 await File.WriteAllTextAsync(versionJsonPath, originalVersionJsonContent);
@@ -547,6 +547,59 @@ public class VersionSettingsOrchestrator : IVersionSettingsOrchestrator
                 var mapped = stepStartProgress + (status.Percent / 100.0) * (stepEndProgress - stepStartProgress);
                 onProgress?.Invoke($"正在安装 {loader.Name} {loader.SelectedVersion}...", mapped);
             });
+    }
+
+    private async Task<string> GetOriginalVersionJsonContentAsync(string minecraftVersion, string minecraftDirectory)
+    {
+        var preferLocal = await ShouldPreferLocalBaseVersionJsonAsync(minecraftVersion, minecraftDirectory);
+
+        return await _versionInfoManager.GetVersionInfoJsonAsync(
+            minecraftVersion,
+            minecraftDirectory,
+            allowNetwork: true,
+            preferLocal: preferLocal);
+    }
+
+    private async Task<bool> ShouldPreferLocalBaseVersionJsonAsync(string minecraftVersion, string minecraftDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(minecraftVersion) || string.IsNullOrWhiteSpace(minecraftDirectory))
+        {
+            return true;
+        }
+
+        var baseVersionDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions, minecraftVersion);
+        var baseVersionJsonPath = Path.Combine(baseVersionDirectory, $"{minecraftVersion}.json");
+
+        if (!File.Exists(baseVersionJsonPath))
+        {
+            return true;
+        }
+
+        try
+        {
+            var versionConfig = await _versionInfoService.GetFullVersionInfoAsync(minecraftVersion, baseVersionDirectory);
+            return IsVanillaBaseVersion(versionConfig);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static bool IsVanillaBaseVersion(VersionConfig? versionConfig)
+    {
+        if (versionConfig == null)
+        {
+            return false;
+        }
+
+        var modLoaderType = versionConfig.ModLoaderType;
+        var hasPrimaryLoader = !string.IsNullOrWhiteSpace(modLoaderType)
+            && !string.Equals(modLoaderType, "vanilla", StringComparison.OrdinalIgnoreCase);
+        var hasAddonLoader = !string.IsNullOrWhiteSpace(versionConfig.OptifineVersion)
+            || !string.IsNullOrWhiteSpace(versionConfig.LiteLoaderVersion);
+
+        return !hasPrimaryLoader && !hasAddonLoader;
     }
 
     private static LoaderInstallPlan BuildLoaderInstallPlan(IReadOnlyList<LoaderSelection> selectedLoaders)
