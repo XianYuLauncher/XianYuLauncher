@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
+
+using Serilog;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
@@ -42,7 +45,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
         public void OnNavigatedTo(object parameter)
         {
             EnsureInnerContentFrame();
-            NavigateToRootContent(NormalizeNavigationParameter(parameter), suppressTransition: true);
+            TryNavigateToRootContent(parameter, suppressTransition: true);
         }
 
         public void OnNavigatedFrom()
@@ -72,7 +75,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
                 return false;
             }
 
-            return NavigateBackLocally(backSteps);
+            return NavigateBackLocally(backSteps, useReturnTransition);
         }
 
         public void ResetLocalNavigation(bool useReturnTransition = false)
@@ -82,12 +85,12 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
                 return;
             }
 
-            if (useReturnTransition && TryReturnToLocalRoot())
+            if (useReturnTransition && TryReturnToLocalRoot(useReturnTransition: true))
             {
                 return;
             }
 
-            NavigateBackLocally(ModDownloadDetailInnerContentFrame.BackStack.Count);
+            NavigateBackLocally(ModDownloadDetailInnerContentFrame.BackStack.Count, useReturnTransition);
         }
 
         protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -100,7 +103,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
             }
 
             EnsureInnerContentFrame();
-            NavigateToRootContent(NormalizeNavigationParameter(e.Parameter), suppressTransition: true);
+            TryNavigateToRootContent(e.Parameter, suppressTransition: true);
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
@@ -132,6 +135,57 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
             ModDownloadDetailInnerContentFrame.Navigate(typeof(ModDownloadDetailContentPage), parameter, transition);
             ModDownloadDetailInnerContentFrame.BackStack.Clear();
             ModDownloadDetailInnerContentFrame.ForwardStack.Clear();
+        }
+
+        private bool TryNavigateToRootContent(object? parameter, bool suppressTransition)
+        {
+            if (!TryNormalizeNavigationParameter(parameter, out var navigationParameter, out var errorMessage))
+            {
+                HandleInvalidNavigationParameter(parameter, errorMessage);
+                return false;
+            }
+
+            NavigateToRootContent(navigationParameter, suppressTransition);
+            return true;
+        }
+
+        private void HandleInvalidNavigationParameter(object? parameter, string errorMessage)
+        {
+            DetachHostedLocalPage();
+            ClearHeaderState();
+            ClearInnerContentFrameState();
+
+            Log.Warning(
+                "[Navigation.ModDownloadDetail] Ignore invalid navigation parameter. ParameterType={ParameterType}; Reason={Reason}",
+                parameter?.GetType().FullName ?? "(null)",
+                errorMessage);
+
+            var dispatcherQueue = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
+            if (dispatcherQueue == null)
+            {
+                if (_navigationService.CanGoBack)
+                {
+                    _navigationService.GoBack();
+                }
+
+                return;
+            }
+
+            dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+            {
+                if (_navigationService.CanGoBack)
+                {
+                    _navigationService.GoBack();
+                }
+            });
+        }
+
+        private void ClearInnerContentFrameState()
+        {
+            ModDownloadDetailInnerContentFrame.Content = null;
+            ModDownloadDetailInnerContentFrame.BackStack.Clear();
+            ModDownloadDetailInnerContentFrame.ForwardStack.Clear();
+            NotifyLocalNavigationStateChanged();
         }
 
         private void ModDownloadDetailInnerContentFrame_Navigated(object sender, NavigationEventArgs e)
@@ -287,11 +341,11 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
             }
         }
 
-        private bool TryReturnToLocalRoot()
+        private bool TryReturnToLocalRoot(bool useReturnTransition)
         {
             if (TryGetLocalRootBreadcrumbItem(out var rootBreadcrumbItem))
             {
-                return TryNavigateLocally(rootBreadcrumbItem, useReturnTransition: true);
+                return TryNavigateLocally(rootBreadcrumbItem, useReturnTransition);
             }
 
             if (!CanGoBackLocally)
@@ -299,7 +353,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
                 return false;
             }
 
-            return NavigateBackLocally(ModDownloadDetailInnerContentFrame.BackStack.Count);
+            return NavigateBackLocally(ModDownloadDetailInnerContentFrame.BackStack.Count, useReturnTransition);
         }
 
         private bool TryGetLocalRootBreadcrumbItem([NotNullWhen(true)] out NavigationBreadcrumbItem? rootBreadcrumbItem)
@@ -351,7 +405,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
             return breadcrumbItems.Count > 0;
         }
 
-        private bool NavigateBackLocally(int backSteps)
+        private bool NavigateBackLocally(int backSteps, bool useReturnTransition)
         {
             if (backSteps <= 0 || !ModDownloadDetailInnerContentFrame.CanGoBack)
             {
@@ -361,37 +415,109 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
             ResetInnerContentFrameVisualState();
             NotifyLocalNavigationStateChanged();
 
+            var suppressTransition = !useReturnTransition;
+
             for (var step = 0; step < backSteps && ModDownloadDetailInnerContentFrame.CanGoBack; step++)
             {
+                if (suppressTransition)
+                {
+                    ModDownloadDetailInnerContentFrame.GoBack(new SuppressNavigationTransitionInfo());
+                    continue;
+                }
+
                 ModDownloadDetailInnerContentFrame.GoBack();
             }
 
             return true;
         }
 
+        private static bool TryNormalizeNavigationParameter(
+            object? parameter,
+            [NotNullWhen(true)] out ModDownloadDetailNavigationParameter? navigationParameter,
+            out string errorMessage)
+        {
+            try
+            {
+                navigationParameter = NormalizeNavigationParameter(parameter);
+                errorMessage = string.Empty;
+                return true;
+            }
+            catch (ArgumentException ex)
+            {
+                navigationParameter = null;
+                errorMessage = ex.Message;
+                return false;
+            }
+        }
+
         private static ModDownloadDetailNavigationParameter NormalizeNavigationParameter(object? parameter)
         {
             if (parameter is ModDownloadDetailNavigationParameter navigationParameter)
             {
-                return navigationParameter;
+                var normalizedProjectId = NormalizeProjectId(
+                    navigationParameter.ProjectId,
+                    navigationParameter.Project?.ProjectId,
+                    nameof(parameter));
+
+                if (string.Equals(normalizedProjectId, navigationParameter.ProjectId, StringComparison.Ordinal))
+                {
+                    return navigationParameter;
+                }
+
+                return new ModDownloadDetailNavigationParameter
+                {
+                    ProjectId = normalizedProjectId,
+                    Project = navigationParameter.Project,
+                    DisplayTitleHint = navigationParameter.DisplayTitleHint,
+                    SourceType = navigationParameter.SourceType,
+                    BreadcrumbRootLabel = navigationParameter.BreadcrumbRootLabel,
+                    BreadcrumbRootPageKey = navigationParameter.BreadcrumbRootPageKey,
+                    BreadcrumbRootNavigationParameter = navigationParameter.BreadcrumbRootNavigationParameter,
+                    BreadcrumbRootTarget = navigationParameter.BreadcrumbRootTarget,
+                    LocalBreadcrumbTrail = navigationParameter.LocalBreadcrumbTrail,
+                };
             }
 
             if (parameter is Tuple<XianYuLauncher.Core.Models.ModrinthProject, string> tuple)
             {
-                return CreateLegacyNavigationParameter(tuple.Item1.ProjectId, tuple.Item1, tuple.Item2);
+                return CreateLegacyNavigationParameter(
+                    NormalizeProjectId(tuple.Item1.ProjectId, null, nameof(parameter)),
+                    tuple.Item1,
+                    tuple.Item2);
             }
 
             if (parameter is XianYuLauncher.Core.Models.ModrinthProject mod)
             {
-                return CreateLegacyNavigationParameter(mod.ProjectId, mod, null);
+                return CreateLegacyNavigationParameter(
+                    NormalizeProjectId(mod.ProjectId, null, nameof(parameter)),
+                    mod,
+                    null);
             }
 
             if (parameter is string modId)
             {
-                return CreateLegacyNavigationParameter(modId, null, null);
+                return CreateLegacyNavigationParameter(
+                    NormalizeProjectId(modId, null, nameof(parameter)),
+                    null,
+                    null);
             }
 
-            return new ModDownloadDetailNavigationParameter();
+            throw new ArgumentException("无法识别的 Mod 下载详情导航参数，且无法解析出有效的项目 ID。", nameof(parameter));
+        }
+
+        private static string NormalizeProjectId(string? projectId, string? fallbackProjectId, string parameterName)
+        {
+            if (!string.IsNullOrWhiteSpace(projectId))
+            {
+                return projectId;
+            }
+
+            if (!string.IsNullOrWhiteSpace(fallbackProjectId))
+            {
+                return fallbackProjectId;
+            }
+
+            throw new ArgumentException("导航参数缺少有效的项目 ID。", parameterName);
         }
 
         private static ModDownloadDetailNavigationParameter CreateLegacyNavigationParameter(

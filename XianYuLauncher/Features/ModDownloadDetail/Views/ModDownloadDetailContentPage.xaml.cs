@@ -18,14 +18,20 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
     /// </summary>
     public sealed partial class ModDownloadDetailContentPage : Page, IHostedLocalPage
     {
+        private EventHandler? _closeRequested;
+
         public ModDownloadDetailViewModel ViewModel { get; }
 
         public IPageHeaderAware HeaderSource => ViewModel;
 
+        /// <summary>
+        /// 当前页面本身不会主动请求关闭；保留标准事件实现以满足接口契约并允许外部正常订阅。
+        /// 如后续新增关闭行为，请在对应时机触发该事件。
+        /// </summary>
         public event EventHandler? CloseRequested
         {
-            add { }
-            remove { }
+            add => _closeRequested += value;
+            remove => _closeRequested -= value;
         }
 
         public event EventHandler<ModDownloadDetailNavigationRequestedEventArgs>? DetailNavigationRequested
