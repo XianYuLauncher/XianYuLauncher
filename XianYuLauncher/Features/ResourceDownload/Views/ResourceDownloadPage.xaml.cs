@@ -105,8 +105,10 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
 
         if (useReturnTransition && CanGoBackLocally)
         {
-            _ = TryReturnToLocalRoot(useReturnTransition: true);
-            return;
+            if (TryReturnToLocalRoot(useReturnTransition: true))
+            {
+                return;
+            }
         }
 
         DetachHostedLocalPage();
@@ -221,7 +223,12 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
 
     private void HostedLocalPage_CloseRequested(object? sender, EventArgs e)
     {
-        _ = TryGoBackLocally();
+        if (TryGoBackLocally())
+        {
+            return;
+        }
+
+        ReturnToRootContent();
     }
 
     private void ActiveHostedHeaderMetadata_PropertyChanged(object? sender, PropertyChangedEventArgs e)
