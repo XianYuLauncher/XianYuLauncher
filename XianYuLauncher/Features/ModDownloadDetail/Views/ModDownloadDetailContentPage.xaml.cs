@@ -7,6 +7,7 @@ using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 
 using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.Features.ModDownloadDetail.Models;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
 using XianYuLauncher.Helpers;
 
@@ -27,6 +28,12 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
             remove { }
         }
 
+        public event EventHandler<ModDownloadDetailNavigationRequestedEventArgs>? DetailNavigationRequested
+        {
+            add => ViewModel.DetailNavigationRequested += value;
+            remove => ViewModel.DetailNavigationRequested -= value;
+        }
+
         private bool _isDescriptionExpanded = false;
 
         public ModDownloadDetailContentPage()
@@ -41,7 +48,11 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
 
             ResetDescriptionState();
 
-            if (e.Parameter is Tuple<XianYuLauncher.Core.Models.ModrinthProject, string> tuple)
+            if (e.Parameter is ModDownloadDetailNavigationParameter navigationParameter)
+            {
+                await ViewModel.LoadModDetailsAsync(navigationParameter);
+            }
+            else if (e.Parameter is Tuple<XianYuLauncher.Core.Models.ModrinthProject, string> tuple)
             {
                 await ViewModel.LoadModDetailsAsync(tuple.Item1, tuple.Item2);
             }

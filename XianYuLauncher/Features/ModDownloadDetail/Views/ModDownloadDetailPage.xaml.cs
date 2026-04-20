@@ -11,6 +11,9 @@ using Microsoft.UI.Xaml.Navigation;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Features.ModDownloadDetail.Models;
+using XianYuLauncher.Features.ResourceDownload.ViewModels;
+using XianYuLauncher.Helpers;
 using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.ModDownloadDetail.Views
@@ -38,7 +41,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
         public void OnNavigatedTo(object parameter)
         {
             EnsureInnerContentFrame();
-            NavigateToRootContent(parameter, suppressTransition: true);
+            NavigateToRootContent(NormalizeNavigationParameter(parameter), suppressTransition: true);
         }
 
         public void OnNavigatedFrom()
@@ -115,7 +118,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
             _isInnerContentFrameInitialized = true;
         }
 
-        private void NavigateToRootContent(object? parameter, bool suppressTransition)
+        private void NavigateToRootContent(ModDownloadDetailNavigationParameter parameter, bool suppressTransition)
         {
             ResetInnerContentFrameVisualState();
             DetachHostedLocalPage();
@@ -144,6 +147,12 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
             hostedLocalPage.ResetEmbeddedVisualState();
             hostedLocalPage.CloseRequested += HostedLocalPage_CloseRequested;
             hostedLocalPage.HeaderSource.HeaderMetadata.PropertyChanged += ActiveHostedHeaderMetadata_PropertyChanged;
+
+            if (hostedLocalPage is ModDownloadDetailContentPage detailContentPage)
+            {
+                detailContentPage.DetailNavigationRequested += DetailContentPage_DetailNavigationRequested;
+            }
+
             ApplyHostedPageHeaderState(hostedLocalPage.HeaderSource);
             NotifyLocalNavigationStateChanged();
         }
@@ -157,7 +166,23 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
 
             _activeHostedLocalPage.CloseRequested -= HostedLocalPage_CloseRequested;
             _activeHostedLocalPage.HeaderSource.HeaderMetadata.PropertyChanged -= ActiveHostedHeaderMetadata_PropertyChanged;
+
+            if (_activeHostedLocalPage is ModDownloadDetailContentPage detailContentPage)
+            {
+                detailContentPage.DetailNavigationRequested -= DetailContentPage_DetailNavigationRequested;
+            }
+
             _activeHostedLocalPage = null;
+        }
+
+        private void DetailContentPage_DetailNavigationRequested(object? sender, ModDownloadDetailNavigationRequestedEventArgs e)
+        {
+            EnsureInnerContentFrame();
+            ResetInnerContentFrameVisualState();
+            ModDownloadDetailInnerContentFrame.Navigate(
+                typeof(ModDownloadDetailContentPage),
+                e.NavigationParameter,
+                new DrillInNavigationTransitionInfo());
         }
 
         private void HostedLocalPage_CloseRequested(object? sender, EventArgs e)
@@ -338,6 +363,99 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
             }
 
             return true;
+        }
+
+        private static ModDownloadDetailNavigationParameter NormalizeNavigationParameter(object? parameter)
+        {
+            if (parameter is ModDownloadDetailNavigationParameter navigationParameter)
+            {
+                return navigationParameter;
+            }
+
+            if (parameter is Tuple<XianYuLauncher.Core.Models.ModrinthProject, string> tuple)
+            {
+                return CreateLegacyNavigationParameter(tuple.Item1.ProjectId, tuple.Item1, tuple.Item2);
+            }
+
+            if (parameter is XianYuLauncher.Core.Models.ModrinthProject mod)
+            {
+                return CreateLegacyNavigationParameter(mod.ProjectId, mod, null);
+            }
+
+            if (parameter is string modId)
+            {
+                return CreateLegacyNavigationParameter(modId, null, null);
+            }
+
+            return new ModDownloadDetailNavigationParameter();
+        }
+
+        private static ModDownloadDetailNavigationParameter CreateLegacyNavigationParameter(
+            string projectId,
+            XianYuLauncher.Core.Models.ModrinthProject? project,
+            string? sourceType)
+        {
+            var navigationParameter = new ModDownloadDetailNavigationParameter
+            {
+                ProjectId = projectId,
+                Project = project,
+                SourceType = sourceType,
+            };
+
+            if (!TryCreateResourceDownloadRoot(sourceType, out var rootLabel, out var rootPageKey, out var rootNavigationParameter))
+            {
+                return navigationParameter;
+            }
+
+            return new ModDownloadDetailNavigationParameter
+            {
+                ProjectId = projectId,
+                Project = project,
+                SourceType = sourceType,
+                BreadcrumbRootLabel = rootLabel,
+                BreadcrumbRootPageKey = rootPageKey,
+                BreadcrumbRootNavigationParameter = rootNavigationParameter,
+            };
+        }
+
+        private static bool TryCreateResourceDownloadRoot(
+            string? sourceType,
+            out string rootLabel,
+            out string? rootPageKey,
+            out object? rootNavigationParameter)
+        {
+            rootLabel = string.Empty;
+            rootPageKey = null;
+            rootNavigationParameter = null;
+
+            if (!TryMapSourceTypeToResourceDownloadTab(sourceType, out var tabKey))
+            {
+                return false;
+            }
+
+            rootLabel = "ResourceDownloadPage_HeaderTitle".GetLocalized();
+            rootPageKey = typeof(ResourceDownloadViewModel).FullName!;
+            rootNavigationParameter = new Dictionary<string, string>
+            {
+                ["tab"] = tabKey,
+            };
+            return true;
+        }
+
+        private static bool TryMapSourceTypeToResourceDownloadTab(string? sourceType, out string tabKey)
+        {
+            tabKey = sourceType?.Trim().ToLowerInvariant() switch
+            {
+                "mod" => "mod",
+                "shader" => "shaderpack",
+                "resourcepack" => "resourcepack",
+                "datapack" => "datapack",
+                "modpack" => "modpack",
+                "world" => "world",
+                _ => string.Empty,
+            };
+
+            return !string.IsNullOrWhiteSpace(tabKey);
         }
     }
 }
