@@ -42,19 +42,13 @@
     </Page.Resources>
 
     <Grid x:Name="ContentArea">
-        <ScrollViewer
+        <ScrollViewer x:Name="DetailScrollViewer"
             HorizontalScrollMode="Disabled"
             VerticalScrollMode="Enabled"
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Auto"
-            Padding="{StaticResource PageDetailScrollViewerPadding}">
-            <Grid HorizontalAlignment="Stretch">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="100*" MaxWidth="1064" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="1" Spacing="16" HorizontalAlignment="Stretch">
+            Padding="0">
+            <StackPanel x:Name="DetailContentStack" Spacing="16" HorizontalAlignment="Stretch">
                     <StackPanel.ChildrenTransitions>
                         <RepositionThemeTransition IsStaggeringEnabled="False" />
                     </StackPanel.ChildrenTransitions>
@@ -481,8 +475,7 @@
                             </ListView.ItemTemplate>
                         </ListView>
                     </StackPanel>
-                </StackPanel>
-            </Grid>
+            </StackPanel>
         </ScrollViewer>
     </Grid>
 </Page>

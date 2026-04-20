@@ -56,6 +56,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
 
     public event EventHandler<ModLoaderSelectorNavigationParameter>? ModLoaderSelectorRequested;
 
+    public event EventHandler<ModDownloadDetailNavigationParameter>? ModDownloadDetailRequested;
+
     // 版本下载相关属性和命令
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -4952,18 +4954,18 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
 
     private void NavigateToModDownloadDetail(ModrinthProject project, string sourceType, string tabKey)
     {
-        _navigationService.NavigateTo(
-            typeof(ModDownloadDetailViewModel).FullName!,
+        ModDownloadDetailRequested?.Invoke(
+            this,
             new ModDownloadDetailNavigationParameter
             {
                 ProjectId = project.ProjectId,
                 Project = project,
                 SourceType = sourceType,
-                BreadcrumbRootLabel = "ResourceDownloadPage_HeaderTitle".GetLocalized(),
-                BreadcrumbRootPageKey = typeof(ResourceDownloadViewModel).FullName!,
-                BreadcrumbRootNavigationParameter = new Dictionary<string, string>
+                BreadcrumbRootLabel = HeaderMetadata.Title,
+                BreadcrumbRootTarget = new LocalNavigationTarget
                 {
-                    ["tab"] = tabKey,
+                    RouteKey = "resource-download/root",
+                    Parameter = tabKey,
                 },
             });
     }

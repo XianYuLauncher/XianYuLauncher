@@ -372,14 +372,6 @@ public sealed partial class ResourceDownloadRootPage : Page
         }
     }
 
-    private async void ModItem_Tapped(object sender, TappedRoutedEventArgs e)
-    {
-        if (sender is Grid { DataContext: ModrinthProject mod })
-        {
-            await ViewModel.DownloadModCommand.ExecuteAsync(mod);
-        }
-    }
-
     private async void ModSearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
         if (ResourceTabView.SelectedIndex == 1)
@@ -1006,14 +998,6 @@ public sealed partial class ResourceDownloadRootPage : Page
         }
     }
 
-    private async void ResourcePackItem_Tapped(object sender, TappedRoutedEventArgs e)
-    {
-        if (sender is Grid { DataContext: ModrinthProject resourcePack })
-        {
-            await ViewModel.DownloadResourcePackCommand.ExecuteAsync(resourcePack);
-        }
-    }
-
     private void ShaderPackListScrollViewer_ScrollChanged(object sender, ScrollViewerViewChangedEventArgs e)
     {
         if (sender is ScrollViewer scrollViewer)
@@ -1064,14 +1048,6 @@ public sealed partial class ResourceDownloadRootPage : Page
     private async void ShaderPackListView_ItemClick(object sender, ItemClickEventArgs e)
     {
         if (e.ClickedItem is ModrinthProject shaderPack)
-        {
-            await ViewModel.DownloadShaderPackCommand.ExecuteAsync(shaderPack);
-        }
-    }
-
-    private async void ShaderPackItem_Tapped(object sender, TappedRoutedEventArgs e)
-    {
-        if (sender is Grid { DataContext: ModrinthProject shaderPack })
         {
             await ViewModel.DownloadShaderPackCommand.ExecuteAsync(shaderPack);
         }
@@ -1140,14 +1116,6 @@ public sealed partial class ResourceDownloadRootPage : Page
         }
     }
 
-    private async void DatapackItem_Tapped(object sender, TappedRoutedEventArgs e)
-    {
-        if (sender is Grid { DataContext: ModrinthProject datapack })
-        {
-            await ViewModel.DownloadDatapackCommand.ExecuteAsync(datapack);
-        }
-    }
-
     private async void ModpackSearchBox_QuerySubmitted(AutoSuggestBox sender, AutoSuggestBoxQuerySubmittedEventArgs args)
     {
         if (ResourceTabView.SelectedIndex == 5)
@@ -1206,14 +1174,6 @@ public sealed partial class ResourceDownloadRootPage : Page
     private async void ModpackListView_ItemClick(object sender, ItemClickEventArgs e)
     {
         if (e.ClickedItem is ModrinthProject modpack)
-        {
-            await ViewModel.DownloadModpackCommand.ExecuteAsync(modpack);
-        }
-    }
-
-    private async void ModpackItem_Tapped(object sender, TappedRoutedEventArgs e)
-    {
-        if (sender is Grid { DataContext: ModrinthProject modpack })
         {
             await ViewModel.DownloadModpackCommand.ExecuteAsync(modpack);
         }
@@ -1344,14 +1304,6 @@ public sealed partial class ResourceDownloadRootPage : Page
     private async void WorldListView_ItemClick(object sender, ItemClickEventArgs e)
     {
         if (e.ClickedItem is ModrinthProject world)
-        {
-            await ViewModel.NavigateToWorldDetailCommand.ExecuteAsync(world);
-        }
-    }
-
-    private async void WorldItem_Tapped(object sender, TappedRoutedEventArgs e)
-    {
-        if (sender is Grid { DataContext: ModrinthProject world })
         {
             await ViewModel.NavigateToWorldDetailCommand.ExecuteAsync(world);
         }

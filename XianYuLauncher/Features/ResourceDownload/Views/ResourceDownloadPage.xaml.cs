@@ -11,6 +11,8 @@ using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Controls;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Features.ModDownloadDetail.Models;
+using XianYuLauncher.Features.ModDownloadDetail.Views;
 using XianYuLauncher.Features.ModLoaderSelector.Models;
 using XianYuLauncher.Features.ModLoaderSelector.ViewModels;
 using XianYuLauncher.Features.ModLoaderSelector.Views;
@@ -45,6 +47,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         _rootHeaderSubtitle = ViewModel.HeaderMetadata.Subtitle;
         DataContext = ViewModel;
         ViewModel.ModLoaderSelectorRequested += ViewModel_ModLoaderSelectorRequested;
+        ViewModel.ModDownloadDetailRequested += ViewModel_ModDownloadDetailRequested;
         InitializeComponent();
         EnsureInnerContentFrame();
         ShowRootPageState();
@@ -159,6 +162,15 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         ResourceDownloadInnerContentFrame.Navigate(typeof(ModLoaderSelectorPage), e, new DrillInNavigationTransitionInfo());
     }
 
+    private void ViewModel_ModDownloadDetailRequested(object? sender, ModDownloadDetailNavigationParameter e)
+    {
+        EnsureInnerContentFrame();
+        ResetInnerContentFrameVisualState();
+        DetachHostedLocalPage();
+        FavoritesDropArea.Visibility = Visibility.Collapsed;
+        ResourceDownloadInnerContentFrame.Navigate(typeof(ModDownloadDetailContentPage), e, new DrillInNavigationTransitionInfo());
+    }
+
     private void ResourceDownloadInnerContentFrame_Navigated(object sender, NavigationEventArgs e)
     {
         if (e.Content is ResourceDownloadRootPage rootPage)
@@ -184,6 +196,12 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         hostedLocalPage.ResetEmbeddedVisualState();
         hostedLocalPage.CloseRequested += HostedLocalPage_CloseRequested;
         hostedLocalPage.HeaderSource.HeaderMetadata.PropertyChanged += ActiveHostedHeaderMetadata_PropertyChanged;
+
+        if (hostedLocalPage is ModDownloadDetailContentPage detailContentPage)
+        {
+            detailContentPage.DetailNavigationRequested += DetailContentPage_DetailNavigationRequested;
+        }
+
         ApplyHostedPageHeaderState(hostedLocalPage.HeaderSource);
         FavoritesDropArea.Visibility = Visibility.Collapsed;
         NotifyLocalNavigationStateChanged();
@@ -216,9 +234,22 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
             return;
         }
 
+        if (_activeHostedLocalPage is ModDownloadDetailContentPage detailContentPage)
+        {
+            detailContentPage.DetailNavigationRequested -= DetailContentPage_DetailNavigationRequested;
+        }
+
         _activeHostedLocalPage.CloseRequested -= HostedLocalPage_CloseRequested;
         _activeHostedLocalPage.HeaderSource.HeaderMetadata.PropertyChanged -= ActiveHostedHeaderMetadata_PropertyChanged;
         _activeHostedLocalPage = null;
+    }
+
+    private void DetailContentPage_DetailNavigationRequested(object? sender, ModDownloadDetailNavigationRequestedEventArgs e)
+    {
+        EnsureInnerContentFrame();
+        ResetInnerContentFrameVisualState();
+        FavoritesDropArea.Visibility = Visibility.Collapsed;
+        ResourceDownloadInnerContentFrame.Navigate(typeof(ModDownloadDetailContentPage), e.NavigationParameter, new DrillInNavigationTransitionInfo());
     }
 
     private void HostedLocalPage_CloseRequested(object? sender, EventArgs e)

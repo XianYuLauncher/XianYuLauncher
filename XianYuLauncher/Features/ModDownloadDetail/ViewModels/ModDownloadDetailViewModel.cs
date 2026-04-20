@@ -592,22 +592,31 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         // 接受ModrinthProject对象和来源类型的重载
         public async Task LoadModDetailsAsync(ModrinthProject mod, string? sourceType)
         {
-            _navigationParameter = null;
-            _passedModInfo = mod;
-            _sourceType = sourceType;
+            ApplyNavigationContext(new ModDownloadDetailNavigationParameter
+            {
+                ProjectId = mod.ProjectId,
+                Project = mod,
+                SourceType = sourceType,
+            });
             await LoadModDetailsAsync(mod.ProjectId);
         }
 
         public async Task LoadModDetailsAsync(ModDownloadDetailNavigationParameter navigationParameter)
         {
-            _navigationParameter = navigationParameter;
-            _passedModInfo = navigationParameter.Project;
-            _sourceType = navigationParameter.SourceType;
+            ApplyNavigationContext(navigationParameter);
             await LoadModDetailsAsync(navigationParameter.ProjectId);
         }
 
         public async Task LoadModDetailsAsync(string modId)
         {
+            if (_navigationParameter == null || !string.Equals(_navigationParameter.ProjectId, modId, StringComparison.OrdinalIgnoreCase))
+            {
+                ApplyNavigationContext(new ModDownloadDetailNavigationParameter
+                {
+                    ProjectId = modId,
+                });
+            }
+
             if (_passedModInfo == null || !string.Equals(_passedModInfo.ProjectId, modId, StringComparison.OrdinalIgnoreCase))
             {
                 _passedModInfo = null;
@@ -870,13 +879,26 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
 
         private void UpdateHeaderMetadata()
         {
-            HeaderMetadata.Title = ModName;
+            HeaderMetadata.Title = GetHeaderTitle();
             HeaderMetadata.Subtitle = BuildHeaderSubtitle();
             RebuildHeaderMetadata();
         }
 
+        private void ApplyNavigationContext(ModDownloadDetailNavigationParameter navigationParameter)
+        {
+            _navigationParameter = navigationParameter;
+            _passedModInfo = navigationParameter.Project;
+            _sourceType = navigationParameter.SourceType;
+            UpdateHeaderMetadata();
+        }
+
         private string BuildHeaderSubtitle()
         {
+            if (string.IsNullOrWhiteSpace(PlatformName) && string.IsNullOrWhiteSpace(ModAuthor))
+            {
+                return _passedModInfo?.Author ?? string.Empty;
+            }
+
             if (string.IsNullOrWhiteSpace(PlatformName))
             {
                 return ModAuthor;
@@ -902,12 +924,22 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
 
             if (_navigationParameter.HasBreadcrumbRoot)
             {
-                HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+                var rootBreadcrumbItem = new NavigationBreadcrumbItem
                 {
                     DisplayText = _navigationParameter.BreadcrumbRootLabel,
-                    PageKey = _navigationParameter.BreadcrumbRootPageKey,
-                    NavigationParameter = _navigationParameter.BreadcrumbRootNavigationParameter,
-                });
+                };
+
+                if (_navigationParameter.BreadcrumbRootTarget?.HasTarget == true)
+                {
+                    rootBreadcrumbItem.LocalNavigationTarget = _navigationParameter.BreadcrumbRootTarget;
+                }
+                else
+                {
+                    rootBreadcrumbItem.PageKey = _navigationParameter.BreadcrumbRootPageKey;
+                    rootBreadcrumbItem.NavigationParameter = _navigationParameter.BreadcrumbRootNavigationParameter;
+                }
+
+                HeaderMetadata.BreadcrumbItems.Add(rootBreadcrumbItem);
             }
 
             foreach (var breadcrumbSegment in _navigationParameter.LocalBreadcrumbTrail)
@@ -937,19 +969,29 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
             HeaderMetadata.ShowBreadcrumb = true;
         }
 
-        private string GetCurrentBreadcrumbDisplayText()
+        private string GetHeaderTitle()
         {
             if (!string.IsNullOrWhiteSpace(ModName))
             {
                 return ModName;
             }
 
-            if (_navigationParameter?.Project is { Title.Length: > 0 } prefetchedProject)
+            if (_passedModInfo is { DisplayTitle.Length: > 0 } prefetchedProject)
             {
-                return prefetchedProject.Title;
+                return prefetchedProject.DisplayTitle;
             }
 
-            return ModId;
+            if (!string.IsNullOrWhiteSpace(_navigationParameter?.ProjectId))
+            {
+                return "Msg_Loading".GetLocalized();
+            }
+
+            return string.Empty;
+        }
+
+        private string GetCurrentBreadcrumbDisplayText()
+        {
+            return GetHeaderTitle();
         }
 
         private Task SetModHeaderPlaceholderAsync()

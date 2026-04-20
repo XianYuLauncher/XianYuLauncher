@@ -23,6 +23,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
     /// </summary>
     public sealed partial class ModDownloadDetailPage : Page, INavigationAware, ILocalNavigationHost
     {
+        private const string HostedDetailBreadcrumbItemTemplateKey = "HostedDetailBreadcrumbItemTemplate";
         private readonly INavigationService _navigationService;
         private bool _isInnerContentFrameInitialized;
         private IHostedLocalPage? _activeHostedLocalPage;
@@ -98,7 +99,8 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
                 return;
             }
 
-            OnNavigatedTo(e.Parameter);
+            EnsureInnerContentFrame();
+            NavigateToRootContent(NormalizeNavigationParameter(e.Parameter), suppressTransition: true);
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
@@ -234,12 +236,14 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
                     ModDownloadDetailPageHeader.ShowPrimaryHeading = false;
                     ModDownloadDetailPageHeader.BreadcrumbFontSize = 28;
                     ModDownloadDetailPageHeader.BreadcrumbMargin = new Thickness(-2, -11, 0, 12);
+                    ModDownloadDetailPageHeader.BreadcrumbItemTemplate = Resources[HostedDetailBreadcrumbItemTemplateKey] as DataTemplate;
                     return;
             }
 
             ModDownloadDetailPageHeader.ShowPrimaryHeading = true;
             ModDownloadDetailPageHeader.BreadcrumbFontSize = 15;
             ModDownloadDetailPageHeader.BreadcrumbMargin = new Thickness(0, 0, 0, 12);
+            ModDownloadDetailPageHeader.BreadcrumbItemTemplate = null;
         }
 
         private void ResetInnerContentFrameVisualState()

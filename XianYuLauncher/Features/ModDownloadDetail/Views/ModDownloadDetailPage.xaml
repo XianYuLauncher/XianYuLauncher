@@ -6,8 +6,23 @@
     xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
     xmlns:localControls="using:XianYuLauncher.Controls"
     xmlns:mediaAnimation="using:Microsoft.UI.Xaml.Media.Animation"
+    xmlns:shared="using:XianYuLauncher.Shared.Models"
     mc:Ignorable="d"
     NavigationCacheMode="Required">
+
+    <Page.Resources>
+        <Style x:Key="ProminentBreadcrumbTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="28" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <DataTemplate x:Key="HostedDetailBreadcrumbItemTemplate" x:DataType="shared:NavigationBreadcrumbItem">
+            <TextBlock Text="{x:Bind DisplayText, Mode=OneWay}"
+                       Style="{StaticResource ProminentBreadcrumbTextStyle}" />
+        </DataTemplate>
+    </Page.Resources>
 
     <Grid x:Name="ContentArea"
           mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
@@ -21,16 +36,28 @@
             Grid.Row="0"
             BreadcrumbItemClicked="PageHeader_BreadcrumbItemClicked" />
 
-        <Frame x:Name="ModDownloadDetailInnerContentFrame"
-               Grid.Row="1"
-               Background="Transparent"
-               HorizontalAlignment="Stretch"
-               VerticalAlignment="Stretch">
-            <Frame.ContentTransitions>
-                <TransitionCollection>
-                    <NavigationThemeTransition />
-                </TransitionCollection>
-            </Frame.ContentTransitions>
-        </Frame>
+        <Grid x:Name="ModDownloadDetailInnerContentHost"
+              Grid.Row="1"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Stretch"
+              Padding="{StaticResource PageScrollViewerPadding}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Frame x:Name="ModDownloadDetailInnerContentFrame"
+                   Grid.Column="1"
+                   Background="Transparent"
+                   HorizontalAlignment="Stretch"
+                   VerticalAlignment="Stretch">
+                <Frame.ContentTransitions>
+                    <TransitionCollection>
+                        <NavigationThemeTransition />
+                    </TransitionCollection>
+                </Frame.ContentTransitions>
+            </Frame>
+        </Grid>
     </Grid>
 </Page>

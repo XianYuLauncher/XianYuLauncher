@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.ModDownloadDetail.Models;
 
@@ -19,9 +20,12 @@ public sealed class ModDownloadDetailNavigationParameter
 
     public object? BreadcrumbRootNavigationParameter { get; init; }
 
+    public LocalNavigationTarget? BreadcrumbRootTarget { get; init; }
+
     public IReadOnlyList<ModDownloadDetailBreadcrumbSegment> LocalBreadcrumbTrail { get; init; } = Array.Empty<ModDownloadDetailBreadcrumbSegment>();
 
-    public bool HasBreadcrumbRoot => !string.IsNullOrWhiteSpace(BreadcrumbRootLabel) && !string.IsNullOrWhiteSpace(BreadcrumbRootPageKey);
+    public bool HasBreadcrumbRoot => !string.IsNullOrWhiteSpace(BreadcrumbRootLabel)
+        && ((BreadcrumbRootTarget?.HasTarget ?? false) || !string.IsNullOrWhiteSpace(BreadcrumbRootPageKey));
 
     public ModDownloadDetailNavigationParameter CreateChildParameter(string currentDisplayText, string nextProjectId)
     {
@@ -36,9 +40,11 @@ public sealed class ModDownloadDetailNavigationParameter
         return new ModDownloadDetailNavigationParameter
         {
             ProjectId = nextProjectId,
+            SourceType = SourceType,
             BreadcrumbRootLabel = BreadcrumbRootLabel,
             BreadcrumbRootPageKey = BreadcrumbRootPageKey,
             BreadcrumbRootNavigationParameter = BreadcrumbRootNavigationParameter,
+            BreadcrumbRootTarget = BreadcrumbRootTarget,
             LocalBreadcrumbTrail = breadcrumbTrail,
         };
     }
