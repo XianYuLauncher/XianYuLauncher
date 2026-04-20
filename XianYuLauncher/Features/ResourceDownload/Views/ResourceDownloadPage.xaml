@@ -60,6 +60,20 @@
                 </DropDownButton>
             </Grid>
         </DataTemplate>
+
+        <DataTemplate x:Key="HostedDetailReadOnlyBreadcrumbItemTemplate" x:DataType="shared:NavigationBreadcrumbItem">
+            <Grid>
+                <TextBlock Text="{x:Bind DisplayText, Mode=OneWay}"
+                           Style="{StaticResource ProminentBreadcrumbTextStyle}"
+                           Visibility="{x:Bind IsCurrent, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+
+                <Border Padding="0,8,0,8"
+                        Visibility="{x:Bind IsCurrent, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock Text="{x:Bind DisplayText, Mode=OneWay}"
+                               Style="{StaticResource ProminentBreadcrumbTextStyle}" />
+                </Border>
+            </Grid>
+        </DataTemplate>
     </Page.Resources>
 
     <Grid x:Name="ContentArea"

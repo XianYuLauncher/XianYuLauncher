@@ -358,9 +358,9 @@
                   </ListView.ItemContainerStyle>
                   <ListView.ItemTemplate>
                     <DataTemplate x:DataType="models:ModrinthProject">
-                      <Grid Height="120" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        <Grid Height="120" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                           CornerRadius="8" Padding="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                          BorderThickness="1" Tapped="ModItem_Tapped">
+                          BorderThickness="1">
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="Auto" />
                           <ColumnDefinition Width="*" />
@@ -534,9 +534,9 @@
                   Visibility="{Binding IsShaderPackProcessing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                   <controls:AdaptiveGridView.ItemTemplate>
                     <DataTemplate x:DataType="models:ModrinthProject">
-                      <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                           CornerRadius="8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                          BorderThickness="1" Tapped="ShaderPackItem_Tapped">
+                          BorderThickness="1">
                         <Grid.RowDefinitions>
                           <RowDefinition Height="140" />
                           <RowDefinition Height="*" />
@@ -732,9 +732,9 @@
                   Visibility="{Binding IsResourcePackProcessing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                   <controls:AdaptiveGridView.ItemTemplate>
                     <DataTemplate x:DataType="models:ModrinthProject">
-                      <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                           CornerRadius="8" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                          BorderThickness="1" Tapped="ResourcePackItem_Tapped">
+                          BorderThickness="1">
                         <Grid.RowDefinitions>
                           <RowDefinition Height="140" />
                           <RowDefinition Height="*" />
@@ -939,9 +939,9 @@
                   </ListView.ItemContainerStyle>
                   <ListView.ItemTemplate>
                     <DataTemplate x:DataType="models:ModrinthProject">
-                      <Grid Height="120" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        <Grid Height="120" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                           CornerRadius="8" Padding="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                          BorderThickness="1" Tapped="DatapackItem_Tapped">
+                          BorderThickness="1">
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="Auto" />
                           <ColumnDefinition Width="*" />
@@ -1124,9 +1124,9 @@
                   </ListView.ItemContainerStyle>
                   <ListView.ItemTemplate>
                     <DataTemplate x:DataType="models:ModrinthProject">
-                      <Grid Height="120" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        <Grid Height="120" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                           CornerRadius="8" Padding="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                          BorderThickness="1" Tapped="ModpackItem_Tapped">
+                          BorderThickness="1">
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="Auto" />
                           <ColumnDefinition Width="*" />
@@ -1311,9 +1311,9 @@
                   </ListView.ItemContainerStyle>
                   <ListView.ItemTemplate>
                     <DataTemplate x:DataType="models:ModrinthProject">
-                      <Grid Height="120" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                        <Grid Height="120" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                           CornerRadius="8" Padding="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                          BorderThickness="1" Tapped="WorldItem_Tapped">
+                          BorderThickness="1">
                         <Grid.ColumnDefinitions>
                           <ColumnDefinition Width="Auto" />
                           <ColumnDefinition Width="*" />

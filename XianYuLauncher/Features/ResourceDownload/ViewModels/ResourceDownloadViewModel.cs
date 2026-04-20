@@ -56,6 +56,8 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
 
     public event EventHandler<ModLoaderSelectorNavigationParameter>? ModLoaderSelectorRequested;
 
+    public event EventHandler<ModDownloadDetailNavigationParameter>? ModDownloadDetailRequested;
+
     // 版本下载相关属性和命令
     [ObservableProperty]
     private string _searchText = string.Empty;
@@ -3266,8 +3268,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
             return;
         }
 
-        // 导航到Mod下载详情页面，传递完整的Mod对象和来源类型
-        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, new Tuple<ModrinthProject, string>(mod, "mod"));
+        NavigateToModDownloadDetail(mod, sourceType: "mod", tabKey: "mod");
     }
     
     // 资源包下载命令
@@ -3630,8 +3631,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
             return;
         }
 
-        // 导航到资源包下载详情页面，传递完整的资源包对象和来源类型
-        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, new Tuple<ModrinthProject, string>(resourcePack, "resourcepack"));
+        NavigateToModDownloadDetail(resourcePack, sourceType: "resourcepack", tabKey: "resourcepack");
     }
     
     // 光影下载命令
@@ -4000,8 +4000,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
             return;
         }
 
-        // 导航到光影下载详情页面，传递完整的光影对象和来源类型
-        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, new Tuple<ModrinthProject, string>(shaderPack, "shader"));
+        NavigateToModDownloadDetail(shaderPack, sourceType: "shader", tabKey: "shaderpack");
     }
     
     // 整合包下载命令
@@ -4368,8 +4367,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
             return;
         }
 
-        // 导航到整合包下载详情页面，传递完整的整合包对象和来源类型
-        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, new Tuple<ModrinthProject, string>(modpack, "modpack"));
+        NavigateToModDownloadDetail(modpack, sourceType: "modpack", tabKey: "modpack");
     }
     
     // 数据包搜索命令
@@ -4732,8 +4730,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
             return;
         }
 
-        // 导航到数据包下载详情页面，传递完整的数据包对象和来源类型
-        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, new Tuple<ModrinthProject, string>(datapack, "datapack"));
+        NavigateToModDownloadDetail(datapack, sourceType: "datapack", tabKey: "datapack");
     }
     
     // 世界搜索命令
@@ -4952,7 +4949,25 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
             return;
         }
 
-        // 导航到世界下载详情页面，传递完整的世界对象和来源类型
-        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, new Tuple<ModrinthProject, string>(world, "world"));
+        NavigateToModDownloadDetail(world, sourceType: "world", tabKey: "world");
+    }
+
+    private void NavigateToModDownloadDetail(ModrinthProject project, string sourceType, string tabKey)
+    {
+        ModDownloadDetailRequested?.Invoke(
+            this,
+            new ModDownloadDetailNavigationParameter
+            {
+                ProjectId = project.ProjectId,
+                Project = project,
+                DisplayTitleHint = project.DisplayTitle,
+                SourceType = sourceType,
+                BreadcrumbRootLabel = HeaderMetadata.Title,
+                BreadcrumbRootTarget = new LocalNavigationTarget
+                {
+                    RouteKey = "resource-download/root",
+                    Parameter = tabKey,
+                },
+            });
     }
 }
