@@ -112,7 +112,7 @@ public class NavigationService : INavigationService
                 // 重复导航到同一一级页时，优先把该页的局部 detail 还原到 root，而不是直接忽略这次导航。
                 if (currentLocalNavigationHost?.CanGoBackLocally == true)
                 {
-                    currentLocalNavigationHost.ResetLocalNavigation();
+                    currentLocalNavigationHost.ResetLocalNavigation(useReturnTransition: true);
                     return true;
                 }
 

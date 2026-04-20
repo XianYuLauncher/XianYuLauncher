@@ -76,12 +76,18 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         return true;
     }
 
-    public void ResetLocalNavigation()
+    public void ResetLocalNavigation(bool useReturnTransition = false)
     {
         if (!CanGoBackLocally && ResourceDownloadInnerContentFrame.Content is ResourceDownloadRootPage)
         {
             _activeInnerRootPage?.ApplyPendingNavigationState();
             ShowRootPageState();
+            return;
+        }
+
+        if (useReturnTransition && CanGoBackLocally)
+        {
+            ReturnToRootContent();
             return;
         }
 

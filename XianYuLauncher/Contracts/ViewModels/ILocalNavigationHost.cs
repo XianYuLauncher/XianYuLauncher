@@ -13,5 +13,5 @@ public interface ILocalNavigationHost
 
     bool TryGoBackLocally();
 
-    void ResetLocalNavigation();
+    void ResetLocalNavigation(bool useReturnTransition = false);
 }
