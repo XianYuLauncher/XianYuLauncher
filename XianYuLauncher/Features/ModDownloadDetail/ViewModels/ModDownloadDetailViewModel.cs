@@ -18,14 +18,16 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.ModDownloadDetail.Models;
 using XianYuLauncher.Features.ModDownloadDetail.Services;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
 {
-    public partial class ModDownloadDetailViewModel : ObservableObject
+    public partial class ModDownloadDetailViewModel : ObservableObject, IPageHeaderAware
     {
         private readonly CurseForgeService _curseForgeService;
         private readonly IMinecraftVersionService _minecraftVersionService;
@@ -48,6 +50,12 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         private static readonly string PlaceholderModIconUrl = PlaceholderModIconUri.ToString();
         private string? _downloadPreparationTaskId;
         private string? _downloadTeachingTipGroupKey;
+
+        public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+        public PageHeaderPresentationMode HeaderPresentationMode => HeaderMetadata.ShowBreadcrumb
+            ? PageHeaderPresentationMode.ProminentBreadcrumb
+            : PageHeaderPresentationMode.Standard;
 
         [ObservableProperty]
         private string _modId = string.Empty;
@@ -836,6 +844,29 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
             {
                 SupportedLoaders.Add(loader);
             }
+
+            UpdateHeaderMetadata();
+        }
+
+        private void UpdateHeaderMetadata()
+        {
+            HeaderMetadata.Title = ModName;
+            HeaderMetadata.Subtitle = BuildHeaderSubtitle();
+        }
+
+        private string BuildHeaderSubtitle()
+        {
+            if (string.IsNullOrWhiteSpace(PlatformName))
+            {
+                return ModAuthor;
+            }
+
+            if (string.IsNullOrWhiteSpace(ModAuthor))
+            {
+                return PlatformName;
+            }
+
+            return $"{PlatformName} · {ModAuthor}";
         }
 
         private Task SetModHeaderPlaceholderAsync()

@@ -1,0 +1,488 @@
+<Page x:Class="XianYuLauncher.Features.ModDownloadDetail.Views.ModDownloadDetailContentPage" x:Name="PageRoot"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:controls="using:XianYuLauncher.Controls"
+      xmlns:ct="using:CommunityToolkit.WinUI.UI.Controls"
+      xmlns:labs="using:CommunityToolkit.Labs.WinUI"
+      xmlns:helpers="using:XianYuLauncher.Helpers"
+      xmlns:animations="using:CommunityToolkit.WinUI.Animations"
+      xmlns:viewModels="using:XianYuLauncher.Features.ModDownloadDetail.Models"
+      mc:Ignorable="d">
+
+    <Page.Resources>
+        <Style x:Key="TextBlockButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Foreground" Value="{ThemeResource TextFillColorPrimary}" />
+            <Setter Property="HorizontalAlignment" Value="Left" />
+            <Setter Property="HorizontalContentAlignment" Value="Left" />
+            <Setter Property="VerticalAlignment" Value="Stretch" />
+            <Setter Property="VerticalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <ContentPresenter />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <helpers:BoolToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
+        <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToVisibilityConverter" />
+        <helpers:BoolNegationConverter x:Key="BooleanNegationConverter" />
+        <helpers:BoolToGlyphConverter x:Key="BoolToGlyphConverter" />
+        <helpers:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
+        <helpers:FirstLetterToUpperConverter x:Key="FirstLetterToUpperConverter" />
+        <helpers:VersionCountToStringConverter x:Key="VersionCountToStringConverter" />
+    </Page.Resources>
+
+    <Grid x:Name="ContentArea">
+        <ScrollViewer
+            HorizontalScrollMode="Disabled"
+            VerticalScrollMode="Enabled"
+            HorizontalScrollBarVisibility="Disabled"
+            VerticalScrollBarVisibility="Auto"
+            Padding="{StaticResource PageDetailScrollViewerPadding}">
+            <Grid HorizontalAlignment="Stretch">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="100*" MaxWidth="1064" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="1" Spacing="16" HorizontalAlignment="Stretch">
+                    <StackPanel.ChildrenTransitions>
+                        <RepositionThemeTransition IsStaggeringEnabled="False" />
+                    </StackPanel.ChildrenTransitions>
+
+                    <StackPanel Spacing="8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0"
+                                        Orientation="Horizontal"
+                                        Spacing="12"
+                                        VerticalAlignment="Top"
+                                        Margin="0,4,0,0"
+                                        Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                <Border x:Name="IconBorder" CornerRadius="8">
+                                    <Image Source="{x:Bind ViewModel.ModHeaderIcon, Mode=OneWay}" Width="80" Height="80" Stretch="UniformToFill" />
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="{x:Bind ViewModel.ModName, Mode=OneWay}" FontSize="24" FontWeight="Bold" />
+                                    <Button Command="{x:Bind ViewModel.ShowPublishersCommand}"
+                                            Style="{StaticResource TextBlockButtonStyle}"
+                                            Margin="0,4,0,0"
+                                            PointerEntered="AuthorButton_PointerEntered"
+                                            PointerExited="AuthorButton_PointerExited">
+                                        <TextBlock x:Name="AuthorTextBlock"
+                                                   Text="{x:Bind ViewModel.ModAuthor, Mode=OneWay}"
+                                                   FontSize="16"
+                                                   Foreground="{ThemeResource TextFillColorSecondary}" />
+                                    </Button>
+                                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="0,4,0,0">
+                                        <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}">
+                                            <Run x:Uid="ModDownloadDetailPage_LicenseText" Text="许可证: " />
+                                            <Run Text="{x:Bind ViewModel.ModLicense, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <TextBlock Text="|" FontSize="14" Foreground="{ThemeResource TextFillColorTertiary}" />
+                                        <TextBlock FontSize="14" Foreground="{ThemeResource TextFillColorSecondary}">
+                                            <Run x:Uid="ModDownloadDetailPage_DownloadsText" Text="下载量: " />
+                                            <Run Text="{x:Bind ViewModel.ModDownloads, Mode=OneWay}" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <Grid Grid.Column="1"
+                                  VerticalAlignment="Center"
+                                  HorizontalAlignment="Right"
+                                  Margin="0,0,16,0"
+                                  Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                                <Button Command="{x:Bind ViewModel.QuickInstallCommand}"
+                                        CornerRadius="8"
+                                        Height="44"
+                                        Padding="16,10"
+                                        FontSize="14"
+                                        FontWeight="SemiBold"
+                                        HorizontalContentAlignment="Center"
+                                        VerticalContentAlignment="Center"
+                                        MinWidth="120">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE896;" FontSize="16" />
+                                        <TextBlock x:Uid="ModDownloadDetailPage_QuickInstallButton" Text="安装" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </Grid>
+
+                            <Grid Grid.ColumnSpan="2"
+                                  Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="12" VerticalAlignment="Top" HorizontalAlignment="Left" Margin="0,4,0,0">
+                                    <Grid Width="80" Height="80">
+                                        <labs:Shimmer />
+                                    </Grid>
+                                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Left" Spacing="8">
+                                        <Grid Width="260" Height="30" HorizontalAlignment="Left">
+                                            <labs:Shimmer />
+                                        </Grid>
+                                        <Grid Width="180" Height="20" HorizontalAlignment="Left">
+                                            <labs:Shimmer />
+                                        </Grid>
+                                        <Grid Width="300" Height="20" HorizontalAlignment="Left">
+                                            <labs:Shimmer />
+                                        </Grid>
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <Grid Grid.Column="1" Width="120" Height="44" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,16,0">
+                                    <labs:Shimmer />
+                                </Grid>
+                            </Grid>
+                        </Grid>
+                    </StackPanel>
+
+                    <Grid>
+                        <StackPanel Spacing="8"
+                                    Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                            <TextBlock x:Uid="ModDownloadDetailPage_DescriptionTitle" Text="描述" FontSize="18" FontWeight="Bold" />
+
+                            <TextBlock Text="{x:Bind ViewModel.DisplayModDescription, Mode=OneWay}"
+                                       FontSize="14"
+                                       TextWrapping="WrapWholeWords" />
+
+                            <HyperlinkButton x:Name="ToggleDescriptionButton"
+                                             HorizontalAlignment="Left"
+                                             Padding="0"
+                                             Click="ToggleDescriptionButton_Click">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <FontIcon x:Name="ToggleDescriptionIcon"
+                                              Glyph="&#xE70D;"
+                                              FontSize="12"
+                                              VerticalAlignment="Center"
+                                              RenderTransformOrigin="0.5,0.5">
+                                        <FontIcon.RenderTransform>
+                                            <RotateTransform Angle="0" />
+                                        </FontIcon.RenderTransform>
+                                    </FontIcon>
+                                    <TextBlock x:Name="ToggleDescriptionText"
+                                               x:Uid="ModDownloadDetailPage_ViewFullDescription"
+                                               Text="查看完整描述"
+                                               VerticalAlignment="Center" />
+                                </StackPanel>
+                            </HyperlinkButton>
+
+                            <StackPanel x:Name="FullDescriptionContainer"
+                                        Visibility="Collapsed"
+                                        HorizontalAlignment="Stretch">
+                                <animations:Implicit.ShowAnimations>
+                                    <animations:TranslationAnimation Duration="0:0:0.35" From="0, -20, 0" To="0" EasingMode="EaseOut" EasingType="Circle" />
+                                    <animations:OpacityAnimation Duration="0:0:0.25" From="0" To="1.0" EasingMode="EaseOut" EasingType="Circle" />
+                                </animations:Implicit.ShowAnimations>
+                                <animations:Implicit.HideAnimations>
+                                    <animations:TranslationAnimation Duration="0:0:0.2" From="0" To="0, -10, 0" EasingMode="EaseOut" EasingType="Circle" />
+                                    <animations:OpacityAnimation Duration="0:0:0.15" From="1.0" To="0" EasingMode="EaseOut" EasingType="Circle" />
+                                </animations:Implicit.HideAnimations>
+                                <ct:MarkdownTextBlock Text="{x:Bind ViewModel.ModDescriptionBody, Mode=OneWay}"
+                                                      Background="Transparent"
+                                                      TextWrapping="Wrap"
+                                                      FontSize="14"
+                                                      IsTextSelectionEnabled="True"/>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Spacing="8"
+                                    HorizontalAlignment="Left"
+                                    Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Grid Width="80" Height="28" HorizontalAlignment="Left">
+                                <labs:Shimmer />
+                            </Grid>
+                            <Grid Width="620" Height="48" HorizontalAlignment="Left">
+                                <labs:Shimmer />
+                            </Grid>
+                            <Grid Width="120" Height="20" HorizontalAlignment="Left">
+                                <labs:Shimmer />
+                            </Grid>
+                        </StackPanel>
+                    </Grid>
+
+                    <Grid>
+                        <StackPanel Spacing="8"
+                                    Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+                            <TextBlock Text="{x:Bind ViewModel.SupportedLoadersText, Mode=OneWay}" FontSize="18" FontWeight="Bold" />
+                            <ScrollViewer HorizontalScrollMode="Auto" VerticalScrollMode="Disabled" HorizontalScrollBarVisibility="Auto">
+                                <ItemsControl ItemsSource="{x:Bind ViewModel.SupportedLoaders, Mode=OneWay}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                    BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                    BorderThickness="1"
+                                                    Padding="12,6"
+                                                    Margin="0,0,8,0"
+                                                    CornerRadius="6">
+                                                <TextBlock Text="{Binding}" FontSize="14" VerticalAlignment="Center" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </ScrollViewer>
+
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                                <Button Command="{x:Bind ViewModel.OpenPlatformUrlCommand}"
+                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="12,8">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE8A7;" FontSize="16" />
+                                        <TextBlock Text="{x:Bind ViewModel.PlatformName, Mode=OneWay}" FontSize="14" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Command="{x:Bind ViewModel.OpenMcmodCommand}"
+                                        Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        Padding="12,8">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <FontIcon Glyph="&#xE8F1;" FontSize="16" />
+                                        <TextBlock x:Uid="ModDownloadDetailPage_McmodButton" Text="MC百科" FontSize="14" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Spacing="8"
+                                    HorizontalAlignment="Left"
+                                    Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Grid Width="120" Height="28" HorizontalAlignment="Left">
+                                <labs:Shimmer />
+                            </Grid>
+                            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Left">
+                                <Grid Width="88" Height="32" HorizontalAlignment="Left">
+                                    <labs:Shimmer />
+                                </Grid>
+                                <Grid Width="96" Height="32" HorizontalAlignment="Left">
+                                    <labs:Shimmer />
+                                </Grid>
+                                <Grid Width="80" Height="32" HorizontalAlignment="Left">
+                                    <labs:Shimmer />
+                                </Grid>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0" HorizontalAlignment="Left">
+                                <Grid Width="140" Height="40" HorizontalAlignment="Left">
+                                    <labs:Shimmer />
+                                </Grid>
+                                <Grid Width="120" Height="40" HorizontalAlignment="Left">
+                                    <labs:Shimmer />
+                                </Grid>
+                            </StackPanel>
+                        </StackPanel>
+                    </Grid>
+
+                    <StackPanel Spacing="12">
+                        <Grid>
+                            <TextBlock Text="{x:Bind ViewModel.DownloadSectionText, Mode=OneWay}"
+                                       FontSize="18"
+                                       FontWeight="Bold"
+                                       Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                            <Grid Width="120"
+                                  Height="28"
+                                  HorizontalAlignment="Left"
+                                  Visibility="{x:Bind ViewModel.IsLoading, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <labs:Shimmer />
+                            </Grid>
+                        </Grid>
+
+                        <ProgressRing IsActive="{x:Bind ViewModel.IsLoading, Mode=OneWay}"
+                                      Visibility="{x:Bind ViewModel.IsLoading, Converter={StaticResource BooleanToVisibilityConverter}, Mode=OneWay}"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Height="32"
+                                      Width="32"
+                                      Margin="0,8" />
+
+                        <ListView ItemsSource="{x:Bind ViewModel.SupportedGameVersions, Mode=OneWay}"
+                                  SelectionMode="None"
+                                  IsItemClickEnabled="False"
+                                  HorizontalAlignment="Stretch"
+                                  HorizontalContentAlignment="Stretch">
+                            <ListView.ItemContainerStyle>
+                                <Style TargetType="ListViewItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                    <Setter Property="Padding" Value="0" />
+                                    <Setter Property="Margin" Value="0,0,0,4" />
+                                </Style>
+                            </ListView.ItemContainerStyle>
+                            <ListView.ItemTemplate>
+                                <DataTemplate x:DataType="viewModels:GameVersionViewModel">
+                                    <Expander HorizontalAlignment="Stretch"
+                                              HorizontalContentAlignment="Stretch"
+                                              IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}"
+                                              Padding="0">
+                                        <Expander.Header>
+                                            <Grid Padding="4,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0"
+                                                           Text="{x:Bind GameVersion}"
+                                                           FontSize="14"
+                                                           FontWeight="Medium"
+                                                           VerticalAlignment="Center" />
+                                                <TextBlock Grid.Column="1"
+                                                           Text="{x:Bind TotalModVersionsCount, Mode=OneWay, Converter={StaticResource VersionCountToStringConverter}}"
+                                                           FontSize="13"
+                                                           Foreground="{ThemeResource TextFillColorSecondary}"
+                                                           VerticalAlignment="Center"
+                                                           Margin="8,0,0,0" />
+                                            </Grid>
+                                        </Expander.Header>
+                                        <Expander.Content>
+                                            <StackPanel Spacing="8" Margin="0,8,0,0">
+                                                <ItemsControl ItemsSource="{x:Bind Loaders}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate x:DataType="viewModels:LoaderViewModel">
+                                                            <Expander HorizontalAlignment="Stretch"
+                                                                      HorizontalContentAlignment="Stretch"
+                                                                      IsExpanded="{x:Bind IsExpanded, Mode=TwoWay}"
+                                                                      Margin="0,0,0,4"
+                                                                      Padding="0">
+                                                                <Expander.Header>
+                                                                    <Grid Padding="4,6">
+                                                                        <Grid.ColumnDefinitions>
+                                                                            <ColumnDefinition Width="Auto" />
+                                                                            <ColumnDefinition Width="Auto" />
+                                                                            <ColumnDefinition Width="*" />
+                                                                        </Grid.ColumnDefinitions>
+                                                                        <FontIcon Grid.Column="0"
+                                                                                  Glyph="&#xE74C;"
+                                                                                  FontSize="14"
+                                                                                  Foreground="{ThemeResource AccentFillColorDefaultBrush}"
+                                                                                  VerticalAlignment="Center"
+                                                                                  Margin="0,0,8,0" />
+                                                                        <TextBlock Grid.Column="1"
+                                                                                   Text="{x:Bind LoaderName}"
+                                                                                   FontSize="14"
+                                                                                   FontWeight="Medium"
+                                                                                   VerticalAlignment="Center" />
+                                                                        <TextBlock Grid.Column="2"
+                                                                                   Text="{x:Bind ModVersions.Count, Mode=OneWay, Converter={StaticResource VersionCountToStringConverter}}"
+                                                                                   FontSize="13"
+                                                                                   Foreground="{ThemeResource TextFillColorSecondary}"
+                                                                                   VerticalAlignment="Center"
+                                                                                   Margin="8,0,0,0" />
+                                                                    </Grid>
+                                                                </Expander.Header>
+                                                                <Expander.Content>
+                                                                    <ListView ItemsSource="{x:Bind ModVersions}"
+                                                                              SelectionMode="None"
+                                                                              IsItemClickEnabled="False"
+                                                                              Margin="0,4,0,0">
+                                                                        <ListView.ItemContainerStyle>
+                                                                            <Style TargetType="ListViewItem">
+                                                                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                                                                <Setter Property="Padding" Value="0" />
+                                                                                <Setter Property="Margin" Value="0,0,0,6" />
+                                                                            </Style>
+                                                                        </ListView.ItemContainerStyle>
+                                                                        <ListView.ItemTemplate>
+                                                                            <DataTemplate x:DataType="viewModels:ModVersionViewModel">
+                                                                                <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                                                                                        BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+                                                                                        BorderThickness="1"
+                                                                                        CornerRadius="6"
+                                                                                        Padding="12">
+                                                                                    <Grid>
+                                                                                        <Grid.ColumnDefinitions>
+                                                                                            <ColumnDefinition Width="*" />
+                                                                                            <ColumnDefinition Width="Auto" />
+                                                                                        </Grid.ColumnDefinitions>
+                                                                                        <Grid.RowDefinitions>
+                                                                                            <RowDefinition Height="Auto" />
+                                                                                            <RowDefinition Height="Auto" />
+                                                                                            <RowDefinition Height="Auto" />
+                                                                                        </Grid.RowDefinitions>
+
+                                                                                        <StackPanel Grid.Row="0" Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                                                                                            <TextBlock Text="{x:Bind VersionNumber}"
+                                                                                                       FontSize="15"
+                                                                                                       FontWeight="SemiBold"
+                                                                                                       VerticalAlignment="Center" />
+                                                                                            <Border CornerRadius="4"
+                                                                                                    Padding="6,2"
+                                                                                                    Background="{ThemeResource SubtleFillColorSecondaryBrush}">
+                                                                                                <TextBlock Text="{x:Bind VersionType, Converter={StaticResource FirstLetterToUpperConverter}}"
+                                                                                                           FontSize="11"
+                                                                                                           Foreground="{ThemeResource TextFillColorSecondary}" />
+                                                                                            </Border>
+                                                                                        </StackPanel>
+
+                                                                                        <Button Grid.Row="0" Grid.RowSpan="3" Grid.Column="1"
+                                                                                                x:Uid="ModDownloadDetailPage_DownloadButton"
+                                                                                                Content="下载"
+                                                                                                VerticalAlignment="Center"
+                                                                                                Padding="16,6"
+                                                                                                Command="{Binding ElementName=PageRoot, Path=ViewModel.OpenDownloadDialogCommand}"
+                                                                                                CommandParameter="{x:Bind}" />
+
+                                                                                        <TextBlock Grid.Row="1" Grid.Column="0"
+                                                                                                   FontSize="12"
+                                                                                                   Foreground="{ThemeResource TextFillColorSecondary}"
+                                                                                                   Margin="0,4,0,0">
+                                                                                            <Run x:Uid="ModDownloadDetailPage_ReleaseDateText" Text="发布日期: " />
+                                                                                            <Run Text="{x:Bind ReleaseDate}" />
+                                                                                        </TextBlock>
+
+                                                                                        <TextBlock Grid.Row="2" Grid.Column="0"
+                                                                                                   Text="{x:Bind FileName}"
+                                                                                                   FontSize="11"
+                                                                                                   Foreground="{ThemeResource TextFillColorTertiary}"
+                                                                                                   TextTrimming="CharacterEllipsis"
+                                                                                                   Margin="0,2,12,0" />
+                                                                                    </Grid>
+                                                                                </Border>
+                                                                            </DataTemplate>
+                                                                        </ListView.ItemTemplate>
+                                                                    </ListView>
+                                                                </Expander.Content>
+                                                            </Expander>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate>
+                                                            <StackPanel Spacing="0" />
+                                                        </ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                </ItemsControl>
+                                            </StackPanel>
+                                        </Expander.Content>
+                                    </Expander>
+                                </DataTemplate>
+                            </ListView.ItemTemplate>
+                        </ListView>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+        </ScrollViewer>
+    </Grid>
+</Page>

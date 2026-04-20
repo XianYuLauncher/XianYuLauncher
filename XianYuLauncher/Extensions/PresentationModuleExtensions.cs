@@ -108,7 +108,7 @@ internal static class PresentationModuleExtensions
 
     public static IServiceCollection AddContentFeaturePresentation(this IServiceCollection services)
     {
-        services.AddSingleton<ModDownloadDetailViewModel>();
+        services.AddTransient<ModDownloadDetailViewModel>();
         services.AddTransient<ModDownloadDetailPage>();
         services.AddPageMap<ModDownloadDetailViewModel, ModDownloadDetailPage>();
 
