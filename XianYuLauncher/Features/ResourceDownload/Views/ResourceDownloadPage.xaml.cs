@@ -25,6 +25,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
 {
     public static int TargetTabIndex { get; set; }
     private const string HostedDetailBreadcrumbItemTemplateKey = "HostedDetailBreadcrumbItemTemplate";
+    private const string HostedDetailReadOnlyBreadcrumbItemTemplateKey = "HostedDetailReadOnlyBreadcrumbItemTemplate";
 
     private readonly INavigationService _navigationService;
     private readonly string _rootHeaderTitle;
@@ -298,7 +299,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
                 ResourceDownloadPageHeader.ShowPrimaryHeading = false;
                 ResourceDownloadPageHeader.BreadcrumbFontSize = 28;
                 ResourceDownloadPageHeader.BreadcrumbMargin = new Thickness(-2, -11, 0, 12);
-                ResourceDownloadPageHeader.BreadcrumbItemTemplate = Resources[HostedDetailBreadcrumbItemTemplateKey] as DataTemplate;
+                ResourceDownloadPageHeader.BreadcrumbItemTemplate = ResolveHostedBreadcrumbItemTemplate();
                 return;
         }
 
@@ -306,6 +307,15 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         ResourceDownloadPageHeader.BreadcrumbFontSize = 15;
         ResourceDownloadPageHeader.BreadcrumbMargin = new Thickness(0, 0, 0, 12);
         ResourceDownloadPageHeader.BreadcrumbItemTemplate = null;
+    }
+
+    private DataTemplate? ResolveHostedBreadcrumbItemTemplate()
+    {
+        var templateKey = _activeHostedLocalPage is ModDownloadDetailContentPage
+            ? HostedDetailReadOnlyBreadcrumbItemTemplateKey
+            : HostedDetailBreadcrumbItemTemplateKey;
+
+        return Resources[templateKey] as DataTemplate;
     }
 
     private void ResetInnerContentFrameVisualState()
