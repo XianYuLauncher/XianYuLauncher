@@ -2519,8 +2519,11 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
             {
                 VersionId = versionId,
                 BreadcrumbRootLabel = HeaderMetadata.Title,
-                ReturnPageKey = typeof(ResourceDownloadViewModel).FullName ?? string.Empty,
-                ReturnTabKey = "version",
+                BreadcrumbRootTarget = new LocalNavigationTarget
+                {
+                    RouteKey = "resource-download/root",
+                    Parameter = "version",
+                },
             };
 
             ModLoaderSelectorRequested?.Invoke(this, navigationParameter);

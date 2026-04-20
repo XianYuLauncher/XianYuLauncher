@@ -400,8 +400,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
         {
             DisplayText = _navigationParameter.BreadcrumbRootLabel,
-            PageKey = _navigationParameter.ReturnPageKey,
-            NavigationParameter = _navigationParameter.ReturnTabKey,
+            LocalNavigationTarget = _navigationParameter.BreadcrumbRootTarget,
         });
 
         HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem

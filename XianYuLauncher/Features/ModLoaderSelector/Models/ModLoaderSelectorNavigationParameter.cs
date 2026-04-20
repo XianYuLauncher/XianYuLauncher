@@ -1,3 +1,5 @@
+using XianYuLauncher.Shared.Models;
+
 namespace XianYuLauncher.Features.ModLoaderSelector.Models;
 
 public sealed class ModLoaderSelectorNavigationParameter
@@ -6,7 +8,5 @@ public sealed class ModLoaderSelectorNavigationParameter
 
     public string BreadcrumbRootLabel { get; init; } = string.Empty;
 
-    public string ReturnPageKey { get; init; } = string.Empty;
-
-    public string ReturnTabKey { get; init; } = "version";
+    public LocalNavigationTarget BreadcrumbRootTarget { get; init; } = new();
 }
