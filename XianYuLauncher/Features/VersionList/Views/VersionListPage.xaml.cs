@@ -3,6 +3,7 @@ using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
@@ -27,8 +28,15 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
     private readonly string _rootHeaderTitle;
     private readonly string _rootHeaderSubtitle;
     private bool _isInnerContentFrameInitialized;
+    private bool _shouldRefreshRootContentOnNextOuterNavigation;
+    private bool _isRootFrameJournalNormalizationPending;
+    private bool _isInnerFrameTransitionSuspendPending;
+    private TransitionCollection? _innerFrameNavigationTransitions;
+    private readonly TransitionCollection _suspendedInnerFrameNavigationTransitions = new();
     private IHostedLocalPage? _activeHostedLocalPage;
     private VersionListRootPage? _activeRootPage;
+    private bool _isPageLoaded;
+    private int _deferredUiActionGeneration;
 
     public VersionListViewModel ViewModel { get; }
 
@@ -44,8 +52,12 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
         _rootHeaderSubtitle = ViewModel.HeaderMetadata.Subtitle;
         DataContext = ViewModel;
         InitializeComponent();
+        _innerFrameNavigationTransitions = VersionListInnerContentFrame.ContentTransitions;
+        Loaded += VersionListPage_Loaded;
+        Unloaded += VersionListPage_Unloaded;
         EnsureInnerContentFrame();
         ShowRootPageState();
+        ScheduleInnerFrameTransitionSuspend();
     }
 
     public void OnNavigatedTo(object parameter)
@@ -57,8 +69,7 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
 
     public void OnNavigatedFrom()
     {
-        DetachHostedLocalPage();
-        DetachRootPage();
+        HandleOuterPageNavigatedFrom(allowUiTeardown: true);
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -102,7 +113,21 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
     {
         if (!CanGoBackLocally && VersionListInnerContentFrame.Content is VersionListRootPage)
         {
+            if (_shouldRefreshRootContentOnNextOuterNavigation)
+            {
+                _shouldRefreshRootContentOnNextOuterNavigation = false;
+                DetachHostedLocalPage();
+                ResetInnerContentFrameVisualState();
+                VersionListInnerContentFrame.Navigate(typeof(VersionListRootPage), ViewModel, new SuppressNavigationTransitionInfo());
+                VersionListInnerContentFrame.BackStack.Clear();
+                VersionListInnerContentFrame.ForwardStack.Clear();
+                DisableInnerFrameNavigationTransitions();
+                return;
+            }
+
+            NormalizeRootFrameJournalIfNeeded();
             ShowRootPageState();
+            ScheduleInnerFrameTransitionSuspend();
             return;
         }
 
@@ -116,13 +141,16 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
 
         if (VersionListInnerContentFrame.Content is not VersionListRootPage || VersionListInnerContentFrame.CanGoBack)
         {
+            _shouldRefreshRootContentOnNextOuterNavigation = false;
             VersionListInnerContentFrame.Navigate(typeof(VersionListRootPage), ViewModel, new SuppressNavigationTransitionInfo());
             VersionListInnerContentFrame.BackStack.Clear();
             VersionListInnerContentFrame.ForwardStack.Clear();
+            DisableInnerFrameNavigationTransitions();
             return;
         }
 
         ShowRootPageState();
+        ScheduleInnerFrameTransitionSuspend();
     }
 
     private void EnsureInnerContentFrame()
@@ -144,6 +172,15 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
             DetachHostedLocalPage();
             AttachRootPage(rootPage);
             ShowRootPageState();
+
+            ScheduleRootTargetElementDisarm();
+            ScheduleInnerFrameTransitionSuspend();
+            if (e.NavigationMode == NavigationMode.Back)
+            {
+                _shouldRefreshRootContentOnNextOuterNavigation = true;
+                ScheduleRootFrameJournalNormalization();
+            }
+
             return;
         }
 
@@ -186,6 +223,7 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
     private void RootPage_VersionManagementRequested(object? sender, VersionListViewModel.VersionInfoItem e)
     {
         EnsureInnerContentFrame();
+        EnableInnerFrameNavigationTransitions();
         ResetInnerContentFrameVisualState();
         VersionListInnerContentFrame.Navigate(
             typeof(VersionManagementPage),
@@ -315,10 +353,8 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
 
     private void ResetInnerContentFrameVisualState()
     {
-        ContentArea.Opacity = 1;
-        ContentArea.Translation = default;
-        VersionListPageHeader.Opacity = 1;
-        VersionListPageHeader.Translation = default;
+        ResetOuterPageVisualState();
+
         VersionListInnerContentHost.Opacity = 1;
         VersionListInnerContentHost.Translation = default;
         VersionListInnerContentHost.Scale = new Vector3(1f, 1f, 1f);
@@ -338,6 +374,17 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
         }
 
         hostedLocalPage.ResetEmbeddedVisualState();
+    }
+
+    private void ResetOuterPageVisualState()
+    {
+        ContentArea.Opacity = 1;
+        ContentArea.Translation = default;
+        ContentArea.Scale = new Vector3(1f, 1f, 1f);
+
+        VersionListPageHeader.Opacity = 1;
+        VersionListPageHeader.Translation = default;
+        VersionListPageHeader.Scale = new Vector3(1f, 1f, 1f);
     }
 
     private void NotifyLocalNavigationStateChanged()
@@ -440,7 +487,13 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
             return false;
         }
 
+        EnableInnerFrameNavigationTransitions();
         ResetInnerContentFrameVisualState();
+
+        if (destinationIsLocalRoot && useReturnTransition)
+        {
+            _activeRootPage?.SetLocalNavigationTargetElementEnabled(true);
+        }
 
         if (destinationIsLocalRoot && useReturnTransition && backSteps == 1)
         {
@@ -455,5 +508,206 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
         }
 
         return true;
+    }
+
+    private void VersionListPage_Loaded(object sender, RoutedEventArgs e)
+    {
+        _isPageLoaded = true;
+        ResetInnerContentFrameVisualState();
+        ScheduleInnerFrameTransitionSuspend();
+    }
+
+    private void VersionListPage_Unloaded(object sender, RoutedEventArgs e)
+    {
+        HandleOuterPageNavigatedFrom(allowUiTeardown: false);
+    }
+
+    private void HandleOuterPageNavigatedFrom(bool allowUiTeardown)
+    {
+        _isPageLoaded = false;
+        System.Threading.Interlocked.Increment(ref _deferredUiActionGeneration);
+
+        if (!allowUiTeardown)
+        {
+            return;
+        }
+
+        _activeRootPage?.SetLocalNavigationTargetElementEnabled(false);
+        DisableInnerFrameNavigationTransitions();
+    }
+
+    private bool IsDeferredUiActionValid(int generation)
+    {
+        return _isPageLoaded && generation == _deferredUiActionGeneration;
+    }
+
+    private void EnableInnerFrameNavigationTransitions()
+    {
+        if (_innerFrameNavigationTransitions == null)
+        {
+            _innerFrameNavigationTransitions = new TransitionCollection
+            {
+                new NavigationThemeTransition(),
+            };
+        }
+
+        if (ReferenceEquals(VersionListInnerContentFrame.ContentTransitions, _innerFrameNavigationTransitions)
+            && (_innerFrameNavigationTransitions?.Count ?? 0) > 0)
+        {
+            return;
+        }
+
+        VersionListInnerContentFrame.ContentTransitions = _innerFrameNavigationTransitions;
+    }
+
+    private void DisableInnerFrameNavigationTransitions()
+    {
+        if (ReferenceEquals(VersionListInnerContentFrame.ContentTransitions, _suspendedInnerFrameNavigationTransitions)
+            && _suspendedInnerFrameNavigationTransitions.Count == 0)
+        {
+            return;
+        }
+
+        VersionListInnerContentFrame.ContentTransitions = _suspendedInnerFrameNavigationTransitions;
+    }
+
+    private void ScheduleInnerFrameTransitionSuspend()
+    {
+        if (_isInnerFrameTransitionSuspendPending)
+        {
+            return;
+        }
+
+        if (VersionListInnerContentFrame.Content is not VersionListRootPage)
+        {
+            return;
+        }
+
+        if ((VersionListInnerContentFrame.ContentTransitions?.Count ?? 0) == 0)
+        {
+            return;
+        }
+
+        var dispatcherQueue = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
+        if (dispatcherQueue == null)
+        {
+            DisableInnerFrameNavigationTransitions();
+            return;
+        }
+
+        _isInnerFrameTransitionSuspendPending = true;
+        var generation = _deferredUiActionGeneration;
+        dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            _isInnerFrameTransitionSuspendPending = false;
+
+            if (!IsDeferredUiActionValid(generation))
+            {
+                return;
+            }
+
+            if (VersionListInnerContentFrame.Content is not VersionListRootPage)
+            {
+                return;
+            }
+
+            DisableInnerFrameNavigationTransitions();
+        });
+    }
+
+    private void NormalizeRootFrameJournalIfNeeded()
+    {
+        if (VersionListInnerContentFrame.Content is not VersionListRootPage)
+        {
+            return;
+        }
+
+        if (VersionListInnerContentFrame.BackStack.Count == 0 && VersionListInnerContentFrame.ForwardStack.Count == 0)
+        {
+            return;
+        }
+
+        VersionListInnerContentFrame.BackStack.Clear();
+        VersionListInnerContentFrame.ForwardStack.Clear();
+    }
+
+    private void ScheduleRootFrameJournalNormalization()
+    {
+        if (_isRootFrameJournalNormalizationPending)
+        {
+            return;
+        }
+
+        if (VersionListInnerContentFrame.Content is not VersionListRootPage)
+        {
+            return;
+        }
+
+        if (VersionListInnerContentFrame.BackStack.Count == 0 && VersionListInnerContentFrame.ForwardStack.Count == 0)
+        {
+            return;
+        }
+
+        var dispatcherQueue = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
+        if (dispatcherQueue == null)
+        {
+            NormalizeRootFrameJournalIfNeeded();
+            return;
+        }
+
+        var generation = _deferredUiActionGeneration;
+        _isRootFrameJournalNormalizationPending = true;
+        dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            _isRootFrameJournalNormalizationPending = false;
+
+            if (!IsDeferredUiActionValid(generation))
+            {
+                return;
+            }
+
+            if (VersionListInnerContentFrame.Content is not VersionListRootPage)
+            {
+                return;
+            }
+
+            NormalizeRootFrameJournalIfNeeded();
+        });
+    }
+
+    private void ScheduleRootTargetElementDisarm()
+    {
+        if (_activeRootPage is not { IsLocalNavigationTargetElementEnabled: true } rootPage)
+        {
+            return;
+        }
+
+        var dispatcherQueue = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
+        if (dispatcherQueue == null)
+        {
+            rootPage.SetLocalNavigationTargetElementEnabled(false);
+            return;
+        }
+
+        var generation = _deferredUiActionGeneration;
+        dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            if (!IsDeferredUiActionValid(generation))
+            {
+                return;
+            }
+
+            if (_activeRootPage is not { IsLocalNavigationTargetElementEnabled: true } activeRootPage)
+            {
+                return;
+            }
+
+            if (VersionListInnerContentFrame.Content is not VersionListRootPage || !ReferenceEquals(activeRootPage, _activeRootPage))
+            {
+                return;
+            }
+
+            activeRootPage.SetLocalNavigationTargetElementEnabled(false);
+        });
     }
 }

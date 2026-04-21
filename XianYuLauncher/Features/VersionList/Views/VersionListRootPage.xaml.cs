@@ -1,6 +1,7 @@
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using Windows.Storage;
 using Windows.Storage.Pickers;
@@ -97,6 +98,8 @@ public sealed partial class VersionListRootPage : Page
 
     public VersionListViewModel ViewModel { get; private set; } = null!;
 
+    public bool IsLocalNavigationTargetElementEnabled => EntranceNavigationTransitionInfo.GetIsTargetElement(ContentArea);
+
     public event EventHandler<VersionListViewModel.VersionInfoItem>? VersionManagementRequested;
 
     public VersionListRootPage()
@@ -124,10 +127,24 @@ public sealed partial class VersionListRootPage : Page
     {
         ContentArea.Opacity = 1;
         ContentArea.Translation = default;
+        ContentArea.Scale = new System.Numerics.Vector3(1f, 1f, 1f);
         VersionsListView.Opacity = 1;
         VersionsListView.Translation = default;
+        VersionsListView.Scale = new System.Numerics.Vector3(1f, 1f, 1f);
         EmptyListPanel.Opacity = 1;
         EmptyListPanel.Translation = default;
+        EmptyListPanel.Scale = new System.Numerics.Vector3(1f, 1f, 1f);
+    }
+
+    public void SetLocalNavigationTargetElementEnabled(bool enabled)
+    {
+        var current = EntranceNavigationTransitionInfo.GetIsTargetElement(ContentArea);
+        if (current == enabled)
+        {
+            return;
+        }
+
+        EntranceNavigationTransitionInfo.SetIsTargetElement(ContentArea, enabled);
     }
 
     private void SetViewModel(VersionListViewModel viewModel)
