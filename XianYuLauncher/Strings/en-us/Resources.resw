@@ -4246,6 +4246,12 @@ You can double-click the file to launch the game.</value>
   <data name="ResourceDownloadPage_HeaderSubtitle" xml:space="preserve">
     <value>Download and manage Minecraft resources</value>
   </data>
+  <data name="ModLoaderSelectionPage_HeaderTitle" xml:space="preserve">
+    <value>Download Minecraft</value>
+  </data>
+  <data name="ModLoaderSelectionPage_HeaderSubtitle" xml:space="preserve">
+    <value>Current Minecraft Version: {0}</value>
+  </data>
   <data name="VersionListPage_HeaderTitle" xml:space="preserve">
     <value>Version List</value>
   </data>

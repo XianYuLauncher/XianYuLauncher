@@ -373,10 +373,8 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
 
     private void UpdateHeaderMetadata()
     {
-        HeaderMetadata.Title = "ModLoaderSelectionPage_TitleText.Text".GetLocalized();
-        HeaderMetadata.Subtitle = string.Concat(
-            "ModLoaderSelectionPage_CurrentVersionText.Text".GetLocalized(),
-            SelectedMinecraftVersion);
+        HeaderMetadata.Title = "ModLoaderSelectionPage_HeaderTitle".GetLocalized();
+        HeaderMetadata.Subtitle = "ModLoaderSelectionPage_HeaderSubtitle".GetLocalized(SelectedMinecraftVersion);
 
         if (_navigationParameter == null)
         {

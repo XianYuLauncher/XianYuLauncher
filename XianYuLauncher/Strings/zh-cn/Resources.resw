@@ -4243,6 +4243,12 @@
   <data name="ResourceDownloadPage_HeaderSubtitle" xml:space="preserve">
     <value>下载和管理 Minecraft 资源</value>
   </data>
+  <data name="ModLoaderSelectionPage_HeaderTitle" xml:space="preserve">
+    <value>下载 Minecraft</value>
+  </data>
+  <data name="ModLoaderSelectionPage_HeaderSubtitle" xml:space="preserve">
+    <value>当前 Minecraft 版本: {0}</value>
+  </data>
   <data name="VersionListPage_HeaderTitle" xml:space="preserve">
     <value>版本列表</value>
   </data>
