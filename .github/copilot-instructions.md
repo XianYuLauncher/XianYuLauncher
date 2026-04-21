@@ -20,7 +20,7 @@
 ### Commit
 - 使用 Conventional Commits。
 - `type` 必须英文（如 `feat`/`fix`/`refactor`/`chore`）。
-- `scope` 可选（如 `(protocol)`、`(ModDownloadDetailViewModel)`）。
+- `scope` 可选（如 `(protocol)`、`(mod-download-detail-viewmodel)`），小写。
 - 标题与正文使用中文，描述简洁清晰；重大变更补充背景与注意事项。
 
 示例：
