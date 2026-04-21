@@ -56,6 +56,17 @@ function Assert-NotEmpty {
     }
 }
 
+function Read-JsonFileUtf8 {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $fullPath = [System.IO.Path]::GetFullPath($Path)
+    $json = [System.IO.File]::ReadAllText($fullPath, [System.Text.Encoding]::UTF8)
+    return $json | ConvertFrom-Json
+}
+
 function Connect-StoreBroker {
     param(
         [Parameter(Mandatory = $true)]
@@ -296,8 +307,8 @@ if (-not (Test-Path -Path $ReleaseNotesPath -PathType Leaf)) {
 Import-Module StoreBroker -ErrorAction Stop
 Connect-StoreBroker -TenantId $TenantId -ClientId $ClientId -ClientSecret $ClientSecret
 
-$payload = Get-Content -Path $SubmissionPayloadPath -Raw | ConvertFrom-Json
-$releaseNotesDocument = Get-Content -Path $ReleaseNotesPath -Raw | ConvertFrom-Json
+$payload = Read-JsonFileUtf8 -Path $SubmissionPayloadPath
+$releaseNotesDocument = Read-JsonFileUtf8 -Path $ReleaseNotesPath
 $releaseNotes = @(Normalize-ReleaseNotesForStore -ReleaseNotes @($releaseNotesDocument.notes) -MaxLength $storeReleaseNotesMaxLength)
 
 if ($releaseNotes.Count -eq 0) {

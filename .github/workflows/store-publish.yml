@@ -430,7 +430,7 @@ jobs:
             throw "Store submission result artifact is missing."
         }
 
-        $result = Get-Content -Path $resultPath -Raw | ConvertFrom-Json
+        $result = [System.IO.File]::ReadAllText($resultPath, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
 
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '## Microsoft Store submission result'
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
