@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
+using System.Threading;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Controls;
@@ -40,6 +41,8 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
     private readonly TransitionCollection _suspendedInnerFrameNavigationTransitions = new();
     private IHostedLocalPage? _activeHostedLocalPage;
     private ResourceDownloadRootPage? _activeInnerRootPage;
+    private bool _isPageLoaded;
+    private int _deferredUiActionGeneration;
 
     public ResourceDownloadViewModel ViewModel { get; }
 
@@ -82,13 +85,13 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
     {
-        HandleOuterPageNavigatedFrom();
+        HandleOuterPageNavigatedFrom(allowUiTeardown: true);
         base.OnNavigatedFrom(e);
     }
 
     public void OnNavigatedFrom()
     {
-        HandleOuterPageNavigatedFrom();
+        HandleOuterPageNavigatedFrom(allowUiTeardown: true);
     }
 
     public bool TryGoBackLocally()
@@ -577,16 +580,26 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
 
     private void ResourceDownloadPage_Loaded(object sender, RoutedEventArgs e)
     {
+        _isPageLoaded = true;
         ResetInnerContentFrameVisualState();
+        ScheduleInnerFrameTransitionSuspend();
     }
 
     private void ResourceDownloadPage_Unloaded(object sender, RoutedEventArgs e)
     {
-        HandleOuterPageNavigatedFrom();
+        HandleOuterPageNavigatedFrom(allowUiTeardown: false);
     }
 
-    private void HandleOuterPageNavigatedFrom()
+    private void HandleOuterPageNavigatedFrom(bool allowUiTeardown)
     {
+        _isPageLoaded = false;
+        Interlocked.Increment(ref _deferredUiActionGeneration);
+
+        if (!allowUiTeardown)
+        {
+            return;
+        }
+
         // NavigationService 只会把 INavigationAware 转发给页面的 ViewModel，不会代替 Page 生命周期去调用
         // ResourceDownloadPage 自身的公开 OnNavigatedFrom。这个宿主页持有 inner Frame，因此真正的离场收口
         // 必须挂在 Page.OnNavigatedFrom / Unloaded 上，才能保证缓存页离开 Shell 时确实撤掉 inner root 的
@@ -595,6 +608,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         // 是互补关系：前者兜住跨 Shell 导航，后者确保 root 稳态本身不再持续带着 target-element。
         _activeInnerRootPage?.SetLocalNavigationTargetElementEnabled(false);
         DisableInnerFrameNavigationTransitions();
+    }
+
+    private bool IsDeferredUiActionValid(int generation)
+    {
+        return _isPageLoaded && generation == _deferredUiActionGeneration;
     }
 
     private void EnableInnerFrameNavigationTransitions()
@@ -655,9 +673,15 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
         // 一旦 root 已经稳定显示，就要把它从宿主上撤掉；否则外层 Shell 再次导航回 ResourceDownload 时，
         // 这个内层 Frame 可能会把当前 root 内容也带着做一遍像 Drill 的过渡，即使根本没有发生新的 inner 导航。
         _isInnerFrameTransitionSuspendPending = true;
+        var generation = _deferredUiActionGeneration;
         dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
             _isInnerFrameTransitionSuspendPending = false;
+
+            if (!IsDeferredUiActionValid(generation))
+            {
+                return;
+            }
 
             if (ResourceDownloadInnerContentFrame.Content is not ResourceDownloadRootPage)
             {
@@ -712,10 +736,16 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
             return;
         }
 
+        var generation = _deferredUiActionGeneration;
         _isRootFrameJournalNormalizationPending = true;
         dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
             _isRootFrameJournalNormalizationPending = false;
+
+            if (!IsDeferredUiActionValid(generation))
+            {
+                return;
+            }
 
             if (ResourceDownloadInnerContentFrame.Content is not ResourceDownloadRootPage)
             {
@@ -740,8 +770,14 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
             return;
         }
 
+        var generation = _deferredUiActionGeneration;
         dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
+            if (!IsDeferredUiActionValid(generation))
+            {
+                return;
+            }
+
             if (_activeInnerRootPage is not { IsLocalNavigationTargetElementEnabled: true } activeRootPage)
             {
                 return;

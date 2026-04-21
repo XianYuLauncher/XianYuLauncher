@@ -6,7 +6,6 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
-using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -54,6 +53,7 @@ public sealed partial class ResourceDownloadRootPage : Page
     private readonly IUiDispatcher _uiDispatcher;
     private bool _isViewModelInitialized;
     private bool _suppressNextSelectedTabContentAnimation;
+    private bool _isPageActive;
 
     public ResourceDownloadViewModel ViewModel { get; private set; } = null!;
 
@@ -64,13 +64,21 @@ public sealed partial class ResourceDownloadRootPage : Page
         InitializeComponent();
         _uiDispatcher = App.GetService<IUiDispatcher>();
         Loaded += ResourceDownloadRootPage_Loaded;
+        Unloaded += ResourceDownloadRootPage_Unloaded;
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
     {
         base.OnNavigatedTo(e);
+        _isPageActive = true;
         SetViewModel(e.Parameter as ResourceDownloadViewModel ?? App.GetService<ResourceDownloadViewModel>());
         ApplyPendingNavigationState();
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        _isPageActive = false;
+        base.OnNavigatedFrom(e);
     }
 
     public void ApplyPendingNavigationState()
@@ -117,7 +125,13 @@ public sealed partial class ResourceDownloadRootPage : Page
 
     private void ResourceDownloadRootPage_Loaded(object sender, RoutedEventArgs e)
     {
+        _isPageActive = true;
         ApplyPendingNavigationState();
+    }
+
+    private void ResourceDownloadRootPage_Unloaded(object sender, RoutedEventArgs e)
+    {
+        _isPageActive = false;
     }
 
     private void SetViewModel(ResourceDownloadViewModel viewModel)
@@ -201,6 +215,11 @@ public sealed partial class ResourceDownloadRootPage : Page
 
     private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (!_isPageActive)
+        {
+            return;
+        }
+
         if (e.PropertyName == nameof(ViewModel.ModCategories)
             || e.PropertyName == nameof(ViewModel.AvailableVersions)
             || e.PropertyName == nameof(ViewModel.SelectedLoader)
@@ -465,7 +484,7 @@ public sealed partial class ResourceDownloadRootPage : Page
 
     private void RefreshShaderPackFilterTokenItems()
     {
-        if (ShaderPackFilterControl == null)
+        if (!_isPageActive || ShaderPackFilterControl == null)
         {
             return;
         }
@@ -508,7 +527,7 @@ public sealed partial class ResourceDownloadRootPage : Page
 
     private void RefreshResourcePackFilterTokenItems()
     {
-        if (ResourcePackFilterControl == null)
+        if (!_isPageActive || ResourcePackFilterControl == null)
         {
             return;
         }
@@ -551,7 +570,7 @@ public sealed partial class ResourceDownloadRootPage : Page
 
     private void RefreshDatapackFilterTokenItems()
     {
-        if (DatapackFilterControl == null)
+        if (!_isPageActive || DatapackFilterControl == null)
         {
             return;
         }
@@ -594,7 +613,7 @@ public sealed partial class ResourceDownloadRootPage : Page
 
     private void RefreshModpackFilterTokenItems()
     {
-        if (ModpackFilterControl == null)
+        if (!_isPageActive || ModpackFilterControl == null)
         {
             return;
         }
@@ -637,7 +656,7 @@ public sealed partial class ResourceDownloadRootPage : Page
 
     private void RefreshWorldFilterTokenItems()
     {
-        if (WorldFilterControl == null)
+        if (!_isPageActive || WorldFilterControl == null)
         {
             return;
         }
@@ -694,6 +713,11 @@ public sealed partial class ResourceDownloadRootPage : Page
 
     private void RefreshCurrentPageFilterTokenItems()
     {
+        if (!_isPageActive)
+        {
+            return;
+        }
+
         switch (ResourceTabView.SelectedIndex)
         {
             case 2:
@@ -903,12 +927,17 @@ public sealed partial class ResourceDownloadRootPage : Page
 
     private void TryRefreshModFilterTokenItems()
     {
+        if (!_isPageActive)
+        {
+            return;
+        }
+
         RefreshModFilterTokenItems();
     }
 
     private void RefreshModFilterTokenItems()
     {
-        if (ModFilterControl == null)
+        if (!_isPageActive || ModFilterControl == null)
         {
             return;
         }
@@ -1302,7 +1331,7 @@ public sealed partial class ResourceDownloadRootPage : Page
         }
     }
 
-    private static void EnqueueDeferredLoadMoreCheck(Action executeCheck, Action clearPendingFlag, string resourceType)
+    private void EnqueueDeferredLoadMoreCheck(Action executeCheck, Action clearPendingFlag, string resourceType)
     {
         var dispatcherQueue = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
         if (dispatcherQueue == null)
@@ -1315,11 +1344,15 @@ public sealed partial class ResourceDownloadRootPage : Page
         {
             try
             {
+                if (!_isPageActive)
+                {
+                    return;
+                }
+
                 executeCheck();
             }
-            catch (COMException ex)
+            catch (COMException)
             {
-                Log.Debug(ex, "[ResourceDownloadRootPage] 延迟检查 {ResourceType} 加载更多时捕获可忽略 COMException。", resourceType);
             }
             finally
             {
