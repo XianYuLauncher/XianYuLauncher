@@ -24,6 +24,7 @@ using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.VersionList.ViewModels;
+using XianYuLauncher.Features.VersionManagement.Models;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Models;
@@ -35,8 +36,21 @@ using XianYuLauncher.Features.VersionManagement.Services;
 
 namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 
-public partial class VersionManagementViewModel : ObservableRecipient, INavigationAware, IVersionManagementContext, IVersionManagementResourceContext
+public partial class VersionManagementViewModel : ObservableRecipient, INavigationAware, IPageHeaderAware, IVersionManagementContext, IVersionManagementResourceContext
 {
+    private const string LocalRootBreadcrumbRouteKey = "VersionListRoot";
+
+    private VersionManagementNavigationParameter? _navigationParameter;
+
+    public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+    public PageHeaderPresentationMode HeaderPresentationMode => IsEmbeddedHostNavigation
+        ? PageHeaderPresentationMode.ProminentBreadcrumb
+        : PageHeaderPresentationMode.Standard;
+
+    [ObservableProperty]
+    private bool _isEmbeddedHostNavigation;
+
     /// <summary>地图管理子 ViewModel</summary>
     public MapsViewModel MapsModule { get; private set; } = null!;
     /// <summary>服务器管理子 ViewModel</summary>
@@ -555,6 +569,16 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
     [ObservableProperty]
     private string _selectedVersionIconDisplayName = "Vanilla";
+
+    partial void OnSelectedVersionChanged(VersionListViewModel.VersionInfoItem? value)
+    {
+        UpdateHeaderMetadata();
+    }
+
+    partial void OnIsEmbeddedHostNavigationChanged(bool value)
+    {
+        UpdateHeaderMetadata();
+    }
     
     /// <summary>
     /// 当前安装的所有加载器图标列表（用于多图标叠加显示）
@@ -953,6 +977,67 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         InitializeVersionIcons();
 
         InitializeOverviewCountObservers();
+        UpdateHeaderMetadata();
+    }
+
+    private void UpdateHeaderMetadata()
+    {
+        HeaderMetadata.Title = SelectedVersion?.Name ?? "VersionManagerPage_Title".GetLocalized();
+        HeaderMetadata.Subtitle = IsEmbeddedHostNavigation
+            ? string.Empty
+            : "VersionManagerPage_Subtitle_SelectVersion".GetLocalized();
+
+        if (!IsEmbeddedHostNavigation || _navigationParameter == null)
+        {
+            HeaderMetadata.BreadcrumbItems.Clear();
+            HeaderMetadata.ShowBreadcrumb = false;
+            return;
+        }
+
+        RebuildHeaderMetadata();
+    }
+
+    private void RebuildHeaderMetadata()
+    {
+        HeaderMetadata.BreadcrumbItems.Clear();
+
+        HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+        {
+            DisplayText = string.IsNullOrWhiteSpace(_navigationParameter?.BreadcrumbRootLabel)
+                ? "VersionListPage_HeaderTitle".GetLocalized()
+                : _navigationParameter.BreadcrumbRootLabel,
+            LocalNavigationTarget = _navigationParameter?.BreadcrumbRootTarget ?? new LocalNavigationTarget
+            {
+                RouteKey = LocalRootBreadcrumbRouteKey,
+            },
+        });
+
+        HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+        {
+            DisplayText = GetCurrentBreadcrumbDisplayText(),
+            IconPath = CurrentVersionIconPath,
+            AvailableIcons = AvailableVersionIcons,
+            IsCurrent = true,
+        });
+
+        HeaderMetadata.ShowBreadcrumb = true;
+    }
+
+    private void RefreshCurrentBreadcrumbItem()
+    {
+        if (HeaderMetadata.BreadcrumbItems.Count < 2)
+        {
+            return;
+        }
+
+        HeaderMetadata.BreadcrumbItems[1].DisplayText = GetCurrentBreadcrumbDisplayText();
+        HeaderMetadata.BreadcrumbItems[1].IconPath = CurrentVersionIconPath;
+        HeaderMetadata.BreadcrumbItems[1].AvailableIcons = AvailableVersionIcons;
+    }
+
+    private string GetCurrentBreadcrumbDisplayText()
+    {
+        return SelectedVersion?.Name ?? "VersionManagerPage_Title".GetLocalized();
     }
 
     private void InitializeVersionIcons()
@@ -970,6 +1055,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     partial void OnCurrentVersionIconPathChanged(string value)
     {
         UpdateSelectedVersionIconDisplayName(value);
+        RefreshCurrentBreadcrumbItem();
     }
 
     private void UpdateSelectedVersionIconDisplayName(string? iconPath)
@@ -1314,14 +1400,29 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         SubscribeDownloadTaskEvents();
         ClearTrackedModpackUpdateState();
         _isPageReady = false;
-        if (parameter is VersionListViewModel.VersionInfoItem version)
+
+        object? resolvedParameter = parameter;
+        if (parameter is VersionManagementNavigationParameter navigationParameter)
+        {
+            _navigationParameter = navigationParameter;
+            IsEmbeddedHostNavigation = navigationParameter.IsEmbeddedHostNavigation;
+            resolvedParameter = navigationParameter.Version;
+        }
+        else
+        {
+            _navigationParameter = null;
+            IsEmbeddedHostNavigation = false;
+        }
+
+        if (resolvedParameter is VersionListViewModel.VersionInfoItem version)
         {
             SelectedVersion = version;
             MinecraftPath = _fileService.GetMinecraftDataPath();
-            // 触发属性变化通知，确保页面标题更新
-            OnPropertyChanged(nameof(SelectedVersion));
             _ = RefreshCurrentGameDirThenLoadAsync();
+            return;
         }
+
+        UpdateHeaderMetadata();
     }
 
     /// <summary>

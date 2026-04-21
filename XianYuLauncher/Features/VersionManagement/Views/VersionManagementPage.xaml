@@ -35,6 +35,7 @@
         <!-- 转换器引用 -->
         <helpers:BoolNegationConverter x:Key="BoolNegationConverter" />
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
         <helpers:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
         <helpers:PathToUriConverter x:Key="PathToUriConverter" />
         <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToVisibilityConverter" />
@@ -80,7 +81,7 @@
         
 
         <!-- 标题区域 -->
-        <Grid Grid.Row="0" Margin="0,0,0,24">
+        <Grid Grid.Row="0" Margin="0,0,0,24" Visibility="{Binding IsEmbeddedHostNavigation, Converter={StaticResource InverseBoolToVisibilityConverter}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />

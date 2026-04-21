@@ -7,138 +7,55 @@
     xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:localControls="using:XianYuLauncher.Controls"
     xmlns:mediaAnimation="using:Microsoft.UI.Xaml.Media.Animation"
-    xmlns:vm="using:XianYuLauncher.Features.VersionList.ViewModels"
+    xmlns:shared="using:XianYuLauncher.Shared.Models"
+    NavigationCacheMode="Required"
     mc:Ignorable="d">
     <Page.Resources>
-        <!-- 简化的CheckBox样式，精确控制点击区域 -->
-        <Style x:Key="CustomCheckboxStyle" TargetType="CheckBox">
-            <Setter Property="Width" Value="20" />
-            <Setter Property="Height" Value="20" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Margin" Value="0,0,8,0" />
-            <Setter Property="HorizontalAlignment" Value="Left" />
+        <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <helpers:BoolNegationConverter x:Key="BoolNegationConverter" />
+        <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
+
+        <Style x:Key="ProminentBreadcrumbTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="28" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
             <Setter Property="VerticalAlignment" Value="Center" />
         </Style>
-        
-        <!-- 将IsDirectory属性转换为对应的FontIcon Glyph的转换器 -->
-        <helpers:IsDirectoryToGlyphConverter x:Key="IsDirectoryToGlyphConverter" />
-        <!-- 布尔值到可见性的转换器 -->
-        <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-        <!-- 布尔值取反转换器 -->
-        <helpers:BoolNegationConverter x:Key="BoolNegationConverter" />
-        
-        <!-- 递归资源项模板，支持任意深度 -->
-        <DataTemplate x:Key="ResourceItemTemplate" x:DataType="vm:VersionListViewModel+ResourceItem">
-            <StackPanel>
-                <!-- 项内容 -->
-                <Grid Width="Auto" Padding="2" HorizontalAlignment="Left">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <!-- 展开/折叠按钮 -->
-                    <Button 
-                        Grid.Column="0" 
-                        Width="24" 
-                        Height="24" 
-                        Padding="0" 
-                        Click="ItemExpandButton_Click" 
-                        CommandParameter="{Binding}" 
-                        Visibility="{Binding IsDirectory, Converter={StaticResource BoolToVisibilityConverter}}" 
-                        VerticalContentAlignment="Center" 
-                        HorizontalContentAlignment="Center" 
-                        Margin="0,0,8,0">
-                        <Grid Width="12" Height="12">
-                            <FontIcon
-                                FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                Glyph="&#xE76C;"
-                                FontSize="12"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Visibility="{Binding IsExpanded, Converter={StaticResource BoolNegationConverter}}" />
-                            <FontIcon
-                                FontFamily="{StaticResource SymbolThemeFontFamily}"
-                                Glyph="&#xE70D;"
-                                FontSize="12"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
-                                Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibilityConverter}}" />
-                        </Grid>
-                    </Button>
-                    <!-- 空白占位符（用于非目录项） -->
-                    <TextBlock 
-                        Grid.Column="0" 
-                        Width="24" 
-                        Visibility="{Binding IsDirectory, Converter={StaticResource BoolNegationConverter}}" 
-                        Margin="0,0,8,0" /> 
-                    <!-- 复选框容器，限制点击区域 -->
-                    <Grid Grid.Column="1" Width="20" Height="20" Background="Transparent" Margin="0,0,8,0">
-                        <!-- 复选框 -->
-                        <CheckBox 
-                            IsChecked="{Binding IsSelected, Mode=TwoWay}" 
-                            Checked="ResourceItem_Checked" 
-                            Unchecked="ResourceItem_Unchecked" 
-                            Width="20" 
-                            Height="20" 
-                            Padding="0" 
-                            Margin="0" 
-                            HorizontalAlignment="Left" 
-                            VerticalAlignment="Center" /> 
-                    </Grid>
-                    <!-- 文件/目录图标 -->
-                    <FontIcon 
-                        Grid.Column="2" 
-                        Glyph="{Binding IsDirectory, Converter={StaticResource IsDirectoryToGlyphConverter}}" 
-                        VerticalAlignment="Center" 
-                        Margin="0,0,8,0" 
-                        FontSize="16" /> 
-                    <!-- 名称 -->
-                    <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding Name}" />
-                        <!-- 中文翻译，只在有翻译时显示 -->
-                        <StackPanel Orientation="Horizontal" Margin="4,0,0,0" Visibility="{Binding HasTranslation, Converter={StaticResource BoolToVisibilityConverter}}" VerticalAlignment="Center">
-                            <TextBlock Text="(" FontSize="12" Opacity="0.6" /> 
-                            <TextBlock Text="{Binding DisplayTranslation}" FontSize="12" Opacity="0.6" /> 
-                            <TextBlock Text=")" FontSize="12" Opacity="0.6" /> 
-                        </StackPanel> 
-                    </StackPanel> 
-                </Grid>
-                <!-- 递归子项列表，支持任意深度 -->
-                <ItemsControl 
-                    ItemsSource="{Binding Children}" 
-                    Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibilityConverter}}" 
-                    Margin="24,0,0,0">
-                    <!-- 绑定到自身模板，实现真正的递归 -->
-                    <ItemsControl.ItemTemplate>
-                        <StaticResource ResourceKey="ResourceItemTemplate" />
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
+
+        <DataTemplate x:Key="HostedDetailReadOnlyBreadcrumbItemTemplate" x:DataType="shared:NavigationBreadcrumbItem">
+            <Grid>
+                <TextBlock Text="{x:Bind DisplayText, Mode=OneWay}"
+                           Style="{StaticResource ProminentBreadcrumbTextStyle}"
+                           Visibility="{x:Bind IsCurrent, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+
+                <Border Padding="0,8,0,8"
+                        Visibility="{x:Bind IsCurrent, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock Text="{x:Bind DisplayText, Mode=OneWay}"
+                               Style="{StaticResource ProminentBreadcrumbTextStyle}" />
+                </Border>
+            </Grid>
         </DataTemplate>
     </Page.Resources>
 
-    <Grid x:Name="ContentArea"
-          mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
+    <Grid x:Name="ContentArea" mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
         <localControls:PageHeader
+            x:Name="VersionListPageHeader"
             Grid.Row="0"
-            Title="{Binding HeaderMetadata.Title, Mode=OneWay}"
-            Subtitle="{Binding HeaderMetadata.Subtitle, Mode=OneWay}">
+            BreadcrumbItemClicked="PageHeader_BreadcrumbItemClicked">
             <localControls:PageHeader.HeaderSupplementalContent>
-                <Grid Margin="0,0,0,4" HorizontalAlignment="Stretch">
+                <Grid x:Name="RootHeaderSupplementalContent" Margin="0,0,0,4" HorizontalAlignment="Stretch">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
-                    
+
                     <AutoSuggestBox
                         x:Uid="VersionListPage_SearchBox"
                         QueryIcon="Find"
@@ -165,8 +82,8 @@
                         <ComboBoxItem Content="LiteLoader" Tag="LiteLoader" />
                         <ComboBoxItem Content="LegacyFabric" Tag="LegacyFabric" />
                     </ComboBox>
-                    
-                    <Button 
+
+                    <Button
                         Grid.Column="2"
                         x:Uid="VersionListPage_ImportModpackButton"
                         Content="导入整合包"
@@ -175,8 +92,8 @@
                         Style="{StaticResource DefaultButtonStyle}"
                         HorizontalAlignment="Right"
                         Margin="8,0,8,0" />
-                    
-                    <Button 
+
+                    <Button
                         Grid.Column="3"
                         x:Uid="VersionListPage_RefreshButton"
                         Command="{Binding LoadVersionsCommand}"
@@ -185,329 +102,43 @@
                         HorizontalAlignment="Right" />
                 </Grid>
             </localControls:PageHeader.HeaderSupplementalContent>
+
+            <localControls:PageHeader.TrailingActions>
+                <Button
+                    x:Name="OpenCurrentFolderButton"
+                    ToolTipService.ToolTip="打开文件夹"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource DefaultButtonStyle}"
+                    Padding="8"
+                    Height="32"
+                    Visibility="Collapsed">
+                    <FontIcon Glyph="&#xE838;" FontSize="16" />
+                </Button>
+            </localControls:PageHeader.TrailingActions>
         </localControls:PageHeader>
 
-        <!-- 版本列表 - 居中块(最大1064)，ListView 宽度受限，焦点框与卡片一致；无外层 ScrollViewer 以支持虚拟化 -->
-        <Grid Grid.Row="1" Padding="{StaticResource PageScrollViewerPadding}" HorizontalAlignment="Stretch">
+        <Grid x:Name="VersionListInnerContentHost"
+              Grid.Row="1"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Stretch"
+              Padding="{StaticResource PageScrollViewerPadding}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="100*" MaxWidth="1064" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <Grid Grid.Column="1" HorizontalAlignment="Stretch">
-            <!-- Error Message -->
-            <Grid
-                Margin="0,10,0,10"
-                Background="#FFFDE7E9"
-                BorderBrush="#FFD53939"
-                BorderThickness="1"
-                CornerRadius="12"
-                Padding="16"
-                Visibility="Collapsed">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <FontIcon
-                    Grid.Column="0"
-                    Glyph="&#xE7BA;"
-                    FontSize="24"
-                    VerticalAlignment="Center"
-                    Margin="0,0,12,0"
-                    Foreground="#FFD53939"/>
-                <TextBlock
-                    Grid.Column="1"
-                    Text="错误信息"
-                    Foreground="#FFD53939"
-                    Style="{StaticResource BodyTextStyle}"
-                    VerticalAlignment="Center"/>
-            </Grid>
 
-            <!-- Loading Indicator -->
-            <ProgressRing
-                Margin="0"
-                IsActive="{Binding IsLoading, Mode=OneWay}"
-                VerticalAlignment="Center"
-                HorizontalAlignment="Center"
-                Visibility="{Binding IsLoading, Mode=OneWay}"
-                Width="48"
-                Height="48"
-                Foreground="{ThemeResource SystemControlHighlightAccentBrush}"/>
-
-            <!-- Version List Section - ListView 宽度受限于三列居中布局的中间列（约 1064px），滚动条出现在中间列右侧而非页面右侧 -->
-            <ListView
-                x:Name="VersionsListView"
-                SelectionMode="Single"
-                ItemsSource="{Binding FilteredVersions, Mode=OneWay}"
-                IsItemClickEnabled="True"
-                CanReorderItems="False"
-                AllowDrop="False"
-                Visibility="{Binding IsLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"
-                Background="Transparent"
-                BorderThickness="0"
-                HorizontalContentAlignment="Stretch">
-                    <ListView.ItemContainerStyle>
-                        <Style TargetType="ListViewItem">
-                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                            <Setter Property="Margin" Value="0,0,0,16"/>
-                            <Setter Property="Padding" Value="0"/>
-                            <Setter Property="BorderThickness" Value="0"/>
-                            <Setter Property="Background" Value="Transparent"/>
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="ListViewItem">
-                                        <Grid x:Name="RootGrid" Background="{TemplateBinding Background}" CornerRadius="12">
-                                            <VisualStateManager.VisualStateGroups>
-                                                <VisualStateGroup x:Name="CommonStates">
-                                                    <VisualState x:Name="Normal" />
-                                                    <VisualState x:Name="PointerOver">
-                                                        <Storyboard>
-                                                            <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.9" Duration="0:0:0.1" />
-                                                        </Storyboard>
-                                                    </VisualState>
-                                                    <VisualState x:Name="Pressed">
-                                                        <Storyboard>
-                                                            <DoubleAnimation Storyboard.TargetName="ContentPresenter" Storyboard.TargetProperty="Opacity" To="0.8" Duration="0:0:0.1" />
-                                                        </Storyboard>
-                                                    </VisualState>
-                                                    <VisualState x:Name="Selected">
-                                                        <Storyboard>
-                                                            <!-- Removed selection border style -->
-                                                        </Storyboard>
-                                                    </VisualState>
-                                                </VisualStateGroup>
-                                            </VisualStateManager.VisualStateGroups>
-                                            <ContentPresenter x:Name="ContentPresenter"
-                                                              Content="{TemplateBinding Content}"
-                                                              ContentTemplate="{TemplateBinding ContentTemplate}"
-                                                              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                                              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
-                                                              Padding="{TemplateBinding Padding}"/>
-                                        </Grid>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </ListView.ItemContainerStyle>
-                    
-                    <!-- 列表项模板 -->
-                    <ListView.ItemTemplate>
-                        <DataTemplate>
-                            <Grid HorizontalAlignment="Stretch"
-                                  Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                  CornerRadius="12" 
-                                  Padding="24" 
-                                  BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                  BorderThickness="1">
-                                <!-- 右键菜单 -->
-                                <Grid.ContextFlyout>
-                                    <MenuFlyout>
-                                        <MenuFlyoutItem 
-                                            x:Uid="VersionListPage_OpenFolderMenuItem"
-                                            Command="{Binding DataContext.OpenFolderCommand, ElementName=VersionsListView}" 
-                                            CommandParameter="{Binding}">
-                                            <MenuFlyoutItem.Icon>
-                                                <FontIcon Glyph="&#xE838;" />
-                                            </MenuFlyoutItem.Icon>
-                                        </MenuFlyoutItem>
-                                        <MenuFlyoutItem 
-                                            x:Uid="VersionListPage_ExportModpackMenuItem"
-                                            Command="{Binding DataContext.ExportModpackCommand, ElementName=VersionsListView}" 
-                                            CommandParameter="{Binding}"
-                                            IsEnabled="{Binding IsValid}">
-                                            <MenuFlyoutItem.Icon>
-                                                <FontIcon Glyph="&#xE72C;" />
-                                            </MenuFlyoutItem.Icon>
-                                        </MenuFlyoutItem>
-                                        <MenuFlyoutItem 
-                                            x:Uid="VersionListPage_GenerateLaunchScriptMenuItem"
-                                            Text="生成启动参数"
-                                            Command="{Binding DataContext.GenerateLaunchScriptCommand, ElementName=VersionsListView}" 
-                                            CommandParameter="{Binding}"
-                                            IsEnabled="{Binding IsValid}">
-                                            <MenuFlyoutItem.Icon>
-                                                <FontIcon Glyph="&#xE756;" />
-                                            </MenuFlyoutItem.Icon>
-                                        </MenuFlyoutItem>
-                                        <MenuFlyoutItem 
-                                            x:Uid="VersionListPage_CreateShortcutMenuItem"
-                                            Text="创建快捷方式"
-                                            Command="{Binding DataContext.CreateShortcutCommand, ElementName=VersionsListView}" 
-                                            CommandParameter="{Binding}"
-                                            IsEnabled="{Binding IsValid}">
-                                            <MenuFlyoutItem.Icon>
-                                                <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xE71B;" />
-                                            </MenuFlyoutItem.Icon>
-                                        </MenuFlyoutItem>
-                                        <MenuFlyoutItem 
-                                            x:Uid="VersionListPage_CompleteVersionMenuItem"
-                                            Text="版本补全"
-                                            Command="{Binding DataContext.CompleteVersionCommand, ElementName=VersionsListView}" 
-                                            CommandParameter="{Binding}"
-                                            IsEnabled="{Binding IsValid}">
-                                            <MenuFlyoutItem.Icon>
-                                                <FontIcon Glyph="&#xE896;" />
-                                            </MenuFlyoutItem.Icon>
-                                        </MenuFlyoutItem>
-                                        <MenuFlyoutSeparator />
-                                        <MenuFlyoutItem 
-                                            x:Uid="VersionListPage_RenameMenuItem"
-                                            Text="重命名"
-                                            Command="{Binding DataContext.RenameVersionCommand, ElementName=VersionsListView}" 
-                                            CommandParameter="{Binding}">
-                                            <MenuFlyoutItem.Icon>
-                                                <FontIcon Glyph="&#xE8AC;" />
-                                            </MenuFlyoutItem.Icon>
-                                        </MenuFlyoutItem>
-                                        <MenuFlyoutItem 
-                                            x:Uid="VersionListPage_DeleteMenuItem"
-                                            Command="{Binding DataContext.DeleteVersionCommand, ElementName=VersionsListView}" 
-                                            CommandParameter="{Binding}">
-                                            <MenuFlyoutItem.Icon>
-                                                <SymbolIcon Symbol="Delete" />
-                                            </MenuFlyoutItem.Icon>
-                                        </MenuFlyoutItem>
-                                    </MenuFlyout>
-                                </Grid.ContextFlyout>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-
-                                <!-- 左侧内容：图标与信息组合 -->
-                                <StackPanel Grid.Column="0" Spacing="16" VerticalAlignment="Center" HorizontalAlignment="Stretch">
-                                    <!-- 顶部：图标 + 名称 -->
-                                    <Grid VerticalAlignment="Center">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <!-- 版本图标 -->
-                                        <Border 
-                                            Grid.Column="0"
-                                            Width="32" 
-                                            Height="32" 
-                                            CornerRadius="4" 
-                                            Background="Transparent" 
-                                            VerticalAlignment="Center">
-                                            <Image 
-                                                Width="32" 
-                                                Height="32" 
-                                                DataContextChanged="VersionIconImage_DataContextChanged"
-                                                Stretch="UniformToFill" 
-                                                HorizontalAlignment="Center" 
-                                                VerticalAlignment="Center" />
-                                        </Border>
-                                        
-                                        <!-- 版本名称 -->
-                                        <TextBlock 
-                                            Grid.Column="1"
-                                            Margin="12,0,0,0"
-                                            Text="{Binding Name}" 
-                                            Style="{StaticResource TitleTextBlockStyle}" 
-                                            FontWeight="SemiBold" 
-                                            FontSize="18" 
-                                            VerticalAlignment="Center"
-                                            TextTrimming="CharacterEllipsis"/>
-                                    </Grid>
-                                    
-                                    <!-- 底部：详细信息 -->
-                                    <StackPanel Spacing="6" Margin="0,4,0,0">
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <TextBlock 
-                                                x:Uid="VersionListPage_VersionNumberLabel" 
-                                                Text="版本号: " 
-                                                FontSize="13" 
-                                                Opacity="0.6" />
-                                            <TextBlock 
-                                                Text="{Binding VersionNumber}" 
-                                                FontSize="13" 
-                                                Opacity="0.6" 
-                                                FontWeight="SemiBold" />
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Spacing="4">
-                                            <TextBlock 
-                                                x:Uid="VersionListPage_InstallDateLabel" 
-                                                Text="安装日期: " 
-                                                FontSize="13" 
-                                                Opacity="0.6" />
-                                            <TextBlock 
-                                                Text="{Binding InstallDate, Mode=OneWay, Converter={StaticResource DateTimeConverter}}" 
-                                                FontSize="13" 
-                                                Opacity="0.6" 
-                                                FontWeight="SemiBold" />
-                                        </StackPanel>
-                                    </StackPanel>
-                                </StackPanel>
-                                
-                                <!-- 右侧：版本类型标签（支持多标签） -->
-                                <ItemsControl 
-                                    Grid.Column="1"
-                                    ItemsSource="{Binding LoaderTags}"
-                                    HorizontalAlignment="Right"
-                                    VerticalAlignment="Top">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Orientation="Horizontal" Spacing="6" />
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border 
-                                                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                                                CornerRadius="8"
-                                                Padding="12,4,12,4"
-                                                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                                                BorderThickness="1">
-                                                <TextBlock 
-                                                    Text="{Binding}" 
-                                                    Style="{StaticResource BodyTextStyle}" 
-                                                    Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}" 
-                                                    FontWeight="SemiBold" 
-                                                    FontSize="12" />
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </Grid>
-                        </DataTemplate>
-                    </ListView.ItemTemplate>
-                </ListView>
-            
-            <!-- 空列表提示 -->
-            <StackPanel 
-                x:Name="EmptyListPanel"
-                Visibility="Collapsed"
-                HorizontalAlignment="Center" 
-                VerticalAlignment="Center" 
-                Padding="60,40,60,40"
-                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                CornerRadius="16"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                BorderThickness="1">
-                <FontIcon 
-                    FontFamily="{StaticResource SymbolThemeFontFamily}" 
-                    Glyph="&#xE8B7;" 
-                    FontSize="80" 
-                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
-                    Margin="0,0,0,24" 
-                    HorizontalAlignment="Center"/>
-                <TextBlock 
-                    x:Uid="VersionListPage_EmptyListTitle"
-                    Style="{StaticResource PageTitleStyle}" 
-                    FontSize="20" 
-                    Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" 
-                    TextAlignment="Center" 
-                    Margin="0,0,0,8"/>
-                <TextBlock 
-                    x:Uid="VersionListPage_EmptyListDescription"
-                    Style="{StaticResource BodyTextStyle}" 
-                    Foreground="{ThemeResource SystemControlForegroundBaseMediumLowBrush}" 
-                    Margin="0,0,0,0" 
-                    TextAlignment="Center" 
-                    MaxWidth="300"/>
-            </StackPanel>
-            </Grid>
+            <Frame x:Name="VersionListInnerContentFrame"
+                   Grid.Column="1"
+                   Background="Transparent"
+                   HorizontalAlignment="Stretch"
+                   VerticalAlignment="Stretch">
+                <Frame.ContentTransitions>
+                    <TransitionCollection>
+                        <NavigationThemeTransition />
+                    </TransitionCollection>
+                </Frame.ContentTransitions>
+            </Frame>
         </Grid>
     </Grid>
 </Page>

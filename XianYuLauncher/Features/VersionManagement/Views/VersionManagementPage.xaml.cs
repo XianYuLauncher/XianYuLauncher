@@ -4,11 +4,13 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
+using Microsoft.UI.Xaml.Navigation;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Features.VersionManagement.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models.VersionManagement;
@@ -23,13 +25,25 @@ using System.Collections.ObjectModel;
 
 namespace XianYuLauncher.Features.VersionManagement.Views;
 
-public sealed partial class VersionManagementPage : Page
+public sealed partial class VersionManagementPage : Page, IHostedLocalPage
 {
+    private EventHandler? _closeRequested;
+
     public VersionManagementViewModel ViewModel { get; }
+
+    public IPageHeaderAware HeaderSource => ViewModel;
+
+    public event EventHandler? CloseRequested
+    {
+        add => _closeRequested += value;
+        remove => _closeRequested -= value;
+    }
+
     private readonly ICommonDialogService _dialogService;
     private readonly IProgressDialogService _progressDialogService;
     private readonly IResourceDialogService _resourceDialogService;
     private readonly IProfileManager _profileManager;
+    private bool _usesPageLevelNavigationForwarding;
     
     // 标记页面是否正在卸载
     private bool _isUnloading = false;
@@ -51,9 +65,47 @@ public sealed partial class VersionManagementPage : Page
         
         // 注册页面卸载事件，快速清理资源
         this.Unloaded += VersionManagementPage_Unloaded;
-        
-        // 初始更新标题
-        UpdatePageTitle();
+        ApplyNavigationLayoutMode();
+    }
+
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        _isUnloading = false;
+
+        _usesPageLevelNavigationForwarding = e.Parameter is XianYuLauncher.Features.VersionManagement.Models.VersionManagementNavigationParameter;
+        if (_usesPageLevelNavigationForwarding)
+        {
+            ViewModel.OnNavigatedTo(e.Parameter);
+        }
+
+        ApplyNavigationLayoutMode();
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        base.OnNavigatedFrom(e);
+
+        if (_usesPageLevelNavigationForwarding)
+        {
+            ViewModel.OnNavigatedFrom();
+            _usesPageLevelNavigationForwarding = false;
+        }
+    }
+
+    public void ResetEmbeddedVisualState()
+    {
+        ContentArea.Opacity = 1;
+        ContentArea.Translation = default;
+        MainTabView.Opacity = 1;
+        MainTabView.Translation = default;
+    }
+
+    private void ApplyNavigationLayoutMode()
+    {
+        ContentArea.Padding = ViewModel.IsEmbeddedHostNavigation
+            ? new Thickness(0)
+            : (Thickness)Application.Current.Resources["PageContentPadding"];
     }
     
     /// <summary>
@@ -179,11 +231,6 @@ public sealed partial class VersionManagementPage : Page
 
                     ViewModel.IsMoveResultDialogVisible = false;
                 }
-                else if (e.PropertyName == nameof(ViewModel.SelectedVersion))
-                {
-                    // 更新页面标题
-                    UpdatePageTitle();
-                }
             }
             catch (Exception ex)
             {
@@ -234,23 +281,6 @@ public sealed partial class VersionManagementPage : Page
         }
     }
     
-    /// <summary>
-    /// 更新页面标题
-    /// </summary>
-    private void UpdatePageTitle()
-    {
-        if (ViewModel.SelectedVersion != null)
-        {
-            PageTitle.Text = $"{"VersionManagerPage_Title".GetLocalized()} - {ViewModel.SelectedVersion.Name}";
-            PageSubtitle.Text = $"{"VersionManagerPage_Subtitle_WithVersion".GetLocalized()} {ViewModel.SelectedVersion.Name} {"VersionManagerPage_Subtitle_Components".GetLocalized()}";
-        }
-        else
-        {
-            PageTitle.Text = "VersionManagerPage_Title".GetLocalized();
-            PageSubtitle.Text = "VersionManagerPage_Subtitle_SelectVersion".GetLocalized();
-        }
-    }
-
     private async void SaveLaunchProfileFlyout_Opening(object sender, object e)
     {
         if (sender is not Flyout flyout
@@ -452,7 +482,7 @@ public sealed partial class VersionManagementPage : Page
             bool isOn = toggleSwitch.IsOn;
             
             // 直接从父级Grid获取DataContext
-            if (VisualTreeHelper.GetParent(toggleSwitch) is FrameworkElement parentElement && parentElement.DataContext is Models.VersionManagement.ModInfo modInfo)
+            if (VisualTreeHelper.GetParent(toggleSwitch) is FrameworkElement parentElement && parentElement.DataContext is XianYuLauncher.Models.VersionManagement.ModInfo modInfo)
             {
                 // 直接调用ViewModel的方法来处理开关状态变化，传递当前IsOn值
                 await ViewModel.ModsModule.ToggleModEnabledAsync(modInfo, isOn);
