@@ -43,6 +43,14 @@ public sealed partial class ResourceDownloadRootPage : Page
     private bool _datapacksLoaded;
     private bool _worldsLoaded;
 
+    private bool _isVersionInitialLoadPending;
+    private bool _isModInitialLoadPending;
+    private bool _isShaderPackInitialLoadPending;
+    private bool _isResourcePackInitialLoadPending;
+    private bool _isDatapackInitialLoadPending;
+    private bool _isModpackInitialLoadPending;
+    private bool _isWorldInitialLoadPending;
+
     private bool _resourcePackLoadMoreCheckPending;
     private bool _modLoadMoreCheckPending;
     private bool _shaderPackLoadMoreCheckPending;
@@ -274,63 +282,121 @@ public sealed partial class ResourceDownloadRootPage : Page
         switch (selectedIndex)
         {
             case 0:
-                if (!_versionsLoaded)
+                if (_versionsLoaded || _isVersionInitialLoadPending)
+                {
+                    break;
+                }
+
+                _isVersionInitialLoadPending = true;
+                try
                 {
                     await ViewModel.SearchVersionsCommand.ExecuteAsync(null);
                     _versionsLoaded = true;
                 }
+                finally
+                {
+                    _isVersionInitialLoadPending = false;
+                }
                 break;
             case 1:
-                if (!_modsLoaded)
+                if (!_modsLoaded && !_isModInitialLoadPending)
                 {
-                    await ViewModel.LoadCategoriesAsync("mod");
-                    await ViewModel.SearchModsCommand.ExecuteAsync(null);
-                    _modsLoaded = true;
+                    _isModInitialLoadPending = true;
+                    try
+                    {
+                        await ViewModel.LoadCategoriesAsync("mod");
+                        await ViewModel.SearchModsCommand.ExecuteAsync(null);
+                        _modsLoaded = true;
+                    }
+                    finally
+                    {
+                        _isModInitialLoadPending = false;
+                    }
                 }
                 ScheduleModLoadMoreCheck();
                 break;
             case 2:
-                if (!_shaderPacksLoaded)
+                if (!_shaderPacksLoaded && !_isShaderPackInitialLoadPending)
                 {
-                    await ViewModel.LoadCategoriesAsync("shader");
-                    await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
-                    _shaderPacksLoaded = true;
+                    _isShaderPackInitialLoadPending = true;
+                    try
+                    {
+                        await ViewModel.LoadCategoriesAsync("shader");
+                        await ViewModel.SearchShaderPacksCommand.ExecuteAsync(null);
+                        _shaderPacksLoaded = true;
+                    }
+                    finally
+                    {
+                        _isShaderPackInitialLoadPending = false;
+                    }
                 }
                 ScheduleShaderPackLoadMoreCheck();
                 break;
             case 3:
-                if (!_resourcePacksLoaded)
+                if (!_resourcePacksLoaded && !_isResourcePackInitialLoadPending)
                 {
-                    await ViewModel.LoadCategoriesAsync("resourcepack");
-                    await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
-                    _resourcePacksLoaded = true;
+                    _isResourcePackInitialLoadPending = true;
+                    try
+                    {
+                        await ViewModel.LoadCategoriesAsync("resourcepack");
+                        await ViewModel.SearchResourcePacksCommand.ExecuteAsync(null);
+                        _resourcePacksLoaded = true;
+                    }
+                    finally
+                    {
+                        _isResourcePackInitialLoadPending = false;
+                    }
                 }
                 ScheduleResourcePackLoadMoreCheck();
                 break;
             case 4:
-                if (!_datapacksLoaded)
+                if (!_datapacksLoaded && !_isDatapackInitialLoadPending)
                 {
-                    await ViewModel.LoadCategoriesAsync("datapack");
-                    await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
-                    _datapacksLoaded = true;
+                    _isDatapackInitialLoadPending = true;
+                    try
+                    {
+                        await ViewModel.LoadCategoriesAsync("datapack");
+                        await ViewModel.SearchDatapacksCommand.ExecuteAsync(null);
+                        _datapacksLoaded = true;
+                    }
+                    finally
+                    {
+                        _isDatapackInitialLoadPending = false;
+                    }
                 }
                 ScheduleDatapackLoadMoreCheck();
                 break;
             case 5:
-                if (!_modpacksLoaded)
+                if (!_modpacksLoaded && !_isModpackInitialLoadPending)
                 {
-                    await ViewModel.LoadCategoriesAsync("modpack");
-                    await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
-                    _modpacksLoaded = true;
+                    _isModpackInitialLoadPending = true;
+                    try
+                    {
+                        await ViewModel.LoadCategoriesAsync("modpack");
+                        await ViewModel.SearchModpacksCommand.ExecuteAsync(null);
+                        _modpacksLoaded = true;
+                    }
+                    finally
+                    {
+                        _isModpackInitialLoadPending = false;
+                    }
                 }
                 ScheduleModpackLoadMoreCheck();
                 break;
             case 6:
-                if (!_worldsLoaded)
+                if (!_worldsLoaded && !_isWorldInitialLoadPending)
                 {
-                    await ViewModel.LoadCategoriesAsync("world");
-                    await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
-                    _worldsLoaded = true;
+                    _isWorldInitialLoadPending = true;
+                    try
+                    {
+                        await ViewModel.LoadCategoriesAsync("world");
+                        await ViewModel.SearchWorldsCommand.ExecuteAsync(null);
+                        _worldsLoaded = true;
+                    }
+                    finally
+                    {
+                        _isWorldInitialLoadPending = false;
+                    }
                 }
                 ScheduleWorldLoadMoreCheck();
                 break;
