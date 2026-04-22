@@ -10,7 +10,6 @@
 
     <UserControl.Resources>
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
-        <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
         <helpers:StringNullOrEmptyToVisibilityConverter x:Key="StringNullOrEmptyToVisibilityConverter" />
     </UserControl.Resources>
 
@@ -27,30 +26,15 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <Grid Grid.Row="0" ColumnSpacing="16">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <BreadcrumbBar
-                    x:Name="HeaderBreadcrumbBar"
-                    Grid.Column="0"
-                    ItemsSource="{Binding BreadcrumbItems, ElementName=ThisControl}"
-                    ItemTemplate="{Binding BreadcrumbItemTemplate, ElementName=ThisControl}"
-                    FontSize="{Binding BreadcrumbFontSize, ElementName=ThisControl}"
-                    FontWeight="SemiBold"
-                    Margin="{Binding BreadcrumbMargin, ElementName=ThisControl}"
-                    ItemClicked="BreadcrumbBar_ItemClicked"
-                    Visibility="{Binding ShowBreadcrumb, ElementName=ThisControl, Converter={StaticResource BoolToVisibilityConverter}}" />
-
-                <ContentPresenter
-                    Grid.Column="1"
-                    Content="{Binding TrailingActions, ElementName=ThisControl}"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Top"
-                    Visibility="{Binding ShowPrimaryHeading, ElementName=ThisControl, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
-            </Grid>
+            <BreadcrumbBar
+                x:Name="HeaderBreadcrumbBar"
+                ItemsSource="{Binding BreadcrumbItems, ElementName=ThisControl}"
+                ItemTemplate="{Binding BreadcrumbItemTemplate, ElementName=ThisControl}"
+                FontSize="{Binding BreadcrumbFontSize, ElementName=ThisControl}"
+                FontWeight="SemiBold"
+                Margin="{Binding BreadcrumbMargin, ElementName=ThisControl}"
+                ItemClicked="BreadcrumbBar_ItemClicked"
+                Visibility="{Binding ShowBreadcrumb, ElementName=ThisControl, Converter={StaticResource BoolToVisibilityConverter}}" />
 
             <Grid Grid.Row="1" ColumnSpacing="16" Visibility="{Binding ShowPrimaryHeading, ElementName=ThisControl, Converter={StaticResource BoolToVisibilityConverter}}">
                 <Grid.ColumnDefinitions>

@@ -103,19 +103,34 @@
                 </Grid>
             </localControls:PageHeader.HeaderSupplementalContent>
 
-            <localControls:PageHeader.TrailingActions>
+        </localControls:PageHeader>
+
+        <Grid Grid.Row="0"
+              Margin="0,0,0,20"
+              HorizontalAlignment="Stretch"
+              VerticalAlignment="Top">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100*" MaxWidth="1064" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Grid Grid.Column="1"
+                  Padding="{StaticResource PageHeaderPadding}"
+                  HorizontalAlignment="Stretch">
                 <Button
                     x:Name="OpenCurrentFolderButton"
                     ToolTipService.ToolTip="打开文件夹"
-                    VerticalAlignment="Center"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Top"
                     Style="{StaticResource DefaultButtonStyle}"
                     Padding="8"
                     Height="32"
                     Visibility="Collapsed">
                     <FontIcon Glyph="&#xE838;" FontSize="16" />
                 </Button>
-            </localControls:PageHeader.TrailingActions>
-        </localControls:PageHeader>
+            </Grid>
+        </Grid>
 
         <Grid x:Name="VersionListInnerContentHost"
               Grid.Row="1"
