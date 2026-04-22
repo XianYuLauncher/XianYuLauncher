@@ -1,3 +1,4 @@
+using CommunityToolkit.WinUI.Animations;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
@@ -7,6 +8,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage;
+using System.Numerics;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
@@ -27,6 +29,9 @@ namespace XianYuLauncher.Features.VersionManagement.Views;
 
 public sealed partial class VersionManagementPage : Page, IHostedLocalPage
 {
+    private static readonly TimeSpan TabContentEntranceDuration = TimeSpan.FromMilliseconds(500);
+    private static readonly Vector3 TabContentEntranceFromTranslation = new(0, 40, 0);
+
     private EventHandler? _closeRequested;
 
     public VersionManagementViewModel ViewModel { get; }
@@ -49,6 +54,7 @@ public sealed partial class VersionManagementPage : Page, IHostedLocalPage
     private bool _isUnloading = false;
     private TaskCompletionSource<object?>? _downloadDialogCloseSignal;
     private TaskCompletionSource<object?>? _extensionInstallDialogCloseSignal;
+    private bool _suppressNextSelectedTabContentAnimation;
 
     public VersionManagementPage()
     {
@@ -80,6 +86,7 @@ public sealed partial class VersionManagementPage : Page, IHostedLocalPage
         }
 
         ApplyNavigationLayoutMode();
+        ApplyPendingSelectedTab();
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
@@ -99,6 +106,73 @@ public sealed partial class VersionManagementPage : Page, IHostedLocalPage
         ContentArea.Translation = default;
         MainTabView.Opacity = 1;
         MainTabView.Translation = default;
+    }
+
+    private void ApplyPendingSelectedTab()
+    {
+        if (MainTabView.TabItems.Count == 0)
+        {
+            return;
+        }
+
+        var selectedIndex = ViewModel.SelectedTabIndex;
+        if (selectedIndex < 0 || selectedIndex >= MainTabView.TabItems.Count)
+        {
+            return;
+        }
+
+        if (MainTabView.SelectedIndex == selectedIndex)
+        {
+            return;
+        }
+
+        _suppressNextSelectedTabContentAnimation = true;
+
+        try
+        {
+            MainTabView.SelectedIndex = selectedIndex;
+        }
+        finally
+        {
+            _suppressNextSelectedTabContentAnimation = false;
+        }
+    }
+
+    private void MainTabView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (ShouldAnimateSelectedTabContent(e))
+        {
+            PlaySelectedTabContentEntranceAnimation();
+        }
+    }
+
+    private bool ShouldAnimateSelectedTabContent(SelectionChangedEventArgs e)
+    {
+        return !_isUnloading
+            && !_suppressNextSelectedTabContentAnimation
+            && e.AddedItems.Count > 0
+            && e.RemovedItems.Count > 0;
+    }
+
+    private void PlaySelectedTabContentEntranceAnimation()
+    {
+        if (MainTabView.SelectedItem is not TabViewItem { Content: UIElement selectedTabContent })
+        {
+            return;
+        }
+
+        AnimationBuilder
+            .Create()
+            .Translation(
+                to: Vector3.Zero,
+                from: TabContentEntranceFromTranslation,
+                duration: TabContentEntranceDuration,
+                easingMode: EasingMode.EaseOut)
+            .Opacity(
+                to: 1,
+                from: 0,
+                duration: TabContentEntranceDuration)
+            .Start(selectedTabContent);
     }
 
     private void ApplyNavigationLayoutMode()

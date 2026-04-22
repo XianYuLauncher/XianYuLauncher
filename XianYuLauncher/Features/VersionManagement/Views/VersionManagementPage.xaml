@@ -131,6 +131,7 @@
             Background="Transparent"
             BorderThickness="0"
             SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}"
+            SelectionChanged="MainTabView_SelectionChanged"
             IsAddTabButtonVisible="False"
             CanDragTabs="False"
             CanReorderTabs="False">
@@ -149,10 +150,6 @@
                     </StackPanel>
                 </TabViewItem.Header>
                 <ScrollViewer Margin="0" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                    <animations:Implicit.ShowAnimations>
-                        <animations:TranslationAnimation Duration="0:0:0.5" From="0, 40, 0" To="0" EasingMode="EaseOut" />
-                        <animations:OpacityAnimation Duration="0:0:0.5" From="0" To="1.0" />
-                    </animations:Implicit.ShowAnimations>
                     <StackPanel Spacing="12" Padding="0,12,0,24">
                         
                         <!-- 统计卡片网格 - 四个独立小卡片 -->
@@ -556,10 +553,6 @@
                     </StackPanel>
                 </TabViewItem.Header>
                 <Grid>
-                    <animations:Implicit.ShowAnimations>
-                        <animations:TranslationAnimation Duration="0:0:0.5" From="0, 40, 0" To="0" EasingMode="EaseOut" />
-                        <animations:OpacityAnimation Duration="0:0:0.5" From="0" To="1.0" />
-                    </animations:Implicit.ShowAnimations>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
@@ -850,10 +843,6 @@
                     </StackPanel>
                 </TabViewItem.Header>
                 <Grid>
-                    <animations:Implicit.ShowAnimations>
-                        <animations:TranslationAnimation Duration="0:0:0.5" From="0, 40, 0" To="0" EasingMode="EaseOut" />
-                        <animations:OpacityAnimation Duration="0:0:0.5" From="0" To="1.0" />
-                    </animations:Implicit.ShowAnimations>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
@@ -1124,10 +1113,6 @@
                     </StackPanel>
                 </TabViewItem.Header>
                 <Grid>
-                    <animations:Implicit.ShowAnimations>
-                        <animations:TranslationAnimation Duration="0:0:0.5" From="0, 40, 0" To="0" EasingMode="EaseOut" />
-                        <animations:OpacityAnimation Duration="0:0:0.5" From="0" To="1.0" />
-                    </animations:Implicit.ShowAnimations>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
@@ -1428,10 +1413,6 @@
                     </StackPanel>
                 </TabViewItem.Header>
                 <Grid>
-                    <animations:Implicit.ShowAnimations>
-                        <animations:TranslationAnimation Duration="0:0:0.5" From="0, 40, 0" To="0" EasingMode="EaseOut" />
-                        <animations:OpacityAnimation Duration="0:0:0.5" From="0" To="1.0" />
-                    </animations:Implicit.ShowAnimations>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
@@ -1629,10 +1610,6 @@
                     </StackPanel>
                 </TabViewItem.Header>
                 <Grid DataContext="{Binding MapsModule}">
-                    <animations:Implicit.ShowAnimations>
-                        <animations:TranslationAnimation Duration="0:0:0.5" From="0, 40, 0" To="0" EasingMode="EaseOut" />
-                        <animations:OpacityAnimation Duration="0:0:0.5" From="0" To="1.0" />
-                    </animations:Implicit.ShowAnimations>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
