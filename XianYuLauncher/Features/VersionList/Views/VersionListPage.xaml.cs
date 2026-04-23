@@ -1,1396 +1,713 @@
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
+using System.Numerics;
+
+using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media.Imaging;
-using Windows.Storage;
-using Windows.Storage.Pickers;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.IO.Compression;
-using System.Threading.Tasks;
+using Microsoft.UI.Xaml.Media.Animation;
+using Microsoft.UI.Xaml.Navigation;
+
 using XianYuLauncher.Contracts.Services;
-using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Helpers;
-using XianYuLauncher.Features.VersionManagement.ViewModels;
 using XianYuLauncher.Features.VersionList.ViewModels;
-using XianYuLauncher.Helpers;
+using XianYuLauncher.Features.VersionManagement.Models;
+using XianYuLauncher.Features.VersionManagement.Views;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.VersionList.Views;
 
-public sealed partial class VersionListPage : Page
+public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavigationHost
 {
+    private const string HostedDetailReadOnlyBreadcrumbItemTemplateKey = "HostedDetailReadOnlyBreadcrumbItemTemplate";
+    private const string LocalRootRouteKey = "VersionListRoot";
+
     private readonly INavigationService _navigationService;
-    private readonly ICommonDialogService _dialogService;
-    private readonly IProgressDialogService _progressDialogService;
-    private readonly IUiDispatcher _uiDispatcher;
-    private readonly Dictionary<string, BitmapImage?> _versionIconImageCache = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, Task<BitmapImage?>> _versionIconProcessingTasks = new(StringComparer.OrdinalIgnoreCase);
-    private int _iconWarmupRequestId;
-    private bool _isExportCancelled = false;
-    private bool _isCompleteVersionDialogOpen = false; // 用于跟踪版本补全弹窗状态
-    private bool _isRenameDialogOpen = false; // 用于跟踪重命名弹窗状态
-    private readonly DialogProgressState _loadingDialogState = new();
-    private TaskCompletionSource<bool>? _loadingDialogCloseSignal;
+    private readonly string _rootHeaderTitle;
+    private readonly string _rootHeaderSubtitle;
+    private bool _isInnerContentFrameInitialized;
+    private bool _shouldRefreshRootContentOnNextOuterNavigation;
+    private bool _isRootFrameJournalNormalizationPending;
+    private bool _isInnerFrameTransitionSuspendPending;
+    private TransitionCollection? _innerFrameNavigationTransitions;
+    private readonly TransitionCollection _suspendedInnerFrameNavigationTransitions = new();
+    private IHostedLocalPage? _activeHostedLocalPage;
+    private VersionListRootPage? _activeRootPage;
+    private bool _isPageLoaded;
+    private int _deferredUiActionGeneration;
 
-    private readonly DialogProgressState _completeVersionDialogState = new();
+    public VersionListViewModel ViewModel { get; }
 
-    private sealed class DialogProgressState : System.ComponentModel.INotifyPropertyChanged
-    {
-        private string _status = string.Empty;
-        private double _progress;
-        private string _progressText = "0.0%";
+    public event EventHandler? LocalNavigationStateChanged;
 
-        public string Status
-        {
-            get => _status;
-            private set
-            {
-                if (_status != value)
-                {
-                    _status = value;
-                    OnPropertyChanged(nameof(Status));
-                }
-            }
-        }
-
-        public double Progress
-        {
-            get => _progress;
-            private set
-            {
-                if (Math.Abs(_progress - value) > 0.001)
-                {
-                    _progress = value;
-                    OnPropertyChanged(nameof(Progress));
-                }
-            }
-        }
-
-        public string ProgressText
-        {
-            get => _progressText;
-            private set
-            {
-                if (_progressText != value)
-                {
-                    _progressText = value;
-                    OnPropertyChanged(nameof(ProgressText));
-                }
-            }
-        }
-
-        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
-
-        public void Set(string status, double progress, string progressText)
-        {
-            Status = status;
-            Progress = progress;
-            ProgressText = progressText;
-        }
-
-        private void OnPropertyChanged(string propertyName)
-        {
-            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
-        }
-    }
+    public bool CanGoBackLocally => _activeHostedLocalPage != null && VersionListInnerContentFrame.CanGoBack;
 
     public VersionListPage()
     {
-        this.DataContext = App.GetService<VersionListViewModel>();
         _navigationService = App.GetService<INavigationService>();
-        _dialogService = App.GetService<ICommonDialogService>();
-        _progressDialogService = App.GetService<IProgressDialogService>();
-        _uiDispatcher = App.GetService<IUiDispatcher>();
+        ViewModel = App.GetService<VersionListViewModel>();
+        _rootHeaderTitle = ViewModel.HeaderMetadata.Title;
+        _rootHeaderSubtitle = ViewModel.HeaderMetadata.Subtitle;
+        DataContext = ViewModel;
         InitializeComponent();
-        
-        // 添加ItemClick事件处理
-        VersionsListView.ItemClick += VersionsListView_ItemClick;
-        
-        // 订阅导出整合包事件
-        if (this.DataContext is VersionListViewModel viewModel)
-        {
-            viewModel.ExportModpackRequested += OnExportModpackRequested;
-            // 订阅ResourceDirectories集合变化事件
-            viewModel.ResourceDirectories.CollectionChanged += ResourceDirectories_CollectionChanged;
-            // 订阅版本补全事件
-            viewModel.CompleteVersionRequested += OnCompleteVersionRequested;
-            viewModel.CompleteVersionProgressUpdated += OnCompleteVersionProgressUpdated;
-            viewModel.CompleteVersionCompleted += OnCompleteVersionCompleted;
-            // 监听属性变化以显示弹窗
-            viewModel.PropertyChanged += ViewModel_PropertyChanged;
-        }
-        
+        _innerFrameNavigationTransitions = VersionListInnerContentFrame.ContentTransitions;
+        Loaded += VersionListPage_Loaded;
+        Unloaded += VersionListPage_Unloaded;
+        EnsureInnerContentFrame();
+        ShowRootPageState();
+        ScheduleInnerFrameTransitionSuspend();
     }
 
-    private async Task WarmupVersionIconsAsync(VersionListViewModel viewModel, int requestId)
+    public void OnNavigatedTo(object parameter)
     {
-        var uniquePaths = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var item in viewModel.FilteredVersions)
+        EnsureInnerContentFrame();
+        ResetInnerContentFrameVisualState();
+        ResetLocalNavigation();
+    }
+
+    public void OnNavigatedFrom()
+    {
+        HandleOuterPageNavigatedFrom(allowUiTeardown: true);
+    }
+
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        OnNavigatedTo(e.Parameter);
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        base.OnNavigatedFrom(e);
+        OnNavigatedFrom();
+    }
+
+    public bool TryGoBackLocally()
+    {
+        if (!TryGetPreviousLocalBreadcrumbItem(out var previousBreadcrumbItem))
         {
-            uniquePaths.Add(VersionIconPathHelper.NormalizeOrDefault(item.VersionIconPath));
+            return false;
         }
 
-        foreach (var iconPath in uniquePaths)
+        return TryNavigateLocally(previousBreadcrumbItem, useReturnTransition: true);
+    }
+
+    public bool CanNavigateLocally(NavigationBreadcrumbItem breadcrumbItem)
+    {
+        return TryGetLocalNavigationBackPlan(breadcrumbItem, out _, out _);
+    }
+
+    public bool TryNavigateLocally(NavigationBreadcrumbItem breadcrumbItem, bool useReturnTransition = false)
+    {
+        if (!TryGetLocalNavigationBackPlan(breadcrumbItem, out var backSteps, out var destinationIsLocalRoot))
         {
-            if (requestId != _iconWarmupRequestId)
+            return false;
+        }
+
+        return NavigateBackLocally(backSteps, destinationIsLocalRoot, useReturnTransition);
+    }
+
+    public void ResetLocalNavigation(bool useReturnTransition = false)
+    {
+        if (!CanGoBackLocally && VersionListInnerContentFrame.Content is VersionListRootPage)
+        {
+            if (_shouldRefreshRootContentOnNextOuterNavigation)
+            {
+                _shouldRefreshRootContentOnNextOuterNavigation = false;
+                DetachHostedLocalPage();
+                ResetInnerContentFrameVisualState();
+                VersionListInnerContentFrame.Navigate(typeof(VersionListRootPage), ViewModel, new SuppressNavigationTransitionInfo());
+                VersionListInnerContentFrame.BackStack.Clear();
+                VersionListInnerContentFrame.ForwardStack.Clear();
+                DisableInnerFrameNavigationTransitions();
+                return;
+            }
+
+            NormalizeRootFrameJournalIfNeeded();
+            ShowRootPageState();
+            ScheduleInnerFrameTransitionSuspend();
+            return;
+        }
+
+        if (useReturnTransition && CanGoBackLocally && TryReturnToLocalRoot(useReturnTransition: true))
+        {
+            return;
+        }
+
+        DetachHostedLocalPage();
+        ResetInnerContentFrameVisualState();
+
+        if (VersionListInnerContentFrame.Content is not VersionListRootPage || VersionListInnerContentFrame.CanGoBack)
+        {
+            _shouldRefreshRootContentOnNextOuterNavigation = false;
+            VersionListInnerContentFrame.Navigate(typeof(VersionListRootPage), ViewModel, new SuppressNavigationTransitionInfo());
+            VersionListInnerContentFrame.BackStack.Clear();
+            VersionListInnerContentFrame.ForwardStack.Clear();
+            DisableInnerFrameNavigationTransitions();
+            return;
+        }
+
+        ShowRootPageState();
+        ScheduleInnerFrameTransitionSuspend();
+    }
+
+    private void EnsureInnerContentFrame()
+    {
+        if (_isInnerContentFrameInitialized)
+        {
+            return;
+        }
+
+        VersionListInnerContentFrame.Navigated += VersionListInnerContentFrame_Navigated;
+        VersionListInnerContentFrame.Navigate(typeof(VersionListRootPage), ViewModel, new SuppressNavigationTransitionInfo());
+        _isInnerContentFrameInitialized = true;
+    }
+
+    private void VersionListInnerContentFrame_Navigated(object sender, NavigationEventArgs e)
+    {
+        if (e.Content is VersionListRootPage rootPage)
+        {
+            DetachHostedLocalPage();
+            AttachRootPage(rootPage);
+            ShowRootPageState();
+
+            ScheduleRootTargetElementDisarm();
+            ScheduleInnerFrameTransitionSuspend();
+            if (e.NavigationMode == NavigationMode.Back)
+            {
+                _shouldRefreshRootContentOnNextOuterNavigation = true;
+                ScheduleRootFrameJournalNormalization();
+            }
+
+            return;
+        }
+
+        DetachRootPage();
+        DetachHostedLocalPage();
+
+        if (e.Content is not IHostedLocalPage hostedLocalPage)
+        {
+            NotifyLocalNavigationStateChanged();
+            return;
+        }
+
+        _activeHostedLocalPage = hostedLocalPage;
+        hostedLocalPage.ResetEmbeddedVisualState();
+        hostedLocalPage.CloseRequested += HostedLocalPage_CloseRequested;
+        hostedLocalPage.HeaderSource.HeaderMetadata.PropertyChanged += ActiveHostedHeaderMetadata_PropertyChanged;
+        ApplyHostedPageHeaderState(hostedLocalPage.HeaderSource);
+        NotifyLocalNavigationStateChanged();
+    }
+
+    private void AttachRootPage(VersionListRootPage rootPage)
+    {
+        DetachRootPage();
+        _activeRootPage = rootPage;
+        rootPage.VersionManagementRequested += RootPage_VersionManagementRequested;
+        rootPage.ResetEmbeddedVisualState();
+    }
+
+    private void DetachRootPage()
+    {
+        if (_activeRootPage == null)
+        {
+            return;
+        }
+
+        _activeRootPage.VersionManagementRequested -= RootPage_VersionManagementRequested;
+        _activeRootPage = null;
+    }
+
+    private void RootPage_VersionManagementRequested(object? sender, VersionListViewModel.VersionInfoItem e)
+    {
+        EnsureInnerContentFrame();
+        EnableInnerFrameNavigationTransitions();
+        ResetInnerContentFrameVisualState();
+        VersionListInnerContentFrame.Navigate(
+            typeof(VersionManagementPage),
+            new VersionManagementNavigationParameter
+            {
+                Version = e,
+                IsEmbeddedHostNavigation = true,
+                BreadcrumbRootLabel = _rootHeaderTitle,
+                BreadcrumbRootTarget = new LocalNavigationTarget
+                {
+                    RouteKey = LocalRootRouteKey,
+                },
+            },
+            new DrillInNavigationTransitionInfo());
+    }
+
+    private void DetachHostedLocalPage()
+    {
+        if (_activeHostedLocalPage == null)
+        {
+            return;
+        }
+
+        _activeHostedLocalPage.CloseRequested -= HostedLocalPage_CloseRequested;
+        _activeHostedLocalPage.HeaderSource.HeaderMetadata.PropertyChanged -= ActiveHostedHeaderMetadata_PropertyChanged;
+        _activeHostedLocalPage = null;
+    }
+
+    private void HostedLocalPage_CloseRequested(object? sender, EventArgs e)
+    {
+        if (TryGoBackLocally())
+        {
+            return;
+        }
+
+        ReturnToRootContent();
+    }
+
+    private void ReturnToRootContent()
+    {
+        if (TryReturnToLocalRoot(useReturnTransition: true))
+        {
+            return;
+        }
+
+        if (!VersionListInnerContentFrame.CanGoBack)
+        {
+            ShowRootPageState();
+            return;
+        }
+
+        ApplyRootHeaderState();
+        NotifyLocalNavigationStateChanged();
+        VersionListInnerContentFrame.GoBack();
+    }
+
+    private void ActiveHostedHeaderMetadata_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!TryGetActiveHostedLocalPage(out var hostedLocalPage))
+        {
+            return;
+        }
+
+        ApplyHostedPageHeaderState(hostedLocalPage.HeaderSource);
+    }
+
+    private void ShowRootPageState()
+    {
+        ResetInnerContentFrameVisualState();
+        ApplyRootHeaderState();
+        NotifyLocalNavigationStateChanged();
+    }
+
+    private void ApplyRootHeaderState()
+    {
+        VersionListPageHeader.Title = _rootHeaderTitle;
+        VersionListPageHeader.Subtitle = _rootHeaderSubtitle;
+        VersionListPageHeader.ShowBreadcrumb = false;
+        VersionListPageHeader.BreadcrumbItems = null;
+        ApplyHeaderPresentationMode(ViewModel.HeaderPresentationMode);
+        RootHeaderSupplementalContent.Visibility = Visibility.Visible;
+        OpenCurrentFolderButton.Visibility = Visibility.Collapsed;
+        OpenCurrentFolderButton.Command = null;
+    }
+
+    private void ApplyHostedPageHeaderState(IPageHeaderAware pageHeaderAware)
+    {
+        VersionListPageHeader.Title = pageHeaderAware.HeaderMetadata.Title;
+        VersionListPageHeader.Subtitle = pageHeaderAware.HeaderMetadata.Subtitle;
+        VersionListPageHeader.ShowBreadcrumb = pageHeaderAware.HeaderMetadata.ShowBreadcrumb;
+        VersionListPageHeader.BreadcrumbItems = pageHeaderAware.HeaderMetadata.BreadcrumbItems;
+        ApplyHeaderPresentationMode(pageHeaderAware.HeaderPresentationMode);
+        RootHeaderSupplementalContent.Visibility = Visibility.Collapsed;
+        UpdateDetailTrailingActions();
+    }
+
+    private void UpdateDetailTrailingActions()
+    {
+        if (_activeHostedLocalPage is VersionManagementPage versionManagementPage)
+        {
+            OpenCurrentFolderButton.Command = versionManagementPage.ViewModel.OpenCurrentFolderCommand;
+            OpenCurrentFolderButton.Visibility = Visibility.Visible;
+            return;
+        }
+
+        OpenCurrentFolderButton.Command = null;
+        OpenCurrentFolderButton.Visibility = Visibility.Collapsed;
+    }
+
+    private void ApplyHeaderPresentationMode(PageHeaderPresentationMode headerPresentationMode)
+    {
+        switch (headerPresentationMode)
+        {
+            case PageHeaderPresentationMode.ProminentBreadcrumb:
+                VersionListPageHeader.ShowPrimaryHeading = false;
+                VersionListPageHeader.BreadcrumbFontSize = 28;
+                VersionListPageHeader.BreadcrumbMargin = new Thickness(-2, -11, 0, 12);
+                VersionListPageHeader.BreadcrumbItemTemplate = Resources[HostedDetailReadOnlyBreadcrumbItemTemplateKey] as DataTemplate;
+                return;
+        }
+
+        VersionListPageHeader.ShowPrimaryHeading = true;
+        VersionListPageHeader.BreadcrumbFontSize = 15;
+        VersionListPageHeader.BreadcrumbMargin = new Thickness(0, 0, 0, 12);
+        VersionListPageHeader.BreadcrumbItemTemplate = null;
+    }
+
+    private void ResetInnerContentFrameVisualState()
+    {
+        ResetOuterPageVisualState();
+
+        VersionListInnerContentHost.Opacity = 1;
+        VersionListInnerContentHost.Translation = default;
+        VersionListInnerContentHost.Scale = new Vector3(1f, 1f, 1f);
+        VersionListInnerContentFrame.Opacity = 1;
+        VersionListInnerContentFrame.Translation = default;
+        VersionListInnerContentFrame.Scale = new Vector3(1f, 1f, 1f);
+
+        if (_activeRootPage is not null)
+        {
+            _activeRootPage.ResetEmbeddedVisualState();
+            return;
+        }
+
+        if (!TryGetActiveHostedLocalPage(out var hostedLocalPage))
+        {
+            return;
+        }
+
+        hostedLocalPage.ResetEmbeddedVisualState();
+    }
+
+    private void ResetOuterPageVisualState()
+    {
+        ContentArea.Opacity = 1;
+        ContentArea.Translation = default;
+        ContentArea.Scale = new Vector3(1f, 1f, 1f);
+
+        VersionListPageHeader.Opacity = 1;
+        VersionListPageHeader.Translation = default;
+        VersionListPageHeader.Scale = new Vector3(1f, 1f, 1f);
+    }
+
+    private void NotifyLocalNavigationStateChanged()
+    {
+        LocalNavigationStateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private bool TryGetActiveHostedLocalPage([NotNullWhen(true)] out IHostedLocalPage? hostedLocalPage)
+    {
+        hostedLocalPage = _activeHostedLocalPage;
+        return hostedLocalPage is not null;
+    }
+
+    private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
+    {
+        if (args.Item is not NavigationBreadcrumbItem breadcrumbItem || !breadcrumbItem.CanNavigate)
+        {
+            return;
+        }
+
+        if (breadcrumbItem.HasLocalNavigationTarget && TryNavigateLocally(breadcrumbItem, useReturnTransition: true))
+        {
+            return;
+        }
+
+        if (breadcrumbItem.HasGlobalNavigationTarget)
+        {
+            _navigationService.NavigateTo(breadcrumbItem.PageKey!, breadcrumbItem.NavigationParameter);
+        }
+    }
+
+    private bool TryReturnToLocalRoot(bool useReturnTransition)
+    {
+        if (TryGetLocalRootBreadcrumbItem(out var rootBreadcrumbItem))
+        {
+            return TryNavigateLocally(rootBreadcrumbItem, useReturnTransition);
+        }
+
+        if (!CanGoBackLocally)
+        {
+            return false;
+        }
+
+        return NavigateBackLocally(VersionListInnerContentFrame.BackStack.Count, destinationIsLocalRoot: true, useReturnTransition);
+    }
+
+    private bool TryGetLocalRootBreadcrumbItem([NotNullWhen(true)] out NavigationBreadcrumbItem? rootBreadcrumbItem)
+    {
+        if (!TryGetCurrentBreadcrumbItems(out var breadcrumbItems))
+        {
+            rootBreadcrumbItem = null;
+            return false;
+        }
+
+        rootBreadcrumbItem = LocalBreadcrumbNavigationPlanner.FindLocalRootBreadcrumb(breadcrumbItems);
+        return rootBreadcrumbItem is not null;
+    }
+
+    private bool TryGetPreviousLocalBreadcrumbItem([NotNullWhen(true)] out NavigationBreadcrumbItem? previousBreadcrumbItem)
+    {
+        if (!TryGetCurrentBreadcrumbItems(out var breadcrumbItems))
+        {
+            previousBreadcrumbItem = null;
+            return false;
+        }
+
+        previousBreadcrumbItem = LocalBreadcrumbNavigationPlanner.FindPreviousLocalBreadcrumb(breadcrumbItems);
+        return previousBreadcrumbItem is not null;
+    }
+
+    private bool TryGetLocalNavigationBackPlan(NavigationBreadcrumbItem breadcrumbItem, out int backSteps, out bool destinationIsLocalRoot)
+    {
+        if (!breadcrumbItem.HasLocalNavigationTarget || !TryGetCurrentBreadcrumbItems(out var breadcrumbItems))
+        {
+            backSteps = 0;
+            destinationIsLocalRoot = false;
+            return false;
+        }
+
+        return LocalBreadcrumbNavigationPlanner.TryCreateBackPlan(breadcrumbItems, breadcrumbItem, out backSteps, out destinationIsLocalRoot)
+            && VersionListInnerContentFrame.CanGoBack;
+    }
+
+    private bool TryGetCurrentBreadcrumbItems([NotNullWhen(true)] out IReadOnlyList<NavigationBreadcrumbItem>? breadcrumbItems)
+    {
+        if (!TryGetActiveHostedLocalPage(out var hostedLocalPage))
+        {
+            breadcrumbItems = null;
+            return false;
+        }
+
+        breadcrumbItems = hostedLocalPage.HeaderSource.HeaderMetadata.BreadcrumbItems;
+        return breadcrumbItems.Count > 0;
+    }
+
+    private bool NavigateBackLocally(int backSteps, bool destinationIsLocalRoot, bool useReturnTransition)
+    {
+        if (backSteps <= 0 || !VersionListInnerContentFrame.CanGoBack)
+        {
+            return false;
+        }
+
+        EnableInnerFrameNavigationTransitions();
+        ResetInnerContentFrameVisualState();
+
+        if (destinationIsLocalRoot && useReturnTransition)
+        {
+            _activeRootPage?.SetLocalNavigationTargetElementEnabled(true);
+        }
+
+        if (destinationIsLocalRoot && useReturnTransition && backSteps == 1)
+        {
+            ApplyRootHeaderState();
+        }
+
+        NotifyLocalNavigationStateChanged();
+
+        for (var step = 0; step < backSteps && VersionListInnerContentFrame.CanGoBack; step++)
+        {
+            VersionListInnerContentFrame.GoBack();
+        }
+
+        return true;
+    }
+
+    private void VersionListPage_Loaded(object sender, RoutedEventArgs e)
+    {
+        _isPageLoaded = true;
+        ResetInnerContentFrameVisualState();
+        ScheduleInnerFrameTransitionSuspend();
+    }
+
+    private void VersionListPage_Unloaded(object sender, RoutedEventArgs e)
+    {
+        HandleOuterPageNavigatedFrom(allowUiTeardown: false);
+    }
+
+    private void HandleOuterPageNavigatedFrom(bool allowUiTeardown)
+    {
+        _isPageLoaded = false;
+        System.Threading.Interlocked.Increment(ref _deferredUiActionGeneration);
+
+        if (!allowUiTeardown)
+        {
+            return;
+        }
+
+        _activeRootPage?.SetLocalNavigationTargetElementEnabled(false);
+        DisableInnerFrameNavigationTransitions();
+    }
+
+    private bool IsDeferredUiActionValid(int generation)
+    {
+        return _isPageLoaded && generation == _deferredUiActionGeneration;
+    }
+
+    private void EnableInnerFrameNavigationTransitions()
+    {
+        if (_innerFrameNavigationTransitions == null)
+        {
+            _innerFrameNavigationTransitions = new TransitionCollection
+            {
+                new NavigationThemeTransition(),
+            };
+        }
+
+        if (ReferenceEquals(VersionListInnerContentFrame.ContentTransitions, _innerFrameNavigationTransitions)
+            && (_innerFrameNavigationTransitions?.Count ?? 0) > 0)
+        {
+            return;
+        }
+
+        VersionListInnerContentFrame.ContentTransitions = _innerFrameNavigationTransitions;
+    }
+
+    private void DisableInnerFrameNavigationTransitions()
+    {
+        if (ReferenceEquals(VersionListInnerContentFrame.ContentTransitions, _suspendedInnerFrameNavigationTransitions)
+            && _suspendedInnerFrameNavigationTransitions.Count == 0)
+        {
+            return;
+        }
+
+        VersionListInnerContentFrame.ContentTransitions = _suspendedInnerFrameNavigationTransitions;
+    }
+
+    private void ScheduleInnerFrameTransitionSuspend()
+    {
+        if (_isInnerFrameTransitionSuspendPending)
+        {
+            return;
+        }
+
+        if (VersionListInnerContentFrame.Content is not VersionListRootPage)
+        {
+            return;
+        }
+
+        if ((VersionListInnerContentFrame.ContentTransitions?.Count ?? 0) == 0)
+        {
+            return;
+        }
+
+        var dispatcherQueue = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
+        if (dispatcherQueue == null)
+        {
+            DisableInnerFrameNavigationTransitions();
+            return;
+        }
+
+        _isInnerFrameTransitionSuspendPending = true;
+        var generation = _deferredUiActionGeneration;
+        dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            _isInnerFrameTransitionSuspendPending = false;
+
+            if (!IsDeferredUiActionValid(generation))
             {
                 return;
             }
 
-            if (_versionIconImageCache.ContainsKey(iconPath))
+            if (VersionListInnerContentFrame.Content is not VersionListRootPage)
             {
-                continue;
+                return;
             }
 
-            var processedIcon = await GetOrCreateProcessedIconAsync(iconPath);
-            if (processedIcon != null)
-            {
-                _versionIconImageCache[iconPath] = processedIcon;
-            }
-        }
-    }
-
-    private async void VersionIconImage_DataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
-    {
-        if (sender is not Image image || image.DataContext is not VersionListViewModel.VersionInfoItem versionItem)
-        {
-            return;
-        }
-
-        var normalizedPath = VersionIconPathHelper.NormalizeOrDefault(versionItem.VersionIconPath);
-
-        if (Equals(image.Tag, normalizedPath) && image.Source != null)
-        {
-            return;
-        }
-
-        image.Tag = normalizedPath;
-
-        if (_versionIconImageCache.TryGetValue(normalizedPath, out var cachedIcon))
-        {
-            image.Source = cachedIcon;
-            return;
-        }
-
-        if (image.Source == null)
-        {
-            image.Source = BuildImmediateIconSource(normalizedPath);
-        }
-
-        var processedIcon = await GetOrCreateProcessedIconAsync(normalizedPath);
-        if (processedIcon != null)
-        {
-            _versionIconImageCache[normalizedPath] = processedIcon;
-        }
-
-        if (Equals(image.Tag, normalizedPath))
-        {
-            image.Source = processedIcon;
-        }
-    }
-
-    private async Task<BitmapImage?> GetOrCreateProcessedIconAsync(string iconPath)
-    {
-        if (_versionIconProcessingTasks.TryGetValue(iconPath, out var existingTask))
-        {
-            return await existingTask;
-        }
-
-        var processingTask = VersionIconProcessingHelper.ProcessAsync(iconPath);
-        _versionIconProcessingTasks[iconPath] = processingTask;
-
-        try
-        {
-            return await processingTask;
-        }
-        finally
-        {
-            _versionIconProcessingTasks.Remove(iconPath);
-        }
-    }
-
-    private static BitmapImage? BuildImmediateIconSource(string iconPath)
-    {
-        try
-        {
-            if (Uri.TryCreate(iconPath, UriKind.Absolute, out var absoluteUri))
-            {
-                return new BitmapImage(absoluteUri);
-            }
-
-            if (Path.IsPathRooted(iconPath))
-            {
-                return new BitmapImage(new Uri(iconPath, UriKind.Absolute));
-            }
-        }
-        catch
-        {
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// ViewModel属性变化事件处理
-    /// </summary>
-    private async void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
-    {
-        if (sender is not VersionListViewModel viewModel)
-            return;
-
-        if (e.PropertyName == nameof(viewModel.FilteredVersions))
-        {
-            var requestId = ++_iconWarmupRequestId;
-            _ = WarmupVersionIconsAsync(viewModel, requestId);
-            return;
-        }
-
-        if (e.PropertyName == nameof(viewModel.IsLoading))
-        {
-            if (viewModel.IsLoading)
-            {
-                _iconWarmupRequestId++;
-            }
-            else
-            {
-                var requestId = ++_iconWarmupRequestId;
-                _ = WarmupVersionIconsAsync(viewModel, requestId);
-            }
-
-            return;
-        }
-        
-        // 处理重命名弹窗显示/隐藏
-        if (e.PropertyName == nameof(viewModel.IsRenameDialogVisible))
-        {
-            if (viewModel.IsRenameDialogVisible && !_isRenameDialogOpen)
-            {
-                try
-                {
-                    _isRenameDialogOpen = true;
-
-                    var newName = await _dialogService.ShowRenameDialogAsync(
-                        "重命名版本",
-                        viewModel.NewVersionName,
-                        "新版本名称",
-                        "请输入新的版本名称：");
-                    if (!string.IsNullOrWhiteSpace(newName))
-                    {
-                        viewModel.NewVersionName = newName;
-
-                        // 执行重命名
-                        var (success, message) = await viewModel.ExecuteRenameVersionAsync();
-
-                        if (!success)
-                        {
-                            await _dialogService.ShowMessageDialogAsync("重命名失败", message, "确定");
-                        }
-                    }
-                    
-                    _isRenameDialogOpen = false;
-                    // 弹窗关闭后重置状态
-                    viewModel.IsRenameDialogVisible = false;
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"显示重命名弹窗失败: {ex.Message}");
-                    _isRenameDialogOpen = false;
-                    viewModel.IsRenameDialogVisible = false;
-                }
-            }
-        }
-    }
-    
-    /// <summary>
-    /// 处理版本补全请求事件，动态创建并打开版本补全弹窗
-    /// </summary>
-    private void OnCompleteVersionRequested(object? sender, VersionListViewModel.VersionInfoItem e)
-    {
-        if (_isCompleteVersionDialogOpen) return;
-        
-        _isCompleteVersionDialogOpen = true;
-
-        _completeVersionDialogState.Set($"版本 {e.Name}\n正在检查依赖...", 0, "0.0%");
-
-        var dialogTask = _progressDialogService.ShowObservableProgressDialogAsync(
-            "版本补全",
-            () => _completeVersionDialogState.Status,
-            () => _completeVersionDialogState.Progress,
-            () => _completeVersionDialogState.ProgressText,
-            _completeVersionDialogState,
-            primaryButtonText: null,
-            closeButtonText: "关闭");
-
-        _ = dialogTask.ContinueWith(_ => _isCompleteVersionDialogOpen = false, TaskScheduler.Default);
-    }
-    
-    /// <summary>
-    /// 处理版本补全进度更新事件
-    /// </summary>
-    private void OnCompleteVersionProgressUpdated(object? sender, (double Progress, string Stage, string CurrentFile) e)
-    {
-        if (!_isCompleteVersionDialogOpen) return;
-
-        _uiDispatcher.TryEnqueue(() =>
-        {
-            var status = string.IsNullOrEmpty(e.Stage) ? _completeVersionDialogState.Status : e.Stage;
-            if (!string.IsNullOrEmpty(e.CurrentFile))
-            {
-                var displayFile = e.CurrentFile.Length > 8 ? e.CurrentFile.Substring(0, 8) + "..." : e.CurrentFile;
-                status = $"{status}\n当前: {displayFile}";
-            }
-
-            var progress = e.Progress >= 0 ? e.Progress : _completeVersionDialogState.Progress;
-            _completeVersionDialogState.Set(status, progress, $"{progress:F1}%");
+            DisableInnerFrameNavigationTransitions();
         });
     }
-    
-    /// <summary>
-    /// 处理版本补全完成事件
-    /// </summary>
-    private void OnCompleteVersionCompleted(object? sender, (bool Success, string Message) e)
+
+    private void NormalizeRootFrameJournalIfNeeded()
     {
-        _uiDispatcher.TryEnqueue(() =>
+        if (VersionListInnerContentFrame.Content is not VersionListRootPage)
         {
-            if (e.Success)
+            return;
+        }
+
+        if (VersionListInnerContentFrame.BackStack.Count == 0 && VersionListInnerContentFrame.ForwardStack.Count == 0)
+        {
+            return;
+        }
+
+        VersionListInnerContentFrame.BackStack.Clear();
+        VersionListInnerContentFrame.ForwardStack.Clear();
+    }
+
+    private void ScheduleRootFrameJournalNormalization()
+    {
+        if (_isRootFrameJournalNormalizationPending)
+        {
+            return;
+        }
+
+        if (VersionListInnerContentFrame.Content is not VersionListRootPage)
+        {
+            return;
+        }
+
+        if (VersionListInnerContentFrame.BackStack.Count == 0 && VersionListInnerContentFrame.ForwardStack.Count == 0)
+        {
+            return;
+        }
+
+        var dispatcherQueue = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
+        if (dispatcherQueue == null)
+        {
+            NormalizeRootFrameJournalIfNeeded();
+            return;
+        }
+
+        var generation = _deferredUiActionGeneration;
+        _isRootFrameJournalNormalizationPending = true;
+        dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
+        {
+            _isRootFrameJournalNormalizationPending = false;
+
+            if (!IsDeferredUiActionValid(generation))
             {
-                _completeVersionDialogState.Set("补全完成！", 100, "100%");
+                return;
             }
-            else
+
+            if (VersionListInnerContentFrame.Content is not VersionListRootPage)
             {
-                _completeVersionDialogState.Set(e.Message, _completeVersionDialogState.Progress, _completeVersionDialogState.ProgressText);
+                return;
             }
+
+            NormalizeRootFrameJournalIfNeeded();
         });
     }
-    
-    /// <summary>
-    /// 处理导出整合包请求事件，动态创建并显示导出整合包弹窗
-    /// </summary>
-    private async void OnExportModpackRequested(object? sender, VersionListViewModel.VersionInfoItem e)
+
+    private void ScheduleRootTargetElementDisarm()
     {
-        if (DataContext is not VersionListViewModel viewModel)
-            return;
-        
-        // 设置整合包名称和版本的默认值
-        viewModel.ModpackName = e.Name;
-        viewModel.ModpackVersion = "1.0.0";
-        
-        // 创建ScrollViewer包裹内容
-        var scrollViewer = new ScrollViewer
-        {
-            HorizontalScrollMode = ScrollMode.Disabled,
-            VerticalScrollMode = ScrollMode.Auto,
-            VerticalScrollBarVisibility = ScrollBarVisibility.Visible
-        };
-        
-        var mainStack = new StackPanel { Spacing = 0 };
-        
-        // 说明文字
-        var instructionText = new TextBlock
-        {
-            Text = "请选择要导出的数据：",
-            FontSize = 14,
-            Margin = new Thickness(0, 0, 0, 12),
-            HorizontalAlignment = HorizontalAlignment.Left
-        };
-        mainStack.Children.Add(instructionText);
-        
-        // 导出选项区域
-        var optionsStack = new StackPanel
-        {
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Margin = new Thickness(0, 0, 0, 16)
-        };
-        
-        // 资源目录区域（只在有资源时显示）
-        if (viewModel.ResourceDirectories.Count > 0)
-        {
-            var resourceStack = new StackPanel();
-            
-            // 资源目录总复选框和展开/折叠按钮
-            var headerGrid = new Grid
-            {
-                Margin = new Thickness(0, 4, 0, 2),
-                Padding = new Thickness(4)
-            };
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            headerGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-
-            var toggleIcon = new FontIcon
-            {
-                Glyph = "\uE76C",
-                FontSize = 12,
-                HorizontalAlignment = HorizontalAlignment.Center,
-                VerticalAlignment = VerticalAlignment.Center
-            };
-            
-            // 展开/折叠按钮
-            var toggleButton = new Button
-            {
-                Content = toggleIcon,
-                Width = 24,
-                Height = 24,
-                Padding = new Thickness(0),
-                VerticalContentAlignment = VerticalAlignment.Center,
-                HorizontalContentAlignment = HorizontalAlignment.Center,
-                Margin = new Thickness(0, 0, 8, 0)
-            };
-            Grid.SetColumn(toggleButton, 0);
-            
-            // 资源目录总复选框
-            var resourceAllCheckBox = new CheckBox
-            {
-                Content = "版本目录资源",
-                IsThreeState = true,
-                VerticalContentAlignment = VerticalAlignment.Center
-            };
-            Grid.SetColumn(resourceAllCheckBox, 1);
-            
-            // 资源目录TreeView
-            var treeView = new ItemsControl
-            {
-                Margin = new Thickness(0, 0, 0, 2),
-                HorizontalAlignment = HorizontalAlignment.Stretch,
-                Visibility = Visibility.Collapsed
-            };
-            
-            // 绑定数据源
-            treeView.ItemsSource = viewModel.ResourceDirectories;
-            treeView.ItemTemplate = (DataTemplate)this.Resources["ResourceItemTemplate"];
-            
-            // 展开/折叠按钮事件
-            bool isExpanded = false;
-            toggleButton.Click += (s, args) =>
-            {
-                isExpanded = !isExpanded;
-                treeView.Visibility = isExpanded ? Visibility.Visible : Visibility.Collapsed;
-                toggleIcon.Glyph = isExpanded ? "\uE70D" : "\uE76C";
-            };
-            
-            // 总复选框事件
-            resourceAllCheckBox.Checked += (s, args) =>
-            {
-                foreach (var dir in viewModel.ResourceDirectories)
-                    dir.IsSelected = true;
-            };
-            
-            resourceAllCheckBox.Unchecked += (s, args) =>
-            {
-                foreach (var dir in viewModel.ResourceDirectories)
-                    dir.IsSelected = false;
-            };
-            
-            // 监听子项变化更新总复选框状态
-            void UpdateResourceAllState()
-            {
-                if (viewModel.ResourceDirectories.Count == 0)
-                {
-                    resourceAllCheckBox.IsChecked = false;
-                    return;
-                }
-                
-                bool allSelected = true;
-                bool noneSelected = true;
-                
-                foreach (var item in viewModel.ResourceDirectories)
-                {
-                    if (item.IsSelected)
-                        noneSelected = false;
-                    else
-                        allSelected = false;
-                    
-                    if (!allSelected && !noneSelected)
-                        break;
-                }
-                
-                if (noneSelected)
-                    resourceAllCheckBox.IsChecked = false;
-                else if (allSelected)
-                    resourceAllCheckBox.IsChecked = true;
-                else
-                    resourceAllCheckBox.IsChecked = null;
-            }
-            
-            // 订阅资源项变化
-            foreach (var item in viewModel.ResourceDirectories)
-            {
-                item.SelectedChanged += (s, args) => UpdateResourceAllState();
-            }
-            
-            headerGrid.Children.Add(toggleButton);
-            headerGrid.Children.Add(resourceAllCheckBox);
-            
-            resourceStack.Children.Add(headerGrid);
-            resourceStack.Children.Add(treeView);
-            
-            optionsStack.Children.Add(resourceStack);
-        }
-        
-        mainStack.Children.Add(optionsStack);
-        
-        // 整合包信息输入区域
-        var inputStack = new StackPanel
-        {
-            Spacing = 12,
-            HorizontalAlignment = HorizontalAlignment.Left
-        };
-        
-        // 整合包名称
-        var nameStack = new StackPanel { Spacing = 4 };
-        nameStack.Children.Add(new TextBlock { Text = "整合包名称", FontSize = 14 });
-        var nameTextBox = new TextBox
-        {
-            PlaceholderText = "请输入整合包名称",
-            Text = viewModel.ModpackName,
-            Width = 400,
-            MaxWidth = 400
-        };
-        nameTextBox.TextChanged += (s, args) => viewModel.ModpackName = nameTextBox.Text;
-        nameStack.Children.Add(nameTextBox);
-        inputStack.Children.Add(nameStack);
-        
-        // 整合包版本
-        var versionStack = new StackPanel { Spacing = 4 };
-        versionStack.Children.Add(new TextBlock { Text = "整合包版本", FontSize = 14 });
-        var versionTextBox = new TextBox
-        {
-            PlaceholderText = "请输入整合包版本",
-            Text = viewModel.ModpackVersion,
-            Width = 400,
-            MaxWidth = 400
-        };
-        versionTextBox.TextChanged += (s, args) => viewModel.ModpackVersion = versionTextBox.Text;
-        versionStack.Children.Add(versionTextBox);
-        inputStack.Children.Add(versionStack);
-        
-        // 复选框选项
-        var checkBoxStack = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 32,
-            Margin = new Thickness(0, 8, 0, 0),
-            HorizontalAlignment = HorizontalAlignment.Center
-        };
-        
-        var offlineModeCheckBox = new CheckBox
-        {
-            Content = "非联网模式",
-            IsChecked = viewModel.IsOfflineMode,
-            FontSize = 14,
-            HorizontalAlignment = HorizontalAlignment.Center
-        };
-        
-        var serverOnlyCheckBox = new CheckBox
-        {
-            Content = "导出服务端整合包",
-            IsChecked = viewModel.IsServerOnly,
-            FontSize = 14,
-            HorizontalAlignment = HorizontalAlignment.Center
-        };
-        
-        // 离线模式警告InfoBar
-        var warningInfoBar = new InfoBar
-        {
-            Title = "许可证警告",
-            Message = "直接将 Mod 放入整合包可能会违反部分条例，请不要进行分发！",
-            Severity = InfoBarSeverity.Warning,
-            IsOpen = true,
-            IsClosable = false,
-            Visibility = Visibility.Collapsed,
-            Margin = new Thickness(0, 12, 0, 0)
-        };
-        
-        // 复选框事件
-        offlineModeCheckBox.Checked += (s, args) =>
-        {
-            viewModel.IsOfflineMode = true;
-            warningInfoBar.Visibility = Visibility.Visible;
-        };
-        
-        offlineModeCheckBox.Unchecked += (s, args) =>
-        {
-            viewModel.IsOfflineMode = false;
-            warningInfoBar.Visibility = Visibility.Collapsed;
-        };
-        
-        serverOnlyCheckBox.Checked += (s, args) => viewModel.IsServerOnly = true;
-        serverOnlyCheckBox.Unchecked += (s, args) => viewModel.IsServerOnly = false;
-        
-        checkBoxStack.Children.Add(offlineModeCheckBox);
-        checkBoxStack.Children.Add(serverOnlyCheckBox);
-        inputStack.Children.Add(checkBoxStack);
-        
-        mainStack.Children.Add(inputStack);
-        mainStack.Children.Add(warningInfoBar);
-        
-        scrollViewer.Content = mainStack;
-
-        var result = await _dialogService.ShowCustomDialogAsync(
-            "导出整合包",
-            scrollViewer,
-            primaryButtonText: "确认",
-            closeButtonText: "取消",
-            defaultButton: ContentDialogButton.Primary);
-        
-        if (result == ContentDialogResult.Primary)
-        {
-            // 调用原有的确认按钮逻辑
-            await ExportModpackDialog_PrimaryButtonClick_Logic();
-        }
-    }
-    
-    /// <summary>
-    /// 版本项点击事件处理，导航至版本管理页面
-    /// </summary>
-    private void VersionsListView_ItemClick(object sender, ItemClickEventArgs e)
-    {
-        if (e.ClickedItem is VersionListViewModel.VersionInfoItem version)
-        {
-            // 导航至版本管理页面，传递选中的版本信息
-            _navigationService.NavigateTo(typeof(VersionManagementViewModel).FullName!, version);
-        }
-    }
-
-    /// <summary>
-    /// 导出整合包确认按钮逻辑（从原事件处理中提取）
-    /// </summary>
-    private async Task ExportModpackDialog_PrimaryButtonClick_Logic()
-    {
-        if (DataContext is VersionListViewModel viewModel)
-        {
-            // 重置取消标志
-            _isExportCancelled = false;
-            
-            // 获取选择的导出选项
-            var selectedOptions = viewModel.GetSelectedExportOptions();
-            
-            // 输出到Debug窗口
-            System.Diagnostics.Debug.WriteLine("=== 导出整合包选项 ===");
-            System.Diagnostics.Debug.WriteLine($"版本: {viewModel.SelectedVersion?.Name}");
-            System.Diagnostics.Debug.WriteLine($"选择的导出项数量: {selectedOptions.Count}");
-            foreach (var option in selectedOptions)
-            {
-                System.Diagnostics.Debug.WriteLine($"- {option}");
-            }
-            System.Diagnostics.Debug.WriteLine("====================");
-            
-            // 导出弹窗会在ShowAsync返回后自动关闭,无需手动调用Hide()
-            
-            // 打开加载弹窗（非阻塞方式）
-            ShowLoadingDialog();
-            UpdateLoadingDialog("正在获取Modrinth资源...", 0.0);
-            
-            // 在后台线程执行导出逻辑
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    Dictionary<string, Core.Models.ModrinthVersion> fileResults = new Dictionary<string, Core.Models.ModrinthVersion>();
-                    
-                    // 检查是否为非联网模式和仅导出服务端模式
-                    bool isOfflineMode = viewModel.IsOfflineMode;
-                    bool isServerOnly = viewModel.IsServerOnly;
-                    
-                    _uiDispatcher.TryEnqueue(() =>
-                    {
-                        System.Diagnostics.Debug.WriteLine($"导出模式: {(isOfflineMode ? "非联网模式" : "联网模式")}{(isServerOnly ? " + 仅导出服务端" : "")}");
-                    });
-                    
-                    // 仅导出服务端模式下，过滤客户端特定的文件和目录
-                    List<string> filteredOptions = new List<string>(selectedOptions);
-                    if (isServerOnly)
-                    {
-                        // 客户端特定的文件和目录列表
-                        var clientOnlyItems = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                        {
-                            "resourcepacks",
-                            "shaderpacks",
-                            "options.txt",
-                            "screenshots",
-                            "journeymap"
-                        };
-                        
-                        // 过滤客户端特定的文件和目录
-                        filteredOptions = filteredOptions.Where(option =>
-                        {
-                            // 检查是否为客户端特定目录或文件
-                            string itemName = Path.GetFileName(option);
-                            return !clientOnlyItems.Contains(itemName) && !option.StartsWith("screenshots", StringComparison.OrdinalIgnoreCase) && !option.StartsWith("journeymap", StringComparison.OrdinalIgnoreCase);
-                        }).ToList();
-                        
-                        _uiDispatcher.TryEnqueue(() =>
-                        {
-                            System.Diagnostics.Debug.WriteLine($"仅导出服务端模式，过滤前选项数量: {selectedOptions.Count}，过滤后选项数量: {filteredOptions.Count}");
-                            System.Diagnostics.Debug.WriteLine("过滤掉的客户端特定项:");
-                            foreach (string option in selectedOptions.Except(filteredOptions))
-                            {
-                                System.Diagnostics.Debug.WriteLine($"- {option}");
-                            }
-                        });
-                    }
-                    
-                    // 搜索Modrinth获取文件信息
-                    // 当开启导出服务端时，即使是非联网模式也需要进行服务端兼容性检查
-                    bool shouldCheckModrinth = (!isOfflineMode || isServerOnly);
-                    if (shouldCheckModrinth && viewModel.SelectedVersion != null && !_isExportCancelled)
-                    {
-                        _uiDispatcher.TryEnqueue(() =>
-                        {
-                            System.Diagnostics.Debug.WriteLine("开始搜索Modrinth获取文件信息...");
-                            UpdateLoadingDialog("正在获取Modrinth资源...", 10.0);
-                        });
-                        
-                        fileResults = await viewModel.SearchModrinthForFilesAsync(viewModel.SelectedVersion, filteredOptions);
-                        
-                        _uiDispatcher.TryEnqueue(() =>
-                        {
-                            System.Diagnostics.Debug.WriteLine($"Modrinth搜索完成，找到 {fileResults.Count} 个匹配结果");
-                        });
-                        
-                        // 仅导出服务端模式下，过滤服务端不支持的文件
-                        if (isServerOnly)
-                        {
-                            // 获取Modrinth服务实例
-                            var modrinthService = App.GetService<Core.Services.ModrinthService>();
-                            var filesToRemove = new List<string>();
-                            var serverUnsupportedFiles = new HashSet<string>(); // 服务端不支持的文件列表
-                            
-                            _uiDispatcher.TryEnqueue(() =>
-                            {
-                                System.Diagnostics.Debug.WriteLine("开始过滤服务端不支持的文件...");
-                                UpdateLoadingDialog("正在过滤服务端不支持的文件...", 30.0);
-                            });
-                            
-                            // 遍历所有匹配结果，检查服务端支持情况
-                            foreach (var kvp in fileResults)
-                            {
-                                if (_isExportCancelled) break;
-                                
-                                string filePath = kvp.Key;
-                                var modrinthVersion = kvp.Value;
-                                
-                                // 检查是否有project_id
-                                if (!string.IsNullOrEmpty(modrinthVersion.ProjectId))
-                                {
-                                    try
-                                    {
-                                        // 获取项目详情
-                                        var projectDetail = await modrinthService.GetProjectDetailAsync(modrinthVersion.ProjectId);
-                                        
-                                        // 检查server_side字段
-                                        if (projectDetail != null)
-                                        {
-                                            string serverSide = projectDetail.ServerSide?.ToLowerInvariant() ?? "unknown";
-                                            
-                                            _uiDispatcher.TryEnqueue(() =>
-                                            {
-                                                System.Diagnostics.Debug.WriteLine($"文件: {filePath}");
-                                                System.Diagnostics.Debug.WriteLine($"  ProjectId: {modrinthVersion.ProjectId}");
-                                                System.Diagnostics.Debug.WriteLine($"  服务端支持: {serverSide}");
-                                            });
-                                            
-                                            // 如果服务端支持为unsupported，则标记为需要移除
-                                            if (serverSide == "unsupported")
-                                            {
-                                                filesToRemove.Add(filePath);
-                                                serverUnsupportedFiles.Add(filePath); // 添加到服务端不支持的文件列表
-                                                _uiDispatcher.TryEnqueue(() =>
-                                                {
-                                                    System.Diagnostics.Debug.WriteLine($"  标记为移除：服务端不支持");
-                                                });
-                                            }
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        _uiDispatcher.TryEnqueue(() =>
-                                        {
-                                            System.Diagnostics.Debug.WriteLine($"获取项目详情失败: {modrinthVersion.ProjectId}, 错误: {ex.Message}");
-                                        });
-                                    }
-                                }
-                            }
-                            
-                            // 移除服务端不支持的文件
-                            if (filesToRemove.Count > 0)
-                            {
-                                _uiDispatcher.TryEnqueue(() =>
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"移除 {filesToRemove.Count} 个服务端不支持的文件");
-                                    foreach (string filePath in filesToRemove)
-                                    {
-                                        System.Diagnostics.Debug.WriteLine($"- {filePath}");
-                                    }
-                                });
-                                
-                                foreach (string filePath in filesToRemove)
-                                {
-                                    fileResults.Remove(filePath);
-                                }
-                                
-                                _uiDispatcher.TryEnqueue(() =>
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"过滤后剩余 {fileResults.Count} 个文件");
-                                });
-                            }
-                            
-                            // 仅导出服务端模式下，从过滤选项中移除服务端不支持的文件
-                            filteredOptions = filteredOptions.Where(option => !serverUnsupportedFiles.Contains(option)).ToList();
-                            
-                            _uiDispatcher.TryEnqueue(() =>
-                            {
-                                System.Diagnostics.Debug.WriteLine($"过滤后剩余的导出选项数量: {filteredOptions.Count}");
-                            });
-                        }
-                    }
-                    
-                    // 非联网模式且不导出服务端时，直接跳转到准备保存整合包
-                    if (isOfflineMode && !isServerOnly)
-                    {
-                        _uiDispatcher.TryEnqueue(() =>
-                        {
-                            System.Diagnostics.Debug.WriteLine("非联网模式且不导出服务端，跳过Modrinth搜索");
-                            UpdateLoadingDialog("准备保存整合包...", 20.0);
-                        });
-                    }
-                    
-                    if (_isExportCancelled)
-                    {
-                        _uiDispatcher.TryEnqueue(() =>
-                        {
-                            System.Diagnostics.Debug.WriteLine("导出已取消");
-                            HideLoadingDialog();
-                        });
-                        return;
-                    }
-                    
-                    _uiDispatcher.TryEnqueue(() =>
-                    {
-                        UpdateLoadingDialog("准备保存整合包...", 20.0);
-                    });
-                    
-                    // 打开文件保存对话框需要在UI线程执行
-                    StorageFile? file = null;
-                    var filePickerTask = new TaskCompletionSource<StorageFile?>();
-
-                    try
-                    {
-                        await _uiDispatcher.RunOnUiThreadAsync(async () =>
-                        {
-                            // 打开文件保存对话框
-                            var savePicker = new FileSavePicker();
-                            
-                            // 设置文件选择器的文件类型
-                            savePicker.FileTypeChoices.Add("Modrinth Pack", new List<string> { FileExtensionConsts.Mrpack });
-                            
-                            // 设置默认文件名
-                            string defaultFileName = string.IsNullOrEmpty(viewModel.ModpackName) ? "Untitled" : viewModel.ModpackName;
-                            savePicker.SuggestedFileName = defaultFileName;
-                            
-                            // 设置默认位置
-                            savePicker.SuggestedStartLocation = PickerLocationId.DocumentsLibrary;
-                            
-                            // 获取当前窗口的HWND
-                            var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
-                            WinRT.Interop.InitializeWithWindow.Initialize(savePicker, hwnd);
-                            
-                            // 显示文件保存对话框
-                            var pickedFile = await savePicker.PickSaveFileAsync();
-                            filePickerTask.SetResult(pickedFile);
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        filePickerTask.TrySetException(ex);
-                    }
-                    
-                    file = await filePickerTask.Task;
-                    
-                    if (file != null && !_isExportCancelled)
-                    {
-                        _uiDispatcher.TryEnqueue(() =>
-                        {
-                            UpdateLoadingDialog("正在创建整合包...", 30.0);
-                        });
-                        
-                        // 创建临时目录用于构建整合包
-                        string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
-                        Directory.CreateDirectory(tempDir);
-                        
-                        try
-                        {
-                            // 创建overrides目录
-                            string overridesDir = Path.Combine(tempDir, "overrides");
-                            Directory.CreateDirectory(overridesDir);
-                            
-                            // 使用统一的版本信息服务获取版本配置
-                            var versionInfoService = App.GetService<Core.Services.IVersionInfoService>();
-                            string versionPath = viewModel.SelectedVersion?.Path ?? "";
-                            string versionName = viewModel.SelectedVersion?.Name ?? "";
-                            
-                            // 获取完整的版本信息
-                            Core.Models.VersionConfig versionConfig = await versionInfoService.GetFullVersionInfoAsync(versionName, versionPath);
-                            
-                            // 提取加载器和Minecraft版本信息
-                            string loaderName = "";
-                            string loaderVersion = "";
-                            string minecraftVersion = versionConfig?.MinecraftVersion ?? "";
-                            
-                            // 根据加载器类型设置正确的加载器名称
-                            if (!string.IsNullOrEmpty(versionConfig?.ModLoaderType))
-                            {
-                                switch (versionConfig.ModLoaderType.ToLowerInvariant())
-                                {
-                                    case "fabric":
-                                        loaderName = "fabric-loader";
-                                        loaderVersion = versionConfig.ModLoaderVersion ?? "";
-                                        break;
-                                    case "legacyfabric":
-                                        loaderName = "LegacyFabric";
-                                        loaderVersion = versionConfig.ModLoaderVersion ?? "";
-                                        break;
-                                    case "forge":
-                                        loaderName = "forge";
-                                        loaderVersion = versionConfig.ModLoaderVersion ?? "";
-                                        break;
-                                    case "neoforge":
-                                        loaderName = "neoforge";
-                                        loaderVersion = versionConfig.ModLoaderVersion ?? "";
-                                        break;
-                                    case "quilt":
-                                        loaderName = "quilt-loader";
-                                        loaderVersion = versionConfig.ModLoaderVersion ?? "";
-                                        break;
-                                    default:
-                                        loaderName = versionConfig.ModLoaderType;
-                                        loaderVersion = versionConfig.ModLoaderVersion ?? "";
-                                        break;
-                                }
-                            }
-                            
-                            // 构建modrinth.index.json内容
-                            var indexJson = new
-                            {
-                                game = "minecraft",
-                                formatVersion = 1,
-                                versionId = viewModel.ModpackVersion, // 整合包版本
-                                name = viewModel.ModpackName, // 整合包名称
-                                summary = "",
-                                files = new List<object>(),
-                                dependencies = new Dictionary<string, string>
-                                {
-                                    { "minecraft", minecraftVersion ?? viewModel.SelectedVersion?.VersionNumber ?? "" },
-                                    // 添加加载器依赖
-                                    { loaderName, loaderVersion }
-                                }
-                            };
-                            
-                            // 移除无效的加载器依赖（如果加载器名称或版本为空）
-                            if (string.IsNullOrEmpty(loaderName) || string.IsNullOrEmpty(loaderVersion))
-                            {
-                                ((Dictionary<string, string>)indexJson.dependencies).Remove(loaderName);
-                            }
-                            
-                            // 构建files列表（仅在非联网模式下保持为空）
-                            if (!isOfflineMode)
-                            {
-                                var filesList = (List<object>)indexJson.files;
-                                foreach (var kvp in fileResults)
-                                {
-                                    string filePath = kvp.Key;
-                                    var modrinthVersion = kvp.Value;
-                                    
-                                    if (modrinthVersion?.Files != null && modrinthVersion.Files.Count > 0)
-                                    {
-                                        var primaryFile = modrinthVersion.Files.FirstOrDefault(f => f.Primary) ?? modrinthVersion.Files[0];
-                                        
-                                        if (primaryFile.Hashes != null && primaryFile.Url != null)
-                                        {
-                                            var fileEntry = new
-                                            {
-                                                path = filePath.Replace('\\', '/'), // 使用正斜杠
-                                                hashes = primaryFile.Hashes,
-                                                downloads = new List<string> { primaryFile.Url.ToString() },
-                                                fileSize = primaryFile.Size
-                                            };
-                                            filesList.Add(fileEntry);
-                                        }
-                                    }
-                                }
-                            }
-                            
-                            // 创建modrinth.index.json文件
-                            string indexJsonPath = Path.Combine(tempDir, MinecraftFileConsts.ModrinthIndexJson);
-                            string jsonContent = Newtonsoft.Json.JsonConvert.SerializeObject(indexJson, Newtonsoft.Json.Formatting.Indented);
-                            File.WriteAllText(indexJsonPath, jsonContent);
-                            
-                            _uiDispatcher.TryEnqueue(() =>
-                            {
-                                UpdateLoadingDialog("正在处理文件...", 40.0);
-                            });
-                            
-                            // 处理选择的导出选项
-                            HashSet<string> processedDirectories = new HashSet<string>();
-                            
-                            // 在仅导出服务端模式下，我们已经在前面的逻辑中获取了服务端不支持的文件列表
-                            // 遍历fileResults，找出所有被标记为需要移除的文件
-                            var serverUnsupportedFiles = new HashSet<string>();
-                            foreach (var kvp in fileResults)
-                            {
-                                string filePath = kvp.Key;
-                                var modrinthVersion = kvp.Value;
-                                
-                                // 检查是否有project_id
-                                if (!string.IsNullOrEmpty(modrinthVersion.ProjectId))
-                                {
-                                    try
-                                    {
-                                        // 获取Modrinth服务实例
-                                        var modrinthService = App.GetService<Core.Services.ModrinthService>();
-                                        var projectDetail = await modrinthService.GetProjectDetailAsync(modrinthVersion.ProjectId);
-                                        
-                                        // 检查server_side字段
-                                        if (projectDetail != null)
-                                        {
-                                            string serverSide = projectDetail.ServerSide?.ToLowerInvariant() ?? "unknown";
-                                            
-                                            // 如果服务端支持为unsupported，则添加到不支持列表
-                                            if (serverSide == "unsupported")
-                                            {
-                                                serverUnsupportedFiles.Add(filePath);
-                                            }
-                                        }
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        _uiDispatcher.TryEnqueue(() =>
-                                        {
-                                            System.Diagnostics.Debug.WriteLine($"获取项目详情失败: {modrinthVersion.ProjectId}, 错误: {ex.Message}");
-                                        });
-                                    }
-                                }
-                            }
-                            
-                            // 创建一个包含所有需要导出的文件的列表
-                            var filesToExport = new List<string>();
-                            foreach (string option in filteredOptions)
-                            {
-                                if (_isExportCancelled)
-                                {
-                                    break;
-                                }
-                                
-                                // 检查是否为服务端不支持的文件，如果是则跳过
-                                if (isServerOnly && serverUnsupportedFiles.Contains(option))
-                                {
-                                    _uiDispatcher.TryEnqueue(() =>
-                                    {
-                                        System.Diagnostics.Debug.WriteLine($"跳过服务端不支持的文件: {option}");
-                                    });
-                                    continue;
-                                }
-                                
-                                filesToExport.Add(option);
-                            }
-                            
-                            // 现在复制需要导出的文件到overrides目录
-                            foreach (string option in filesToExport)
-                            {
-                                if (_isExportCancelled)
-                                {
-                                    break;
-                                }
-                                
-                                string fullPath = Path.Combine(viewModel.SelectedVersion!.Path, option);
-                                
-                                if (Directory.Exists(fullPath))
-                                {
-                                    // 如果是目录，确保在overrides中创建空目录
-                                    string overrideDir = Path.Combine(overridesDir, option);
-                                    Directory.CreateDirectory(overrideDir);
-                                    processedDirectories.Add(option);
-                                }
-                                else if (File.Exists(fullPath))
-                                {
-                                    // 检查是否在Modrinth中找到（仅在非联网模式下跳过）
-                                    bool isModrinthFile = !isOfflineMode && fileResults.ContainsKey(option);
-                                    
-                                    if (!isModrinthFile)
-                                    {
-                                        // 如果是非联网模式，或者没有在Modrinth中找到，复制到overrides目录
-                                        string destPath = Path.Combine(overridesDir, option);
-                                        string destDir = Path.GetDirectoryName(destPath)!;
-                                        Directory.CreateDirectory(destDir);
-                                        File.Copy(fullPath, destPath, true);
-                                    }
-                                    
-                                    // 确保父目录在overrides中存在
-                                    string parentDir = Path.GetDirectoryName(option)!;
-                                    if (!string.IsNullOrEmpty(parentDir))
-                                    {
-                                        processedDirectories.Add(parentDir);
-                                    }
-                                }
-                            }
-                            
-                            if (_isExportCancelled)
-                            {
-                                _uiDispatcher.TryEnqueue(() =>
-                                {
-                                    System.Diagnostics.Debug.WriteLine("导出已取消");
-                                    HideLoadingDialog();
-                                });
-                                return;
-                            }
-                            
-                            // 创建所有需要的空目录
-                            foreach (string dir in processedDirectories)
-                            {
-                                if (_isExportCancelled)
-                                {
-                                    break;
-                                }
-                                
-                                string overrideDir = Path.Combine(overridesDir, dir);
-                                Directory.CreateDirectory(overrideDir);
-                            }
-                            
-                            if (_isExportCancelled)
-                            {
-                                _uiDispatcher.TryEnqueue(() =>
-                                {
-                                    System.Diagnostics.Debug.WriteLine("导出已取消");
-                                    HideLoadingDialog();
-                                });
-                                return;
-                            }
-                            
-                            _uiDispatcher.TryEnqueue(() =>
-                            {
-                                UpdateLoadingDialog("正在压缩整合包...", 70.0);
-                            });
-                            
-                            // 创建zip压缩包，使用FileMode.Create覆盖已存在的文件
-                            using (var fileStream = new FileStream(file.Path, FileMode.Create, FileAccess.Write))
-                            using (var archive = new ZipArchive(fileStream, ZipArchiveMode.Create))
-                            {
-                                if (_isExportCancelled)
-                                {
-                                    _uiDispatcher.TryEnqueue(() =>
-                                    {
-                                        HideLoadingDialog();
-                                    });
-                                    return;
-                                }
-                                
-                                // 添加modrinth.index.json文件
-                                archive.CreateEntryFromFile(indexJsonPath, MinecraftFileConsts.ModrinthIndexJson);
-                                
-                                // 添加overrides目录及其内容
-                                AddDirectoryToZip(archive, overridesDir, "overrides");
-                            }
-                            
-                            if (!_isExportCancelled)
-                            {
-                                _uiDispatcher.EnqueueAsync(async () =>
-                                {
-                                    UpdateLoadingDialog("导出完成！", 100.0);
-                                    System.Diagnostics.Debug.WriteLine($"整合包导出成功：{file.Path}");
-                                    
-                                    // 延迟关闭加载弹窗，让用户看到完成状态
-                                    await Task.Delay(1000);
-                                    HideLoadingDialog();
-                                }).Observe("VersionListPage.ExportModpack.SuccessFinalize");
-                            }
-                            else
-                            {
-                                _uiDispatcher.TryEnqueue(() =>
-                                {
-                                    System.Diagnostics.Debug.WriteLine("导出已取消");
-                                    // 如果已取消，删除不完整的文件
-                                    if (File.Exists(file.Path))
-                                    {
-                                        File.Delete(file.Path);
-                                    }
-                                    HideLoadingDialog();
-                                });
-                            }
-                        }
-                        finally
-                        {
-                            // 清理临时目录
-                            if (Directory.Exists(tempDir))
-                            {
-                                Directory.Delete(tempDir, true);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // 用户取消了文件保存对话框
-                        _uiDispatcher.TryEnqueue(() =>
-                        {
-                            HideLoadingDialog();
-                        });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _uiDispatcher.EnqueueAsync(async () =>
-                    {
-                        System.Diagnostics.Debug.WriteLine($"导出整合包失败：{ex.Message}");
-                        UpdateLoadingDialog($"导出失败：{ex.Message}", 0.0);
-                        await Task.Delay(2000);
-                        HideLoadingDialog();
-                    }).Observe("VersionListPage.ExportModpack.ErrorFinalize");
-                }
-            });
-        }
-    }
-    
-    /// <summary>
-    /// 动态创建并显示加载弹窗
-    /// </summary>
-    private void ShowLoadingDialog()
-    {
-        if (_loadingDialogCloseSignal != null) return;
-
-        _loadingDialogState.Set("正在获取Modrinth资源...", 0.0, "0.0%");
-        _loadingDialogCloseSignal = new TaskCompletionSource<bool>();
-
-        var dialogTask = _progressDialogService.ShowObservableProgressDialogAsync(
-            "正在导出整合包",
-            () => _loadingDialogState.Status,
-            () => _loadingDialogState.Progress,
-            () => _loadingDialogState.ProgressText,
-            _loadingDialogState,
-            primaryButtonText: null,
-            closeButtonText: "取消",
-            autoCloseWhen: _loadingDialogCloseSignal.Task);
-
-        _ = dialogTask.ContinueWith(task =>
-        {
-            // 用户点取消关闭弹窗时，同步标记导出取消。
-            if (!_isExportCancelled && task.Status == TaskStatus.RanToCompletion && task.Result == ContentDialogResult.None)
-            {
-                _isExportCancelled = true;
-                _loadingDialogState.Set("正在取消导出...", _loadingDialogState.Progress, _loadingDialogState.ProgressText);
-            }
-
-            _loadingDialogCloseSignal = null;
-        }, TaskScheduler.Default);
-    }
-    
-    /// <summary>
-    /// 隐藏加载弹窗
-    /// </summary>
-    private void HideLoadingDialog()
-    {
-        if (_loadingDialogCloseSignal == null)
+        if (_activeRootPage is not { IsLocalNavigationTargetElementEnabled: true } rootPage)
         {
             return;
         }
 
-        _loadingDialogCloseSignal.TrySetResult(true);
-    }
-    
-    /// <summary>
-    /// 更新加载弹窗的状态和进度
-    /// </summary>
-    private void UpdateLoadingDialog(string status, double progress)
-    {
-        _loadingDialogState.Set(status, progress, $"{progress:0.0}%");
-    }
-    
-    /// <summary>
-    /// 将目录及其内容添加到zip归档
-    /// </summary>
-    private void AddDirectoryToZip(ZipArchive archive, string sourceDir, string entryName)
-    {
-        // 如果已取消，直接返回
-        if (_isExportCancelled)
+        var dispatcherQueue = App.MainWindow?.DispatcherQueue ?? DispatcherQueue.GetForCurrentThread();
+        if (dispatcherQueue == null)
         {
+            rootPage.SetLocalNavigationTargetElementEnabled(false);
             return;
         }
-        
-        // 获取目录中的所有文件
-        string[] files = Directory.GetFiles(sourceDir);
-        
-        foreach (string file in files)
+
+        var generation = _deferredUiActionGeneration;
+        dispatcherQueue.TryEnqueue(DispatcherQueuePriority.Low, () =>
         {
-            if (_isExportCancelled)
+            if (!IsDeferredUiActionValid(generation))
             {
                 return;
             }
-            
-            string relativePath = Path.GetRelativePath(sourceDir, file);
-            string zipEntryName = Path.Combine(entryName, relativePath);
-            archive.CreateEntryFromFile(file, zipEntryName);
-        }
-        
-        // 获取目录中的所有子目录
-        string[] subDirs = Directory.GetDirectories(sourceDir);
-        
-        foreach (string subDir in subDirs)
-        {
-            if (_isExportCancelled)
+
+            if (_activeRootPage is not { IsLocalNavigationTargetElementEnabled: true } activeRootPage)
             {
                 return;
             }
-            
-            string relativePath = Path.GetRelativePath(sourceDir, subDir);
-            string zipEntryName = Path.Combine(entryName, relativePath);
-            AddDirectoryToZip(archive, subDir, zipEntryName);
-        }
-    }
 
-    /// <summary>
-    #region 资源目录复选框事件处理
-    /// <summary>
-    /// 资源目录子复选框选中事件处理
-    /// </summary>
-    private void ResourceItem_Checked(object sender, RoutedEventArgs e)
-    {
-        UpdateResourceAllState();
+            if (VersionListInnerContentFrame.Content is not VersionListRootPage || !ReferenceEquals(activeRootPage, _activeRootPage))
+            {
+                return;
+            }
+
+            activeRootPage.SetLocalNavigationTargetElementEnabled(false);
+        });
     }
-    
-    /// <summary>
-    /// 资源目录子复选框取消选中事件处理
-    /// </summary>
-    private void ResourceItem_Unchecked(object sender, RoutedEventArgs e)
-    {
-        UpdateResourceAllState();
-    }
-    
-    /// <summary>
-    /// 展开/折叠按钮点击事件处理
-    /// </summary>
-    private void ItemExpandButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is Button button && button.CommandParameter is VersionListViewModel.ResourceItem item)
-        {
-            // 切换项的展开状态
-            item.IsExpanded = !item.IsExpanded;
-        }
-    }
-    
-    /// <summary>
-    /// 更新资源目录总复选框的状态
-    /// </summary>
-    private void UpdateResourceAllState()
-    {
-        // 此方法已不再需要,因为导出弹窗已改为动态创建
-        // 保留方法定义以避免其他地方的调用出错
-    }
-    
-    /// <summary>
-    /// 资源目录列表变化事件处理，根据资源目录数量设置StackPanel的可见性
-    /// </summary>
-    private void ResourceDirectories_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
-    {
-        // 资源目录变化处理已移至动态创建的弹窗中
-    }
-    
-    #endregion
 }
