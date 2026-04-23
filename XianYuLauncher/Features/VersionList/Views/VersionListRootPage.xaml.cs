@@ -161,7 +161,6 @@ public sealed partial class VersionListRootPage : Page
         DataContext = viewModel;
 
         viewModel.ExportModpackRequested += OnExportModpackRequested;
-        viewModel.ResourceDirectories.CollectionChanged += ResourceDirectories_CollectionChanged;
         viewModel.CompleteVersionRequested += OnCompleteVersionRequested;
         viewModel.CompleteVersionProgressUpdated += OnCompleteVersionProgressUpdated;
         viewModel.CompleteVersionCompleted += OnCompleteVersionCompleted;
@@ -182,7 +181,6 @@ public sealed partial class VersionListRootPage : Page
         }
 
         _attachedViewModel.ExportModpackRequested -= OnExportModpackRequested;
-        _attachedViewModel.ResourceDirectories.CollectionChanged -= ResourceDirectories_CollectionChanged;
         _attachedViewModel.CompleteVersionRequested -= OnCompleteVersionRequested;
         _attachedViewModel.CompleteVersionProgressUpdated -= OnCompleteVersionProgressUpdated;
         _attachedViewModel.CompleteVersionCompleted -= OnCompleteVersionCompleted;
@@ -787,6 +785,7 @@ public sealed partial class VersionListRootPage : Page
                         var modrinthService = App.GetService<Core.Services.ModrinthService>();
                         var filesToRemove = new List<string>();
                         var serverUnsupportedFiles = new HashSet<string>();
+                        var serverUnsupportedProjectCache = new Dictionary<string, bool>(StringComparer.Ordinal);
 
                         _uiDispatcher.TryEnqueue(() =>
                         {
@@ -804,40 +803,44 @@ public sealed partial class VersionListRootPage : Page
                             string filePath = kvp.Key;
                             var modrinthVersion = kvp.Value;
 
-                            if (!string.IsNullOrEmpty(modrinthVersion.ProjectId))
+                            if (string.IsNullOrEmpty(modrinthVersion.ProjectId))
                             {
-                                try
+                                continue;
+                            }
+
+                            try
+                            {
+                                if (!serverUnsupportedProjectCache.TryGetValue(modrinthVersion.ProjectId, out bool isServerUnsupported))
                                 {
                                     var projectDetail = await modrinthService.GetProjectDetailAsync(modrinthVersion.ProjectId);
-                                    if (projectDetail != null)
-                                    {
-                                        string serverSide = projectDetail.ServerSide?.ToLowerInvariant() ?? "unknown";
+                                    string serverSide = projectDetail?.ServerSide?.ToLowerInvariant() ?? "unknown";
+                                    isServerUnsupported = serverSide == "unsupported";
+                                    serverUnsupportedProjectCache[modrinthVersion.ProjectId] = isServerUnsupported;
 
-                                        _uiDispatcher.TryEnqueue(() =>
-                                        {
-                                            System.Diagnostics.Debug.WriteLine($"文件: {filePath}");
-                                            System.Diagnostics.Debug.WriteLine($"  ProjectId: {modrinthVersion.ProjectId}");
-                                            System.Diagnostics.Debug.WriteLine($"  服务端支持: {serverSide}");
-                                        });
-
-                                        if (serverSide == "unsupported")
-                                        {
-                                            filesToRemove.Add(filePath);
-                                            serverUnsupportedFiles.Add(filePath);
-                                            _uiDispatcher.TryEnqueue(() =>
-                                            {
-                                                System.Diagnostics.Debug.WriteLine("  标记为移除：服务端不支持");
-                                            });
-                                        }
-                                    }
-                                }
-                                catch (Exception ex)
-                                {
                                     _uiDispatcher.TryEnqueue(() =>
                                     {
-                                        System.Diagnostics.Debug.WriteLine($"获取项目详情失败: {modrinthVersion.ProjectId}, 错误: {ex.Message}");
+                                        System.Diagnostics.Debug.WriteLine($"文件: {filePath}");
+                                        System.Diagnostics.Debug.WriteLine($"  ProjectId: {modrinthVersion.ProjectId}");
+                                        System.Diagnostics.Debug.WriteLine($"  服务端支持: {serverSide}");
                                     });
                                 }
+
+                                if (isServerUnsupported)
+                                {
+                                    filesToRemove.Add(filePath);
+                                    serverUnsupportedFiles.Add(filePath);
+                                    _uiDispatcher.TryEnqueue(() =>
+                                    {
+                                        System.Diagnostics.Debug.WriteLine("  标记为移除：服务端不支持");
+                                    });
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                _uiDispatcher.TryEnqueue(() =>
+                                {
+                                    System.Diagnostics.Debug.WriteLine($"获取项目详情失败: {modrinthVersion.ProjectId}, 错误: {ex.Message}");
+                                });
                             }
                         }
 
@@ -1026,52 +1029,12 @@ public sealed partial class VersionListRootPage : Page
                     _uiDispatcher.TryEnqueue(() => UpdateLoadingDialog("正在处理文件...", 40.0));
 
                     HashSet<string> processedDirectories = new HashSet<string>();
-                    var serverUnsupportedFiles = new HashSet<string>();
-                    foreach (var kvp in fileResults)
-                    {
-                        string filePath = kvp.Key;
-                        var modrinthVersion = kvp.Value;
-
-                        if (!string.IsNullOrEmpty(modrinthVersion.ProjectId))
-                        {
-                            try
-                            {
-                                var modrinthService = App.GetService<Core.Services.ModrinthService>();
-                                var projectDetail = await modrinthService.GetProjectDetailAsync(modrinthVersion.ProjectId);
-                                if (projectDetail != null)
-                                {
-                                    string serverSide = projectDetail.ServerSide?.ToLowerInvariant() ?? "unknown";
-                                    if (serverSide == "unsupported")
-                                    {
-                                        serverUnsupportedFiles.Add(filePath);
-                                    }
-                                }
-                            }
-                            catch (Exception ex)
-                            {
-                                _uiDispatcher.TryEnqueue(() =>
-                                {
-                                    System.Diagnostics.Debug.WriteLine($"获取项目详情失败: {modrinthVersion.ProjectId}, 错误: {ex.Message}");
-                                });
-                            }
-                        }
-                    }
-
                     var filesToExport = new List<string>();
                     foreach (string option in filteredOptions)
                     {
                         if (_isExportCancelled)
                         {
                             break;
-                        }
-
-                        if (isServerOnly && serverUnsupportedFiles.Contains(option))
-                        {
-                            _uiDispatcher.TryEnqueue(() =>
-                            {
-                                System.Diagnostics.Debug.WriteLine($"跳过服务端不支持的文件: {option}");
-                            });
-                            continue;
                         }
 
                         filesToExport.Add(option);
@@ -1257,7 +1220,7 @@ public sealed partial class VersionListRootPage : Page
             }
 
             string relativePath = Path.GetRelativePath(sourceDir, file);
-            string zipEntryName = Path.Combine(entryName, relativePath);
+            string zipEntryName = Path.Combine(entryName, relativePath).Replace('\\', '/');
             archive.CreateEntryFromFile(file, zipEntryName);
         }
 
@@ -1270,19 +1233,9 @@ public sealed partial class VersionListRootPage : Page
             }
 
             string relativePath = Path.GetRelativePath(sourceDir, subDir);
-            string zipEntryName = Path.Combine(entryName, relativePath);
+            string zipEntryName = Path.Combine(entryName, relativePath).Replace('\\', '/');
             AddDirectoryToZip(archive, subDir, zipEntryName);
         }
-    }
-
-    private void ResourceItem_Checked(object sender, RoutedEventArgs e)
-    {
-        UpdateResourceAllState();
-    }
-
-    private void ResourceItem_Unchecked(object sender, RoutedEventArgs e)
-    {
-        UpdateResourceAllState();
     }
 
     private void ItemExpandButton_Click(object sender, RoutedEventArgs e)
@@ -1291,13 +1244,5 @@ public sealed partial class VersionListRootPage : Page
         {
             item.IsExpanded = !item.IsExpanded;
         }
-    }
-
-    private void UpdateResourceAllState()
-    {
-    }
-
-    private void ResourceDirectories_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
-    {
     }
 }

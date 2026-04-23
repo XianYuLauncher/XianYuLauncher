@@ -69,8 +69,6 @@
                     <Grid Grid.Column="1" Width="20" Height="20" Background="Transparent" Margin="0,0,8,0">
                         <CheckBox
                             IsChecked="{Binding IsSelected, Mode=TwoWay}"
-                            Checked="ResourceItem_Checked"
-                            Unchecked="ResourceItem_Unchecked"
                             Width="20"
                             Height="20"
                             Padding="0"
@@ -138,7 +136,7 @@
             IsActive="{Binding IsLoading, Mode=OneWay}"
             VerticalAlignment="Center"
             HorizontalAlignment="Center"
-            Visibility="{Binding IsLoading, Mode=OneWay}"
+            Visibility="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
             Width="48"
             Height="48"
             Foreground="{ThemeResource SystemControlHighlightAccentBrush}"/>

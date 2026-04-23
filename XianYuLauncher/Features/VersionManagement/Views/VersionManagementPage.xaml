@@ -90,9 +90,11 @@
             <StackPanel Grid.Column="0">
                 <TextBlock
                     x:Name="PageTitle"
+                    Text="{Binding HeaderMetadata.Title, Mode=OneWay}"
                     Style="{ThemeResource TitleTextBlockStyle}" />
                 <TextBlock
                     x:Name="PageSubtitle"
+                    Text="{Binding HeaderMetadata.Subtitle, Mode=OneWay}"
                     Style="{StaticResource BodyTextStyle}"
                     Margin="0,8,0,0"
                     Opacity="0.7" />
@@ -118,7 +120,7 @@
             IsActive="{Binding IsLoading, Mode=OneWay}"
             VerticalAlignment="Center"
             HorizontalAlignment="Center"
-            Visibility="{Binding IsLoading, Mode=OneWay}"
+            Visibility="{Binding IsLoading, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}"
             Width="48"
             Height="48"
             Foreground="{ThemeResource SystemControlHighlightAccentBrush}"/>
