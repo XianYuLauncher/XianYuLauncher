@@ -20,7 +20,8 @@
 ### Commit
 - 使用 Conventional Commits。
 - `type` 必须英文（如 `feat`/`fix`/`refactor`/`chore`）。
-- `scope` 可选（如 `(protocol)`、`(mod-download-detail-viewmodel)`），小写。
+- `scope` 可选，小写。单一范围按模块/组件填写（如 `(protocol)`、`(mod-download-detail-viewmodel)`）。
+- 多范围仅在无法拆分时使用：多个范围用逗号分隔（如 `(version-list, version-management)`），且必须是真的同时修改了多个独立模块。禁止用多范围来概括「改了很多文件」或逃避拆分提交。
 - 标题与正文使用中文，描述简洁清晰；重大变更补充背景与注意事项。
 
 示例：
