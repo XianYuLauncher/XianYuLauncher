@@ -192,6 +192,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     private const string OfflineLaunchCountKey = "OfflineLaunchCount";
     private const string EnableVersionIsolationKey = "EnableVersionIsolation";
     private const string SelectedVersionKey = "SelectedMinecraftVersion";
+    private const string DevBuildInfoBarDismissedKey = "LaunchDevBuildInfoBarDismissed";
 
     [ObservableProperty]
     private ObservableCollection<string> _installedVersions = new();
@@ -317,6 +318,9 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     /// </summary>
     [ObservableProperty]
     private bool _isInfoBarOpen = false;
+
+    [ObservableProperty]
+    private bool _isDevBuildInfoBarOpen;
     
     /// <summary>
     /// 更新InfoBar显示状态
@@ -497,6 +501,26 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     private void CheckDevBuild()
     {
         IsDevBuild = AppEnvironment.IsDevBuild;
+
+        if (!IsDevBuild)
+        {
+            IsDevBuildInfoBarOpen = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task DismissDevBuildInfoBarAsync()
+    {
+        IsDevBuildInfoBarOpen = false;
+
+        try
+        {
+            await _localSettingsService.SaveSettingAsync(DevBuildInfoBarDismissedKey, true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[LaunchViewModel] 保存 Dev 构建提示关闭状态失败。");
+        }
     }
     
     /// <summary>
@@ -739,10 +763,32 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
 
     private async Task InitializeAsync()
     {
+        await LoadDevBuildInfoBarStateAsync();
         await LoadInstalledVersionsAsync();
         LoadProfiles();
         ShowMinecraftPathInfo();
         await LoadNewsCardItemsAsync();
+    }
+
+    private async Task LoadDevBuildInfoBarStateAsync()
+    {
+        CheckDevBuild();
+
+        if (!IsDevBuild)
+        {
+            return;
+        }
+
+        try
+        {
+            bool isDismissed = await _localSettingsService.ReadSettingAsync<bool>(DevBuildInfoBarDismissedKey);
+            IsDevBuildInfoBarOpen = !isDismissed;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "[LaunchViewModel] 读取 Dev 构建提示关闭状态失败，回退为显示提示。");
+            IsDevBuildInfoBarOpen = true;
+        }
     }
 
     private async Task LoadNewsCardItemsAsync()

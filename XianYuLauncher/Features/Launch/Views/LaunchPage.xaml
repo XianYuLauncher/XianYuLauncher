@@ -369,11 +369,12 @@
             <InfoBar
                 x:Name="DevBuildInfoBar"
                 x:Uid="LaunchPage_DevBuildInfoBar"
-                IsOpen="{x:Bind ViewModel.IsDevBuild, Mode=OneWay}"
+                IsOpen="{x:Bind ViewModel.IsDevBuildInfoBarOpen, Mode=TwoWay}"
                 Severity="Warning"
                 Title="开发版"
                 Message="可能不稳定，遇到问题请向开发人员反馈。"
-                IsClosable="False"
+                IsClosable="True"
+                CloseButtonCommand="{x:Bind ViewModel.DismissDevBuildInfoBarCommand}"
                 CornerRadius="8" />
 
             <InfoBar 
