@@ -1046,10 +1046,9 @@ public class ModpackInstallationService : IModpackInstallationService
                 $"file_{file.Id}",
                 "CurseForge 整合包文件名");
 
-            if (string.IsNullOrEmpty(file.DownloadUrl))
-            {
-                continue;
-            }
+            string downloadUrl = string.IsNullOrEmpty(file.DownloadUrl)
+                ? _curseForgeService.ConstructDownloadUrl(file.Id, file.FileName)
+                : file.DownloadUrl;
 
             string targetDir = ResolveTargetDir(file.ModId, projectClassIdMap,
                 modsDir, resourcePacksDir, shaderPacksDir, dataPacksDir);
@@ -1063,7 +1062,7 @@ public class ModpackInstallationService : IModpackInstallationService
                 NormalizeContentFileKey(Path.GetRelativePath(modpackVersionDir, targetPath)),
                 fileDisplayName,
                 targetPath,
-                file.DownloadUrl));
+                downloadUrl));
         }
 
         int totalFiles = downloadEntries.Count;

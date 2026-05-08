@@ -1053,12 +1053,10 @@ public class CurseForgeService
                 }
                 
                 System.Diagnostics.Debug.WriteLine($"  - 选择文件：{depFile.FileName}");
-                
-                if (string.IsNullOrEmpty(depFile.DownloadUrl))
-                {
-                    System.Diagnostics.Debug.WriteLine($"  - 跳过：文件下载URL为空");
-                    continue;
-                }
+
+                string dependencyDownloadUrl = string.IsNullOrEmpty(depFile.DownloadUrl)
+                    ? ConstructDownloadUrl(depFile.Id, depFile.FileName)
+                    : depFile.DownloadUrl;
                 
                 // 检查是否已存在相同SHA1的文件
                 bool alreadyExists = false;
@@ -1100,9 +1098,9 @@ public class CurseForgeService
                 }
                 
                 // 下载依赖
-                System.Diagnostics.Debug.WriteLine($"  - 开始下载：{depFile.DownloadUrl}");
+                System.Diagnostics.Debug.WriteLine($"  - 开始下载：{dependencyDownloadUrl}");
                 bool downloadSuccess = await DownloadFileAsync(
-                    depFile.DownloadUrl,
+                    dependencyDownloadUrl,
                     filePath,
                     progressCallback,
                     cancellationToken);
