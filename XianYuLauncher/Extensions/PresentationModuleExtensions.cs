@@ -121,8 +121,13 @@ internal static class PresentationModuleExtensions
 
     public static IServiceCollection AddNewsFeaturePresentation(this IServiceCollection services)
     {
+        services.AddTransient<NewsListViewModel>();
+        services.AddTransient<NewsListPage>();
+        services.AddTransient<NewsListRootPage>();
+        services.AddTransient<NewsDetailViewModel>();
+        services.AddTransient<NewsDetailPage>();
+
         services.AddPageMap<NewsListViewModel, NewsListPage>();
-        services.AddPageMap<NewsDetailViewModel, NewsDetailPage>();
 
         return services;
     }

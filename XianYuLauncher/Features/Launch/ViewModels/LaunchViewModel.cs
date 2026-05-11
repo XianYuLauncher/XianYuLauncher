@@ -1046,7 +1046,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
 
         if (action.Type == NewsClickActionType.NavigateDetail)
         {
-            _navigationService.NavigateTo(typeof(NewsDetailViewModel).FullName!, action.Entry);
+            _navigationService.NavigateTo(typeof(NewsListViewModel).FullName!, action.Entry);
             return;
         }
 
