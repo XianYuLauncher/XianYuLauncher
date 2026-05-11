@@ -48,6 +48,7 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
     public void OnNavigatedTo(object parameter)
     {
         EnsureInnerContentFrame();
+        SynchronizeInnerContentFrameState();
         ResetInnerContentFrameVisualState();
 
         if (TryNormalizeListNavigationParameter(parameter, out var listNavigationParameter))
@@ -103,6 +104,35 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
         NewsListInnerContentFrame.Navigated += NewsListInnerContentFrame_Navigated;
         NewsListInnerContentFrame.Navigate(typeof(NewsListRootPage), ViewModel, new SuppressNavigationTransitionInfo());
         _isInnerContentFrameInitialized = true;
+    }
+
+    private void SynchronizeInnerContentFrameState()
+    {
+        switch (NewsListInnerContentFrame.Content)
+        {
+            case NewsListRootPage rootPage when !ReferenceEquals(_activeRootPage, rootPage):
+                DetachHostedLocalPage();
+                AttachRootPage(rootPage);
+                ShowRootPageState();
+                return;
+            case IHostedLocalPage hostedLocalPage when !ReferenceEquals(_activeHostedLocalPage, hostedLocalPage):
+                DetachRootPage();
+                DetachHostedLocalPage();
+                _activeHostedLocalPage = hostedLocalPage;
+                hostedLocalPage.ResetEmbeddedVisualState();
+                hostedLocalPage.CloseRequested += HostedLocalPage_CloseRequested;
+                hostedLocalPage.HeaderSource.HeaderMetadata.PropertyChanged += ActiveHostedHeaderMetadata_PropertyChanged;
+                ApplyHostedPageHeaderState(hostedLocalPage.HeaderSource);
+                NotifyLocalNavigationStateChanged();
+                return;
+            case null when _activeRootPage is not null || _activeHostedLocalPage is not null:
+                DetachHostedLocalPage();
+                DetachRootPage();
+                NotifyLocalNavigationStateChanged();
+                return;
+            default:
+                return;
+        }
     }
 
     public bool TryGoBackLocally()

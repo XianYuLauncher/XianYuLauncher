@@ -78,6 +78,7 @@ public class NavigationService : INavigationService
     public bool GoBack(NavigationTransitionInfo? transitionInfo = null, bool bypassLocalNavigationHost = false)
     {
         UpdateLocalNavigationHost();
+        var frame = Frame;
 
         // 先让当前一级页消费自己的局部返回，再决定是否回退 Shell 主 Frame。
         if (!bypassLocalNavigationHost && _localNavigationHost?.CanGoBackLocally == true)
@@ -85,9 +86,9 @@ public class NavigationService : INavigationService
             return _localNavigationHost.TryGoBackLocally();
         }
 
-        if (CanGoBack)
+        if (frame?.CanGoBack == true)
         {
-            var vmBeforeNavigation = _frame.GetPageViewModel();
+            var vmBeforeNavigation = frame.GetPageViewModel();
             var effectiveTransitionInfo = transitionInfo;
             if (effectiveTransitionInfo == null && _drillNavigationHistory.Count > 0 && _drillNavigationHistory.Peek())
             {
@@ -96,11 +97,11 @@ public class NavigationService : INavigationService
 
             if (effectiveTransitionInfo == null)
             {
-                _frame.GoBack();
+                frame.GoBack();
             }
             else
             {
-                _frame.GoBack(effectiveTransitionInfo);
+                frame.GoBack(effectiveTransitionInfo);
             }
 
             if (_drillNavigationHistory.Count > 0)

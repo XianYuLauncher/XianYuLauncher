@@ -24,6 +24,8 @@ public sealed partial class NewsDetailPage : Page, IHostedLocalPage
 
     private readonly IUiDispatcher _uiDispatcher;
 
+    // 当前页面本身不会主动请求关闭；保留标准事件实现以满足接口契约并允许外部正常订阅。
+    // 如后续新增关闭行为，请在对应时机触发该事件。
     public event EventHandler? CloseRequested
     {
         add => _closeRequested += value;
