@@ -15,6 +15,8 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Core.Models;
+using XianYuLauncher.Features.Accounts.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 
@@ -24,6 +26,7 @@ using Windows.ApplicationModel;
 using Windows.Storage;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.Accounts.ViewModels
 {
@@ -41,11 +44,18 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
     /// <summary>
     /// 角色管理页面的ViewModel
     /// </summary>
-    public partial class CharacterManagementViewModel : ObservableRecipient, INavigationAware
+    public partial class CharacterManagementViewModel : ObservableRecipient, INavigationAware, IPageHeaderAware
     {
         private readonly IFileService _fileService;
         private readonly IProfileManager _profileManager;
         private readonly HttpClient _httpClient;
+        private CharacterManagementNavigationParameter? _navigationParameter;
+
+        public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+        public PageHeaderPresentationMode HeaderPresentationMode => HeaderMetadata.ShowBreadcrumb
+            ? PageHeaderPresentationMode.ProminentBreadcrumb
+            : PageHeaderPresentationMode.Standard;
 
         /// <summary>
         /// 内置皮肤列表
@@ -196,6 +206,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             // 通知UI IsCapeSelectionEnabled和IsCapeApplyEnabled属性可能发生变化
             OnPropertyChanged(nameof(IsCapeSelectionEnabled));
             OnPropertyChanged(nameof(IsCapeApplyEnabled));
+            ApplyHeaderMetadata();
         }
         
         /// <summary>
@@ -381,6 +392,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
             _httpClient.BaseAddress = new Uri("https://api.minecraftservices.com/");
+            ApplyHeaderMetadata();
         }
 
         /// <summary>
@@ -389,10 +401,26 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// <param name="parameter">导航参数</param>
         public async void OnNavigatedTo(object parameter)
         {
-            if (parameter is MinecraftProfile profile)
+            var profile = parameter switch
+            {
+                CharacterManagementNavigationParameter navigationParameter => InitializeNavigationParameter(navigationParameter),
+                MinecraftProfile rawProfile => InitializeNavigationParameter(new CharacterManagementNavigationParameter
+                {
+                    Profile = rawProfile,
+                    BreadcrumbRootLabel = "ProfilePage_HeaderTitle".GetLocalized(),
+                    BreadcrumbRootTarget = new LocalNavigationTarget
+                    {
+                        RouteKey = CharacterNavigationRouteKeys.Root,
+                    },
+                }),
+                _ => null,
+            };
+
+            if (profile is not null)
             {
                 CurrentProfile = profile;
                 NewUsername = profile.Name;
+                ApplyHeaderMetadata();
                 
                 // 加载披风列表
                 await LoadCapesAsync();
@@ -410,6 +438,39 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             // 页面导航离开时的清理逻辑
         }
 
+        private MinecraftProfile? InitializeNavigationParameter(CharacterManagementNavigationParameter navigationParameter)
+        {
+            _navigationParameter = navigationParameter;
+            return navigationParameter.Profile;
+        }
+
+        private void ApplyHeaderMetadata()
+        {
+            HeaderMetadata.Title = string.IsNullOrWhiteSpace(CurrentProfile?.Name)
+                ? "ProfilePage_HeaderTitle".GetLocalized()
+                : CurrentProfile.Name;
+            HeaderMetadata.Subtitle = string.Empty;
+            HeaderMetadata.BreadcrumbItems.Clear();
+
+            if (_navigationParameter?.HasBreadcrumbRoot != true)
+            {
+                HeaderMetadata.ShowBreadcrumb = false;
+                return;
+            }
+
+            HeaderMetadata.ShowBreadcrumb = true;
+            HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+            {
+                DisplayText = _navigationParameter.BreadcrumbRootLabel,
+                LocalNavigationTarget = _navigationParameter.BreadcrumbRootTarget,
+            });
+            HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+            {
+                DisplayText = HeaderMetadata.Title,
+                IsCurrent = true,
+            });
+        }
+
         /// <summary>
         /// 保存用户名修改命令
         /// </summary>
@@ -419,6 +480,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             if (!string.IsNullOrWhiteSpace(NewUsername) && NewUsername != CurrentProfile.Name)
             {
                 CurrentProfile.Name = NewUsername;
+                ApplyHeaderMetadata();
                 // 保存修改到文件
                 SaveProfiles();
             }

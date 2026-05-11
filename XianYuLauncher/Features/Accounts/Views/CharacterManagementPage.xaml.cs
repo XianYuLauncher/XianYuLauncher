@@ -1,3 +1,5 @@
+using System.Numerics;
+
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -32,8 +34,10 @@ namespace XianYuLauncher.Features.Accounts.Views
     /// <summary>
     /// 角色管理页面
     /// </summary>
-    public sealed partial class CharacterManagementPage : Page
+    public sealed partial class CharacterManagementPage : Page, IHostedLocalPage
     {
+        private EventHandler? _closeRequested;
+
         /// <summary>
         /// ViewModel实例
         /// </summary>
@@ -41,11 +45,23 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             get;
         }
+
+        public IPageHeaderAware HeaderSource => ViewModel;
         
         private readonly HttpClient _httpClient = new HttpClient();
         private readonly ICommonDialogService _dialogService;
         private readonly IProfileDialogService _profileDialogService;
         private const string AvatarCacheFolder = AppDataFileConsts.AvatarCacheFolder;
+
+        /// <summary>
+        /// 当前页面本身不会主动请求关闭；保留标准事件实现以满足接口契约并允许外部正常订阅。
+        /// 如后续新增关闭行为，请在对应时机触发该事件。
+        /// </summary>
+        public event EventHandler? CloseRequested
+        {
+            add => _closeRequested += value;
+            remove => _closeRequested -= value;
+        }
 
         private static BitmapImage CreateDefaultAvatarBitmap()
         {
@@ -99,6 +115,23 @@ namespace XianYuLauncher.Features.Accounts.Views
             
             // 加载头像
             LoadProfileAvatar();
+        }
+
+        protected override void OnNavigatedFrom(NavigationEventArgs e)
+        {
+            base.OnNavigatedFrom(e);
+
+            if (ViewModel is INavigationAware navigationAware)
+            {
+                navigationAware.OnNavigatedFrom();
+            }
+        }
+
+        public void ResetEmbeddedVisualState()
+        {
+            ContentArea.Opacity = 1;
+            ContentArea.Translation = default;
+            ContentArea.Scale = new Vector3(1f, 1f, 1f);
         }
 
         /// <summary>
@@ -557,25 +590,6 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
 
         /// <summary>
-        /// 离开页面时调用
-        /// </summary>
-        /// <param name="e">导航取消事件参数</param>
-        protected override void OnNavigatingFrom(NavigatingCancelEventArgs e)
-        {
-            base.OnNavigatingFrom(e);
-            
-            // 通知ViewModel离开页面
-            if (ViewModel is INavigationAware navigationAware)
-            {
-                navigationAware.OnNavigatedFrom();
-            }
-            
-            // 取消订阅事件
-            ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
-            ViewModel.PropertyChanged -= ViewModel_CurrentSkinChanged;
-            this.Loaded -= CharacterManagementPage_Loaded;
-        }
-        
         /// <summary>
         /// 加载角色头像
         /// </summary>
