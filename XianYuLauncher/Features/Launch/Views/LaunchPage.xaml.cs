@@ -1,5 +1,6 @@
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml;
 using System;
@@ -17,6 +18,7 @@ using Microsoft.UI;
 
 using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Features.Launch.ViewModels;
+using XianYuLauncher.Features.News.Models;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using Serilog;
@@ -302,7 +304,14 @@ public sealed partial class LaunchPage : Page
     private void ViewMoreNews_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         // 导航到新闻列表页面
-        _navigationService.NavigateTo(typeof(NewsListViewModel).FullName!);
+        _navigationService.NavigateTo(
+            typeof(NewsListViewModel).FullName!,
+            new NewsListNavigationParameter
+            {
+                BreadcrumbRootLabel = "LaunchPage_BreadcrumbRootTitle".GetLocalized(),
+                BreadcrumbRootPageKey = typeof(LaunchViewModel).FullName!,
+            },
+            transitionInfo: new DrillInNavigationTransitionInfo());
     }
 
     private async void NewsCardItem_Tapped(object sender, Microsoft.UI.Xaml.Input.TappedRoutedEventArgs e)

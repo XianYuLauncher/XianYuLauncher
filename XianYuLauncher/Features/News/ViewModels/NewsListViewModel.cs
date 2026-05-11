@@ -9,13 +9,17 @@ using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
 
-using XianYuLauncher.Contracts.Services;
+using Windows.ApplicationModel.Resources;
+
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.Features.News.Models;
 using XianYuLauncher.Services;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.News.ViewModels;
 
-public partial class NewsListViewModel : ObservableRecipient
+public partial class NewsListViewModel : ObservableRecipient, IPageHeaderAware
 {
     private const string SourceAll = "All";
     private const string SourceJavaPatchNote = "JavaPatchNote";
@@ -26,9 +30,28 @@ public partial class NewsListViewModel : ObservableRecipient
     private const string FilterJavaEdition = "JavaEdition";
     private const string FilterAll = "All";
 
-    private readonly INavigationService _navigationService;
     private readonly IFileService _fileService;
+    private readonly ResourceLoader _resourceLoader;
     private MinecraftNewsService? _newsService;
+    private string _globalBreadcrumbRootLabel = string.Empty;
+    private string? _globalBreadcrumbRootPageKey;
+    private object? _globalBreadcrumbRootNavigationParameter;
+    private PageHeaderPresentationMode _headerPresentationMode = PageHeaderPresentationMode.Standard;
+
+    public event EventHandler<NewsDetailNavigationParameter>? NewsDetailRequested;
+
+    public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+    public PageHeaderPresentationMode HeaderPresentationMode => _headerPresentationMode;
+
+    public bool HasGlobalBreadcrumbRoot => !string.IsNullOrWhiteSpace(_globalBreadcrumbRootLabel)
+        && !string.IsNullOrWhiteSpace(_globalBreadcrumbRootPageKey);
+
+    public string GlobalBreadcrumbRootLabel => _globalBreadcrumbRootLabel;
+
+    public string? GlobalBreadcrumbRootPageKey => _globalBreadcrumbRootPageKey;
+
+    public object? GlobalBreadcrumbRootNavigationParameter => _globalBreadcrumbRootNavigationParameter;
 
     [ObservableProperty]
     private ObservableCollection<MinecraftNewsEntry> _newsItems = new();
@@ -68,8 +91,57 @@ public partial class NewsListViewModel : ObservableRecipient
 
     public NewsListViewModel()
     {
-        _navigationService = App.GetService<INavigationService>();
         _fileService = App.GetService<IFileService>();
+        _resourceLoader = ResourceLoader.GetForViewIndependentUse();
+        ApplyNavigationContext(null);
+    }
+
+    public void ApplyNavigationContext(NewsListNavigationParameter? navigationParameter)
+    {
+        _globalBreadcrumbRootLabel = navigationParameter?.BreadcrumbRootLabel ?? string.Empty;
+        _globalBreadcrumbRootPageKey = navigationParameter?.BreadcrumbRootPageKey;
+        _globalBreadcrumbRootNavigationParameter = navigationParameter?.BreadcrumbRootNavigationParameter;
+
+        HeaderMetadata.Title = GetResourceString("NewsListPage_Title.Text", "新闻与公告");
+        HeaderMetadata.Subtitle = GetResourceString("NewsListPage_Subtitle.Text", "Minecraft Java 版更新动态");
+        HeaderMetadata.BreadcrumbItems.Clear();
+
+        if (navigationParameter?.HasBreadcrumbRoot == true)
+        {
+            _headerPresentationMode = PageHeaderPresentationMode.ProminentBreadcrumb;
+            HeaderMetadata.ShowBreadcrumb = true;
+            HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+            {
+                DisplayText = navigationParameter.BreadcrumbRootLabel,
+                PageKey = navigationParameter.BreadcrumbRootPageKey,
+                NavigationParameter = navigationParameter.BreadcrumbRootNavigationParameter,
+            });
+            HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+            {
+                DisplayText = HeaderMetadata.Title,
+                IsCurrent = true,
+            });
+            return;
+        }
+
+        _headerPresentationMode = PageHeaderPresentationMode.Standard;
+        HeaderMetadata.ShowBreadcrumb = false;
+    }
+
+    public NewsDetailNavigationParameter CreateDetailNavigationParameter(MinecraftNewsEntry entry)
+    {
+        return new NewsDetailNavigationParameter
+        {
+            Entry = entry,
+            GlobalBreadcrumbRootLabel = _globalBreadcrumbRootLabel,
+            GlobalBreadcrumbRootPageKey = _globalBreadcrumbRootPageKey,
+            GlobalBreadcrumbRootNavigationParameter = _globalBreadcrumbRootNavigationParameter,
+            BreadcrumbRootLabel = HeaderMetadata.Title,
+            BreadcrumbRootTarget = new LocalNavigationTarget
+            {
+                RouteKey = NewsNavigationRouteKeys.Root,
+            },
+        };
     }
 
     public async Task LoadNewsAsync()
@@ -156,7 +228,7 @@ public partial class NewsListViewModel : ObservableRecipient
         var action = NewsClickRouter.Resolve(entry);
         if (action.Type == NewsClickActionType.NavigateDetail)
         {
-            _navigationService.NavigateTo(typeof(NewsDetailViewModel).FullName!, entry);
+            NewsDetailRequested?.Invoke(this, CreateDetailNavigationParameter(entry));
             return;
         }
 
@@ -256,5 +328,11 @@ public partial class NewsListViewModel : ObservableRecipient
     {
         return string.Equals(entry.Version, expectedCategory, StringComparison.OrdinalIgnoreCase) ||
                string.Equals(entry.Category, expectedCategory, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private string GetResourceString(string key, string fallback)
+    {
+        var value = _resourceLoader.GetString(key);
+        return string.IsNullOrWhiteSpace(value) ? fallback : value;
     }
 }

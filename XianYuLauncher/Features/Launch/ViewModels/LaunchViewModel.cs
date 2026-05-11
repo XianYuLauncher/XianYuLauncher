@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media.Animation;
 using Windows.System;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -29,6 +30,7 @@ using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
 using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
+using XianYuLauncher.Features.News.Models;
 using XianYuLauncher.Features.News.ViewModels;
 using XianYuLauncher.Features.Settings.ViewModels;
 using XianYuLauncher.Features.Dialogs.Contracts;
@@ -1046,7 +1048,15 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
 
         if (action.Type == NewsClickActionType.NavigateDetail)
         {
-            _navigationService.NavigateTo(typeof(NewsDetailViewModel).FullName!, action.Entry);
+            _navigationService.NavigateTo(
+                typeof(NewsListViewModel).FullName!,
+                new NewsListNavigationParameter
+                {
+                    InitialDetailEntry = action.Entry,
+                    BreadcrumbRootLabel = "LaunchPage_BreadcrumbRootTitle".GetLocalized(),
+                    BreadcrumbRootPageKey = typeof(LaunchViewModel).FullName!,
+                },
+                transitionInfo: new DrillInNavigationTransitionInfo());
             return;
         }
 

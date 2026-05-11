@@ -666,6 +666,9 @@
   <data name="LaunchPage_DefaultTitle" xml:space="preserve">
     <value>Launch Game</value>
   </data>
+  <data name="LaunchPage_BreadcrumbRootTitle" xml:space="preserve">
+    <value>Launch</value>
+  </data>
   <data name="LaunchPage_SelectVersionText" xml:space="preserve">
     <value>Select a game version</value>
   </data>

@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 
 using XianYuLauncher.Contracts.Services;
@@ -19,6 +20,7 @@ public class NavigationService : INavigationService
     private object? _lastParameterUsed;
     private Frame? _frame;
     private ILocalNavigationHost? _localNavigationHost;
+    private readonly Stack<bool> _drillNavigationHistory = new();
 
     public event NavigatedEventHandler? Navigated;
 
@@ -73,20 +75,40 @@ public class NavigationService : INavigationService
         UpdateLocalNavigationHost(null);
     }
 
-    public bool GoBack()
+    public bool GoBack(NavigationTransitionInfo? transitionInfo = null, bool bypassLocalNavigationHost = false)
     {
         UpdateLocalNavigationHost();
+        var frame = Frame;
 
         // 先让当前一级页消费自己的局部返回，再决定是否回退 Shell 主 Frame。
-        if (_localNavigationHost?.CanGoBackLocally == true)
+        if (!bypassLocalNavigationHost && _localNavigationHost?.CanGoBackLocally == true)
         {
             return _localNavigationHost.TryGoBackLocally();
         }
 
-        if (CanGoBack)
+        if (frame?.CanGoBack == true)
         {
-            var vmBeforeNavigation = _frame.GetPageViewModel();
-            _frame.GoBack();
+            var vmBeforeNavigation = frame.GetPageViewModel();
+            var effectiveTransitionInfo = transitionInfo;
+            if (effectiveTransitionInfo == null && _drillNavigationHistory.Count > 0 && _drillNavigationHistory.Peek())
+            {
+                effectiveTransitionInfo = new DrillInNavigationTransitionInfo();
+            }
+
+            if (effectiveTransitionInfo == null)
+            {
+                frame.GoBack();
+            }
+            else
+            {
+                frame.GoBack(effectiveTransitionInfo);
+            }
+
+            if (_drillNavigationHistory.Count > 0)
+            {
+                _drillNavigationHistory.Pop();
+            }
+
             if (vmBeforeNavigation is INavigationAware navigationAware)
             {
                 navigationAware.OnNavigatedFrom();
@@ -98,7 +120,7 @@ public class NavigationService : INavigationService
         return false;
     }
 
-    public bool NavigateTo(string pageKey, object? parameter = null, bool clearNavigation = false)
+    public bool NavigateTo(string pageKey, object? parameter = null, bool clearNavigation = false, NavigationTransitionInfo? transitionInfo = null)
     {
         try
         {
@@ -123,9 +145,22 @@ public class NavigationService : INavigationService
             {
                 _frame.Tag = clearNavigation;
                 var vmBeforeNavigation = _frame.GetPageViewModel();
-                var navigated = _frame.Navigate(pageType, parameter);
+
+                if (clearNavigation)
+                {
+                    _drillNavigationHistory.Clear();
+                }
+
+                var navigated = transitionInfo == null
+                    ? _frame.Navigate(pageType, parameter)
+                    : _frame.Navigate(pageType, parameter, transitionInfo);
                 if (navigated)
                 {
+                    if (_frame.CanGoBack)
+                    {
+                        _drillNavigationHistory.Push(transitionInfo is DrillInNavigationTransitionInfo);
+                    }
+
                     _lastParameterUsed = parameter;
                     if (vmBeforeNavigation is INavigationAware navigationAware)
                     {
