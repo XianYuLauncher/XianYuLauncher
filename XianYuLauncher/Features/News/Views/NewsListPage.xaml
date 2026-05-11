@@ -40,7 +40,8 @@
 
         <localControls:PageHeader
             x:Name="NewsListPageHeader"
-            Grid.Row="0" />
+            Grid.Row="0"
+            BreadcrumbItemClicked="PageHeader_BreadcrumbItemClicked" />
 
         <Grid x:Name="NewsListInnerContentHost"
               Grid.Row="1"
