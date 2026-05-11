@@ -666,6 +666,9 @@
   <data name="LaunchPage_DefaultTitle" xml:space="preserve">
     <value>启动游戏</value>
   </data>
+  <data name="LaunchPage_BreadcrumbRootTitle" xml:space="preserve">
+    <value>启动</value>
+  </data>
   <data name="LaunchPage_SelectVersionText" xml:space="preserve">
     <value>请选择游戏版本</value>
   </data>

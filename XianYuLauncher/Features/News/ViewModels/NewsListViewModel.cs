@@ -33,12 +33,25 @@ public partial class NewsListViewModel : ObservableRecipient, IPageHeaderAware
     private readonly IFileService _fileService;
     private readonly ResourceLoader _resourceLoader;
     private MinecraftNewsService? _newsService;
+    private string _globalBreadcrumbRootLabel = string.Empty;
+    private string? _globalBreadcrumbRootPageKey;
+    private object? _globalBreadcrumbRootNavigationParameter;
+    private PageHeaderPresentationMode _headerPresentationMode = PageHeaderPresentationMode.Standard;
 
     public event EventHandler<NewsDetailNavigationParameter>? NewsDetailRequested;
 
     public PageHeaderMetadata HeaderMetadata { get; } = new();
 
-    public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
+    public PageHeaderPresentationMode HeaderPresentationMode => _headerPresentationMode;
+
+    public bool HasGlobalBreadcrumbRoot => !string.IsNullOrWhiteSpace(_globalBreadcrumbRootLabel)
+        && !string.IsNullOrWhiteSpace(_globalBreadcrumbRootPageKey);
+
+    public string GlobalBreadcrumbRootLabel => _globalBreadcrumbRootLabel;
+
+    public string? GlobalBreadcrumbRootPageKey => _globalBreadcrumbRootPageKey;
+
+    public object? GlobalBreadcrumbRootNavigationParameter => _globalBreadcrumbRootNavigationParameter;
 
     [ObservableProperty]
     private ObservableCollection<MinecraftNewsEntry> _newsItems = new();
@@ -80,8 +93,55 @@ public partial class NewsListViewModel : ObservableRecipient, IPageHeaderAware
     {
         _fileService = App.GetService<IFileService>();
         _resourceLoader = ResourceLoader.GetForViewIndependentUse();
+        ApplyNavigationContext(null);
+    }
+
+    public void ApplyNavigationContext(NewsListNavigationParameter? navigationParameter)
+    {
+        _globalBreadcrumbRootLabel = navigationParameter?.BreadcrumbRootLabel ?? string.Empty;
+        _globalBreadcrumbRootPageKey = navigationParameter?.BreadcrumbRootPageKey;
+        _globalBreadcrumbRootNavigationParameter = navigationParameter?.BreadcrumbRootNavigationParameter;
+
         HeaderMetadata.Title = GetResourceString("NewsListPage_Title.Text", "新闻与公告");
         HeaderMetadata.Subtitle = GetResourceString("NewsListPage_Subtitle.Text", "Minecraft Java 版更新动态");
+        HeaderMetadata.BreadcrumbItems.Clear();
+
+        if (navigationParameter?.HasBreadcrumbRoot == true)
+        {
+            _headerPresentationMode = PageHeaderPresentationMode.ProminentBreadcrumb;
+            HeaderMetadata.ShowBreadcrumb = true;
+            HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+            {
+                DisplayText = navigationParameter.BreadcrumbRootLabel,
+                PageKey = navigationParameter.BreadcrumbRootPageKey,
+                NavigationParameter = navigationParameter.BreadcrumbRootNavigationParameter,
+            });
+            HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+            {
+                DisplayText = HeaderMetadata.Title,
+                IsCurrent = true,
+            });
+            return;
+        }
+
+        _headerPresentationMode = PageHeaderPresentationMode.Standard;
+        HeaderMetadata.ShowBreadcrumb = false;
+    }
+
+    public NewsDetailNavigationParameter CreateDetailNavigationParameter(MinecraftNewsEntry entry)
+    {
+        return new NewsDetailNavigationParameter
+        {
+            Entry = entry,
+            GlobalBreadcrumbRootLabel = _globalBreadcrumbRootLabel,
+            GlobalBreadcrumbRootPageKey = _globalBreadcrumbRootPageKey,
+            GlobalBreadcrumbRootNavigationParameter = _globalBreadcrumbRootNavigationParameter,
+            BreadcrumbRootLabel = HeaderMetadata.Title,
+            BreadcrumbRootTarget = new LocalNavigationTarget
+            {
+                RouteKey = NewsNavigationRouteKeys.Root,
+            },
+        };
     }
 
     public async Task LoadNewsAsync()
@@ -168,15 +228,7 @@ public partial class NewsListViewModel : ObservableRecipient, IPageHeaderAware
         var action = NewsClickRouter.Resolve(entry);
         if (action.Type == NewsClickActionType.NavigateDetail)
         {
-            NewsDetailRequested?.Invoke(this, new NewsDetailNavigationParameter
-            {
-                Entry = entry,
-                BreadcrumbRootLabel = HeaderMetadata.Title,
-                BreadcrumbRootTarget = new LocalNavigationTarget
-                {
-                    RouteKey = NewsNavigationRouteKeys.Root,
-                },
-            });
+            NewsDetailRequested?.Invoke(this, CreateDetailNavigationParameter(entry));
             return;
         }
 

@@ -143,6 +143,16 @@ public partial class NewsDetailViewModel : ObservableRecipient, IPageHeaderAware
         HeaderMetadata.ShowBreadcrumb = true;
         HeaderMetadata.BreadcrumbItems.Clear();
 
+        if (_navigationParameter?.HasGlobalBreadcrumbRoot == true)
+        {
+            HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+            {
+                DisplayText = _navigationParameter.GlobalBreadcrumbRootLabel,
+                PageKey = _navigationParameter.GlobalBreadcrumbRootPageKey,
+                NavigationParameter = _navigationParameter.GlobalBreadcrumbRootNavigationParameter,
+            });
+        }
+
         if (_navigationParameter?.HasBreadcrumbRoot == true)
         {
             HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem

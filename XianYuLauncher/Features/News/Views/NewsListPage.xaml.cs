@@ -12,6 +12,7 @@ using Microsoft.UI.Xaml.Navigation;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.News.Models;
 using XianYuLauncher.Features.News.ViewModels;
 using XianYuLauncher.Services;
@@ -49,12 +50,28 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
         EnsureInnerContentFrame();
         ResetInnerContentFrameVisualState();
 
+        if (TryNormalizeListNavigationParameter(parameter, out var listNavigationParameter))
+        {
+            ViewModel.ApplyNavigationContext(listNavigationParameter);
+
+            if (listNavigationParameter.InitialDetailEntry is not null)
+            {
+                NavigateToDetail(ViewModel.CreateDetailNavigationParameter(listNavigationParameter.InitialDetailEntry), suppressTransition: true);
+                return;
+            }
+
+            ResetLocalNavigation();
+            return;
+        }
+
         if (TryNormalizeDetailNavigationParameter(parameter, out var navigationParameter))
         {
+            ViewModel.ApplyNavigationContext(CreateListNavigationParameter(navigationParameter));
             NavigateToDetail(navigationParameter, suppressTransition: true);
             return;
         }
 
+        ViewModel.ApplyNavigationContext(null);
         ResetLocalNavigation();
     }
 
@@ -230,8 +247,8 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
     {
         NewsListPageHeader.Title = ViewModel.HeaderMetadata.Title;
         NewsListPageHeader.Subtitle = ViewModel.HeaderMetadata.Subtitle;
-        NewsListPageHeader.ShowBreadcrumb = false;
-        NewsListPageHeader.BreadcrumbItems = null;
+        NewsListPageHeader.ShowBreadcrumb = ViewModel.HeaderMetadata.ShowBreadcrumb;
+        NewsListPageHeader.BreadcrumbItems = ViewModel.HeaderMetadata.BreadcrumbItems;
         ApplyHeaderPresentationMode(ViewModel.HeaderPresentationMode);
     }
 
@@ -312,6 +329,12 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
             return;
         }
 
+        if (ShouldBypassLocalNavigationForGlobalRoot(breadcrumbItem))
+        {
+            _navigationService.GoBack(new DrillInNavigationTransitionInfo(), bypassLocalNavigationHost: true);
+            return;
+        }
+
         if (breadcrumbItem.HasLocalNavigationTarget && TryNavigateLocally(breadcrumbItem, useReturnTransition: true))
         {
             return;
@@ -321,6 +344,14 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
         {
             _navigationService.NavigateTo(breadcrumbItem.PageKey!, breadcrumbItem.NavigationParameter);
         }
+    }
+
+    private bool ShouldBypassLocalNavigationForGlobalRoot(NavigationBreadcrumbItem breadcrumbItem)
+    {
+        return breadcrumbItem.HasGlobalNavigationTarget
+            && _navigationService.Frame?.CanGoBack == true
+            && string.Equals(breadcrumbItem.PageKey, ViewModel.GlobalBreadcrumbRootPageKey, StringComparison.Ordinal)
+            && !ReferenceEquals(breadcrumbItem, ViewModel.HeaderMetadata.BreadcrumbItems.Count > 0 ? ViewModel.HeaderMetadata.BreadcrumbItems[^1] : null);
     }
 
     private bool TryReturnToLocalRoot(bool useReturnTransition)
@@ -416,6 +447,18 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
         return true;
     }
 
+    private bool TryNormalizeListNavigationParameter(object? parameter, [NotNullWhen(true)] out NewsListNavigationParameter? navigationParameter)
+    {
+        if (parameter is NewsListNavigationParameter typedNavigationParameter)
+        {
+            navigationParameter = typedNavigationParameter;
+            return true;
+        }
+
+        navigationParameter = null;
+        return false;
+    }
+
     private bool TryNormalizeDetailNavigationParameter(object? parameter, [NotNullWhen(true)] out NewsDetailNavigationParameter? navigationParameter)
     {
         switch (parameter)
@@ -434,7 +477,8 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
 
     private NewsDetailNavigationParameter NormalizeDetailNavigationParameter(NewsDetailNavigationParameter navigationParameter)
     {
-        if (navigationParameter.HasBreadcrumbRoot)
+        if (navigationParameter.HasBreadcrumbRoot
+            && (navigationParameter.HasGlobalBreadcrumbRoot || !ViewModel.HasGlobalBreadcrumbRoot))
         {
             return navigationParameter;
         }
@@ -442,6 +486,9 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
         return new NewsDetailNavigationParameter
         {
             Entry = navigationParameter.Entry,
+            GlobalBreadcrumbRootLabel = navigationParameter.HasGlobalBreadcrumbRoot ? navigationParameter.GlobalBreadcrumbRootLabel : ViewModel.GlobalBreadcrumbRootLabel,
+            GlobalBreadcrumbRootPageKey = navigationParameter.HasGlobalBreadcrumbRoot ? navigationParameter.GlobalBreadcrumbRootPageKey : ViewModel.GlobalBreadcrumbRootPageKey,
+            GlobalBreadcrumbRootNavigationParameter = navigationParameter.HasGlobalBreadcrumbRoot ? navigationParameter.GlobalBreadcrumbRootNavigationParameter : ViewModel.GlobalBreadcrumbRootNavigationParameter,
             BreadcrumbRootLabel = ViewModel.HeaderMetadata.Title,
             BreadcrumbRootTarget = new LocalNavigationTarget
             {
@@ -452,14 +499,21 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
 
     private NewsDetailNavigationParameter CreateDefaultDetailNavigationParameter(MinecraftNewsEntry entry)
     {
-        return new NewsDetailNavigationParameter
+        return ViewModel.CreateDetailNavigationParameter(entry);
+    }
+
+    private NewsListNavigationParameter? CreateListNavigationParameter(NewsDetailNavigationParameter navigationParameter)
+    {
+        if (!navigationParameter.HasGlobalBreadcrumbRoot)
         {
-            Entry = entry,
-            BreadcrumbRootLabel = ViewModel.HeaderMetadata.Title,
-            BreadcrumbRootTarget = new LocalNavigationTarget
-            {
-                RouteKey = NewsNavigationRouteKeys.Root,
-            },
+            return null;
+        }
+
+        return new NewsListNavigationParameter
+        {
+            BreadcrumbRootLabel = navigationParameter.GlobalBreadcrumbRootLabel,
+            BreadcrumbRootPageKey = navigationParameter.GlobalBreadcrumbRootPageKey,
+            BreadcrumbRootNavigationParameter = navigationParameter.GlobalBreadcrumbRootNavigationParameter,
         };
     }
 }
