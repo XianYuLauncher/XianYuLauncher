@@ -5,6 +5,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 using Microsoft.UI.Xaml.Navigation;
 using Windows.ApplicationModel.DataTransfer;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
@@ -16,11 +17,21 @@ using System.Collections.ObjectModel;
 
 namespace XianYuLauncher.Features.WorldManagement.Views;
 
-public sealed partial class WorldManagementPage : Page
+public sealed partial class WorldManagementPage : Page, IHostedLocalPage
 {
+    private EventHandler? _closeRequested;
+
     public WorldManagementViewModel ViewModel { get; }
     private readonly IUiDispatcher _uiDispatcher;
     private readonly IProfileManager _profileManager;
+
+    public IPageHeaderAware HeaderSource => ViewModel;
+
+    public event EventHandler? CloseRequested
+    {
+        add => _closeRequested += value;
+        remove => _closeRequested -= value;
+    }
 
     public WorldManagementPage()
     {
@@ -59,23 +70,34 @@ public sealed partial class WorldManagementPage : Page
             {
                 System.Diagnostics.Debug.WriteLine($"[WorldManagementPage] 保存待加载路径: {param.WorldPath} 版本: {param.VersionId}");
                 _pendingWorldPath = param.WorldPath;
-                ViewModel.CurrentVersionId = param.VersionId;
+                ViewModel.ApplyNavigationParameter(param);
             }
             else if (e.Parameter is string worldPath)
             {
                 System.Diagnostics.Debug.WriteLine($"[WorldManagementPage] 保存待加载路径: {worldPath}");
                 _pendingWorldPath = worldPath;
+                ViewModel.ApplyNavigationParameter(null);
             }
             else
             {
                 System.Diagnostics.Debug.WriteLine($"[WorldManagementPage] 参数不是字符串: {e.Parameter}");
+                ViewModel.ApplyNavigationParameter(null);
             }
+
+            ApplyNavigationLayoutMode();
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[WorldManagementPage] OnNavigatedTo 异常: {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"[WorldManagementPage] 堆栈: {ex.StackTrace}");
         }
+    }
+
+    private void ApplyNavigationLayoutMode()
+    {
+        ContentArea.Padding = ViewModel.IsEmbeddedHostNavigation
+            ? new Thickness(0)
+            : (Thickness)Application.Current.Resources["PageContentPadding"];
     }
     
     private async void Page_Loaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
@@ -105,6 +127,20 @@ public sealed partial class WorldManagementPage : Page
         base.OnNavigatedFrom(e);
         ViewModel.Cleanup();
         System.Diagnostics.Debug.WriteLine("[WorldManagementPage] OnNavigatedFrom 完成");
+    }
+
+    public void ResetEmbeddedVisualState()
+    {
+        ContentScrollViewer.Opacity = 1;
+        ContentScrollViewer.Translation = default;
+        ContentArea.Opacity = 1;
+        ContentArea.Translation = default;
+        WorldSummaryCard.Opacity = 1;
+        WorldSummaryCard.Translation = default;
+        TabContentHost.Opacity = 1;
+        TabContentHost.Translation = default;
+        DataPacksFrame.Opacity = 1;
+        DataPacksFrame.Translation = default;
     }
 
     private async void NavigationView_SelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
