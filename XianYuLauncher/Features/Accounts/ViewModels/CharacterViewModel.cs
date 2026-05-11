@@ -13,6 +13,7 @@ using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Features.Accounts.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Shared.Models;
@@ -33,6 +34,8 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         public PageHeaderMetadata HeaderMetadata { get; } = new();
 
         public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
+
+        public event EventHandler<CharacterManagementNavigationParameter>? CharacterManagementRequested;
 
         /// <summary>
         /// 角色列表
@@ -126,6 +129,24 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             LoadProfiles();
             // 初始化IsProfilesEmpty属性
             IsProfilesEmpty = Profiles.Count == 0;
+        }
+
+        public CharacterManagementNavigationParameter CreateCharacterManagementNavigationParameter(MinecraftProfile profile)
+        {
+            return new CharacterManagementNavigationParameter
+            {
+                Profile = profile,
+                BreadcrumbRootLabel = HeaderMetadata.Title,
+                BreadcrumbRootTarget = new LocalNavigationTarget
+                {
+                    RouteKey = CharacterNavigationRouteKeys.Root,
+                },
+            };
+        }
+
+        public void OpenCharacterManagement(MinecraftProfile profile)
+        {
+            CharacterManagementRequested?.Invoke(this, CreateCharacterManagementNavigationParameter(profile));
         }
 
         /// <summary>

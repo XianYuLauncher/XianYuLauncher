@@ -80,11 +80,11 @@ internal static class PresentationModuleExtensions
     {
         services.AddTransient<CharacterViewModel>();
         services.AddTransient<CharacterPage>();
+        services.AddTransient<CharacterRootPage>();
         services.AddPageMap<CharacterViewModel, CharacterPage>();
 
         services.AddTransient<CharacterManagementViewModel>();
         services.AddTransient<CharacterManagementPage>();
-        services.AddPageMap<CharacterManagementViewModel, CharacterManagementPage>();
 
         return services;
     }
