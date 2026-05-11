@@ -7,43 +7,21 @@
     xmlns:viewModels="using:XianYuLauncher.Features.Multiplayer.ViewModels"
     mc:Ignorable="d">
 
-
-
-    <Grid x:Name="ContentArea" Padding="{StaticResource PageContentPadding}">
+    <Grid x:Name="ContentArea" Padding="{StaticResource PageScrollViewerPadding}">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="100*" MaxWidth="1064" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-        <!-- 三列居中布局：中间列最大宽度 1064，窄窗口填满，宽窗口内容居中且不被拉得过宽 -->
+
         <Grid Grid.Column="1" VerticalAlignment="Stretch">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-        <!-- 标题区域 -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,32">
-            <TextBlock
-                x:Uid="联机大厅Page_Title"
-                Text="联机大厅"
-                Style="{ThemeResource TitleTextBlockStyle}" 
-                FontSize="36" 
-                FontWeight="Bold" />
-            <StackPanel Orientation="Horizontal" Spacing="16" Margin="0,8,0,0">
-                <TextBlock
-                    Style="{ThemeResource BodyTextBlockStyle}" 
-                    FontSize="16" 
-                    Opacity="0.8">
-                    <Run x:Uid="联机大厅Page_RoomIdPrefix" Text="房间ID: " />
-                    <Run Text="{x:Bind ViewModel.RoomId, Mode=OneWay}" />
-                </TextBlock>
-            </StackPanel>
-        </StackPanel>
-
         <!-- 房间信息卡片 -->
-        <Grid Grid.Row="1" Margin="0,0,0,32">
+        <Grid Grid.Row="0" Margin="0,0,0,32">
             <Border
                 Background="{ThemeResource CardBackgroundFillColorDefault}"
                 BorderBrush="{ThemeResource CardStrokeColorDefault}"
@@ -113,7 +91,7 @@
                     <!-- 退出按钮 -->
                     <Button 
                         Grid.Column="6" 
-                        Command="{x:Bind ViewModel.BackCommand}"
+                        Click="ExitRoomButton_Click"
                         x:Uid="联机大厅Page_ExitButton"
                         Content="退出房间"
                         Style="{StaticResource DefaultButtonStyle}" 
@@ -124,7 +102,7 @@
         </Grid>
 
         <!-- 玩家列表 -->
-        <StackPanel Grid.Row="2" Spacing="16">
+        <StackPanel Grid.Row="1" Spacing="16">
             <!-- 玩家列表标题 -->
             <TextBlock 
                 x:Uid="联机大厅Page_PlayerListTitle"

@@ -4240,6 +4240,9 @@
   <data name="联机Page_HeaderSubtitle" xml:space="preserve">
     <value>选择房主/房客</value>
   </data>
+  <data name="联机大厅Page_HeaderTitle" xml:space="preserve">
+    <value>联机大厅</value>
+  </data>
   <data name="ResourceDownloadPage_HeaderTitle" xml:space="preserve">
     <value>资源下载</value>
   </data>
