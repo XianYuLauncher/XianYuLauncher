@@ -1,5 +1,7 @@
 using System.Formats.Tar;
 using System.IO.Compression;
+using System.Reflection;
+using System.Runtime.ExceptionServices;
 using System.Text;
 using XianYuLauncher.Core.Helpers;
 
@@ -42,6 +44,27 @@ public sealed class TarGzExtractionHelperTests : IDisposable
 
         File.ReadAllText(Path.Combine(destinationDirectory, "bin", "terracotta.exe")).Should().Be("exe");
         File.ReadAllText(Path.Combine(destinationDirectory, "VCRUNTIME140.DLL")).Should().Be("dll");
+    }
+
+    [Fact]
+    public async Task ExtractToDirectoryAsync_WhenArchiveContainsEmptyFile_ShouldCreateEmptyFile()
+    {
+        string archivePath = Path.Combine(_tempRoot, "empty-file.tar.gz");
+        string destinationDirectory = Path.Combine(_tempRoot, "extract-empty-file");
+
+        CreateTarGzArchive(archivePath, writer =>
+        {
+            writer.WriteEntry(new PaxTarEntry(TarEntryType.RegularFile, "empty.txt"));
+        });
+
+        await TarGzExtractionHelper.ExtractToDirectoryAsync(
+            archivePath,
+            destinationDirectory,
+            "test archive path");
+
+        string extractedFilePath = Path.Combine(destinationDirectory, "empty.txt");
+        File.Exists(extractedFilePath).Should().BeTrue();
+        new FileInfo(extractedFilePath).Length.Should().Be(0);
     }
 
     [Fact]
@@ -91,6 +114,22 @@ public sealed class TarGzExtractionHelperTests : IDisposable
             .WithMessage("*不支持链接条目*");
     }
 
+    [Fact]
+    public async Task ExtractFileAsync_WhenEntryHasLengthButNoDataStream_ShouldThrowWithoutLeavingPartialFile()
+    {
+        string destinationDirectory = Path.Combine(_tempRoot, "extract-broken");
+        string brokenFilePath = Path.Combine(destinationDirectory, "broken.txt");
+        var entry = new PaxTarEntry(TarEntryType.RegularFile, "broken.txt");
+
+        SetEntryLength(entry, 5);
+
+        Func<Task> act = () => InvokeExtractFileAsync(destinationDirectory, entry, "test archive path");
+
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*缺少数据流*");
+        File.Exists(brokenFilePath).Should().BeFalse();
+    }
+
     private static void CreateTarGzArchive(string archivePath, Action<TarWriter> writeEntries)
     {
         using FileStream fileStream = File.Create(archivePath);
@@ -106,5 +145,32 @@ public sealed class TarGzExtractionHelperTests : IDisposable
         {
             DataStream = new MemoryStream(Encoding.UTF8.GetBytes(content))
         };
+    }
+
+    private static void SetEntryLength(TarEntry entry, long length)
+    {
+        FieldInfo headerField = typeof(TarEntry).GetField("_header", BindingFlags.Instance | BindingFlags.NonPublic)!;
+        object header = headerField.GetValue(entry)!;
+        FieldInfo sizeField = header.GetType().GetField("_size", BindingFlags.Instance | BindingFlags.NonPublic)!;
+
+        sizeField.SetValue(header, length);
+    }
+
+    private static async Task InvokeExtractFileAsync(string destinationDirectory, TarEntry entry, string entryPathDescription)
+    {
+        MethodInfo method = typeof(TarGzExtractionHelper).GetMethod("ExtractFileAsync", BindingFlags.Static | BindingFlags.NonPublic)!;
+        object? result;
+
+        try
+        {
+            result = method.Invoke(null, [destinationDirectory, entry, entryPathDescription, CancellationToken.None]);
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException is not null)
+        {
+            ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
+            throw;
+        }
+
+        await (Task)result!;
     }
 }

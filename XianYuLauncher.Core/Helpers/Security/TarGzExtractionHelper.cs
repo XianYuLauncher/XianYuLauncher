@@ -78,8 +78,6 @@ public static class TarGzExtractionHelper
         }
 
         Directory.CreateDirectory(targetDirectory);
-
-        await using FileStream destinationStream = new(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None);
         await using Stream? sourceStream = entry.DataStream;
 
         if (sourceStream is null)
@@ -89,9 +87,11 @@ public static class TarGzExtractionHelper
                 throw new InvalidOperationException($"{entryPathDescription} 无效：文件条目缺少数据流");
             }
 
+            await using FileStream emptyFileStream = new(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None);
             return;
         }
 
+        await using FileStream destinationStream = new(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None);
         await sourceStream.CopyToAsync(destinationStream, cancellationToken);
     }
 }
