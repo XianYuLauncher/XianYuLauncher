@@ -9,7 +9,7 @@
 
     <Grid x:Name="ContentArea">
         <ScrollViewer
-            Padding="{StaticResource PageDetailScrollViewerPadding}"
+            Padding="0"
             HorizontalScrollBarVisibility="Disabled"
             VerticalScrollBarVisibility="Auto">
             <Grid HorizontalAlignment="Stretch">
