@@ -4243,6 +4243,9 @@ You can double-click the file to launch the game.</value>
   <data name="联机Page_HeaderSubtitle" xml:space="preserve">
     <value>Choose Host/Guest</value>
   </data>
+  <data name="联机大厅Page_HeaderTitle" xml:space="preserve">
+    <value>Multiplayer Lobby</value>
+  </data>
   <data name="ResourceDownloadPage_HeaderTitle" xml:space="preserve">
     <value>Resource Download</value>
   </data>

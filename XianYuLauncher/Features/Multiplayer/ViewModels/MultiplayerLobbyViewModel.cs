@@ -36,6 +36,8 @@ public class RoomPlayer
 
 public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigationAware, IPageHeaderAware
 {
+    private const string MultiplayerLobbyHeaderTitleResourceKey = "联机大厅Page_HeaderTitle";
+
     private readonly INavigationService _navigationService;
     private MultiplayerLobbyNavigationParameter? _navigationParameter;
     
@@ -141,6 +143,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
         // 停止所有计时器
         _timer.Stop();
         _playerListTimer.Stop();
+        StopTerracottaProcess();
         _navigationParameter = null;
     }
     
@@ -188,7 +191,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
 
     private void ApplyHeaderMetadata()
     {
-        HeaderMetadata.Title = "联机大厅";
+        HeaderMetadata.Title = MultiplayerLobbyHeaderTitleResourceKey.GetLocalized();
         HeaderMetadata.Subtitle = string.Empty;
         HeaderMetadata.BreadcrumbItems.Clear();
 
@@ -400,8 +403,6 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
     [RelayCommand]
     private void Back()
     {
-        StopTerracottaProcess();
-        
         // 导航回上一页
         _navigationService.GoBack();
     }
@@ -411,15 +412,18 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
     /// </summary>
     private async void StopTerracottaProcess()
     {
+        var port = _port;
+        _port = null;
+
         try
         {
             // 尝试使用terracotta官方HTTP接口优雅关闭进程
-            if (!string.IsNullOrEmpty(_port))
+            if (!string.IsNullOrEmpty(port))
             {
                 try
                 {
                     // 首先尝试使用peaceful=true优雅退出
-                    string panicUrl = $"http://localhost:{_port}/panic?peaceful=true";
+                    string panicUrl = $"http://localhost:{port}/panic?peaceful=true";
                     HttpResponseMessage response = await _httpClient.GetAsync(panicUrl, CancellationToken.None);
                     Log.Information($"调用terracotta /panic接口结果：{response.StatusCode}");
                     
@@ -432,7 +436,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
                     // 可以尝试使用peaceful=false强制退出
                     try
                     {
-                        string panicUrl = $"http://localhost:{_port}/panic?peaceful=false";
+                        string panicUrl = $"http://localhost:{port}/panic?peaceful=false";
                         HttpResponseMessage response = await _httpClient.GetAsync(panicUrl, CancellationToken.None);
                         Log.Information($"调用terracotta /panic?peaceful=false接口结果：{response.StatusCode}");
                         await Task.Delay(2000);
