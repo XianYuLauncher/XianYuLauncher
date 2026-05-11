@@ -32,6 +32,7 @@ public sealed partial class VersionManagementPage : Page
     private static readonly TimeSpan TabContentEntranceDuration = TimeSpan.FromMilliseconds(500);
     private static readonly Vector3 TabContentEntranceFromTranslation = new(0, 40, 0);
 
+    private readonly VersionManagementViewModel _defaultViewModel;
     private VersionManagementViewModel? _attachedViewModel;
 
     public VersionManagementViewModel ViewModel { get; private set; } = null!;
@@ -56,6 +57,13 @@ public sealed partial class VersionManagementPage : Page
         _progressDialogService = App.GetService<IProgressDialogService>();
         _resourceDialogService = App.GetService<IResourceDialogService>();
         _profileManager = App.GetService<IProfileManager>();
+
+        _defaultViewModel = App.GetService<VersionManagementViewModel>();
+        ViewModel = _defaultViewModel;
+        _attachedViewModel = _defaultViewModel;
+        DataContext = _defaultViewModel;
+        _defaultViewModel.PropertyChanged += ViewModel_PropertyChanged;
+
         InitializeComponent();
 
         // 注册页面卸载事件，快速清理资源
@@ -74,7 +82,7 @@ public sealed partial class VersionManagementPage : Page
         }
         else
         {
-            SetViewModel(App.GetService<VersionManagementViewModel>());
+            SetViewModel(_defaultViewModel);
             _usesPageLevelNavigationForwarding = e.Parameter is XianYuLauncher.Features.VersionManagement.Models.VersionManagementNavigationParameter;
         }
 
