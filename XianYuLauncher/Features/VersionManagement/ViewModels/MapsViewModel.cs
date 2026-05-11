@@ -9,7 +9,6 @@ using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.WorldManagement.Models;
-using XianYuLauncher.Features.WorldManagement.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using XianYuLauncher.Models.VersionManagement;
@@ -255,18 +254,6 @@ public partial class MapsViewModel : ObservableObject
         {
             _context.StatusMessage = $"删除地图失败：{ex.Message}";
         }
-    }
-
-    [RelayCommand]
-    private void ShowMapDetail(MapInfo map)
-    {
-        var parameter = CreateWorldManagementParameter(map);
-        if (parameter == null)
-        {
-            return;
-        }
-
-        _navigationService.NavigateTo(typeof(WorldManagementViewModel).FullName!, parameter);
     }
 
     public WorldManagementParameter? CreateWorldManagementParameter(MapInfo map)
