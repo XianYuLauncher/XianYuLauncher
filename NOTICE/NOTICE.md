@@ -39,7 +39,7 @@
 ### .NET Runtime Libraries
 - 许可证：MIT License
 - 项目地址：https://github.com/dotnet/runtime
-- 使用包：Microsoft.Extensions.Hosting、Microsoft.Extensions.Http、Microsoft.Extensions.Logging.Abstractions、System.Drawing.Common、System.Security.Cryptography.ProtectedData
+- 使用包与运行时 API：Microsoft.Extensions.Hosting、Microsoft.Extensions.Http、Microsoft.Extensions.Logging.Abstractions、System.Drawing.Common、System.Security.Cryptography.ProtectedData、System.Formats.Tar、System.IO.Compression
 - 归档位置：`NOTICE/license/dotnet-runtime/`
 
 ### Microsoft.NET.Test.Sdk
@@ -104,11 +104,6 @@
 - 许可证：MIT License
 - 项目地址：https://github.com/coverlet-coverage/coverlet
 - 归档位置：`NOTICE/license/coverlet.collector/`
-
-### SharpCompress
-- 许可证：MIT License
-- 项目地址：https://github.com/adamhathcock/sharpcompress
-- 归档位置：`NOTICE/license/SharpCompress/`
 
 ## Data Sources | 数据来源
 

@@ -298,50 +298,11 @@ namespace XianYuLauncher.Core.Services
         private async Task ExtractTarGzAsync(string tarGzPath, string destinationPath)
         {
             Log.Information($"[TerracottaService] 开始解压: {tarGzPath} -> {destinationPath}");
-            
-            // 使用SharpCompress库解压tar.gz文件
-            using (var fileStream = new FileStream(tarGzPath, FileMode.Open, FileAccess.Read))
-            {
-                // 使用SharpCompress的ReaderFactory创建读取器
-                using (var reader = SharpCompress.Readers.ReaderFactory.Open(fileStream))
-                {
-                    // 遍历所有条目并解压
-                    while (reader.MoveToNextEntry())
-                    {
-                        if (!reader.Entry.IsDirectory)
-                        {
-                            // 构建目标文件路径
-                            if (string.IsNullOrWhiteSpace(reader.Entry.Key))
-                            {
-                                continue;
-                            }
 
-                            string entryDestinationPath = PathContainmentHelper.GetValidatedPathUnderRoot(
-                                destinationPath,
-                                reader.Entry.Key,
-                                "Terracotta 压缩包条目路径");
-                            
-                            // 创建目录
-                            string? entryDirectory = Path.GetDirectoryName(entryDestinationPath);
-                            if (string.IsNullOrWhiteSpace(entryDirectory))
-                            {
-                                throw new InvalidOperationException($"无法确定解压目标目录: {entryDestinationPath}");
-                            }
-
-                            Directory.CreateDirectory(entryDirectory);
-                            
-                            // 解压文件
-                            using (var entryStream = reader.OpenEntryStream())
-                            using (var destinationFileStream = new FileStream(entryDestinationPath, FileMode.Create, FileAccess.Write))
-                            {
-                                await entryStream.CopyToAsync(destinationFileStream);
-                            }
-                            
-                            Log.Information($"[TerracottaService] 解压文件: {reader.Entry.Key} -> {entryDestinationPath}");
-                        }
-                    }
-                }
-            }
+            await TarGzExtractionHelper.ExtractToDirectoryAsync(
+                tarGzPath,
+                destinationPath,
+                "Terracotta 压缩包条目路径");
             
             Log.Information($"[TerracottaService] 解压完成");
         }
