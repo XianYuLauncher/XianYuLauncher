@@ -17,14 +17,18 @@ public sealed class ModDownloadDetailNavigationParameter
     {
         ArgumentNullException.ThrowIfNull(project);
 
+        var projectId = RequireNonEmpty(project.ProjectId, nameof(project.ProjectId));
+        var rootLabel = RequireNonEmpty(breadcrumbRootLabel, nameof(breadcrumbRootLabel));
+        var rootPageKey = RequireNonEmpty(breadcrumbRootPageKey, nameof(breadcrumbRootPageKey));
+
         return new ModDownloadDetailNavigationParameter
         {
-            ProjectId = project.ProjectId,
+            ProjectId = projectId,
             Project = project,
-            DisplayTitleHint = project.DisplayTitle,
+            DisplayTitleHint = project.DisplayTitle ?? string.Empty,
             SourceType = sourceType,
-            BreadcrumbRootLabel = breadcrumbRootLabel,
-            BreadcrumbRootPageKey = breadcrumbRootPageKey,
+            BreadcrumbRootLabel = rootLabel,
+            BreadcrumbRootPageKey = rootPageKey,
             BreadcrumbRootNavigationParameter = breadcrumbRootNavigationParameter,
         };
     }
@@ -49,6 +53,16 @@ public sealed class ModDownloadDetailNavigationParameter
 
     public bool HasBreadcrumbRoot => !string.IsNullOrWhiteSpace(BreadcrumbRootLabel)
         && ((BreadcrumbRootTarget?.HasTarget ?? false) || !string.IsNullOrWhiteSpace(BreadcrumbRootPageKey));
+
+    private static string RequireNonEmpty(string? value, string paramName)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        throw new ArgumentException("导航参数缺少必需的非空字符串值。", paramName);
+    }
 
     public ModDownloadDetailNavigationParameter WithProjectId(string projectId)
     {
