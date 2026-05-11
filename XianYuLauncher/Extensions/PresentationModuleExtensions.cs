@@ -158,11 +158,11 @@ internal static class PresentationModuleExtensions
     {
         services.AddTransient<MultiplayerViewModel>();
         services.AddTransient<MultiplayerPage>();
+        services.AddTransient<MultiplayerRootPage>();
         services.AddPageMap<MultiplayerViewModel, MultiplayerPage>();
 
         services.AddTransient<MultiplayerLobbyViewModel>();
         services.AddTransient<MultiplayerLobbyPage>();
-        services.AddPageMap<MultiplayerLobbyViewModel, MultiplayerLobbyPage>();
 
         return services;
     }
