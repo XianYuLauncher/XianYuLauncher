@@ -37,6 +37,8 @@ namespace XianYuLauncher.Features.Accounts.Views
     public sealed partial class CharacterManagementPage : Page, IHostedLocalPage
     {
         private EventHandler? _closeRequested;
+        private bool _lifecycleEventsAttached;
+        private bool _isWebViewInitializing;
 
         /// <summary>
         /// ViewModel实例
@@ -78,13 +80,34 @@ namespace XianYuLauncher.Features.Accounts.Views
             _profileDialogService = App.GetService<IProfileDialogService>();
             InitializeComponent();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
-            
-            // 订阅CurrentProfile变化事件
+
+            AttachLifecycleEvents();
+        }
+
+        private void AttachLifecycleEvents()
+        {
+            if (_lifecycleEventsAttached)
+            {
+                return;
+            }
+
             ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-            // 订阅CurrentSkin变化事件
             ViewModel.PropertyChanged += ViewModel_CurrentSkinChanged;
-            // 添加页面加载完成事件
-            this.Loaded += CharacterManagementPage_Loaded;
+            Loaded += CharacterManagementPage_Loaded;
+            _lifecycleEventsAttached = true;
+        }
+
+        private void DetachLifecycleEvents()
+        {
+            if (!_lifecycleEventsAttached)
+            {
+                return;
+            }
+
+            ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            ViewModel.PropertyChanged -= ViewModel_CurrentSkinChanged;
+            Loaded -= CharacterManagementPage_Loaded;
+            _lifecycleEventsAttached = false;
         }
 
         /// <summary>
@@ -106,6 +129,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+            AttachLifecycleEvents();
             
             // 将导航参数传递给ViewModel
             if (ViewModel is INavigationAware navigationAware)
@@ -115,6 +139,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             
             // 加载头像
             LoadProfileAvatar();
+            _ = EnsureWebViewReadyAsync();
         }
 
         protected override void OnNavigatedFrom(NavigationEventArgs e)
@@ -125,6 +150,9 @@ namespace XianYuLauncher.Features.Accounts.Views
             {
                 navigationAware.OnNavigatedFrom();
             }
+
+            DetachLifecycleEvents();
+            ReleaseWebViewResources();
         }
 
         public void ResetEmbeddedVisualState()
@@ -139,9 +167,37 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// </summary>
         private async void CharacterManagementPage_Loaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
-            await InitializeWebView2Async();
-            // WebView2初始化完成后，手动调用一次UpdateSkinInWebViewAsync，确保皮肤能够正确显示
-            await UpdateSkinInWebViewAsync();
+            await EnsureWebViewReadyAsync();
+        }
+
+        private async Task EnsureWebViewReadyAsync()
+        {
+            if (_isWebViewInitializing || Skin3DPreviewWebView.Source is not null)
+            {
+                return;
+            }
+
+            _isWebViewInitializing = true;
+            try
+            {
+                await InitializeWebView2Async();
+            }
+            finally
+            {
+                _isWebViewInitializing = false;
+            }
+        }
+
+        private void ReleaseWebViewResources()
+        {
+            try
+            {
+                Skin3DPreviewWebView.Source = null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色管理Page] 释放 WebView2 资源失败: {ex.Message}");
+            }
         }
 
         /// <summary>

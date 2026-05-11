@@ -46,7 +46,9 @@ namespace XianYuLauncher.Features.Accounts.Views
         private readonly IProgressDialogService _progressDialogService;
         private readonly IProfileDialogService _profileDialogService;
         private readonly IUiDispatcher _uiDispatcher;
-        private readonly HttpClient _httpClient = new HttpClient();
+        private readonly HttpClient _httpClient;
+        private readonly HttpClient _apiResolverHttpClient;
+        private readonly HttpClient _yggdrasilHttpClient;
         private const string AvatarCacheFolder = AppDataFileConsts.AvatarCacheFolder;
         private BitmapImage? _processedSteveAvatar = null; // 预加载的处理过的史蒂夫头像
         private readonly Dictionary<string, BitmapImage?> _avatarImageCache = new(StringComparer.OrdinalIgnoreCase);
@@ -54,6 +56,20 @@ namespace XianYuLauncher.Features.Accounts.Views
         private readonly Dictionary<string, Task<BitmapImage?>> _avatarRefreshTasks = new(StringComparer.OrdinalIgnoreCase);
 
         private sealed record AvatarLoadResult(BitmapImage? Avatar, bool FromDiskCache);
+
+        private static HttpClient CreateHttpClient(TimeSpan timeout, bool allowAutoRedirect = true)
+        {
+            var handler = new HttpClientHandler
+            {
+                AllowAutoRedirect = allowAutoRedirect,
+            };
+            var httpClient = new HttpClient(handler, disposeHandler: true)
+            {
+                Timeout = timeout,
+            };
+            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
+            return httpClient;
+        }
 
         private static BitmapImage CreateDefaultAvatarBitmap()
         {
@@ -67,10 +83,12 @@ namespace XianYuLauncher.Features.Accounts.Views
             _progressDialogService = App.GetService<IProgressDialogService>();
             _profileDialogService = App.GetService<IProfileDialogService>();
             _uiDispatcher = App.GetService<IUiDispatcher>();
+            _httpClient = CreateHttpClient(TimeSpan.FromSeconds(30));
+            _apiResolverHttpClient = CreateHttpClient(TimeSpan.FromSeconds(10), allowAutoRedirect: false);
+            _yggdrasilHttpClient = CreateHttpClient(TimeSpan.FromSeconds(15));
             InitializeComponent();
-            _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
 
-            ViewModel.RequestShowOfflineLoginDialog += ViewModel_RequestShowOfflineLoginDialog;
+            SubscribeViewModelEvents(ViewModel);
             
             // 拖拽由 ShellPage 全局处理（避免重复拦截）
             
@@ -78,9 +96,16 @@ namespace XianYuLauncher.Features.Accounts.Views
             _ = PreloadProcessedSteveAvatarAsync();
         }
 
-        private void ViewModel_RequestShowOfflineLoginDialog(object? sender, EventArgs e)
+        private async void ViewModel_RequestShowOfflineLoginDialog(object? sender, EventArgs e)
         {
-            ShowOfflineLoginDialog();
+            try
+            {
+                await ShowOfflineLoginDialogAsync();
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "[CharacterRootPage] 显示离线登录对话框失败");
+            }
         }
 
         /// <summary>
@@ -91,7 +116,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             // 当角色列表替换时，重新加载所有头像
             if (e.PropertyName == nameof(ViewModel.Profiles))
             {
-                Log.Debug("[Avatar.CharacterPage] 角色列表替换，当前角色数量: {Count}", ViewModel.Profiles.Count);
+                Log.Debug("[Avatar.CharacterRootPage] 角色列表替换，当前角色数量: {Count}", ViewModel.Profiles.Count);
                 // 延迟执行，确保列表已更新
                 _ = DelayedLoadAllAvatarsAsync();
             }
@@ -105,14 +130,14 @@ namespace XianYuLauncher.Features.Accounts.Views
             // 当添加新角色时，重新加载所有头像
             if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Add)
             {
-                Log.Debug("[Avatar.CharacterPage] 角色列表添加了新角色，当前角色数量: {Count}", ViewModel.Profiles.Count);
+                Log.Debug("[Avatar.CharacterRootPage] 角色列表添加了新角色，当前角色数量: {Count}", ViewModel.Profiles.Count);
                 // 延迟执行，确保列表已更新
                 _ = DelayedLoadAllAvatarsAsync();
             }
             // 当删除角色时，也重新加载所有头像，确保UI一致性
             else if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Remove)
             {
-                Log.Debug("[Avatar.CharacterPage] 角色列表删除了角色，当前角色数量: {Count}", ViewModel.Profiles.Count);
+                Log.Debug("[Avatar.CharacterRootPage] 角色列表删除了角色，当前角色数量: {Count}", ViewModel.Profiles.Count);
                 // 延迟执行，确保列表已更新
                 _ = DelayedLoadAllAvatarsAsync();
             }
@@ -127,7 +152,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] 延迟刷新头像失败: {ex.Message}");
+                Debug.WriteLine($"[CharacterRootPage] 延迟刷新头像失败: {ex.Message}");
             }
         }
 
@@ -138,13 +163,13 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                Debug.WriteLine("[角色Page] 开始预加载处理过的史蒂夫头像");
+                Debug.WriteLine("[CharacterRootPage] 开始预加载处理过的史蒂夫头像");
                 _processedSteveAvatar = await ProcessSteveAvatarAsync();
-                Debug.WriteLine(_processedSteveAvatar != null ? "[角色Page] 成功预加载处理过的史蒂夫头像" : "[角色Page] 预加载处理过的史蒂夫头像失败");
+                Debug.WriteLine(_processedSteveAvatar != null ? "[CharacterRootPage] 成功预加载处理过的史蒂夫头像" : "[CharacterRootPage] 预加载处理过的史蒂夫头像失败");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] 预加载处理过的史蒂夫头像异常: {ex.Message}");
+                Debug.WriteLine($"[CharacterRootPage] 预加载处理过的史蒂夫头像异常: {ex.Message}");
                 // 预加载失败时，会在需要时重新处理
             }
         }
@@ -158,9 +183,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         protected override void OnNavigatingFrom(NavigatingCancelEventArgs e)
         {
             base.OnNavigatingFrom(e);
-            // 页面导航离开时的清理逻辑
-            ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
-            ViewModel.Profiles.CollectionChanged -= Profiles_CollectionChanged;
+            UnsubscribeViewModelEvents(ViewModel);
         }
 
         public void ResetEmbeddedVisualState()
@@ -171,17 +194,32 @@ namespace XianYuLauncher.Features.Accounts.Views
 
         private void SetViewModel(CharacterViewModel viewModel)
         {
-            if (ReferenceEquals(ViewModel, viewModel))
+            if (!ReferenceEquals(ViewModel, viewModel))
             {
-                Bindings.Update();
-                return;
+                UnsubscribeViewModelEvents(ViewModel);
+                ViewModel = viewModel;
+                DataContext = viewModel;
             }
 
-            ViewModel.RequestShowOfflineLoginDialog -= ViewModel_RequestShowOfflineLoginDialog;
-            ViewModel = viewModel;
-            ViewModel.RequestShowOfflineLoginDialog += ViewModel_RequestShowOfflineLoginDialog;
-            DataContext = viewModel;
+            SubscribeViewModelEvents(ViewModel);
             Bindings.Update();
+        }
+
+        private void SubscribeViewModelEvents(CharacterViewModel viewModel)
+        {
+            viewModel.RequestShowOfflineLoginDialog -= ViewModel_RequestShowOfflineLoginDialog;
+            viewModel.RequestShowOfflineLoginDialog += ViewModel_RequestShowOfflineLoginDialog;
+            viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            viewModel.Profiles.CollectionChanged -= Profiles_CollectionChanged;
+            viewModel.Profiles.CollectionChanged += Profiles_CollectionChanged;
+        }
+
+        private void UnsubscribeViewModelEvents(CharacterViewModel viewModel)
+        {
+            viewModel.RequestShowOfflineLoginDialog -= ViewModel_RequestShowOfflineLoginDialog;
+            viewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            viewModel.Profiles.CollectionChanged -= Profiles_CollectionChanged;
         }
 
         private async void ProfileAvatar_DataContextChanged(FrameworkElement sender, DataContextChangedEventArgs args)
@@ -258,7 +296,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[Avatar.CharacterPage] 头像绑定加载失败，角色: {Name}, Key: {Key}", profile.Name, avatarKey);
+                Log.Error(ex, "[Avatar.CharacterRootPage] 头像绑定加载失败，角色: {Name}, Key: {Key}", profile.Name, avatarKey);
                 if (Equals(image.Tag, avatarKey))
                 {
                     image.Source = CreateDefaultAvatarBitmap();
@@ -330,7 +368,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[Avatar.CharacterPage] 下载头像失败，角色: {Name}, ID: {Id}", profile.Name, profile.Id);
+                Log.Error(ex, "[Avatar.CharacterRootPage] 下载头像失败，角色: {Name}, ID: {Id}", profile.Name, profile.Id);
                 return await GetDefaultSteveAvatarAsync();
             }
         }
@@ -366,7 +404,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// </summary>
         private void LoadAllAvatars()
         {
-            Log.Information("[Avatar.CharacterPage] 开始加载所有头像，角色数量: {Count}", ViewModel.Profiles.Count);
+            Log.Information("[Avatar.CharacterRootPage] 开始加载所有头像，角色数量: {Count}", ViewModel.Profiles.Count);
             // 遍历所有角色，加载每个角色的头像
             if (ViewModel.Profiles.Count > 0)
             {
@@ -374,7 +412,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 for (int i = 0; i < ViewModel.Profiles.Count; i++)
                 {
                     var profile = ViewModel.Profiles[i];
-                    Log.Debug("[Avatar.CharacterPage] 为角色 {Name} (ID: {Id}, 离线: {IsOffline}, TokenType: {TokenType}, AuthServer: {AuthServer}, 索引: {Index}) 加载头像",
+                    Log.Debug("[Avatar.CharacterRootPage] 为角色 {Name} (ID: {Id}, 离线: {IsOffline}, TokenType: {TokenType}, AuthServer: {AuthServer}, 索引: {Index}) 加载头像",
                         profile.Name, profile.Id, profile.IsOffline, profile.TokenType ?? "(null)", profile.AuthServer ?? "(null)", i);
                     _ = LoadAvatarForProfile(profile, i);
                 }
@@ -390,28 +428,28 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             if (profile == null)
             {
-                Debug.WriteLine("[角色Page] 角色信息为null，跳过头像加载");
+                Debug.WriteLine("[CharacterRootPage] 角色信息为null，跳过头像加载");
                 return;
             }
             
-            Log.Information("[Avatar.CharacterPage] 开始加载角色 {Name} 头像，离线: {IsOffline}, TokenType: {TokenType}, AuthServer: {AuthServer}",
+            Log.Information("[Avatar.CharacterRootPage] 开始加载角色 {Name} 头像，离线: {IsOffline}, TokenType: {TokenType}, AuthServer: {AuthServer}",
                 profile.Name, profile.IsOffline, profile.TokenType ?? "(null)", profile.AuthServer ?? "(null)");
             
             // 1. 离线玩家使用Steve头像
             if (profile.IsOffline)
             {
-                Debug.WriteLine($"[角色Page] 角色 {profile.Name} 是离线角色，使用Steve头像");
+                Debug.WriteLine($"[CharacterRootPage] 角色 {profile.Name} 是离线角色，使用Steve头像");
                 // 使用处理过的Steve头像
                 var steveAvatar = _processedSteveAvatar ?? await ProcessSteveAvatarAsync();
                 if (steveAvatar != null)
                 {
-                    Debug.WriteLine($"[角色Page] 成功获取处理后的Steve头像，更新角色 {profile.Name} (索引: {profileIndex}) 的头像");
+                    Debug.WriteLine($"[CharacterRootPage] 成功获取处理后的Steve头像，更新角色 {profile.Name} (索引: {profileIndex}) 的头像");
                     // 更新ItemsControl中的对应头像
                     UpdateAvatarInList(profile, steveAvatar, profileIndex);
                 }
                 else
                 {
-                    Debug.WriteLine($"[角色Page] 获取处理后的Steve头像失败");
+                    Debug.WriteLine($"[CharacterRootPage] 获取处理后的Steve头像失败");
                     UpdateAvatarInList(profile, CreateDefaultAvatarBitmap(), profileIndex);
                 }
                 return;
@@ -420,31 +458,31 @@ namespace XianYuLauncher.Features.Accounts.Views
             // 2. 正版玩家（包括微软登录和外置登录）处理逻辑
             try
             {
-                Debug.WriteLine($"[角色Page] 角色 {profile.Name} 是在线角色，TokenType: {profile.TokenType}");
+                Debug.WriteLine($"[CharacterRootPage] 角色 {profile.Name} 是在线角色，TokenType: {profile.TokenType}");
                 
                 // 2.1 尝试从缓存加载头像
-                Debug.WriteLine($"[角色Page] 尝试从缓存加载角色 {profile.Name} (索引: {profileIndex}) 的头像");
+                Debug.WriteLine($"[CharacterRootPage] 尝试从缓存加载角色 {profile.Name} (索引: {profileIndex}) 的头像");
                 var cachedAvatar = await LoadAvatarFromCache(profile.Id);
                 if (cachedAvatar != null)
                 {
-                    Debug.WriteLine($"[角色Page] 成功从缓存加载角色 {profile.Name} (索引: {profileIndex}) 的头像");
+                    Debug.WriteLine($"[CharacterRootPage] 成功从缓存加载角色 {profile.Name} (索引: {profileIndex}) 的头像");
                     // 显示缓存头像
                     UpdateAvatarInList(profile, cachedAvatar, profileIndex);
                     // 2.2 后台异步刷新新头像
-                    Debug.WriteLine($"[角色Page] 后台异步刷新角色 {profile.Name} (索引: {profileIndex}) 的头像");
+                    Debug.WriteLine($"[CharacterRootPage] 后台异步刷新角色 {profile.Name} (索引: {profileIndex}) 的头像");
                     _ = RefreshAvatarInBackgroundAsync(profile, profileIndex);
                 }
                 else
                 {
-                    Debug.WriteLine($"[角色Page] 缓存中不存在角色 {profile.Name} (索引: {profileIndex}) 的头像，从网络加载");
+                    Debug.WriteLine($"[CharacterRootPage] 缓存中不存在角色 {profile.Name} (索引: {profileIndex}) 的头像，从网络加载");
                     // 缓存不存在，直接从网络加载
                     await LoadAvatarFromNetworkAsync(profile, profileIndex);
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] 加载角色 {profile.Name} (索引: {profileIndex}) 头像失败: {ex.Message}");
-                Debug.WriteLine($"[角色Page] 异常堆栈: {ex.StackTrace}");
+                Debug.WriteLine($"[CharacterRootPage] 加载角色 {profile.Name} (索引: {profileIndex}) 头像失败: {ex.Message}");
+                Debug.WriteLine($"[CharacterRootPage] 异常堆栈: {ex.StackTrace}");
                 // 加载失败，使用默认头像
                 UpdateAvatarInList(profile, CreateDefaultAvatarBitmap(), profileIndex);
                 // 后台尝试刷新
@@ -492,17 +530,17 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                Debug.WriteLine($"[角色Page] 开始从网络加载角色 {profile.Name} (索引: {profileIndex}) 的头像");
+                Debug.WriteLine($"[CharacterRootPage] 开始从网络加载角色 {profile.Name} (索引: {profileIndex}) 的头像");
                 
                 // 显示处理过的史蒂夫头像作为加载状态
                 if (_processedSteveAvatar != null)
                 {
-                    Debug.WriteLine($"[角色Page] 使用预加载的处理过的史蒂夫头像作为加载状态");
+                    Debug.WriteLine($"[CharacterRootPage] 使用预加载的处理过的史蒂夫头像作为加载状态");
                     UpdateAvatarInList(profile, _processedSteveAvatar, profileIndex);
                 }
                 else
                 {
-                    Debug.WriteLine($"[角色Page] 预加载的处理过的史蒂夫头像不存在，临时生成");
+                    Debug.WriteLine($"[CharacterRootPage] 预加载的处理过的史蒂夫头像不存在，临时生成");
                     // 预加载未完成，临时使用处理过的史蒂夫头像
                     var tempProcessedSteve = await ProcessSteveAvatarAsync();
                     if (tempProcessedSteve != null)
@@ -510,12 +548,12 @@ namespace XianYuLauncher.Features.Accounts.Views
                         UpdateAvatarInList(profile, tempProcessedSteve, profileIndex);
                         // 更新预加载的头像
                         _processedSteveAvatar = tempProcessedSteve;
-                        Debug.WriteLine($"[角色Page] 临时生成的处理过的史蒂夫头像成功，更新预加载缓存");
+                        Debug.WriteLine($"[CharacterRootPage] 临时生成的处理过的史蒂夫头像成功，更新预加载缓存");
                     }
                     else
                     {
                         // 处理失败，使用原始史蒂夫头像
-                        Debug.WriteLine($"[角色Page] 临时生成处理过的史蒂夫头像失败，使用原始史蒂夫头像");
+                        Debug.WriteLine($"[CharacterRootPage] 临时生成处理过的史蒂夫头像失败，使用原始史蒂夫头像");
                         UpdateAvatarInList(profile, CreateDefaultAvatarBitmap(), profileIndex);
                     }
                 }
@@ -525,7 +563,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 {
                     // 外置登录角色，使用用户提供的认证服务器
                     string authServer = profile.AuthServer;
-                    Log.Information("[Avatar.CharacterPage] 外置登录角色 {Name}，AuthServer: {AuthServer}", profile.Name, authServer);
+                    Log.Information("[Avatar.CharacterRootPage] 外置登录角色 {Name}，AuthServer: {AuthServer}", profile.Name, authServer);
                     // 确保认证服务器URL以/结尾
                     if (!authServer.EndsWith("/"))
                     {
@@ -533,31 +571,31 @@ namespace XianYuLauncher.Features.Accounts.Views
                     }
                     // 构建会话服务器URL，Yggdrasil API通常使用/sessionserver/session/minecraft/profile/端点
                     sessionServerUri = new Uri($"{authServer}sessionserver/session/minecraft/profile/{profile.Id}");
-                    Log.Information("[Avatar.CharacterPage] 外置登录 Session URL: {Url}", sessionServerUri.ToString());
+                    Log.Information("[Avatar.CharacterRootPage] 外置登录 Session URL: {Url}", sessionServerUri.ToString());
                 }
                 else
                 {
                     // 微软登录角色，使用Mojang API
                     sessionServerUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{profile.Id}");
-                    Log.Debug("[Avatar.CharacterPage] 微软登录角色 {Name}，Mojang Session URL: {Url}", profile.Name, sessionServerUri.ToString());
+                    Log.Debug("[Avatar.CharacterRootPage] 微软登录角色 {Name}，Mojang Session URL: {Url}", profile.Name, sessionServerUri.ToString());
                 }
                 
                 var bitmap = await GetAvatarFromMojangApiAsync(sessionServerUri, profile.Id);
                 if (bitmap != null)
                 {
-                    Debug.WriteLine($"[角色Page] 成功获取角色 {profile.Name} 的头像，更新UI");
+                    Debug.WriteLine($"[CharacterRootPage] 成功获取角色 {profile.Name} 的头像，更新UI");
                     UpdateAvatarInList(profile, bitmap, profileIndex);
                 }
                 else
                 {
-                    Debug.WriteLine($"[角色Page] 获取角色 {profile.Name} 的头像失败，使用默认头像");
+                    Debug.WriteLine($"[CharacterRootPage] 获取角色 {profile.Name} 的头像失败，使用默认头像");
                     UpdateAvatarInList(profile, CreateDefaultAvatarBitmap(), profileIndex);
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] 从网络加载角色 {profile.Name} (索引: {profileIndex}) 头像失败: {ex.Message}");
-                Debug.WriteLine($"[角色Page] 异常堆栈: {ex.StackTrace}");
+                Debug.WriteLine($"[CharacterRootPage] 从网络加载角色 {profile.Name} (索引: {profileIndex}) 头像失败: {ex.Message}");
+                Debug.WriteLine($"[CharacterRootPage] 异常堆栈: {ex.StackTrace}");
                 UpdateAvatarInList(profile, CreateDefaultAvatarBitmap(), profileIndex);
             }
         }
@@ -575,7 +613,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 if (profile.TokenType == "external" && !string.IsNullOrEmpty(profile.AuthServer))
                 {
                     // 外置登录角色，使用用户提供的认证服务器
-                    Debug.WriteLine($"[角色Page] 后台刷新外置登录角色 {profile.Name} 的头像，使用认证服务器: {profile.AuthServer}");
+                    Debug.WriteLine($"[CharacterRootPage] 后台刷新外置登录角色 {profile.Name} 的头像，使用认证服务器: {profile.AuthServer}");
                     string authServer = profile.AuthServer;
                     // 确保认证服务器URL以/结尾
                     if (!authServer.EndsWith("/"))
@@ -584,14 +622,14 @@ namespace XianYuLauncher.Features.Accounts.Views
                     }
                     // 构建会话服务器URL
                     sessionServerUri = new Uri($"{authServer}sessionserver/session/minecraft/profile/{profile.Id}");
-                    Debug.WriteLine($"[角色Page] 后台刷新构建的外置登录会话服务器URL: {sessionServerUri}");
+                    Debug.WriteLine($"[CharacterRootPage] 后台刷新构建的外置登录会话服务器URL: {sessionServerUri}");
                 }
                 else
                 {
                     // 微软登录角色，使用Mojang API
-                    Debug.WriteLine($"[角色Page] 后台刷新微软登录角色 {profile.Name} 的头像，使用Mojang API");
+                    Debug.WriteLine($"[CharacterRootPage] 后台刷新微软登录角色 {profile.Name} 的头像，使用Mojang API");
                     sessionServerUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{profile.Id}");
-                    Debug.WriteLine($"[角色Page] 后台刷新Mojang API请求URL: {sessionServerUri}");
+                    Debug.WriteLine($"[CharacterRootPage] 后台刷新Mojang API请求URL: {sessionServerUri}");
                 }
                 
                 var bitmap = await GetAvatarFromMojangApiAsync(sessionServerUri, profile.Id);
@@ -606,7 +644,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] 后台刷新角色 {profile.Name} (索引: {profileIndex}) 头像失败: {ex.Message}");
+                Debug.WriteLine($"[CharacterRootPage] 后台刷新角色 {profile.Name} (索引: {profileIndex}) 头像失败: {ex.Message}");
                 // 静默刷新失败，不显示错误，保持原有头像
             }
         }
@@ -618,14 +656,14 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                Log.Information("[Avatar.CharacterPage] 请求 Session API，URL: {Url}, UUID: {Uuid}", mojangUri.ToString(), uuid);
+                Log.Information("[Avatar.CharacterRootPage] 请求 Session API，URL: {Url}, UUID: {Uuid}", mojangUri.ToString(), uuid);
                 
                 // 1. 请求Mojang API获取profile信息
-                var response = await _httpClient.GetAsync(mojangUri);
-                Log.Debug("[Avatar.CharacterPage] Session API 响应状态码: {StatusCode}", response.StatusCode);
+                using var response = await _httpClient.GetAsync(mojangUri);
+                Log.Debug("[Avatar.CharacterRootPage] Session API 响应状态码: {StatusCode}", response.StatusCode);
                 if (!response.IsSuccessStatusCode)
                 {
-                    Log.Warning("[Avatar.CharacterPage] Session API 请求失败，URL: {Url}, 状态码: {StatusCode}", mojangUri.ToString(), response.StatusCode);
+                    Log.Warning("[Avatar.CharacterRootPage] Session API 请求失败，URL: {Url}, 状态码: {StatusCode}", mojangUri.ToString(), response.StatusCode);
                     return await GetDefaultSteveAvatarAsync();
                 }
                 
@@ -635,7 +673,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 var properties = profileData?["properties"] as JArray;
                 if (properties == null || properties.Count == 0)
                 {
-                    Log.Warning("[Avatar.CharacterPage] Session API 响应无 properties，URL: {Url}", mojangUri.ToString());
+                    Log.Warning("[Avatar.CharacterRootPage] Session API 响应无 properties，URL: {Url}", mojangUri.ToString());
                     return await GetDefaultSteveAvatarAsync();
                 }
                 
@@ -647,12 +685,12 @@ namespace XianYuLauncher.Features.Accounts.Views
 
                 if (!string.IsNullOrEmpty(texturesBase64))
                 {
-                    Debug.WriteLine($"[角色Page] 提取到textures的base64数据: {texturesBase64.Substring(0, Math.Min(50, texturesBase64.Length))}...");
+                    Debug.WriteLine($"[CharacterRootPage] 提取到textures的base64数据: {texturesBase64.Substring(0, Math.Min(50, texturesBase64.Length))}...");
                 }
 
                 if (string.IsNullOrEmpty(texturesBase64))
                 {
-                    Debug.WriteLine($"[角色Page] 未找到textures属性，使用默认史蒂夫图标");
+                    Debug.WriteLine($"[CharacterRootPage] 未找到textures属性，使用默认史蒂夫图标");
                     return await GetDefaultSteveAvatarAsync();
                 }
                 
@@ -665,19 +703,19 @@ namespace XianYuLauncher.Features.Accounts.Views
                 string? skinUrl = texturesData?["textures"]?["SKIN"]?["url"]?.ToString();
                 if (!string.IsNullOrEmpty(skinUrl))
                 {
-                    Log.Information("[Avatar.CharacterPage] 解析到皮肤 URL: {SkinUrl}", skinUrl);
+                    Log.Information("[Avatar.CharacterRootPage] 解析到皮肤 URL: {SkinUrl}", skinUrl);
                 }
                 if (string.IsNullOrEmpty(skinUrl))
                 {
-                    Log.Warning("[Avatar.CharacterPage] 未找到皮肤 URL，Session URL: {Url}", mojangUri.ToString());
+                    Log.Warning("[Avatar.CharacterRootPage] 未找到皮肤 URL，Session URL: {Url}", mojangUri.ToString());
                     return await GetDefaultSteveAvatarAsync();
                 }
                 
                 // 6. 下载皮肤纹理
-                var skinResponse = await _httpClient.GetAsync(skinUrl);
+                using var skinResponse = await _httpClient.GetAsync(skinUrl);
                 if (!skinResponse.IsSuccessStatusCode)
                 {
-                    Debug.WriteLine($"[角色Page] 皮肤下载失败，状态码: {skinResponse.StatusCode}，使用默认史蒂夫图标");
+                    Debug.WriteLine($"[CharacterRootPage] 皮肤下载失败，状态码: {skinResponse.StatusCode}，使用默认史蒂夫图标");
                     return await GetDefaultSteveAvatarAsync();
                 }
                 
@@ -685,15 +723,15 @@ namespace XianYuLauncher.Features.Accounts.Views
                 var avatarBitmap = await CropAvatarFromSkinBytesAsync(skinBytes, uuid);
                 if (avatarBitmap == null)
                 {
-                    Debug.WriteLine($"[角色Page] 裁剪头像失败，使用默认史蒂夫图标");
+                    Debug.WriteLine($"[CharacterRootPage] 裁剪头像失败，使用默认史蒂夫图标");
                     return await GetDefaultSteveAvatarAsync();
                 }
-                Debug.WriteLine($"[角色Page] 成功生成头像BitmapImage");
+                Debug.WriteLine($"[CharacterRootPage] 成功生成头像BitmapImage");
                 return avatarBitmap;
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[Avatar.CharacterPage] 从 Session API 获取头像异常，URL: {Url}", mojangUri.ToString());
+                Log.Error(ex, "[Avatar.CharacterRootPage] 从 Session API 获取头像异常，URL: {Url}", mojangUri.ToString());
                 return await GetDefaultSteveAvatarAsync();
             }
         }
@@ -705,7 +743,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                Debug.WriteLine($"[角色Page] 使用默认史蒂夫图标");
+                Debug.WriteLine($"[CharacterRootPage] 使用默认史蒂夫图标");
                 // 使用处理过的Steve头像
                 var steveAvatar = _processedSteveAvatar ?? await ProcessSteveAvatarAsync();
                 if (steveAvatar != null)
@@ -717,7 +755,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] 获取默认史蒂夫头像异常: {ex.Message}");
+                Debug.WriteLine($"[CharacterRootPage] 获取默认史蒂夫头像异常: {ex.Message}");
                 // 最终回退到默认头像
                 return CreateDefaultAvatarBitmap();
             }
@@ -740,7 +778,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] 从皮肤字节裁剪头像失败: {ex.Message}");
+                Debug.WriteLine($"[CharacterRootPage] 从皮肤字节裁剪头像失败: {ex.Message}");
                 return null;
             }
         }
@@ -755,7 +793,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                Debug.WriteLine($"[角色Page] 开始从皮肤URL裁剪头像: {skinUrl}");
+                Debug.WriteLine($"[CharacterRootPage] 开始从皮肤URL裁剪头像: {skinUrl}");
                 // 1. 创建CanvasDevice
                 var device = CanvasDevice.GetSharedDevice();
                 CanvasBitmap canvasBitmap;
@@ -765,7 +803,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                     || (Uri.TryCreate(skinUrl, UriKind.Absolute, out var localUri) && localUri.IsFile)
                     || Path.IsPathRooted(skinUrl))
                 {
-                    Debug.WriteLine($"[角色Page] 从本地资源加载皮肤: {skinUrl}");
+                    Debug.WriteLine($"[CharacterRootPage] 从本地资源加载皮肤: {skinUrl}");
                     var file = await AppAssetResolver.GetStorageFileAsync(skinUrl);
                     using (var stream = await file.OpenReadAsync())
                     {
@@ -774,14 +812,12 @@ namespace XianYuLauncher.Features.Accounts.Views
                 }
                 else
                 {
-                    Debug.WriteLine($"[角色Page] 从网络下载皮肤: {skinUrl}");
+                    Debug.WriteLine($"[CharacterRootPage] 从网络下载皮肤: {skinUrl}");
                     // 下载网络图片
-                    var httpClient = new HttpClient();
-                    httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
-                    var response = await httpClient.GetAsync(skinUrl);
+                    using var response = await _httpClient.GetAsync(skinUrl);
                     if (!response.IsSuccessStatusCode)
                     {
-                        Debug.WriteLine($"[角色Page] 下载皮肤失败，状态码: {response.StatusCode}");
+                        Debug.WriteLine($"[CharacterRootPage] 下载皮肤失败，状态码: {response.StatusCode}");
                         return null;
                     }
                     
@@ -791,12 +827,12 @@ namespace XianYuLauncher.Features.Accounts.Views
                     }
                 }
                 
-                Debug.WriteLine($"[角色Page] 成功加载皮肤图片，大小: {canvasBitmap.Size.Width}x{canvasBitmap.Size.Height}");
+                Debug.WriteLine($"[CharacterRootPage] 成功加载皮肤图片，大小: {canvasBitmap.Size.Width}x{canvasBitmap.Size.Height}");
                 return await SkinAvatarHelper.CropHeadFromSkinAsync(canvasBitmap, outputSize: 48, includeOverlay: false, uuid);
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] 裁剪头像失败: {ex.Message}");
+                Debug.WriteLine($"[CharacterRootPage] 裁剪头像失败: {ex.Message}");
                 // 裁剪失败时返回null，让调用者处理
                 return null;
             }
@@ -810,14 +846,14 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                Debug.WriteLine("[角色Page] 开始处理史蒂夫头像");
+                Debug.WriteLine("[CharacterRootPage] 开始处理史蒂夫头像");
                 var bitmapImage = await ProfileAvatarImageHelper.CreateDefaultProfileAvatarAsync(48);
-                Debug.WriteLine("[角色Page] 成功创建处理后的史蒂夫头像BitmapImage");
+                Debug.WriteLine("[CharacterRootPage] 成功创建处理后的史蒂夫头像BitmapImage");
                 return bitmapImage;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] 处理史蒂夫头像失败: {ex.Message}");
+                Debug.WriteLine($"[CharacterRootPage] 处理史蒂夫头像失败: {ex.Message}");
                 // 处理失败时返回null，让调用者处理
                 return null;
             }
@@ -831,62 +867,62 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// <param name="profileIndex">角色在列表中的索引</param>
         private void UpdateAvatarInList(MinecraftProfile profile, BitmapImage bitmap, int profileIndex)
         {
-            Debug.WriteLine($"[角色Page] 开始更新角色 {profile.Name} (ID: {profile.Id}, 索引: {profileIndex}) 的头像");
+            Debug.WriteLine($"[CharacterRootPage] 开始更新角色 {profile.Name} (ID: {profile.Id}, 索引: {profileIndex}) 的头像");
             
             // 使用更可靠的可视化树遍历方式查找控件
             var itemsControl = this.FindName("ProfileCardList") as ItemsControl;
             if (itemsControl == null)
             {
-                Debug.WriteLine("[角色Page] ProfileCardList 不存在");
+                Debug.WriteLine("[CharacterRootPage] ProfileCardList 不存在");
                 return;
             }
             
-            Debug.WriteLine($"[角色Page] ProfileCardList 项目数量: {itemsControl.Items.Count}");
+            Debug.WriteLine($"[CharacterRootPage] ProfileCardList 项目数量: {itemsControl.Items.Count}");
             
             // 方案1: 通过直接使用传入的索引查找项容器
             var container = itemsControl.ContainerFromIndex(profileIndex) as FrameworkElement;
             if (container != null)
             {
-                Debug.WriteLine($"[角色Page] 使用索引 {profileIndex} 获取到项容器: {container.GetType().Name}");
+                Debug.WriteLine($"[CharacterRootPage] 使用索引 {profileIndex} 获取到项容器: {container.GetType().Name}");
                 
                 // 使用VisualTreeHelper查找ProfileCard Border
                 var profileCardBorder = FindChild<Border>(container, "ProfileCard");
                 if (profileCardBorder != null)
                 {
-                    Debug.WriteLine($"[角色Page] 找到角色 {profile.Name} 对应的卡片Border");
+                    Debug.WriteLine($"[CharacterRootPage] 找到角色 {profile.Name} 对应的卡片Border");
                     
                     // 查找头像Border
                     var avatarBorder = FindChild<Border>(profileCardBorder, null, b => b.Width == 32 && b.Height == 32);
                     if (avatarBorder != null)
                     {
-                        Debug.WriteLine($"[角色Page] 找到角色 {profile.Name} 对应的头像Border");
+                        Debug.WriteLine($"[CharacterRootPage] 找到角色 {profile.Name} 对应的头像Border");
                         
                         // 查找Image控件
                         var image = FindChild<Image>(avatarBorder, "ProfileAvatar");
                         if (image != null)
                         {
-                            Debug.WriteLine($"[角色Page] 找到角色 {profile.Name} 对应的头像Image，更新Source");
+                            Debug.WriteLine($"[CharacterRootPage] 找到角色 {profile.Name} 对应的头像Image，更新Source");
                             image.Source = bitmap;
                             return;
                         }
                         else
                         {
-                            Debug.WriteLine($"[角色Page] 角色 {profile.Name} 对应的头像Image不存在");
+                            Debug.WriteLine($"[CharacterRootPage] 角色 {profile.Name} 对应的头像Image不存在");
                         }
                     }
                     else
                     {
-                        Debug.WriteLine($"[角色Page] 角色 {profile.Name} 对应的头像Border不存在");
+                        Debug.WriteLine($"[CharacterRootPage] 角色 {profile.Name} 对应的头像Border不存在");
                     }
                 }
                 else
                 {
-                    Debug.WriteLine($"[角色Page] 未找到角色 {profile.Name} 对应的卡片Border");
+                    Debug.WriteLine($"[CharacterRootPage] 未找到角色 {profile.Name} 对应的卡片Border");
                 }
             }
             else
             {
-                Debug.WriteLine($"[角色Page] 未能使用索引 {profileIndex} 获取项容器，尝试方案2");
+                Debug.WriteLine($"[CharacterRootPage] 未能使用索引 {profileIndex} 获取项容器，尝试方案2");
                 
                 // 方案2: 通过ID查找匹配的角色项
                 bool found = false;
@@ -895,48 +931,48 @@ namespace XianYuLauncher.Features.Accounts.Views
                     var item = itemsControl.Items[i];
                     if (item is MinecraftProfile itemProfile && itemProfile.Id == profile.Id)
                     {
-                        Debug.WriteLine($"[角色Page] 找到匹配的角色项，索引: {i}，名称: {itemProfile.Name}，ID: {itemProfile.Id}");
+                        Debug.WriteLine($"[CharacterRootPage] 找到匹配的角色项，索引: {i}，名称: {itemProfile.Name}，ID: {itemProfile.Id}");
                         
                         // 获取项容器
                         container = itemsControl.ContainerFromIndex(i) as FrameworkElement;
                         if (container != null)
                         {
-                            Debug.WriteLine($"[角色Page] 获取到项容器: {container.GetType().Name}");
+                            Debug.WriteLine($"[CharacterRootPage] 获取到项容器: {container.GetType().Name}");
                             
                             // 使用VisualTreeHelper查找ProfileCard Border
                             var profileCardBorder = FindChild<Border>(container, "ProfileCard");
                             if (profileCardBorder != null)
                             {
-                                Debug.WriteLine($"[角色Page] 找到角色 {profile.Name} 对应的卡片Border");
+                                Debug.WriteLine($"[CharacterRootPage] 找到角色 {profile.Name} 对应的卡片Border");
                                 
                                 // 查找头像Border
                                 var avatarBorder = FindChild<Border>(profileCardBorder, null, b => b.Width == 32 && b.Height == 32);
                                 if (avatarBorder != null)
                                 {
-                                    Debug.WriteLine($"[角色Page] 找到角色 {profile.Name} 对应的头像Border");
+                                    Debug.WriteLine($"[CharacterRootPage] 找到角色 {profile.Name} 对应的头像Border");
                                     
                                     // 查找Image控件
                                     var image = FindChild<Image>(avatarBorder, "ProfileAvatar");
                                     if (image != null)
                                     {
-                                        Debug.WriteLine($"[角色Page] 找到角色 {profile.Name} 对应的头像Image，更新Source");
+                                        Debug.WriteLine($"[CharacterRootPage] 找到角色 {profile.Name} 对应的头像Image，更新Source");
                                         image.Source = bitmap;
                                         found = true;
                                         return;
                                     }
                                     else
                                     {
-                                        Debug.WriteLine($"[角色Page] 角色 {profile.Name} 对应的头像Image不存在");
+                                        Debug.WriteLine($"[CharacterRootPage] 角色 {profile.Name} 对应的头像Image不存在");
                                     }
                                 }
                                 else
                                 {
-                                    Debug.WriteLine($"[角色Page] 角色 {profile.Name} 对应的头像Border不存在");
+                                    Debug.WriteLine($"[CharacterRootPage] 角色 {profile.Name} 对应的头像Border不存在");
                                 }
                             }
                             else
                             {
-                                Debug.WriteLine($"[角色Page] 未找到角色 {profile.Name} 对应的卡片Border");
+                                Debug.WriteLine($"[CharacterRootPage] 未找到角色 {profile.Name} 对应的卡片Border");
                             }
                         }
                         break;
@@ -946,11 +982,11 @@ namespace XianYuLauncher.Features.Accounts.Views
                 // 方案3: 如果方案2失败，直接遍历所有ProfileCard Border，通过Tag匹配
                 if (!found)
                 {
-                    Debug.WriteLine($"[角色Page] 尝试方案3: 遍历所有ProfileCard Border");
+                    Debug.WriteLine($"[CharacterRootPage] 尝试方案3: 遍历所有ProfileCard Border");
                     
                     // 查找所有ProfileCard Border
                     var allProfileCards = FindAllChildren<Border>(itemsControl, "ProfileCard");
-                    Debug.WriteLine($"[角色Page] 找到 {allProfileCards.Count} 个ProfileCard Border");
+                    Debug.WriteLine($"[CharacterRootPage] 找到 {allProfileCards.Count} 个ProfileCard Border");
                     
                     // 遍历所有卡片，找到对应的角色卡片
                     for (int i = 0; i < allProfileCards.Count; i++)
@@ -958,7 +994,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                         var profileCardBorder = allProfileCards[i];
                         if (profileCardBorder.Tag is MinecraftProfile cardProfile)
                         {
-                            Debug.WriteLine($"[角色Page] 遍历卡片 {i}: 名称={cardProfile.Name}，ID={cardProfile.Id}");
+                            Debug.WriteLine($"[CharacterRootPage] 遍历卡片 {i}: 名称={cardProfile.Name}，ID={cardProfile.Id}");
                             // 对于同名同ID的角色，使用索引匹配
                             if (cardProfile.Id == profile.Id)
                             {
@@ -972,30 +1008,30 @@ namespace XianYuLauncher.Features.Accounts.Views
                                         actualIndex++;
                                         if (actualIndex == profileIndex)
                                         {
-                                            Debug.WriteLine($"[角色Page] 通过索引匹配找到角色 {profile.Name} 对应的卡片Border");
+                                            Debug.WriteLine($"[CharacterRootPage] 通过索引匹配找到角色 {profile.Name} 对应的卡片Border");
                                             
                                             // 查找头像Border
                                             var avatarBorder = FindChild<Border>(profileCardBorder, null, b => b.Width == 32 && b.Height == 32);
                                             if (avatarBorder != null)
                                             {
-                                                Debug.WriteLine($"[角色Page] 找到角色 {profile.Name} 对应的头像Border");
+                                                Debug.WriteLine($"[CharacterRootPage] 找到角色 {profile.Name} 对应的头像Border");
                                                 
                                                 // 查找Image控件
                                                 var image = FindChild<Image>(avatarBorder, "ProfileAvatar");
                                                 if (image != null)
                                                 {
-                                                    Debug.WriteLine($"[角色Page] 找到角色 {profile.Name} 对应的头像Image，更新Source");
+                                                    Debug.WriteLine($"[CharacterRootPage] 找到角色 {profile.Name} 对应的头像Image，更新Source");
                                                     image.Source = bitmap;
                                                     return;
                                                 }
                                                 else
                                                 {
-                                                    Debug.WriteLine($"[角色Page] 角色 {profile.Name} 对应的头像Image不存在");
+                                                    Debug.WriteLine($"[CharacterRootPage] 角色 {profile.Name} 对应的头像Image不存在");
                                                 }
                                             }
                                             else
                                             {
-                                                Debug.WriteLine($"[角色Page] 角色 {profile.Name} 对应的头像Border不存在");
+                                                Debug.WriteLine($"[CharacterRootPage] 角色 {profile.Name} 对应的头像Border不存在");
                                             }
                                             break;
                                         }
@@ -1007,16 +1043,16 @@ namespace XianYuLauncher.Features.Accounts.Views
                 }
             }
             
-            Debug.WriteLine($"[角色Page] 未找到角色 {profile.Name} (ID: {profile.Id}, 索引: {profileIndex}) 对应的卡片");
+            Debug.WriteLine($"[CharacterRootPage] 未找到角色 {profile.Name} (ID: {profile.Id}, 索引: {profileIndex}) 对应的卡片");
             
             // 打印所有角色信息，便于调试
-            Debug.WriteLine($"[角色Page] 当前所有角色信息:");
+            Debug.WriteLine($"[CharacterRootPage] 当前所有角色信息:");
             for (int i = 0; i < itemsControl.Items.Count; i++)
             {
                 var item = itemsControl.Items[i] as MinecraftProfile;
                 if (item != null)
                 {
-                    Debug.WriteLine($"[角色Page] 索引 {i}: 名称={item.Name}, ID={item.Id}");
+                    Debug.WriteLine($"[CharacterRootPage] 索引 {i}: 名称={item.Name}, ID={item.Id}");
                 }
             }
         }
@@ -1127,7 +1163,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             
             // 直接调用显示对话框的方法
-            ShowOfflineLoginDialog();
+            await ShowOfflineLoginDialogAsync();
         }
 
         /// <summary>
@@ -1153,7 +1189,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             
             // 显示外置登录对话框
-            ShowExternalLoginDialog();
+            await ShowExternalLoginDialogAsync();
         }
         
         /// <summary>
@@ -1273,15 +1309,25 @@ namespace XianYuLauncher.Features.Accounts.Views
             try
             {
                 var regionContext = SystemRegionHelper.GetCurrentRegionContext();
-                regionContext.WriteDebugDiagnostics("[地区检测-CharacterPage]");
+                regionContext.WriteDebugDiagnostics("[地区检测-CharacterRootPage]");
                 return regionContext.IsChinaMainland;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[地区检测-CharacterPage] 检测失败，异常: {ex.Message}");
+                Debug.WriteLine($"[地区检测-CharacterRootPage] 检测失败，异常: {ex.Message}");
                 // 如果检测失败，默认不允许外置登录
                 return false;
             }
+        }
+
+        private static bool IsRedirectStatusCode(System.Net.HttpStatusCode statusCode)
+        {
+            return statusCode == System.Net.HttpStatusCode.MovedPermanently
+                || statusCode == System.Net.HttpStatusCode.Redirect
+                || statusCode == System.Net.HttpStatusCode.SeeOther
+                || statusCode == System.Net.HttpStatusCode.TemporaryRedirect
+                || statusCode == System.Net.HttpStatusCode.PermanentRedirect
+                || statusCode == System.Net.HttpStatusCode.Found;
         }
 
         /// <summary>
@@ -1296,63 +1342,63 @@ namespace XianYuLauncher.Features.Accounts.Views
                 if (!resolvedUrl.StartsWith("http://") && !resolvedUrl.StartsWith("https://"))
                 {
                     resolvedUrl = $"https://{resolvedUrl}";
-                    Debug.WriteLine($"[角色Page] 自动补全HTTPS协议: {inputUrl} -> {resolvedUrl}");
+                    Debug.WriteLine($"[CharacterRootPage] 自动补全HTTPS协议: {inputUrl} -> {resolvedUrl}");
                 }
-                
-                // 2. 发送GET请求，跟随重定向
-                // 配置HttpClientHandler，禁用自动重定向
-                var handler = new HttpClientHandler {
-                    AllowAutoRedirect = false
-                };
-                var httpClient = new HttpClient(handler);
-                httpClient.Timeout = TimeSpan.FromSeconds(10);
-                httpClient.DefaultRequestHeaders.UserAgent.ParseAdd($"XianYuLauncher/{XianYuLauncher.Core.Helpers.VersionHelper.GetVersion()}");
-                
-                HttpResponseMessage response = await httpClient.GetAsync(resolvedUrl);
-                
-                // 3. 处理重定向
-                while (response.StatusCode == System.Net.HttpStatusCode.Redirect || 
-                       response.StatusCode == System.Net.HttpStatusCode.MovedPermanently || 
-                       response.StatusCode == System.Net.HttpStatusCode.Found ||
-                       response.StatusCode == System.Net.HttpStatusCode.SeeOther)
+
+                const int maxRedirects = 10;
+                for (var redirectCount = 0; redirectCount <= maxRedirects; redirectCount++)
                 {
-                    string? redirectUrl = response.Headers.Location?.ToString();
-                    if (string.IsNullOrEmpty(redirectUrl)) break;
-                    
-                    // 处理相对重定向URL
-                    if (!redirectUrl.StartsWith("http://") && !redirectUrl.StartsWith("https://"))
+                    using var response = await _apiResolverHttpClient.GetAsync(resolvedUrl, HttpCompletionOption.ResponseHeadersRead);
+
+                    if (IsRedirectStatusCode(response.StatusCode))
                     {
-                        var baseUri = new Uri(resolvedUrl);
-                        redirectUrl = new Uri(baseUri, redirectUrl).ToString();
-                    }
-                    
-                    resolvedUrl = redirectUrl;
-                    Debug.WriteLine($"[角色Page] 处理重定向: {resolvedUrl}");
-                    
-                    // 发送新的请求
-                    response = await httpClient.GetAsync(resolvedUrl);
-                }
-                
-                // 4. 检查ALI头
-                if (response.Headers.TryGetValues("X-Authlib-Injector-API-Location", out var aliValues))
-                {
-                    string? aliUrl = aliValues.FirstOrDefault();
-                    if (!string.IsNullOrEmpty(aliUrl))
-                    {
-                        // 处理相对URL
-                        if (!aliUrl.StartsWith("http://") && !aliUrl.StartsWith("https://"))
+                        if (redirectCount == maxRedirects)
+                        {
+                            Debug.WriteLine($"[CharacterRootPage] API 地址解析达到最大重定向次数: {resolvedUrl}");
+                            break;
+                        }
+
+                        string? redirectUrl = response.Headers.Location?.ToString();
+                        if (string.IsNullOrEmpty(redirectUrl))
+                        {
+                            break;
+                        }
+
+                        // 处理相对重定向URL
+                        if (!redirectUrl.StartsWith("http://") && !redirectUrl.StartsWith("https://"))
                         {
                             var baseUri = new Uri(resolvedUrl);
-                            aliUrl = new Uri(baseUri, aliUrl).ToString();
+                            redirectUrl = new Uri(baseUri, redirectUrl).ToString();
                         }
-                        
-                        // 如果ALI指向不同的URL，则使用ALIURL
-                        if (aliUrl != resolvedUrl)
+
+                        resolvedUrl = redirectUrl;
+                        Debug.WriteLine($"[CharacterRootPage] 处理重定向: {resolvedUrl}");
+                        continue;
+                    }
+
+                    // 4. 检查ALI头
+                    if (response.Headers.TryGetValues("X-Authlib-Injector-API-Location", out var aliValues))
+                    {
+                        string? aliUrl = aliValues.FirstOrDefault();
+                        if (!string.IsNullOrEmpty(aliUrl))
                         {
-                            Debug.WriteLine($"[角色Page] 处理ALI头: {aliUrl}");
-                            resolvedUrl = aliUrl;
+                            // 处理相对URL
+                            if (!aliUrl.StartsWith("http://") && !aliUrl.StartsWith("https://"))
+                            {
+                                var baseUri = new Uri(resolvedUrl);
+                                aliUrl = new Uri(baseUri, aliUrl).ToString();
+                            }
+
+                            // 如果ALI指向不同的URL，则使用ALIURL
+                            if (aliUrl != resolvedUrl)
+                            {
+                                Debug.WriteLine($"[CharacterRootPage] 处理ALI头: {aliUrl}");
+                                resolvedUrl = aliUrl;
+                            }
                         }
                     }
+
+                    break;
                 }
                 
                 // 5. 确保URL以/结尾
@@ -1365,7 +1411,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] 解析API地址失败: {ex.Message}");
+                Debug.WriteLine($"[CharacterRootPage] 解析API地址失败: {ex.Message}");
                 
                 // 如果解析失败，返回原始URL（已补全HTTPS）
                 if (!inputUrl.StartsWith("http://") && !inputUrl.StartsWith("https://"))
@@ -1399,16 +1445,9 @@ namespace XianYuLauncher.Features.Accounts.Views
                 
                 // 构建元数据请求URL
                 var metadataUri = new Uri(resolvedUrl);
-                var httpClient = new HttpClient();
-                
-                // 设置User-Agent
-                httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
-                
-                // 设置请求头，接受JSON格式
-                httpClient.DefaultRequestHeaders.Accept.Add(new System.Net.Http.Headers.MediaTypeWithQualityHeaderValue("application/json"));
-                
-                // 发送GET请求
-                var response = await httpClient.GetAsync(metadataUri);
+                using var request = new HttpRequestMessage(HttpMethod.Get, metadataUri);
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                using var response = await _yggdrasilHttpClient.SendAsync(request);
                 if (response.IsSuccessStatusCode)
                 {
                     // 解析响应内容
@@ -1418,7 +1457,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] 获取服务器元数据失败: {ex.Message}");
+                Debug.WriteLine($"[CharacterRootPage] 获取服务器元数据失败: {ex.Message}");
             }
             return null;
         }
@@ -1442,7 +1481,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// <summary>
         /// 显示外置登录对话框
         /// </summary>
-        public async void ShowExternalLoginDialog()
+        public async Task ShowExternalLoginDialogAsync()
         {
             // 创建一个简单的StackPanel作为对话框内容
             var stackPanel = new StackPanel { Spacing = 12, Margin = new Thickness(0, 8, 0, 0) };
@@ -1585,7 +1624,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                Debug.WriteLine($"[角色Page] 开始执行外置登录，认证服务器: {authServer}, 用户名: {username}");
+                Debug.WriteLine($"[CharacterRootPage] 开始执行外置登录，认证服务器: {authServer}");
                 
                 // 设置登录状态
                 ViewModel.IsLoggingIn = true;
@@ -1593,13 +1632,13 @@ namespace XianYuLauncher.Features.Accounts.Views
 
                 // 1. 解析和处理API地址
                 string resolvedAuthServer = await ResolveApiUrlAsync(authServer);
-                Debug.WriteLine($"[角色Page] 解析后的认证服务器地址: {resolvedAuthServer}");
+                Debug.WriteLine($"[CharacterRootPage] 解析后的认证服务器地址: {resolvedAuthServer}");
                 
                 // 2. 发送POST请求到认证服务器获取令牌和用户列表
                 var authResponse = await AuthenticateWithYggdrasilAsync(resolvedAuthServer, username, password);
                 if (authResponse == null)
                 {
-                    Debug.WriteLine("[角色Page] 外置登录失败: 认证响应为空");
+                    Debug.WriteLine("[CharacterRootPage] 外置登录失败: 认证响应为空");
                     await ShowLoginErrorDialogAsync("外置登录失败: 认证服务器响应异常");
                     return;
                 }
@@ -1611,7 +1650,7 @@ namespace XianYuLauncher.Features.Accounts.Views
 
                 if (string.IsNullOrWhiteSpace(accessToken) || string.IsNullOrWhiteSpace(clientToken) || availableProfilesToken == null)
                 {
-                    Debug.WriteLine("[角色Page] 外置登录失败: 认证响应缺少必要字段");
+                    Debug.WriteLine("[CharacterRootPage] 外置登录失败: 认证响应缺少必要字段");
                     await ShowLoginErrorDialogAsync("外置登录失败: 认证服务器响应不完整");
                     return;
                 }
@@ -1638,7 +1677,7 @@ namespace XianYuLauncher.Features.Accounts.Views
 
                 if (availableProfiles.Count == 0)
                 {
-                    Debug.WriteLine("[角色Page] 外置登录失败: 没有可用角色");
+                    Debug.WriteLine("[CharacterRootPage] 外置登录失败: 没有可用角色");
                     await ShowLoginErrorDialogAsync("外置登录失败: 没有可用角色");
                     return;
                 }
@@ -1675,7 +1714,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] 外置登录异常: {ex.Message}");
+                Debug.WriteLine($"[CharacterRootPage] 外置登录异常: {ex.Message}");
                 await ShowLoginErrorDialogAsync($"外置登录异常: {ex.Message}");
             }
             finally
@@ -1714,7 +1753,7 @@ namespace XianYuLauncher.Features.Accounts.Views
 
                 // 构建认证URL
                 string authUrl = $"{authServer}authserver/authenticate";
-                Debug.WriteLine($"[角色Page] 发送认证请求到: {authUrl}");
+                Debug.WriteLine($"[CharacterRootPage] 发送认证请求到: {authUrl}");
 
                 // 构建请求体
                 var requestBody = new
@@ -1731,29 +1770,28 @@ namespace XianYuLauncher.Features.Accounts.Views
                 };
 
                 // 发送POST请求
-                var httpClient = new HttpClient();
-                httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
-                var jsonContent = new StringContent(
+                using var jsonContent = new StringContent(
                     Newtonsoft.Json.JsonConvert.SerializeObject(requestBody),
                     System.Text.Encoding.UTF8,
                     "application/json"
                 );
 
-                var response = await httpClient.PostAsync(authUrl, jsonContent);
+                using var response = await _yggdrasilHttpClient.PostAsync(authUrl, jsonContent);
                 if (!response.IsSuccessStatusCode)
                 {
-                    Debug.WriteLine($"[角色Page] 认证请求失败，状态码: {response.StatusCode}");
+                    Debug.WriteLine($"[CharacterRootPage] 认证请求失败，状态码: {response.StatusCode}");
                     return null;
                 }
 
                 // 解析响应
                 string responseJson = await response.Content.ReadAsStringAsync();
-                Debug.WriteLine($"[角色Page] 认证响应: {responseJson}");
-                return Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(responseJson);
+                var authResponse = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(responseJson);
+                Debug.WriteLine($"[CharacterRootPage] 认证成功，可用角色数: {(authResponse?["availableProfiles"] as JArray)?.Count ?? 0}");
+                return authResponse;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] Yggdrasil认证异常: {ex.Message}");
+                Debug.WriteLine($"[CharacterRootPage] Yggdrasil认证异常: {ex.Message}");
                 return null;
             }
         }
@@ -1763,7 +1801,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// </summary>
         private async Task ShowProfileSelectionDialogAsync(List<ExternalProfile> profiles)
         {
-            Debug.WriteLine($"[角色Page] 显示角色选择对话框，角色数量: {profiles.Count}");
+            Debug.WriteLine($"[CharacterRootPage] 显示角色选择对话框，角色数量: {profiles.Count}");
 
             // 预加载所有角色的头像
             foreach (var profile in profiles)
@@ -1873,14 +1911,14 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                Log.Information("[Avatar.CharacterPage] 加载外置角色头像，角色: {Name}, ID: {Id}, AuthServer: {AuthServer}",
+                Log.Information("[Avatar.CharacterRootPage] 加载外置角色头像，角色: {Name}, ID: {Id}, AuthServer: {AuthServer}",
                     profile.Name, profile.Id, profile.AuthServer ?? "(null)");
                 
                 // 外置登录角色，使用用户提供的认证服务器
                 string? authServer = profile.AuthServer;
                 if (string.IsNullOrEmpty(authServer))
                 {
-                    Log.Warning("[Avatar.CharacterPage] 外置角色 AuthServer 为空，角色: {Name}", profile.Name);
+                    Log.Warning("[Avatar.CharacterRootPage] 外置角色 AuthServer 为空，角色: {Name}", profile.Name);
                     return CreateDefaultAvatarBitmap();
                 }
                 // 确保认证服务器URL以/结尾
@@ -1890,13 +1928,13 @@ namespace XianYuLauncher.Features.Accounts.Views
                 }
                 // 构建会话服务器URL，Yggdrasil API通常使用/sessionserver/session/minecraft/profile/端点
                 var sessionServerUri = new Uri($"{authServer}sessionserver/session/minecraft/profile/{profile.Id}");
-                Log.Information("[Avatar.CharacterPage] 外置角色选择对话框 Session URL: {Url}", sessionServerUri.ToString());
+                Log.Information("[Avatar.CharacterRootPage] 外置角色选择对话框 Session URL: {Url}", sessionServerUri.ToString());
                 
                 return await GetAvatarFromMojangApiAsync(sessionServerUri, profile.Id);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[Avatar.CharacterPage] 加载外置角色头像异常，角色: {Name}, AuthServer: {AuthServer}", profile.Name, profile.AuthServer ?? "(null)");
+                Log.Error(ex, "[Avatar.CharacterRootPage] 加载外置角色头像异常，角色: {Name}, AuthServer: {AuthServer}", profile.Name, profile.AuthServer ?? "(null)");
                 return CreateDefaultAvatarBitmap();
             }
         }
@@ -1908,11 +1946,11 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                Debug.WriteLine($"[角色Page] 添加外置角色，名称: {externalProfile.Name}, ID: {externalProfile.Id}");
+                Debug.WriteLine($"[CharacterRootPage] 添加外置角色，名称: {externalProfile.Name}, ID: {externalProfile.Id}");
                 
                 // 解析和处理API地址，确保保存的是完整的API地址
                 string resolvedAuthServer = await ResolveApiUrlAsync(externalProfile.AuthServer);
-                Debug.WriteLine($"[角色Page] 保存的认证服务器地址: {resolvedAuthServer}");
+                Debug.WriteLine($"[CharacterRootPage] 保存的认证服务器地址: {resolvedAuthServer}");
                 
                 // 创建外置角色
                 var externalMinecraftProfile = new MinecraftProfile
@@ -1939,11 +1977,11 @@ namespace XianYuLauncher.Features.Accounts.Views
                 ViewModel.IsLoggingIn = false;
                 ViewModel.LoginStatus = "登录成功";
                 
-                Debug.WriteLine($"[角色Page] 成功添加外置角色: {externalProfile.Name}");
+                Debug.WriteLine($"[CharacterRootPage] 成功添加外置角色: {externalProfile.Name}");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] 添加外置角色异常: {ex.Message}");
+                Debug.WriteLine($"[CharacterRootPage] 添加外置角色异常: {ex.Message}");
                 await ShowLoginErrorDialogAsync($"添加角色失败: {ex.Message}");
             }
             finally
@@ -1969,7 +2007,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// <summary>
         /// 显示离线登录对话框
         /// </summary>
-        public async void ShowOfflineLoginDialog()
+        public async Task ShowOfflineLoginDialogAsync()
         {
             // 创建一个简单的StackPanel作为对话框内容
             var stackPanel = new StackPanel { Spacing = 12, Margin = new Thickness(0, 8, 0, 0) };
@@ -2028,14 +2066,14 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                Debug.WriteLine($"[角色Page] 接收到转发的拖拽文本: {draggedText}");
+                Debug.WriteLine($"[CharacterRootPage] 接收到转发的拖拽文本: {draggedText}");
                 // 解析拖拽的URI格式：authlib-injector:yggdrasil-server:{API地址}
                 if (draggedText.StartsWith("authlib-injector:yggdrasil-server:"))
                 {
                     // 提取API地址
                     string encodedApiUrl = draggedText.Substring("authlib-injector:yggdrasil-server:".Length);
                     string apiUrl = Uri.UnescapeDataString(encodedApiUrl);
-                    Debug.WriteLine($"[角色Page] 解析出API地址: {apiUrl}");
+                    Debug.WriteLine($"[CharacterRootPage] 解析出API地址: {apiUrl}");
 
                     var result = await _dialogService.ShowCustomDialogAsync(
                         "添加验证服务器",
@@ -2046,20 +2084,20 @@ namespace XianYuLauncher.Features.Accounts.Views
                     if (result == ContentDialogResult.Primary)
                     {
                         // 调用外置登录对话框，并预填充认证服务器地址
-                        ShowExternalLoginDialogWithPreFilledServer(apiUrl);
+                        await ShowExternalLoginDialogWithPreFilledServerAsync(apiUrl);
                     }
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色Page] 处理转发拖拽时发生异常: {ex.Message}");
+                Debug.WriteLine($"[CharacterRootPage] 处理转发拖拽时发生异常: {ex.Message}");
             }
         }
         
         /// <summary>
         /// 显示预填充认证服务器地址的外置登录对话框
         /// </summary>
-        private async void ShowExternalLoginDialogWithPreFilledServer(string authServerUrl)
+        private async Task ShowExternalLoginDialogWithPreFilledServerAsync(string authServerUrl)
         {
             // 创建一个简单的StackPanel作为对话框内容
             var stackPanel = new StackPanel { Spacing = 12, Margin = new Thickness(0, 8, 0, 0) };
