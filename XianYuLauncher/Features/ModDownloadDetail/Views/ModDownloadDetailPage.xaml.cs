@@ -330,6 +330,12 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
                 return;
             }
 
+            if (ShouldBypassLocalNavigationForGlobalRoot(breadcrumbItem))
+            {
+                _navigationService.GoBack(new DrillInNavigationTransitionInfo(), bypassLocalNavigationHost: true);
+                return;
+            }
+
             if (breadcrumbItem.HasLocalNavigationTarget && TryNavigateLocally(breadcrumbItem, useReturnTransition: true))
             {
                 return;
@@ -339,6 +345,16 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
             {
                 _navigationService.NavigateTo(breadcrumbItem.PageKey!, breadcrumbItem.NavigationParameter);
             }
+        }
+
+        private bool ShouldBypassLocalNavigationForGlobalRoot(NavigationBreadcrumbItem breadcrumbItem)
+        {
+            return breadcrumbItem.HasGlobalNavigationTarget
+                && _navigationService.Frame?.CanGoBack == true
+                && TryGetCurrentBreadcrumbItems(out var breadcrumbItems)
+                && breadcrumbItems.Count > 0
+                && ReferenceEquals(breadcrumbItem, breadcrumbItems[0])
+                && !ReferenceEquals(breadcrumbItem, breadcrumbItems[^1]);
         }
 
         private bool TryReturnToLocalRoot(bool useReturnTransition)
