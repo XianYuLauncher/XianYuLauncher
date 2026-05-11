@@ -150,7 +150,6 @@ internal static class PresentationModuleExtensions
     {
         services.AddTransient<WorldManagementViewModel>();
         services.AddTransient<WorldManagementPage>();
-        services.AddPageMap<WorldManagementViewModel, WorldManagementPage>();
 
         return services;
     }

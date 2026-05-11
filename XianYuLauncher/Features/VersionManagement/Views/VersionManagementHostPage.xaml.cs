@@ -1,26 +1,29 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 
-using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Features.VersionManagement.Models;
 using XianYuLauncher.Features.VersionManagement.ViewModels;
 using XianYuLauncher.Features.WorldManagement.Models;
-using XianYuLauncher.Features.WorldManagement.ViewModels;
+using XianYuLauncher.Features.WorldManagement.Views;
 using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.VersionManagement.Views;
 
 public sealed partial class VersionManagementHostPage : Page, IHostedLocalPage, ILocalNavigationHost, IPageHeaderAware
 {
-    private readonly INavigationService _navigationService;
+    private const string LocalRootRouteKey = "VersionManagementRoot";
+
     private EventHandler? _closeRequested;
     private bool _usesPageLevelNavigationForwarding;
     private VersionManagementPage? _activeRootPage;
+    private IHostedLocalPage? _activeHostedLocalPage;
     private PageHeaderPresentationMode _headerPresentationMode = PageHeaderPresentationMode.Standard;
 
     public VersionManagementViewModel ViewModel { get; }
@@ -33,7 +36,7 @@ public sealed partial class VersionManagementHostPage : Page, IHostedLocalPage, 
 
     public event EventHandler? LocalNavigationStateChanged;
 
-    public bool CanGoBackLocally => false;
+    public bool CanGoBackLocally => _activeHostedLocalPage != null && VersionManagementInnerContentFrame.CanGoBack;
 
     public event EventHandler? CloseRequested
     {
@@ -43,7 +46,6 @@ public sealed partial class VersionManagementHostPage : Page, IHostedLocalPage, 
 
     public VersionManagementHostPage()
     {
-        _navigationService = App.GetService<INavigationService>();
         ViewModel = App.GetService<VersionManagementViewModel>();
         InitializeComponent();
         VersionManagementInnerContentFrame.Navigated += VersionManagementInnerContentFrame_Navigated;
@@ -63,13 +65,7 @@ public sealed partial class VersionManagementHostPage : Page, IHostedLocalPage, 
 
         if (e.NavigationMode == NavigationMode.Back && VersionManagementInnerContentFrame.Content is not null)
         {
-            if (VersionManagementInnerContentFrame.Content is VersionManagementPage rootPage)
-            {
-                AttachRootPage(rootPage);
-                ApplyRootHeaderState();
-                NotifyLocalNavigationStateChanged();
-            }
-
+            ReattachForCurrentContent();
             return;
         }
 
@@ -86,6 +82,7 @@ public sealed partial class VersionManagementHostPage : Page, IHostedLocalPage, 
             _usesPageLevelNavigationForwarding = false;
         }
 
+        DetachHostedLocalPage();
         DetachRootPage();
     }
 
@@ -96,29 +93,48 @@ public sealed partial class VersionManagementHostPage : Page, IHostedLocalPage, 
         VersionManagementInnerContentFrame.Opacity = 1;
         VersionManagementInnerContentFrame.Translation = default;
 
-        if (VersionManagementInnerContentFrame.Content is VersionManagementPage rootPage)
+        if (_activeRootPage != null)
         {
-            rootPage.ResetEmbeddedVisualState();
+            _activeRootPage.ResetEmbeddedVisualState();
+            return;
         }
+
+        _activeHostedLocalPage?.ResetEmbeddedVisualState();
     }
 
     public bool TryGoBackLocally()
     {
-        return false;
+        if (!TryGetPreviousLocalBreadcrumbItem(out var previousBreadcrumbItem))
+        {
+            return false;
+        }
+
+        return TryNavigateLocally(previousBreadcrumbItem, useReturnTransition: true);
     }
 
     public bool CanNavigateLocally(NavigationBreadcrumbItem breadcrumbItem)
     {
-        return false;
+        return TryGetLocalNavigationBackPlan(breadcrumbItem, out _);
     }
 
     public bool TryNavigateLocally(NavigationBreadcrumbItem breadcrumbItem, bool useReturnTransition = false)
     {
-        return false;
+        if (!TryGetLocalNavigationBackPlan(breadcrumbItem, out var backSteps))
+        {
+            return false;
+        }
+
+        return NavigateBackLocally(backSteps, useReturnTransition);
     }
 
     public void ResetLocalNavigation(bool useReturnTransition = false)
     {
+        if (CanGoBackLocally)
+        {
+            NavigateBackLocally(VersionManagementInnerContentFrame.BackStack.Count, useReturnTransition);
+            return;
+        }
+
         if (VersionManagementInnerContentFrame.Content is VersionManagementPage)
         {
             ApplyRootHeaderState();
@@ -133,6 +149,7 @@ public sealed partial class VersionManagementHostPage : Page, IHostedLocalPage, 
     {
         if (e.Content is VersionManagementPage rootPage)
         {
+            DetachHostedLocalPage();
             AttachRootPage(rootPage);
             ApplyRootHeaderState();
             NotifyLocalNavigationStateChanged();
@@ -140,11 +157,52 @@ public sealed partial class VersionManagementHostPage : Page, IHostedLocalPage, 
         }
 
         DetachRootPage();
+        DetachHostedLocalPage();
+
+        if (e.Content is not IHostedLocalPage hostedLocalPage)
+        {
+            ApplyRootHeaderState();
+            NotifyLocalNavigationStateChanged();
+            return;
+        }
+
+        AttachHostedLocalPage(hostedLocalPage);
+        ApplyHostedPageHeaderState(hostedLocalPage.HeaderSource);
+        NotifyLocalNavigationStateChanged();
+    }
+
+    private void ReattachForCurrentContent()
+    {
+        if (VersionManagementInnerContentFrame.Content is VersionManagementPage rootPage)
+        {
+            DetachHostedLocalPage();
+            AttachRootPage(rootPage);
+            ApplyRootHeaderState();
+            NotifyLocalNavigationStateChanged();
+            return;
+        }
+
+        if (VersionManagementInnerContentFrame.Content is IHostedLocalPage hostedLocalPage)
+        {
+            DetachRootPage();
+            AttachHostedLocalPage(hostedLocalPage);
+            ApplyHostedPageHeaderState(hostedLocalPage.HeaderSource);
+            NotifyLocalNavigationStateChanged();
+            return;
+        }
+
+        ApplyRootHeaderState();
         NotifyLocalNavigationStateChanged();
     }
 
     private void ViewModelHeaderMetadata_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
+        if (_activeHostedLocalPage != null)
+        {
+            ApplyHostedPageHeaderState(_activeHostedLocalPage.HeaderSource);
+            return;
+        }
+
         if (_activeRootPage == null)
         {
             return;
@@ -179,9 +237,51 @@ public sealed partial class VersionManagementHostPage : Page, IHostedLocalPage, 
         _activeRootPage = null;
     }
 
+    private void AttachHostedLocalPage(IHostedLocalPage hostedLocalPage)
+    {
+        if (ReferenceEquals(_activeHostedLocalPage, hostedLocalPage))
+        {
+            hostedLocalPage.ResetEmbeddedVisualState();
+            return;
+        }
+
+        DetachHostedLocalPage();
+
+        _activeHostedLocalPage = hostedLocalPage;
+        hostedLocalPage.CloseRequested += HostedLocalPage_CloseRequested;
+        hostedLocalPage.HeaderSource.HeaderMetadata.PropertyChanged += ActiveHostedHeaderMetadata_PropertyChanged;
+        hostedLocalPage.ResetEmbeddedVisualState();
+    }
+
+    private void DetachHostedLocalPage()
+    {
+        if (_activeHostedLocalPage == null)
+        {
+            return;
+        }
+
+        _activeHostedLocalPage.CloseRequested -= HostedLocalPage_CloseRequested;
+        _activeHostedLocalPage.HeaderSource.HeaderMetadata.PropertyChanged -= ActiveHostedHeaderMetadata_PropertyChanged;
+        _activeHostedLocalPage = null;
+    }
+
     private void RootPage_WorldManagementRequested(object? sender, WorldManagementParameter e)
     {
-        _navigationService.NavigateTo(typeof(WorldManagementViewModel).FullName!, e);
+        ResetEmbeddedVisualState();
+        VersionManagementInnerContentFrame.Navigate(
+            typeof(WorldManagementPage),
+            new WorldManagementParameter
+            {
+                WorldPath = e.WorldPath,
+                VersionId = e.VersionId,
+                IsEmbeddedHostNavigation = true,
+                BreadcrumbRootLabel = ViewModel.HeaderMetadata.Title,
+                BreadcrumbRootTarget = new LocalNavigationTarget
+                {
+                    RouteKey = LocalRootRouteKey,
+                },
+            },
+            new DrillInNavigationTransitionInfo());
     }
 
     private void ApplyRootHeaderState()
@@ -190,34 +290,119 @@ public sealed partial class VersionManagementHostPage : Page, IHostedLocalPage, 
         HeaderMetadata.Title = ViewModel.HeaderMetadata.Title;
         HeaderMetadata.Subtitle = ViewModel.HeaderMetadata.Subtitle;
         HeaderMetadata.ShowBreadcrumb = ViewModel.HeaderMetadata.ShowBreadcrumb;
-        HeaderMetadata.BreadcrumbItems = CloneBreadcrumbItems(ViewModel.HeaderMetadata.BreadcrumbItems);
+        HeaderMetadata.BreadcrumbItems = new ObservableCollection<NavigationBreadcrumbItem>(ViewModel.HeaderMetadata.BreadcrumbItems);
     }
 
-    private static ObservableCollection<NavigationBreadcrumbItem> CloneBreadcrumbItems(ObservableCollection<NavigationBreadcrumbItem> source)
+    private void ApplyHostedPageHeaderState(IPageHeaderAware pageHeaderAware)
     {
-        var clonedItems = new ObservableCollection<NavigationBreadcrumbItem>();
-        foreach (var item in source)
+        _headerPresentationMode = pageHeaderAware.HeaderPresentationMode;
+        HeaderMetadata.Title = pageHeaderAware.HeaderMetadata.Title;
+        HeaderMetadata.Subtitle = pageHeaderAware.HeaderMetadata.Subtitle;
+        HeaderMetadata.ShowBreadcrumb = pageHeaderAware.HeaderMetadata.ShowBreadcrumb;
+        HeaderMetadata.BreadcrumbItems = BuildAggregatedBreadcrumbItems(pageHeaderAware.HeaderMetadata.BreadcrumbItems);
+    }
+
+    private ObservableCollection<NavigationBreadcrumbItem> BuildAggregatedBreadcrumbItems(IReadOnlyList<NavigationBreadcrumbItem> hostedBreadcrumbItems)
+    {
+        var aggregatedItems = new ObservableCollection<NavigationBreadcrumbItem>();
+
+        if (ViewModel.HeaderMetadata.BreadcrumbItems.Count > 0)
         {
-            clonedItems.Add(new NavigationBreadcrumbItem
-            {
-                DisplayText = item.DisplayText,
-                IconPath = item.IconPath,
-                AvailableIcons = item.AvailableIcons,
-                PageKey = item.PageKey,
-                NavigationParameter = item.NavigationParameter,
-                LocalNavigationTarget = item.LocalNavigationTarget == null
-                    ? null
-                    : new LocalNavigationTarget
-                    {
-                        RouteKey = item.LocalNavigationTarget.RouteKey,
-                        Parameter = item.LocalNavigationTarget.Parameter,
-                    },
-                IsCurrent = item.IsCurrent,
-                IsInteractiveCurrent = item.IsInteractiveCurrent,
-            });
+            aggregatedItems.Add(ViewModel.HeaderMetadata.BreadcrumbItems[0]);
         }
 
-        return clonedItems;
+        foreach (var item in hostedBreadcrumbItems)
+        {
+            aggregatedItems.Add(item);
+        }
+
+        return aggregatedItems;
+    }
+
+    private void HostedLocalPage_CloseRequested(object? sender, EventArgs e)
+    {
+        if (TryGoBackLocally())
+        {
+            return;
+        }
+
+        _closeRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void ActiveHostedHeaderMetadata_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!TryGetActiveHostedLocalPage(out var hostedLocalPage))
+        {
+            return;
+        }
+
+        ApplyHostedPageHeaderState(hostedLocalPage.HeaderSource);
+    }
+
+    private bool TryGetPreviousLocalBreadcrumbItem([NotNullWhen(true)] out NavigationBreadcrumbItem? previousBreadcrumbItem)
+    {
+        if (!TryGetCurrentLocalBreadcrumbItems(out var breadcrumbItems))
+        {
+            previousBreadcrumbItem = null;
+            return false;
+        }
+
+        previousBreadcrumbItem = LocalBreadcrumbNavigationPlanner.FindPreviousLocalBreadcrumb(breadcrumbItems);
+        return previousBreadcrumbItem is not null;
+    }
+
+    private bool TryGetLocalNavigationBackPlan(NavigationBreadcrumbItem breadcrumbItem, out int backSteps)
+    {
+        if (!breadcrumbItem.HasLocalNavigationTarget || !TryGetCurrentLocalBreadcrumbItems(out var breadcrumbItems))
+        {
+            backSteps = 0;
+            return false;
+        }
+
+        return LocalBreadcrumbNavigationPlanner.TryCreateBackPlan(breadcrumbItems, breadcrumbItem, out backSteps, out _)
+            && VersionManagementInnerContentFrame.CanGoBack;
+    }
+
+    private bool TryGetCurrentLocalBreadcrumbItems([NotNullWhen(true)] out IReadOnlyList<NavigationBreadcrumbItem>? breadcrumbItems)
+    {
+        if (!TryGetActiveHostedLocalPage(out var hostedLocalPage))
+        {
+            breadcrumbItems = null;
+            return false;
+        }
+
+        breadcrumbItems = hostedLocalPage.HeaderSource.HeaderMetadata.BreadcrumbItems;
+        return breadcrumbItems.Count > 0;
+    }
+
+    private bool TryGetActiveHostedLocalPage([NotNullWhen(true)] out IHostedLocalPage? hostedLocalPage)
+    {
+        hostedLocalPage = _activeHostedLocalPage;
+        return hostedLocalPage is not null;
+    }
+
+    private bool NavigateBackLocally(int backSteps, bool useReturnTransition)
+    {
+        if (backSteps <= 0 || !VersionManagementInnerContentFrame.CanGoBack)
+        {
+            return false;
+        }
+
+        ResetEmbeddedVisualState();
+
+        if (useReturnTransition && backSteps == 1)
+        {
+            ApplyRootHeaderState();
+        }
+
+        NotifyLocalNavigationStateChanged();
+
+        for (var step = 0; step < backSteps && VersionManagementInnerContentFrame.CanGoBack; step++)
+        {
+            VersionManagementInnerContentFrame.GoBack();
+        }
+
+        return true;
     }
 
     private void NotifyLocalNavigationStateChanged()
@@ -227,6 +412,8 @@ public sealed partial class VersionManagementHostPage : Page, IHostedLocalPage, 
 
     private void NavigateToRootContent(bool suppressTransition)
     {
+        DetachHostedLocalPage();
+
         NavigationTransitionInfo transition = suppressTransition
             ? new SuppressNavigationTransitionInfo()
             : new EntranceNavigationTransitionInfo();

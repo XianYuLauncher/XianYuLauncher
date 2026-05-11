@@ -86,6 +86,12 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
 
     public bool TryGoBackLocally()
     {
+        if (TryGetActiveNestedLocalNavigationHost(out var nestedLocalNavigationHost)
+            && nestedLocalNavigationHost.TryGoBackLocally())
+        {
+            return true;
+        }
+
         if (!TryGetPreviousLocalBreadcrumbItem(out var previousBreadcrumbItem))
         {
             return false;
@@ -96,11 +102,23 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
 
     public bool CanNavigateLocally(NavigationBreadcrumbItem breadcrumbItem)
     {
+        if (TryGetActiveNestedLocalNavigationHost(out var nestedLocalNavigationHost)
+            && nestedLocalNavigationHost.CanNavigateLocally(breadcrumbItem))
+        {
+            return true;
+        }
+
         return TryGetLocalNavigationBackPlan(breadcrumbItem, out _, out _);
     }
 
     public bool TryNavigateLocally(NavigationBreadcrumbItem breadcrumbItem, bool useReturnTransition = false)
     {
+        if (TryGetActiveNestedLocalNavigationHost(out var nestedLocalNavigationHost)
+            && nestedLocalNavigationHost.TryNavigateLocally(breadcrumbItem, useReturnTransition))
+        {
+            return true;
+        }
+
         if (!TryGetLocalNavigationBackPlan(breadcrumbItem, out var backSteps, out var destinationIsLocalRoot))
         {
             return false;
@@ -322,6 +340,13 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
     {
         if (_activeHostedLocalPage is VersionManagementHostPage versionManagementPage)
         {
+            if (versionManagementPage.CanGoBackLocally)
+            {
+                OpenCurrentFolderButton.Command = null;
+                OpenCurrentFolderButton.Visibility = Visibility.Collapsed;
+                return;
+            }
+
             OpenCurrentFolderButton.Command = versionManagementPage.ViewModel.OpenCurrentFolderCommand;
             OpenCurrentFolderButton.Visibility = Visibility.Visible;
             return;
@@ -394,6 +419,12 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
     {
         hostedLocalPage = _activeHostedLocalPage;
         return hostedLocalPage is not null;
+    }
+
+    private bool TryGetActiveNestedLocalNavigationHost([NotNullWhen(true)] out ILocalNavigationHost? nestedLocalNavigationHost)
+    {
+        nestedLocalNavigationHost = _activeHostedLocalPage as ILocalNavigationHost;
+        return nestedLocalNavigationHost is not null;
     }
 
     private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
