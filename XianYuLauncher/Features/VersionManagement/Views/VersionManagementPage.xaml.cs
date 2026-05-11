@@ -18,6 +18,7 @@ using XianYuLauncher.Models.VersionManagement;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.Dialogs.Models;
+using XianYuLauncher.Features.WorldManagement.Models;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.Graphics.Canvas;
 using System.IO.Compression;
@@ -46,6 +47,8 @@ public sealed partial class VersionManagementPage : Page
     private TaskCompletionSource<object?>? _downloadDialogCloseSignal;
     private TaskCompletionSource<object?>? _extensionInstallDialogCloseSignal;
     private bool _suppressNextSelectedTabContentAnimation;
+
+    public event EventHandler<WorldManagementParameter>? WorldManagementRequested;
 
     public VersionManagementPage()
     {
@@ -1064,6 +1067,13 @@ public sealed partial class VersionManagementPage : Page
     {
         if (e.ClickedItem is MapInfo map)
         {
+            var parameter = ViewModel.MapsModule.CreateWorldManagementParameter(map);
+            if (parameter != null && WorldManagementRequested != null)
+            {
+                WorldManagementRequested.Invoke(this, parameter);
+                return;
+            }
+
             ViewModel.MapsModule.ShowMapDetailCommand.Execute(map);
         }
     }

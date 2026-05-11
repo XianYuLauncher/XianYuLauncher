@@ -260,14 +260,27 @@ public partial class MapsViewModel : ObservableObject
     [RelayCommand]
     private void ShowMapDetail(MapInfo map)
     {
-        if (map == null || _context.SelectedVersion == null) return;
+        var parameter = CreateWorldManagementParameter(map);
+        if (parameter == null)
+        {
+            return;
+        }
 
-        var param = new WorldManagementParameter
+        _navigationService.NavigateTo(typeof(WorldManagementViewModel).FullName!, parameter);
+    }
+
+    public WorldManagementParameter? CreateWorldManagementParameter(MapInfo map)
+    {
+        if (map == null || _context.SelectedVersion == null)
+        {
+            return null;
+        }
+
+        return new WorldManagementParameter
         {
             WorldPath = map.FilePath,
-            VersionId = _context.SelectedVersion.Name
+            VersionId = _context.SelectedVersion.Name,
         };
-        _navigationService.NavigateTo(typeof(WorldManagementViewModel).FullName!, param);
     }
 
     [RelayCommand]
