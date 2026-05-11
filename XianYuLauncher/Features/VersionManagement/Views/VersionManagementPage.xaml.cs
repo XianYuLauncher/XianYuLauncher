@@ -1065,16 +1065,15 @@ public sealed partial class VersionManagementPage : Page
     /// </summary>
     private void MapListView_ItemClick(object sender, ItemClickEventArgs e)
     {
-        if (e.ClickedItem is MapInfo map)
+        if (e.ClickedItem is not MapInfo map)
         {
-            var parameter = ViewModel.MapsModule.CreateWorldManagementParameter(map);
-            if (parameter != null && WorldManagementRequested != null)
-            {
-                WorldManagementRequested.Invoke(this, parameter);
-                return;
-            }
+            return;
+        }
 
-            ViewModel.MapsModule.ShowMapDetailCommand.Execute(map);
+        var parameter = ViewModel.MapsModule.CreateWorldManagementParameter(map);
+        if (parameter != null)
+        {
+            WorldManagementRequested?.Invoke(this, parameter);
         }
     }
     
