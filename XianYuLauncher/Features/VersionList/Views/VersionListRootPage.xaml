@@ -7,7 +7,6 @@
     xmlns:helpers="using:XianYuLauncher.Helpers"
     xmlns:mediaAnimation="using:Microsoft.UI.Xaml.Media.Animation"
     xmlns:vm="using:XianYuLauncher.Features.VersionList.ViewModels"
-    NavigationCacheMode="Required"
     mc:Ignorable="d">
     <Page.Resources>
         <Style x:Key="CustomCheckboxStyle" TargetType="CheckBox">

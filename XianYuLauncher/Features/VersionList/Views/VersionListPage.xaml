@@ -8,7 +8,6 @@
     xmlns:localControls="using:XianYuLauncher.Controls"
     xmlns:mediaAnimation="using:Microsoft.UI.Xaml.Media.Animation"
     xmlns:shared="using:XianYuLauncher.Shared.Models"
-    NavigationCacheMode="Required"
     mc:Ignorable="d">
     <Page.Resources>
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter" />
