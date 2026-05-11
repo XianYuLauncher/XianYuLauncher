@@ -1085,14 +1085,10 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
 
     private ModDownloadDetailNavigationParameter CreateLaunchModDownloadDetailNavigationParameter(ModrinthProject project)
     {
-        return new ModDownloadDetailNavigationParameter
-        {
-            ProjectId = project.ProjectId,
-            Project = project,
-            DisplayTitleHint = project.DisplayTitle,
-            BreadcrumbRootLabel = "LaunchPage_BreadcrumbRootTitle".GetLocalized(),
-            BreadcrumbRootPageKey = typeof(LaunchViewModel).FullName!,
-        };
+        return ModDownloadDetailNavigationParameter.CreateWithGlobalBreadcrumbRoot(
+            project,
+            "LaunchPage_BreadcrumbRootTitle".GetLocalized(),
+            typeof(LaunchViewModel).FullName!);
     }
 
     private static ImageSource? CreateNewsImageSource(string? tipImageUrl)

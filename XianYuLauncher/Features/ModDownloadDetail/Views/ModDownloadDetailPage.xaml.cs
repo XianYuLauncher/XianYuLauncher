@@ -480,18 +480,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
                     return navigationParameter;
                 }
 
-                return new ModDownloadDetailNavigationParameter
-                {
-                    ProjectId = normalizedProjectId,
-                    Project = navigationParameter.Project,
-                    DisplayTitleHint = navigationParameter.DisplayTitleHint,
-                    SourceType = navigationParameter.SourceType,
-                    BreadcrumbRootLabel = navigationParameter.BreadcrumbRootLabel,
-                    BreadcrumbRootPageKey = navigationParameter.BreadcrumbRootPageKey,
-                    BreadcrumbRootNavigationParameter = navigationParameter.BreadcrumbRootNavigationParameter,
-                    BreadcrumbRootTarget = navigationParameter.BreadcrumbRootTarget,
-                    LocalBreadcrumbTrail = navigationParameter.LocalBreadcrumbTrail,
-                };
+                return navigationParameter.WithProjectId(normalizedProjectId);
             }
 
             if (parameter is Tuple<XianYuLauncher.Core.Models.ModrinthProject, string> tuple)

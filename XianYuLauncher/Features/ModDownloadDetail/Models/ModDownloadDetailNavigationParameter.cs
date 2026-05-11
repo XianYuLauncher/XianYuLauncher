@@ -8,6 +8,27 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Models;
 
 public sealed class ModDownloadDetailNavigationParameter
 {
+    public static ModDownloadDetailNavigationParameter CreateWithGlobalBreadcrumbRoot(
+        ModrinthProject project,
+        string breadcrumbRootLabel,
+        string breadcrumbRootPageKey,
+        object? breadcrumbRootNavigationParameter = null,
+        string? sourceType = null)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+
+        return new ModDownloadDetailNavigationParameter
+        {
+            ProjectId = project.ProjectId,
+            Project = project,
+            DisplayTitleHint = project.DisplayTitle,
+            SourceType = sourceType,
+            BreadcrumbRootLabel = breadcrumbRootLabel,
+            BreadcrumbRootPageKey = breadcrumbRootPageKey,
+            BreadcrumbRootNavigationParameter = breadcrumbRootNavigationParameter,
+        };
+    }
+
     public string ProjectId { get; init; } = string.Empty;
 
     public ModrinthProject? Project { get; init; }
@@ -28,6 +49,22 @@ public sealed class ModDownloadDetailNavigationParameter
 
     public bool HasBreadcrumbRoot => !string.IsNullOrWhiteSpace(BreadcrumbRootLabel)
         && ((BreadcrumbRootTarget?.HasTarget ?? false) || !string.IsNullOrWhiteSpace(BreadcrumbRootPageKey));
+
+    public ModDownloadDetailNavigationParameter WithProjectId(string projectId)
+    {
+        return new ModDownloadDetailNavigationParameter
+        {
+            ProjectId = projectId,
+            Project = Project,
+            DisplayTitleHint = DisplayTitleHint,
+            SourceType = SourceType,
+            BreadcrumbRootLabel = BreadcrumbRootLabel,
+            BreadcrumbRootPageKey = BreadcrumbRootPageKey,
+            BreadcrumbRootNavigationParameter = BreadcrumbRootNavigationParameter,
+            BreadcrumbRootTarget = BreadcrumbRootTarget,
+            LocalBreadcrumbTrail = LocalBreadcrumbTrail,
+        };
+    }
 
     public ModDownloadDetailNavigationParameter CreateChildParameter(string currentDisplayText, string nextProjectId, string? nextDisplayTitle = null)
     {
