@@ -226,7 +226,7 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
         EnableInnerFrameNavigationTransitions();
         ResetInnerContentFrameVisualState();
         VersionListInnerContentFrame.Navigate(
-            typeof(VersionManagementPage),
+            typeof(VersionManagementHostPage),
             new VersionManagementNavigationParameter
             {
                 Version = e,
@@ -320,7 +320,7 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
 
     private void UpdateDetailTrailingActions()
     {
-        if (_activeHostedLocalPage is VersionManagementPage versionManagementPage)
+        if (_activeHostedLocalPage is VersionManagementHostPage versionManagementPage)
         {
             OpenCurrentFolderButton.Command = versionManagementPage.ViewModel.OpenCurrentFolderCommand;
             OpenCurrentFolderButton.Visibility = Visibility.Visible;

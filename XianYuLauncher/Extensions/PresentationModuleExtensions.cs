@@ -139,8 +139,9 @@ internal static class PresentationModuleExtensions
         services.AddPageMap<VersionListViewModel, VersionListPage>();
 
         services.AddTransient<VersionManagementViewModel>();
+        services.AddTransient<VersionManagementHostPage>();
         services.AddTransient<VersionManagementPage>();
-        services.AddPageMap<VersionManagementViewModel, VersionManagementPage>();
+        services.AddPageMap<VersionManagementViewModel, VersionManagementHostPage>();
 
         return services;
     }

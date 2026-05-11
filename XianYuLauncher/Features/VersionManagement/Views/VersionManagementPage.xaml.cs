@@ -12,7 +12,6 @@ using System.Numerics;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
-using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Features.VersionManagement.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models.VersionManagement;
@@ -27,22 +26,14 @@ using System.Collections.ObjectModel;
 
 namespace XianYuLauncher.Features.VersionManagement.Views;
 
-public sealed partial class VersionManagementPage : Page, IHostedLocalPage
+public sealed partial class VersionManagementPage : Page
 {
     private static readonly TimeSpan TabContentEntranceDuration = TimeSpan.FromMilliseconds(500);
     private static readonly Vector3 TabContentEntranceFromTranslation = new(0, 40, 0);
 
-    private EventHandler? _closeRequested;
+    private VersionManagementViewModel? _attachedViewModel;
 
-    public VersionManagementViewModel ViewModel { get; }
-
-    public IPageHeaderAware HeaderSource => ViewModel;
-
-    public event EventHandler? CloseRequested
-    {
-        add => _closeRequested += value;
-        remove => _closeRequested -= value;
-    }
+    public VersionManagementViewModel ViewModel { get; private set; } = null!;
 
     private readonly ICommonDialogService _dialogService;
     private readonly IProgressDialogService _progressDialogService;
@@ -58,20 +49,14 @@ public sealed partial class VersionManagementPage : Page, IHostedLocalPage
 
     public VersionManagementPage()
     {
-        ViewModel = App.GetService<VersionManagementViewModel>();
         _dialogService = App.GetService<ICommonDialogService>();
         _progressDialogService = App.GetService<IProgressDialogService>();
         _resourceDialogService = App.GetService<IResourceDialogService>();
         _profileManager = App.GetService<IProfileManager>();
-        this.DataContext = ViewModel;
         InitializeComponent();
-        
-        // 立即注册ViewModel的属性变化事件，确保OnNavigatedTo时能触发
-        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-        
+
         // 注册页面卸载事件，快速清理资源
         this.Unloaded += VersionManagementPage_Unloaded;
-        ApplyNavigationLayoutMode();
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -79,7 +64,17 @@ public sealed partial class VersionManagementPage : Page, IHostedLocalPage
         base.OnNavigatedTo(e);
         _isUnloading = false;
 
-        _usesPageLevelNavigationForwarding = e.Parameter is XianYuLauncher.Features.VersionManagement.Models.VersionManagementNavigationParameter;
+        if (e.Parameter is VersionManagementViewModel sharedViewModel)
+        {
+            SetViewModel(sharedViewModel);
+            _usesPageLevelNavigationForwarding = false;
+        }
+        else
+        {
+            SetViewModel(App.GetService<VersionManagementViewModel>());
+            _usesPageLevelNavigationForwarding = e.Parameter is XianYuLauncher.Features.VersionManagement.Models.VersionManagementNavigationParameter;
+        }
+
         if (_usesPageLevelNavigationForwarding)
         {
             ViewModel.OnNavigatedTo(e.Parameter);
@@ -181,6 +176,36 @@ public sealed partial class VersionManagementPage : Page, IHostedLocalPage
             ? new Thickness(0)
             : (Thickness)Application.Current.Resources["PageContentPadding"];
     }
+
+    private void SetViewModel(VersionManagementViewModel viewModel)
+    {
+        if (ReferenceEquals(_attachedViewModel, viewModel))
+        {
+            Bindings.Update();
+            return;
+        }
+
+        DetachViewModel();
+
+        ViewModel = viewModel;
+        _attachedViewModel = viewModel;
+        DataContext = viewModel;
+        viewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+        ApplyNavigationLayoutMode();
+        Bindings.Update();
+    }
+
+    private void DetachViewModel()
+    {
+        if (_attachedViewModel == null)
+        {
+            return;
+        }
+
+        _attachedViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        _attachedViewModel = null;
+    }
     
     /// <summary>
     /// 页面卸载时快速清理资源
@@ -215,7 +240,7 @@ public sealed partial class VersionManagementPage : Page, IHostedLocalPage
         _downloadDialogCloseSignal = null;
         _extensionInstallDialogCloseSignal?.TrySetResult(null);
         _extensionInstallDialogCloseSignal = null;
-        ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        DetachViewModel();
         this.Unloaded -= VersionManagementPage_Unloaded;
     }
     
