@@ -1056,6 +1056,9 @@ public class DownloadTaskManagerTests
     public async Task CancelTask_WhenTaskIsRunning_ShouldSetCancelledState()
     {
         // Arrange
+        var downloadStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var allowDownloadCompletion = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var runningObserved = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
         var cancelledObserved = new TaskCompletionSource<DownloadTaskInfo>(TaskCreationOptions.RunContinuationsAsynchronously);
         string? runningTaskId = null;
         _downloadTaskManager.TaskStateChanged += (_, task) =>
@@ -1063,6 +1066,7 @@ public class DownloadTaskManagerTests
             if (task.TaskName == "MyVersion" && task.State == DownloadTaskState.Downloading)
             {
                 runningTaskId = task.TaskId;
+                runningObserved.TrySetResult(task.TaskId);
             }
 
             if (task.TaskId == runningTaskId && task.State == DownloadTaskState.Cancelled)
@@ -1078,16 +1082,19 @@ public class DownloadTaskManagerTests
                 It.IsAny<Action<DownloadProgressStatus>>(),
                 It.IsAny<string>(),
                 It.IsAny<string?>()))
-            .Returns(async () => await Task.Delay(5000));
+            .Returns(async () =>
+            {
+                downloadStarted.TrySetResult(true);
+                await allowDownloadCompletion.Task;
+            });
 
         await _downloadTaskManager.StartVanillaDownloadAsync("1.20.1", "MyVersion");
-        await Task.Delay(100);
-
-        var runningTask = _downloadTaskManager.TasksSnapshot.First(task => task.TaskName == "MyVersion");
-    runningTaskId = runningTask.TaskId;
+        await downloadStarted.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var runningTaskIdFromEvent = await runningObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         // Act
-        _downloadTaskManager.CancelTask(runningTask.TaskId);
+        _downloadTaskManager.CancelTask(runningTaskIdFromEvent);
+        allowDownloadCompletion.TrySetResult(true);
         var finalTask = await cancelledObserved.Task.WaitAsync(TimeSpan.FromSeconds(5));
 
         // Assert
