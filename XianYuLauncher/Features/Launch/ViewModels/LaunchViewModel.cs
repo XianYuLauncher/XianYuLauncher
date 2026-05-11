@@ -28,6 +28,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Features.Accounts.ViewModels;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
+using XianYuLauncher.Features.ModDownloadDetail.Models;
 using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
 using XianYuLauncher.Features.News.Models;
@@ -950,16 +951,12 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     {
         if (_recommendedMod != null)
         {
-            // 推荐位不强制限定 sourceType，避免 datapack 等资源被误按 mod 规则过滤版本。
-             var param = new Tuple<XianYuLauncher.Core.Models.ModrinthProject, string?>(
-                 new XianYuLauncher.Core.Models.ModrinthProject { 
-                     ProjectId = _recommendedMod.Id, 
-                     Slug = _recommendedMod.Slug,
-                     ProjectType = _recommendedMod.ProjectType
-                 }, 
-                 null
-             );
-            _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, param);
+            NavigateToModDownloadDetail(new ModrinthProject
+            {
+                ProjectId = _recommendedMod.Id,
+                Slug = _recommendedMod.Slug,
+                ProjectType = _recommendedMod.ProjectType,
+            });
         }
     }
 
@@ -987,15 +984,12 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
                 case "mod_detail":
                     if (item.ActionPayload is ModrinthRandomProject recommended)
                     {
-                        var param = new Tuple<XianYuLauncher.Core.Models.ModrinthProject, string?>(
-                            new XianYuLauncher.Core.Models.ModrinthProject
-                            {
-                                ProjectId = recommended.Id,
-                                Slug = recommended.Slug,
-                                ProjectType = recommended.ProjectType
-                            },
-                            null);
-                        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, param);
+                        NavigateToModDownloadDetail(new ModrinthProject
+                        {
+                            ProjectId = recommended.Id,
+                            Slug = recommended.Slug,
+                            ProjectType = recommended.ProjectType,
+                        });
                     }
                     break;
 
@@ -1079,6 +1073,22 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
         NewsTeachingTipLinkUrl = action.Entry.ReadMoreLink;
         IsNewsTeachingTipImageVisible = NewsTeachingTipImageSource != null;
         IsNewsTeachingTipOpen = true;
+    }
+
+    private void NavigateToModDownloadDetail(ModrinthProject project)
+    {
+        _navigationService.NavigateTo(
+            typeof(ModDownloadDetailViewModel).FullName!,
+            CreateLaunchModDownloadDetailNavigationParameter(project),
+            transitionInfo: new DrillInNavigationTransitionInfo());
+    }
+
+    private ModDownloadDetailNavigationParameter CreateLaunchModDownloadDetailNavigationParameter(ModrinthProject project)
+    {
+        return ModDownloadDetailNavigationParameter.CreateWithGlobalBreadcrumbRoot(
+            project,
+            "LaunchPage_BreadcrumbRootTitle".GetLocalized(),
+            typeof(LaunchViewModel).FullName!);
     }
 
     private static ImageSource? CreateNewsImageSource(string? tipImageUrl)

@@ -8,6 +8,31 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Models;
 
 public sealed class ModDownloadDetailNavigationParameter
 {
+    public static ModDownloadDetailNavigationParameter CreateWithGlobalBreadcrumbRoot(
+        ModrinthProject project,
+        string breadcrumbRootLabel,
+        string breadcrumbRootPageKey,
+        object? breadcrumbRootNavigationParameter = null,
+        string? sourceType = null)
+    {
+        ArgumentNullException.ThrowIfNull(project);
+
+        var projectId = RequireNonEmpty(project.ProjectId, nameof(project.ProjectId));
+        var rootLabel = RequireNonEmpty(breadcrumbRootLabel, nameof(breadcrumbRootLabel));
+        var rootPageKey = RequireNonEmpty(breadcrumbRootPageKey, nameof(breadcrumbRootPageKey));
+
+        return new ModDownloadDetailNavigationParameter
+        {
+            ProjectId = projectId,
+            Project = project,
+            DisplayTitleHint = project.DisplayTitle ?? string.Empty,
+            SourceType = sourceType,
+            BreadcrumbRootLabel = rootLabel,
+            BreadcrumbRootPageKey = rootPageKey,
+            BreadcrumbRootNavigationParameter = breadcrumbRootNavigationParameter,
+        };
+    }
+
     public string ProjectId { get; init; } = string.Empty;
 
     public ModrinthProject? Project { get; init; }
@@ -28,6 +53,32 @@ public sealed class ModDownloadDetailNavigationParameter
 
     public bool HasBreadcrumbRoot => !string.IsNullOrWhiteSpace(BreadcrumbRootLabel)
         && ((BreadcrumbRootTarget?.HasTarget ?? false) || !string.IsNullOrWhiteSpace(BreadcrumbRootPageKey));
+
+    private static string RequireNonEmpty(string? value, string paramName)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        throw new ArgumentException("导航参数缺少必需的非空字符串值。", paramName);
+    }
+
+    public ModDownloadDetailNavigationParameter WithProjectId(string projectId)
+    {
+        return new ModDownloadDetailNavigationParameter
+        {
+            ProjectId = projectId,
+            Project = Project,
+            DisplayTitleHint = DisplayTitleHint,
+            SourceType = SourceType,
+            BreadcrumbRootLabel = BreadcrumbRootLabel,
+            BreadcrumbRootPageKey = BreadcrumbRootPageKey,
+            BreadcrumbRootNavigationParameter = BreadcrumbRootNavigationParameter,
+            BreadcrumbRootTarget = BreadcrumbRootTarget,
+            LocalBreadcrumbTrail = LocalBreadcrumbTrail,
+        };
+    }
 
     public ModDownloadDetailNavigationParameter CreateChildParameter(string currentDisplayText, string nextProjectId, string? nextDisplayTitle = null)
     {
