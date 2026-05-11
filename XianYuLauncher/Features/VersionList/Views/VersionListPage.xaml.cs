@@ -304,7 +304,6 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
         VersionListPageHeader.ShowBreadcrumb = false;
         VersionListPageHeader.BreadcrumbItems = null;
         ApplyHeaderPresentationMode(ViewModel.HeaderPresentationMode);
-        RootHeaderSupplementalContent.Visibility = Visibility.Visible;
         OpenCurrentFolderButton.Visibility = Visibility.Collapsed;
         OpenCurrentFolderButton.Command = null;
     }
@@ -316,7 +315,6 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
         VersionListPageHeader.ShowBreadcrumb = pageHeaderAware.HeaderMetadata.ShowBreadcrumb;
         VersionListPageHeader.BreadcrumbItems = pageHeaderAware.HeaderMetadata.BreadcrumbItems;
         ApplyHeaderPresentationMode(pageHeaderAware.HeaderPresentationMode);
-        RootHeaderSupplementalContent.Visibility = Visibility.Collapsed;
         UpdateDetailTrailingActions();
     }
 

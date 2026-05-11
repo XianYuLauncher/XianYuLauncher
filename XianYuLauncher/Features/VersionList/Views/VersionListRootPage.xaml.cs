@@ -128,6 +128,12 @@ public sealed partial class VersionListRootPage : Page
         ContentArea.Opacity = 1;
         ContentArea.Translation = default;
         ContentArea.Scale = new System.Numerics.Vector3(1f, 1f, 1f);
+        ErrorBanner.Opacity = 1;
+        ErrorBanner.Translation = default;
+        ErrorBanner.Scale = new System.Numerics.Vector3(1f, 1f, 1f);
+        RootToolbarPanel.Opacity = 1;
+        RootToolbarPanel.Translation = default;
+        RootToolbarPanel.Scale = new System.Numerics.Vector3(1f, 1f, 1f);
         VersionsListView.Opacity = 1;
         VersionsListView.Translation = default;
         VersionsListView.Scale = new System.Numerics.Vector3(1f, 1f, 1f);
