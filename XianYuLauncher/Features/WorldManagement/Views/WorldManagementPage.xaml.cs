@@ -83,12 +83,21 @@ public sealed partial class WorldManagementPage : Page, IHostedLocalPage
                 System.Diagnostics.Debug.WriteLine($"[WorldManagementPage] 参数不是字符串: {e.Parameter}");
                 ViewModel.ApplyNavigationParameter(null);
             }
+
+            ApplyNavigationLayoutMode();
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[WorldManagementPage] OnNavigatedTo 异常: {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"[WorldManagementPage] 堆栈: {ex.StackTrace}");
         }
+    }
+
+    private void ApplyNavigationLayoutMode()
+    {
+        ContentArea.Padding = ViewModel.IsEmbeddedHostNavigation
+            ? new Thickness(0)
+            : (Thickness)Application.Current.Resources["PageContentPadding"];
     }
     
     private async void Page_Loaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
