@@ -12,10 +12,10 @@ using Microsoft.UI.Xaml.Navigation;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
-using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Accounts.Models;
 using XianYuLauncher.Features.Accounts.ViewModels;
+using XianYuLauncher.Helpers;
 using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.Accounts.Views;
@@ -26,14 +26,15 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
 
     private readonly INavigationService _navigationService;
     private bool _isInnerContentFrameInitialized;
-    private IHostedLocalPage? _activeHostedLocalPage;
+    private readonly HostedLocalPageCoordinator _hostedLocalPageCoordinator;
+    private readonly HostedLocalNavigationCoordinator _hostedLocalNavigationCoordinator;
     private CharacterRootPage? _activeRootPage;
 
     public CharacterViewModel ViewModel { get; }
 
     public event EventHandler? LocalNavigationStateChanged;
 
-    public bool CanGoBackLocally => _activeHostedLocalPage != null && CharacterInnerContentFrame.CanGoBack;
+    public bool CanGoBackLocally => _hostedLocalNavigationCoordinator.CanGoBackLocally;
 
     public CharacterPage()
     {
@@ -41,6 +42,10 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
         ViewModel = App.GetService<CharacterViewModel>();
         ViewModel.CharacterManagementRequested += ViewModel_CharacterManagementRequested;
         InitializeComponent();
+        _hostedLocalPageCoordinator = new HostedLocalPageCoordinator(ApplyHostedPageHeaderState, HostedLocalPage_CloseRequested);
+        _hostedLocalNavigationCoordinator = new HostedLocalNavigationCoordinator(
+            CharacterInnerContentFrame,
+            () => _hostedLocalPageCoordinator.ActiveHostedLocalPage);
         EnsureInnerContentFrame();
         ShowRootPageState();
     }
@@ -80,7 +85,7 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
 
     public bool TryGoBackLocally()
     {
-        if (!TryGetPreviousLocalBreadcrumbItem(out var previousBreadcrumbItem))
+        if (!_hostedLocalNavigationCoordinator.TryGetPreviousLocalBreadcrumbItem(out var previousBreadcrumbItem))
         {
             return false;
         }
@@ -90,17 +95,17 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
 
     public bool CanNavigateLocally(NavigationBreadcrumbItem breadcrumbItem)
     {
-        return TryGetLocalNavigationBackPlan(breadcrumbItem, out _);
+        return _hostedLocalNavigationCoordinator.TryGetBackPlan(breadcrumbItem, out _);
     }
 
     public bool TryNavigateLocally(NavigationBreadcrumbItem breadcrumbItem, bool useReturnTransition = false)
     {
-        if (!TryGetLocalNavigationBackPlan(breadcrumbItem, out var backSteps))
+        if (!_hostedLocalNavigationCoordinator.TryGetBackPlan(breadcrumbItem, out var backPlan))
         {
             return false;
         }
 
-        return NavigateBackLocally(backSteps, useReturnTransition);
+        return NavigateBackLocally(backPlan.BackSteps, useReturnTransition);
     }
 
     public void ResetLocalNavigation(bool useReturnTransition = false)
@@ -154,17 +159,13 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
                 AttachRootPage(rootPage);
                 ShowRootPageState();
                 return;
-            case IHostedLocalPage hostedLocalPage when !ReferenceEquals(_activeHostedLocalPage, hostedLocalPage):
+            case IHostedLocalPage hostedLocalPage when !ReferenceEquals(_hostedLocalPageCoordinator.ActiveHostedLocalPage, hostedLocalPage):
                 DetachRootPage();
                 DetachHostedLocalPage();
-                _activeHostedLocalPage = hostedLocalPage;
-                hostedLocalPage.ResetEmbeddedVisualState();
-                hostedLocalPage.CloseRequested += HostedLocalPage_CloseRequested;
-                hostedLocalPage.HeaderSource.HeaderMetadata.PropertyChanged += ActiveHostedHeaderMetadata_PropertyChanged;
-                ApplyHostedPageHeaderState(hostedLocalPage.HeaderSource);
+                _hostedLocalPageCoordinator.Attach(hostedLocalPage);
                 NotifyLocalNavigationStateChanged();
                 return;
-            case null when _activeRootPage is not null || _activeHostedLocalPage is not null:
+            case null when _activeRootPage is not null || _hostedLocalPageCoordinator.ActiveHostedLocalPage is not null:
                 DetachHostedLocalPage();
                 DetachRootPage();
                 NotifyLocalNavigationStateChanged();
@@ -210,11 +211,7 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
             return;
         }
 
-        _activeHostedLocalPage = hostedLocalPage;
-        hostedLocalPage.ResetEmbeddedVisualState();
-        hostedLocalPage.CloseRequested += HostedLocalPage_CloseRequested;
-        hostedLocalPage.HeaderSource.HeaderMetadata.PropertyChanged += ActiveHostedHeaderMetadata_PropertyChanged;
-        ApplyHostedPageHeaderState(hostedLocalPage.HeaderSource);
+        _hostedLocalPageCoordinator.Attach(hostedLocalPage);
         NotifyLocalNavigationStateChanged();
     }
 
@@ -232,37 +229,7 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
 
     private void DetachHostedLocalPage()
     {
-        if (_activeHostedLocalPage == null)
-        {
-            return;
-        }
-
-        _activeHostedLocalPage.CloseRequested -= HostedLocalPage_CloseRequested;
-        _activeHostedLocalPage.HeaderSource.HeaderMetadata.PropertyChanged -= ActiveHostedHeaderMetadata_PropertyChanged;
-        _activeHostedLocalPage = null;
-    }
-
-    private void HostedLocalPage_CloseRequested(object? sender, EventArgs e)
-    {
-        if (TryGoBackLocally())
-        {
-            return;
-        }
-
-        if (_navigationService.CanGoBack)
-        {
-            _navigationService.GoBack();
-        }
-    }
-
-    private void ActiveHostedHeaderMetadata_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (!TryGetActiveHostedLocalPage(out var hostedLocalPage))
-        {
-            return;
-        }
-
-        ApplyHostedPageHeaderState(hostedLocalPage.HeaderSource);
+        _hostedLocalPageCoordinator.Detach();
     }
 
     private void ShowRootPageState()
@@ -320,7 +287,7 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
             return;
         }
 
-        if (!TryGetActiveHostedLocalPage(out var hostedLocalPage))
+        if (!_hostedLocalPageCoordinator.TryGetActiveHostedLocalPage(out var hostedLocalPage))
         {
             return;
         }
@@ -331,12 +298,6 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
     private void NotifyLocalNavigationStateChanged()
     {
         LocalNavigationStateChanged?.Invoke(this, EventArgs.Empty);
-    }
-
-    private bool TryGetActiveHostedLocalPage([NotNullWhen(true)] out IHostedLocalPage? hostedLocalPage)
-    {
-        hostedLocalPage = _activeHostedLocalPage;
-        return hostedLocalPage is not null;
     }
 
     private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
@@ -359,7 +320,7 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
 
     private bool TryReturnToLocalRoot(bool useReturnTransition)
     {
-        if (TryGetLocalRootBreadcrumbItem(out var rootBreadcrumbItem))
+        if (_hostedLocalNavigationCoordinator.TryGetLocalRootBreadcrumbItem(out var rootBreadcrumbItem))
         {
             return TryNavigateLocally(rootBreadcrumbItem, useReturnTransition);
         }
@@ -370,55 +331,6 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
         }
 
         return NavigateBackLocally(CharacterInnerContentFrame.BackStack.Count, useReturnTransition);
-    }
-
-    private bool TryGetLocalRootBreadcrumbItem([NotNullWhen(true)] out NavigationBreadcrumbItem? rootBreadcrumbItem)
-    {
-        if (!TryGetCurrentBreadcrumbItems(out var breadcrumbItems))
-        {
-            rootBreadcrumbItem = null;
-            return false;
-        }
-
-        rootBreadcrumbItem = LocalBreadcrumbNavigationPlanner.FindLocalRootBreadcrumb(breadcrumbItems);
-        return rootBreadcrumbItem is not null;
-    }
-
-    private bool TryGetPreviousLocalBreadcrumbItem([NotNullWhen(true)] out NavigationBreadcrumbItem? previousBreadcrumbItem)
-    {
-        if (!TryGetCurrentBreadcrumbItems(out var breadcrumbItems))
-        {
-            previousBreadcrumbItem = null;
-            return false;
-        }
-
-        previousBreadcrumbItem = LocalBreadcrumbNavigationPlanner.FindPreviousLocalBreadcrumb(breadcrumbItems);
-        return previousBreadcrumbItem is not null;
-    }
-
-    private bool TryGetLocalNavigationBackPlan(NavigationBreadcrumbItem breadcrumbItem, out int backSteps)
-    {
-        backSteps = 0;
-
-        if (!breadcrumbItem.HasLocalNavigationTarget || !TryGetCurrentBreadcrumbItems(out var breadcrumbItems))
-        {
-            return false;
-        }
-
-        return LocalBreadcrumbNavigationPlanner.TryCreateBackPlan(breadcrumbItems, breadcrumbItem, out backSteps, out _)
-            && CharacterInnerContentFrame.CanGoBack;
-    }
-
-    private bool TryGetCurrentBreadcrumbItems([NotNullWhen(true)] out IReadOnlyList<NavigationBreadcrumbItem>? breadcrumbItems)
-    {
-        if (!TryGetActiveHostedLocalPage(out var hostedLocalPage))
-        {
-            breadcrumbItems = null;
-            return false;
-        }
-
-        breadcrumbItems = hostedLocalPage.HeaderSource.HeaderMetadata.BreadcrumbItems;
-        return breadcrumbItems.Count > 0;
     }
 
     private bool NavigateBackLocally(int backSteps, bool useReturnTransition)
@@ -448,6 +360,19 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
 
         NotifyLocalNavigationStateChanged();
         return true;
+    }
+
+    private void HostedLocalPage_CloseRequested(object? sender, EventArgs e)
+    {
+        if (TryGoBackLocally())
+        {
+            return;
+        }
+
+        if (_navigationService.CanGoBack)
+        {
+            _navigationService.GoBack();
+        }
     }
 
     private bool TryNormalizeDetailNavigationParameter(object? parameter, [NotNullWhen(true)] out CharacterManagementNavigationParameter? navigationParameter)
