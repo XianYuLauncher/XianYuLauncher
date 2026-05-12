@@ -12,13 +12,13 @@ using System.Numerics;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
-using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Features.VersionManagement.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models.VersionManagement;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.Dialogs.Models;
+using XianYuLauncher.Features.WorldManagement.Models;
 using Microsoft.Graphics.Canvas.UI.Xaml;
 using Microsoft.Graphics.Canvas;
 using System.IO.Compression;
@@ -27,22 +27,15 @@ using System.Collections.ObjectModel;
 
 namespace XianYuLauncher.Features.VersionManagement.Views;
 
-public sealed partial class VersionManagementPage : Page, IHostedLocalPage
+public sealed partial class VersionManagementPage : Page
 {
     private static readonly TimeSpan TabContentEntranceDuration = TimeSpan.FromMilliseconds(500);
     private static readonly Vector3 TabContentEntranceFromTranslation = new(0, 40, 0);
 
-    private EventHandler? _closeRequested;
+    private readonly VersionManagementViewModel _defaultViewModel;
+    private VersionManagementViewModel? _attachedViewModel;
 
-    public VersionManagementViewModel ViewModel { get; }
-
-    public IPageHeaderAware HeaderSource => ViewModel;
-
-    public event EventHandler? CloseRequested
-    {
-        add => _closeRequested += value;
-        remove => _closeRequested -= value;
-    }
+    public VersionManagementViewModel ViewModel { get; private set; } = null!;
 
     private readonly ICommonDialogService _dialogService;
     private readonly IProgressDialogService _progressDialogService;
@@ -56,22 +49,25 @@ public sealed partial class VersionManagementPage : Page, IHostedLocalPage
     private TaskCompletionSource<object?>? _extensionInstallDialogCloseSignal;
     private bool _suppressNextSelectedTabContentAnimation;
 
+    public event EventHandler<WorldManagementParameter>? WorldManagementRequested;
+
     public VersionManagementPage()
     {
-        ViewModel = App.GetService<VersionManagementViewModel>();
         _dialogService = App.GetService<ICommonDialogService>();
         _progressDialogService = App.GetService<IProgressDialogService>();
         _resourceDialogService = App.GetService<IResourceDialogService>();
         _profileManager = App.GetService<IProfileManager>();
-        this.DataContext = ViewModel;
+
+        _defaultViewModel = App.GetService<VersionManagementViewModel>();
+        ViewModel = _defaultViewModel;
+        _attachedViewModel = _defaultViewModel;
+        DataContext = _defaultViewModel;
+        _defaultViewModel.PropertyChanged += ViewModel_PropertyChanged;
+
         InitializeComponent();
-        
-        // 立即注册ViewModel的属性变化事件，确保OnNavigatedTo时能触发
-        ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-        
+
         // 注册页面卸载事件，快速清理资源
         this.Unloaded += VersionManagementPage_Unloaded;
-        ApplyNavigationLayoutMode();
     }
 
     protected override void OnNavigatedTo(NavigationEventArgs e)
@@ -79,7 +75,17 @@ public sealed partial class VersionManagementPage : Page, IHostedLocalPage
         base.OnNavigatedTo(e);
         _isUnloading = false;
 
-        _usesPageLevelNavigationForwarding = e.Parameter is XianYuLauncher.Features.VersionManagement.Models.VersionManagementNavigationParameter;
+        if (e.Parameter is VersionManagementViewModel sharedViewModel)
+        {
+            SetViewModel(sharedViewModel);
+            _usesPageLevelNavigationForwarding = false;
+        }
+        else
+        {
+            SetViewModel(_defaultViewModel);
+            _usesPageLevelNavigationForwarding = e.Parameter is XianYuLauncher.Features.VersionManagement.Models.VersionManagementNavigationParameter;
+        }
+
         if (_usesPageLevelNavigationForwarding)
         {
             ViewModel.OnNavigatedTo(e.Parameter);
@@ -181,6 +187,36 @@ public sealed partial class VersionManagementPage : Page, IHostedLocalPage
             ? new Thickness(0)
             : (Thickness)Application.Current.Resources["PageContentPadding"];
     }
+
+    private void SetViewModel(VersionManagementViewModel viewModel)
+    {
+        if (ReferenceEquals(_attachedViewModel, viewModel))
+        {
+            Bindings.Update();
+            return;
+        }
+
+        DetachViewModel();
+
+        ViewModel = viewModel;
+        _attachedViewModel = viewModel;
+        DataContext = viewModel;
+        viewModel.PropertyChanged += ViewModel_PropertyChanged;
+
+        ApplyNavigationLayoutMode();
+        Bindings.Update();
+    }
+
+    private void DetachViewModel()
+    {
+        if (_attachedViewModel == null)
+        {
+            return;
+        }
+
+        _attachedViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        _attachedViewModel = null;
+    }
     
     /// <summary>
     /// 页面卸载时快速清理资源
@@ -215,7 +251,7 @@ public sealed partial class VersionManagementPage : Page, IHostedLocalPage
         _downloadDialogCloseSignal = null;
         _extensionInstallDialogCloseSignal?.TrySetResult(null);
         _extensionInstallDialogCloseSignal = null;
-        ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+        DetachViewModel();
         this.Unloaded -= VersionManagementPage_Unloaded;
     }
     
@@ -1037,9 +1073,15 @@ public sealed partial class VersionManagementPage : Page, IHostedLocalPage
     /// </summary>
     private void MapListView_ItemClick(object sender, ItemClickEventArgs e)
     {
-        if (e.ClickedItem is MapInfo map)
+        if (e.ClickedItem is not MapInfo map)
         {
-            ViewModel.MapsModule.ShowMapDetailCommand.Execute(map);
+            return;
+        }
+
+        var parameter = ViewModel.MapsModule.CreateWorldManagementParameter(map);
+        if (parameter != null)
+        {
+            WorldManagementRequested?.Invoke(this, parameter);
         }
     }
     

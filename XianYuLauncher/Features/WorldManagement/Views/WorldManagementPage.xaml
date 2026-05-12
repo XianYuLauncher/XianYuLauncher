@@ -13,12 +13,15 @@
 
     <Page.Resources>
         <helpers:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter"/>
         <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToVisibilityConverter"/>
     </Page.Resources>
 
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled"
+    <ScrollViewer x:Name="ContentScrollViewer"
+                  HorizontalScrollBarVisibility="Disabled"
                   VerticalScrollBarVisibility="Auto">
-          <Grid Padding="{StaticResource PageContentPadding}"
+          <Grid x:Name="ContentArea"
+              Padding="{StaticResource PageContentPadding}"
               HorizontalAlignment="Stretch">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*"/>
@@ -26,14 +29,16 @@
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="1"
+                <StackPanel Grid.Column="1"
                         Spacing="24"
                         HorizontalAlignment="Stretch">
-            <Border Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+                <Border x:Name="StandaloneHeaderCard"
+                    Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                     BorderThickness="1"
                     CornerRadius="8"
-                    Padding="20,16">
+                    Padding="20,16"
+                    Visibility="{x:Bind ViewModel.IsEmbeddedHostNavigation, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
@@ -56,7 +61,8 @@
                 </Grid>
             </Border>
 
-            <Grid Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+            <Grid x:Name="WorldSummaryCard"
+                Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                   BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
                   BorderThickness="1"
                   CornerRadius="8"
@@ -141,7 +147,7 @@
                 </StackPanel>
             </Grid>
 
-            <StackPanel Spacing="20">
+            <StackPanel x:Name="TabContentHost" Spacing="20">
                 <SelectorBar x:Name="WorldTabSelectorBar"
                              SelectionChanged="WorldTabSelectorBar_SelectionChanged">
                     <SelectorBarItem x:Name="OverviewTabItem"

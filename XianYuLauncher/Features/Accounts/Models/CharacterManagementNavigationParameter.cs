@@ -1,12 +1,13 @@
+using XianYuLauncher.Core.Models;
 using XianYuLauncher.Shared.Models;
 
-namespace XianYuLauncher.Features.ModLoaderSelector.Models;
+namespace XianYuLauncher.Features.Accounts.Models;
 
-public sealed class ModLoaderSelectorNavigationParameter
+public sealed class CharacterManagementNavigationParameter
 {
     private BreadcrumbNavigationRoot _breadcrumbRoot = BreadcrumbNavigationRoot.Empty;
 
-    public string VersionId { get; init; } = string.Empty;
+    public required MinecraftProfile Profile { get; init; }
 
     public BreadcrumbNavigationRoot BreadcrumbRoot
     {
@@ -26,5 +27,11 @@ public sealed class ModLoaderSelectorNavigationParameter
         init => _breadcrumbRoot = _breadcrumbRoot with { LocalTarget = value };
     }
 
-    public bool HasBreadcrumbRoot => _breadcrumbRoot.HasLabel && _breadcrumbRoot.HasLocalNavigationTarget;
+    public bool HasBreadcrumbRoot => _breadcrumbRoot.HasLabel
+        && _breadcrumbRoot.HasLocalNavigationTarget;
+}
+
+public static class CharacterNavigationRouteKeys
+{
+    public const string Root = "CharacterRoot";
 }

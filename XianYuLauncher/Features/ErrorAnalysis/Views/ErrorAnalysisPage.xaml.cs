@@ -1,5 +1,7 @@
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 using System;
 using System.Collections.Specialized;
@@ -7,8 +9,12 @@ using System.Linq;
 using System.Text;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
+using XianYuLauncher.Helpers;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Views
 {
@@ -17,6 +23,9 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Views
     /// </summary>
     public sealed partial class ErrorAnalysisPage : Page
     {
+        private const string HostedDetailReadOnlyBreadcrumbItemTemplateKey = "HostedDetailReadOnlyBreadcrumbItemTemplate";
+
+        private readonly INavigationService _navigationService;
         public ErrorAnalysisViewModel ViewModel { get; }
         public LauncherAIViewModel LauncherAIWorkspaceViewModel { get; }
         private readonly IUiDispatcher _uiDispatcher;
@@ -24,6 +33,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Views
 
         public ErrorAnalysisPage()
         {
+            _navigationService = App.GetService<INavigationService>();
             ViewModel = App.GetService<ErrorAnalysisViewModel>();
             LauncherAIWorkspaceViewModel = App.GetService<LauncherAIViewModel>();
             _uiDispatcher = App.GetService<IUiDispatcher>();
@@ -145,6 +155,10 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Views
         {
             base.OnNavigatedTo(e);
 
+            var navigationParameter = NormalizeNavigationParameter(e.Parameter);
+            ViewModel.ApplyNavigationContext(navigationParameter);
+            ApplyHeaderPresentationMode(ViewModel.HeaderPresentationMode);
+
             LauncherAIWorkspaceViewModel.SetErrorAnalysisPageOpen(true);
             await LauncherAIWorkspaceViewModel.InitializeAsync(ensureDefaultConversation: false);
             LauncherAIWorkspaceViewModel.ActivateConversationForEmbeddedSurface();
@@ -152,37 +166,61 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Views
             // 每次进入页面先清理修复按钮状态，避免残留
             ViewModel.ResetFixActionState();
 
-            // 接收导航参数（如果有）
-            if (e.Parameter is Tuple<string, List<string>, List<string>> logData)
+            if (navigationParameter?.HasLogPayload == true)
             {
-                ViewModel.SetLogData(logData.Item1, logData.Item2, logData.Item3);
-                // 设置游戏崩溃状态为true，触发分析
+                ViewModel.SetLogData(
+                    navigationParameter.LaunchCommand,
+                    navigationParameter.GameOutput.ToList(),
+                    navigationParameter.GameError.ToList());
                 ViewModel.SetGameCrashStatus(true);
             }
-            // 如果没有导航参数，说明是从 InfoBar 点击"查看日志"按钮进来的
-            // 此时日志已经在 ViewModel 中了（因为是 Singleton），不需要清空
-            // 只需要确保页面正常显示即可
         }
 
-        /// <summary>
-        /// 返回按钮点击事件
-        /// </summary>
-        private void BackButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        private static ErrorAnalysisNavigationParameter? NormalizeNavigationParameter(object? parameter)
         {
-            if (Frame.CanGoBack)
+            return parameter switch
             {
-                Frame.GoBack();
+                ErrorAnalysisNavigationParameter typedNavigationParameter => typedNavigationParameter,
+                Tuple<string, List<string>, List<string>> legacyLogData => ErrorAnalysisNavigationParameter.CreateCrashPayload(
+                    legacyLogData.Item1,
+                    legacyLogData.Item2,
+                    legacyLogData.Item3),
+                _ => null,
+            };
+        }
+
+        private void ApplyHeaderPresentationMode(PageHeaderPresentationMode headerPresentationMode)
+        {
+            ErrorAnalysisPageHeader.ApplyPresentationMode(
+                headerPresentationMode,
+                Resources[HostedDetailReadOnlyBreadcrumbItemTemplateKey] as DataTemplate);
+        }
+
+        private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
+        {
+            if (args.Item is not NavigationBreadcrumbItem breadcrumbItem || !breadcrumbItem.CanNavigate)
+            {
+                return;
+            }
+
+            if (ShouldGoBackToGlobalRoot(breadcrumbItem))
+            {
+                _navigationService.GoBack(new DrillInNavigationTransitionInfo());
+                return;
+            }
+
+            if (breadcrumbItem.HasGlobalNavigationTarget)
+            {
+                _navigationService.NavigateTo(breadcrumbItem.PageKey!, breadcrumbItem.NavigationParameter);
             }
         }
 
-        private void BackButton_PointerEntered(object sender, PointerRoutedEventArgs e)
+        private bool ShouldGoBackToGlobalRoot(NavigationBreadcrumbItem breadcrumbItem)
         {
-            AnimatedIcon.SetState(BackAnimatedIcon, "PointerOver");
-        }
-
-        private void BackButton_PointerExited(object sender, PointerRoutedEventArgs e)
-        {
-            AnimatedIcon.SetState(BackAnimatedIcon, "Normal");
+            return BreadcrumbNavigationHelper.ShouldGoBackToGlobalRoot(
+                breadcrumbItem,
+                _navigationService.CanGoBack,
+                expectedGlobalRoot: ViewModel.HasGlobalBreadcrumbRoot ? ViewModel.GlobalBreadcrumbRoot : null);
         }
 
         /// <summary>

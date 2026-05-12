@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Controls.Primitives;
+using Microsoft.UI.Xaml.Media.Animation;
 using Windows.System;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Imaging;
@@ -26,9 +27,12 @@ using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Features.Accounts.ViewModels;
+using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
+using XianYuLauncher.Features.ModDownloadDetail.Models;
 using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
+using XianYuLauncher.Features.News.Models;
 using XianYuLauncher.Features.News.ViewModels;
 using XianYuLauncher.Features.Settings.ViewModels;
 using XianYuLauncher.Features.Dialogs.Contracts;
@@ -948,16 +952,12 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     {
         if (_recommendedMod != null)
         {
-            // 推荐位不强制限定 sourceType，避免 datapack 等资源被误按 mod 规则过滤版本。
-             var param = new Tuple<XianYuLauncher.Core.Models.ModrinthProject, string?>(
-                 new XianYuLauncher.Core.Models.ModrinthProject { 
-                     ProjectId = _recommendedMod.Id, 
-                     Slug = _recommendedMod.Slug,
-                     ProjectType = _recommendedMod.ProjectType
-                 }, 
-                 null
-             );
-            _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, param);
+            NavigateToModDownloadDetail(new ModrinthProject
+            {
+                ProjectId = _recommendedMod.Id,
+                Slug = _recommendedMod.Slug,
+                ProjectType = _recommendedMod.ProjectType,
+            });
         }
     }
 
@@ -985,15 +985,12 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
                 case "mod_detail":
                     if (item.ActionPayload is ModrinthRandomProject recommended)
                     {
-                        var param = new Tuple<XianYuLauncher.Core.Models.ModrinthProject, string?>(
-                            new XianYuLauncher.Core.Models.ModrinthProject
-                            {
-                                ProjectId = recommended.Id,
-                                Slug = recommended.Slug,
-                                ProjectType = recommended.ProjectType
-                            },
-                            null);
-                        _navigationService.NavigateTo(typeof(ModDownloadDetailViewModel).FullName!, param);
+                        NavigateToModDownloadDetail(new ModrinthProject
+                        {
+                            ProjectId = recommended.Id,
+                            Slug = recommended.Slug,
+                            ProjectType = recommended.ProjectType,
+                        });
                     }
                     break;
 
@@ -1046,7 +1043,16 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
 
         if (action.Type == NewsClickActionType.NavigateDetail)
         {
-            _navigationService.NavigateTo(typeof(NewsDetailViewModel).FullName!, action.Entry);
+            _navigationService.NavigateTo(
+                typeof(NewsListViewModel).FullName!,
+                new NewsListNavigationParameter
+                {
+                    InitialDetailEntry = action.Entry,
+                    BreadcrumbRoot = BreadcrumbNavigationRoot.CreateGlobal(
+                        "LaunchPage_BreadcrumbRootTitle".GetLocalized(),
+                        typeof(LaunchViewModel).FullName!),
+                },
+                transitionInfo: new DrillInNavigationTransitionInfo());
             return;
         }
 
@@ -1069,6 +1075,37 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
         NewsTeachingTipLinkUrl = action.Entry.ReadMoreLink;
         IsNewsTeachingTipImageVisible = NewsTeachingTipImageSource != null;
         IsNewsTeachingTipOpen = true;
+    }
+
+    private void NavigateToModDownloadDetail(ModrinthProject project)
+    {
+        _navigationService.NavigateTo(
+            typeof(ModDownloadDetailViewModel).FullName!,
+            CreateLaunchModDownloadDetailNavigationParameter(project),
+            transitionInfo: new DrillInNavigationTransitionInfo());
+    }
+
+    private ModDownloadDetailNavigationParameter CreateLaunchModDownloadDetailNavigationParameter(ModrinthProject project)
+    {
+        return ModDownloadDetailNavigationParameter.CreateWithGlobalBreadcrumbRoot(
+            project,
+            "LaunchPage_BreadcrumbRootTitle".GetLocalized(),
+            typeof(LaunchViewModel).FullName!);
+    }
+
+    private void NavigateToErrorAnalysis()
+    {
+        _navigationService.NavigateTo(
+            typeof(ErrorAnalysisViewModel).FullName!,
+            CreateLaunchErrorAnalysisNavigationParameter(),
+            transitionInfo: new DrillInNavigationTransitionInfo());
+    }
+
+    private static ErrorAnalysisNavigationParameter CreateLaunchErrorAnalysisNavigationParameter()
+    {
+        return ErrorAnalysisNavigationParameter.CreateWithGlobalBreadcrumbRoot(
+            "LaunchPage_BreadcrumbRootTitle".GetLocalized(),
+            typeof(LaunchViewModel).FullName!);
     }
 
     private static ImageSource? CreateNewsImageSource(string? tipImageUrl)
@@ -1188,7 +1225,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     [RelayCommand]
     private void ViewLogs()
     {
-        _navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!);
+        NavigateToErrorAnalysis();
     }
 
     [RelayCommand]
@@ -1656,7 +1693,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
                 
                 if (_isRealTimeLogsEnabled)
                 {
-                    _navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!);
+                    NavigateToErrorAnalysis();
                 }
                 
                 // 记录游戏启动时间和版本（用于计算游戏时长）

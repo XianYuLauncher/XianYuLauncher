@@ -1,12 +1,18 @@
 using XianYuLauncher.Shared.Models;
 
-namespace XianYuLauncher.Features.ModLoaderSelector.Models;
+namespace XianYuLauncher.Features.Multiplayer.Models;
 
-public sealed class ModLoaderSelectorNavigationParameter
+public sealed class MultiplayerLobbyNavigationParameter
 {
     private BreadcrumbNavigationRoot _breadcrumbRoot = BreadcrumbNavigationRoot.Empty;
 
-    public string VersionId { get; init; } = string.Empty;
+    public string RoomId { get; init; } = string.Empty;
+
+    public string? Port { get; init; }
+
+    public bool IsGuest { get; init; }
+
+    public string Url { get; init; } = string.Empty;
 
     public BreadcrumbNavigationRoot BreadcrumbRoot
     {
@@ -26,5 +32,11 @@ public sealed class ModLoaderSelectorNavigationParameter
         init => _breadcrumbRoot = _breadcrumbRoot with { LocalTarget = value };
     }
 
-    public bool HasBreadcrumbRoot => _breadcrumbRoot.HasLabel && _breadcrumbRoot.HasLocalNavigationTarget;
+    public bool HasBreadcrumbRoot => _breadcrumbRoot.HasLabel
+        && _breadcrumbRoot.HasLocalNavigationTarget;
+}
+
+public static class MultiplayerNavigationRouteKeys
+{
+    public const string Root = "MultiplayerRoot";
 }

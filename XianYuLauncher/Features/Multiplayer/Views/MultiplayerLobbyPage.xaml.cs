@@ -3,20 +3,56 @@ using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
+using Microsoft.UI.Xaml.Navigation;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.UI;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Features.Multiplayer.ViewModels;
 
 namespace XianYuLauncher.Features.Multiplayer.Views;
 
-public sealed partial class MultiplayerLobbyPage : Page
+public sealed partial class MultiplayerLobbyPage : Page, IHostedLocalPage
 {
+    private EventHandler? _closeRequested;
+
     public MultiplayerLobbyViewModel ViewModel { get; }
+
+    public IPageHeaderAware HeaderSource => ViewModel;
+
+    public event EventHandler? CloseRequested
+    {
+        add => _closeRequested += value;
+        remove => _closeRequested -= value;
+    }
 
     public MultiplayerLobbyPage()
     {
         ViewModel = App.GetService<MultiplayerLobbyViewModel>();
+        DataContext = ViewModel;
         this.InitializeComponent();
+    }
+
+    protected override void OnNavigatedTo(NavigationEventArgs e)
+    {
+        base.OnNavigatedTo(e);
+        ViewModel.OnNavigatedTo(e.Parameter);
+    }
+
+    protected override void OnNavigatedFrom(NavigationEventArgs e)
+    {
+        base.OnNavigatedFrom(e);
+        ViewModel.OnNavigatedFrom();
+    }
+
+    public void ResetEmbeddedVisualState()
+    {
+        ContentArea.Opacity = 1;
+        ContentArea.Translation = default;
+    }
+
+    private void ExitRoomButton_Click(object sender, RoutedEventArgs e)
+    {
+        _closeRequested?.Invoke(this, EventArgs.Empty);
     }
 
     /// <summary>

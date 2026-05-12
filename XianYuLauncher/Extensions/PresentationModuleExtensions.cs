@@ -80,11 +80,11 @@ internal static class PresentationModuleExtensions
     {
         services.AddTransient<CharacterViewModel>();
         services.AddTransient<CharacterPage>();
+        services.AddTransient<CharacterRootPage>();
         services.AddPageMap<CharacterViewModel, CharacterPage>();
 
         services.AddTransient<CharacterManagementViewModel>();
         services.AddTransient<CharacterManagementPage>();
-        services.AddPageMap<CharacterManagementViewModel, CharacterManagementPage>();
 
         return services;
     }
@@ -121,8 +121,13 @@ internal static class PresentationModuleExtensions
 
     public static IServiceCollection AddNewsFeaturePresentation(this IServiceCollection services)
     {
+        services.AddTransient<NewsListViewModel>();
+        services.AddTransient<NewsListPage>();
+        services.AddTransient<NewsListRootPage>();
+        services.AddTransient<NewsDetailViewModel>();
+        services.AddTransient<NewsDetailPage>();
+
         services.AddPageMap<NewsListViewModel, NewsListPage>();
-        services.AddPageMap<NewsDetailViewModel, NewsDetailPage>();
 
         return services;
     }
@@ -134,8 +139,9 @@ internal static class PresentationModuleExtensions
         services.AddPageMap<VersionListViewModel, VersionListPage>();
 
         services.AddTransient<VersionManagementViewModel>();
+        services.AddTransient<VersionManagementHostPage>();
         services.AddTransient<VersionManagementPage>();
-        services.AddPageMap<VersionManagementViewModel, VersionManagementPage>();
+        services.AddPageMap<VersionManagementViewModel, VersionManagementHostPage>();
 
         return services;
     }
@@ -144,7 +150,6 @@ internal static class PresentationModuleExtensions
     {
         services.AddTransient<WorldManagementViewModel>();
         services.AddTransient<WorldManagementPage>();
-        services.AddPageMap<WorldManagementViewModel, WorldManagementPage>();
 
         return services;
     }
@@ -153,11 +158,11 @@ internal static class PresentationModuleExtensions
     {
         services.AddTransient<MultiplayerViewModel>();
         services.AddTransient<MultiplayerPage>();
+        services.AddTransient<MultiplayerRootPage>();
         services.AddPageMap<MultiplayerViewModel, MultiplayerPage>();
 
         services.AddTransient<MultiplayerLobbyViewModel>();
         services.AddTransient<MultiplayerLobbyPage>();
-        services.AddPageMap<MultiplayerLobbyViewModel, MultiplayerLobbyPage>();
 
         return services;
     }

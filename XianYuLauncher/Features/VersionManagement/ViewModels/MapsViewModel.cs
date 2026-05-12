@@ -9,7 +9,6 @@ using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.WorldManagement.Models;
-using XianYuLauncher.Features.WorldManagement.ViewModels;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using XianYuLauncher.Models.VersionManagement;
@@ -257,17 +256,18 @@ public partial class MapsViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
-    private void ShowMapDetail(MapInfo map)
+    public WorldManagementParameter? CreateWorldManagementParameter(MapInfo map)
     {
-        if (map == null || _context.SelectedVersion == null) return;
+        if (map == null || _context.SelectedVersion == null)
+        {
+            return null;
+        }
 
-        var param = new WorldManagementParameter
+        return new WorldManagementParameter
         {
             WorldPath = map.FilePath,
-            VersionId = _context.SelectedVersion.Name
+            VersionId = _context.SelectedVersion.Name,
         };
-        _navigationService.NavigateTo(typeof(WorldManagementViewModel).FullName!, param);
     }
 
     [RelayCommand]

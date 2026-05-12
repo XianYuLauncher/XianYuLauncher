@@ -3,22 +3,27 @@ using System.Net.Http;
 using System.Threading.Tasks;
 
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 
 using Newtonsoft.Json;
 
 using Windows.ApplicationModel.Resources;
 
-using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Contracts.ViewModels;
+using XianYuLauncher.Features.News.Models;
 using XianYuLauncher.Services;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.News.ViewModels;
 
-public partial class NewsDetailViewModel : ObservableRecipient
+public partial class NewsDetailViewModel : ObservableRecipient, IPageHeaderAware
 {
-    private readonly INavigationService _navigationService;
     private readonly HttpClient _httpClient;
     private readonly ResourceLoader _resourceLoader;
+    private NewsDetailNavigationParameter? _navigationParameter;
+
+    public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+    public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.ProminentBreadcrumb;
 
     [ObservableProperty]
     private MinecraftNewsEntry? _newsEntry;
@@ -52,18 +57,22 @@ public partial class NewsDetailViewModel : ObservableRecipient
 
     public NewsDetailViewModel()
     {
-        _navigationService = App.GetService<INavigationService>();
         _httpClient = new HttpClient();
         _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
         _resourceLoader = ResourceLoader.GetForViewIndependentUse();
     }
 
-    public void Initialize(MinecraftNewsEntry entry)
+    public void Initialize(NewsDetailNavigationParameter navigationParameter)
     {
+        _navigationParameter = navigationParameter;
+
+        var entry = navigationParameter.Entry;
         NewsEntry = entry;
         Title = entry.Title;
         Version = entry.Version;
         Type = entry.Type;
+        ContentHtml = string.Empty;
+        ImageUrl = string.Empty;
 
         TypeDisplay = entry.Type switch
         {
@@ -80,6 +89,7 @@ public partial class NewsDetailViewModel : ObservableRecipient
             ImageUrl = $"https://launchercontent.mojang.com{entry.Image.Url}";
         }
 
+        ApplyHeaderMetadata();
         _ = LoadContentAsync(entry.ContentPath);
     }
 
@@ -126,13 +136,28 @@ public partial class NewsDetailViewModel : ObservableRecipient
         }
     }
 
-    [RelayCommand]
-    private void GoBack()
+    private void ApplyHeaderMetadata()
     {
-        if (_navigationService.CanGoBack)
+        HeaderMetadata.Title = Title;
+        HeaderMetadata.Subtitle = string.Empty;
+        HeaderMetadata.ShowBreadcrumb = true;
+        HeaderMetadata.BreadcrumbItems.Clear();
+
+        if (_navigationParameter?.HasGlobalBreadcrumbRoot == true)
         {
-            _navigationService.GoBack();
+            HeaderMetadata.BreadcrumbItems.Add(_navigationParameter.GlobalBreadcrumbRoot.ToBreadcrumbItem());
         }
+
+        if (_navigationParameter?.HasBreadcrumbRoot == true)
+        {
+            HeaderMetadata.BreadcrumbItems.Add(_navigationParameter.BreadcrumbRoot.ToBreadcrumbItem());
+        }
+
+        HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+        {
+            DisplayText = Title,
+            IsCurrent = true,
+        });
     }
 }
 

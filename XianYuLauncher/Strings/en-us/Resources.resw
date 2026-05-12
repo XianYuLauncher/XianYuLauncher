@@ -666,6 +666,9 @@
   <data name="LaunchPage_DefaultTitle" xml:space="preserve">
     <value>Launch Game</value>
   </data>
+  <data name="LaunchPage_BreadcrumbRootTitle" xml:space="preserve">
+    <value>Launch</value>
+  </data>
   <data name="LaunchPage_SelectVersionText" xml:space="preserve">
     <value>Select a game version</value>
   </data>
@@ -1674,6 +1677,12 @@ Continue downloading?</value>
   </data>
   <data name="ErrorAnalysis_Title.Text" xml:space="preserve">
     <value>Game Log</value>
+  </data>
+  <data name="ErrorAnalysisPage_HeaderTitle" xml:space="preserve">
+    <value>Game Log</value>
+  </data>
+  <data name="ErrorAnalysisPage_HeaderSubtitle" xml:space="preserve">
+    <value>View game output and error information</value>
   </data>
   <data name="ErrorAnalysis_ExportLogButton.Content" xml:space="preserve">
     <value>Export Logs</value>
@@ -4239,6 +4248,9 @@ You can double-click the file to launch the game.</value>
   </data>
   <data name="联机Page_HeaderSubtitle" xml:space="preserve">
     <value>Choose Host/Guest</value>
+  </data>
+  <data name="联机大厅Page_HeaderTitle" xml:space="preserve">
+    <value>Multiplayer Lobby</value>
   </data>
   <data name="ResourceDownloadPage_HeaderTitle" xml:space="preserve">
     <value>Resource Download</value>

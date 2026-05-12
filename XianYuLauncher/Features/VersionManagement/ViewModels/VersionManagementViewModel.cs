@@ -1001,16 +1001,18 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     {
         HeaderMetadata.BreadcrumbItems.Clear();
 
-        HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
-        {
-            DisplayText = string.IsNullOrWhiteSpace(_navigationParameter?.BreadcrumbRootLabel)
-                ? "VersionListPage_HeaderTitle".GetLocalized()
-                : _navigationParameter.BreadcrumbRootLabel,
-            LocalNavigationTarget = _navigationParameter?.BreadcrumbRootTarget ?? new LocalNavigationTarget
+        var breadcrumbRoot = _navigationParameter?.HasBreadcrumbRoot == true
+            ? _navigationParameter.BreadcrumbRoot
+            : new BreadcrumbNavigationRoot
             {
-                RouteKey = LocalRootBreadcrumbRouteKey,
-            },
-        });
+                Label = "VersionListPage_HeaderTitle".GetLocalized(),
+                LocalTarget = new LocalNavigationTarget
+                {
+                    RouteKey = LocalRootBreadcrumbRouteKey,
+                },
+            };
+
+        HeaderMetadata.BreadcrumbItems.Add(breadcrumbRoot.ToBreadcrumbItem());
 
         HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
         {

@@ -20,8 +20,10 @@ using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Features.Multiplayer.Models;
 using XianYuLauncher.Helpers;
 using Serilog;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.Multiplayer.ViewModels;
 
@@ -32,9 +34,12 @@ public class RoomPlayer
     public Microsoft.UI.Xaml.Media.Imaging.BitmapImage Avatar { get; set; } = new();
 }
 
-public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigationAware
+public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigationAware, IPageHeaderAware
 {
+    private const string MultiplayerLobbyHeaderTitleResourceKey = "联机大厅Page_HeaderTitle";
+
     private readonly INavigationService _navigationService;
+    private MultiplayerLobbyNavigationParameter? _navigationParameter;
     
     // 计时器
     private readonly DispatcherTimer _timer;
@@ -86,6 +91,12 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
     // 玩家列表是否为空的属性，用于绑定到UI
     [ObservableProperty]
     private bool _isPlayerListEmpty = true;
+
+    public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+    public PageHeaderPresentationMode HeaderPresentationMode => HeaderMetadata.ShowBreadcrumb
+        ? PageHeaderPresentationMode.ProminentBreadcrumb
+        : PageHeaderPresentationMode.Standard;
     
     public MultiplayerLobbyViewModel(INavigationService navigationService, IFileService fileService, IUiDispatcher uiDispatcher)
     {
@@ -132,14 +143,85 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
         // 停止所有计时器
         _timer.Stop();
         _playerListTimer.Stop();
+        StopTerracottaProcess();
+        _navigationParameter = null;
     }
     
     public async void OnNavigatedTo(object parameter)
     {
-        // 启动所有计时器
+        _timer.Stop();
+        _playerListTimer.Stop();
+        _elapsedTime = TimeSpan.Zero;
+        ElapsedTimeText = "00:00:00";
+
+        LoadCurrentProfileName();
+        PlayerList.Clear();
+        IsPlayerListEmpty = true;
+
+        if (TryNormalizeNavigationParameter(parameter, out var navigationParameter))
+        {
+            ApplyNavigationParameter(navigationParameter);
+        }
+
+        ApplyHeaderMetadata();
+
         _timer.Start();
-        
-        // 如果参数是匿名对象，获取RoomId、Port、IsGuest和Url
+
+        if (!string.IsNullOrEmpty(_port))
+        {
+            await GetMetaDataAsync();
+            await UpdatePlayerListAsync();
+            _playerListTimer.Start();
+        }
+    }
+
+    private void ApplyNavigationParameter(MultiplayerLobbyNavigationParameter navigationParameter)
+    {
+        _navigationParameter = navigationParameter;
+        RoomId = navigationParameter.RoomId;
+        _port = navigationParameter.Port;
+        IsGuest = navigationParameter.IsGuest;
+        Url = navigationParameter.Url;
+
+        HostLabel = IsGuest
+            ? "联机大厅Page_GuestLabel".GetLocalized()
+            : "联机大厅Page_HostLabel".GetLocalized();
+        EasyTierLabel = "联机大厅Page_EasyTierLabel".GetLocalized();
+    }
+
+    private void ApplyHeaderMetadata()
+    {
+        HeaderMetadata.Title = MultiplayerLobbyHeaderTitleResourceKey.GetLocalized();
+        HeaderMetadata.Subtitle = string.Empty;
+        HeaderMetadata.BreadcrumbItems.Clear();
+
+        if (_navigationParameter?.HasBreadcrumbRoot != true)
+        {
+            HeaderMetadata.ShowBreadcrumb = false;
+            return;
+        }
+
+        HeaderMetadata.ShowBreadcrumb = true;
+        HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+        {
+            DisplayText = _navigationParameter.BreadcrumbRootLabel,
+            LocalNavigationTarget = _navigationParameter.BreadcrumbRootTarget,
+        });
+        HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+        {
+            DisplayText = HeaderMetadata.Title,
+            IsCurrent = true,
+        });
+    }
+
+    private static bool TryNormalizeNavigationParameter(object? parameter, out MultiplayerLobbyNavigationParameter navigationParameter)
+    {
+        if (parameter is MultiplayerLobbyNavigationParameter typedNavigationParameter)
+        {
+            navigationParameter = typedNavigationParameter;
+            return true;
+        }
+
         if (parameter != null)
         {
             var paramType = parameter.GetType();
@@ -147,44 +229,19 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
             var portProp = paramType.GetProperty("Port");
             var isGuestProp = paramType.GetProperty("IsGuest");
             var urlProp = paramType.GetProperty("Url");
-            
-            if (roomIdProp != null)
+
+            navigationParameter = new MultiplayerLobbyNavigationParameter
             {
-                RoomId = roomIdProp.GetValue(parameter)?.ToString() ?? "";
-            }
-            
-            if (portProp != null)
-            {
-                _port = portProp.GetValue(parameter)?.ToString();
-                // 获取meta数据
-                if (!string.IsNullOrEmpty(_port))
-                {
-                    await GetMetaDataAsync();
-                    // 获取初始玩家列表
-                    await UpdatePlayerListAsync();
-                    // 启动玩家列表计时器
-                    _playerListTimer.Start();
-                }
-            }
-            
-            if (isGuestProp != null)
-            {
-                IsGuest = (bool)(isGuestProp.GetValue(parameter) ?? false);
-                // 根据是否为房客更新显示内容
-                if (IsGuest)
-                {
-                    HostLabel = "联机大厅Page_GuestLabel".GetLocalized();
-                    // 保持显示EasyTier版本，不改为URL
-                    EasyTierLabel = "联机大厅Page_EasyTierLabel".GetLocalized();
-                }
-            }
-            
-            if (urlProp != null)
-            {
-                Url = urlProp.GetValue(parameter)?.ToString() ?? "";
-                // 房客模式下也获取并显示EasyTier版本，不显示URL
-            }
+                RoomId = roomIdProp?.GetValue(parameter)?.ToString() ?? string.Empty,
+                Port = portProp?.GetValue(parameter)?.ToString(),
+                IsGuest = (bool)(isGuestProp?.GetValue(parameter) ?? false),
+                Url = urlProp?.GetValue(parameter)?.ToString() ?? string.Empty,
+            };
+            return true;
         }
+
+        navigationParameter = null!;
+        return false;
     }
     
     /// <summary>
@@ -346,9 +403,6 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
     [RelayCommand]
     private void Back()
     {
-        // 结束后台的联机服务进程
-        StopTerracottaProcess();
-        
         // 导航回上一页
         _navigationService.GoBack();
     }
@@ -358,15 +412,18 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
     /// </summary>
     private async void StopTerracottaProcess()
     {
+        var port = _port;
+        _port = null;
+
         try
         {
             // 尝试使用terracotta官方HTTP接口优雅关闭进程
-            if (!string.IsNullOrEmpty(_port))
+            if (!string.IsNullOrEmpty(port))
             {
                 try
                 {
                     // 首先尝试使用peaceful=true优雅退出
-                    string panicUrl = $"http://localhost:{_port}/panic?peaceful=true";
+                    string panicUrl = $"http://localhost:{port}/panic?peaceful=true";
                     HttpResponseMessage response = await _httpClient.GetAsync(panicUrl, CancellationToken.None);
                     Log.Information($"调用terracotta /panic接口结果：{response.StatusCode}");
                     
@@ -379,7 +436,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
                     // 可以尝试使用peaceful=false强制退出
                     try
                     {
-                        string panicUrl = $"http://localhost:{_port}/panic?peaceful=false";
+                        string panicUrl = $"http://localhost:{port}/panic?peaceful=false";
                         HttpResponseMessage response = await _httpClient.GetAsync(panicUrl, CancellationToken.None);
                         Log.Information($"调用terracotta /panic?peaceful=false接口结果：{response.StatusCode}");
                         await Task.Delay(2000);

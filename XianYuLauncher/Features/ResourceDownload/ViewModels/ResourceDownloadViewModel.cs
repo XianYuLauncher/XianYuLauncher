@@ -2520,12 +2520,13 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
             var navigationParameter = new ModLoaderSelectorNavigationParameter
             {
                 VersionId = versionId,
-                BreadcrumbRootLabel = HeaderMetadata.Title,
-                BreadcrumbRootTarget = new LocalNavigationTarget
-                {
-                    RouteKey = "resource-download/root",
-                    Parameter = "version",
-                },
+                BreadcrumbRoot = BreadcrumbNavigationRoot.CreateLocal(
+                    HeaderMetadata.Title,
+                    new LocalNavigationTarget
+                    {
+                        RouteKey = "resource-download/root",
+                        Parameter = "version",
+                    }),
             };
 
             ModLoaderSelectorRequested?.Invoke(this, navigationParameter);
@@ -4962,11 +4963,14 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
                 Project = project,
                 DisplayTitleHint = project.DisplayTitle,
                 SourceType = sourceType,
-                BreadcrumbRootLabel = HeaderMetadata.Title,
-                BreadcrumbRootTarget = new LocalNavigationTarget
+                BreadcrumbRoot = new BreadcrumbNavigationRoot
                 {
-                    RouteKey = "resource-download/root",
-                    Parameter = tabKey,
+                    Label = HeaderMetadata.Title,
+                    LocalTarget = new LocalNavigationTarget
+                    {
+                        RouteKey = "resource-download/root",
+                        Parameter = tabKey,
+                    },
                 },
             });
     }

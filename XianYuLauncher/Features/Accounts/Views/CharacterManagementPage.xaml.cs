@@ -1,3 +1,5 @@
+using System.Numerics;
+
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media;
@@ -32,8 +34,12 @@ namespace XianYuLauncher.Features.Accounts.Views
     /// <summary>
     /// 角色管理页面
     /// </summary>
-    public sealed partial class CharacterManagementPage : Page
+    public sealed partial class CharacterManagementPage : Page, IHostedLocalPage
     {
+        private EventHandler? _closeRequested;
+        private bool _lifecycleEventsAttached;
+        private bool _isWebViewInitializing;
+
         /// <summary>
         /// ViewModel实例
         /// </summary>
@@ -41,11 +47,23 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             get;
         }
+
+        public IPageHeaderAware HeaderSource => ViewModel;
         
         private readonly HttpClient _httpClient = new HttpClient();
         private readonly ICommonDialogService _dialogService;
         private readonly IProfileDialogService _profileDialogService;
         private const string AvatarCacheFolder = AppDataFileConsts.AvatarCacheFolder;
+
+        /// <summary>
+        /// 当前页面本身不会主动请求关闭；保留标准事件实现以满足接口契约并允许外部正常订阅。
+        /// 如后续新增关闭行为，请在对应时机触发该事件。
+        /// </summary>
+        public event EventHandler? CloseRequested
+        {
+            add => _closeRequested += value;
+            remove => _closeRequested -= value;
+        }
 
         private static BitmapImage CreateDefaultAvatarBitmap()
         {
@@ -62,13 +80,34 @@ namespace XianYuLauncher.Features.Accounts.Views
             _profileDialogService = App.GetService<IProfileDialogService>();
             InitializeComponent();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
-            
-            // 订阅CurrentProfile变化事件
+
+            AttachLifecycleEvents();
+        }
+
+        private void AttachLifecycleEvents()
+        {
+            if (_lifecycleEventsAttached)
+            {
+                return;
+            }
+
             ViewModel.PropertyChanged += ViewModel_PropertyChanged;
-            // 订阅CurrentSkin变化事件
             ViewModel.PropertyChanged += ViewModel_CurrentSkinChanged;
-            // 添加页面加载完成事件
-            this.Loaded += CharacterManagementPage_Loaded;
+            Loaded += CharacterManagementPage_Loaded;
+            _lifecycleEventsAttached = true;
+        }
+
+        private void DetachLifecycleEvents()
+        {
+            if (!_lifecycleEventsAttached)
+            {
+                return;
+            }
+
+            ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
+            ViewModel.PropertyChanged -= ViewModel_CurrentSkinChanged;
+            Loaded -= CharacterManagementPage_Loaded;
+            _lifecycleEventsAttached = false;
         }
 
         /// <summary>
@@ -90,6 +129,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         protected override void OnNavigatedTo(NavigationEventArgs e)
         {
             base.OnNavigatedTo(e);
+            AttachLifecycleEvents();
             
             // 将导航参数传递给ViewModel
             if (ViewModel is INavigationAware navigationAware)
@@ -99,6 +139,27 @@ namespace XianYuLauncher.Features.Accounts.Views
             
             // 加载头像
             LoadProfileAvatar();
+            _ = EnsureWebViewReadyAsync();
+        }
+
+        protected override void OnNavigatedFrom(NavigationEventArgs e)
+        {
+            base.OnNavigatedFrom(e);
+
+            if (ViewModel is INavigationAware navigationAware)
+            {
+                navigationAware.OnNavigatedFrom();
+            }
+
+            DetachLifecycleEvents();
+            ReleaseWebViewResources();
+        }
+
+        public void ResetEmbeddedVisualState()
+        {
+            ContentArea.Opacity = 1;
+            ContentArea.Translation = default;
+            ContentArea.Scale = new Vector3(1f, 1f, 1f);
         }
 
         /// <summary>
@@ -106,9 +167,37 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// </summary>
         private async void CharacterManagementPage_Loaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
-            await InitializeWebView2Async();
-            // WebView2初始化完成后，手动调用一次UpdateSkinInWebViewAsync，确保皮肤能够正确显示
-            await UpdateSkinInWebViewAsync();
+            await EnsureWebViewReadyAsync();
+        }
+
+        private async Task EnsureWebViewReadyAsync()
+        {
+            if (_isWebViewInitializing || Skin3DPreviewWebView.Source is not null)
+            {
+                return;
+            }
+
+            _isWebViewInitializing = true;
+            try
+            {
+                await InitializeWebView2Async();
+            }
+            finally
+            {
+                _isWebViewInitializing = false;
+            }
+        }
+
+        private void ReleaseWebViewResources()
+        {
+            try
+            {
+                Skin3DPreviewWebView.Source = null;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[角色管理Page] 释放 WebView2 资源失败: {ex.Message}");
+            }
         }
 
         /// <summary>
@@ -557,25 +646,6 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
 
         /// <summary>
-        /// 离开页面时调用
-        /// </summary>
-        /// <param name="e">导航取消事件参数</param>
-        protected override void OnNavigatingFrom(NavigatingCancelEventArgs e)
-        {
-            base.OnNavigatingFrom(e);
-            
-            // 通知ViewModel离开页面
-            if (ViewModel is INavigationAware navigationAware)
-            {
-                navigationAware.OnNavigatedFrom();
-            }
-            
-            // 取消订阅事件
-            ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
-            ViewModel.PropertyChanged -= ViewModel_CurrentSkinChanged;
-            this.Loaded -= CharacterManagementPage_Loaded;
-        }
-        
         /// <summary>
         /// 加载角色头像
         /// </summary>

@@ -1,7 +1,10 @@
+using System.Collections.ObjectModel;
+
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Microsoft.UI.Xaml.Media.Imaging;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Helpers;
@@ -10,10 +13,11 @@ using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.WorldManagement.Models;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.WorldManagement.ViewModels;
 
-public partial class WorldManagementViewModel : ObservableRecipient
+public partial class WorldManagementViewModel : ObservableRecipient, IPageHeaderAware
 {
     private readonly IFileService _fileService;
     private readonly INavigationService _navigationService;
@@ -23,11 +27,18 @@ public partial class WorldManagementViewModel : ObservableRecipient
     private readonly IUiDispatcher _uiDispatcher;
     private CancellationTokenSource? _cancellationTokenSource;
     private bool _dataPacksLoaded = false;
+    private WorldManagementParameter? _navigationParameter;
     
     // 本地化字符串
     private static string UnknownText => ResourceExtensions.GetLocalized("WorldManagement_Unknown");
     private static string EnabledText => ResourceExtensions.GetLocalized("WorldManagement_Enabled");
     private static string DisabledText => ResourceExtensions.GetLocalized("WorldManagement_Disabled");
+
+    public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+    public PageHeaderPresentationMode HeaderPresentationMode => IsEmbeddedHostNavigation
+        ? PageHeaderPresentationMode.ProminentBreadcrumb
+        : PageHeaderPresentationMode.Standard;
     
     /// <summary>
     /// 本地化游戏模式
@@ -62,6 +73,11 @@ public partial class WorldManagementViewModel : ObservableRecipient
     
     [ObservableProperty]
     private string _worldName = string.Empty;
+
+    partial void OnWorldNameChanged(string value)
+    {
+        UpdateHeaderMetadata();
+    }
     
     [ObservableProperty]
     private string _worldPath = string.Empty;
@@ -128,6 +144,19 @@ public partial class WorldManagementViewModel : ObservableRecipient
     [ObservableProperty]
     private string _currentVersionId = string.Empty;
 
+    partial void OnCurrentVersionIdChanged(string value)
+    {
+        UpdateHeaderMetadata();
+    }
+
+    [ObservableProperty]
+    private bool _isEmbeddedHostNavigation;
+
+    partial void OnIsEmbeddedHostNavigationChanged(bool value)
+    {
+        UpdateHeaderMetadata();
+    }
+
     [RelayCommand]
     private void LaunchWorld()
     {
@@ -170,6 +199,25 @@ public partial class WorldManagementViewModel : ObservableRecipient
             _translationService = null;
             System.Diagnostics.Debug.WriteLine("[WorldManagement] 翻译服务不可用");
         }
+
+        UpdateHeaderMetadata();
+    }
+
+    public void ApplyNavigationParameter(WorldManagementParameter? parameter)
+    {
+        _navigationParameter = parameter;
+        IsEmbeddedHostNavigation = parameter?.IsEmbeddedHostNavigation == true;
+
+        if (parameter != null)
+        {
+            CurrentVersionId = parameter.VersionId;
+        }
+        else
+        {
+            CurrentVersionId = string.Empty;
+        }
+
+        UpdateHeaderMetadata();
     }
     
     public async Task InitializeAsync(string worldPath)
@@ -224,6 +272,7 @@ public partial class WorldManagementViewModel : ObservableRecipient
         DataPacks.Clear();
         IsDataPackListEmpty = true;
         IsLoadingDataPacks = false;
+        UpdateHeaderMetadata();
     }
     
     public void Cleanup()
@@ -232,6 +281,51 @@ public partial class WorldManagementViewModel : ObservableRecipient
         _cancellationTokenSource?.Cancel();
         _cancellationTokenSource?.Dispose();
         _cancellationTokenSource = null;
+    }
+
+    private void UpdateHeaderMetadata()
+    {
+        HeaderMetadata.Title = GetHeaderTitle();
+        HeaderMetadata.Subtitle = IsEmbeddedHostNavigation
+            ? string.Empty
+            : CurrentVersionId;
+
+        if (!IsEmbeddedHostNavigation)
+        {
+            HeaderMetadata.BreadcrumbItems.Clear();
+            HeaderMetadata.ShowBreadcrumb = false;
+            return;
+        }
+
+        HeaderMetadata.BreadcrumbItems = new ObservableCollection<NavigationBreadcrumbItem>
+        {
+            (_navigationParameter?.BreadcrumbRoot ?? new BreadcrumbNavigationRoot
+            {
+                Label = string.IsNullOrWhiteSpace(CurrentVersionId) ? UnknownText : CurrentVersionId,
+                LocalTarget = _navigationParameter?.BreadcrumbRootTarget,
+            }).ToBreadcrumbItem(),
+            new()
+            {
+                DisplayText = GetHeaderTitle(),
+                IsCurrent = true,
+            },
+        };
+        HeaderMetadata.ShowBreadcrumb = true;
+    }
+
+    private string GetHeaderTitle()
+    {
+        if (!string.IsNullOrWhiteSpace(WorldName))
+        {
+            return WorldName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(WorldPath))
+        {
+            return Path.GetFileName(WorldPath);
+        }
+
+        return UnknownText;
     }
     
     private async Task LoadWorldDataAsync(CancellationToken cancellationToken)

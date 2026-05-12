@@ -666,6 +666,9 @@
   <data name="LaunchPage_DefaultTitle" xml:space="preserve">
     <value>启动游戏</value>
   </data>
+  <data name="LaunchPage_BreadcrumbRootTitle" xml:space="preserve">
+    <value>启动</value>
+  </data>
   <data name="LaunchPage_SelectVersionText" xml:space="preserve">
     <value>请选择游戏版本</value>
   </data>
@@ -1677,6 +1680,12 @@
   </data>
   <data name="ErrorAnalysis_Title.Text" xml:space="preserve">
     <value>游戏日志</value>
+  </data>
+  <data name="ErrorAnalysisPage_HeaderTitle" xml:space="preserve">
+    <value>游戏日志</value>
+  </data>
+  <data name="ErrorAnalysisPage_HeaderSubtitle" xml:space="preserve">
+    <value>查看游戏运行输出与错误信息</value>
   </data>
   <data name="ErrorAnalysis_ExportLogButton.Content" xml:space="preserve">
     <value>导出日志</value>
@@ -4236,6 +4245,9 @@
   </data>
   <data name="联机Page_HeaderSubtitle" xml:space="preserve">
     <value>选择房主/房客</value>
+  </data>
+  <data name="联机大厅Page_HeaderTitle" xml:space="preserve">
+    <value>联机大厅</value>
   </data>
   <data name="ResourceDownloadPage_HeaderTitle" xml:space="preserve">
     <value>资源下载</value>

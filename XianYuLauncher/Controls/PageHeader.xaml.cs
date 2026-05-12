@@ -5,10 +5,17 @@ using Microsoft.UI.Xaml.Controls;
 
 using Windows.Foundation;
 
+using XianYuLauncher.Contracts.ViewModels;
+
 namespace XianYuLauncher.Controls;
 
 public sealed partial class PageHeader : UserControl
 {
+    private const double DefaultBreadcrumbFontSizeValue = 15d;
+    private const double ProminentBreadcrumbFontSizeValue = 28d;
+    private static readonly Thickness DefaultBreadcrumbMarginValue = new(0, 0, 0, 12);
+    private static readonly Thickness ProminentBreadcrumbMarginValue = new(-2, -11, 0, 12);
+
     public static readonly DependencyProperty TitleProperty = DependencyProperty.Register(
         nameof(Title),
         typeof(string),
@@ -146,6 +153,24 @@ public sealed partial class PageHeader : UserControl
     public PageHeader()
     {
         InitializeComponent();
+    }
+
+    public void ApplyPresentationMode(PageHeaderPresentationMode presentationMode, DataTemplate? prominentBreadcrumbItemTemplate = null)
+    {
+        switch (presentationMode)
+        {
+            case PageHeaderPresentationMode.ProminentBreadcrumb:
+                ShowPrimaryHeading = false;
+                BreadcrumbFontSize = ProminentBreadcrumbFontSizeValue;
+                BreadcrumbMargin = ProminentBreadcrumbMarginValue;
+                BreadcrumbItemTemplate = prominentBreadcrumbItemTemplate;
+                return;
+        }
+
+        ShowPrimaryHeading = true;
+        BreadcrumbFontSize = DefaultBreadcrumbFontSizeValue;
+        BreadcrumbMargin = DefaultBreadcrumbMarginValue;
+        BreadcrumbItemTemplate = null;
     }
 
     private void BreadcrumbBar_ItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)

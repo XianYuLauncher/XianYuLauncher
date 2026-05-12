@@ -16,6 +16,7 @@ using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Features.Multiplayer.Models;
 using XianYuLauncher.Helpers;
 using Newtonsoft.Json;
 using Serilog;
@@ -66,6 +67,8 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
     public PageHeaderMetadata HeaderMetadata { get; } = new();
 
     public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.ControlStrip;
+
+    public event EventHandler<MultiplayerLobbyNavigationParameter>? LobbyNavigationRequested;
 
     public MultiplayerViewModel(
         INavigationService navigationService,
@@ -140,6 +143,32 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
     public void OnNavigatedTo(object parameter)
     {
         //处理页面加载时的逻辑
+    }
+
+    private MultiplayerLobbyNavigationParameter CreateLobbyNavigationParameter(
+        string roomId,
+        string? port,
+        bool isGuest,
+        string url)
+    {
+        return new MultiplayerLobbyNavigationParameter
+        {
+            RoomId = roomId,
+            Port = port,
+            IsGuest = isGuest,
+            Url = url,
+            BreadcrumbRoot = BreadcrumbNavigationRoot.CreateLocal(
+                HeaderMetadata.Title,
+                new LocalNavigationTarget
+                {
+                    RouteKey = MultiplayerNavigationRouteKeys.Root,
+                }),
+        };
+    }
+
+    private void RequestLobbyNavigation(MultiplayerLobbyNavigationParameter navigationParameter)
+    {
+        LobbyNavigationRequested?.Invoke(this, navigationParameter);
     }
 
     [RelayCommand]
@@ -489,7 +518,11 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                                             }
                                             
                                             // 导航到联机大厅页面，传递端口和房间ID信息
-                                            _navigationService.NavigateTo(typeof(MultiplayerLobbyViewModel).FullName!, new { RoomId = roomId, Port = port });
+                                            RequestLobbyNavigation(CreateLobbyNavigationParameter(
+                                                roomId,
+                                                port,
+                                                isGuest: false,
+                                                url: string.Empty));
                                             
                                             // 退出循环
                                             return;
@@ -902,12 +935,11 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     if (isSuccess && !string.IsNullOrEmpty(url))
                     {
                         // 5. 导航至联机大厅页，传递房间号、端口和房客标识
-                        _navigationService.NavigateTo(typeof(MultiplayerLobbyViewModel).FullName!, new { 
-                            RoomId = roomId, 
-                            Port = port, 
-                            IsGuest = true, 
-                            Url = url 
-                        });
+                        RequestLobbyNavigation(CreateLobbyNavigationParameter(
+                            roomId,
+                            port,
+                            isGuest: true,
+                            url));
                     }
                     else if (!cancellationToken.IsCancellationRequested)
                     {

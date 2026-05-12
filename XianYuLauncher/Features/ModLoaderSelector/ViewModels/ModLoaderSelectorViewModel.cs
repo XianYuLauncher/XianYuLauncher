@@ -395,11 +395,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         }
 
         HeaderMetadata.BreadcrumbItems.Clear();
-        HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
-        {
-            DisplayText = _navigationParameter.BreadcrumbRootLabel,
-            LocalNavigationTarget = _navigationParameter.BreadcrumbRootTarget,
-        });
+        HeaderMetadata.BreadcrumbItems.Add(_navigationParameter.BreadcrumbRoot.ToBreadcrumbItem());
 
         HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
         {
