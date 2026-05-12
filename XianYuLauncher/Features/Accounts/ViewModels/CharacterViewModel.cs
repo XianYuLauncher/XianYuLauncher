@@ -136,11 +136,12 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             return new CharacterManagementNavigationParameter
             {
                 Profile = profile,
-                BreadcrumbRootLabel = HeaderMetadata.Title,
-                BreadcrumbRootTarget = new LocalNavigationTarget
-                {
-                    RouteKey = CharacterNavigationRouteKeys.Root,
-                },
+                BreadcrumbRoot = BreadcrumbNavigationRoot.CreateLocal(
+                    HeaderMetadata.Title,
+                    new LocalNavigationTarget
+                    {
+                        RouteKey = CharacterNavigationRouteKeys.Root,
+                    }),
             };
         }
 

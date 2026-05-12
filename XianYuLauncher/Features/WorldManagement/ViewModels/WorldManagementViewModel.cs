@@ -299,13 +299,11 @@ public partial class WorldManagementViewModel : ObservableRecipient, IPageHeader
 
         HeaderMetadata.BreadcrumbItems = new ObservableCollection<NavigationBreadcrumbItem>
         {
-            new()
+            (_navigationParameter?.BreadcrumbRoot ?? new BreadcrumbNavigationRoot
             {
-                DisplayText = string.IsNullOrWhiteSpace(_navigationParameter?.BreadcrumbRootLabel)
-                    ? (string.IsNullOrWhiteSpace(CurrentVersionId) ? UnknownText : CurrentVersionId)
-                    : _navigationParameter.BreadcrumbRootLabel,
-                LocalNavigationTarget = _navigationParameter?.BreadcrumbRootTarget,
-            },
+                Label = string.IsNullOrWhiteSpace(CurrentVersionId) ? UnknownText : CurrentVersionId,
+                LocalTarget = _navigationParameter?.BreadcrumbRootTarget,
+            }).ToBreadcrumbItem(),
             new()
             {
                 DisplayText = GetHeaderTitle(),

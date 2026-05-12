@@ -37,9 +37,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels
         private readonly IUiDispatcher _uiDispatcher;
         private readonly IAgentSettingsActionProposalService _settingsActionProposalService;
         private readonly ErrorAnalysisSessionState _sessionState;
-        private string _globalBreadcrumbRootLabel = string.Empty;
-        private string? _globalBreadcrumbRootPageKey;
-        private object? _globalBreadcrumbRootNavigationParameter;
+        private BreadcrumbNavigationRoot _globalBreadcrumbRoot = BreadcrumbNavigationRoot.Empty;
 
         private static readonly IReadOnlyDictionary<string, string> SupportedImageContentTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -57,10 +55,12 @@ namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels
             ? PageHeaderPresentationMode.ProminentBreadcrumb
             : PageHeaderPresentationMode.Standard;
 
-        public bool HasGlobalBreadcrumbRoot => !string.IsNullOrWhiteSpace(_globalBreadcrumbRootLabel)
-            && !string.IsNullOrWhiteSpace(_globalBreadcrumbRootPageKey);
+        public bool HasGlobalBreadcrumbRoot => _globalBreadcrumbRoot.HasLabel
+            && _globalBreadcrumbRoot.HasGlobalNavigationTarget;
 
-        public string? GlobalBreadcrumbRootPageKey => _globalBreadcrumbRootPageKey;
+        public BreadcrumbNavigationRoot GlobalBreadcrumbRoot => _globalBreadcrumbRoot;
+
+        public string? GlobalBreadcrumbRootPageKey => _globalBreadcrumbRoot.PageKey;
 
         public string FullLog
         {
@@ -128,9 +128,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels
 
         public void ApplyNavigationContext(ErrorAnalysisNavigationParameter? navigationParameter)
         {
-            _globalBreadcrumbRootLabel = navigationParameter?.BreadcrumbRootLabel ?? string.Empty;
-            _globalBreadcrumbRootPageKey = navigationParameter?.BreadcrumbRootPageKey;
-            _globalBreadcrumbRootNavigationParameter = navigationParameter?.BreadcrumbRootNavigationParameter;
+            _globalBreadcrumbRoot = navigationParameter?.BreadcrumbRoot ?? BreadcrumbNavigationRoot.Empty;
 
             HeaderMetadata.Title = "ErrorAnalysisPage_HeaderTitle".GetLocalized();
             HeaderMetadata.Subtitle = "ErrorAnalysisPage_HeaderSubtitle".GetLocalized();
@@ -139,12 +137,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels
             if (navigationParameter?.HasBreadcrumbRoot == true)
             {
                 HeaderMetadata.ShowBreadcrumb = true;
-                HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
-                {
-                    DisplayText = navigationParameter.BreadcrumbRootLabel,
-                    PageKey = navigationParameter.BreadcrumbRootPageKey,
-                    NavigationParameter = navigationParameter.BreadcrumbRootNavigationParameter,
-                });
+                HeaderMetadata.BreadcrumbItems.Add(navigationParameter.BreadcrumbRoot.ToBreadcrumbItem());
                 HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
                 {
                     DisplayText = HeaderMetadata.Title,

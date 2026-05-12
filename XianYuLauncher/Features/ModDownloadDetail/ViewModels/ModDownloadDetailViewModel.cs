@@ -919,22 +919,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
 
             if (_navigationParameter.HasBreadcrumbRoot)
             {
-                var rootBreadcrumbItem = new NavigationBreadcrumbItem
-                {
-                    DisplayText = _navigationParameter.BreadcrumbRootLabel,
-                };
-
-                if (_navigationParameter.BreadcrumbRootTarget?.HasTarget == true)
-                {
-                    rootBreadcrumbItem.LocalNavigationTarget = _navigationParameter.BreadcrumbRootTarget;
-                }
-                else
-                {
-                    rootBreadcrumbItem.PageKey = _navigationParameter.BreadcrumbRootPageKey;
-                    rootBreadcrumbItem.NavigationParameter = _navigationParameter.BreadcrumbRootNavigationParameter;
-                }
-
-                HeaderMetadata.BreadcrumbItems.Add(rootBreadcrumbItem);
+                HeaderMetadata.BreadcrumbItems.Add(_navigationParameter.BreadcrumbRoot.ToBreadcrumbItem());
             }
 
             foreach (var breadcrumbSegment in _navigationParameter.LocalBreadcrumbTrail)

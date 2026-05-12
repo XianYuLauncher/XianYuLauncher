@@ -2,10 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
+using XianYuLauncher.Shared.Models;
+
 namespace XianYuLauncher.Features.ErrorAnalysis.Models;
 
 public sealed class ErrorAnalysisNavigationParameter
 {
+    private BreadcrumbNavigationRoot _breadcrumbRoot = BreadcrumbNavigationRoot.Empty;
+
     public static ErrorAnalysisNavigationParameter CreateCrashPayload(
         string launchCommand,
         IReadOnlyList<string>? gameOutput,
@@ -21,9 +25,10 @@ public sealed class ErrorAnalysisNavigationParameter
     {
         return new ErrorAnalysisNavigationParameter
         {
-            BreadcrumbRootLabel = RequireNonEmpty(breadcrumbRootLabel, nameof(breadcrumbRootLabel)),
-            BreadcrumbRootPageKey = RequireNonEmpty(breadcrumbRootPageKey, nameof(breadcrumbRootPageKey)),
-            BreadcrumbRootNavigationParameter = breadcrumbRootNavigationParameter,
+            BreadcrumbRoot = BreadcrumbNavigationRoot.CreateGlobal(
+                breadcrumbRootLabel,
+                breadcrumbRootPageKey,
+                breadcrumbRootNavigationParameter),
         };
     }
 
@@ -33,14 +38,32 @@ public sealed class ErrorAnalysisNavigationParameter
 
     public IReadOnlyList<string> GameError { get; init; } = Array.Empty<string>();
 
-    public string BreadcrumbRootLabel { get; init; } = string.Empty;
+    public BreadcrumbNavigationRoot BreadcrumbRoot
+    {
+        get => _breadcrumbRoot;
+        init => _breadcrumbRoot = value ?? BreadcrumbNavigationRoot.Empty;
+    }
 
-    public string? BreadcrumbRootPageKey { get; init; }
+    public string BreadcrumbRootLabel
+    {
+        get => _breadcrumbRoot.Label;
+        init => _breadcrumbRoot = _breadcrumbRoot with { Label = value ?? string.Empty };
+    }
 
-    public object? BreadcrumbRootNavigationParameter { get; init; }
+    public string? BreadcrumbRootPageKey
+    {
+        get => _breadcrumbRoot.PageKey;
+        init => _breadcrumbRoot = _breadcrumbRoot with { PageKey = value };
+    }
 
-    public bool HasBreadcrumbRoot => !string.IsNullOrWhiteSpace(BreadcrumbRootLabel)
-        && !string.IsNullOrWhiteSpace(BreadcrumbRootPageKey);
+    public object? BreadcrumbRootNavigationParameter
+    {
+        get => _breadcrumbRoot.NavigationParameter;
+        init => _breadcrumbRoot = _breadcrumbRoot with { NavigationParameter = value };
+    }
+
+    public bool HasBreadcrumbRoot => _breadcrumbRoot.HasLabel
+        && _breadcrumbRoot.HasGlobalNavigationTarget;
 
     public bool HasLogPayload => !string.IsNullOrWhiteSpace(LaunchCommand)
         || GameOutput.Count > 0
@@ -56,20 +79,8 @@ public sealed class ErrorAnalysisNavigationParameter
             LaunchCommand = launchCommand ?? string.Empty,
             GameOutput = CloneLogs(gameOutput),
             GameError = CloneLogs(gameError),
-            BreadcrumbRootLabel = BreadcrumbRootLabel,
-            BreadcrumbRootPageKey = BreadcrumbRootPageKey,
-            BreadcrumbRootNavigationParameter = BreadcrumbRootNavigationParameter,
+            BreadcrumbRoot = BreadcrumbRoot,
         };
-    }
-
-    private static string RequireNonEmpty(string? value, string paramName)
-    {
-        if (!string.IsNullOrWhiteSpace(value))
-        {
-            return value;
-        }
-
-        throw new ArgumentException("导航参数缺少必需的非空字符串值。", paramName);
     }
 
     private static IReadOnlyList<string> CloneLogs(IReadOnlyList<string>? logs)

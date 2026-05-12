@@ -157,11 +157,12 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             Port = port,
             IsGuest = isGuest,
             Url = url,
-            BreadcrumbRootLabel = HeaderMetadata.Title,
-            BreadcrumbRootTarget = new LocalNavigationTarget
-            {
-                RouteKey = MultiplayerNavigationRouteKeys.Root,
-            },
+            BreadcrumbRoot = BreadcrumbNavigationRoot.CreateLocal(
+                HeaderMetadata.Title,
+                new LocalNavigationTarget
+                {
+                    RouteKey = MultiplayerNavigationRouteKeys.Root,
+                }),
         };
     }
 

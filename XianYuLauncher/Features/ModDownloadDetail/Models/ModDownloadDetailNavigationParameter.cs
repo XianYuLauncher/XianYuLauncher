@@ -8,6 +8,8 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Models;
 
 public sealed class ModDownloadDetailNavigationParameter
 {
+    private BreadcrumbNavigationRoot _breadcrumbRoot = BreadcrumbNavigationRoot.Empty;
+
     public static ModDownloadDetailNavigationParameter CreateWithGlobalBreadcrumbRoot(
         ModrinthProject project,
         string breadcrumbRootLabel,
@@ -27,9 +29,7 @@ public sealed class ModDownloadDetailNavigationParameter
             Project = project,
             DisplayTitleHint = project.DisplayTitle ?? string.Empty,
             SourceType = sourceType,
-            BreadcrumbRootLabel = rootLabel,
-            BreadcrumbRootPageKey = rootPageKey,
-            BreadcrumbRootNavigationParameter = breadcrumbRootNavigationParameter,
+            BreadcrumbRoot = BreadcrumbNavigationRoot.CreateGlobal(rootLabel, rootPageKey, breadcrumbRootNavigationParameter),
         };
     }
 
@@ -41,18 +41,39 @@ public sealed class ModDownloadDetailNavigationParameter
 
     public string? SourceType { get; init; }
 
-    public string BreadcrumbRootLabel { get; init; } = string.Empty;
+    public BreadcrumbNavigationRoot BreadcrumbRoot
+    {
+        get => _breadcrumbRoot;
+        init => _breadcrumbRoot = value ?? BreadcrumbNavigationRoot.Empty;
+    }
 
-    public string? BreadcrumbRootPageKey { get; init; }
+    public string BreadcrumbRootLabel
+    {
+        get => _breadcrumbRoot.Label;
+        init => _breadcrumbRoot = _breadcrumbRoot with { Label = value ?? string.Empty };
+    }
 
-    public object? BreadcrumbRootNavigationParameter { get; init; }
+    public string? BreadcrumbRootPageKey
+    {
+        get => _breadcrumbRoot.PageKey;
+        init => _breadcrumbRoot = _breadcrumbRoot with { PageKey = value };
+    }
 
-    public LocalNavigationTarget? BreadcrumbRootTarget { get; init; }
+    public object? BreadcrumbRootNavigationParameter
+    {
+        get => _breadcrumbRoot.NavigationParameter;
+        init => _breadcrumbRoot = _breadcrumbRoot with { NavigationParameter = value };
+    }
+
+    public LocalNavigationTarget? BreadcrumbRootTarget
+    {
+        get => _breadcrumbRoot.LocalTarget;
+        init => _breadcrumbRoot = _breadcrumbRoot with { LocalTarget = value };
+    }
 
     public IReadOnlyList<ModDownloadDetailBreadcrumbSegment> LocalBreadcrumbTrail { get; init; } = Array.Empty<ModDownloadDetailBreadcrumbSegment>();
 
-    public bool HasBreadcrumbRoot => !string.IsNullOrWhiteSpace(BreadcrumbRootLabel)
-        && ((BreadcrumbRootTarget?.HasTarget ?? false) || !string.IsNullOrWhiteSpace(BreadcrumbRootPageKey));
+    public bool HasBreadcrumbRoot => _breadcrumbRoot.HasBreadcrumb;
 
     private static string RequireNonEmpty(string? value, string paramName)
     {
@@ -72,10 +93,7 @@ public sealed class ModDownloadDetailNavigationParameter
             Project = Project,
             DisplayTitleHint = DisplayTitleHint,
             SourceType = SourceType,
-            BreadcrumbRootLabel = BreadcrumbRootLabel,
-            BreadcrumbRootPageKey = BreadcrumbRootPageKey,
-            BreadcrumbRootNavigationParameter = BreadcrumbRootNavigationParameter,
-            BreadcrumbRootTarget = BreadcrumbRootTarget,
+            BreadcrumbRoot = BreadcrumbRoot,
             LocalBreadcrumbTrail = LocalBreadcrumbTrail,
         };
     }
@@ -97,10 +115,7 @@ public sealed class ModDownloadDetailNavigationParameter
             ProjectId = nextProjectId,
             DisplayTitleHint = nextDisplayTitle ?? string.Empty,
             SourceType = SourceType,
-            BreadcrumbRootLabel = BreadcrumbRootLabel,
-            BreadcrumbRootPageKey = BreadcrumbRootPageKey,
-            BreadcrumbRootNavigationParameter = BreadcrumbRootNavigationParameter,
-            BreadcrumbRootTarget = BreadcrumbRootTarget,
+            BreadcrumbRoot = BreadcrumbRoot,
             LocalBreadcrumbTrail = breadcrumbTrail,
         };
     }

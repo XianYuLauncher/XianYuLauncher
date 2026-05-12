@@ -13,7 +13,6 @@ using Serilog;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
-using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Features.ModDownloadDetail.Models;
 using XianYuLauncher.Features.ResourceDownload.ViewModels;
 using XianYuLauncher.Helpers;
@@ -29,16 +28,25 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
         private const string HostedDetailBreadcrumbItemTemplateKey = "HostedDetailBreadcrumbItemTemplate";
         private readonly INavigationService _navigationService;
         private bool _isInnerContentFrameInitialized;
-        private IHostedLocalPage? _activeHostedLocalPage;
+        private readonly HostedLocalPageCoordinator _hostedLocalPageCoordinator;
+        private readonly HostedLocalNavigationCoordinator _hostedLocalNavigationCoordinator;
 
         public event EventHandler? LocalNavigationStateChanged;
 
-        public bool CanGoBackLocally => _activeHostedLocalPage != null && ModDownloadDetailInnerContentFrame.CanGoBack;
+        public bool CanGoBackLocally => _hostedLocalNavigationCoordinator.CanGoBackLocally;
 
         public ModDownloadDetailPage()
         {
             _navigationService = App.GetService<INavigationService>();
             InitializeComponent();
+            _hostedLocalPageCoordinator = new HostedLocalPageCoordinator(
+                ApplyHostedPageHeaderState,
+                HostedLocalPage_CloseRequested,
+                OnHostedLocalPageAttached,
+                OnHostedLocalPageDetaching);
+            _hostedLocalNavigationCoordinator = new HostedLocalNavigationCoordinator(
+                ModDownloadDetailInnerContentFrame,
+                () => _hostedLocalPageCoordinator.ActiveHostedLocalPage);
             EnsureInnerContentFrame();
         }
 
@@ -55,7 +63,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
 
         public bool TryGoBackLocally()
         {
-            if (!TryGetPreviousLocalBreadcrumbItem(out var previousBreadcrumbItem))
+            if (!_hostedLocalNavigationCoordinator.TryGetPreviousLocalBreadcrumbItem(out var previousBreadcrumbItem))
             {
                 return false;
             }
@@ -65,17 +73,17 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
 
         public bool CanNavigateLocally(NavigationBreadcrumbItem breadcrumbItem)
         {
-            return TryGetLocalNavigationBackPlan(breadcrumbItem, out _);
+            return _hostedLocalNavigationCoordinator.TryGetBackPlan(breadcrumbItem, out _);
         }
 
         public bool TryNavigateLocally(NavigationBreadcrumbItem breadcrumbItem, bool useReturnTransition = false)
         {
-            if (!TryGetLocalNavigationBackPlan(breadcrumbItem, out var backSteps))
+            if (!_hostedLocalNavigationCoordinator.TryGetBackPlan(breadcrumbItem, out var backPlan))
             {
                 return false;
             }
 
-            return NavigateBackLocally(backSteps, useReturnTransition);
+            return NavigateBackLocally(backPlan.BackSteps, useReturnTransition);
         }
 
         public void ResetLocalNavigation(bool useReturnTransition = false)
@@ -199,36 +207,29 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
                 return;
             }
 
-            _activeHostedLocalPage = hostedLocalPage;
-            hostedLocalPage.ResetEmbeddedVisualState();
-            hostedLocalPage.CloseRequested += HostedLocalPage_CloseRequested;
-            hostedLocalPage.HeaderSource.HeaderMetadata.PropertyChanged += ActiveHostedHeaderMetadata_PropertyChanged;
-
-            if (hostedLocalPage is ModDownloadDetailContentPage detailContentPage)
-            {
-                detailContentPage.DetailNavigationRequested += DetailContentPage_DetailNavigationRequested;
-            }
-
-            ApplyHostedPageHeaderState(hostedLocalPage.HeaderSource);
+            _hostedLocalPageCoordinator.Attach(hostedLocalPage);
             NotifyLocalNavigationStateChanged();
         }
 
         private void DetachHostedLocalPage()
         {
-            if (_activeHostedLocalPage == null)
+            _hostedLocalPageCoordinator.Detach();
+        }
+
+        private void OnHostedLocalPageAttached(IHostedLocalPage hostedLocalPage)
+        {
+            if (hostedLocalPage is ModDownloadDetailContentPage detailContentPage)
             {
-                return;
+                detailContentPage.DetailNavigationRequested += DetailContentPage_DetailNavigationRequested;
             }
+        }
 
-            _activeHostedLocalPage.CloseRequested -= HostedLocalPage_CloseRequested;
-            _activeHostedLocalPage.HeaderSource.HeaderMetadata.PropertyChanged -= ActiveHostedHeaderMetadata_PropertyChanged;
-
-            if (_activeHostedLocalPage is ModDownloadDetailContentPage detailContentPage)
+        private void OnHostedLocalPageDetaching(IHostedLocalPage hostedLocalPage)
+        {
+            if (hostedLocalPage is ModDownloadDetailContentPage detailContentPage)
             {
                 detailContentPage.DetailNavigationRequested -= DetailContentPage_DetailNavigationRequested;
             }
-
-            _activeHostedLocalPage = null;
         }
 
         private void DetailContentPage_DetailNavigationRequested(object? sender, ModDownloadDetailNavigationRequestedEventArgs e)
@@ -254,16 +255,6 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
             }
         }
 
-        private void ActiveHostedHeaderMetadata_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            if (!TryGetActiveHostedLocalPage(out var hostedLocalPage))
-            {
-                return;
-            }
-
-            ApplyHostedPageHeaderState(hostedLocalPage.HeaderSource);
-        }
-
         private void ApplyHostedPageHeaderState(IPageHeaderAware pageHeaderAware)
         {
             ModDownloadDetailPageHeader.Title = pageHeaderAware.HeaderMetadata.Title;
@@ -284,27 +275,16 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
 
         private void ApplyHeaderPresentationMode(PageHeaderPresentationMode headerPresentationMode)
         {
-            switch (headerPresentationMode)
-            {
-                case PageHeaderPresentationMode.ProminentBreadcrumb:
-                    ModDownloadDetailPageHeader.ShowPrimaryHeading = false;
-                    ModDownloadDetailPageHeader.BreadcrumbFontSize = 28;
-                    ModDownloadDetailPageHeader.BreadcrumbMargin = new Thickness(-2, -11, 0, 12);
-                    ModDownloadDetailPageHeader.BreadcrumbItemTemplate = Resources[HostedDetailBreadcrumbItemTemplateKey] as DataTemplate;
-                    return;
-            }
-
-            ModDownloadDetailPageHeader.ShowPrimaryHeading = true;
-            ModDownloadDetailPageHeader.BreadcrumbFontSize = 15;
-            ModDownloadDetailPageHeader.BreadcrumbMargin = new Thickness(0, 0, 0, 12);
-            ModDownloadDetailPageHeader.BreadcrumbItemTemplate = null;
+            ModDownloadDetailPageHeader.ApplyPresentationMode(
+                headerPresentationMode,
+                Resources[HostedDetailBreadcrumbItemTemplateKey] as DataTemplate);
         }
 
         private void ResetInnerContentFrameVisualState()
         {
             ModDownloadDetailInnerContentFrame.Opacity = 1;
 
-            if (!TryGetActiveHostedLocalPage(out var hostedLocalPage))
+            if (!_hostedLocalPageCoordinator.TryGetActiveHostedLocalPage(out var hostedLocalPage))
             {
                 return;
             }
@@ -315,12 +295,6 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
         private void NotifyLocalNavigationStateChanged()
         {
             LocalNavigationStateChanged?.Invoke(this, EventArgs.Empty);
-        }
-
-        private bool TryGetActiveHostedLocalPage([NotNullWhen(true)] out IHostedLocalPage? hostedLocalPage)
-        {
-            hostedLocalPage = _activeHostedLocalPage;
-            return hostedLocalPage is not null;
         }
 
         private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
@@ -349,17 +323,21 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
 
         private bool ShouldBypassLocalNavigationForGlobalRoot(NavigationBreadcrumbItem breadcrumbItem)
         {
-            return breadcrumbItem.HasGlobalNavigationTarget
-                && _navigationService.Frame?.CanGoBack == true
-                && TryGetCurrentBreadcrumbItems(out var breadcrumbItems)
-                && breadcrumbItems.Count > 0
-                && ReferenceEquals(breadcrumbItem, breadcrumbItems[0])
-                && !ReferenceEquals(breadcrumbItem, breadcrumbItems[^1]);
+            if (!_hostedLocalNavigationCoordinator.TryGetCurrentBreadcrumbItems(out var breadcrumbItems) || breadcrumbItems.Count == 0)
+            {
+                return false;
+            }
+
+            return BreadcrumbNavigationHelper.ShouldGoBackToGlobalRoot(
+                breadcrumbItem,
+                _navigationService.Frame?.CanGoBack == true,
+                firstBreadcrumbItem: breadcrumbItems[0],
+                currentBreadcrumbItem: breadcrumbItems[^1]);
         }
 
         private bool TryReturnToLocalRoot(bool useReturnTransition)
         {
-            if (TryGetLocalRootBreadcrumbItem(out var rootBreadcrumbItem))
+            if (_hostedLocalNavigationCoordinator.TryGetLocalRootBreadcrumbItem(out var rootBreadcrumbItem))
             {
                 return TryNavigateLocally(rootBreadcrumbItem, useReturnTransition);
             }
@@ -370,55 +348,6 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
             }
 
             return NavigateBackLocally(ModDownloadDetailInnerContentFrame.BackStack.Count, useReturnTransition);
-        }
-
-        private bool TryGetLocalRootBreadcrumbItem([NotNullWhen(true)] out NavigationBreadcrumbItem? rootBreadcrumbItem)
-        {
-            if (!TryGetCurrentBreadcrumbItems(out var breadcrumbItems))
-            {
-                rootBreadcrumbItem = null;
-                return false;
-            }
-
-            rootBreadcrumbItem = LocalBreadcrumbNavigationPlanner.FindLocalRootBreadcrumb(breadcrumbItems);
-            return rootBreadcrumbItem is not null;
-        }
-
-        private bool TryGetPreviousLocalBreadcrumbItem([NotNullWhen(true)] out NavigationBreadcrumbItem? previousBreadcrumbItem)
-        {
-            if (!TryGetCurrentBreadcrumbItems(out var breadcrumbItems))
-            {
-                previousBreadcrumbItem = null;
-                return false;
-            }
-
-            previousBreadcrumbItem = LocalBreadcrumbNavigationPlanner.FindPreviousLocalBreadcrumb(breadcrumbItems);
-            return previousBreadcrumbItem is not null;
-        }
-
-        private bool TryGetLocalNavigationBackPlan(NavigationBreadcrumbItem breadcrumbItem, out int backSteps)
-        {
-            backSteps = 0;
-
-            if (!breadcrumbItem.HasLocalNavigationTarget || !TryGetCurrentBreadcrumbItems(out var breadcrumbItems))
-            {
-                return false;
-            }
-
-            return LocalBreadcrumbNavigationPlanner.TryCreateBackPlan(breadcrumbItems, breadcrumbItem, out backSteps, out _)
-                && ModDownloadDetailInnerContentFrame.CanGoBack;
-        }
-
-        private bool TryGetCurrentBreadcrumbItems([NotNullWhen(true)] out IReadOnlyList<NavigationBreadcrumbItem>? breadcrumbItems)
-        {
-            if (!TryGetActiveHostedLocalPage(out var hostedLocalPage))
-            {
-                breadcrumbItems = null;
-                return false;
-            }
-
-            breadcrumbItems = hostedLocalPage.HeaderSource.HeaderMetadata.BreadcrumbItems;
-            return breadcrumbItems.Count > 0;
         }
 
         private bool NavigateBackLocally(int backSteps, bool useReturnTransition)
@@ -549,9 +478,10 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
                 Project = project,
                 DisplayTitleHint = project?.DisplayTitle ?? string.Empty,
                 SourceType = sourceType,
-                BreadcrumbRootLabel = rootLabel,
-                BreadcrumbRootPageKey = rootPageKey,
-                BreadcrumbRootNavigationParameter = rootNavigationParameter,
+                BreadcrumbRoot = BreadcrumbNavigationRoot.CreateGlobal(
+                    rootLabel,
+                    rootPageKey!,
+                    rootNavigationParameter),
             };
         }
 

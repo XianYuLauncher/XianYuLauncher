@@ -13,6 +13,7 @@ using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
+using XianYuLauncher.Helpers;
 using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Views
@@ -190,20 +191,9 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Views
 
         private void ApplyHeaderPresentationMode(PageHeaderPresentationMode headerPresentationMode)
         {
-            switch (headerPresentationMode)
-            {
-                case PageHeaderPresentationMode.ProminentBreadcrumb:
-                    ErrorAnalysisPageHeader.ShowPrimaryHeading = false;
-                    ErrorAnalysisPageHeader.BreadcrumbFontSize = 28;
-                    ErrorAnalysisPageHeader.BreadcrumbMargin = new Thickness(-2, -11, 0, 12);
-                    ErrorAnalysisPageHeader.BreadcrumbItemTemplate = Resources[HostedDetailReadOnlyBreadcrumbItemTemplateKey] as DataTemplate;
-                    return;
-            }
-
-            ErrorAnalysisPageHeader.ShowPrimaryHeading = true;
-            ErrorAnalysisPageHeader.BreadcrumbFontSize = 15;
-            ErrorAnalysisPageHeader.BreadcrumbMargin = new Thickness(0, 0, 0, 12);
-            ErrorAnalysisPageHeader.BreadcrumbItemTemplate = null;
+            ErrorAnalysisPageHeader.ApplyPresentationMode(
+                headerPresentationMode,
+                Resources[HostedDetailReadOnlyBreadcrumbItemTemplateKey] as DataTemplate);
         }
 
         private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
@@ -227,10 +217,10 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Views
 
         private bool ShouldGoBackToGlobalRoot(NavigationBreadcrumbItem breadcrumbItem)
         {
-            return breadcrumbItem.HasGlobalNavigationTarget
-                && _navigationService.CanGoBack
-                && ViewModel.HasGlobalBreadcrumbRoot
-                && string.Equals(breadcrumbItem.PageKey, ViewModel.GlobalBreadcrumbRootPageKey, StringComparison.Ordinal);
+            return BreadcrumbNavigationHelper.ShouldGoBackToGlobalRoot(
+                breadcrumbItem,
+                _navigationService.CanGoBack,
+                expectedGlobalRoot: ViewModel.HasGlobalBreadcrumbRoot ? ViewModel.GlobalBreadcrumbRoot : null);
         }
 
         /// <summary>

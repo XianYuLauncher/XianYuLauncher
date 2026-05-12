@@ -4,6 +4,8 @@ namespace XianYuLauncher.Features.Multiplayer.Models;
 
 public sealed class MultiplayerLobbyNavigationParameter
 {
+    private BreadcrumbNavigationRoot _breadcrumbRoot = BreadcrumbNavigationRoot.Empty;
+
     public string RoomId { get; init; } = string.Empty;
 
     public string? Port { get; init; }
@@ -12,12 +14,26 @@ public sealed class MultiplayerLobbyNavigationParameter
 
     public string Url { get; init; } = string.Empty;
 
-    public string BreadcrumbRootLabel { get; init; } = string.Empty;
+    public BreadcrumbNavigationRoot BreadcrumbRoot
+    {
+        get => _breadcrumbRoot;
+        init => _breadcrumbRoot = value ?? BreadcrumbNavigationRoot.Empty;
+    }
 
-    public LocalNavigationTarget? BreadcrumbRootTarget { get; init; }
+    public string BreadcrumbRootLabel
+    {
+        get => _breadcrumbRoot.Label;
+        init => _breadcrumbRoot = _breadcrumbRoot with { Label = value ?? string.Empty };
+    }
 
-    public bool HasBreadcrumbRoot => !string.IsNullOrWhiteSpace(BreadcrumbRootLabel)
-        && (BreadcrumbRootTarget?.HasTarget ?? false);
+    public LocalNavigationTarget? BreadcrumbRootTarget
+    {
+        get => _breadcrumbRoot.LocalTarget;
+        init => _breadcrumbRoot = _breadcrumbRoot with { LocalTarget = value };
+    }
+
+    public bool HasBreadcrumbRoot => _breadcrumbRoot.HasLabel
+        && _breadcrumbRoot.HasLocalNavigationTarget;
 }
 
 public static class MultiplayerNavigationRouteKeys

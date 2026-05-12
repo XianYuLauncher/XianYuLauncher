@@ -21,6 +21,7 @@ using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.News.Models;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
+using XianYuLauncher.Shared.Models;
 using Serilog;
 using Newtonsoft.Json.Linq;
 using XianYuLauncher.Features.News.ViewModels;
@@ -308,8 +309,9 @@ public sealed partial class LaunchPage : Page
             typeof(NewsListViewModel).FullName!,
             new NewsListNavigationParameter
             {
-                BreadcrumbRootLabel = "LaunchPage_BreadcrumbRootTitle".GetLocalized(),
-                BreadcrumbRootPageKey = typeof(LaunchViewModel).FullName!,
+                BreadcrumbRoot = BreadcrumbNavigationRoot.CreateGlobal(
+                    "LaunchPage_BreadcrumbRootTitle".GetLocalized(),
+                    typeof(LaunchViewModel).FullName!),
             },
             transitionInfo: new DrillInNavigationTransitionInfo());
     }

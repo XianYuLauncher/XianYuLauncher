@@ -11,10 +11,10 @@ using Microsoft.UI.Xaml.Navigation;
 
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
-using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.News.Models;
 using XianYuLauncher.Features.News.ViewModels;
+using XianYuLauncher.Helpers;
 using XianYuLauncher.Services;
 using XianYuLauncher.Shared.Models;
 
@@ -26,14 +26,15 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
 
     private readonly INavigationService _navigationService;
     private bool _isInnerContentFrameInitialized;
-    private IHostedLocalPage? _activeHostedLocalPage;
+    private readonly HostedLocalPageCoordinator _hostedLocalPageCoordinator;
+    private readonly HostedLocalNavigationCoordinator _hostedLocalNavigationCoordinator;
     private NewsListRootPage? _activeRootPage;
 
     public NewsListViewModel ViewModel { get; }
 
     public event EventHandler? LocalNavigationStateChanged;
 
-    public bool CanGoBackLocally => _activeHostedLocalPage != null && NewsListInnerContentFrame.CanGoBack;
+    public bool CanGoBackLocally => _hostedLocalNavigationCoordinator.CanGoBackLocally;
 
     public NewsListPage()
     {
@@ -41,6 +42,10 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
         ViewModel = App.GetService<NewsListViewModel>();
         ViewModel.NewsDetailRequested += ViewModel_NewsDetailRequested;
         InitializeComponent();
+        _hostedLocalPageCoordinator = new HostedLocalPageCoordinator(ApplyHostedPageHeaderState, HostedLocalPage_CloseRequested);
+        _hostedLocalNavigationCoordinator = new HostedLocalNavigationCoordinator(
+            NewsListInnerContentFrame,
+            () => _hostedLocalPageCoordinator.ActiveHostedLocalPage);
         EnsureInnerContentFrame();
         ShowRootPageState();
     }
@@ -115,17 +120,13 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
                 AttachRootPage(rootPage);
                 ShowRootPageState();
                 return;
-            case IHostedLocalPage hostedLocalPage when !ReferenceEquals(_activeHostedLocalPage, hostedLocalPage):
+            case IHostedLocalPage hostedLocalPage when !ReferenceEquals(_hostedLocalPageCoordinator.ActiveHostedLocalPage, hostedLocalPage):
                 DetachRootPage();
                 DetachHostedLocalPage();
-                _activeHostedLocalPage = hostedLocalPage;
-                hostedLocalPage.ResetEmbeddedVisualState();
-                hostedLocalPage.CloseRequested += HostedLocalPage_CloseRequested;
-                hostedLocalPage.HeaderSource.HeaderMetadata.PropertyChanged += ActiveHostedHeaderMetadata_PropertyChanged;
-                ApplyHostedPageHeaderState(hostedLocalPage.HeaderSource);
+                _hostedLocalPageCoordinator.Attach(hostedLocalPage);
                 NotifyLocalNavigationStateChanged();
                 return;
-            case null when _activeRootPage is not null || _activeHostedLocalPage is not null:
+            case null when _activeRootPage is not null || _hostedLocalPageCoordinator.ActiveHostedLocalPage is not null:
                 DetachHostedLocalPage();
                 DetachRootPage();
                 NotifyLocalNavigationStateChanged();
@@ -137,7 +138,7 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
 
     public bool TryGoBackLocally()
     {
-        if (!TryGetPreviousLocalBreadcrumbItem(out var previousBreadcrumbItem))
+        if (!_hostedLocalNavigationCoordinator.TryGetPreviousLocalBreadcrumbItem(out var previousBreadcrumbItem))
         {
             return false;
         }
@@ -147,17 +148,17 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
 
     public bool CanNavigateLocally(NavigationBreadcrumbItem breadcrumbItem)
     {
-        return TryGetLocalNavigationBackPlan(breadcrumbItem, out _);
+        return _hostedLocalNavigationCoordinator.TryGetBackPlan(breadcrumbItem, out _);
     }
 
     public bool TryNavigateLocally(NavigationBreadcrumbItem breadcrumbItem, bool useReturnTransition = false)
     {
-        if (!TryGetLocalNavigationBackPlan(breadcrumbItem, out var backSteps))
+        if (!_hostedLocalNavigationCoordinator.TryGetBackPlan(breadcrumbItem, out var backPlan))
         {
             return false;
         }
 
-        return NavigateBackLocally(backSteps, useReturnTransition);
+        return NavigateBackLocally(backPlan.BackSteps, useReturnTransition);
     }
 
     public void ResetLocalNavigation(bool useReturnTransition = false)
@@ -212,11 +213,7 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
             return;
         }
 
-        _activeHostedLocalPage = hostedLocalPage;
-        hostedLocalPage.ResetEmbeddedVisualState();
-        hostedLocalPage.CloseRequested += HostedLocalPage_CloseRequested;
-        hostedLocalPage.HeaderSource.HeaderMetadata.PropertyChanged += ActiveHostedHeaderMetadata_PropertyChanged;
-        ApplyHostedPageHeaderState(hostedLocalPage.HeaderSource);
+        _hostedLocalPageCoordinator.Attach(hostedLocalPage);
         NotifyLocalNavigationStateChanged();
     }
 
@@ -234,37 +231,7 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
 
     private void DetachHostedLocalPage()
     {
-        if (_activeHostedLocalPage == null)
-        {
-            return;
-        }
-
-        _activeHostedLocalPage.CloseRequested -= HostedLocalPage_CloseRequested;
-        _activeHostedLocalPage.HeaderSource.HeaderMetadata.PropertyChanged -= ActiveHostedHeaderMetadata_PropertyChanged;
-        _activeHostedLocalPage = null;
-    }
-
-    private void HostedLocalPage_CloseRequested(object? sender, EventArgs e)
-    {
-        if (TryGoBackLocally())
-        {
-            return;
-        }
-
-        if (_navigationService.CanGoBack)
-        {
-            _navigationService.GoBack();
-        }
-    }
-
-    private void ActiveHostedHeaderMetadata_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (!TryGetActiveHostedLocalPage(out var hostedLocalPage))
-        {
-            return;
-        }
-
-        ApplyHostedPageHeaderState(hostedLocalPage.HeaderSource);
+        _hostedLocalPageCoordinator.Detach();
     }
 
     private void ShowRootPageState()
@@ -293,20 +260,9 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
 
     private void ApplyHeaderPresentationMode(PageHeaderPresentationMode headerPresentationMode)
     {
-        switch (headerPresentationMode)
-        {
-            case PageHeaderPresentationMode.ProminentBreadcrumb:
-                NewsListPageHeader.ShowPrimaryHeading = false;
-                NewsListPageHeader.BreadcrumbFontSize = 28;
-                NewsListPageHeader.BreadcrumbMargin = new Thickness(-2, -11, 0, 12);
-                NewsListPageHeader.BreadcrumbItemTemplate = Resources[HostedDetailReadOnlyBreadcrumbItemTemplateKey] as DataTemplate;
-                return;
-        }
-
-        NewsListPageHeader.ShowPrimaryHeading = true;
-        NewsListPageHeader.BreadcrumbFontSize = 15;
-        NewsListPageHeader.BreadcrumbMargin = new Thickness(0, 0, 0, 12);
-        NewsListPageHeader.BreadcrumbItemTemplate = null;
+        NewsListPageHeader.ApplyPresentationMode(
+            headerPresentationMode,
+            Resources[HostedDetailReadOnlyBreadcrumbItemTemplateKey] as DataTemplate);
     }
 
     private void ResetInnerContentFrameVisualState()
@@ -333,7 +289,7 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
             return;
         }
 
-        if (!TryGetActiveHostedLocalPage(out var hostedLocalPage))
+        if (!_hostedLocalPageCoordinator.TryGetActiveHostedLocalPage(out var hostedLocalPage))
         {
             return;
         }
@@ -344,12 +300,6 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
     private void NotifyLocalNavigationStateChanged()
     {
         LocalNavigationStateChanged?.Invoke(this, EventArgs.Empty);
-    }
-
-    private bool TryGetActiveHostedLocalPage([NotNullWhen(true)] out IHostedLocalPage? hostedLocalPage)
-    {
-        hostedLocalPage = _activeHostedLocalPage;
-        return hostedLocalPage is not null;
     }
 
     private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
@@ -378,15 +328,16 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
 
     private bool ShouldBypassLocalNavigationForGlobalRoot(NavigationBreadcrumbItem breadcrumbItem)
     {
-        return breadcrumbItem.HasGlobalNavigationTarget
-            && _navigationService.Frame?.CanGoBack == true
-            && string.Equals(breadcrumbItem.PageKey, ViewModel.GlobalBreadcrumbRootPageKey, StringComparison.Ordinal)
-            && !ReferenceEquals(breadcrumbItem, ViewModel.HeaderMetadata.BreadcrumbItems.Count > 0 ? ViewModel.HeaderMetadata.BreadcrumbItems[^1] : null);
+        return BreadcrumbNavigationHelper.ShouldGoBackToGlobalRoot(
+            breadcrumbItem,
+            _navigationService.Frame?.CanGoBack == true,
+            expectedGlobalRoot: ViewModel.GlobalBreadcrumbRoot,
+            currentBreadcrumbItem: ViewModel.HeaderMetadata.BreadcrumbItems.Count > 0 ? ViewModel.HeaderMetadata.BreadcrumbItems[^1] : null);
     }
 
     private bool TryReturnToLocalRoot(bool useReturnTransition)
     {
-        if (TryGetLocalRootBreadcrumbItem(out var rootBreadcrumbItem))
+        if (_hostedLocalNavigationCoordinator.TryGetLocalRootBreadcrumbItem(out var rootBreadcrumbItem))
         {
             return TryNavigateLocally(rootBreadcrumbItem, useReturnTransition);
         }
@@ -397,55 +348,6 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
         }
 
         return NavigateBackLocally(NewsListInnerContentFrame.BackStack.Count, useReturnTransition);
-    }
-
-    private bool TryGetLocalRootBreadcrumbItem([NotNullWhen(true)] out NavigationBreadcrumbItem? rootBreadcrumbItem)
-    {
-        if (!TryGetCurrentBreadcrumbItems(out var breadcrumbItems))
-        {
-            rootBreadcrumbItem = null;
-            return false;
-        }
-
-        rootBreadcrumbItem = LocalBreadcrumbNavigationPlanner.FindLocalRootBreadcrumb(breadcrumbItems);
-        return rootBreadcrumbItem is not null;
-    }
-
-    private bool TryGetPreviousLocalBreadcrumbItem([NotNullWhen(true)] out NavigationBreadcrumbItem? previousBreadcrumbItem)
-    {
-        if (!TryGetCurrentBreadcrumbItems(out var breadcrumbItems))
-        {
-            previousBreadcrumbItem = null;
-            return false;
-        }
-
-        previousBreadcrumbItem = LocalBreadcrumbNavigationPlanner.FindPreviousLocalBreadcrumb(breadcrumbItems);
-        return previousBreadcrumbItem is not null;
-    }
-
-    private bool TryGetLocalNavigationBackPlan(NavigationBreadcrumbItem breadcrumbItem, out int backSteps)
-    {
-        backSteps = 0;
-
-        if (!breadcrumbItem.HasLocalNavigationTarget || !TryGetCurrentBreadcrumbItems(out var breadcrumbItems))
-        {
-            return false;
-        }
-
-        return LocalBreadcrumbNavigationPlanner.TryCreateBackPlan(breadcrumbItems, breadcrumbItem, out backSteps, out _)
-            && NewsListInnerContentFrame.CanGoBack;
-    }
-
-    private bool TryGetCurrentBreadcrumbItems([NotNullWhen(true)] out IReadOnlyList<NavigationBreadcrumbItem>? breadcrumbItems)
-    {
-        if (!TryGetActiveHostedLocalPage(out var hostedLocalPage))
-        {
-            breadcrumbItems = null;
-            return false;
-        }
-
-        breadcrumbItems = hostedLocalPage.HeaderSource.HeaderMetadata.BreadcrumbItems;
-        return breadcrumbItems.Count > 0;
     }
 
     private bool NavigateBackLocally(int backSteps, bool useReturnTransition)
@@ -475,6 +377,19 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
 
         NotifyLocalNavigationStateChanged();
         return true;
+    }
+
+    private void HostedLocalPage_CloseRequested(object? sender, EventArgs e)
+    {
+        if (TryGoBackLocally())
+        {
+            return;
+        }
+
+        if (_navigationService.CanGoBack)
+        {
+            _navigationService.GoBack();
+        }
     }
 
     private bool TryNormalizeListNavigationParameter(object? parameter, [NotNullWhen(true)] out NewsListNavigationParameter? navigationParameter)
@@ -516,14 +431,13 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
         return new NewsDetailNavigationParameter
         {
             Entry = navigationParameter.Entry,
-            GlobalBreadcrumbRootLabel = navigationParameter.HasGlobalBreadcrumbRoot ? navigationParameter.GlobalBreadcrumbRootLabel : ViewModel.GlobalBreadcrumbRootLabel,
-            GlobalBreadcrumbRootPageKey = navigationParameter.HasGlobalBreadcrumbRoot ? navigationParameter.GlobalBreadcrumbRootPageKey : ViewModel.GlobalBreadcrumbRootPageKey,
-            GlobalBreadcrumbRootNavigationParameter = navigationParameter.HasGlobalBreadcrumbRoot ? navigationParameter.GlobalBreadcrumbRootNavigationParameter : ViewModel.GlobalBreadcrumbRootNavigationParameter,
-            BreadcrumbRootLabel = ViewModel.HeaderMetadata.Title,
-            BreadcrumbRootTarget = new LocalNavigationTarget
-            {
-                RouteKey = NewsNavigationRouteKeys.Root,
-            },
+            GlobalBreadcrumbRoot = navigationParameter.HasGlobalBreadcrumbRoot ? navigationParameter.GlobalBreadcrumbRoot : ViewModel.GlobalBreadcrumbRoot,
+            BreadcrumbRoot = BreadcrumbNavigationRoot.CreateLocal(
+                ViewModel.HeaderMetadata.Title,
+                new LocalNavigationTarget
+                {
+                    RouteKey = NewsNavigationRouteKeys.Root,
+                }),
         };
     }
 
@@ -541,9 +455,7 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
 
         return new NewsListNavigationParameter
         {
-            BreadcrumbRootLabel = navigationParameter.GlobalBreadcrumbRootLabel,
-            BreadcrumbRootPageKey = navigationParameter.GlobalBreadcrumbRootPageKey,
-            BreadcrumbRootNavigationParameter = navigationParameter.GlobalBreadcrumbRootNavigationParameter,
+            BreadcrumbRoot = navigationParameter.GlobalBreadcrumbRoot,
         };
     }
 }
