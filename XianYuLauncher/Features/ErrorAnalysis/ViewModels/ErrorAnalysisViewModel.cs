@@ -16,15 +16,17 @@ using Windows.ApplicationModel.DataTransfer;
 using Windows.Storage.Pickers;
 using Windows.Storage;
 using Windows.System;
+using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
 using XianYuLauncher.Helpers;
+using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels
 {
-    public partial class ErrorAnalysisViewModel : ObservableObject, IDisposable
+    public partial class ErrorAnalysisViewModel : ObservableObject, IDisposable, IPageHeaderAware
     {
         private readonly ILanguageSelectorService _languageSelectorService;
         private readonly IErrorAnalysisLogService _logService;
@@ -35,6 +37,9 @@ namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels
         private readonly IUiDispatcher _uiDispatcher;
         private readonly IAgentSettingsActionProposalService _settingsActionProposalService;
         private readonly ErrorAnalysisSessionState _sessionState;
+        private string _globalBreadcrumbRootLabel = string.Empty;
+        private string? _globalBreadcrumbRootPageKey;
+        private object? _globalBreadcrumbRootNavigationParameter;
 
         private static readonly IReadOnlyDictionary<string, string> SupportedImageContentTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -45,6 +50,17 @@ namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels
             [".gif"] = "image/gif",
             [".bmp"] = "image/bmp"
         };
+
+        public PageHeaderMetadata HeaderMetadata { get; } = new();
+
+        public PageHeaderPresentationMode HeaderPresentationMode => HeaderMetadata.ShowBreadcrumb
+            ? PageHeaderPresentationMode.ProminentBreadcrumb
+            : PageHeaderPresentationMode.Standard;
+
+        public bool HasGlobalBreadcrumbRoot => !string.IsNullOrWhiteSpace(_globalBreadcrumbRootLabel)
+            && !string.IsNullOrWhiteSpace(_globalBreadcrumbRootPageKey);
+
+        public string? GlobalBreadcrumbRootPageKey => _globalBreadcrumbRootPageKey;
 
         public string FullLog
         {
@@ -106,7 +122,38 @@ namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels
                 OnPropertyChanged(nameof(HasCurrentFixActionChanges));
                 OnPropertyChanged(nameof(ShouldShowCurrentFixActionSummary));
             };
+            ApplyNavigationContext(null);
             RefreshCurrentFixActionCard();
+        }
+
+        public void ApplyNavigationContext(ErrorAnalysisNavigationParameter? navigationParameter)
+        {
+            _globalBreadcrumbRootLabel = navigationParameter?.BreadcrumbRootLabel ?? string.Empty;
+            _globalBreadcrumbRootPageKey = navigationParameter?.BreadcrumbRootPageKey;
+            _globalBreadcrumbRootNavigationParameter = navigationParameter?.BreadcrumbRootNavigationParameter;
+
+            HeaderMetadata.Title = "ErrorAnalysisPage_HeaderTitle".GetLocalized();
+            HeaderMetadata.Subtitle = "ErrorAnalysisPage_HeaderSubtitle".GetLocalized();
+            HeaderMetadata.BreadcrumbItems.Clear();
+
+            if (navigationParameter?.HasBreadcrumbRoot == true)
+            {
+                HeaderMetadata.ShowBreadcrumb = true;
+                HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+                {
+                    DisplayText = navigationParameter.BreadcrumbRootLabel,
+                    PageKey = navigationParameter.BreadcrumbRootPageKey,
+                    NavigationParameter = navigationParameter.BreadcrumbRootNavigationParameter,
+                });
+                HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
+                {
+                    DisplayText = HeaderMetadata.Title,
+                    IsCurrent = true,
+                });
+                return;
+            }
+
+            HeaderMetadata.ShowBreadcrumb = false;
         }
 
         private void SessionState_PropertyChanged(object? sender, PropertyChangedEventArgs e)

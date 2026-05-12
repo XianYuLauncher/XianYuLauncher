@@ -27,6 +27,7 @@ using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Features.Accounts.ViewModels;
+using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
 using XianYuLauncher.Features.ModDownloadDetail.Models;
 using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
@@ -1091,6 +1092,21 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
             typeof(LaunchViewModel).FullName!);
     }
 
+    private void NavigateToErrorAnalysis()
+    {
+        _navigationService.NavigateTo(
+            typeof(ErrorAnalysisViewModel).FullName!,
+            CreateLaunchErrorAnalysisNavigationParameter(),
+            transitionInfo: new DrillInNavigationTransitionInfo());
+    }
+
+    private static ErrorAnalysisNavigationParameter CreateLaunchErrorAnalysisNavigationParameter()
+    {
+        return ErrorAnalysisNavigationParameter.CreateWithGlobalBreadcrumbRoot(
+            "LaunchPage_BreadcrumbRootTitle".GetLocalized(),
+            typeof(LaunchViewModel).FullName!);
+    }
+
     private static ImageSource? CreateNewsImageSource(string? tipImageUrl)
     {
         if (string.IsNullOrWhiteSpace(tipImageUrl) ||
@@ -1208,7 +1224,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     [RelayCommand]
     private void ViewLogs()
     {
-        _navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!);
+        NavigateToErrorAnalysis();
     }
 
     [RelayCommand]
@@ -1676,7 +1692,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
                 
                 if (_isRealTimeLogsEnabled)
                 {
-                    _navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!);
+                    NavigateToErrorAnalysis();
                 }
                 
                 // 记录游戏启动时间和版本（用于计算游戏时长）

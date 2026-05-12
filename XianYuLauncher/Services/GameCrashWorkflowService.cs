@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Services;
 using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
 using XianYuLauncher.Features.ErrorAnalysis.Views;
@@ -104,7 +105,12 @@ public sealed class GameCrashWorkflowService : IGameCrashWorkflowService
 
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
-            _navigationService.NavigateTo(typeof(ErrorAnalysisViewModel).FullName!, Tuple.Create(context.LaunchCommand, context.GameOutput, context.GameError));
+            _navigationService.NavigateTo(
+                typeof(ErrorAnalysisViewModel).FullName!,
+                ErrorAnalysisNavigationParameter.CreateCrashPayload(
+                    context.LaunchCommand,
+                    context.GameOutput,
+                    context.GameError));
         });
 
         if (action == CrashReportDialogAction.ExportLogs)
