@@ -475,6 +475,11 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
             return false;
         }
 
+        if (useReturnTransition)
+        {
+            EnableInnerFrameNavigationTransitions();
+        }
+
         ResetInnerContentFrameVisualState();
 
         if (destinationIsLocalRoot)

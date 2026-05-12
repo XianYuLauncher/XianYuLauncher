@@ -20,9 +20,9 @@ public sealed class ModLoaderSelectorNavigationParameter
         init => _breadcrumbRoot = _breadcrumbRoot with { Label = value ?? string.Empty };
     }
 
-    public LocalNavigationTarget BreadcrumbRootTarget
+    public LocalNavigationTarget? BreadcrumbRootTarget
     {
-        get => _breadcrumbRoot.LocalTarget ?? new LocalNavigationTarget();
+        get => _breadcrumbRoot.LocalTarget;
         init => _breadcrumbRoot = _breadcrumbRoot with { LocalTarget = value };
     }
 
