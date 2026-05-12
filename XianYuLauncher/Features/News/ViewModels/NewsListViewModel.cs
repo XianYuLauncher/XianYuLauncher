@@ -33,9 +33,7 @@ public partial class NewsListViewModel : ObservableRecipient, IPageHeaderAware
     private readonly IFileService _fileService;
     private readonly ResourceLoader _resourceLoader;
     private MinecraftNewsService? _newsService;
-    private string _globalBreadcrumbRootLabel = string.Empty;
-    private string? _globalBreadcrumbRootPageKey;
-    private object? _globalBreadcrumbRootNavigationParameter;
+    private BreadcrumbNavigationRoot _globalBreadcrumbRoot = BreadcrumbNavigationRoot.Empty;
     private PageHeaderPresentationMode _headerPresentationMode = PageHeaderPresentationMode.Standard;
 
     public event EventHandler<NewsDetailNavigationParameter>? NewsDetailRequested;
@@ -44,14 +42,16 @@ public partial class NewsListViewModel : ObservableRecipient, IPageHeaderAware
 
     public PageHeaderPresentationMode HeaderPresentationMode => _headerPresentationMode;
 
-    public bool HasGlobalBreadcrumbRoot => !string.IsNullOrWhiteSpace(_globalBreadcrumbRootLabel)
-        && !string.IsNullOrWhiteSpace(_globalBreadcrumbRootPageKey);
+    public bool HasGlobalBreadcrumbRoot => _globalBreadcrumbRoot.HasLabel
+        && _globalBreadcrumbRoot.HasGlobalNavigationTarget;
 
-    public string GlobalBreadcrumbRootLabel => _globalBreadcrumbRootLabel;
+    public BreadcrumbNavigationRoot GlobalBreadcrumbRoot => _globalBreadcrumbRoot;
 
-    public string? GlobalBreadcrumbRootPageKey => _globalBreadcrumbRootPageKey;
+    public string GlobalBreadcrumbRootLabel => _globalBreadcrumbRoot.Label;
 
-    public object? GlobalBreadcrumbRootNavigationParameter => _globalBreadcrumbRootNavigationParameter;
+    public string? GlobalBreadcrumbRootPageKey => _globalBreadcrumbRoot.PageKey;
+
+    public object? GlobalBreadcrumbRootNavigationParameter => _globalBreadcrumbRoot.NavigationParameter;
 
     [ObservableProperty]
     private ObservableCollection<MinecraftNewsEntry> _newsItems = new();
@@ -98,9 +98,7 @@ public partial class NewsListViewModel : ObservableRecipient, IPageHeaderAware
 
     public void ApplyNavigationContext(NewsListNavigationParameter? navigationParameter)
     {
-        _globalBreadcrumbRootLabel = navigationParameter?.BreadcrumbRootLabel ?? string.Empty;
-        _globalBreadcrumbRootPageKey = navigationParameter?.BreadcrumbRootPageKey;
-        _globalBreadcrumbRootNavigationParameter = navigationParameter?.BreadcrumbRootNavigationParameter;
+        _globalBreadcrumbRoot = navigationParameter?.BreadcrumbRoot ?? BreadcrumbNavigationRoot.Empty;
 
         HeaderMetadata.Title = GetResourceString("NewsListPage_Title.Text", "新闻与公告");
         HeaderMetadata.Subtitle = GetResourceString("NewsListPage_Subtitle.Text", "Minecraft Java 版更新动态");
@@ -110,12 +108,7 @@ public partial class NewsListViewModel : ObservableRecipient, IPageHeaderAware
         {
             _headerPresentationMode = PageHeaderPresentationMode.ProminentBreadcrumb;
             HeaderMetadata.ShowBreadcrumb = true;
-            HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
-            {
-                DisplayText = navigationParameter.BreadcrumbRootLabel,
-                PageKey = navigationParameter.BreadcrumbRootPageKey,
-                NavigationParameter = navigationParameter.BreadcrumbRootNavigationParameter,
-            });
+            HeaderMetadata.BreadcrumbItems.Add(navigationParameter.BreadcrumbRoot.ToBreadcrumbItem());
             HeaderMetadata.BreadcrumbItems.Add(new NavigationBreadcrumbItem
             {
                 DisplayText = HeaderMetadata.Title,
@@ -133,14 +126,13 @@ public partial class NewsListViewModel : ObservableRecipient, IPageHeaderAware
         return new NewsDetailNavigationParameter
         {
             Entry = entry,
-            GlobalBreadcrumbRootLabel = _globalBreadcrumbRootLabel,
-            GlobalBreadcrumbRootPageKey = _globalBreadcrumbRootPageKey,
-            GlobalBreadcrumbRootNavigationParameter = _globalBreadcrumbRootNavigationParameter,
-            BreadcrumbRootLabel = HeaderMetadata.Title,
-            BreadcrumbRootTarget = new LocalNavigationTarget
-            {
-                RouteKey = NewsNavigationRouteKeys.Root,
-            },
+            GlobalBreadcrumbRoot = _globalBreadcrumbRoot,
+            BreadcrumbRoot = BreadcrumbNavigationRoot.CreateLocal(
+                HeaderMetadata.Title,
+                new LocalNavigationTarget
+                {
+                    RouteKey = NewsNavigationRouteKeys.Root,
+                }),
         };
     }
 

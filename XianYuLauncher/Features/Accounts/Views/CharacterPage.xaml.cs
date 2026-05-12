@@ -291,20 +291,9 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
 
     private void ApplyHeaderPresentationMode(PageHeaderPresentationMode headerPresentationMode)
     {
-        switch (headerPresentationMode)
-        {
-            case PageHeaderPresentationMode.ProminentBreadcrumb:
-                CharacterPageHeader.ShowPrimaryHeading = false;
-                CharacterPageHeader.BreadcrumbFontSize = 28;
-                CharacterPageHeader.BreadcrumbMargin = new Thickness(-2, -11, 0, 12);
-                CharacterPageHeader.BreadcrumbItemTemplate = Resources[HostedDetailReadOnlyBreadcrumbItemTemplateKey] as DataTemplate;
-                return;
-        }
-
-        CharacterPageHeader.ShowPrimaryHeading = true;
-        CharacterPageHeader.BreadcrumbFontSize = 15;
-        CharacterPageHeader.BreadcrumbMargin = new Thickness(0, 0, 0, 12);
-        CharacterPageHeader.BreadcrumbItemTemplate = null;
+        CharacterPageHeader.ApplyPresentationMode(
+            headerPresentationMode,
+            Resources[HostedDetailReadOnlyBreadcrumbItemTemplateKey] as DataTemplate);
     }
 
     private void ResetInnerContentFrameVisualState()

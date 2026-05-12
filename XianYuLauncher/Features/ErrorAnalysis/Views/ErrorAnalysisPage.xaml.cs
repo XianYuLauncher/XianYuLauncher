@@ -190,20 +190,9 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Views
 
         private void ApplyHeaderPresentationMode(PageHeaderPresentationMode headerPresentationMode)
         {
-            switch (headerPresentationMode)
-            {
-                case PageHeaderPresentationMode.ProminentBreadcrumb:
-                    ErrorAnalysisPageHeader.ShowPrimaryHeading = false;
-                    ErrorAnalysisPageHeader.BreadcrumbFontSize = 28;
-                    ErrorAnalysisPageHeader.BreadcrumbMargin = new Thickness(-2, -11, 0, 12);
-                    ErrorAnalysisPageHeader.BreadcrumbItemTemplate = Resources[HostedDetailReadOnlyBreadcrumbItemTemplateKey] as DataTemplate;
-                    return;
-            }
-
-            ErrorAnalysisPageHeader.ShowPrimaryHeading = true;
-            ErrorAnalysisPageHeader.BreadcrumbFontSize = 15;
-            ErrorAnalysisPageHeader.BreadcrumbMargin = new Thickness(0, 0, 0, 12);
-            ErrorAnalysisPageHeader.BreadcrumbItemTemplate = null;
+            ErrorAnalysisPageHeader.ApplyPresentationMode(
+                headerPresentationMode,
+                Resources[HostedDetailReadOnlyBreadcrumbItemTemplateKey] as DataTemplate);
         }
 
         private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
@@ -230,7 +219,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Views
             return breadcrumbItem.HasGlobalNavigationTarget
                 && _navigationService.CanGoBack
                 && ViewModel.HasGlobalBreadcrumbRoot
-                && string.Equals(breadcrumbItem.PageKey, ViewModel.GlobalBreadcrumbRootPageKey, StringComparison.Ordinal);
+                && ViewModel.GlobalBreadcrumbRoot.MatchesGlobalNavigationTarget(breadcrumbItem);
         }
 
         /// <summary>

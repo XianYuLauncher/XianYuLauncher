@@ -350,20 +350,9 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
 
     private void ApplyHeaderPresentationMode(PageHeaderPresentationMode headerPresentationMode)
     {
-        switch (headerPresentationMode)
-        {
-            case PageHeaderPresentationMode.ProminentBreadcrumb:
-                ResourceDownloadPageHeader.ShowPrimaryHeading = false;
-                ResourceDownloadPageHeader.BreadcrumbFontSize = 28;
-                ResourceDownloadPageHeader.BreadcrumbMargin = new Thickness(-2, -11, 0, 12);
-                ResourceDownloadPageHeader.BreadcrumbItemTemplate = ResolveHostedBreadcrumbItemTemplate();
-                return;
-        }
-
-        ResourceDownloadPageHeader.ShowPrimaryHeading = true;
-        ResourceDownloadPageHeader.BreadcrumbFontSize = 15;
-        ResourceDownloadPageHeader.BreadcrumbMargin = new Thickness(0, 0, 0, 12);
-        ResourceDownloadPageHeader.BreadcrumbItemTemplate = null;
+        ResourceDownloadPageHeader.ApplyPresentationMode(
+            headerPresentationMode,
+            ResolveHostedBreadcrumbItemTemplate());
     }
 
     private DataTemplate? ResolveHostedBreadcrumbItemTemplate()

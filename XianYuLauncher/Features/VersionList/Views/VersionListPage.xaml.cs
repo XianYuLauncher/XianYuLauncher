@@ -358,20 +358,9 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
 
     private void ApplyHeaderPresentationMode(PageHeaderPresentationMode headerPresentationMode)
     {
-        switch (headerPresentationMode)
-        {
-            case PageHeaderPresentationMode.ProminentBreadcrumb:
-                VersionListPageHeader.ShowPrimaryHeading = false;
-                VersionListPageHeader.BreadcrumbFontSize = 28;
-                VersionListPageHeader.BreadcrumbMargin = new Thickness(-2, -11, 0, 12);
-                VersionListPageHeader.BreadcrumbItemTemplate = Resources[HostedDetailReadOnlyBreadcrumbItemTemplateKey] as DataTemplate;
-                return;
-        }
-
-        VersionListPageHeader.ShowPrimaryHeading = true;
-        VersionListPageHeader.BreadcrumbFontSize = 15;
-        VersionListPageHeader.BreadcrumbMargin = new Thickness(0, 0, 0, 12);
-        VersionListPageHeader.BreadcrumbItemTemplate = null;
+        VersionListPageHeader.ApplyPresentationMode(
+            headerPresentationMode,
+            Resources[HostedDetailReadOnlyBreadcrumbItemTemplateKey] as DataTemplate);
     }
 
     private void ResetInnerContentFrameVisualState()

@@ -293,20 +293,9 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
 
     private void ApplyHeaderPresentationMode(PageHeaderPresentationMode headerPresentationMode)
     {
-        switch (headerPresentationMode)
-        {
-            case PageHeaderPresentationMode.ProminentBreadcrumb:
-                NewsListPageHeader.ShowPrimaryHeading = false;
-                NewsListPageHeader.BreadcrumbFontSize = 28;
-                NewsListPageHeader.BreadcrumbMargin = new Thickness(-2, -11, 0, 12);
-                NewsListPageHeader.BreadcrumbItemTemplate = Resources[HostedDetailReadOnlyBreadcrumbItemTemplateKey] as DataTemplate;
-                return;
-        }
-
-        NewsListPageHeader.ShowPrimaryHeading = true;
-        NewsListPageHeader.BreadcrumbFontSize = 15;
-        NewsListPageHeader.BreadcrumbMargin = new Thickness(0, 0, 0, 12);
-        NewsListPageHeader.BreadcrumbItemTemplate = null;
+        NewsListPageHeader.ApplyPresentationMode(
+            headerPresentationMode,
+            Resources[HostedDetailReadOnlyBreadcrumbItemTemplateKey] as DataTemplate);
     }
 
     private void ResetInnerContentFrameVisualState()
@@ -380,7 +369,7 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
     {
         return breadcrumbItem.HasGlobalNavigationTarget
             && _navigationService.Frame?.CanGoBack == true
-            && string.Equals(breadcrumbItem.PageKey, ViewModel.GlobalBreadcrumbRootPageKey, StringComparison.Ordinal)
+            && ViewModel.GlobalBreadcrumbRoot.MatchesGlobalNavigationTarget(breadcrumbItem)
             && !ReferenceEquals(breadcrumbItem, ViewModel.HeaderMetadata.BreadcrumbItems.Count > 0 ? ViewModel.HeaderMetadata.BreadcrumbItems[^1] : null);
     }
 
@@ -516,14 +505,13 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
         return new NewsDetailNavigationParameter
         {
             Entry = navigationParameter.Entry,
-            GlobalBreadcrumbRootLabel = navigationParameter.HasGlobalBreadcrumbRoot ? navigationParameter.GlobalBreadcrumbRootLabel : ViewModel.GlobalBreadcrumbRootLabel,
-            GlobalBreadcrumbRootPageKey = navigationParameter.HasGlobalBreadcrumbRoot ? navigationParameter.GlobalBreadcrumbRootPageKey : ViewModel.GlobalBreadcrumbRootPageKey,
-            GlobalBreadcrumbRootNavigationParameter = navigationParameter.HasGlobalBreadcrumbRoot ? navigationParameter.GlobalBreadcrumbRootNavigationParameter : ViewModel.GlobalBreadcrumbRootNavigationParameter,
-            BreadcrumbRootLabel = ViewModel.HeaderMetadata.Title,
-            BreadcrumbRootTarget = new LocalNavigationTarget
-            {
-                RouteKey = NewsNavigationRouteKeys.Root,
-            },
+            GlobalBreadcrumbRoot = navigationParameter.HasGlobalBreadcrumbRoot ? navigationParameter.GlobalBreadcrumbRoot : ViewModel.GlobalBreadcrumbRoot,
+            BreadcrumbRoot = BreadcrumbNavigationRoot.CreateLocal(
+                ViewModel.HeaderMetadata.Title,
+                new LocalNavigationTarget
+                {
+                    RouteKey = NewsNavigationRouteKeys.Root,
+                }),
         };
     }
 
@@ -541,9 +529,7 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
 
         return new NewsListNavigationParameter
         {
-            BreadcrumbRootLabel = navigationParameter.GlobalBreadcrumbRootLabel,
-            BreadcrumbRootPageKey = navigationParameter.GlobalBreadcrumbRootPageKey,
-            BreadcrumbRootNavigationParameter = navigationParameter.GlobalBreadcrumbRootNavigationParameter,
+            BreadcrumbRoot = navigationParameter.GlobalBreadcrumbRoot,
         };
     }
 }

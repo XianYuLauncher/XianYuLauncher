@@ -284,20 +284,9 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
 
         private void ApplyHeaderPresentationMode(PageHeaderPresentationMode headerPresentationMode)
         {
-            switch (headerPresentationMode)
-            {
-                case PageHeaderPresentationMode.ProminentBreadcrumb:
-                    ModDownloadDetailPageHeader.ShowPrimaryHeading = false;
-                    ModDownloadDetailPageHeader.BreadcrumbFontSize = 28;
-                    ModDownloadDetailPageHeader.BreadcrumbMargin = new Thickness(-2, -11, 0, 12);
-                    ModDownloadDetailPageHeader.BreadcrumbItemTemplate = Resources[HostedDetailBreadcrumbItemTemplateKey] as DataTemplate;
-                    return;
-            }
-
-            ModDownloadDetailPageHeader.ShowPrimaryHeading = true;
-            ModDownloadDetailPageHeader.BreadcrumbFontSize = 15;
-            ModDownloadDetailPageHeader.BreadcrumbMargin = new Thickness(0, 0, 0, 12);
-            ModDownloadDetailPageHeader.BreadcrumbItemTemplate = null;
+            ModDownloadDetailPageHeader.ApplyPresentationMode(
+                headerPresentationMode,
+                Resources[HostedDetailBreadcrumbItemTemplateKey] as DataTemplate);
         }
 
         private void ResetInnerContentFrameVisualState()

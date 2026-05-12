@@ -219,20 +219,9 @@ public sealed partial class MultiplayerPage : Page, ILocalNavigationHost
 
     private void ApplyHeaderPresentationMode(PageHeaderPresentationMode headerPresentationMode)
     {
-        switch (headerPresentationMode)
-        {
-            case PageHeaderPresentationMode.ProminentBreadcrumb:
-                MultiplayerPageHeader.ShowPrimaryHeading = false;
-                MultiplayerPageHeader.BreadcrumbFontSize = 28;
-                MultiplayerPageHeader.BreadcrumbMargin = new Thickness(-2, -11, 0, 12);
-                MultiplayerPageHeader.BreadcrumbItemTemplate = ResolveHostedBreadcrumbItemTemplate();
-                return;
-        }
-
-        MultiplayerPageHeader.ShowPrimaryHeading = true;
-        MultiplayerPageHeader.BreadcrumbFontSize = 15;
-        MultiplayerPageHeader.BreadcrumbMargin = new Thickness(0, 0, 0, 12);
-        MultiplayerPageHeader.BreadcrumbItemTemplate = null;
+        MultiplayerPageHeader.ApplyPresentationMode(
+            headerPresentationMode,
+            ResolveHostedBreadcrumbItemTemplate());
     }
 
     private DataTemplate? ResolveHostedBreadcrumbItemTemplate()
