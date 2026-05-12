@@ -178,12 +178,10 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Views
             return parameter switch
             {
                 ErrorAnalysisNavigationParameter typedNavigationParameter => typedNavigationParameter,
-                Tuple<string, List<string>, List<string>> legacyLogData => new ErrorAnalysisNavigationParameter
-                {
-                    LaunchCommand = legacyLogData.Item1,
-                    GameOutput = legacyLogData.Item2.ToArray(),
-                    GameError = legacyLogData.Item3.ToArray(),
-                },
+                Tuple<string, List<string>, List<string>> legacyLogData => ErrorAnalysisNavigationParameter.CreateCrashPayload(
+                    legacyLogData.Item1,
+                    legacyLogData.Item2,
+                    legacyLogData.Item3),
                 _ => null,
             };
         }

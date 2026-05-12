@@ -6,6 +6,14 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Models;
 
 public sealed class ErrorAnalysisNavigationParameter
 {
+    public static ErrorAnalysisNavigationParameter CreateCrashPayload(
+        string launchCommand,
+        IReadOnlyList<string>? gameOutput,
+        IReadOnlyList<string>? gameError)
+    {
+        return new ErrorAnalysisNavigationParameter().WithCrashPayload(launchCommand, gameOutput, gameError);
+    }
+
     public static ErrorAnalysisNavigationParameter CreateWithGlobalBreadcrumbRoot(
         string breadcrumbRootLabel,
         string breadcrumbRootPageKey,
