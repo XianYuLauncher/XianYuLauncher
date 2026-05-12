@@ -328,10 +328,11 @@ public sealed partial class NewsListPage : Page, INavigationAware, ILocalNavigat
 
     private bool ShouldBypassLocalNavigationForGlobalRoot(NavigationBreadcrumbItem breadcrumbItem)
     {
-        return breadcrumbItem.HasGlobalNavigationTarget
-            && _navigationService.Frame?.CanGoBack == true
-            && ViewModel.GlobalBreadcrumbRoot.MatchesGlobalNavigationTarget(breadcrumbItem)
-            && !ReferenceEquals(breadcrumbItem, ViewModel.HeaderMetadata.BreadcrumbItems.Count > 0 ? ViewModel.HeaderMetadata.BreadcrumbItems[^1] : null);
+        return BreadcrumbNavigationHelper.ShouldGoBackToGlobalRoot(
+            breadcrumbItem,
+            _navigationService.Frame?.CanGoBack == true,
+            expectedGlobalRoot: ViewModel.GlobalBreadcrumbRoot,
+            currentBreadcrumbItem: ViewModel.HeaderMetadata.BreadcrumbItems.Count > 0 ? ViewModel.HeaderMetadata.BreadcrumbItems[^1] : null);
     }
 
     private bool TryReturnToLocalRoot(bool useReturnTransition)

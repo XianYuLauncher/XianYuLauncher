@@ -1048,8 +1048,9 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
                 new NewsListNavigationParameter
                 {
                     InitialDetailEntry = action.Entry,
-                    BreadcrumbRootLabel = "LaunchPage_BreadcrumbRootTitle".GetLocalized(),
-                    BreadcrumbRootPageKey = typeof(LaunchViewModel).FullName!,
+                    BreadcrumbRoot = BreadcrumbNavigationRoot.CreateGlobal(
+                        "LaunchPage_BreadcrumbRootTitle".GetLocalized(),
+                        typeof(LaunchViewModel).FullName!),
                 },
                 transitionInfo: new DrillInNavigationTransitionInfo());
             return;

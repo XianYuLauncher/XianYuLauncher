@@ -251,11 +251,12 @@ public sealed partial class VersionListPage : Page, INavigationAware, ILocalNavi
             {
                 Version = e,
                 IsEmbeddedHostNavigation = true,
-                BreadcrumbRootLabel = _rootHeaderTitle,
-                BreadcrumbRootTarget = new LocalNavigationTarget
-                {
-                    RouteKey = LocalRootRouteKey,
-                },
+                BreadcrumbRoot = BreadcrumbNavigationRoot.CreateLocal(
+                    _rootHeaderTitle,
+                    new LocalNavigationTarget
+                    {
+                        RouteKey = LocalRootRouteKey,
+                    }),
             },
             new DrillInNavigationTransitionInfo());
     }

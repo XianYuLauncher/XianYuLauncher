@@ -407,11 +407,12 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                 MinecraftProfile rawProfile => InitializeNavigationParameter(new CharacterManagementNavigationParameter
                 {
                     Profile = rawProfile,
-                    BreadcrumbRootLabel = "ProfilePage_HeaderTitle".GetLocalized(),
-                    BreadcrumbRootTarget = new LocalNavigationTarget
-                    {
-                        RouteKey = CharacterNavigationRouteKeys.Root,
-                    },
+                    BreadcrumbRoot = BreadcrumbNavigationRoot.CreateLocal(
+                        "ProfilePage_HeaderTitle".GetLocalized(),
+                        new LocalNavigationTarget
+                        {
+                            RouteKey = CharacterNavigationRouteKeys.Root,
+                        }),
                 }),
                 _ => null,
             };

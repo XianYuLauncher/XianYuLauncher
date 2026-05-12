@@ -323,12 +323,16 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
 
         private bool ShouldBypassLocalNavigationForGlobalRoot(NavigationBreadcrumbItem breadcrumbItem)
         {
-            return breadcrumbItem.HasGlobalNavigationTarget
-                && _navigationService.Frame?.CanGoBack == true
-                && _hostedLocalNavigationCoordinator.TryGetCurrentBreadcrumbItems(out var breadcrumbItems)
-                && breadcrumbItems.Count > 0
-                && ReferenceEquals(breadcrumbItem, breadcrumbItems[0])
-                && !ReferenceEquals(breadcrumbItem, breadcrumbItems[^1]);
+            if (!_hostedLocalNavigationCoordinator.TryGetCurrentBreadcrumbItems(out var breadcrumbItems) || breadcrumbItems.Count == 0)
+            {
+                return false;
+            }
+
+            return BreadcrumbNavigationHelper.ShouldGoBackToGlobalRoot(
+                breadcrumbItem,
+                _navigationService.Frame?.CanGoBack == true,
+                firstBreadcrumbItem: breadcrumbItems[0],
+                currentBreadcrumbItem: breadcrumbItems[^1]);
         }
 
         private bool TryReturnToLocalRoot(bool useReturnTransition)
@@ -474,9 +478,10 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Views
                 Project = project,
                 DisplayTitleHint = project?.DisplayTitle ?? string.Empty,
                 SourceType = sourceType,
-                BreadcrumbRootLabel = rootLabel,
-                BreadcrumbRootPageKey = rootPageKey,
-                BreadcrumbRootNavigationParameter = rootNavigationParameter,
+                BreadcrumbRoot = BreadcrumbNavigationRoot.CreateGlobal(
+                    rootLabel,
+                    rootPageKey!,
+                    rootNavigationParameter),
             };
         }
 

@@ -13,6 +13,7 @@ using XianYuLauncher.Contracts.ViewModels;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
+using XianYuLauncher.Helpers;
 using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Views
@@ -216,10 +217,10 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Views
 
         private bool ShouldGoBackToGlobalRoot(NavigationBreadcrumbItem breadcrumbItem)
         {
-            return breadcrumbItem.HasGlobalNavigationTarget
-                && _navigationService.CanGoBack
-                && ViewModel.HasGlobalBreadcrumbRoot
-                && ViewModel.GlobalBreadcrumbRoot.MatchesGlobalNavigationTarget(breadcrumbItem);
+            return BreadcrumbNavigationHelper.ShouldGoBackToGlobalRoot(
+                breadcrumbItem,
+                _navigationService.CanGoBack,
+                expectedGlobalRoot: ViewModel.HasGlobalBreadcrumbRoot ? ViewModel.GlobalBreadcrumbRoot : null);
         }
 
         /// <summary>

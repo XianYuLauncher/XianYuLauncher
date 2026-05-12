@@ -255,11 +255,12 @@ public sealed partial class VersionManagementHostPage : Page, IHostedLocalPage, 
                 WorldPath = e.WorldPath,
                 VersionId = e.VersionId,
                 IsEmbeddedHostNavigation = true,
-                BreadcrumbRootLabel = ViewModel.HeaderMetadata.Title,
-                BreadcrumbRootTarget = new LocalNavigationTarget
-                {
-                    RouteKey = LocalRootRouteKey,
-                },
+                BreadcrumbRoot = BreadcrumbNavigationRoot.CreateLocal(
+                    ViewModel.HeaderMetadata.Title,
+                    new LocalNavigationTarget
+                    {
+                        RouteKey = LocalRootRouteKey,
+                    }),
             },
             new DrillInNavigationTransitionInfo());
     }
