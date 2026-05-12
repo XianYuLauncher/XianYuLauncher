@@ -8,6 +8,7 @@ using System.Text;
 using Windows.ApplicationModel.DataTransfer;
 using Windows.System;
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.ErrorAnalysis.ViewModels;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Views
@@ -152,16 +153,33 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Views
             // 每次进入页面先清理修复按钮状态，避免残留
             ViewModel.ResetFixActionState();
 
-            // 接收导航参数（如果有）
-            if (e.Parameter is Tuple<string, List<string>, List<string>> logData)
+            var navigationParameter = NormalizeNavigationParameter(e.Parameter);
+            if (navigationParameter?.HasLogPayload == true)
             {
-                ViewModel.SetLogData(logData.Item1, logData.Item2, logData.Item3);
-                // 设置游戏崩溃状态为true，触发分析
+                ViewModel.SetLogData(
+                    navigationParameter.LaunchCommand,
+                    navigationParameter.GameOutput.ToList(),
+                    navigationParameter.GameError.ToList());
                 ViewModel.SetGameCrashStatus(true);
             }
             // 如果没有导航参数，说明是从 InfoBar 点击"查看日志"按钮进来的
             // 此时日志已经在 ViewModel 中了（因为是 Singleton），不需要清空
             // 只需要确保页面正常显示即可
+        }
+
+        private static ErrorAnalysisNavigationParameter? NormalizeNavigationParameter(object? parameter)
+        {
+            return parameter switch
+            {
+                ErrorAnalysisNavigationParameter typedNavigationParameter => typedNavigationParameter,
+                Tuple<string, List<string>, List<string>> legacyLogData => new ErrorAnalysisNavigationParameter
+                {
+                    LaunchCommand = legacyLogData.Item1,
+                    GameOutput = legacyLogData.Item2.ToArray(),
+                    GameError = legacyLogData.Item3.ToArray(),
+                },
+                _ => null,
+            };
         }
 
         /// <summary>
