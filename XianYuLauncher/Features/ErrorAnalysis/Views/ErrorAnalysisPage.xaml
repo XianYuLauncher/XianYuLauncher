@@ -8,6 +8,29 @@
     xmlns:mediaAnimation="using:Microsoft.UI.Xaml.Media.Animation"
     mc:Ignorable="d">
 
+    <Page.Resources>
+        <Style x:Key="ProminentBreadcrumbTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="28" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <DataTemplate x:Key="HostedDetailReadOnlyBreadcrumbItemTemplate">
+            <Grid>
+                <TextBlock Text="{Binding DisplayText}"
+                           Style="{StaticResource ProminentBreadcrumbTextStyle}"
+                           Visibility="{Binding IsCurrent, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+
+                <Border Padding="0,8,0,8"
+                        Visibility="{Binding IsCurrent, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <TextBlock Text="{Binding DisplayText}"
+                               Style="{StaticResource ProminentBreadcrumbTextStyle}" />
+                </Border>
+            </Grid>
+        </DataTemplate>
+    </Page.Resources>
+
     <Grid x:Name="ContentArea"
           mediaAnimation:EntranceNavigationTransitionInfo.IsTargetElement="True">
         <Grid.RowDefinitions>

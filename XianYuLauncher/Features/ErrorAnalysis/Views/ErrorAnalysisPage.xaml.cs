@@ -22,6 +22,8 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Views
     /// </summary>
     public sealed partial class ErrorAnalysisPage : Page
     {
+        private const string HostedDetailReadOnlyBreadcrumbItemTemplateKey = "HostedDetailReadOnlyBreadcrumbItemTemplate";
+
         private readonly INavigationService _navigationService;
         public ErrorAnalysisViewModel ViewModel { get; }
         public LauncherAIViewModel LauncherAIWorkspaceViewModel { get; }
@@ -194,12 +196,14 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Views
                     ErrorAnalysisPageHeader.ShowPrimaryHeading = false;
                     ErrorAnalysisPageHeader.BreadcrumbFontSize = 28;
                     ErrorAnalysisPageHeader.BreadcrumbMargin = new Thickness(-2, -11, 0, 12);
+                    ErrorAnalysisPageHeader.BreadcrumbItemTemplate = Resources[HostedDetailReadOnlyBreadcrumbItemTemplateKey] as DataTemplate;
                     return;
             }
 
             ErrorAnalysisPageHeader.ShowPrimaryHeading = true;
             ErrorAnalysisPageHeader.BreadcrumbFontSize = 15;
             ErrorAnalysisPageHeader.BreadcrumbMargin = new Thickness(0, 0, 0, 12);
+            ErrorAnalysisPageHeader.BreadcrumbItemTemplate = null;
         }
 
         private void PageHeader_BreadcrumbItemClicked(BreadcrumbBar sender, BreadcrumbBarItemClickedEventArgs args)
