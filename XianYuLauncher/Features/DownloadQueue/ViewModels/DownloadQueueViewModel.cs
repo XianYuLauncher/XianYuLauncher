@@ -459,37 +459,17 @@ public partial class DownloadQueueViewModel : ObservableRecipient, IDisposable, 
 
     private static bool IsPotentialGroupSummaryTask(DownloadTaskInfo task)
     {
-        return !string.IsNullOrWhiteSpace(task.BatchGroupKey)
-            && GetGroupedChildTaskCategory(task.TaskCategory).HasValue;
+        return DownloadTaskDisplayHelper.IsPotentialGroupSummaryTask(task);
     }
 
     private static bool IsGroupChildTask(DownloadTaskInfo candidate, DownloadTaskInfo summary)
     {
-        var groupedChildTaskCategory = GetGroupedChildTaskCategory(summary.TaskCategory);
-        if (groupedChildTaskCategory is null || candidate.TaskCategory != groupedChildTaskCategory.Value)
-        {
-            return false;
-        }
-
-        if (!string.IsNullOrWhiteSpace(candidate.ParentTaskId) &&
-            string.Equals(candidate.ParentTaskId, summary.TaskId, StringComparison.Ordinal))
-        {
-            return true;
-        }
-
-        return !string.IsNullOrWhiteSpace(summary.BatchGroupKey) &&
-               string.Equals(candidate.BatchGroupKey, summary.BatchGroupKey, StringComparison.Ordinal);
+        return DownloadTaskDisplayHelper.IsGroupChildTask(candidate, summary);
     }
 
     private static DownloadTaskCategory? GetGroupedChildTaskCategory(DownloadTaskCategory summaryTaskCategory)
     {
-        return summaryTaskCategory switch
-        {
-            DownloadTaskCategory.CommunityResourceUpdateBatch => DownloadTaskCategory.CommunityResourceUpdateFile,
-            DownloadTaskCategory.ModpackDownload => DownloadTaskCategory.ModpackInstallFile,
-            DownloadTaskCategory.ModpackUpdate => DownloadTaskCategory.ModpackUpdateFile,
-            _ => null
-        };
+        return DownloadTaskDisplayHelper.GetGroupedChildTaskCategory(summaryTaskCategory);
     }
 
     private static int GetChildTaskSortOrder(DownloadTaskInfo task)

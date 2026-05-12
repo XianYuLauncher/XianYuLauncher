@@ -40,6 +40,7 @@ internal static class UiServiceExtensions
         services.AddSingleton<IFilePickerService, FilePickerService>();
         services.AddSingleton<IApplicationLifecycleService, ApplicationLifecycleService>();
         services.AddSingleton<IUiDispatcher, UiDispatcher>();
+        services.AddSingleton<ITaskbarProgressService, TaskbarProgressService>();
         services.AddSingleton<IHttpImageSourceService, HttpImageSourceService>();
         services.AddSingleton<IUpdateFlowService, UpdateFlowService>();
 

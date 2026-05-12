@@ -10,6 +10,7 @@ using Microsoft.UI.Xaml.Navigation;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Views;
 using XianYuLauncher.Features.Launch.ViewModels;
@@ -25,9 +26,12 @@ public partial class ShellViewModel : ObservableRecipient
 
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IDownloadTaskPresentationService _downloadTaskPresentationService;
+    private readonly ITaskbarProgressService _taskbarProgressService;
     private readonly IAISettingsDomainService _aiSettingsDomainService;
     private readonly DispatcherQueue _dispatcherQueue;
     private readonly Dictionary<ShellDownloadTipItem, CancellationTokenSource> _pendingTipCloseOperations = new();
+    private int? _lastTaskbarProgressPercent;
+    private bool _isTaskbarProgressVisible;
 
     [ObservableProperty]
     private bool isBackEnabled;
@@ -60,6 +64,7 @@ public partial class ShellViewModel : ObservableRecipient
         INavigationViewService navigationViewService,
         IDownloadTaskManager downloadTaskManager,
         IDownloadTaskPresentationService downloadTaskPresentationService,
+        ITaskbarProgressService taskbarProgressService,
         IAISettingsDomainService aiSettingsDomainService)
     {
         NavigationService = navigationService;
@@ -68,6 +73,7 @@ public partial class ShellViewModel : ObservableRecipient
         NavigationViewService = navigationViewService;
         _downloadTaskManager = downloadTaskManager;
         _downloadTaskPresentationService = downloadTaskPresentationService;
+        _taskbarProgressService = taskbarProgressService;
         _aiSettingsDomainService = aiSettingsDomainService;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
@@ -76,6 +82,8 @@ public partial class ShellViewModel : ObservableRecipient
         _downloadTaskManager.TaskStateChanged += OnTaskStateChanged;
         _downloadTaskManager.TaskProgressChanged += OnTaskProgressChanged;
         _aiSettingsDomainService.EnabledChanged += OnAISettingsEnabledChanged;
+
+        RefreshTaskbarProgressFromSnapshot();
 
         _ = InitializeLauncherAIVisibilityAsync();
     }
@@ -240,6 +248,8 @@ public partial class ShellViewModel : ObservableRecipient
                     ScheduleTipRemoval(terminal, taskInfo.TaskId);
                     break;
             }
+
+            RefreshTaskbarProgressFromSnapshot();
         });
     }
 
@@ -248,13 +258,38 @@ public partial class ShellViewModel : ObservableRecipient
         _dispatcherQueue.TryEnqueue(() =>
         {
             var tip = FindOrCreateTip(taskInfo, createIfMissing: taskInfo.ShowInTeachingTip);
-            if (tip == null)
+            if (tip != null)
             {
-                return;
+                RefreshTipFromActiveTask(tip, taskInfo);
             }
 
-            RefreshTipFromActiveTask(tip, taskInfo);
+            RefreshTaskbarProgressFromSnapshot();
         });
+    }
+
+    private void RefreshTaskbarProgressFromSnapshot()
+    {
+        if (!DownloadTaskDisplayHelper.TryGetAggregateProgress(_downloadTaskManager.TasksSnapshot, out double aggregateProgress))
+        {
+            if (_isTaskbarProgressVisible)
+            {
+                _taskbarProgressService.ClearProgress();
+                _isTaskbarProgressVisible = false;
+            }
+
+            _lastTaskbarProgressPercent = null;
+            return;
+        }
+
+        int roundedProgress = (int)Math.Round(Math.Clamp(aggregateProgress, 0, 100), MidpointRounding.AwayFromZero);
+        if (_isTaskbarProgressVisible && _lastTaskbarProgressPercent == roundedProgress)
+        {
+            return;
+        }
+
+        _taskbarProgressService.ShowProgress(roundedProgress);
+        _isTaskbarProgressVisible = true;
+        _lastTaskbarProgressPercent = roundedProgress;
     }
 
     private void ScheduleTipRemoval(ShellDownloadTipItem item, string taskId)
