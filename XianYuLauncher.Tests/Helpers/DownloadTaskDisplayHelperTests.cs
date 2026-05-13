@@ -75,6 +75,224 @@ public sealed class DownloadTaskDisplayHelperTests
         aggregateSpeedBytesPerSecond.Should().Be(0);
     }
 
+    [Fact]
+    public void TryGetAggregateProgress_ShouldAverageNonGroupedDownloadingTasks()
+    {
+        DownloadTaskInfo[] snapshot =
+        [
+            new DownloadTaskInfo
+            {
+                TaskId = "task-1",
+                State = DownloadTaskState.Downloading,
+                Progress = 20,
+                TaskCategory = DownloadTaskCategory.FileDownload
+            },
+            new DownloadTaskInfo
+            {
+                TaskId = "task-2",
+                State = DownloadTaskState.Downloading,
+                Progress = 80,
+                TaskCategory = DownloadTaskCategory.ModDownload
+            }
+        ];
+
+        bool hasAggregateProgress = DownloadTaskDisplayHelper.TryGetAggregateProgress(snapshot, out double aggregateProgress);
+
+        hasAggregateProgress.Should().BeTrue();
+        aggregateProgress.Should().Be(50);
+    }
+
+    [Fact]
+    public void TryGetAggregateProgress_ShouldPreferSummaryTaskProgressForGroupedDownloads()
+    {
+        DownloadTaskInfo[] snapshot =
+        [
+            new DownloadTaskInfo
+            {
+                TaskId = "summary",
+                State = DownloadTaskState.Downloading,
+                Progress = 30,
+                TaskCategory = DownloadTaskCategory.ModpackDownload,
+                BatchGroupKey = "batch-1"
+            },
+            new DownloadTaskInfo
+            {
+                TaskId = "child-1",
+                State = DownloadTaskState.Downloading,
+                Progress = 10,
+                TaskCategory = DownloadTaskCategory.ModpackInstallFile,
+                BatchGroupKey = "batch-1",
+                ParentTaskId = "summary"
+            },
+            new DownloadTaskInfo
+            {
+                TaskId = "child-2",
+                State = DownloadTaskState.Downloading,
+                Progress = 90,
+                TaskCategory = DownloadTaskCategory.ModpackInstallFile,
+                BatchGroupKey = "batch-1",
+                ParentTaskId = "summary"
+            },
+            new DownloadTaskInfo
+            {
+                TaskId = "standalone",
+                State = DownloadTaskState.Downloading,
+                Progress = 70,
+                TaskCategory = DownloadTaskCategory.FileDownload
+            }
+        ];
+
+        bool hasAggregateProgress = DownloadTaskDisplayHelper.TryGetAggregateProgress(snapshot, out double aggregateProgress);
+
+        hasAggregateProgress.Should().BeTrue();
+        aggregateProgress.Should().Be(50);
+    }
+
+    [Fact]
+    public void TryGetAggregateProgress_ShouldFallbackToGroupedChildAverageWhenSummaryIsNotDownloading()
+    {
+        DownloadTaskInfo[] snapshot =
+        [
+            new DownloadTaskInfo
+            {
+                TaskId = "summary",
+                State = DownloadTaskState.Queued,
+                Progress = 0,
+                TaskCategory = DownloadTaskCategory.ModpackUpdate,
+                BatchGroupKey = "batch-2"
+            },
+            new DownloadTaskInfo
+            {
+                TaskId = "child-1",
+                State = DownloadTaskState.Downloading,
+                Progress = 20,
+                TaskCategory = DownloadTaskCategory.ModpackUpdateFile,
+                BatchGroupKey = "batch-2",
+                ParentTaskId = "summary"
+            },
+            new DownloadTaskInfo
+            {
+                TaskId = "child-2",
+                State = DownloadTaskState.Downloading,
+                Progress = 60,
+                TaskCategory = DownloadTaskCategory.ModpackUpdateFile,
+                BatchGroupKey = "batch-2",
+                ParentTaskId = "summary"
+            },
+            new DownloadTaskInfo
+            {
+                TaskId = "standalone",
+                State = DownloadTaskState.Downloading,
+                Progress = 100,
+                TaskCategory = DownloadTaskCategory.FileDownload
+            }
+        ];
+
+        bool hasAggregateProgress = DownloadTaskDisplayHelper.TryGetAggregateProgress(snapshot, out double aggregateProgress);
+
+        hasAggregateProgress.Should().BeTrue();
+        aggregateProgress.Should().Be(70);
+    }
+
+    [Fact]
+    public void TryGetAggregateProgress_ShouldMatchGroupedChildByParentTaskIdOnly()
+    {
+        DownloadTaskInfo[] snapshot =
+        [
+            new DownloadTaskInfo
+            {
+                TaskId = "summary",
+                State = DownloadTaskState.Queued,
+                Progress = 0,
+                TaskCategory = DownloadTaskCategory.ModpackDownload,
+                BatchGroupKey = "batch-parent-only"
+            },
+            new DownloadTaskInfo
+            {
+                TaskId = "child-parent-only",
+                State = DownloadTaskState.Downloading,
+                Progress = 50,
+                TaskCategory = DownloadTaskCategory.ModpackInstallFile,
+                ParentTaskId = "summary"
+            },
+            new DownloadTaskInfo
+            {
+                TaskId = "standalone",
+                State = DownloadTaskState.Downloading,
+                Progress = 100,
+                TaskCategory = DownloadTaskCategory.FileDownload
+            }
+        ];
+
+        bool hasAggregateProgress = DownloadTaskDisplayHelper.TryGetAggregateProgress(snapshot, out double aggregateProgress);
+
+        hasAggregateProgress.Should().BeTrue();
+        aggregateProgress.Should().Be(75);
+    }
+
+    [Fact]
+    public void TryGetAggregateProgress_ShouldMatchGroupedChildByBatchGroupKeyOnly()
+    {
+        DownloadTaskInfo[] snapshot =
+        [
+            new DownloadTaskInfo
+            {
+                TaskId = "summary",
+                State = DownloadTaskState.Queued,
+                Progress = 0,
+                TaskCategory = DownloadTaskCategory.ModpackUpdate,
+                BatchGroupKey = "batch-key-only"
+            },
+            new DownloadTaskInfo
+            {
+                TaskId = "child-batch-only",
+                State = DownloadTaskState.Downloading,
+                Progress = 40,
+                TaskCategory = DownloadTaskCategory.ModpackUpdateFile,
+                BatchGroupKey = "batch-key-only"
+            },
+            new DownloadTaskInfo
+            {
+                TaskId = "standalone",
+                State = DownloadTaskState.Downloading,
+                Progress = 80,
+                TaskCategory = DownloadTaskCategory.FileDownload
+            }
+        ];
+
+        bool hasAggregateProgress = DownloadTaskDisplayHelper.TryGetAggregateProgress(snapshot, out double aggregateProgress);
+
+        hasAggregateProgress.Should().BeTrue();
+        aggregateProgress.Should().Be(60);
+    }
+
+    [Fact]
+    public void TryGetAggregateProgress_ShouldReturnFalseWhenNoTaskIsDownloading()
+    {
+        DownloadTaskInfo[] snapshot =
+        [
+            new DownloadTaskInfo
+            {
+                TaskId = "queued",
+                State = DownloadTaskState.Queued,
+                Progress = 0,
+                TaskCategory = DownloadTaskCategory.FileDownload
+            },
+            new DownloadTaskInfo
+            {
+                TaskId = "completed",
+                State = DownloadTaskState.Completed,
+                Progress = 100,
+                TaskCategory = DownloadTaskCategory.FileDownload
+            }
+        ];
+
+        bool hasAggregateProgress = DownloadTaskDisplayHelper.TryGetAggregateProgress(snapshot, out double aggregateProgress);
+
+        hasAggregateProgress.Should().BeFalse();
+        aggregateProgress.Should().Be(0);
+    }
+
     [Theory]
     [InlineData(DownloadTaskState.Downloading, DownloadTaskCategory.ModpackDownload, 40, "正在下载整合包...", true)]
     [InlineData(DownloadTaskState.Downloading, DownloadTaskCategory.ModpackUpdate, 40, "正在更新整合包...", true)]
