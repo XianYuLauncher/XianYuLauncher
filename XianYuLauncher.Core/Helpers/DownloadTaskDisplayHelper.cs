@@ -48,58 +48,88 @@ public static class DownloadTaskDisplayHelper
     {
         ArgumentNullException.ThrowIfNull(tasksSnapshot);
 
-        List<double> logicalProgressEntries = [];
+        List<DownloadTaskInfo> summaryTasks = [];
+        Dictionary<string, List<DownloadTaskInfo>> childTasksByParentTaskId = new(StringComparer.Ordinal);
+        Dictionary<(string BatchGroupKey, DownloadTaskCategory TaskCategory), List<DownloadTaskInfo>> childTasksByBatchGroup = [];
         HashSet<string> groupedTaskIds = new(StringComparer.Ordinal);
-        List<DownloadTaskInfo> summaryTasks = tasksSnapshot
-            .Where(IsPotentialGroupSummaryTask)
-            .ToList();
+        double aggregateProgressSum = 0;
+        int aggregateProgressCount = 0;
 
-        foreach (var summaryTask in summaryTasks)
+        foreach (var task in tasksSnapshot)
         {
-            List<DownloadTaskInfo> childTasks = tasksSnapshot
-                .Where(candidate => !string.Equals(candidate.TaskId, summaryTask.TaskId, StringComparison.Ordinal))
-                .Where(candidate => IsGroupChildTask(candidate, summaryTask))
-                .ToList();
-
-            if (summaryTask.State == DownloadTaskState.Downloading)
+            if (IsPotentialGroupSummaryTask(task))
             {
-                logicalProgressEntries.Add(ClampProgress(summaryTask.Progress));
-                groupedTaskIds.Add(summaryTask.TaskId);
-                foreach (var childTask in childTasks)
-                {
-                    groupedTaskIds.Add(childTask.TaskId);
-                }
-
-                continue;
+                summaryTasks.Add(task);
             }
 
-            List<DownloadTaskInfo> downloadingChildTasks = childTasks
-                .Where(task => task.State == DownloadTaskState.Downloading)
-                .ToList();
-            if (downloadingChildTasks.Count == 0)
+            if (!string.IsNullOrWhiteSpace(task.ParentTaskId))
             {
-                continue;
+                GetOrCreateBucket(childTasksByParentTaskId, task.ParentTaskId).Add(task);
             }
 
-            logicalProgressEntries.Add(downloadingChildTasks.Average(task => ClampProgress(task.Progress)));
-            foreach (var childTask in childTasks)
+            if (!string.IsNullOrWhiteSpace(task.BatchGroupKey))
             {
-                groupedTaskIds.Add(childTask.TaskId);
+                GetOrCreateBucket(childTasksByBatchGroup, (task.BatchGroupKey, task.TaskCategory)).Add(task);
             }
         }
 
-        logicalProgressEntries.AddRange(tasksSnapshot
-            .Where(task => task.State == DownloadTaskState.Downloading)
-            .Where(task => !groupedTaskIds.Contains(task.TaskId))
-            .Select(task => ClampProgress(task.Progress)));
+        foreach (var summaryTask in summaryTasks)
+        {
+            var groupedChildTaskCategory = GetGroupedChildTaskCategory(summaryTask.TaskCategory);
+            if (!groupedChildTaskCategory.HasValue)
+            {
+                continue;
+            }
 
-        if (logicalProgressEntries.Count == 0)
+            double downloadingChildProgressSum = 0;
+            int downloadingChildCount = 0;
+
+            AccumulateGroupedChildren(
+                summaryTask,
+                groupedChildTaskCategory.Value,
+                childTasksByParentTaskId,
+                childTasksByBatchGroup,
+                groupedTaskIds,
+                includeDownloadingProgress: summaryTask.State != DownloadTaskState.Downloading,
+                ref downloadingChildProgressSum,
+                ref downloadingChildCount);
+
+            if (summaryTask.State == DownloadTaskState.Downloading)
+            {
+                aggregateProgressSum += ClampProgress(summaryTask.Progress);
+                aggregateProgressCount++;
+                groupedTaskIds.Add(summaryTask.TaskId);
+
+                continue;
+            }
+
+            if (downloadingChildCount == 0)
+            {
+                continue;
+            }
+
+            aggregateProgressSum += downloadingChildProgressSum / downloadingChildCount;
+            aggregateProgressCount++;
+        }
+
+        foreach (var task in tasksSnapshot)
+        {
+            if (task.State != DownloadTaskState.Downloading || groupedTaskIds.Contains(task.TaskId))
+            {
+                continue;
+            }
+
+            aggregateProgressSum += ClampProgress(task.Progress);
+            aggregateProgressCount++;
+        }
+
+        if (aggregateProgressCount == 0)
         {
             progress = 0;
             return false;
         }
 
-        progress = logicalProgressEntries.Average();
+        progress = aggregateProgressSum / aggregateProgressCount;
         return true;
     }
 
@@ -144,5 +174,83 @@ public static class DownloadTaskDisplayHelper
     private static double ClampProgress(double progress)
     {
         return Math.Clamp(progress, 0, 100);
+    }
+
+    private static void AccumulateGroupedChildren(
+        DownloadTaskInfo summaryTask,
+        DownloadTaskCategory groupedChildTaskCategory,
+        IReadOnlyDictionary<string, List<DownloadTaskInfo>> childTasksByParentTaskId,
+        IReadOnlyDictionary<(string BatchGroupKey, DownloadTaskCategory TaskCategory), List<DownloadTaskInfo>> childTasksByBatchGroup,
+        HashSet<string> groupedTaskIds,
+        bool includeDownloadingProgress,
+        ref double downloadingChildProgressSum,
+        ref int downloadingChildCount)
+    {
+        HashSet<string> seenTaskIds = new(StringComparer.Ordinal);
+
+        if (childTasksByParentTaskId.TryGetValue(summaryTask.TaskId, out List<DownloadTaskInfo>? parentMatchedTasks))
+        {
+            AccumulateGroupedChildCandidates(
+                parentMatchedTasks,
+                groupedChildTaskCategory,
+                seenTaskIds,
+                groupedTaskIds,
+                includeDownloadingProgress,
+                ref downloadingChildProgressSum,
+                ref downloadingChildCount);
+        }
+
+        if (!string.IsNullOrWhiteSpace(summaryTask.BatchGroupKey) &&
+            childTasksByBatchGroup.TryGetValue((summaryTask.BatchGroupKey, groupedChildTaskCategory), out List<DownloadTaskInfo>? batchMatchedTasks))
+        {
+            AccumulateGroupedChildCandidates(
+                batchMatchedTasks,
+                groupedChildTaskCategory,
+                seenTaskIds,
+                groupedTaskIds,
+                includeDownloadingProgress,
+                ref downloadingChildProgressSum,
+                ref downloadingChildCount);
+        }
+    }
+
+    private static void AccumulateGroupedChildCandidates(
+        IReadOnlyList<DownloadTaskInfo> candidateTasks,
+        DownloadTaskCategory groupedChildTaskCategory,
+        HashSet<string> seenTaskIds,
+        HashSet<string> groupedTaskIds,
+        bool includeDownloadingProgress,
+        ref double downloadingChildProgressSum,
+        ref int downloadingChildCount)
+    {
+        foreach (var childTask in candidateTasks)
+        {
+            if (childTask.TaskCategory != groupedChildTaskCategory || !seenTaskIds.Add(childTask.TaskId))
+            {
+                continue;
+            }
+
+            groupedTaskIds.Add(childTask.TaskId);
+
+            if (!includeDownloadingProgress || childTask.State != DownloadTaskState.Downloading)
+            {
+                continue;
+            }
+
+            downloadingChildProgressSum += ClampProgress(childTask.Progress);
+            downloadingChildCount++;
+        }
+    }
+
+    private static List<DownloadTaskInfo> GetOrCreateBucket<TKey>(Dictionary<TKey, List<DownloadTaskInfo>> index, TKey key)
+        where TKey : notnull
+    {
+        if (!index.TryGetValue(key, out List<DownloadTaskInfo>? bucket))
+        {
+            bucket = [];
+            index[key] = bucket;
+        }
+
+        return bucket;
     }
 }

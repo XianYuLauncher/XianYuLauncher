@@ -34,6 +34,7 @@ public sealed class TaskbarProgressService : ITaskbarProgressService, IDisposabl
     private uint _taskbarButtonCreatedMessage;
     private bool _isProgressRequested;
     private double _requestedProgress;
+    private bool _isDisposed;
 
     public TaskbarProgressService(IUiDispatcher uiDispatcher, ILogger<TaskbarProgressService> logger)
     {
@@ -49,8 +50,18 @@ public sealed class TaskbarProgressService : ITaskbarProgressService, IDisposabl
 
     public void ShowProgress(double progress)
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
         ExecuteOnUiThread(() =>
         {
+            if (_isDisposed)
+            {
+                return;
+            }
+
             _isProgressRequested = true;
             _requestedProgress = Math.Clamp(progress, 0, 100);
 
@@ -65,8 +76,18 @@ public sealed class TaskbarProgressService : ITaskbarProgressService, IDisposabl
 
     public void ClearProgress()
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
         ExecuteOnUiThread(() =>
         {
+            if (_isDisposed)
+            {
+                return;
+            }
+
             _isProgressRequested = false;
 
             if (!TryEnsureWindowSubclassInstalled() || !_isTaskbarButtonCreated)
@@ -80,12 +101,43 @@ public sealed class TaskbarProgressService : ITaskbarProgressService, IDisposabl
 
     public void Dispose()
     {
-        ExecuteOnUiThread(RemoveWindowSubclassCore);
+        if (_isDisposed)
+        {
+            return;
+        }
+
+        _isDisposed = true;
+        _isProgressRequested = false;
+
+        if (_uiDispatcher.HasThreadAccess)
+        {
+            DisposeCore();
+            return;
+        }
+
+        if (!_uiDispatcher.TryEnqueue(DisposeCore))
+        {
+            _isWindowSubclassInstalled = false;
+            _isTaskbarButtonCreated = false;
+            _subclassedWindowHandle = nint.Zero;
+            _taskbarList = null;
+            _logger.LogDebug("UI 调度器不可用，跳过任务栏进度服务清理。");
+        }
+    }
+
+    private void DisposeCore()
+    {
+        RemoveWindowSubclassCore();
         ResetTaskbarList();
     }
 
     private void ExecuteOnUiThread(Action action)
     {
+        if (_isDisposed)
+        {
+            return;
+        }
+
         if (_uiDispatcher.HasThreadAccess)
         {
             action();
@@ -94,7 +146,7 @@ public sealed class TaskbarProgressService : ITaskbarProgressService, IDisposabl
 
         if (!_uiDispatcher.TryEnqueue(action))
         {
-            _logger.LogDebug("UI 调度器不可用，跳过任务栏进度更新。");
+            _logger.LogDebug("UI 调度器不可用，跳过任务栏进度服务操作。");
         }
     }
 
@@ -141,6 +193,11 @@ public sealed class TaskbarProgressService : ITaskbarProgressService, IDisposabl
 
     private bool TryEnsureWindowSubclassInstalled()
     {
+        if (_isDisposed)
+        {
+            return false;
+        }
+
         if (_isWindowSubclassInstalled)
         {
             return true;
@@ -198,6 +255,18 @@ public sealed class TaskbarProgressService : ITaskbarProgressService, IDisposabl
 
     private nint WindowSubclassCallback(nint hWnd, uint message, nint wParam, nint lParam, nuint subclassId, nint referenceData)
     {
+        if (_isDisposed)
+        {
+            if (message == WmNcDestroy)
+            {
+                _isWindowSubclassInstalled = false;
+                _isTaskbarButtonCreated = false;
+                _subclassedWindowHandle = nint.Zero;
+            }
+
+            return DefSubclassProc(hWnd, message, wParam, lParam);
+        }
+
         if (message == _taskbarButtonCreatedMessage)
         {
             _isTaskbarButtonCreated = true;
@@ -223,6 +292,12 @@ public sealed class TaskbarProgressService : ITaskbarProgressService, IDisposabl
 
     private bool TryEnsureTaskbarList(out ITaskbarList3 taskbarList)
     {
+        if (_isDisposed)
+        {
+            taskbarList = null!;
+            return false;
+        }
+
         if (_isInitializationPermanentlyDisabled)
         {
             taskbarList = null!;

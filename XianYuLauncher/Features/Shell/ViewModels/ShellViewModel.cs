@@ -23,15 +23,19 @@ public partial class ShellViewModel : ObservableRecipient
 {
     /// <summary>多条 TeachingTip 纵向错开量（PlacementMargin.Top 递增量）。略小于单卡高度时更紧凑；过小可能叠影。</summary>
     private const double TipStackVerticalGap = 118;
+    private static readonly TimeSpan TaskbarProgressRefreshInterval = TimeSpan.FromMilliseconds(250);
 
     private readonly IDownloadTaskManager _downloadTaskManager;
     private readonly IDownloadTaskPresentationService _downloadTaskPresentationService;
     private readonly ITaskbarProgressService _taskbarProgressService;
     private readonly IAISettingsDomainService _aiSettingsDomainService;
     private readonly DispatcherQueue _dispatcherQueue;
+    private readonly DispatcherQueueTimer _taskbarProgressRefreshTimer;
     private readonly Dictionary<ShellDownloadTipItem, CancellationTokenSource> _pendingTipCloseOperations = new();
     private int? _lastTaskbarProgressPercent;
     private bool _isTaskbarProgressVisible;
+    private bool _isTaskbarProgressRefreshScheduled;
+    private int _isTaskbarProgressRefreshEnqueueRequested;
 
     [ObservableProperty]
     private bool isBackEnabled;
@@ -76,11 +80,16 @@ public partial class ShellViewModel : ObservableRecipient
         _taskbarProgressService = taskbarProgressService;
         _aiSettingsDomainService = aiSettingsDomainService;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
+        _taskbarProgressRefreshTimer = _dispatcherQueue.CreateTimer();
+        _taskbarProgressRefreshTimer.IsRepeating = false;
+        _taskbarProgressRefreshTimer.Interval = TaskbarProgressRefreshInterval;
+        _taskbarProgressRefreshTimer.Tick += OnTaskbarProgressRefreshTimerTick;
 
         DownloadTeachingTips.CollectionChanged += OnDownloadTeachingTipsCollectionChanged;
 
         _downloadTaskManager.TaskStateChanged += OnTaskStateChanged;
         _downloadTaskManager.TaskProgressChanged += OnTaskProgressChanged;
+        _downloadTaskManager.TasksSnapshotChanged += OnTasksSnapshotChanged;
         _aiSettingsDomainService.EnabledChanged += OnAISettingsEnabledChanged;
 
         RefreshTaskbarProgressFromSnapshot();
@@ -249,7 +258,6 @@ public partial class ShellViewModel : ObservableRecipient
                     break;
             }
 
-            RefreshTaskbarProgressFromSnapshot();
         });
     }
 
@@ -263,8 +271,48 @@ public partial class ShellViewModel : ObservableRecipient
                 RefreshTipFromActiveTask(tip, taskInfo);
             }
 
-            RefreshTaskbarProgressFromSnapshot();
         });
+    }
+
+    private void OnTasksSnapshotChanged(object? sender, EventArgs e)
+    {
+        if (_dispatcherQueue.HasThreadAccess)
+        {
+            ScheduleTaskbarProgressRefresh();
+            return;
+        }
+
+        if (Interlocked.Exchange(ref _isTaskbarProgressRefreshEnqueueRequested, 1) == 1)
+        {
+            return;
+        }
+
+        if (!_dispatcherQueue.TryEnqueue(() =>
+            {
+                Interlocked.Exchange(ref _isTaskbarProgressRefreshEnqueueRequested, 0);
+                ScheduleTaskbarProgressRefresh();
+            }))
+        {
+            Interlocked.Exchange(ref _isTaskbarProgressRefreshEnqueueRequested, 0);
+        }
+    }
+
+    private void ScheduleTaskbarProgressRefresh()
+    {
+        if (_isTaskbarProgressRefreshScheduled)
+        {
+            return;
+        }
+
+        _isTaskbarProgressRefreshScheduled = true;
+        _taskbarProgressRefreshTimer.Start();
+    }
+
+    private void OnTaskbarProgressRefreshTimerTick(DispatcherQueueTimer sender, object args)
+    {
+        sender.Stop();
+        _isTaskbarProgressRefreshScheduled = false;
+        RefreshTaskbarProgressFromSnapshot();
     }
 
     private void RefreshTaskbarProgressFromSnapshot()
