@@ -37,8 +37,13 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Models
             }
         }
 
-        [ObservableProperty]
         private string? _aiHistoryReasoningContent;
+
+        public string? AIHistoryReasoningContent
+        {
+            get => _aiHistoryReasoningContent;
+            set => SetProperty(ref _aiHistoryReasoningContent, value);
+        }
 
         [ObservableProperty]
         private string? _toolCallId;
