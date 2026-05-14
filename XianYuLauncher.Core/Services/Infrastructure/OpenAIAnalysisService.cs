@@ -43,7 +43,7 @@ namespace XianYuLauncher.Core.Services
 
             endpoint = NormalizeEndpoint(endpoint);
             if (string.IsNullOrWhiteSpace(model)) model = "gpt-3.5-turbo";
-            var shouldRoundTripReasoningContent = ShouldRoundTripReasoningContent(endpoint, model);
+            var shouldIncludeReasoningContent = ShouldIncludeReasoningContent(endpoint, model);
 
             // 构建 messages 数组，支持 tool_calls 和 tool role
             var apiMessages = new List<object>();
@@ -51,7 +51,7 @@ namespace XianYuLauncher.Core.Services
             {
                 if (msg.Role == "assistant")
                 {
-                    apiMessages.Add(BuildAssistantMessage(msg, shouldRoundTripReasoningContent));
+                    apiMessages.Add(BuildAssistantMessage(msg, shouldIncludeReasoningContent));
                 }
                 else if (msg.Role == "tool")
                 {
@@ -358,19 +358,20 @@ namespace XianYuLauncher.Core.Services
             return endpoint + "/v1/chat/completions";
         }
 
-        private static object BuildAssistantMessage(ChatMessage message, bool shouldRoundTripReasoningContent)
+        private static object BuildAssistantMessage(ChatMessage message, bool shouldIncludeReasoningContent)
         {
+            var hasToolCalls = message.ToolCalls != null && message.ToolCalls.Count > 0;
             Dictionary<string, object?> payload = new()
             {
                 ["role"] = "assistant",
-                ["content"] = message.ToolCalls != null && message.ToolCalls.Count > 0
+                ["content"] = hasToolCalls
                     ? message.Content
                     : BuildMessageContent(message)
             };
 
-            if (message.ToolCalls != null && message.ToolCalls.Count > 0)
+            if (hasToolCalls)
             {
-                payload["tool_calls"] = message.ToolCalls.Select(tc => new
+                payload["tool_calls"] = message.ToolCalls!.Select(tc => new
                 {
                     id = tc.Id,
                     type = "function",
@@ -378,7 +379,7 @@ namespace XianYuLauncher.Core.Services
                 }).ToArray();
             }
 
-            if (shouldRoundTripReasoningContent
+            if (shouldIncludeReasoningContent
                 && !string.IsNullOrWhiteSpace(message.ReasoningContent))
             {
                 payload["reasoning_content"] = message.ReasoningContent;
@@ -387,7 +388,7 @@ namespace XianYuLauncher.Core.Services
             return payload;
         }
 
-        private static bool ShouldRoundTripReasoningContent(string endpoint, string model)
+        private static bool ShouldIncludeReasoningContent(string endpoint, string model)
         {
             if (!string.IsNullOrWhiteSpace(model)
                 && model.StartsWith("deepseek-", StringComparison.OrdinalIgnoreCase))
