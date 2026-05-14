@@ -30,6 +30,11 @@ namespace XianYuLauncher.Core.Models
         public List<ToolCallInfo>? ToolCalls { get; set; }
 
         /// <summary>
+        /// 当模型处于 thinking/reasoning 模式时，保存需要在后续请求中回传的 reasoning_content
+        /// </summary>
+        public string? ReasoningContent { get; set; }
+
+        /// <summary>
         /// 当 Role == "tool" 时，对应的 tool_call_id
         /// </summary>
         public string? ToolCallId { get; set; }
@@ -77,6 +82,11 @@ namespace XianYuLauncher.Core.Models
         public string? ContentDelta { get; set; }
 
         /// <summary>
+        /// reasoning 内容增量（不直接展示，仅用于后续请求回传）
+        /// </summary>
+        public string? ReasoningDelta { get; set; }
+
+        /// <summary>
         /// 当流结束且包含工具调用时，填充此列表
         /// </summary>
         public List<ToolCallInfo>? ToolCalls { get; set; }
@@ -87,6 +97,7 @@ namespace XianYuLauncher.Core.Models
         public bool IsDone { get; set; }
 
         public bool IsContent => !string.IsNullOrEmpty(ContentDelta);
+        public bool IsReasoning => !string.IsNullOrEmpty(ReasoningDelta);
         public bool IsToolCall => ToolCalls != null && ToolCalls.Count > 0;
     }
 }

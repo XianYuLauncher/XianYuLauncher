@@ -83,6 +83,8 @@ public sealed class LauncherAIChatMessageStorageModel
 
     public string? AIHistoryContent { get; init; }
 
+    public string? AIHistoryReasoningContent { get; init; }
+
     public string? ToolCallId { get; init; }
 
     public List<ToolCallInfo>? ToolCalls { get; init; }

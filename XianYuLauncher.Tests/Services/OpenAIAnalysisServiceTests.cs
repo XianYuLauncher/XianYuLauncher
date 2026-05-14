@@ -194,6 +194,98 @@ public sealed class OpenAIAnalysisServiceTests
     }
 
     [Fact]
+    public async Task StreamChatWithToolsAsync_WithDeepSeekModel_ShouldRoundTripAssistantReasoningContent()
+    {
+        var payloads = new[]
+        {
+            "{\"choices\":[{\"delta\":{\"content\":\"继续处理\"}}]}"
+        };
+
+        await using var server = await FakeSseServer.StartAsync(payloads);
+        var service = CreateService();
+
+        _ = await CollectChunksAsync(service.StreamChatWithToolsAsync(
+            [
+                new ChatMessage("assistant", null, [new ToolCallInfo
+                {
+                    Id = "call_1",
+                    FunctionName = "patchSettings",
+                    Arguments = "{\"window_width\":1280}"
+                }])
+                {
+                    ReasoningContent = "先检查设置再决定是否修改。"
+                },
+                ChatMessage.ToolResult("call_1", "已准备提案"),
+                new ChatMessage("user", "请继续")
+            ],
+            [],
+            "test-key",
+            server.Endpoint,
+            "deepseek-v4-pro"));
+
+        server.LastRequestBody.Should().NotBeNullOrWhiteSpace();
+        var body = JObject.Parse(server.LastRequestBody!);
+        body["messages"]![0]!["reasoning_content"]!.Value<string>().Should().Be("先检查设置再决定是否修改。");
+    }
+
+    [Fact]
+    public async Task StreamChatWithToolsAsync_WithNonDeepSeekProvider_ShouldNotIncludeReasoningContent()
+    {
+        var payloads = new[]
+        {
+            "{\"choices\":[{\"delta\":{\"content\":\"继续处理\"}}]}"
+        };
+
+        await using var server = await FakeSseServer.StartAsync(payloads);
+        var service = CreateService();
+
+        _ = await CollectChunksAsync(service.StreamChatWithToolsAsync(
+            [
+                new ChatMessage("assistant", null, [new ToolCallInfo
+                {
+                    Id = "call_1",
+                    FunctionName = "patchSettings",
+                    Arguments = "{\"window_width\":1280}"
+                }])
+                {
+                    ReasoningContent = "先检查设置再决定是否修改。"
+                }
+            ],
+            [],
+            "test-key",
+            server.Endpoint,
+            "gpt-4.1"));
+
+        server.LastRequestBody.Should().NotBeNullOrWhiteSpace();
+        var body = JObject.Parse(server.LastRequestBody!);
+        body["messages"]![0]!["reasoning_content"].Should().BeNull();
+    }
+
+    [Fact]
+    public async Task StreamChatWithToolsAsync_WhenStreamContainsReasoningContent_ShouldExposeReasoningDelta()
+    {
+        var payloads = new[]
+        {
+            "{\"choices\":[{\"delta\":{\"reasoning_content\":\"先检查日志。\"}}]}",
+            "{\"choices\":[{\"delta\":{\"reasoning_content\":\"再调用工具。\"}}]}",
+            "{\"choices\":[{\"delta\":{\"tool_calls\":[{\"index\":0,\"id\":\"call_1\",\"function\":{\"name\":\"readLog\",\"arguments\":\"{}\"}}]}}]}"
+        };
+
+        await using var server = await FakeSseServer.StartAsync(payloads);
+        var service = CreateService();
+
+        var chunks = await CollectChunksAsync(service.StreamChatWithToolsAsync(
+            [new ChatMessage("user", "分析一下")],
+            [],
+            "test-key",
+            server.Endpoint,
+            "deepseek-v4-flash"));
+
+        string.Concat(chunks.Where(chunk => chunk.IsReasoning).Select(chunk => chunk.ReasoningDelta)).Should().Be("先检查日志。再调用工具。");
+        chunks.Should().ContainSingle(chunk => chunk.IsToolCall);
+    }
+
+    [Fact]
     public async Task StreamChatWithToolsAsync_WhenProviderReturnsJsonMessage_ShouldExposeDetailedFailureMessage()
     {
         const string errorBody = "{\"error\":{\"message\":\"model not found\"}}";

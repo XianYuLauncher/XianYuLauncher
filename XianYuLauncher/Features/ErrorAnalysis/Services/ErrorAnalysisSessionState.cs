@@ -322,6 +322,7 @@ public partial class ErrorAnalysisSessionState : ObservableObject
     {
         return apiMessages.Select(message => new ChatMessage(message.Role, message.Content, CloneToolCalls(message.ToolCalls))
         {
+            ReasoningContent = message.ReasoningContent,
             ToolCallId = message.ToolCallId,
             ImageAttachments = CloneImageAttachments(message.ImageAttachments)
         }).ToList();
@@ -344,6 +345,7 @@ public partial class ErrorAnalysisSessionState : ObservableObject
             ShowRoleHeader = message.ShowRoleHeader,
             DisplayRoleText = message.DisplayRoleText,
             AIHistoryContent = message.AIHistoryContent,
+            AIHistoryReasoningContent = message.AIHistoryReasoningContent,
             AIHistoryImageAttachments = CloneImageAttachments(message.AIHistoryImageAttachments),
             SuppressContentRendering = message.SuppressContentRendering,
             ToolCallId = message.ToolCallId,

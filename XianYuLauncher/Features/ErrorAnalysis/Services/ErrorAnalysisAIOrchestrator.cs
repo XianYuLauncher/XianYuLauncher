@@ -324,6 +324,7 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
 
                 bool isFirstChunk = true;
                 var contentBuilder = new StringBuilder();
+                var reasoningBuilder = new StringBuilder();
                 var updateBuffer = new StringBuilder();
                 var lastUpdate = DateTime.UtcNow;
                 var uiUpdateInterval = TimeSpan.FromMilliseconds(50);
@@ -372,6 +373,11 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
                         }
                     }
 
+                    if (chunk.IsReasoning)
+                    {
+                        reasoningBuilder.Append(chunk.ReasoningDelta);
+                    }
+
                     if (chunk.IsToolCall)
                     {
                         pendingToolCalls = chunk.ToolCalls;
@@ -410,10 +416,23 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
 
                 if (pendingToolCalls == null || pendingToolCalls.Count == 0)
                 {
+                    await _uiDispatcher.RunOnUiThreadAsync(() =>
+                    {
+                        var lastAssistant = GetLastAssistantMessage();
+                        if (lastAssistant != null)
+                        {
+                            lastAssistant.AIHistoryReasoningContent = reasoningBuilder.Length > 0
+                                ? reasoningBuilder.ToString()
+                                : null;
+                        }
+                    });
                     break;
                 }
 
-                var assistantToolCallMessage = new ChatMessage("assistant", contentBuilder.Length > 0 ? contentBuilder.ToString() : null, pendingToolCalls);
+                var assistantToolCallMessage = new ChatMessage("assistant", contentBuilder.Length > 0 ? contentBuilder.ToString() : null, pendingToolCalls)
+                {
+                    ReasoningContent = reasoningBuilder.Length > 0 ? reasoningBuilder.ToString() : null
+                };
                 apiMessages.Add(assistantToolCallMessage);
 
                 await _uiDispatcher.RunOnUiThreadAsync(() =>
@@ -426,6 +445,7 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
 
                     lastAssistant.ToolCalls = CloneToolCalls(pendingToolCalls);
                     lastAssistant.AIHistoryContent = string.IsNullOrWhiteSpace(lastAssistant.Content) ? null : lastAssistant.Content;
+                    lastAssistant.AIHistoryReasoningContent = assistantToolCallMessage.ReasoningContent;
                 });
 
                 List<AgentActionProposal> actionProposals = [];
@@ -668,7 +688,10 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
                         var preservedContent = string.IsNullOrWhiteSpace(msg.AIHistoryContent) ? null : msg.AIHistoryContent;
                         if (!string.IsNullOrWhiteSpace(preservedContent))
                         {
-                            apiMessages.Add(new ChatMessage("assistant", preservedContent));
+                            apiMessages.Add(new ChatMessage("assistant", preservedContent)
+                            {
+                                ReasoningContent = msg.AIHistoryReasoningContent
+                            });
                         }
                     }
 
@@ -679,7 +702,10 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
                 {
                     var content = string.IsNullOrWhiteSpace(msg.AIHistoryContent) ? null : msg.AIHistoryContent;
                     var clonedToolCalls = CloneToolCalls(msg.ToolCalls) ?? [];
-                    apiMessages.Add(new ChatMessage("assistant", content, clonedToolCalls));
+                    apiMessages.Add(new ChatMessage("assistant", content, clonedToolCalls)
+                    {
+                        ReasoningContent = msg.AIHistoryReasoningContent
+                    });
 
                     foreach (var toolCall in clonedToolCalls)
                     {
@@ -718,6 +744,7 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
 
                 apiMessages.Add(new ChatMessage(msg.Role, historyContent)
                 {
+                    ReasoningContent = msg.IsAssistant ? msg.AIHistoryReasoningContent : null,
                     ImageAttachments = historyAttachments
                 });
             }
@@ -1158,6 +1185,7 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
         {
             var cloned = new ChatMessage(message.Role, message.Content, message.ToolCalls != null ? CloneToolCalls(message.ToolCalls) : null)
             {
+                ReasoningContent = message.ReasoningContent,
                 ToolCallId = message.ToolCallId
             };
 
