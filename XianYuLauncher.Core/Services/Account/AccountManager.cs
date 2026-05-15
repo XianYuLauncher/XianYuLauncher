@@ -36,17 +36,17 @@ public class AccountManager : IAccountManager
             
             var json = await File.ReadAllTextAsync(sourcePath);
             var accounts = JsonConvert.DeserializeObject<List<MinecraftAccount>>(json) ?? new List<MinecraftAccount>();
-            
-            // 🔒 安全检查：检测并迁移明文token
-            bool needsMigration = await MigrateUnencryptedTokensAsync(accounts, accountsPath);
-            
-            // 🔓 解密所有token供内存使用
-            DecryptAccountTokens(accounts);
 
             if (!string.Equals(sourcePath, accountsPath, StringComparison.OrdinalIgnoreCase))
             {
-                System.Diagnostics.Debug.WriteLine("[AccountManager] 已从旧版 profiles.json 读取账户数据，下一次保存将迁移到 accounts.json");
+                sourcePath = await MigrateLegacyProfilesFileAsync(sourcePath, accountsPath, json);
             }
+            
+            // 🔒 安全检查：检测并迁移明文token
+            bool needsMigration = await MigrateUnencryptedTokensAsync(accounts, sourcePath);
+            
+            // 🔓 解密所有token供内存使用
+            DecryptAccountTokens(accounts);
             
             System.Diagnostics.Debug.WriteLine($"[AccountManager] 成功加载 {accounts.Count} 个角色{(needsMigration ? "（已自动加密明文token）" : "")}");
             return accounts;
@@ -223,5 +223,32 @@ public class AccountManager : IAccountManager
 
         var legacyProfilesPath = Path.Combine(minecraftPath, MinecraftFileConsts.LegacyProfilesJson);
         return File.Exists(legacyProfilesPath) ? legacyProfilesPath : null;
+    }
+
+    private static async Task<string> MigrateLegacyProfilesFileAsync(string legacyProfilesPath, string accountsPath, string legacyJson)
+    {
+        try
+        {
+            File.Move(legacyProfilesPath, accountsPath);
+            System.Diagnostics.Debug.WriteLine("[AccountManager] 已将旧版 profiles.json 重命名为 accounts.json");
+            return accountsPath;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AccountManager] 重命名旧版 profiles.json 失败，改为复制迁移: {ex.Message}");
+            await File.WriteAllTextAsync(accountsPath, legacyJson);
+
+            try
+            {
+                File.Delete(legacyProfilesPath);
+                System.Diagnostics.Debug.WriteLine("[AccountManager] 已删除旧版 profiles.json");
+            }
+            catch (Exception deleteEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AccountManager] 删除旧版 profiles.json 失败: {deleteEx.Message}");
+            }
+
+            return accountsPath;
+        }
     }
 }

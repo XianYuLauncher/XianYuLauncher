@@ -114,18 +114,15 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
         {
             // 获取角色数据文件路径
             string profilesFilePath = Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.AccountsJson);
+
+            // 🔒 使用安全方法读取（自动解密token）
+            var profiles = XianYuLauncher.Core.Helpers.TokenEncryption.LoadAccountsSecurely(profilesFilePath);
             
-            if (File.Exists(profilesFilePath))
+            // 查找活跃角色
+            var activeProfile = profiles.FirstOrDefault(p => p.IsActive) ?? profiles.FirstOrDefault();
+            if (activeProfile != null)
             {
-                // 🔒 使用安全方法读取（自动解密token）
-                var profiles = XianYuLauncher.Core.Helpers.TokenEncryption.LoadAccountsSecurely(profilesFilePath);
-                
-                // 查找活跃角色
-                var activeProfile = profiles.FirstOrDefault(p => p.IsActive) ?? profiles.FirstOrDefault();
-                if (activeProfile != null)
-                {
-                    return activeProfile.Name;
-                }
+                return activeProfile.Name;
             }
         }
         catch (Exception ex)

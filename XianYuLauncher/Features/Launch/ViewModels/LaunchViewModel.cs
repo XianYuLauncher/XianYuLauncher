@@ -1138,27 +1138,23 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     {
         try
         {
-            if (File.Exists(AccountsFilePath))
+            var profilesList = XianYuLauncher.Core.Helpers.TokenEncryption.LoadAccountsSecurely(AccountsFilePath);
+
+            // 清空现有列表并添加所有角色
+            Profiles.Clear();
+            foreach (var profile in profilesList)
             {
-                // 🔒 使用安全方法读取（自动解密token）
-                var profilesList = XianYuLauncher.Core.Helpers.TokenEncryption.LoadAccountsSecurely(AccountsFilePath);
-                
-                // 清空现有列表并添加所有角色
-                Profiles.Clear();
-                foreach (var profile in profilesList)
+                Profiles.Add(profile);
+            }
+            
+            // 设置活跃角色
+            if (Profiles.Count > 0)
+            {
+                SelectedProfile = Profiles.FirstOrDefault(p => p.IsActive) ?? Profiles.First();
+                // 更新用户名
+                if (SelectedProfile != null)
                 {
-                    Profiles.Add(profile);
-                }
-                
-                // 设置活跃角色
-                if (Profiles.Count > 0)
-                {
-                    SelectedProfile = Profiles.FirstOrDefault(p => p.IsActive) ?? Profiles.First();
-                    // 更新用户名
-                    if (SelectedProfile != null)
-                    {
-                        Username = SelectedProfile.Name;
-                    }
+                    Username = SelectedProfile.Name;
                 }
             }
         }

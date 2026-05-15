@@ -1357,15 +1357,11 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
         try
         {
             string profilesFilePath = Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.AccountsJson);
-            if (File.Exists(profilesFilePath))
+            var profilesList = XianYuLauncher.Core.Helpers.TokenEncryption.LoadAccountsSecurely(profilesFilePath);
+            if (profilesList.Count > 0)
             {
-                // 🔒 使用安全方法读取（自动解密token）
-                var profilesList = XianYuLauncher.Core.Helpers.TokenEncryption.LoadAccountsSecurely(profilesFilePath);
-                if (profilesList != null && profilesList.Count > 0)
-                {
-                    // 返回活跃角色或第一个角色
-                    return profilesList.FirstOrDefault(p => p.IsActive) ?? profilesList.First();
-                }
+                // 返回活跃角色或第一个角色
+                return profilesList.FirstOrDefault(p => p.IsActive) ?? profilesList.First();
             }
         }
         catch (Exception ex)
