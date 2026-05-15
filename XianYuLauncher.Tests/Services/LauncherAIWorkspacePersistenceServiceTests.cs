@@ -87,6 +87,7 @@ public sealed class LauncherAIWorkspacePersistenceServiceTests : IDisposable
                         ToolInputContent = "{\"window_width\":1280}",
                         ToolOutputContent = "已准备提案",
                         AIHistoryContent = "已准备提案",
+                        AIHistoryReasoningContent = "先读取当前全局设置。",
                         ImageAttachments = []
                     }
                 ],
@@ -120,6 +121,7 @@ public sealed class LauncherAIWorkspacePersistenceServiceTests : IDisposable
         loaded.Session.ChatMessages[0].Role.Should().Be("tool");
         loaded.Session.ChatMessages[0].ToolInputContent.Should().Be("{\"window_width\":1280}");
         loaded.Session.ChatMessages[0].ToolOutputContent.Should().Be("已准备提案");
+        loaded.Session.ChatMessages[0].AIHistoryReasoningContent.Should().Be("先读取当前全局设置。");
         loaded.Session.ActionProposals.Should().ContainSingle();
         loaded.Session.ActionProposals[0].ActionType.Should().Be("launchGame");
     }

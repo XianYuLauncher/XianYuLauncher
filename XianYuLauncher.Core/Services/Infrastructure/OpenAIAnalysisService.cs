@@ -43,25 +43,15 @@ namespace XianYuLauncher.Core.Services
 
             endpoint = NormalizeEndpoint(endpoint);
             if (string.IsNullOrWhiteSpace(model)) model = "gpt-3.5-turbo";
+            var shouldIncludeReasoningContent = ShouldIncludeReasoningContent(endpoint, model);
 
             // 构建 messages 数组，支持 tool_calls 和 tool role
             var apiMessages = new List<object>();
             foreach (var msg in messages)
             {
-                if (msg.Role == "assistant" && msg.ToolCalls != null && msg.ToolCalls.Count > 0)
+                if (msg.Role == "assistant")
                 {
-                    // assistant 消息带 tool_calls
-                    apiMessages.Add(new
-                    {
-                        role = "assistant",
-                        content = msg.Content ?? (object?)null,
-                        tool_calls = msg.ToolCalls.Select(tc => new
-                        {
-                            id = tc.Id,
-                            type = "function",
-                            function = new { name = tc.FunctionName, arguments = tc.Arguments }
-                        }).ToArray()
-                    });
+                    apiMessages.Add(BuildAssistantMessage(msg, shouldIncludeReasoningContent));
                 }
                 else if (msg.Role == "tool")
                 {
@@ -170,6 +160,12 @@ namespace XianYuLauncher.Core.Services
 
                 var delta = parsed["choices"]?[0]?["delta"];
                 if (delta == null) continue;
+
+                var reasoningDelta = delta["reasoning_content"]?.ToString();
+                if (!string.IsNullOrEmpty(reasoningDelta))
+                {
+                    yield return new AiStreamChunk { ReasoningDelta = reasoningDelta };
+                }
 
                 // 1. 检查 tool_calls 增量。一旦模型开始输出 tool_calls，后续自由文本一律丢弃，
                 // 避免同一轮响应里继续编造“已拒绝执行/已完成”等内容污染上层 UI。
@@ -360,6 +356,52 @@ namespace XianYuLauncher.Core.Services
             }
 
             return endpoint + "/v1/chat/completions";
+        }
+
+        private static object BuildAssistantMessage(ChatMessage message, bool shouldIncludeReasoningContent)
+        {
+            var hasToolCalls = message.ToolCalls != null && message.ToolCalls.Count > 0;
+            Dictionary<string, object?> payload = new()
+            {
+                ["role"] = "assistant",
+                ["content"] = hasToolCalls
+                    ? message.Content
+                    : BuildMessageContent(message)
+            };
+
+            if (hasToolCalls)
+            {
+                payload["tool_calls"] = message.ToolCalls!.Select(tc => new
+                {
+                    id = tc.Id,
+                    type = "function",
+                    function = new { name = tc.FunctionName, arguments = tc.Arguments }
+                }).ToArray();
+            }
+
+            if (shouldIncludeReasoningContent
+                && !string.IsNullOrWhiteSpace(message.ReasoningContent))
+            {
+                payload["reasoning_content"] = message.ReasoningContent;
+            }
+
+            return payload;
+        }
+
+        private static bool ShouldIncludeReasoningContent(string endpoint, string model)
+        {
+            if (!string.IsNullOrWhiteSpace(model)
+                && model.StartsWith("deepseek-", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (!Uri.TryCreate(endpoint, UriKind.Absolute, out var uri))
+            {
+                return false;
+            }
+
+            return uri.Host.Contains("deepseek.com", StringComparison.OrdinalIgnoreCase);
         }
 
         private static string BuildDetailedRequestFailureMessage(string endpoint, HttpStatusCode? statusCode, string? errorBody)
