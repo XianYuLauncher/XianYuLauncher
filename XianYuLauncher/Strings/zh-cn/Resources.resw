@@ -139,7 +139,7 @@
     <value>版本列表</value>
   </data>
   <data name="Shell_角色.Content" xml:space="preserve">
-    <value>角色</value>
+     <value>账户</value>
   </data>
   <data name="Shell_联机.Content" xml:space="preserve">
     <value>联机</value>
@@ -586,7 +586,7 @@
     <value>使用「添加」按钮手动添加 Java 版本到列表，或直接指定 Java 路径</value>
   </data>
   <data name="TutorialPage_ProfileSelectionTitle.Text" xml:space="preserve">
-    <value>角色选择</value>
+     <value>账户选择</value>
   </data>
   <data name="TutorialPage_LoginTypeTitle.Text" xml:space="preserve">
     <value>登录方式</value>
@@ -598,16 +598,16 @@
     <value>离线登录</value>
   </data>
   <data name="TutorialPage_ProfileNameTitle.Text" xml:space="preserve">
-    <value>角色名称</value>
+     <value>账户名称</value>
   </data>
   <data name="TutorialPage_LoginButtonText.Text" xml:space="preserve">
     <value>登录</value>
   </data>
   <data name="TutorialPage_OfflineProfileNameTitle.Text" xml:space="preserve">
-    <value>角色名称</value>
+     <value>账户名称</value>
   </data>
   <data name="TutorialPage_OfflineProfileNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>请输入角色名称</value>
+     <value>请输入账户名称</value>
   </data>
   <data name="TutorialPage_LoginRequiredDialog_Title" xml:space="preserve">
     <value>登录要求</value>
@@ -673,7 +673,7 @@
     <value>请选择游戏版本</value>
   </data>
   <data name="LaunchPage_SelectCharacterText" xml:space="preserve">
-    <value>请选择游戏角色</value>
+     <value>请选择游戏账户</value>
   </data>
   <data name="Settings_AddedGameDirectories" xml:space="preserve">
     <value>已添加的游戏目录</value>
@@ -787,10 +787,10 @@
     <value>刷新版本列表</value>
   </data>
   <data name="LaunchPage_PlayerName.Text" xml:space="preserve">
-    <value>选择角色</value>
+     <value>选择账户</value>
   </data>
   <data name="LaunchPage_AddProfile.Text" xml:space="preserve">
-    <value>添加角色</value>
+     <value>添加账户</value>
   </data>
   <data name="LaunchPage_LaunchGame.Content" xml:space="preserve">
     <value>启动游戏</value>
@@ -1454,7 +1454,7 @@
     <value>取消</value>
   </data>
   <data name="LaunchPage_AddedProfilesText" xml:space="preserve">
-    <value>已添加角色</value>
+     <value>已添加账户</value>
   </data>
   <data name="VersionListPage_Title.Text" xml:space="preserve">
     <value>版本列表</value>
@@ -1949,13 +1949,13 @@
     <value>禁用</value>
   </data>
   <data name="ProfilePage_Title.Text" xml:space="preserve">
-    <value>角色管理</value>
+     <value>账户管理</value>
   </data>
   <data name="ProfilePage_Subtitle.Text" xml:space="preserve">
-    <value>管理您的 Minecraft 角色</value>
+     <value>管理您的 Minecraft 账户</value>
   </data>
   <data name="ProfilePage_AddedProfilesText.Text" xml:space="preserve">
-    <value>已添加的角色</value>
+     <value>已添加的账户</value>
   </data>
   <data name="ProfilePage_AddAccountButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>添加账户</value>
@@ -1991,10 +1991,10 @@
     <value>取消</value>
   </data>
   <data name="ProfilePage_ExternalLoginDialog_SelectProfileTitle" xml:space="preserve">
-    <value>选择角色</value>
+     <value>选择账户</value>
   </data>
   <data name="ProfilePage_ExternalLoginDialog_SelectProfileInstruction" xml:space="preserve">
-    <value>请选择要添加的角色：</value>
+     <value>请选择要添加的账户：</value>
   </data>
   <data name="ProfilePage_ProfileType_External" xml:space="preserve">
     <value>外置登录</value>
@@ -2003,22 +2003,22 @@
     <value>UUID: </value>
   </data>
   <data name="ProfilePage_ProfileTypeLabel.Text" xml:space="preserve">
-    <value>角色类型: </value>
+     <value>账户类型: </value>
   </data>
   <data name="ProfilePage_EmptyProfilesTitle.Text" xml:space="preserve">
-    <value>还没有添加任何角色</value>
+     <value>还没有添加任何账户</value>
   </data>
   <data name="ProfilePage_EmptyProfilesDescription.Text" xml:space="preserve">
-    <value>点击'添加账户'按钮开始添加您的第一个角色</value>
+     <value>点击'添加账户'按钮开始添加您的第一个账户</value>
   </data>
   <data name="ProfileManagementPage_CurrentProfileLabel.Text" xml:space="preserve">
-    <value>当前角色</value>
+     <value>当前账户</value>
   </data>
   <data name="ProfileManagementPage_RenameTitle.Text" xml:space="preserve">
     <value>改名</value>
   </data>
   <data name="ProfileManagementPage_OfflineOnlyNote.Text" xml:space="preserve">
-    <value>仅对离线角色启用</value>
+     <value>仅对离线账户启用</value>
   </data>
   <data name="ProfileManagementPage_NewUsernameTextBox.PlaceholderText" xml:space="preserve">
     <value>输入新用户名</value>
@@ -2048,7 +2048,7 @@
     <value>设置披风</value>
   </data>
   <data name="ProfileManagementPage_CapeSelectionNote.Text" xml:space="preserve">
-    <value>选择当前账号的披风</value>
+     <value>选择当前账户的披风</value>
   </data>
   <data name="ProfileManagementPage_CapeComboBox.PlaceholderText" xml:space="preserve">
     <value>选择披风</value>
@@ -2069,13 +2069,13 @@
     <value>保存皮肤纹理</value>
   </data>
   <data name="ProfilePage_SwitchProfileButton.ToolTipService.ToolTip" xml:space="preserve">
-    <value>切换到该角色</value>
+     <value>切换到该账户</value>
   </data>
   <data name="ProfilePage_DeleteProfileButton.ToolTipService.ToolTip" xml:space="preserve">
-    <value>删除角色</value>
+     <value>删除账户</value>
   </data>
   <data name="ProfilePage_OfflineProfileText" xml:space="preserve">
-    <value>离线角色</value>
+     <value>离线账户</value>
   </data>
   <data name="ProfilePage_MicrosoftProfileText" xml:space="preserve">
     <value>微软账户</value>
@@ -2765,7 +2765,7 @@
     <value>https://example.com/api/yggdrasil</value>
   </data>
   <data name="TutorialPage_ExternalUsername.Header" xml:space="preserve">
-    <value>账号/邮箱</value>
+     <value>账户/邮箱</value>
   </data>
   <data name="TutorialPage_ExternalUsername.PlaceholderText" xml:space="preserve">
     <value>请输入注册邮箱</value>
@@ -2798,13 +2798,13 @@
     <value>开始使用</value>
   </data>
   <data name="TutorialPage_LoginStatus_VerifyingExternal" xml:space="preserve">
-    <value>正在验证外置登录账号...</value>
+     <value>正在验证外置登录账户...</value>
   </data>
   <data name="TutorialPage_LoginStatus_Cancelled" xml:space="preserve">
     <value>已取消登录</value>
   </data>
   <data name="TutorialPage_ExternalLogin_FailedMessage" xml:space="preserve">
-    <value>验证失败，请检查账号密码或服务器地址</value>
+     <value>验证失败，请检查账户密码或服务器地址</value>
   </data>
   <data name="TutorialPage_LoginError_Prefix" xml:space="preserve">
     <value>登录出错:</value>
@@ -2822,7 +2822,7 @@
     <value>已登录</value>
   </data>
   <data name="TutorialPage_ExternalLoginButton_Login" xml:space="preserve">
-    <value>登录外置账号</value>
+     <value>登录外置账户</value>
   </data>
   <data name="TutorialPage_InstalledJavaVersions.Text" xml:space="preserve">
     <value>已安装的 Java 版本</value>
@@ -2924,7 +2924,7 @@
     <value>移除图片</value>
   </data>
   <data name="LauncherProfileDialog_ShortcutTitle" xml:space="preserve">
-    <value>选择启动档案</value>
+     <value>选择启动账户</value>
   </data>
   <data name="LauncherProfileDialog_ShortcutPrimaryButton" xml:space="preserve">
     <value>创建快捷方式</value>
@@ -2933,10 +2933,10 @@
     <value>取消</value>
   </data>
   <data name="LauncherProfileFlyout_NoProfiles" xml:space="preserve">
-    <value>暂无可用启动档案</value>
+     <value>暂无可用启动账户</value>
   </data>
   <data name="Settings_AI_Disclaimer.Text" xml:space="preserve">
-    <value>Launcher AI 仅提供接入 OpenAI API 规范的 LLM 的能力，软件内不提供任何 AI 服务或账号。使用前请确认您所在地区允许使用相关服务，并严格遵守所选 AI 提供商的服务条款、使用政策与隐私规则；API Key 由您自行申请与保管，相关费用与合规责任由用户自行承担。</value>
+     <value>Launcher AI 仅提供接入 OpenAI API 规范的 LLM 的能力，软件内不提供任何 AI 服务或账户。使用前请确认您所在地区允许使用相关服务，并严格遵守所选 AI 提供商的服务条款、使用政策与隐私规则；API Key 由您自行申请与保管，相关费用与合规责任由用户自行承担。</value>
   </data>
   <data name="Settings_AI_ApiEndpoint.Header" xml:space="preserve">
     <value>API 端点 (Base URL)</value>
@@ -3920,7 +3920,7 @@
     <value>请先选择一个游戏版本</value>
   </data>
   <data name="Msg_SelectCharacterFirst" xml:space="preserve">
-    <value>请先选择一个角色</value>
+     <value>请先选择一个账户</value>
   </data>
   <data name="Msg_GeneratingLaunchParams" xml:space="preserve">
     <value>正在生成启动参数...</value>
@@ -3977,7 +3977,7 @@
     <value>外置登录暂不支持上传披风</value>
   </data>
   <data name="Msg_MsNoCapeUpload" xml:space="preserve">
-    <value>微软账号不支持直接上传披风</value>
+     <value>微软账户不支持直接上传披风</value>
   </data>
   <data name="Msg_UploadTip" xml:space="preserve">
     <value>上传提示</value>
@@ -4268,10 +4268,10 @@
     <value>管理已安装的 Minecraft 版本</value>
   </data>
   <data name="ProfilePage_HeaderTitle" xml:space="preserve">
-    <value>角色管理</value>
+     <value>账户管理</value>
   </data>
   <data name="ProfilePage_HeaderSubtitle" xml:space="preserve">
-    <value>管理您的 Minecraft 角色</value>
+     <value>管理您的 Minecraft 账户</value>
   </data>
   <data name="LauncherAIPage_HeaderTitle" xml:space="preserve">
     <value>Launcher AI</value>

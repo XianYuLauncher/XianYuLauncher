@@ -66,7 +66,7 @@
                     VerticalAlignment="Center">
                     <TextBlock
                         x:Uid="ProfileManagementPage_CurrentProfileLabel"
-                        Text="当前角色"
+                        Text="当前账户"
                         Style="{StaticResource CaptionTextBlockStyle}"
                         Foreground="{ThemeResource TextFillColorSecondary}" />
                     <TextBlock
@@ -179,7 +179,7 @@
                                 FontWeight="SemiBold" />
                             <TextBlock
                                 x:Uid="ProfileManagementPage_OfflineOnlyNote"
-                                Text="仅对离线角色启用"
+                                Text="仅对离线账户启用"
                                 Style="{StaticResource CaptionTextBlockStyle}"
                                 Foreground="{ThemeResource TextFillColorSecondary}" />
                         </StackPanel>
@@ -225,7 +225,7 @@
                                 FontWeight="SemiBold" />
                             <TextBlock
                                 x:Uid="ProfileManagementPage_OfflineOnlyNote"
-                                Text="仅对离线角色启用"
+                                Text="仅对离线账户启用"
                                 Style="{StaticResource CaptionTextBlockStyle}"
                                 Foreground="{ThemeResource TextFillColorSecondary}" />
                         </StackPanel>
@@ -336,7 +336,7 @@
                             <StackPanel Spacing="12">
                                 <TextBlock
                                     x:Uid="ProfileManagementPage_CapeSelectionNote"
-                                    Text="选择当前账号的披风"
+                                    Text="选择当前账户的披风"
                                     Style="{StaticResource BodyTextBlockStyle}"
                                     Foreground="{ThemeResource TextFillColorSecondary}" />
                                 

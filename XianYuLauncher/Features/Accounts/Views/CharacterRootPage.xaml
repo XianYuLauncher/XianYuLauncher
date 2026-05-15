@@ -104,7 +104,7 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock 
                             x:Uid="ProfilePage_AddedProfilesText" 
-                            Text="已添加的角色" 
+                            Text="已添加的账户" 
                             Style="{StaticResource TitleTextBlockStyle}" 
                             FontSize="20" 
                             FontWeight="SemiBold" 
@@ -247,7 +247,7 @@
                                                     <StackPanel Orientation="Horizontal" Spacing="4">
                                                         <TextBlock 
                                                             x:Uid="ProfilePage_ProfileTypeLabel" 
-                                                            Text="角色类型: " 
+                                                            Text="账户类型: " 
                                                             FontSize="13" 
                                                             Opacity="0.6" />
                                                         <TextBlock 
@@ -268,7 +268,7 @@
                                                     Command="{Binding DataContext.SwitchProfileCommand, ElementName=ContentArea}"
                                                     CommandParameter="{Binding}"
                                                     Style="{StaticResource ProfileButtonStyle}"
-                                                    ToolTipService.ToolTip="切换到该角色">
+                                                    ToolTipService.ToolTip="切换到该账户">
                                                     <FontIcon 
                                                         FontFamily="{StaticResource SymbolThemeFontFamily}" 
                                                         Glyph="&#xE72D;" 
@@ -282,7 +282,7 @@
                                                     Command="{Binding DataContext.DeleteProfileCommand, ElementName=ContentArea}"
                                                     CommandParameter="{Binding}"
                                                     Style="{StaticResource ProfileButtonStyle}"
-                                                    ToolTipService.ToolTip="删除角色">
+                                                    ToolTipService.ToolTip="删除账户">
                                                     <FontIcon 
                                                         FontFamily="{StaticResource SymbolThemeFontFamily}" 
                                                         Glyph="&#xE107;" 
@@ -315,7 +315,7 @@
                             Margin="0,0,0,8" />
                         <TextBlock 
                             x:Uid="ProfilePage_EmptyProfilesTitle" 
-                            Text="还没有添加任何角色" 
+                            Text="还没有添加任何账户" 
                             FontSize="20" 
                             FontWeight="SemiBold" 
                             Opacity="0.7" 
@@ -323,7 +323,7 @@
                             Margin="0,0,0,4" />
                         <TextBlock 
                             x:Uid="ProfilePage_EmptyProfilesDescription" 
-                            Text="点击'添加账户'按钮开始添加您的第一个角色" 
+                            Text="点击'添加账户'按钮开始添加您的第一个账户" 
                             FontSize="15" 
                             Opacity="0.6" 
                             TextAlignment="Center" 

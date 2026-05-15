@@ -139,7 +139,7 @@
     <value>Versions</value>
   </data>
   <data name="Shell_角色.Content" xml:space="preserve">
-    <value>Profile</value>
+     <value>Account</value>
   </data>
   <data name="Shell_联机.Content" xml:space="preserve">
     <value>Multiplayer</value>
@@ -586,7 +586,7 @@
     <value>Use 'Add' button to manually add Java versions to the list, or directly specify Java path</value>
   </data>
   <data name="TutorialPage_ProfileSelectionTitle.Text" xml:space="preserve">
-    <value>Profile Selection</value>
+     <value>Account Selection</value>
   </data>
   <data name="TutorialPage_LoginTypeTitle.Text" xml:space="preserve">
     <value>Login Type</value>
@@ -598,16 +598,16 @@
     <value>Offline Login</value>
   </data>
   <data name="TutorialPage_ProfileNameTitle.Text" xml:space="preserve">
-    <value>Profile Name</value>
+     <value>Account Name</value>
   </data>
   <data name="TutorialPage_LoginButtonText.Text" xml:space="preserve">
     <value>Login</value>
   </data>
   <data name="TutorialPage_OfflineProfileNameTitle.Text" xml:space="preserve">
-    <value>Profile Name</value>
+     <value>Account Name</value>
   </data>
   <data name="TutorialPage_OfflineProfileNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>Please enter profile name</value>
+     <value>Please enter account name</value>
   </data>
   <data name="TutorialPage_LoginRequiredDialog_Title" xml:space="preserve">
     <value>Login Required</value>
@@ -673,7 +673,7 @@
     <value>Select a game version</value>
   </data>
   <data name="LaunchPage_SelectCharacterText" xml:space="preserve">
-    <value>Select a character</value>
+     <value>Select an account</value>
   </data>
   <data name="Settings_AddedGameDirectories" xml:space="preserve">
     <value>Added Game Directories</value>
@@ -787,10 +787,10 @@
     <value>Refresh version list</value>
   </data>
   <data name="LaunchPage_PlayerName.Text" xml:space="preserve">
-    <value>Profile</value>
+     <value>Account</value>
   </data>
   <data name="LaunchPage_AddProfile.Text" xml:space="preserve">
-    <value>Add Profile</value>
+     <value>Add Account</value>
   </data>
   <data name="LaunchPage_LaunchGame.Content" xml:space="preserve">
     <value>Launch Game</value>
@@ -1454,7 +1454,7 @@ Continue downloading?</value>
     <value>Cancel</value>
   </data>
   <data name="LaunchPage_AddedProfilesText" xml:space="preserve">
-    <value>Added Profiles</value>
+     <value>Added Accounts</value>
   </data>
   <data name="VersionListPage_Title.Text" xml:space="preserve">
     <value>Version List</value>
@@ -1946,13 +1946,13 @@ Continue downloading?</value>
     <value>Disabled</value>
   </data>
   <data name="ProfilePage_Title.Text" xml:space="preserve">
-    <value>Profile Management</value>
+     <value>Account Management</value>
   </data>
   <data name="ProfilePage_Subtitle.Text" xml:space="preserve">
-    <value>Manage your Minecraft profiles</value>
+     <value>Manage your Minecraft accounts</value>
   </data>
   <data name="ProfilePage_AddedProfilesText.Text" xml:space="preserve">
-    <value>Added Profiles</value>
+     <value>Added Accounts</value>
   </data>
   <data name="ProfilePage_AddAccountButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>Add Account</value>
@@ -1988,10 +1988,10 @@ Continue downloading?</value>
     <value>Cancel</value>
   </data>
   <data name="ProfilePage_ExternalLoginDialog_SelectProfileTitle" xml:space="preserve">
-    <value>Select Profile</value>
+     <value>Select Account</value>
   </data>
   <data name="ProfilePage_ExternalLoginDialog_SelectProfileInstruction" xml:space="preserve">
-    <value>Please select the profile to add:</value>
+     <value>Please select the account to add:</value>
   </data>
   <data name="ProfilePage_ProfileType_External" xml:space="preserve">
     <value>External Login</value>
@@ -2000,22 +2000,22 @@ Continue downloading?</value>
     <value>UUID: </value>
   </data>
   <data name="ProfilePage_ProfileTypeLabel.Text" xml:space="preserve">
-    <value>Profile Type: </value>
+     <value>Account Type: </value>
   </data>
   <data name="ProfilePage_EmptyProfilesTitle.Text" xml:space="preserve">
-    <value>No profiles added yet</value>
+     <value>No accounts added yet</value>
   </data>
   <data name="ProfilePage_EmptyProfilesDescription.Text" xml:space="preserve">
-    <value>Click the 'Add Account' button to add your first profile</value>
+     <value>Click the 'Add Account' button to add your first account</value>
   </data>
   <data name="ProfileManagementPage_CurrentProfileLabel.Text" xml:space="preserve">
-    <value>Current Profile</value>
+     <value>Current Account</value>
   </data>
   <data name="ProfileManagementPage_RenameTitle.Text" xml:space="preserve">
     <value>Rename</value>
   </data>
   <data name="ProfileManagementPage_OfflineOnlyNote.Text" xml:space="preserve">
-    <value>Only available for offline profiles</value>
+     <value>Only available for offline accounts</value>
   </data>
   <data name="ProfileManagementPage_NewUsernameTextBox.PlaceholderText" xml:space="preserve">
     <value>Enter new username</value>
@@ -2066,13 +2066,13 @@ Continue downloading?</value>
     <value>Save Skin Texture</value>
   </data>
   <data name="ProfilePage_SwitchProfileButton.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Switch to this profile</value>
+     <value>Switch to this account</value>
   </data>
   <data name="ProfilePage_DeleteProfileButton.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Delete profile</value>
+     <value>Delete account</value>
   </data>
   <data name="ProfilePage_OfflineProfileText" xml:space="preserve">
-    <value>Offline Profile</value>
+     <value>Offline Account</value>
   </data>
   <data name="ProfilePage_MicrosoftProfileText" xml:space="preserve">
     <value>Microsoft Account</value>
@@ -2927,7 +2927,7 @@ Continue downloading?</value>
     <value>Remove image</value>
   </data>
   <data name="LauncherProfileDialog_ShortcutTitle" xml:space="preserve">
-    <value>Select a launch profile</value>
+     <value>Select a launch account</value>
   </data>
   <data name="LauncherProfileDialog_ShortcutPrimaryButton" xml:space="preserve">
     <value>Create shortcut</value>
@@ -2936,7 +2936,7 @@ Continue downloading?</value>
     <value>Cancel</value>
   </data>
   <data name="LauncherProfileFlyout_NoProfiles" xml:space="preserve">
-    <value>No launch profiles available</value>
+     <value>No launch accounts available</value>
   </data>
   <data name="Settings_AI_Disclaimer.Text" xml:space="preserve">
     <value>Launcher AI only provides the capability to access LLMs compatible with the OpenAI API specification. No AI services or accounts are provided within the software. Please confirm that relevant services are permitted in your region before use, and strictly abide by the terms of service, usage policies, and privacy rules of the selected AI provider; API Keys must be applied for and kept by yourself, and relevant costs and compliance responsibilities are borne by the user.</value>
@@ -3923,7 +3923,7 @@ Continue downloading?</value>
     <value>Please select a game version first</value>
   </data>
   <data name="Msg_SelectCharacterFirst" xml:space="preserve">
-    <value>Please select a character first</value>
+     <value>Please select an account first</value>
   </data>
   <data name="Msg_GeneratingLaunchParams" xml:space="preserve">
     <value>Generating launch parameters...</value>
@@ -4271,10 +4271,10 @@ You can double-click the file to launch the game.</value>
     <value>Manage installed Minecraft versions</value>
   </data>
   <data name="ProfilePage_HeaderTitle" xml:space="preserve">
-    <value>Profile Management</value>
+     <value>Account Management</value>
   </data>
   <data name="ProfilePage_HeaderSubtitle" xml:space="preserve">
-    <value>Manage your Minecraft profiles</value>
+     <value>Manage your Minecraft accounts</value>
   </data>
   <data name="LauncherAIPage_HeaderTitle" xml:space="preserve">
     <value>Launcher AI</value>

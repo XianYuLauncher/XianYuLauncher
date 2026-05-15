@@ -163,7 +163,7 @@
                                         TextTrimming="CharacterEllipsis" />
                                     <TextBlock 
                                         x:Uid="LaunchPage_PlayerName"
-                                        Text="游戏角色"
+                                        Text="游戏账户"
                                         Style="{StaticResource CaptionTextBlockStyle}"
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 </StackPanel>
@@ -178,7 +178,7 @@
                                 <MenuFlyout x:Name="ProfileMenuFlyout" Opening="ProfileMenuFlyout_Opening">
                                     <MenuFlyoutItem 
                                         x:Uid="LaunchPage_AddProfile"
-                                        Text="添加角色"
+                                        Text="添加账户"
                                         Click="AddProfileMenuItem_Click">
                                         <MenuFlyoutItem.Icon>
                                             <SymbolIcon Symbol="Add" />
