@@ -238,7 +238,7 @@ public class GameLaunchServiceTests : IDisposable
         await File.WriteAllTextAsync(jarPath, string.Empty);
         await File.WriteAllTextAsync(jsonPath, "{}");
 
-        var profile = new MinecraftProfile
+        var profile = new MinecraftAccount
         {
             Id = "player-id",
             Name = "Steve",
@@ -307,7 +307,7 @@ public class GameLaunchServiceTests : IDisposable
         await File.WriteAllTextAsync(jarPath, string.Empty);
         await File.WriteAllTextAsync(jsonPath, "{}");
 
-        var profile = new MinecraftProfile
+        var profile = new MinecraftAccount
         {
             Id = "player-id",
             Name = "Alex",

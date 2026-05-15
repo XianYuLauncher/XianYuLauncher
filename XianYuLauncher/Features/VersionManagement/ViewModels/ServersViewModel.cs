@@ -21,8 +21,8 @@ public partial class ServersViewModel : ObservableObject
     private readonly IVersionManagementContext _context;
     private readonly INavigationService _navigationService;
     private readonly ICommonDialogService _dialogService;
-    private readonly IProfileDialogService _profileDialogService;
-    private readonly IProfileManager _profileManager;
+    private readonly IAccountDialogService _profileDialogService;
+    private readonly IAccountManager _accountManager;
     private readonly ISelectionDialogService _selectionDialogService;
     private readonly IUiDispatcher _uiDispatcher;
 
@@ -32,8 +32,8 @@ public partial class ServersViewModel : ObservableObject
         IVersionManagementContext context,
         INavigationService navigationService,
         ICommonDialogService dialogService,
-        IProfileDialogService profileDialogService,
-        IProfileManager profileManager,
+        IAccountDialogService profileDialogService,
+        IAccountManager accountManager,
         ISelectionDialogService selectionDialogService,
         IUiDispatcher uiDispatcher)
     {
@@ -41,7 +41,7 @@ public partial class ServersViewModel : ObservableObject
         _navigationService = navigationService;
         _dialogService = dialogService;
         _profileDialogService = profileDialogService;
-        _profileManager = profileManager;
+        _accountManager = accountManager;
         _selectionDialogService = selectionDialogService;
         _uiDispatcher = uiDispatcher;
     }
@@ -257,15 +257,15 @@ public partial class ServersViewModel : ObservableObject
 
         try
         {
-            var profiles = await _profileManager.LoadProfilesAsync();
-            MinecraftProfile? selectedProfile = null;
+            var profiles = await _accountManager.LoadAccountsAsync();
+            MinecraftAccount? selectedProfile = null;
             if (profiles.Count > 0)
             {
-                selectedProfile = await _profileDialogService.ShowLauncherProfileSelectionDialogAsync(
+                selectedProfile = await _profileDialogService.ShowLauncherAccountSelectionDialogAsync(
                     profiles,
-                    "LauncherProfileDialog_ShortcutTitle".GetLocalized(),
-                    "LauncherProfileDialog_ShortcutPrimaryButton".GetLocalized(),
-                    "LauncherProfileDialog_CloseButton".GetLocalized());
+                    "LauncherAccountDialog_ShortcutTitle".GetLocalized(),
+                    "LauncherAccountDialog_ShortcutPrimaryButton".GetLocalized(),
+                    "LauncherAccountDialog_CloseButton".GetLocalized());
 
                 if (selectedProfile == null)
                 {

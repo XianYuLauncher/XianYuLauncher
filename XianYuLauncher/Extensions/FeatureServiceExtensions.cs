@@ -49,7 +49,7 @@ internal static class FeatureServiceExtensions
         services.AddSingleton<IAgentToolHandler, GetLaunchContextToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetLogTailToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetLogChunkToolHandler>();
-        services.AddSingleton<IAgentToolHandler, GetProfilesToolHandler>();
+        services.AddSingleton<IAgentToolHandler, GetAccountsToolHandler>();
         services.AddSingleton<IAgentToolHandler, GetGameManifestToolHandler>();
         services.AddSingleton<IAgentToolHandler, InstallGameToolHandler>();
         services.AddSingleton<IAgentToolHandler, LaunchGameToolHandler>();

@@ -328,7 +328,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
     {
         try
         {
-            return await ProfileAvatarImageHelper.CreateDefaultProfileAvatarAsync(24);
+            return await AccountAvatarImageHelper.CreateDefaultAccountAvatarAsync(24);
         }
         catch (Exception ex)
         {
@@ -345,19 +345,16 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
         try
         {
             // 获取角色数据文件路径
-            string profilesFilePath = Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.ProfilesJson);
+            string profilesFilePath = Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.AccountsJson);
+
+            // 🔒 使用安全方法读取（自动解密token）
+            var profiles = XianYuLauncher.Core.Helpers.TokenEncryption.LoadAccountsSecurely(profilesFilePath);
             
-            if (File.Exists(profilesFilePath))
+            // 查找活跃角色
+            var activeProfile = profiles.FirstOrDefault(p => p.IsActive) ?? profiles.FirstOrDefault();
+            if (activeProfile != null)
             {
-                // 🔒 使用安全方法读取（自动解密token）
-                var profiles = XianYuLauncher.Core.Helpers.TokenEncryption.LoadProfilesSecurely(profilesFilePath);
-                
-                // 查找活跃角色
-                var activeProfile = profiles.FirstOrDefault(p => p.IsActive) ?? profiles.FirstOrDefault();
-                if (activeProfile != null)
-                {
-                    HostName = activeProfile.Name;
-                }
+                HostName = activeProfile.Name;
             }
         }
         catch (Exception ex)

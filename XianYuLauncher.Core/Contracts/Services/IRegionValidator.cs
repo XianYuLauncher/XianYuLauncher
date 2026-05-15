@@ -18,5 +18,5 @@ public interface IRegionValidator
     /// </summary>
     /// <param name="profile">角色信息</param>
     /// <returns>验证结果</returns>
-    ValidationResult ValidateLoginMethod(MinecraftProfile profile);
+    ValidationResult ValidateLoginMethod(MinecraftAccount profile);
 }

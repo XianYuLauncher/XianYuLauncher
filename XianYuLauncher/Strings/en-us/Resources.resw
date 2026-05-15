@@ -138,8 +138,8 @@
   <data name="Shell_版本列表.Content" xml:space="preserve">
     <value>Versions</value>
   </data>
-  <data name="Shell_角色.Content" xml:space="preserve">
-    <value>Profile</value>
+  <data name="Shell_Account.Content" xml:space="preserve">
+     <value>Account</value>
   </data>
   <data name="Shell_联机.Content" xml:space="preserve">
     <value>Multiplayer</value>
@@ -585,8 +585,8 @@
   <data name="TutorialPage_JavaPathDescription.Text" xml:space="preserve">
     <value>Use 'Add' button to manually add Java versions to the list, or directly specify Java path</value>
   </data>
-  <data name="TutorialPage_ProfileSelectionTitle.Text" xml:space="preserve">
-    <value>Profile Selection</value>
+  <data name="TutorialPage_AccountSelectionTitle.Text" xml:space="preserve">
+     <value>Account Selection</value>
   </data>
   <data name="TutorialPage_LoginTypeTitle.Text" xml:space="preserve">
     <value>Login Type</value>
@@ -597,17 +597,17 @@
   <data name="TutorialPage_OfflineLoginRadio.Content" xml:space="preserve">
     <value>Offline Login</value>
   </data>
-  <data name="TutorialPage_ProfileNameTitle.Text" xml:space="preserve">
-    <value>Profile Name</value>
+  <data name="TutorialPage_AccountNameTitle.Text" xml:space="preserve">
+     <value>Account Name</value>
   </data>
   <data name="TutorialPage_LoginButtonText.Text" xml:space="preserve">
     <value>Login</value>
   </data>
-  <data name="TutorialPage_OfflineProfileNameTitle.Text" xml:space="preserve">
-    <value>Profile Name</value>
+  <data name="TutorialPage_OfflineAccountNameTitle.Text" xml:space="preserve">
+     <value>Account Name</value>
   </data>
-  <data name="TutorialPage_OfflineProfileNameTextBox.PlaceholderText" xml:space="preserve">
-    <value>Please enter profile name</value>
+  <data name="TutorialPage_OfflineAccountNameTextBox.PlaceholderText" xml:space="preserve">
+     <value>Please enter account name</value>
   </data>
   <data name="TutorialPage_LoginRequiredDialog_Title" xml:space="preserve">
     <value>Login Required</value>
@@ -673,7 +673,7 @@
     <value>Select a game version</value>
   </data>
   <data name="LaunchPage_SelectCharacterText" xml:space="preserve">
-    <value>Select a character</value>
+     <value>Select an account</value>
   </data>
   <data name="Settings_AddedGameDirectories" xml:space="preserve">
     <value>Added Game Directories</value>
@@ -786,11 +786,11 @@
   <data name="LaunchPage_RefreshVersionsTooltip.ToolTipService.ToolTip" xml:space="preserve">
     <value>Refresh version list</value>
   </data>
-  <data name="LaunchPage_PlayerName.Text" xml:space="preserve">
-    <value>Profile</value>
+  <data name="LaunchPage_AccountName.Text" xml:space="preserve">
+     <value>Account</value>
   </data>
-  <data name="LaunchPage_AddProfile.Text" xml:space="preserve">
-    <value>Add Profile</value>
+  <data name="LaunchPage_AddAccount.Text" xml:space="preserve">
+     <value>Add Account</value>
   </data>
   <data name="LaunchPage_LaunchGame.Content" xml:space="preserve">
     <value>Launch Game</value>
@@ -1453,8 +1453,8 @@ Continue downloading?</value>
   <data name="ModDownloadDetailPage_QuickInstallModVersionDialog_CloseButtonText" xml:space="preserve">
     <value>Cancel</value>
   </data>
-  <data name="LaunchPage_AddedProfilesText" xml:space="preserve">
-    <value>Added Profiles</value>
+  <data name="LaunchPage_AddedAccountsText" xml:space="preserve">
+     <value>Added Accounts</value>
   </data>
   <data name="VersionListPage_Title.Text" xml:space="preserve">
     <value>Version List</value>
@@ -1945,139 +1945,139 @@ Continue downloading?</value>
   <data name="VersionManagerPage_DisabledText.OffContent" xml:space="preserve">
     <value>Disabled</value>
   </data>
-  <data name="ProfilePage_Title.Text" xml:space="preserve">
-    <value>Profile Management</value>
+  <data name="AccountPage_Title.Text" xml:space="preserve">
+     <value>Account Management</value>
   </data>
-  <data name="ProfilePage_Subtitle.Text" xml:space="preserve">
-    <value>Manage your Minecraft profiles</value>
+  <data name="AccountPage_Subtitle.Text" xml:space="preserve">
+     <value>Manage your Minecraft accounts</value>
   </data>
-  <data name="ProfilePage_AddedProfilesText.Text" xml:space="preserve">
-    <value>Added Profiles</value>
+    <data name="AccountPage_AddedAccountsText.Text" xml:space="preserve">
+     <value>Added Accounts</value>
   </data>
-  <data name="ProfilePage_AddAccountButton.ToolTipService.ToolTip" xml:space="preserve">
+  <data name="AccountPage_AddAccountButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>Add Account</value>
   </data>
-  <data name="ProfilePage_AddAccountText.Text" xml:space="preserve">
+  <data name="AccountPage_AddAccountText.Text" xml:space="preserve">
     <value>Add Account</value>
   </data>
-  <data name="ProfilePage_OfflineLoginMenuItem.Text" xml:space="preserve">
+  <data name="AccountPage_OfflineLoginMenuItem.Text" xml:space="preserve">
     <value>Offline Login</value>
   </data>
-  <data name="ProfilePage_MicrosoftLoginMenuItem.Text" xml:space="preserve">
+  <data name="AccountPage_MicrosoftLoginMenuItem.Text" xml:space="preserve">
     <value>Microsoft Login</value>
   </data>
-  <data name="ProfilePage_ExternalLoginMenuItem.Text" xml:space="preserve">
+  <data name="AccountPage_ExternalLoginMenuItem.Text" xml:space="preserve">
     <value>External Login</value>
   </data>
-  <data name="ProfilePage_ExternalLoginDialog_Title" xml:space="preserve">
+  <data name="AccountPage_ExternalLoginDialog_Title" xml:space="preserve">
     <value>External Login</value>
   </data>
-  <data name="ProfilePage_ExternalLoginDialog_AuthServerLabel" xml:space="preserve">
+  <data name="AccountPage_ExternalLoginDialog_AuthServerLabel" xml:space="preserve">
     <value>Auth Server</value>
   </data>
-  <data name="ProfilePage_ExternalLoginDialog_UsernameLabel" xml:space="preserve">
+  <data name="AccountPage_ExternalLoginDialog_UsernameLabel" xml:space="preserve">
     <value>Username</value>
   </data>
-  <data name="ProfilePage_ExternalLoginDialog_PasswordLabel" xml:space="preserve">
+  <data name="AccountPage_ExternalLoginDialog_PasswordLabel" xml:space="preserve">
     <value>Password</value>
   </data>
-  <data name="ProfilePage_ExternalLoginDialog_ConfirmButton" xml:space="preserve">
+  <data name="AccountPage_ExternalLoginDialog_ConfirmButton" xml:space="preserve">
     <value>Confirm</value>
   </data>
-  <data name="ProfilePage_ExternalLoginDialog_CancelButton" xml:space="preserve">
+  <data name="AccountPage_ExternalLoginDialog_CancelButton" xml:space="preserve">
     <value>Cancel</value>
   </data>
-  <data name="ProfilePage_ExternalLoginDialog_SelectProfileTitle" xml:space="preserve">
-    <value>Select Profile</value>
+  <data name="AccountPage_ExternalLoginDialog_SelectProfileTitle" xml:space="preserve">
+     <value>Select Account</value>
   </data>
-  <data name="ProfilePage_ExternalLoginDialog_SelectProfileInstruction" xml:space="preserve">
-    <value>Please select the profile to add:</value>
+  <data name="AccountPage_ExternalLoginDialog_SelectProfileInstruction" xml:space="preserve">
+     <value>Please select the account to add:</value>
   </data>
-  <data name="ProfilePage_ProfileType_External" xml:space="preserve">
+  <data name="AccountPage_AccountType_External" xml:space="preserve">
     <value>External Login</value>
   </data>
-  <data name="ProfilePage_UuidLabel.Text" xml:space="preserve">
+  <data name="AccountPage_UuidLabel.Text" xml:space="preserve">
     <value>UUID: </value>
   </data>
-  <data name="ProfilePage_ProfileTypeLabel.Text" xml:space="preserve">
-    <value>Profile Type: </value>
+  <data name="AccountPage_AccountTypeLabel.Text" xml:space="preserve">
+     <value>Account Type: </value>
   </data>
-  <data name="ProfilePage_EmptyProfilesTitle.Text" xml:space="preserve">
-    <value>No profiles added yet</value>
+  <data name="AccountPage_EmptyProfilesTitle.Text" xml:space="preserve">
+     <value>No accounts added yet</value>
   </data>
-  <data name="ProfilePage_EmptyProfilesDescription.Text" xml:space="preserve">
-    <value>Click the 'Add Account' button to add your first profile</value>
+  <data name="AccountPage_EmptyProfilesDescription.Text" xml:space="preserve">
+     <value>Click the 'Add Account' button to add your first account</value>
   </data>
-  <data name="ProfileManagementPage_CurrentProfileLabel.Text" xml:space="preserve">
-    <value>Current Profile</value>
+  <data name="AccountManagementPage_CurrentAccountLabel.Text" xml:space="preserve">
+     <value>Current Account</value>
   </data>
-  <data name="ProfileManagementPage_RenameTitle.Text" xml:space="preserve">
+  <data name="AccountManagementPage_RenameTitle.Text" xml:space="preserve">
     <value>Rename</value>
   </data>
-  <data name="ProfileManagementPage_OfflineOnlyNote.Text" xml:space="preserve">
-    <value>Only available for offline profiles</value>
+  <data name="AccountManagementPage_OfflineOnlyNote.Text" xml:space="preserve">
+     <value>Only available for offline accounts</value>
   </data>
-  <data name="ProfileManagementPage_NewUsernameTextBox.PlaceholderText" xml:space="preserve">
+  <data name="AccountManagementPage_NewUsernameTextBox.PlaceholderText" xml:space="preserve">
     <value>Enter new username</value>
   </data>
-  <data name="ProfileManagementPage_SaveUsernameButton.Content" xml:space="preserve">
+  <data name="AccountManagementPage_SaveUsernameButton.Content" xml:space="preserve">
     <value>Save</value>
   </data>
-  <data name="ProfileManagementPage_ChangeUuidTitle.Text" xml:space="preserve">
+  <data name="AccountManagementPage_ChangeUuidTitle.Text" xml:space="preserve">
     <value>Change UUID</value>
   </data>
-  <data name="ProfileManagementPage_NewUuidTextBox.PlaceholderText" xml:space="preserve">
+  <data name="AccountManagementPage_NewUuidTextBox.PlaceholderText" xml:space="preserve">
     <value>Enter new UUID</value>
   </data>
-  <data name="ProfileManagementPage_SaveUuidButton.Content" xml:space="preserve">
+  <data name="AccountManagementPage_SaveUuidButton.Content" xml:space="preserve">
     <value>Save</value>
   </data>
-  <data name="ProfileManagementPage_SetSkinTitle.Text" xml:space="preserve">
+  <data name="AccountManagementPage_SetSkinTitle.Text" xml:space="preserve">
     <value>Set Skin</value>
   </data>
-  <data name="ProfileManagementPage_SkinUploadNote.Text" xml:space="preserve">
+  <data name="AccountManagementPage_SkinUploadNote.Text" xml:space="preserve">
     <value>Upload or select new skin</value>
   </data>
-  <data name="ProfileManagementPage_BrowseSkinButton.Content" xml:space="preserve">
+  <data name="AccountManagementPage_BrowseSkinButton.Content" xml:space="preserve">
     <value>Browse Skin Files</value>
   </data>
-  <data name="ProfileManagementPage_SetCapeTitle.Text" xml:space="preserve">
+  <data name="AccountManagementPage_SetCapeTitle.Text" xml:space="preserve">
     <value>Set Cape</value>
   </data>
-  <data name="ProfileManagementPage_CapeSelectionNote.Text" xml:space="preserve">
+  <data name="AccountManagementPage_CapeSelectionNote.Text" xml:space="preserve">
     <value>Select cape for current account</value>
   </data>
-  <data name="ProfileManagementPage_CapeComboBox.PlaceholderText" xml:space="preserve">
+  <data name="AccountManagementPage_CapeComboBox.PlaceholderText" xml:space="preserve">
     <value>Select cape</value>
   </data>
-  <data name="ProfileManagementPage_ApplyCapeButton.Content" xml:space="preserve">
+  <data name="AccountManagementPage_ApplyCapeButton.Content" xml:space="preserve">
     <value>Apply Selected Cape</value>
   </data>
-  <data name="ProfileManagementPage_SkinTeachingTip.Title" xml:space="preserve">
+  <data name="AccountManagementPage_SkinTeachingTip.Title" xml:space="preserve">
     <value>Skin Information</value>
   </data>
-  <data name="ProfileManagementPage_SkinTeachingTip.Subtitle" xml:space="preserve">
+  <data name="AccountManagementPage_SkinTeachingTip.Subtitle" xml:space="preserve">
     <value>Detailed information about the current skin</value>
   </data>
-  <data name="ProfileManagementPage_SkinModelLabel.Text" xml:space="preserve">
+  <data name="AccountManagementPage_SkinModelLabel.Text" xml:space="preserve">
     <value>Applicable Model:</value>
   </data>
-  <data name="ProfileManagementPage_SaveSkinButton.Content" xml:space="preserve">
+  <data name="AccountManagementPage_SaveSkinButton.Content" xml:space="preserve">
     <value>Save Skin Texture</value>
   </data>
-  <data name="ProfilePage_SwitchProfileButton.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Switch to this profile</value>
+  <data name="AccountPage_SwitchAccountButton.ToolTipService.ToolTip" xml:space="preserve">
+     <value>Switch to this account</value>
   </data>
-  <data name="ProfilePage_DeleteProfileButton.ToolTipService.ToolTip" xml:space="preserve">
-    <value>Delete profile</value>
+  <data name="AccountPage_DeleteAccountButton.ToolTipService.ToolTip" xml:space="preserve">
+     <value>Delete account</value>
   </data>
-  <data name="ProfilePage_OfflineProfileText" xml:space="preserve">
-    <value>Offline Profile</value>
+  <data name="AccountPage_OfflineAccountText" xml:space="preserve">
+     <value>Offline Account</value>
   </data>
-  <data name="ProfilePage_MicrosoftProfileText" xml:space="preserve">
+  <data name="AccountPage_MicrosoftAccountText" xml:space="preserve">
     <value>Microsoft Account</value>
   </data>
-  <data name="ProfilePage_RenewTokenMenuItem.Text" xml:space="preserve">
+  <data name="AccountPage_RenewTokenMenuItem.Text" xml:space="preserve">
     <value>Renew Token</value>
   </data>
   <data name="Settings_ClearAllCache.Content" xml:space="preserve">
@@ -2698,16 +2698,16 @@ Continue downloading?</value>
   <data name="ErrorAnalysis_ContactAuthorButton.Content" xml:space="preserve">
     <value>Contact Author</value>
   </data>
-  <data name="ProfileManagementPage_Skin3DPreviewTitle.Text" xml:space="preserve">
+  <data name="AccountManagementPage_Skin3DPreviewTitle.Text" xml:space="preserve">
     <value>Skin 3D Preview</value>
   </data>
-  <data name="ProfileManagementPage_Skin3DPreviewNote.Text" xml:space="preserve">
+  <data name="AccountManagementPage_Skin3DPreviewNote.Text" xml:space="preserve">
     <value>3D skin model preview, supports rotation and zoom</value>
   </data>
-  <data name="ProfileManagementPage_DefaultSkinTitle.Text" xml:space="preserve">
+  <data name="AccountManagementPage_DefaultSkinTitle.Text" xml:space="preserve">
     <value>Default Skins</value>
   </data>
-  <data name="ProfileManagementPage_SaveButton.Text" xml:space="preserve">
+  <data name="AccountManagementPage_SaveButton.Text" xml:space="preserve">
     <value>Save</value>
   </data>
   <data name="TutorialPage_BasicSettings_Title.Text" xml:space="preserve">
@@ -2926,17 +2926,17 @@ Continue downloading?</value>
   <data name="ErrorAnalysisChatPanel_RemovePendingImageButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>Remove image</value>
   </data>
-  <data name="LauncherProfileDialog_ShortcutTitle" xml:space="preserve">
-    <value>Select a launch profile</value>
+  <data name="LauncherAccountDialog_ShortcutTitle" xml:space="preserve">
+     <value>Select a launch account</value>
   </data>
-  <data name="LauncherProfileDialog_ShortcutPrimaryButton" xml:space="preserve">
+  <data name="LauncherAccountDialog_ShortcutPrimaryButton" xml:space="preserve">
     <value>Create shortcut</value>
   </data>
-  <data name="LauncherProfileDialog_CloseButton" xml:space="preserve">
+  <data name="LauncherAccountDialog_CloseButton" xml:space="preserve">
     <value>Cancel</value>
   </data>
-  <data name="LauncherProfileFlyout_NoProfiles" xml:space="preserve">
-    <value>No launch profiles available</value>
+  <data name="LauncherAccountFlyout_NoAccounts" xml:space="preserve">
+     <value>No launch accounts available</value>
   </data>
   <data name="Settings_AI_Disclaimer.Text" xml:space="preserve">
     <value>Launcher AI only provides the capability to access LLMs compatible with the OpenAI API specification. No AI services or accounts are provided within the software. Please confirm that relevant services are permitted in your region before use, and strictly abide by the terms of service, usage policies, and privacy rules of the selected AI provider; API Keys must be applied for and kept by yourself, and relevant costs and compliance responsibilities are borne by the user.</value>
@@ -3923,7 +3923,7 @@ Continue downloading?</value>
     <value>Please select a game version first</value>
   </data>
   <data name="Msg_SelectCharacterFirst" xml:space="preserve">
-    <value>Please select a character first</value>
+     <value>Please select an account first</value>
   </data>
   <data name="Msg_GeneratingLaunchParams" xml:space="preserve">
     <value>Generating launch parameters...</value>
@@ -4270,11 +4270,11 @@ You can double-click the file to launch the game.</value>
   <data name="VersionListPage_HeaderSubtitle" xml:space="preserve">
     <value>Manage installed Minecraft versions</value>
   </data>
-  <data name="ProfilePage_HeaderTitle" xml:space="preserve">
-    <value>Profile Management</value>
+  <data name="AccountPage_HeaderTitle" xml:space="preserve">
+     <value>Account Management</value>
   </data>
-  <data name="ProfilePage_HeaderSubtitle" xml:space="preserve">
-    <value>Manage your Minecraft profiles</value>
+  <data name="AccountPage_HeaderSubtitle" xml:space="preserve">
+     <value>Manage your Minecraft accounts</value>
   </data>
   <data name="LauncherAIPage_HeaderTitle" xml:space="preserve">
     <value>Launcher AI</value>

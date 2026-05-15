@@ -30,12 +30,12 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
         private readonly MicrosoftAuthService _microsoftAuthService;
         private readonly INavigationService _navigationService;
         private readonly IJavaRuntimeService _javaRuntimeService;
-        private readonly IProfileManager _profileManager;
+        private readonly IAccountManager _accountManager;
         private readonly AuthlibInjectorService _authlibInjectorService;
         private readonly ICommonDialogService _dialogService;
         private readonly IProgressDialogService _progressDialogService;
         private readonly IResourceDialogService _resourceDialogService;
-        private readonly IProfileDialogService _profileDialogService;
+        private readonly IAccountDialogService _profileDialogService;
         private readonly IJavaDownloadService _javaDownloadService;
         private readonly IThemeSelectorService _themeSelectorService;
         private readonly ILanguageSelectorService _languageSelectorService;
@@ -227,9 +227,9 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
         private string _loginStatus = string.Empty;
         
         // 保存微软登录结果
-        private MinecraftProfile? _pendingMicrosoftProfile = null;
+        private MinecraftAccount? _pendingMicrosoftProfile = null;
         
-        public string? PendingProfileId => _pendingMicrosoftProfile?.Id;
+        public string? PendingAccountId => _pendingMicrosoftProfile?.Id;
         
         // 计算属性：是否未在登录中（用于x:Bind绑定）
         public bool IsNotLoggingIn => !IsLoggingIn;
@@ -338,7 +338,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             // 确保Profiles.json所在的目录存在
             try
             {
-                string profilesFilePath = Path.Combine(MinecraftPath, MinecraftFileConsts.ProfilesJson);
+                string profilesFilePath = Path.Combine(MinecraftPath, MinecraftFileConsts.AccountsJson);
                 string? profilesDirectory = Path.GetDirectoryName(profilesFilePath);
                 if (!string.IsNullOrEmpty(profilesDirectory))
                 {
@@ -352,10 +352,10 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             }
             
             // 添加账户到角色列表
-            var characterViewModel = App.GetService<CharacterViewModel>();
+            var characterViewModel = App.GetService<AccountViewModel>();
             
             // 🔒 先加载现有角色，避免覆盖
-            var existingProfiles = await _profileManager.LoadProfilesAsync();
+            var existingProfiles = await _accountManager.LoadAccountsAsync();
             
             // 清空并重新加载
             characterViewModel.Profiles.Clear();
@@ -405,7 +405,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                 }
 
                 // 添加离线账户
-                var offlineProfile = new MinecraftProfile
+                var offlineProfile = new MinecraftAccount
                 {
                     Id = XianYuLauncher.Helpers.OfflineUUIDHelper.GenerateMinecraftOfflineUUIDString(OfflineProfileName),
                     Name = OfflineProfileName,
@@ -746,7 +746,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                         else
                         {
                             // 多个角色，弹出选择对话框
-                            selectedProfile = await _profileDialogService.ShowProfileSelectionDialogAsync(result.AvailableProfiles, ExternalAuthServer);
+                            selectedProfile = await _profileDialogService.ShowAccountSelectionDialogAsync(result.AvailableProfiles, ExternalAuthServer);
                         }
                     }
 
@@ -773,7 +773,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                     }
 
                     // 创建外置登录角色
-                    var externalProfile = new MinecraftProfile
+                    var externalProfile = new MinecraftAccount
                     {
                         Id = selectedProfile.Id,
                         Name = selectedProfile.Name,
@@ -888,7 +888,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             if (result.Success)
             {
                 // 创建微软角色
-                var microsoftProfile = new MinecraftProfile
+                var microsoftProfile = new MinecraftAccount
                 {
                     Id = result.Uuid,
                     Name = result.Username,
@@ -1074,12 +1074,12 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             MicrosoftAuthService microsoftAuthService, 
             INavigationService navigationService,
             IJavaRuntimeService javaRuntimeService,
-            IProfileManager profileManager,
+            IAccountManager accountManager,
             AuthlibInjectorService authlibInjectorService,
             ICommonDialogService dialogService,
             IProgressDialogService progressDialogService,
             IResourceDialogService resourceDialogService,
-            IProfileDialogService profileDialogService,
+            IAccountDialogService profileDialogService,
             IJavaDownloadService javaDownloadService,
             IThemeSelectorService themeSelectorService,
             ILanguageSelectorService languageSelectorService,
@@ -1092,7 +1092,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             _microsoftAuthService = microsoftAuthService;
             _navigationService = navigationService;
             _javaRuntimeService = javaRuntimeService;
-            _profileManager = profileManager;
+            _accountManager = accountManager;
             _authlibInjectorService = authlibInjectorService;
             _dialogService = dialogService;
             _progressDialogService = progressDialogService;

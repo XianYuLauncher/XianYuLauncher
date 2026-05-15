@@ -5,7 +5,7 @@ namespace XianYuLauncher.Core.Models;
 /// <summary>
 /// Minecraft 角色信息类
 /// </summary>
-public class MinecraftProfile
+public class MinecraftAccount
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;

@@ -141,10 +141,10 @@ public sealed partial class ShellPage : Page
                 e.AcceptedOperation = DataPackageOperation.None;
                 e.Handled = false;
             }
-            // Also accept external text drops for CharacterPage external-login format
+            // Also accept external text drops for AccountPage external-login format
             if (!e.Handled && e.DataView.Contains(StandardDataFormats.Text))
             {
-                // show copy cursor and caption similar to original CharacterPage behavior
+                // show copy cursor and caption similar to original AccountPage behavior
                 e.AcceptedOperation = DataPackageOperation.Copy;
                 e.DragUIOverride.Caption = "添加验证服务器";
                 e.DragUIOverride.IsCaptionVisible = true;
@@ -218,14 +218,14 @@ public sealed partial class ShellPage : Page
                     if (!string.IsNullOrEmpty(draggedText))
                     {
                         var navigationService = App.GetService<Contracts.Services.INavigationService>();
-                        navigationService?.NavigateTo(typeof(CharacterViewModel).FullName!);
+                        navigationService?.NavigateTo(typeof(AccountViewModel).FullName!);
 
                         _uiDispatcher.EnqueueAsync(Microsoft.UI.Dispatching.DispatcherQueuePriority.Normal, async () =>
                         {
                             try
                             {
-                                // After navigation, forward the text to the CharacterPage instance
-                                var page = NavigationFrame?.Content as CharacterPage;
+                                // After navigation, forward the text to the AccountPage instance
+                                var page = NavigationFrame?.Content as AccountPage;
                                 if (page != null)
                                 {
                                     await page.HandleExternalLoginDropAsync(draggedText);

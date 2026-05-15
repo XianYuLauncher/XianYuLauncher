@@ -16,7 +16,7 @@
             <helpers:BoolToBrushConverter x:Key="BoolToBrushConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
             <helpers:BoolToFontWeightConverter x:Key="BoolToFontWeightConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
             <helpers:BoolToTextConverter x:Key="BoolToTextConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
-            <helpers:ProfileTypeConverter x:Key="ProfileTypeConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
+            <helpers:AccountTypeConverter x:Key="AccountTypeConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
             <helpers:DateTimeConverter x:Key="DateTimeConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
             <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />
             <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToBoolConverter" xmlns:helpers="using:XianYuLauncher.Helpers" />

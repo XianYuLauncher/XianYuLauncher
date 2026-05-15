@@ -19,7 +19,7 @@ public sealed class VersionPathLaunchOptions
 {
     public string? OverrideJavaPath { get; init; }
 
-    public string? ProfileId { get; init; }
+    public string? AccountId { get; init; }
 
     public string? QuickPlaySingleplayer { get; init; }
 
@@ -44,20 +44,20 @@ public sealed class VersionPathGameLaunchService : IVersionPathGameLaunchService
     private readonly IFileService _fileService;
     private readonly IGameLaunchService _gameLaunchService;
     private readonly ITokenRefreshService _tokenRefreshService;
-    private readonly IProfileManager _profileManager;
+    private readonly IAccountManager _accountManager;
     private readonly ILogger<VersionPathGameLaunchService> _logger;
 
     public VersionPathGameLaunchService(
         IFileService fileService,
         IGameLaunchService gameLaunchService,
         ITokenRefreshService tokenRefreshService,
-        IProfileManager profileManager,
+        IAccountManager accountManager,
         ILogger<VersionPathGameLaunchService> logger)
     {
         _fileService = fileService;
         _gameLaunchService = gameLaunchService;
         _tokenRefreshService = tokenRefreshService;
-        _profileManager = profileManager;
+        _accountManager = accountManager;
         _logger = logger;
     }
 
@@ -130,22 +130,22 @@ public sealed class VersionPathGameLaunchService : IVersionPathGameLaunchService
 
             cancellationToken.ThrowIfCancellationRequested();
 
-            var profiles = await _profileManager.LoadProfilesAsync();
-            var profile = ResolveLaunchProfile(profiles, launchOptions.ProfileId);
-            if (profile == null)
+            var accounts = await _accountManager.LoadAccountsAsync();
+            var account = ResolveLaunchAccount(accounts, launchOptions.AccountId);
+            if (account == null)
             {
                 return new GameLaunchResult
                 {
                     Success = false,
-                    ErrorMessage = string.IsNullOrWhiteSpace(launchOptions.ProfileId)
+                    ErrorMessage = string.IsNullOrWhiteSpace(launchOptions.AccountId)
                         ? "未选择任何账户，请先打开启动器登录。"
-                        : "未找到指定档案，请确认档案仍然存在。"
+                        : "未找到指定账户，请确认账户仍然存在。"
                 };
             }
 
-            if (!profile.IsOffline)
+            if (!account.IsOffline)
             {
-                var refreshResult = await _tokenRefreshService.ValidateAndRefreshTokenAsync(profile);
+                var refreshResult = await _tokenRefreshService.ValidateAndRefreshTokenAsync(account);
                 if (!refreshResult.Success)
                 {
                     return new GameLaunchResult
@@ -155,14 +155,14 @@ public sealed class VersionPathGameLaunchService : IVersionPathGameLaunchService
                     };
                 }
 
-                profile = refreshResult.UpdatedProfile ?? profile;
+                account = refreshResult.UpdatedProfile ?? account;
             }
 
             cancellationToken.ThrowIfCancellationRequested();
 
             return await _gameLaunchService.LaunchGameAsync(
                 preparedLaunch.VersionName,
-                profile,
+                account,
                 progress => { },
                 status => { },
                 cancellationToken,
@@ -192,18 +192,18 @@ public sealed class VersionPathGameLaunchService : IVersionPathGameLaunchService
         }
     }
 
-    private MinecraftProfile? ResolveLaunchProfile(List<MinecraftProfile> profiles, string? profileId)
+    private MinecraftAccount? ResolveLaunchAccount(List<MinecraftAccount> accounts, string? accountId)
     {
-        if (profiles.Count == 0)
+        if (accounts.Count == 0)
         {
             return null;
         }
 
-        if (!string.IsNullOrWhiteSpace(profileId))
+        if (!string.IsNullOrWhiteSpace(accountId))
         {
-            return profiles.FirstOrDefault(profile => string.Equals(profile.Id, profileId, StringComparison.OrdinalIgnoreCase));
+            return accounts.FirstOrDefault(account => string.Equals(account.Id, accountId, StringComparison.OrdinalIgnoreCase));
         }
 
-        return _profileManager.GetActiveProfile(profiles);
+        return _accountManager.GetActiveAccount(accounts);
     }
 }

@@ -34,7 +34,7 @@ public class RegionValidator : IRegionValidator
     /// <summary>
     /// 验证登录方式在当前地区是否可用
     /// </summary>
-    public ValidationResult ValidateLoginMethod(MinecraftProfile profile)
+    public ValidationResult ValidateLoginMethod(MinecraftAccount profile)
     {
         var result = new ValidationResult { IsValid = true };
         

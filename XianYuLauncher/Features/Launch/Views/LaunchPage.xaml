@@ -162,8 +162,8 @@
                                         Style="{StaticResource BodyTextBlockStyle}"
                                         TextTrimming="CharacterEllipsis" />
                                     <TextBlock 
-                                        x:Uid="LaunchPage_PlayerName"
-                                        Text="游戏角色"
+                                        x:Uid="LaunchPage_AccountName"
+                                        Text="游戏账户"
                                         Style="{StaticResource CaptionTextBlockStyle}"
                                         Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                                 </StackPanel>
@@ -177,8 +177,8 @@
                             <Button.Flyout>
                                 <MenuFlyout x:Name="ProfileMenuFlyout" Opening="ProfileMenuFlyout_Opening">
                                     <MenuFlyoutItem 
-                                        x:Uid="LaunchPage_AddProfile"
-                                        Text="添加角色"
+                                        x:Uid="LaunchPage_AddAccount"
+                                        Text="添加账户"
                                         Click="AddProfileMenuItem_Click">
                                         <MenuFlyoutItem.Icon>
                                             <SymbolIcon Symbol="Add" />

@@ -5,7 +5,7 @@ using XianYuLauncher.Core.Services;
 namespace XianYuLauncher.Extensions;
 
 /// <summary>
-/// 游戏启动相关服务（GameLaunch、CrashAnalyzer、ProfileManager、Terracotta 等）的 DI 注册扩展。
+/// 游戏启动相关服务（GameLaunch、CrashAnalyzer、AccountManager、Terracotta 等）的 DI 注册扩展。
 /// </summary>
 internal static class LaunchServiceExtensions
 {
@@ -15,7 +15,7 @@ internal static class LaunchServiceExtensions
         services.AddSingleton<IGameLaunchService, GameLaunchService>();
         services.AddSingleton<IVersionPathGameLaunchService, VersionPathGameLaunchService>();
         services.AddSingleton<ICrashAnalyzer, CrashAnalyzer>();
-        services.AddSingleton<IProfileManager, ProfileManager>();
+        services.AddSingleton<IAccountManager, AccountManager>();
         services.AddSingleton<IVersionConfigService, VersionConfigService>();
         services.AddSingleton<ILaunchSettingsResolver, LaunchSettingsResolver>();
         services.AddSingleton<IRegionValidator, RegionValidator>();

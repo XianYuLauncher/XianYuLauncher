@@ -18,7 +18,7 @@ public class TokenRefreshResult
     /// <summary>
     /// 更新后的角色信息
     /// </summary>
-    public MinecraftProfile? UpdatedProfile { get; set; }
+    public MinecraftAccount? UpdatedProfile { get; set; }
     
     /// <summary>
     /// 错误信息（如果失败）

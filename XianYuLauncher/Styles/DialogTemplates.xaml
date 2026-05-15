@@ -3,7 +3,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:helpers="using:XianYuLauncher.Helpers">
 
-    <DataTemplate x:Key="ProfileSelectionItemTemplate">
+    <DataTemplate x:Key="AccountSelectionItemTemplate">
         <StackPanel Orientation="Horizontal" Padding="10">
             <Border CornerRadius="4" Width="40" Height="40" Margin="0,0,12,0" Background="{ThemeResource LayerFillColorDefaultBrush}">
                 <Image Source="{Binding Avatar}" Stretch="Fill" />

@@ -170,7 +170,7 @@ namespace XianYuLauncher.Features.Tutorial.Views
         {
             try
             {
-                var bitmapImage = await ProfileAvatarImageHelper.CreateDefaultProfileAvatarAsync(48);
+                var bitmapImage = await AccountAvatarImageHelper.CreateDefaultAccountAvatarAsync(48);
 
                 ProfileAvatar.Source = bitmapImage;
                 MicrosoftProfileAvatar.Source = bitmapImage;
@@ -206,13 +206,13 @@ namespace XianYuLauncher.Features.Tutorial.Views
                     await ProcessAvatarAsync(); 
                     
                     // 外置登录：使用 ViewModel 暴露的 ID 和 AuthServer
-                    uuid = ViewModel.PendingProfileId;
+                    uuid = ViewModel.PendingAccountId;
                     authServer = ViewModel.ExternalAuthServer;
                 }
                 else if (ViewModel.IsMicrosoftLogin)
                 {
                     // 微软登录：尝试获取 ID (如果已登录) 或通过 API 反查
-                    uuid = ViewModel.PendingProfileId;
+                    uuid = ViewModel.PendingAccountId;
                     if (string.IsNullOrEmpty(uuid))
                     {
                         uuid = await GetUuidFromMojangApiAsync(ViewModel.ProfileName);

@@ -23,30 +23,30 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
     /// <summary>
     /// 角色管理页面的ViewModel
     /// </summary>
-    public partial class CharacterViewModel : ObservableObject, IPageHeaderAware
+    public partial class AccountViewModel : ObservableObject, IPageHeaderAware
     {
         private readonly MicrosoftAuthService _microsoftAuthService;
         private readonly IFileService _fileService;
-        private readonly IProfileManager _profileManager;
+        private readonly IAccountManager _accountManager;
         private readonly ICommonDialogService _dialogService;
-        private readonly IProfileDialogService _profileDialogService;
+        private readonly IAccountDialogService _profileDialogService;
 
         public PageHeaderMetadata HeaderMetadata { get; } = new();
 
         public PageHeaderPresentationMode HeaderPresentationMode => PageHeaderPresentationMode.Standard;
 
-        public event EventHandler<CharacterManagementNavigationParameter>? CharacterManagementRequested;
+        public event EventHandler<AccountManagementNavigationParameter>? AccountManagementRequested;
 
         /// <summary>
         /// 角色列表
         /// </summary>
         [ObservableProperty]
-        private ObservableCollection<MinecraftProfile> _profiles = new ObservableCollection<MinecraftProfile>();
+        private ObservableCollection<MinecraftAccount> _profiles = new ObservableCollection<MinecraftAccount>();
 
         /// <summary>
         /// 监听Profiles集合的变化
         /// </summary>
-        partial void OnProfilesChanged(ObservableCollection<MinecraftProfile>? oldValue, ObservableCollection<MinecraftProfile> newValue)
+        partial void OnProfilesChanged(ObservableCollection<MinecraftAccount>? oldValue, ObservableCollection<MinecraftAccount> newValue)
         {
             // 移除旧集合的事件监听（如果有）
             if (oldValue != null)
@@ -74,7 +74,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// 当前活跃角色
         /// </summary>
         [ObservableProperty]
-        private MinecraftProfile _activeProfile = new() { IsOffline = true };
+        private MinecraftAccount _activeProfile = new() { IsOffline = true };
 
         /// <summary>
         /// 离线用户名
@@ -105,23 +105,23 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// <summary>
         /// 角色数据文件路径
         /// </summary>
-        private string ProfilesFilePath => Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.ProfilesJson);
+        private string AccountsFilePath => Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.AccountsJson);
 
-        public CharacterViewModel(
+        public AccountViewModel(
             MicrosoftAuthService microsoftAuthService,
             IFileService fileService,
-            IProfileManager profileManager,
+            IAccountManager accountManager,
             ICommonDialogService dialogService,
-            IProfileDialogService profileDialogService)
+            IAccountDialogService profileDialogService)
         {
             _microsoftAuthService = microsoftAuthService;
             _fileService = fileService;
-            _profileManager = profileManager;
+            _accountManager = accountManager;
             _dialogService = dialogService;
             _profileDialogService = profileDialogService;
 
-            HeaderMetadata.Title = "ProfilePage_HeaderTitle".GetLocalized();
-            HeaderMetadata.Subtitle = "ProfilePage_HeaderSubtitle".GetLocalized();
+            HeaderMetadata.Title = "AccountPage_HeaderTitle".GetLocalized();
+            HeaderMetadata.Subtitle = "AccountPage_HeaderSubtitle".GetLocalized();
             
             // 手动注册CollectionChanged事件
             Profiles.CollectionChanged += Profiles_CollectionChanged;
@@ -131,23 +131,23 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             IsProfilesEmpty = Profiles.Count == 0;
         }
 
-        public CharacterManagementNavigationParameter CreateCharacterManagementNavigationParameter(MinecraftProfile profile)
+        public AccountManagementNavigationParameter CreateAccountManagementNavigationParameter(MinecraftAccount profile)
         {
-            return new CharacterManagementNavigationParameter
+            return new AccountManagementNavigationParameter
             {
                 Profile = profile,
                 BreadcrumbRoot = BreadcrumbNavigationRoot.CreateLocal(
                     HeaderMetadata.Title,
                     new LocalNavigationTarget
                     {
-                        RouteKey = CharacterNavigationRouteKeys.Root,
+                        RouteKey = AccountNavigationRouteKeys.Root,
                     }),
             };
         }
 
-        public void OpenCharacterManagement(MinecraftProfile profile)
+        public void OpenAccountManagement(MinecraftAccount profile)
         {
-            CharacterManagementRequested?.Invoke(this, CreateCharacterManagementNavigationParameter(profile));
+            AccountManagementRequested?.Invoke(this, CreateAccountManagementNavigationParameter(profile));
         }
 
         /// <summary>
@@ -158,8 +158,8 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         {
             try
             {
-                // 🔒 使用 ProfileManager 安全加载（自动解密token）
-                var profilesList = await _profileManager.LoadProfilesAsync();
+                // 🔒 使用 AccountManager 安全加载（自动解密token）
+                var profilesList = await _accountManager.LoadAccountsAsync();
                 
                 // 清空现有列表并添加所有角色
                 Profiles.Clear();
@@ -199,8 +199,8 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         {
             try
             {
-                // 🔒 使用 ProfileManager 安全保存（自动加密token）
-                await _profileManager.SaveProfilesAsync(Profiles.ToList());
+                // 🔒 使用 AccountManager 安全保存（自动加密token）
+                await _accountManager.SaveAccountsAsync(Profiles.ToList());
                 System.Diagnostics.Debug.WriteLine($"[Character] 角色列表已保存（token已加密），共 {Profiles.Count} 个角色");
             }
             catch (Exception ex)
@@ -264,7 +264,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             if (!string.IsNullOrWhiteSpace(OfflineUsername))
             {
                 // 创建离线角色
-                var offlineProfile = new MinecraftProfile
+                var offlineProfile = new MinecraftAccount
                 {
                     Id = XianYuLauncher.Helpers.OfflineUUIDHelper.GenerateMinecraftOfflineUUIDString(OfflineUsername),
                     Name = OfflineUsername,
@@ -302,7 +302,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// </summary>
         /// <param name="profile">要检查的角色</param>
         /// <returns>是否需要刷新</returns>
-        private bool IsTokenExpired(MinecraftProfile profile)
+        private bool IsTokenExpired(MinecraftAccount profile)
         {
             // 计算Minecraft访问令牌的过期时间
             // 正确方式：令牌颁发时间 + expires_in秒
@@ -319,7 +319,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// </summary>
         /// <param name="profile">要刷新令牌的角色</param>
         /// <returns>刷新是否成功</returns>
-        public async Task<bool> AutoRefreshTokenAsync(MinecraftProfile profile)
+        public async Task<bool> AutoRefreshTokenAsync(MinecraftAccount profile)
         {
             if (profile.IsOffline || string.IsNullOrEmpty(profile.RefreshToken))
             {
@@ -441,7 +441,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             if (result.Success)
             {
                 // 创建微软角色
-                var microsoftProfile = new MinecraftProfile
+                var microsoftProfile = new MinecraftAccount
                 {
                     Id = result.Uuid,
                     Name = result.Username,
@@ -492,7 +492,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// </summary>
         /// <param name="profile">要切换到的角色</param>
         [RelayCommand]
-        private void SwitchProfile(MinecraftProfile profile)
+        private void SwitchProfile(MinecraftAccount profile)
         {
             if (profile != null && Profiles.Contains(profile))
             {
@@ -522,7 +522,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// </summary>
         /// <param name="profile">要删除的角色</param>
         [RelayCommand]
-        private void DeleteProfile(MinecraftProfile profile)
+        private void DeleteProfile(MinecraftAccount profile)
         {
             if (profile != null && Profiles.Contains(profile))
             {
@@ -540,7 +540,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                     }
                     else
                     {
-                        ActiveProfile = new MinecraftProfile { IsOffline = true };
+                        ActiveProfile = new MinecraftAccount { IsOffline = true };
                     }
                 }
                 

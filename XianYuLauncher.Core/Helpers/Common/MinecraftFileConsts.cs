@@ -2,7 +2,8 @@ namespace XianYuLauncher.Core.Helpers;
 
 public static class MinecraftFileConsts
 {
-    public const string ProfilesJson = "profiles.json";
+    public const string AccountsJson = "accounts.json";
+    public const string LegacyProfilesJson = "profiles.json";
     public const string LauncherProfilesJson = "launcher_profiles.json";
     public const string VersionConfig = "XianYuL.cfg";
     public const string InstallProfileJson = "install_profile.json";

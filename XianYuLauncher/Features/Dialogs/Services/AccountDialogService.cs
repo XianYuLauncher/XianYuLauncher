@@ -16,7 +16,7 @@ using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Features.Dialogs.Services;
 
-public sealed class ProfileDialogService : IProfileDialogService
+public sealed class AccountDialogService : IAccountDialogService
 {
     private readonly HttpClient _httpClient = new();
     private readonly IContentDialogHostService _dialogHostService;
@@ -27,21 +27,21 @@ public sealed class ProfileDialogService : IProfileDialogService
         return new BitmapImage(AppAssetResolver.ToUri(AppAssetResolver.DefaultAvatarAssetPath));
     }
 
-    public ProfileDialogService(IContentDialogHostService dialogHostService, IUiDispatcher uiDispatcher)
+    public AccountDialogService(IContentDialogHostService dialogHostService, IUiDispatcher uiDispatcher)
     {
         _dialogHostService = dialogHostService ?? throw new ArgumentNullException(nameof(dialogHostService));
         _uiDispatcher = uiDispatcher ?? throw new ArgumentNullException(nameof(uiDispatcher));
         _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
     }
 
-    public async Task<XianYuLauncher.Core.Services.ExternalProfile?> ShowProfileSelectionDialogAsync(List<XianYuLauncher.Core.Services.ExternalProfile> profiles, string authServer)
+    public async Task<XianYuLauncher.Core.Services.ExternalProfile?> ShowAccountSelectionDialogAsync(List<XianYuLauncher.Core.Services.ExternalProfile> profiles, string authServer)
     {
-        var items = new ObservableCollection<ProfileSelectionItem>();
+        var items = new ObservableCollection<AccountSelectionItem>();
 
         BitmapImage defaultAvatar;
         try
         {
-            defaultAvatar = await ProfileAvatarImageHelper.CreateDefaultProfileAvatarAsync();
+            defaultAvatar = await AccountAvatarImageHelper.CreateDefaultAccountAvatarAsync();
         }
         catch
         {
@@ -50,23 +50,23 @@ public sealed class ProfileDialogService : IProfileDialogService
 
         foreach (var profile in profiles)
         {
-            items.Add(new ProfileSelectionItem
+            items.Add(new AccountSelectionItem
             {
                 Id = profile.Id,
                 Name = profile.Name,
-                OriginalProfile = profile,
+                OriginalAccount = profile,
                 Avatar = defaultAvatar,
             });
         }
 
-        Log.Information("[Avatar.ProfileDialogService] 外置角色选择对话框，AuthServer: {AuthServer}, 角色数: {Count}", authServer ?? "(null)", profiles.Count);
+        Log.Information("[Avatar.AccountDialogService] 外置角色选择对话框，AuthServer: {AuthServer}, 角色数: {Count}", authServer ?? "(null)", profiles.Count);
 
         var avatarLoadCts = new CancellationTokenSource();
         _ = Task.Run(async () =>
         {
             if (string.IsNullOrEmpty(authServer))
             {
-                Log.Warning("[Avatar.ProfileDialogService] AuthServer 为空，跳过头像加载");
+                Log.Warning("[Avatar.AccountDialogService] AuthServer 为空，跳过头像加载");
                 return;
             }
 
@@ -83,7 +83,7 @@ public sealed class ProfileDialogService : IProfileDialogService
                     }
 
                     var sessionUrl = $"{server}sessionserver/session/minecraft/profile/{item.Id}";
-                    Log.Information("[Avatar.ProfileDialogService] 加载角色 {Name} 头像，Session URL: {Url}", item.Name, sessionUrl);
+                    Log.Information("[Avatar.AccountDialogService] 加载角色 {Name} 头像，Session URL: {Url}", item.Name, sessionUrl);
 
                     var response = await _httpClient.GetStringAsync(sessionUrl, avatarLoadCts.Token);
                     var data = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(response);
@@ -96,7 +96,7 @@ public sealed class ProfileDialogService : IProfileDialogService
 
                     if (string.IsNullOrEmpty(textureProperty))
                     {
-                        Log.Warning("[Avatar.ProfileDialogService] 角色 {Name} Session API 无 textures，URL: {Url}", item.Name, sessionUrl);
+                        Log.Warning("[Avatar.AccountDialogService] 角色 {Name} Session API 无 textures，URL: {Url}", item.Name, sessionUrl);
                     }
 
                     if (!string.IsNullOrEmpty(textureProperty))
@@ -108,7 +108,7 @@ public sealed class ProfileDialogService : IProfileDialogService
 
                         if (!string.IsNullOrEmpty(skinUrl))
                         {
-                            Log.Debug("[Avatar.ProfileDialogService] 角色 {Name} 皮肤 URL: {SkinUrl}", item.Name, skinUrl);
+                            Log.Debug("[Avatar.AccountDialogService] 角色 {Name} 皮肤 URL: {SkinUrl}", item.Name, skinUrl);
                             var skinBytes = await _httpClient.GetByteArrayAsync(skinUrl, avatarLoadCts.Token);
 
                             _uiDispatcher.EnqueueAsync(async () =>
@@ -118,23 +118,23 @@ public sealed class ProfileDialogService : IProfileDialogService
                                 {
                                     item.Avatar = processedAvatar;
                                 }
-                            }).Observe("ProfileDialogService.LoadProfileAvatar");
+                            }).Observe("AccountDialogService.LoadProfileAvatar");
                         }
                     }
                 }
                 catch (OperationCanceledException)
                 {
-                    Log.Debug("[Avatar.ProfileDialogService] 头像加载任务已取消");
+                    Log.Debug("[Avatar.AccountDialogService] 头像加载任务已取消");
                     break;
                 }
                 catch (Exception ex)
                 {
-                    Log.Warning(ex, "[Avatar.ProfileDialogService] 加载角色 {Name} 头像失败，AuthServer: {AuthServer}", item.Name, authServer);
+                    Log.Warning(ex, "[Avatar.AccountDialogService] 加载角色 {Name} 头像失败，AuthServer: {AuthServer}", item.Name, authServer);
                 }
             }
         });
 
-        var itemTemplate = Application.Current.Resources["ProfileSelectionItemTemplate"] as DataTemplate;
+        var itemTemplate = Application.Current.Resources["AccountSelectionItemTemplate"] as DataTemplate;
         var listView = new ListView
         {
             SelectionMode = ListViewSelectionMode.Single,
@@ -151,9 +151,9 @@ public sealed class ProfileDialogService : IProfileDialogService
 
         var dialog = new ContentDialog
         {
-            Title = "ProfilePage_ExternalLoginDialog_SelectProfileTitle".GetLocalized(),
-            PrimaryButtonText = "ProfilePage_ExternalLoginDialog_ConfirmButton".GetLocalized(),
-            CloseButtonText = "ProfilePage_ExternalLoginDialog_CancelButton".GetLocalized(),
+            Title = "AccountPage_ExternalLoginDialog_SelectProfileTitle".GetLocalized(),
+            PrimaryButtonText = "AccountPage_ExternalLoginDialog_ConfirmButton".GetLocalized(),
+            CloseButtonText = "AccountPage_ExternalLoginDialog_CancelButton".GetLocalized(),
             DefaultButton = ContentDialogButton.Primary,
             Content = listView,
         };
@@ -162,25 +162,25 @@ public sealed class ProfileDialogService : IProfileDialogService
         var result = await _dialogHostService.ShowAsync(dialog);
         if (result == ContentDialogResult.Primary)
         {
-            var selectedItem = listView.SelectedItem as ProfileSelectionItem;
-            return selectedItem?.OriginalProfile;
+            var selectedItem = listView.SelectedItem as AccountSelectionItem;
+            return selectedItem?.OriginalAccount;
         }
 
         return null;
     }
 
-    public async Task<MinecraftProfile?> ShowLauncherProfileSelectionDialogAsync(
-        List<MinecraftProfile> profiles,
+    public async Task<MinecraftAccount?> ShowLauncherAccountSelectionDialogAsync(
+        List<MinecraftAccount> profiles,
         string title,
         string primaryButtonText,
         string closeButtonText)
     {
-        var items = new ObservableCollection<ProfileSelectionItem>();
+        var items = new ObservableCollection<AccountSelectionItem>();
 
         BitmapImage defaultAvatar;
         try
         {
-            defaultAvatar = await ProfileAvatarImageHelper.CreateDefaultProfileAvatarAsync();
+            defaultAvatar = await AccountAvatarImageHelper.CreateDefaultAccountAvatarAsync();
         }
         catch
         {
@@ -191,7 +191,7 @@ public sealed class ProfileDialogService : IProfileDialogService
                      .OrderByDescending(profile => profile.IsActive)
                      .ThenBy(profile => profile.Name, StringComparer.OrdinalIgnoreCase))
         {
-            items.Add(new ProfileSelectionItem
+            items.Add(new AccountSelectionItem
             {
                 Id = profile.Id,
                 Name = profile.Name,
@@ -199,7 +199,7 @@ public sealed class ProfileDialogService : IProfileDialogService
             });
         }
 
-        var itemTemplate = Application.Current.Resources["ProfileSelectionItemTemplate"] as DataTemplate;
+        var itemTemplate = Application.Current.Resources["AccountSelectionItemTemplate"] as DataTemplate;
         var listView = new ListView
         {
             SelectionMode = ListViewSelectionMode.Single,
@@ -209,10 +209,10 @@ public sealed class ProfileDialogService : IProfileDialogService
             ItemTemplate = itemTemplate,
         };
 
-        var activeProfileId = profiles.FirstOrDefault(profile => profile.IsActive)?.Id;
-        if (!string.IsNullOrWhiteSpace(activeProfileId))
+        var activeAccountId = profiles.FirstOrDefault(profile => profile.IsActive)?.Id;
+        if (!string.IsNullOrWhiteSpace(activeAccountId))
         {
-            var activeItem = items.FirstOrDefault(item => string.Equals(item.Id, activeProfileId, StringComparison.OrdinalIgnoreCase));
+            var activeItem = items.FirstOrDefault(item => string.Equals(item.Id, activeAccountId, StringComparison.OrdinalIgnoreCase));
             if (activeItem != null)
             {
                 listView.SelectedItem = activeItem;
@@ -234,7 +234,7 @@ public sealed class ProfileDialogService : IProfileDialogService
             return null;
         }
 
-        var selectedItem = listView.SelectedItem as ProfileSelectionItem;
+        var selectedItem = listView.SelectedItem as AccountSelectionItem;
         if (selectedItem == null)
         {
             return null;
@@ -312,11 +312,11 @@ public sealed class ProfileDialogService : IProfileDialogService
     {
         try
         {
-            return await ProfileAvatarImageHelper.CreateProfileAvatarFromSkinAsync(skinBytes, outputSize: 32, includeOverlay: true);
+            return await AccountAvatarImageHelper.CreateAccountAvatarFromSkinAsync(skinBytes, outputSize: 32, includeOverlay: true);
         }
         catch (Exception ex)
         {
-            Log.Warning(ex, "[Avatar.ProfileDialogService] 处理皮肤头像失败，将回退到默认头像。");
+            Log.Warning(ex, "[Avatar.AccountDialogService] 处理皮肤头像失败，将回退到默认头像。");
             return null;
         }
     }

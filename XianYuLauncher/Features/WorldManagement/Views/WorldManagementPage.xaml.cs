@@ -23,7 +23,7 @@ public sealed partial class WorldManagementPage : Page, IHostedLocalPage
 
     public WorldManagementViewModel ViewModel { get; }
     private readonly IUiDispatcher _uiDispatcher;
-    private readonly IProfileManager _profileManager;
+    private readonly IAccountManager _accountManager;
 
     public IPageHeaderAware HeaderSource => ViewModel;
 
@@ -41,7 +41,7 @@ public sealed partial class WorldManagementPage : Page, IHostedLocalPage
         {
             ViewModel = App.GetService<WorldManagementViewModel>();
             _uiDispatcher = App.GetService<IUiDispatcher>();
-            _profileManager = App.GetService<IProfileManager>();
+            _accountManager = App.GetService<IAccountManager>();
             System.Diagnostics.Debug.WriteLine("[WorldManagementPage] ViewModel 已获取");
             
             InitializeComponent();
@@ -215,14 +215,14 @@ public sealed partial class WorldManagementPage : Page, IHostedLocalPage
             return;
         }
 
-        var profiles = await _profileManager.LoadProfilesAsync();
+        var profiles = await _accountManager.LoadAccountsAsync();
         flyout.Content = await BuildProfileFlyoutContentAsync(
             flyout,
             profiles,
             profile => ViewModel.LaunchWorld(profile.Id));
     }
 
-    private static async Task<FrameworkElement> BuildProfileFlyoutContentAsync(Flyout ownerFlyout, List<MinecraftProfile> profiles, Action<MinecraftProfile> onSelected)
+    private static async Task<FrameworkElement> BuildProfileFlyoutContentAsync(Flyout ownerFlyout, List<MinecraftAccount> profiles, Action<MinecraftAccount> onSelected)
     {
         if (profiles.Count == 0)
         {
@@ -233,14 +233,14 @@ public sealed partial class WorldManagementPage : Page, IHostedLocalPage
                 Padding = new Thickness(16, 14, 16, 14),
                 Child = new TextBlock
                 {
-                    Text = "LauncherProfileFlyout_NoProfiles".GetLocalized(),
+                    Text = "LauncherAccountFlyout_NoAccounts".GetLocalized(),
                     Foreground = Application.Current.Resources["TextFillColorSecondaryBrush"] as Brush,
                 },
             };
         }
 
-        var items = await CreateProfileSelectionItemsAsync(profiles);
-        var itemTemplate = Application.Current.Resources["ProfileSelectionItemTemplate"] as DataTemplate;
+        var items = await CreateAccountSelectionItemsAsync(profiles);
+        var itemTemplate = Application.Current.Resources["AccountSelectionItemTemplate"] as DataTemplate;
         var listView = new ListView
         {
             ItemsSource = items,
@@ -253,7 +253,7 @@ public sealed partial class WorldManagementPage : Page, IHostedLocalPage
 
         listView.ItemClick += (_, args) =>
         {
-            if (args.ClickedItem is not ProfileSelectionItem selectedItem)
+            if (args.ClickedItem is not AccountSelectionItem selectedItem)
             {
                 return;
             }
@@ -279,7 +279,7 @@ public sealed partial class WorldManagementPage : Page, IHostedLocalPage
                 {
                     new TextBlock
                     {
-                        Text = "LauncherProfileDialog_ShortcutTitle".GetLocalized(),
+                        Text = "LauncherAccountDialog_ShortcutTitle".GetLocalized(),
                         Margin = new Thickness(16, 0, 16, 8),
                         FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                     },
@@ -289,22 +289,22 @@ public sealed partial class WorldManagementPage : Page, IHostedLocalPage
         };
     }
 
-    private static async Task<ObservableCollection<ProfileSelectionItem>> CreateProfileSelectionItemsAsync(List<MinecraftProfile> profiles)
+    private static async Task<ObservableCollection<AccountSelectionItem>> CreateAccountSelectionItemsAsync(List<MinecraftAccount> profiles)
     {
         BitmapImage avatar;
         try
         {
-            avatar = await ProfileAvatarImageHelper.CreateDefaultProfileAvatarAsync();
+            avatar = await AccountAvatarImageHelper.CreateDefaultAccountAvatarAsync();
         }
         catch
         {
             avatar = new BitmapImage(AppAssetResolver.ToUri(AppAssetResolver.DefaultAvatarAssetPath));
         }
 
-        var items = new ObservableCollection<ProfileSelectionItem>();
+        var items = new ObservableCollection<AccountSelectionItem>();
         foreach (var profile in profiles.OrderByDescending(profile => profile.IsActive).ThenBy(profile => profile.Name, StringComparer.OrdinalIgnoreCase))
         {
-            items.Add(new ProfileSelectionItem
+            items.Add(new AccountSelectionItem
             {
                 Id = profile.Id,
                 Name = profile.Name,
