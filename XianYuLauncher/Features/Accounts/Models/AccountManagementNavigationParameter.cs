@@ -3,11 +3,11 @@ using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.Accounts.Models;
 
-public sealed class CharacterManagementNavigationParameter
+public sealed class AccountManagementNavigationParameter
 {
     private BreadcrumbNavigationRoot _breadcrumbRoot = BreadcrumbNavigationRoot.Empty;
 
-    public required MinecraftProfile Profile { get; init; }
+    public required MinecraftAccount Profile { get; init; }
 
     public BreadcrumbNavigationRoot BreadcrumbRoot
     {
@@ -31,7 +31,7 @@ public sealed class CharacterManagementNavigationParameter
         && _breadcrumbRoot.HasLocalNavigationTarget;
 }
 
-public static class CharacterNavigationRouteKeys
+public static class AccountNavigationRouteKeys
 {
     public const string Root = "CharacterRoot";
 }

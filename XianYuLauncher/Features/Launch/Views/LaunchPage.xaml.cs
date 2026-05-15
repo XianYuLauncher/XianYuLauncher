@@ -90,13 +90,13 @@ public sealed partial class LaunchPage : Page
                  ViewModel.QuickPlayServer = launchParams.ServerAddress;
                  ViewModel.QuickPlayPort = launchParams.ServerPort;
 
-                 if (!string.IsNullOrWhiteSpace(launchParams.ProfileId))
+                 if (!string.IsNullOrWhiteSpace(launchParams.AccountId))
                  {
-                     var targetProfile = ViewModel.Profiles.FirstOrDefault(profile => string.Equals(profile.Id, launchParams.ProfileId, StringComparison.OrdinalIgnoreCase));
-                     if (targetProfile != null)
+                     var targetAccount = ViewModel.Profiles.FirstOrDefault(profile => string.Equals(profile.Id, launchParams.AccountId, StringComparison.OrdinalIgnoreCase));
+                     if (targetAccount != null)
                      {
-                         ViewModel.SelectedProfile = targetProfile;
-                         ViewModel.Username = targetProfile.Name;
+                         ViewModel.SelectedProfile = targetAccount;
+                         ViewModel.Username = targetAccount.Name;
                      }
                  }
                  
@@ -199,7 +199,7 @@ public sealed partial class LaunchPage : Page
         // 添加角色列表
             if (ViewModel.Profiles.Count > 0)
             {
-                var profileSubItem = new MenuFlyoutSubItem { Text = "LaunchPage_AddedProfilesText".GetLocalized() };
+                var profileSubItem = new MenuFlyoutSubItem { Text = "LaunchPage_AddedAccountsText".GetLocalized() };
             
             foreach (var profile in ViewModel.Profiles)
             {
@@ -281,7 +281,7 @@ public sealed partial class LaunchPage : Page
     /// </summary>
     private void ProfileMenuItem_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
-        if (sender is MenuFlyoutItem menuItem && menuItem.Tag is MinecraftProfile profile)
+        if (sender is MenuFlyoutItem menuItem && menuItem.Tag is MinecraftAccount profile)
         {
             // 切换角色
             ViewModel.SwitchProfileCommand.Execute(profile);
@@ -296,7 +296,7 @@ public sealed partial class LaunchPage : Page
     private void AddProfileMenuItem_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
     {
         // 导航到角色页面
-        _navigationService.NavigateTo(typeof(CharacterViewModel).FullName!);
+        _navigationService.NavigateTo(typeof(AccountViewModel).FullName!);
     }
 
     /// <summary>
@@ -733,7 +733,7 @@ public sealed partial class LaunchPage : Page
                 canvasBitmap = await CanvasBitmap.LoadAsync(device, stream);
             }
 
-            // 3. 生成 48x48，和 CharacterPage 对齐，保证显示清晰。
+            // 3. 生成 48x48，和 AccountPage 对齐，保证显示清晰。
             var renderTarget = new CanvasRenderTarget(
                 device,
                 48, // 显示宽度

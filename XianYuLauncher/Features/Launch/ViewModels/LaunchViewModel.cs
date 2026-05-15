@@ -264,13 +264,13 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     /// 角色列表
     /// </summary>
     [ObservableProperty]
-    private ObservableCollection<MinecraftProfile> _profiles = new ObservableCollection<MinecraftProfile>();
+    private ObservableCollection<MinecraftAccount> _profiles = new ObservableCollection<MinecraftAccount>();
 
     /// <summary>
     /// 当前选中角色
     /// </summary>
     [ObservableProperty]
-    private MinecraftProfile _selectedProfile = new() { IsOffline = true };
+    private MinecraftAccount _selectedProfile = new() { IsOffline = true };
     
     /// <summary>
     /// 角色选择按钮显示文本
@@ -282,7 +282,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     /// <summary>
     /// 当 SelectedProfile 变化时通知 UI 更新显示文本
     /// </summary>
-    partial void OnSelectedProfileChanged(MinecraftProfile value)
+    partial void OnSelectedProfileChanged(MinecraftAccount value)
     {
         OnPropertyChanged(nameof(SelectedProfileDisplay));
     }
@@ -656,9 +656,9 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
             _viewModel = viewModel;
         }
         
-        public async Task<MinecraftProfile?> RefreshTokenAsync(MinecraftProfile profile)
+        public async Task<MinecraftAccount?> RefreshTokenAsync(MinecraftAccount profile)
         {
-            var characterManagementViewModel = App.GetService<CharacterManagementViewModel>();
+            var characterManagementViewModel = App.GetService<AccountManagementViewModel>();
             characterManagementViewModel.CurrentProfile = profile;
             await characterManagementViewModel.ForceRefreshTokenAsync();
             return characterManagementViewModel.CurrentProfile;
@@ -1129,7 +1129,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     /// <summary>
     /// 角色数据文件路径
     /// </summary>
-    private string ProfilesFilePath => Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.ProfilesJson);
+    private string AccountsFilePath => Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.AccountsJson);
 
     /// <summary>
     /// 加载角色列表
@@ -1138,10 +1138,10 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     {
         try
         {
-            if (File.Exists(ProfilesFilePath))
+            if (File.Exists(AccountsFilePath))
             {
                 // 🔒 使用安全方法读取（自动解密token）
-                var profilesList = XianYuLauncher.Core.Helpers.TokenEncryption.LoadProfilesSecurely(ProfilesFilePath);
+                var profilesList = XianYuLauncher.Core.Helpers.TokenEncryption.LoadAccountsSecurely(AccountsFilePath);
                 
                 // 清空现有列表并添加所有角色
                 Profiles.Clear();
@@ -1172,7 +1172,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     /// 切换角色命令
     /// </summary>
     [RelayCommand]
-    private void SwitchProfile(MinecraftProfile profile)
+    private void SwitchProfile(MinecraftAccount profile)
     {
         if (profile != null && Profiles.Contains(profile))
         {
@@ -1199,9 +1199,9 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     {
         try
         {
-            // 🔒 使用 ProfileManager 安全保存（自动加密token）
-            var profileManager = App.GetService<IProfileManager>();
-            await profileManager.SaveProfilesAsync(Profiles.ToList());
+            // 🔒 使用 AccountManager 安全保存（自动加密token）
+            var accountManager = App.GetService<IAccountManager>();
+            await accountManager.SaveAccountsAsync(Profiles.ToList());
             System.Diagnostics.Debug.WriteLine($"[Launch] 角色列表已保存（token已加密），共 {Profiles.Count} 个角色");
         }
         catch (Exception ex)
@@ -1507,7 +1507,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
 
             if (shouldNavigate)
             {
-                _navigationService.NavigateTo(typeof(CharacterViewModel).FullName!);
+                _navigationService.NavigateTo(typeof(AccountViewModel).FullName!);
             }
             return;
         }
@@ -1741,7 +1741,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
                 var shouldLogin = await _dialogService.ShowTokenExpiredDialogAsync();
                 if (shouldLogin)
                 {
-                    _navigationService.NavigateTo(typeof(CharacterViewModel).FullName!);
+                    _navigationService.NavigateTo(typeof(AccountViewModel).FullName!);
                 }
             }).Observe("LaunchViewModel.TokenExpired.NavigateLogin");
         }
@@ -1797,7 +1797,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     /// <param name="versionName">版本名称</param>
     /// <param name="profile">角色信息</param>
     /// <returns>包含 Java 路径、参数和版本目录的元组，如果失败返回 null</returns>
-    public async Task<(string JavaPath, string Arguments, string VersionDir)?> GenerateLaunchCommandStringAsync(string versionName, MinecraftProfile profile)
+    public async Task<(string JavaPath, string Arguments, string VersionDir)?> GenerateLaunchCommandStringAsync(string versionName, MinecraftAccount profile)
     {
         if (string.IsNullOrEmpty(versionName) || profile == null)
         {

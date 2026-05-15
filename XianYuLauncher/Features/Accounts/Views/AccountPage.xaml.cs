@@ -20,7 +20,7 @@ using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Features.Accounts.Views;
 
-public sealed partial class CharacterPage : Page, INavigationAware, ILocalNavigationHost
+public sealed partial class AccountPage : Page, INavigationAware, ILocalNavigationHost
 {
     private const string HostedDetailReadOnlyBreadcrumbItemTemplateKey = "HostedDetailReadOnlyBreadcrumbItemTemplate";
 
@@ -28,19 +28,19 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
     private bool _isInnerContentFrameInitialized;
     private readonly HostedLocalPageCoordinator _hostedLocalPageCoordinator;
     private readonly HostedLocalNavigationCoordinator _hostedLocalNavigationCoordinator;
-    private CharacterRootPage? _activeRootPage;
+    private AccountRootPage? _activeRootPage;
 
-    public CharacterViewModel ViewModel { get; }
+    public AccountViewModel ViewModel { get; }
 
     public event EventHandler? LocalNavigationStateChanged;
 
     public bool CanGoBackLocally => _hostedLocalNavigationCoordinator.CanGoBackLocally;
 
-    public CharacterPage()
+    public AccountPage()
     {
         _navigationService = App.GetService<INavigationService>();
-        ViewModel = App.GetService<CharacterViewModel>();
-        ViewModel.CharacterManagementRequested += ViewModel_CharacterManagementRequested;
+        ViewModel = App.GetService<AccountViewModel>();
+        ViewModel.AccountManagementRequested += ViewModel_AccountManagementRequested;
         InitializeComponent();
         _hostedLocalPageCoordinator = new HostedLocalPageCoordinator(ApplyHostedPageHeaderState, HostedLocalPage_CloseRequested);
         _hostedLocalNavigationCoordinator = new HostedLocalNavigationCoordinator(
@@ -126,7 +126,7 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
 
     public async Task HandleExternalLoginDropAsync(string draggedText)
     {
-        if (_activeRootPage == null && CharacterInnerContentFrame.Content is not CharacterRootPage)
+        if (_activeRootPage == null && CharacterInnerContentFrame.Content is not AccountRootPage)
         {
             ResetLocalNavigation(useReturnTransition: true);
             SynchronizeInnerContentFrameState();
@@ -146,7 +146,7 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
         }
 
         CharacterInnerContentFrame.Navigated += CharacterInnerContentFrame_Navigated;
-        CharacterInnerContentFrame.Navigate(typeof(CharacterRootPage), ViewModel, new SuppressNavigationTransitionInfo());
+        CharacterInnerContentFrame.Navigate(typeof(AccountRootPage), ViewModel, new SuppressNavigationTransitionInfo());
         _isInnerContentFrameInitialized = true;
     }
 
@@ -154,7 +154,7 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
     {
         switch (CharacterInnerContentFrame.Content)
         {
-            case CharacterRootPage rootPage when !ReferenceEquals(_activeRootPage, rootPage):
+            case AccountRootPage rootPage when !ReferenceEquals(_activeRootPage, rootPage):
                 DetachHostedLocalPage();
                 AttachRootPage(rootPage);
                 ShowRootPageState();
@@ -175,12 +175,12 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
         }
     }
 
-    private void ViewModel_CharacterManagementRequested(object? sender, CharacterManagementNavigationParameter e)
+    private void ViewModel_AccountManagementRequested(object? sender, AccountManagementNavigationParameter e)
     {
         NavigateToDetail(e, suppressTransition: false);
     }
 
-    private void NavigateToDetail(CharacterManagementNavigationParameter navigationParameter, bool suppressTransition)
+    private void NavigateToDetail(AccountManagementNavigationParameter navigationParameter, bool suppressTransition)
     {
         EnsureInnerContentFrame();
         ResetInnerContentFrameVisualState();
@@ -189,12 +189,12 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
             ? new SuppressNavigationTransitionInfo()
             : new DrillInNavigationTransitionInfo();
 
-        CharacterInnerContentFrame.Navigate(typeof(CharacterManagementPage), navigationParameter, transition);
+        CharacterInnerContentFrame.Navigate(typeof(AccountManagementPage), navigationParameter, transition);
     }
 
     private void CharacterInnerContentFrame_Navigated(object sender, NavigationEventArgs e)
     {
-        if (e.Content is CharacterRootPage rootPage)
+        if (e.Content is AccountRootPage rootPage)
         {
             DetachHostedLocalPage();
             AttachRootPage(rootPage);
@@ -215,7 +215,7 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
         NotifyLocalNavigationStateChanged();
     }
 
-    private void AttachRootPage(CharacterRootPage rootPage)
+    private void AttachRootPage(AccountRootPage rootPage)
     {
         DetachRootPage();
         _activeRootPage = rootPage;
@@ -240,25 +240,25 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
 
     private void ApplyRootHeaderState()
     {
-        CharacterPageHeader.Title = ViewModel.HeaderMetadata.Title;
-        CharacterPageHeader.Subtitle = ViewModel.HeaderMetadata.Subtitle;
-        CharacterPageHeader.ShowBreadcrumb = ViewModel.HeaderMetadata.ShowBreadcrumb;
-        CharacterPageHeader.BreadcrumbItems = ViewModel.HeaderMetadata.BreadcrumbItems;
+        AccountPageHeader.Title = ViewModel.HeaderMetadata.Title;
+        AccountPageHeader.Subtitle = ViewModel.HeaderMetadata.Subtitle;
+        AccountPageHeader.ShowBreadcrumb = ViewModel.HeaderMetadata.ShowBreadcrumb;
+        AccountPageHeader.BreadcrumbItems = ViewModel.HeaderMetadata.BreadcrumbItems;
         ApplyHeaderPresentationMode(ViewModel.HeaderPresentationMode);
     }
 
     private void ApplyHostedPageHeaderState(IPageHeaderAware pageHeaderAware)
     {
-        CharacterPageHeader.Title = pageHeaderAware.HeaderMetadata.Title;
-        CharacterPageHeader.Subtitle = pageHeaderAware.HeaderMetadata.Subtitle;
-        CharacterPageHeader.ShowBreadcrumb = pageHeaderAware.HeaderMetadata.ShowBreadcrumb;
-        CharacterPageHeader.BreadcrumbItems = pageHeaderAware.HeaderMetadata.BreadcrumbItems;
+        AccountPageHeader.Title = pageHeaderAware.HeaderMetadata.Title;
+        AccountPageHeader.Subtitle = pageHeaderAware.HeaderMetadata.Subtitle;
+        AccountPageHeader.ShowBreadcrumb = pageHeaderAware.HeaderMetadata.ShowBreadcrumb;
+        AccountPageHeader.BreadcrumbItems = pageHeaderAware.HeaderMetadata.BreadcrumbItems;
         ApplyHeaderPresentationMode(pageHeaderAware.HeaderPresentationMode);
     }
 
     private void ApplyHeaderPresentationMode(PageHeaderPresentationMode headerPresentationMode)
     {
-        CharacterPageHeader.ApplyPresentationMode(
+        AccountPageHeader.ApplyPresentationMode(
             headerPresentationMode,
             Resources[HostedDetailReadOnlyBreadcrumbItemTemplateKey] as DataTemplate);
     }
@@ -269,9 +269,9 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
         ContentArea.Translation = default;
         ContentArea.Scale = new Vector3(1f, 1f, 1f);
 
-        CharacterPageHeader.Opacity = 1;
-        CharacterPageHeader.Translation = default;
-        CharacterPageHeader.Scale = new Vector3(1f, 1f, 1f);
+        AccountPageHeader.Opacity = 1;
+        AccountPageHeader.Translation = default;
+        AccountPageHeader.Scale = new Vector3(1f, 1f, 1f);
 
         CharacterInnerContentHost.Opacity = 1;
         CharacterInnerContentHost.Translation = default;
@@ -375,17 +375,17 @@ public sealed partial class CharacterPage : Page, INavigationAware, ILocalNaviga
         }
     }
 
-    private bool TryNormalizeDetailNavigationParameter(object? parameter, [NotNullWhen(true)] out CharacterManagementNavigationParameter? navigationParameter)
+    private bool TryNormalizeDetailNavigationParameter(object? parameter, [NotNullWhen(true)] out AccountManagementNavigationParameter? navigationParameter)
     {
         switch (parameter)
         {
-            case CharacterManagementNavigationParameter typedNavigationParameter:
+            case AccountManagementNavigationParameter typedNavigationParameter:
                 navigationParameter = typedNavigationParameter.HasBreadcrumbRoot
                     ? typedNavigationParameter
-                    : ViewModel.CreateCharacterManagementNavigationParameter(typedNavigationParameter.Profile);
+                    : ViewModel.CreateAccountManagementNavigationParameter(typedNavigationParameter.Profile);
                 return true;
-            case MinecraftProfile profile:
-                navigationParameter = ViewModel.CreateCharacterManagementNavigationParameter(profile);
+            case MinecraftAccount profile:
+                navigationParameter = ViewModel.CreateAccountManagementNavigationParameter(profile);
                 return true;
             default:
                 navigationParameter = null;

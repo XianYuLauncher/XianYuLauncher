@@ -26,7 +26,7 @@ public interface IGameLaunchService
     /// <returns>启动结果，包含进程对象和状态信息</returns>
     Task<GameLaunchResult> LaunchGameAsync(
         string versionName,
-        MinecraftProfile profile,
+        MinecraftAccount profile,
         Action<double>? progressCallback = null,
         Action<string>? statusCallback = null,
         CancellationToken cancellationToken = default,
@@ -50,6 +50,6 @@ public interface IGameLaunchService
     /// <returns>完整的启动命令字符串</returns>
     Task<string> GenerateLaunchCommandAsync(
         string versionName,
-        MinecraftProfile profile,
+        MinecraftAccount profile,
         CancellationToken cancellationToken = default);
 }

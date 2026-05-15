@@ -11,11 +11,11 @@ namespace XianYuLauncher.Core.Services;
 
 public class LogSanitizerService : ILogSanitizerService
 {
-    private readonly IProfileManager _profileManager;
+    private readonly IAccountManager _accountManager;
 
-    public LogSanitizerService(IProfileManager profileManager)
+    public LogSanitizerService(IAccountManager accountManager)
     {
-        _profileManager = profileManager;
+        _accountManager = accountManager;
     }
 
     public async Task<string> SanitizeAsync(string content)
@@ -28,8 +28,8 @@ public class LogSanitizerService : ILogSanitizerService
         try
         {
             // 加载所有角色配置
-            var profiles = await _profileManager.LoadProfilesAsync();
-            var activeProfile = _profileManager.GetActiveProfile(profiles);
+            var profiles = await _accountManager.LoadAccountsAsync();
+            var activeProfile = _accountManager.GetActiveAccount(profiles);
 
             if (activeProfile == null)
             {
@@ -52,13 +52,13 @@ public class LogSanitizerService : ILogSanitizerService
                 sensitiveWords.Add(activeProfile.Id);
             }
 
-            // 3. AccessToken (已由 ProfileManager.LoadProfilesAsync() 解密)
+            // 3. AccessToken (已由 AccountManager.LoadAccountsAsync() 解密)
             if (!string.IsNullOrEmpty(activeProfile.AccessToken))
             {
                 sensitiveWords.Add(activeProfile.AccessToken);
             }
 
-            // 4. RefreshToken (已由 ProfileManager.LoadProfilesAsync() 解密)
+            // 4. RefreshToken (已由 AccountManager.LoadAccountsAsync() 解密)
             if (!string.IsNullOrEmpty(activeProfile.RefreshToken))
             {
                 sensitiveWords.Add(activeProfile.RefreshToken);

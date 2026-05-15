@@ -33,8 +33,8 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
     private readonly IFileService _fileService;
     private readonly Core.Services.ModrinthService _modrinthService;
     private readonly ICommonDialogService _dialogService;
-    private readonly IProfileDialogService _profileDialogService;
-    private readonly IProfileManager _profileManager;
+    private readonly IAccountDialogService _profileDialogService;
+    private readonly IAccountManager _accountManager;
     private readonly IUiDispatcher _uiDispatcher;
 
     /// <summary>
@@ -189,8 +189,8 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
         Core.Services.ModrinthService modrinthService,
         IVersionInfoService versionInfoService,
         ICommonDialogService dialogService,
-        IProfileDialogService profileDialogService,
-        IProfileManager profileManager,
+        IAccountDialogService profileDialogService,
+        IAccountManager accountManager,
         IUiDispatcher uiDispatcher)
     {
         _minecraftVersionService = minecraftVersionService;
@@ -199,7 +199,7 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
         _versionInfoService = versionInfoService;
         _dialogService = dialogService;
         _profileDialogService = profileDialogService;
-        _profileManager = profileManager;
+        _accountManager = accountManager;
         _uiDispatcher = uiDispatcher;
 
         HeaderMetadata.Title = "VersionListPage_HeaderTitle".GetLocalized();
@@ -704,15 +704,15 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
         
         try
         {
-            var profiles = await _profileManager.LoadProfilesAsync();
-            MinecraftProfile? selectedProfile = null;
+            var profiles = await _accountManager.LoadAccountsAsync();
+            MinecraftAccount? selectedProfile = null;
             if (profiles.Count > 0)
             {
-                selectedProfile = await _profileDialogService.ShowLauncherProfileSelectionDialogAsync(
+                selectedProfile = await _profileDialogService.ShowLauncherAccountSelectionDialogAsync(
                     profiles,
-                    "LauncherProfileDialog_ShortcutTitle".GetLocalized(),
-                    "LauncherProfileDialog_ShortcutPrimaryButton".GetLocalized(),
-                    "LauncherProfileDialog_CloseButton".GetLocalized());
+                    "LauncherAccountDialog_ShortcutTitle".GetLocalized(),
+                    "LauncherAccountDialog_ShortcutPrimaryButton".GetLocalized(),
+                    "LauncherAccountDialog_CloseButton".GetLocalized());
 
                 if (selectedProfile == null)
                 {
@@ -1352,15 +1352,15 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
     /// 获取当前活跃角色
     /// </summary>
     /// <returns>当前活跃角色，如果没有则返回null</returns>
-    private MinecraftProfile? GetActiveProfile()
+    private MinecraftAccount? GetActiveAccount()
     {
         try
         {
-            string profilesFilePath = Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.ProfilesJson);
+            string profilesFilePath = Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.AccountsJson);
             if (File.Exists(profilesFilePath))
             {
                 // 🔒 使用安全方法读取（自动解密token）
-                var profilesList = XianYuLauncher.Core.Helpers.TokenEncryption.LoadProfilesSecurely(profilesFilePath);
+                var profilesList = XianYuLauncher.Core.Helpers.TokenEncryption.LoadAccountsSecurely(profilesFilePath);
                 if (profilesList != null && profilesList.Count > 0)
                 {
                     // 返回活跃角色或第一个角色
@@ -1390,7 +1390,7 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
         // 检查地区限制：非中国大陆地区只允许微软登录用户导出
         if (!IsChinaMainland())
         {
-            var activeProfile = GetActiveProfile();
+            var activeProfile = GetActiveAccount();
             // 检查是否为微软登录（非离线且非外置登录）
             bool isMicrosoftLogin = activeProfile != null && 
                                     !activeProfile.IsOffline && 
@@ -1648,7 +1648,7 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
         try
         {
             // 获取当前活跃角色
-            var activeProfile = GetActiveProfile();
+            var activeProfile = GetActiveAccount();
             if (activeProfile == null)
             {
                 return null;

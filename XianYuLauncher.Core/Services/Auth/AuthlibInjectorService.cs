@@ -419,7 +419,7 @@ public sealed class AuthlibInjectorService
     /// <param name="templateArgs">模板参数</param>
     /// <param name="profile">角色信息</param>
     /// <returns>替换后的参数</returns>
-    public List<string> ProcessLaunchArguments(List<string> templateArgs, MinecraftProfile profile)
+    public List<string> ProcessLaunchArguments(List<string> templateArgs, MinecraftAccount profile)
     {
         _logger.LogDebug("[AuthlibInjector] 开始处理启动参数，模板参数数量: {Count}", templateArgs.Count);
         _logger.LogDebug("[AuthlibInjector] 处理角色: {Name} (UUID: {Uuid}, 类型: {TokenType})", 

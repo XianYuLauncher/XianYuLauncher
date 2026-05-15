@@ -183,8 +183,8 @@ public partial class App : Application
         {
             try
             {
-                var profileManager = App.GetService<IProfileManager>();
-                await profileManager.LoadProfilesAsync(); // 加载时会自动检测并迁移
+                var accountManager = App.GetService<IAccountManager>();
+                await accountManager.LoadAccountsAsync(); // 加载时会自动检测并迁移
                 Log.Information("Token安全检查完成");
             }
             catch (Exception ex)

@@ -67,14 +67,15 @@ public sealed class LaunchGameToolHandler : IAgentToolHandler
 
     public AiToolDefinition ToolDefinition => AiToolDefinition.Create(
         ToolName,
-        "按版本目录绝对路径启动游戏。path 的语义与 xianyulauncher://launch/?path=... 完全一致，必须传入 versions 下的具体版本目录，而不是游戏根目录。profileId 可选，填写后使用指定档案启动；留空则使用当前默认档案。",
+        "按版本目录绝对路径启动游戏。path 的语义与 xianyulauncher://launch/?path=... 完全一致，必须传入 versions 下的具体版本目录，而不是游戏根目录。accountId 可选，填写后使用指定账户启动；为兼容旧调用，也接受 profileId。",
         new
         {
             type = "object",
             properties = new
             {
                 path = new { type = "string", description = "版本目录绝对路径，例如 D:\\zm\\.minecraft\\versions\\1.21.10" },
-                profileId = new { type = "string", description = "可选。档案 UUID；若提供，则使用该档案启动。" }
+                accountId = new { type = "string", description = "可选。账户 UUID；若提供，则使用该账户启动。" },
+                profileId = new { type = "string", description = "兼容旧调用。等同于 accountId。" }
             },
             required = new[] { "path" }
         });
@@ -86,7 +87,7 @@ public sealed class LaunchGameToolHandler : IAgentToolHandler
     public Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
     {
         var path = arguments["path"]?.ToString() ?? string.Empty;
-        var profileId = arguments["profileId"]?.ToString();
+        var accountId = arguments["accountId"]?.ToString() ?? arguments["profileId"]?.ToString();
 
         try
         {
@@ -102,9 +103,9 @@ public sealed class LaunchGameToolHandler : IAgentToolHandler
                 }
             };
 
-            if (!string.IsNullOrWhiteSpace(profileId))
+            if (!string.IsNullOrWhiteSpace(accountId))
             {
-                proposal.Parameters["profileId"] = profileId;
+                proposal.Parameters["accountId"] = accountId;
             }
 
             var message = $"已准备启动版本 {preparedLaunch.VersionName}。实例路径：{preparedLaunch.VersionPath}。启动时会临时切换到游戏根目录 {preparedLaunch.MinecraftPath}，完成启动流程后再恢复原目录，等待用户确认。";
@@ -144,7 +145,11 @@ public sealed class LaunchGameActionHandler : IAgentActionHandler
             throw new InvalidOperationException("缺少 path 参数。");
         }
 
-        proposal.Parameters.TryGetValue("profileId", out var profileId);
+        proposal.Parameters.TryGetValue("accountId", out var accountId);
+        if (string.IsNullOrWhiteSpace(accountId))
+        {
+            proposal.Parameters.TryGetValue("profileId", out accountId);
+        }
 
         var preparedLaunch = _versionPathGameLaunchService.PrepareLaunch(path);
         var operationId = _launchOperationTracker.CreateOperation(preparedLaunch.VersionName, preparedLaunch.VersionPath);
@@ -155,7 +160,7 @@ public sealed class LaunchGameActionHandler : IAgentActionHandler
                 preparedLaunch,
                 new VersionPathLaunchOptions
                 {
-                    ProfileId = profileId,
+                    AccountId = accountId,
                 },
                 cancellationToken: cancellationToken);
             if (result.GameProcess != null)
@@ -207,13 +212,13 @@ public sealed class LaunchGameActionHandler : IAgentActionHandler
     }
 }
 
-public sealed class GetProfilesToolHandler : IAgentToolHandler
+public sealed class GetAccountsToolHandler : IAgentToolHandler
 {
-    private readonly IProfileManager _profileManager;
+    private readonly IAccountManager _accountManager;
 
-    public GetProfilesToolHandler(IProfileManager profileManager)
+    public GetAccountsToolHandler(IAccountManager accountManager)
     {
-        _profileManager = profileManager;
+        _accountManager = accountManager;
     }
 
     public string ToolName => "getProfiles";
@@ -234,7 +239,7 @@ public sealed class GetProfilesToolHandler : IAgentToolHandler
 
     public async Task<AgentToolExecutionResult> ExecuteAsync(ErrorAnalysisSessionContext context, JObject arguments, CancellationToken cancellationToken)
     {
-        var profiles = await _profileManager.LoadProfilesAsync();
+        var profiles = await _accountManager.LoadAccountsAsync();
         cancellationToken.ThrowIfCancellationRequested();
 
         var orderedProfiles = profiles
@@ -253,13 +258,13 @@ public sealed class GetProfilesToolHandler : IAgentToolHandler
         var payload = new
         {
             profiles = orderedProfiles,
-            activeProfileId = orderedProfiles.FirstOrDefault(profile => profile.isActive)?.profileId,
+            activeAccountId = orderedProfiles.FirstOrDefault(profile => profile.isActive)?.profileId,
         };
 
         return AgentToolExecutionResult.FromMessage(Newtonsoft.Json.JsonConvert.SerializeObject(payload, Newtonsoft.Json.Formatting.Indented));
     }
 
-    private static string GetAccountType(MinecraftProfile profile)
+    private static string GetAccountType(MinecraftAccount profile)
     {
         if (profile.IsOffline)
         {

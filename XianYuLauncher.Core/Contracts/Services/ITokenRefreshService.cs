@@ -13,7 +13,7 @@ public interface ITokenRefreshCallback
     /// </summary>
     /// <param name="profile">需要刷新的角色</param>
     /// <returns>刷新后的角色信息</returns>
-    Task<MinecraftProfile?> RefreshTokenAsync(MinecraftProfile profile);
+    Task<MinecraftAccount?> RefreshTokenAsync(MinecraftAccount profile);
 }
 
 /// <summary>
@@ -52,21 +52,21 @@ public interface ITokenRefreshService
     /// </summary>
     /// <param name="profile">角色信息</param>
     /// <returns>刷新后的角色信息和刷新结果</returns>
-    Task<TokenRefreshResult> CheckAndRefreshTokenAsync(MinecraftProfile profile);
+    Task<TokenRefreshResult> CheckAndRefreshTokenAsync(MinecraftAccount profile);
     
     /// <summary>
     /// 验证令牌有效性（主动调用 API 验证）
     /// </summary>
     /// <param name="profile">角色信息</param>
     /// <returns>验证结果</returns>
-    Task<TokenValidationResult> ValidateTokenAsync(MinecraftProfile profile);
+    Task<TokenValidationResult> ValidateTokenAsync(MinecraftAccount profile);
     
     /// <summary>
     /// 验证并刷新令牌（先验证，无效则刷新）
     /// </summary>
     /// <param name="profile">角色信息</param>
     /// <returns>刷新结果</returns>
-    Task<TokenRefreshResult> ValidateAndRefreshTokenAsync(MinecraftProfile profile);
+    Task<TokenRefreshResult> ValidateAndRefreshTokenAsync(MinecraftAccount profile);
     
     /// <summary>
     /// 设置令牌刷新回调

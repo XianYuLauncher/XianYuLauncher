@@ -1,5 +1,5 @@
 <Page
-    x:Class="XianYuLauncher.Features.Accounts.Views.CharacterPage"
+    x:Class="XianYuLauncher.Features.Accounts.Views.AccountPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -39,7 +39,7 @@
         </Grid.RowDefinitions>
 
         <localControls:PageHeader
-            x:Name="CharacterPageHeader"
+            x:Name="AccountPageHeader"
             Grid.Row="0"
             BreadcrumbItemClicked="PageHeader_BreadcrumbItemClicked" />
 

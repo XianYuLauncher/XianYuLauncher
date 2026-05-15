@@ -123,20 +123,21 @@ public static class TokenEncryption
     }
     
     /// <summary>
-    /// 🔒 安全读取profiles.json（自动解密token）
-    /// 这是一个临时兼容方法，建议使用ProfileManager
+    /// 🔒 安全读取 accounts.json（自动解密token）
+    /// 这是一个临时兼容方法，建议使用AccountManager
     /// </summary>
-    public static List<MinecraftProfile> LoadProfilesSecurely(string profilesFilePath)
+    public static List<MinecraftAccount> LoadAccountsSecurely(string accountsFilePath)
     {
         try
         {
-            if (!File.Exists(profilesFilePath))
+            var sourcePath = ResolveExistingAccountsPath(accountsFilePath);
+            if (sourcePath == null)
             {
-                return new List<MinecraftProfile>();
+                return new List<MinecraftAccount>();
             }
             
-            string json = File.ReadAllText(profilesFilePath);
-            var profiles = JsonConvert.DeserializeObject<List<MinecraftProfile>>(json) ?? new List<MinecraftProfile>();
+            string json = File.ReadAllText(sourcePath);
+            var profiles = JsonConvert.DeserializeObject<List<MinecraftAccount>>(json) ?? new List<MinecraftAccount>();
             
             // 自动解密所有token
             foreach (var profile in profiles)
@@ -156,8 +157,25 @@ public static class TokenEncryption
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[TokenEncryption] 安全读取profiles失败: {ex.Message}");
-            return new List<MinecraftProfile>();
+            System.Diagnostics.Debug.WriteLine($"[TokenEncryption] 安全读取账户失败: {ex.Message}");
+            return new List<MinecraftAccount>();
         }
+    }
+
+    private static string? ResolveExistingAccountsPath(string accountsFilePath)
+    {
+        if (File.Exists(accountsFilePath))
+        {
+            return accountsFilePath;
+        }
+
+        var directory = Path.GetDirectoryName(accountsFilePath);
+        if (string.IsNullOrWhiteSpace(directory))
+        {
+            return null;
+        }
+
+        var legacyProfilesPath = Path.Combine(directory, MinecraftFileConsts.LegacyProfilesJson);
+        return File.Exists(legacyProfilesPath) ? legacyProfilesPath : null;
     }
 }

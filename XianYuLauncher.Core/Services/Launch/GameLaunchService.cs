@@ -62,7 +62,7 @@ public class GameLaunchService : IGameLaunchService
     /// </summary>
     public async Task<string> GenerateLaunchCommandAsync(
         string versionName,
-        MinecraftProfile profile,
+        MinecraftAccount profile,
         CancellationToken cancellationToken = default)
     {
         try
@@ -167,7 +167,7 @@ public class GameLaunchService : IGameLaunchService
     /// </summary>
     public async Task<GameLaunchResult> LaunchGameAsync(
         string versionName,
-        MinecraftProfile profile,
+        MinecraftAccount profile,
         Action<double>? progressCallback = null,
         Action<string>? statusCallback = null,
         CancellationToken cancellationToken = default,
@@ -443,7 +443,7 @@ public class GameLaunchService : IGameLaunchService
     /// </summary>
     private async Task<List<string>> BuildLaunchArgumentsAsync(
         VersionInfo versionInfo,
-        MinecraftProfile profile,
+        MinecraftAccount profile,
         VersionConfig config,
         EffectiveLaunchSettings effectiveSettings,
         string versionName,
@@ -577,7 +577,7 @@ public class GameLaunchService : IGameLaunchService
     private async Task AddGameArgumentsAsync(
         List<string> args,
         VersionInfo versionInfo,
-        MinecraftProfile profile,
+        MinecraftAccount profile,
         VersionConfig config,
         string versionName,
         string gameDir,

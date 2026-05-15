@@ -3,12 +3,12 @@ using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Features.Dialogs.Contracts;
 
-public interface IProfileDialogService
+public interface IAccountDialogService
 {
-    Task<XianYuLauncher.Core.Services.ExternalProfile?> ShowProfileSelectionDialogAsync(List<XianYuLauncher.Core.Services.ExternalProfile> profiles, string authServer);
+    Task<XianYuLauncher.Core.Services.ExternalProfile?> ShowAccountSelectionDialogAsync(List<XianYuLauncher.Core.Services.ExternalProfile> profiles, string authServer);
 
-    Task<MinecraftProfile?> ShowLauncherProfileSelectionDialogAsync(
-        List<MinecraftProfile> profiles,
+    Task<MinecraftAccount?> ShowLauncherAccountSelectionDialogAsync(
+        List<MinecraftAccount> profiles,
         string title,
         string primaryButtonText,
         string closeButtonText);

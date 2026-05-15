@@ -7,9 +7,9 @@ using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Helpers;
 
-public static class ProfileAvatarImageHelper
+public static class AccountAvatarImageHelper
 {
-    public static async Task<BitmapImage> CreateDefaultProfileAvatarAsync(int outputSize = 32)
+    public static async Task<BitmapImage> CreateDefaultAccountAvatarAsync(int outputSize = 32)
     {
         var device = CanvasDevice.GetSharedDevice();
         var file = await AppAssetResolver.GetStorageFileAsync(AppAssetResolver.DefaultAvatarAssetPath);
@@ -37,7 +37,7 @@ public static class ProfileAvatarImageHelper
         return bitmapImage;
     }
 
-    public static async Task<BitmapImage?> CreateProfileAvatarFromSkinAsync(byte[] skinBytes, int outputSize = 32, bool includeOverlay = true)
+    public static async Task<BitmapImage?> CreateAccountAvatarFromSkinAsync(byte[] skinBytes, int outputSize = 32, bool includeOverlay = true)
     {
         try
         {

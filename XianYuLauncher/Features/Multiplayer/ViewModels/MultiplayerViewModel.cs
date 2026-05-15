@@ -113,12 +113,12 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
         try
         {
             // 获取角色数据文件路径
-            string profilesFilePath = Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.ProfilesJson);
+            string profilesFilePath = Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.AccountsJson);
             
             if (File.Exists(profilesFilePath))
             {
                 // 🔒 使用安全方法读取（自动解密token）
-                var profiles = XianYuLauncher.Core.Helpers.TokenEncryption.LoadProfilesSecurely(profilesFilePath);
+                var profiles = XianYuLauncher.Core.Helpers.TokenEncryption.LoadAccountsSecurely(profilesFilePath);
                 
                 // 查找活跃角色
                 var activeProfile = profiles.FirstOrDefault(p => p.IsActive) ?? profiles.FirstOrDefault();

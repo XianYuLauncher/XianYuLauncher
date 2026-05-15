@@ -10,13 +10,13 @@ namespace XianYuLauncher.Features.VersionManagement.ViewModels;
 
 internal static class VersionManagementShortcutOps
 {
-    public static async Task<string> CreateVersionShortcutFileAsync(string versionName, string versionPath, MinecraftProfile? profile = null)
+    public static async Task<string> CreateVersionShortcutFileAsync(string versionName, string versionPath, MinecraftAccount? profile = null)
     {
         var shortcutName = BuildShortcutDisplayName(versionName, profile?.Name);
         var shortcutPath = BuildShortcutPath(shortcutName);
         var targetPath = Helpers.ShortcutHelper.TrimTrailingDirectorySeparator(versionPath);
         var encodedPath = Uri.EscapeDataString(targetPath ?? string.Empty);
-        var url = AppendProfileQuery($"xianyulauncher://launch/?path={encodedPath}", profile);
+        var url = AppendAccountQuery($"xianyulauncher://launch/?path={encodedPath}", profile);
 
         if (!Helpers.ShortcutHelper.ValidateShortcutUrl(url))
         {
@@ -28,7 +28,7 @@ internal static class VersionManagementShortcutOps
         return shortcutName;
     }
 
-    public static async Task<string> CreateMapShortcutFileAsync(MapInfo map, string versionName, string versionPath, MinecraftProfile? profile = null)
+    public static async Task<string> CreateMapShortcutFileAsync(MapInfo map, string versionName, string versionPath, MinecraftAccount? profile = null)
     {
         var shortcutName = BuildShortcutDisplayName($"{versionName} - {map.Name}", profile?.Name);
         var shortcutPath = BuildShortcutPath(shortcutName);
@@ -38,7 +38,7 @@ internal static class VersionManagementShortcutOps
         var targetPath = Helpers.ShortcutHelper.TrimTrailingDirectorySeparator(versionPath);
         var encodedPath = Uri.EscapeDataString(targetPath ?? string.Empty);
         var encodedMap = Uri.EscapeDataString(map.FileName ?? string.Empty);
-        var url = AppendProfileQuery($"xianyulauncher://launch/?path={encodedPath}&map={encodedMap}", profile);
+        var url = AppendAccountQuery($"xianyulauncher://launch/?path={encodedPath}&map={encodedMap}", profile);
 
         if (!Helpers.ShortcutHelper.ValidateShortcutUrl(url))
         {
@@ -49,7 +49,7 @@ internal static class VersionManagementShortcutOps
         return shortcutName;
     }
 
-    public static async Task<string> CreateServerShortcutFileAsync(ServerItem server, string versionName, string versionPath, MinecraftProfile? profile = null)
+    public static async Task<string> CreateServerShortcutFileAsync(ServerItem server, string versionName, string versionPath, MinecraftAccount? profile = null)
     {
         var shortcutName = BuildShortcutDisplayName($"{versionName} - {server.Name}", profile?.Name);
         var shortcutPath = BuildShortcutPath(shortcutName);
@@ -61,7 +61,7 @@ internal static class VersionManagementShortcutOps
 
         var encodedPath = Uri.EscapeDataString(targetPath ?? string.Empty);
         var encodedServer = Uri.EscapeDataString(finalAddress ?? string.Empty);
-        var url = AppendProfileQuery($"xianyulauncher://launch/?path={encodedPath}&server={encodedServer}&port={portPart}", profile);
+        var url = AppendAccountQuery($"xianyulauncher://launch/?path={encodedPath}&server={encodedServer}&port={portPart}", profile);
 
         if (!Helpers.ShortcutHelper.ValidateShortcutUrl(url))
         {
@@ -246,13 +246,13 @@ internal static class VersionManagementShortcutOps
         await File.WriteAllTextAsync(shortcutPath, builder.ToString());
     }
 
-    private static string AppendProfileQuery(string url, MinecraftProfile? profile)
+    private static string AppendAccountQuery(string url, MinecraftAccount? account)
     {
-        if (profile == null || string.IsNullOrWhiteSpace(profile.Id))
+        if (account == null || string.IsNullOrWhiteSpace(account.Id))
         {
             return url;
         }
 
-        return $"{url}&profileId={Uri.EscapeDataString(profile.Id)}";
+        return $"{url}&accountId={Uri.EscapeDataString(account.Id)}";
     }
 }

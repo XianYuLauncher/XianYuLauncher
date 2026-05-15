@@ -44,12 +44,12 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
     /// <summary>
     /// 角色管理页面的ViewModel
     /// </summary>
-    public partial class CharacterManagementViewModel : ObservableRecipient, INavigationAware, IPageHeaderAware
+    public partial class AccountManagementViewModel : ObservableRecipient, INavigationAware, IPageHeaderAware
     {
         private readonly IFileService _fileService;
-        private readonly IProfileManager _profileManager;
+        private readonly IAccountManager _accountManager;
         private readonly HttpClient _httpClient;
-        private CharacterManagementNavigationParameter? _navigationParameter;
+        private AccountManagementNavigationParameter? _navigationParameter;
 
         public PageHeaderMetadata HeaderMetadata { get; } = new();
 
@@ -182,7 +182,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// 当前角色信息
         /// </summary>
         [ObservableProperty]
-        private MinecraftProfile _currentProfile = new() { IsOffline = true };
+        private MinecraftAccount _currentProfile = new() { IsOffline = true };
         
         /// <summary>
         /// 原始UUID，用于保存时查找要更新的角色
@@ -193,7 +193,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// 当前角色变化时，通知相关属性更新
         /// </summary>
         /// <param name="value">新的角色信息</param>
-        partial void OnCurrentProfileChanged(MinecraftProfile value)
+        partial void OnCurrentProfileChanged(MinecraftAccount value)
         {
             // 初始化新用户名和UUID
             if (value != null)
@@ -384,11 +384,11 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// 构造函数
         /// </summary>
         /// <param name="fileService">文件服务</param>
-        /// <param name="profileManager">角色管理服务</param>
-        public CharacterManagementViewModel(IFileService fileService, IProfileManager profileManager)
+        /// <param name="accountManager">角色管理服务</param>
+        public AccountManagementViewModel(IFileService fileService, IAccountManager accountManager)
         {
             _fileService = fileService;
-            _profileManager = profileManager;
+            _accountManager = accountManager;
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
             _httpClient.BaseAddress = new Uri("https://api.minecraftservices.com/");
@@ -403,15 +403,15 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         {
             var profile = parameter switch
             {
-                CharacterManagementNavigationParameter navigationParameter => InitializeNavigationParameter(navigationParameter),
-                MinecraftProfile rawProfile => InitializeNavigationParameter(new CharacterManagementNavigationParameter
+                AccountManagementNavigationParameter navigationParameter => InitializeNavigationParameter(navigationParameter),
+                MinecraftAccount rawProfile => InitializeNavigationParameter(new AccountManagementNavigationParameter
                 {
                     Profile = rawProfile,
                     BreadcrumbRoot = BreadcrumbNavigationRoot.CreateLocal(
-                        "ProfilePage_HeaderTitle".GetLocalized(),
+                        "AccountPage_HeaderTitle".GetLocalized(),
                         new LocalNavigationTarget
                         {
-                            RouteKey = CharacterNavigationRouteKeys.Root,
+                            RouteKey = AccountNavigationRouteKeys.Root,
                         }),
                 }),
                 _ => null,
@@ -439,7 +439,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             // 页面导航离开时的清理逻辑
         }
 
-        private MinecraftProfile? InitializeNavigationParameter(CharacterManagementNavigationParameter navigationParameter)
+        private MinecraftAccount? InitializeNavigationParameter(AccountManagementNavigationParameter navigationParameter)
         {
             _navigationParameter = navigationParameter;
             return navigationParameter.Profile;
@@ -448,7 +448,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         private void ApplyHeaderMetadata()
         {
             HeaderMetadata.Title = string.IsNullOrWhiteSpace(CurrentProfile?.Name)
-                ? "ProfilePage_HeaderTitle".GetLocalized()
+                ? "AccountPage_HeaderTitle".GetLocalized()
                 : CurrentProfile.Name;
             HeaderMetadata.Subtitle = string.Empty;
             HeaderMetadata.BreadcrumbItems.Clear();
@@ -508,8 +508,8 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         {
             try
             {
-                // 🔒 使用 ProfileManager 安全保存（自动加密token）
-                var profiles = await _profileManager.LoadProfilesAsync();
+                // 🔒 使用 AccountManager 安全保存（自动加密token）
+                var profiles = await _accountManager.LoadAccountsAsync();
                 
                 // 更新当前角色
                 int index = profiles.FindIndex(p => p.Id == _originalUUID);
@@ -525,7 +525,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                 }
                 
                 // 保存回文件（自动加密）
-                await _profileManager.SaveProfilesAsync(profiles);
+                await _accountManager.SaveAccountsAsync(profiles);
                 
                 System.Diagnostics.Debug.WriteLine($"[CharacterManagement] 角色已保存（token已加密）: {CurrentProfile.Name}");
             }

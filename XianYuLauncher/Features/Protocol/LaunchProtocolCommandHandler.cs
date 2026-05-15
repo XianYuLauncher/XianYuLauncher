@@ -82,7 +82,7 @@ public sealed class LaunchProtocolCommandHandler : IProtocolCommandHandler
                 preparedLaunch,
                 new VersionPathLaunchOptions
                 {
-                    ProfileId = launchCommand.ProfileId,
+                    AccountId = launchCommand.AccountId,
                     QuickPlaySingleplayer = quickPlaySingleplayer,
                     QuickPlayServer = quickPlayServer,
                     QuickPlayPort = quickPlayPort

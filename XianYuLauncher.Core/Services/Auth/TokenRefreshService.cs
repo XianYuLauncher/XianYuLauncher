@@ -6,7 +6,7 @@ namespace XianYuLauncher.Core.Services;
 /// <summary>
 /// 令牌刷新服务实现
 /// 注意：此服务需要在 UI 层注入 ITokenRefreshCallback 来执行实际的令牌刷新
-/// 因为令牌刷新涉及 CharacterManagementViewModel，它在 UI 层
+/// 因为令牌刷新涉及 AccountManagementViewModel，它在 UI 层
 /// </summary>
 public class TokenRefreshService : ITokenRefreshService
 {
@@ -31,7 +31,7 @@ public class TokenRefreshService : ITokenRefreshService
     /// <summary>
     /// 验证令牌有效性（主动调用 API 验证）
     /// </summary>
-    public async Task<TokenValidationResult> ValidateTokenAsync(MinecraftProfile profile)
+    public async Task<TokenValidationResult> ValidateTokenAsync(MinecraftAccount profile)
     {
         var result = new TokenValidationResult
         {
@@ -127,7 +127,7 @@ public class TokenRefreshService : ITokenRefreshService
     /// <summary>
     /// 验证并刷新令牌（先验证，无效则刷新）
     /// </summary>
-    public async Task<TokenRefreshResult> ValidateAndRefreshTokenAsync(MinecraftProfile profile)
+    public async Task<TokenRefreshResult> ValidateAndRefreshTokenAsync(MinecraftAccount profile)
     {
         var result = new TokenRefreshResult
         {
@@ -223,7 +223,7 @@ public class TokenRefreshService : ITokenRefreshService
     /// <summary>
     /// 检查并刷新令牌（如果需要）
     /// </summary>
-    public async Task<TokenRefreshResult> CheckAndRefreshTokenAsync(MinecraftProfile profile)
+    public async Task<TokenRefreshResult> CheckAndRefreshTokenAsync(MinecraftAccount profile)
     {
         var result = new TokenRefreshResult
         {

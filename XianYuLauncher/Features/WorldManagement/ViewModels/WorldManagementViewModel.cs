@@ -163,7 +163,7 @@ public partial class WorldManagementViewModel : ObservableRecipient, IPageHeader
         LaunchWorld(null);
     }
 
-    public void LaunchWorld(string? profileId)
+    public void LaunchWorld(string? accountId)
     {
         if (string.IsNullOrEmpty(CurrentVersionId) || string.IsNullOrEmpty(WorldName))
             return;
@@ -172,7 +172,7 @@ public partial class WorldManagementViewModel : ObservableRecipient, IPageHeader
         {
             VersionId = CurrentVersionId,
             WorldFolder = WorldName,
-            ProfileId = profileId ?? string.Empty,
+            AccountId = accountId ?? string.Empty,
         });
     }
 

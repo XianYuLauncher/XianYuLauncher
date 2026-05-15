@@ -78,13 +78,13 @@ internal static class PresentationModuleExtensions
 
     public static IServiceCollection AddAccountsFeaturePresentation(this IServiceCollection services)
     {
-        services.AddTransient<CharacterViewModel>();
-        services.AddTransient<CharacterPage>();
-        services.AddTransient<CharacterRootPage>();
-        services.AddPageMap<CharacterViewModel, CharacterPage>();
+        services.AddTransient<AccountViewModel>();
+        services.AddTransient<AccountPage>();
+        services.AddTransient<AccountRootPage>();
+        services.AddPageMap<AccountViewModel, AccountPage>();
 
-        services.AddTransient<CharacterManagementViewModel>();
-        services.AddTransient<CharacterManagementPage>();
+        services.AddTransient<AccountManagementViewModel>();
+        services.AddTransient<AccountManagementPage>();
 
         return services;
     }

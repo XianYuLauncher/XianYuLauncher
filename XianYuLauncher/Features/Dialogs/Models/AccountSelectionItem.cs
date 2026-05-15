@@ -3,7 +3,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 
 namespace XianYuLauncher.Features.Dialogs.Models;
 
-public partial class ProfileSelectionItem : ObservableObject
+public partial class AccountSelectionItem : ObservableObject
 {
     public string Id { get; set; } = string.Empty;
 
@@ -12,5 +12,5 @@ public partial class ProfileSelectionItem : ObservableObject
     [ObservableProperty]
     private BitmapImage _avatar = null!;
 
-    public XianYuLauncher.Core.Services.ExternalProfile OriginalProfile { get; set; } = null!;
+    public XianYuLauncher.Core.Services.ExternalProfile OriginalAccount { get; set; } = null!;
 }

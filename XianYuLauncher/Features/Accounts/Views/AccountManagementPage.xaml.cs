@@ -34,7 +34,7 @@ namespace XianYuLauncher.Features.Accounts.Views
     /// <summary>
     /// 角色管理页面
     /// </summary>
-    public sealed partial class CharacterManagementPage : Page, IHostedLocalPage
+    public sealed partial class AccountManagementPage : Page, IHostedLocalPage
     {
         private EventHandler? _closeRequested;
         private bool _lifecycleEventsAttached;
@@ -43,7 +43,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// <summary>
         /// ViewModel实例
         /// </summary>
-        public CharacterManagementViewModel ViewModel
+        public AccountManagementViewModel ViewModel
         {
             get;
         }
@@ -52,7 +52,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         
         private readonly HttpClient _httpClient = new HttpClient();
         private readonly ICommonDialogService _dialogService;
-        private readonly IProfileDialogService _profileDialogService;
+        private readonly IAccountDialogService _profileDialogService;
         private const string AvatarCacheFolder = AppDataFileConsts.AvatarCacheFolder;
 
         /// <summary>
@@ -73,11 +73,11 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// <summary>
         /// 构造函数
         /// </summary>
-        public CharacterManagementPage()
+        public AccountManagementPage()
         {
-            ViewModel = App.GetService<CharacterManagementViewModel>();
+            ViewModel = App.GetService<AccountManagementViewModel>();
             _dialogService = App.GetService<ICommonDialogService>();
-            _profileDialogService = App.GetService<IProfileDialogService>();
+            _profileDialogService = App.GetService<IAccountDialogService>();
             InitializeComponent();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
 
@@ -93,7 +93,7 @@ namespace XianYuLauncher.Features.Accounts.Views
 
             ViewModel.PropertyChanged += ViewModel_PropertyChanged;
             ViewModel.PropertyChanged += ViewModel_CurrentSkinChanged;
-            Loaded += CharacterManagementPage_Loaded;
+            Loaded += AccountManagementPage_Loaded;
             _lifecycleEventsAttached = true;
         }
 
@@ -106,7 +106,7 @@ namespace XianYuLauncher.Features.Accounts.Views
 
             ViewModel.PropertyChanged -= ViewModel_PropertyChanged;
             ViewModel.PropertyChanged -= ViewModel_CurrentSkinChanged;
-            Loaded -= CharacterManagementPage_Loaded;
+            Loaded -= AccountManagementPage_Loaded;
             _lifecycleEventsAttached = false;
         }
 
@@ -165,7 +165,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// <summary>
         /// 页面加载完成事件
         /// </summary>
-        private async void CharacterManagementPage_Loaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
+        private async void AccountManagementPage_Loaded(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
             await EnsureWebViewReadyAsync();
         }
@@ -497,11 +497,11 @@ namespace XianYuLauncher.Features.Accounts.Views
                 
                 if (string.IsNullOrEmpty(authServer))
                 {
-                    Log.Warning("[Avatar.CharacterManagementPage] 外置登录 AuthServer 为空，角色: {Name}", ViewModel.CurrentProfile.Name);
+                    Log.Warning("[Avatar.AccountManagementPage] 外置登录 AuthServer 为空，角色: {Name}", ViewModel.CurrentProfile.Name);
                     return (string.Empty, string.Empty);
                 }
                 
-                Log.Information("[Avatar.CharacterManagementPage] 外置登录获取皮肤，AuthServer: {AuthServer}, UUID: {Uuid}", authServer, uuid);
+                Log.Information("[Avatar.AccountManagementPage] 外置登录获取皮肤，AuthServer: {AuthServer}, UUID: {Uuid}", authServer, uuid);
                 
                 // 确保authServer以/结尾，否则添加/
                 string baseUrl = authServer.TrimEnd('/') + "/";
@@ -509,13 +509,13 @@ namespace XianYuLauncher.Features.Accounts.Views
                 // 构建完整的session URL，格式：{baseUrl}sessionserver/session/minecraft/profile/{uuid}
                 string sessionUrl = $"{baseUrl}sessionserver/session/minecraft/profile/{uuid}";
                 
-                Log.Information("[Avatar.CharacterManagementPage] 外置登录 Session URL: {Url}", sessionUrl);
+                Log.Information("[Avatar.AccountManagementPage] 外置登录 Session URL: {Url}", sessionUrl);
 
                 // 2. 发送请求获取profile.properties（复用页面 _httpClient，避免连接泄漏）
                 using var response = await _httpClient.GetAsync(sessionUrl);
                 if (!response.IsSuccessStatusCode)
                 {
-                    Log.Warning("[Avatar.CharacterManagementPage] 外置登录 Session API 失败，URL: {Url}, 状态码: {StatusCode}", sessionUrl, response.StatusCode);
+                    Log.Warning("[Avatar.AccountManagementPage] 外置登录 Session API 失败，URL: {Url}, 状态码: {StatusCode}", sessionUrl, response.StatusCode);
                     return (string.Empty, string.Empty);
                 }
 
@@ -527,7 +527,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 // 4. 检查properties
                 if (properties == null || properties.Count == 0)
                 {
-                    Log.Warning("[Avatar.CharacterManagementPage] 外置登录 profile.properties 为空，URL: {Url}", sessionUrl);
+                    Log.Warning("[Avatar.AccountManagementPage] 外置登录 profile.properties 为空，URL: {Url}", sessionUrl);
                     return (string.Empty, string.Empty);
                 }
 
@@ -549,7 +549,7 @@ namespace XianYuLauncher.Features.Accounts.Views
 
                 if (string.IsNullOrEmpty(texturesBase64))
                 {
-                    Log.Warning("[Avatar.CharacterManagementPage] 外置登录未找到 textures 属性，URL: {Url}", sessionUrl);
+                    Log.Warning("[Avatar.AccountManagementPage] 外置登录未找到 textures 属性，URL: {Url}", sessionUrl);
                     return (string.Empty, string.Empty);
                 }
 
@@ -563,13 +563,13 @@ namespace XianYuLauncher.Features.Accounts.Views
                 string skinUrl = texturesNode?["SKIN"]?["url"]?.Value<string>() ?? string.Empty;
                 string capeUrl = texturesNode?["CAPE"]?["url"]?.Value<string>() ?? string.Empty;
 
-                Log.Information("[Avatar.CharacterManagementPage] 外置登录解析到皮肤 URL: {SkinUrl}, 披风: {CapeUrl}",
+                Log.Information("[Avatar.AccountManagementPage] 外置登录解析到皮肤 URL: {SkinUrl}, 披风: {CapeUrl}",
                     string.IsNullOrEmpty(skinUrl) ? "(空)" : skinUrl, string.IsNullOrEmpty(capeUrl) ? "(空)" : capeUrl);
                 return (skinUrl, capeUrl);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[Avatar.CharacterManagementPage] 解析外置登录皮肤失败");
+                Log.Error(ex, "[Avatar.AccountManagementPage] 解析外置登录皮肤失败");
                 return (string.Empty, string.Empty);
             }
         }
@@ -654,12 +654,12 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             if (ViewModel.CurrentProfile == null)
             {
-                Log.Debug("[Avatar.CharacterManagementPage] CurrentProfile 为 null，跳过头像加载");
+                Log.Debug("[Avatar.AccountManagementPage] CurrentProfile 为 null，跳过头像加载");
                 return;
             }
             
             var p = ViewModel.CurrentProfile;
-            Log.Information("[Avatar.CharacterManagementPage] 开始加载头像，角色: {Name}, 离线: {IsOffline}, TokenType: {TokenType}, AuthServer: {AuthServer}, 强制刷新: {ForceRefresh}",
+            Log.Information("[Avatar.AccountManagementPage] 开始加载头像，角色: {Name}, 离线: {IsOffline}, TokenType: {TokenType}, AuthServer: {AuthServer}, 强制刷新: {ForceRefresh}",
                 p.Name, p.IsOffline, p.TokenType ?? "(null)", p.AuthServer ?? "(null)", forceRefresh);
             
             // 异步加载头像
@@ -721,14 +721,14 @@ namespace XianYuLauncher.Features.Accounts.Views
 
                         if (!string.IsNullOrEmpty(currentSkinUrl))
                         {
-                             Log.Information("[Avatar.CharacterManagementPage] 使用 CurrentSkin.Url 加载头像: {Url}", currentSkinUrl);
+                             Log.Information("[Avatar.AccountManagementPage] 使用 CurrentSkin.Url 加载头像: {Url}", currentSkinUrl);
                              networkAvatar = await CropAvatarFromSkinAsync(currentSkinUrl, ViewModel.CurrentProfile.Id);
                         }
                         
                         // 如果从 CurrentSkin 获取失败（例如 CurrentSkin 为空），则回退到从网络 Profile 获取
                         if (networkAvatar == null)
                         {
-                             Log.Information("[Avatar.CharacterManagementPage] CurrentSkin.Url 为空或加载失败，回退到 Session API，TokenType: {TokenType}", ViewModel.CurrentProfile.TokenType ?? "(null)");
+                             Log.Information("[Avatar.AccountManagementPage] CurrentSkin.Url 为空或加载失败，回退到 Session API，TokenType: {TokenType}", ViewModel.CurrentProfile.TokenType ?? "(null)");
                              networkAvatar = await LoadAvatarFromNetworkAsync(ViewModel.CurrentProfile);
                         }
 
@@ -781,7 +781,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// <summary>
         /// 从网络加载头像
         /// </summary>
-        private async Task<BitmapImage?> LoadAvatarFromNetworkAsync(MinecraftProfile? profile)
+        private async Task<BitmapImage?> LoadAvatarFromNetworkAsync(MinecraftAccount? profile)
         {
             if (profile == null) return null;
             string uuid = profile.Id;
@@ -793,17 +793,17 @@ namespace XianYuLauncher.Features.Accounts.Views
                 {
                     if (!authServer.EndsWith("/")) authServer += "/";
                     sessionUri = new Uri($"{authServer}sessionserver/session/minecraft/profile/{uuid}");
-                    Log.Information("[Avatar.CharacterManagementPage] 外置登录回退到 Session API，URL: {Url}", sessionUri.ToString());
+                    Log.Information("[Avatar.AccountManagementPage] 外置登录回退到 Session API，URL: {Url}", sessionUri.ToString());
                 }
                 else
                 {
                     sessionUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{uuid}");
-                    Log.Debug("[Avatar.CharacterManagementPage] 微软登录 Session API，URL: {Url}", sessionUri.ToString());
+                    Log.Debug("[Avatar.AccountManagementPage] 微软登录 Session API，URL: {Url}", sessionUri.ToString());
                 }
                 var response = await _httpClient.GetAsync(sessionUri);
                 if (!response.IsSuccessStatusCode)
                 {
-                    Log.Warning("[Avatar.CharacterManagementPage] Session API 失败，URL: {Url}, 状态码: {StatusCode}", sessionUri.ToString(), response.StatusCode);
+                    Log.Warning("[Avatar.AccountManagementPage] Session API 失败，URL: {Url}, 状态码: {StatusCode}", sessionUri.ToString(), response.StatusCode);
                     return null;
                 }
                 
@@ -812,7 +812,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 var properties = profileData?["properties"] as JArray;
                 if (properties == null || properties.Count == 0)
                 {
-                    Log.Warning("[Avatar.CharacterManagementPage] Session API 响应无 properties，URL: {Url}", sessionUri.ToString());
+                    Log.Warning("[Avatar.AccountManagementPage] Session API 响应无 properties，URL: {Url}", sessionUri.ToString());
                     return null;
                 }
                 
@@ -840,15 +840,15 @@ namespace XianYuLauncher.Features.Accounts.Views
                 string? skinUrl = texturesData?["textures"]?["SKIN"]?["url"]?.Value<string>();
                 if (string.IsNullOrEmpty(skinUrl))
                 {
-                    Log.Warning("[Avatar.CharacterManagementPage] Session API 响应无皮肤 URL，URL: {Url}", sessionUri.ToString());
+                    Log.Warning("[Avatar.AccountManagementPage] Session API 响应无皮肤 URL，URL: {Url}", sessionUri.ToString());
                     return null;
                 }
-                Log.Information("[Avatar.CharacterManagementPage] 解析到皮肤 URL: {SkinUrl}", skinUrl);
+                Log.Information("[Avatar.AccountManagementPage] 解析到皮肤 URL: {SkinUrl}", skinUrl);
                 return await CropAvatarFromSkinAsync(skinUrl, uuid);
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "[Avatar.CharacterManagementPage] 从网络加载头像失败，UUID: {Uuid}, TokenType: {TokenType}", uuid, profile.TokenType ?? "(null)");
+                Log.Error(ex, "[Avatar.AccountManagementPage] 从网络加载头像失败，UUID: {Uuid}, TokenType: {TokenType}", uuid, profile.TokenType ?? "(null)");
                 return null;
             }
         }
@@ -890,7 +890,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                return await ProfileAvatarImageHelper.CreateDefaultProfileAvatarAsync(48);
+                return await AccountAvatarImageHelper.CreateDefaultAccountAvatarAsync(48);
             }
             catch (Exception ex)
             {
@@ -996,12 +996,12 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// <param name="e">路由事件参数</param>
         private async void BrowseSkinFileButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
-            Debug.WriteLine($"[CharacterManagementPage] 皮肤上传按钮被点击，当前账户类型: {ViewModel.CurrentProfile.TokenType}");
+            Debug.WriteLine($"[AccountManagementPage] 皮肤上传按钮被点击，当前账户类型: {ViewModel.CurrentProfile.TokenType}");
             
             if (ViewModel.CurrentProfile.IsOffline)
             {
                 await ShowMessageAsync("Msg_OperationFailed".GetLocalized(), "Msg_OfflineNoSkinUpload".GetLocalized());
-                Debug.WriteLine($"[CharacterManagementPage] 离线模式，拒绝上传皮肤");
+                Debug.WriteLine($"[AccountManagementPage] 离线模式，拒绝上传皮肤");
                 return;
             }
 
@@ -1021,19 +1021,19 @@ namespace XianYuLauncher.Features.Accounts.Views
                 var file = await picker.PickSingleFileAsync();
                 if (file == null)
                 {
-                    Debug.WriteLine($"[CharacterManagementPage] 用户取消了皮肤文件选择");
+                    Debug.WriteLine($"[AccountManagementPage] 用户取消了皮肤文件选择");
                     return;
                 }
                 
                 // 获取文件大小
                 var basicProperties = await file.GetBasicPropertiesAsync();
                 ulong fileSize = basicProperties.Size;
-                Debug.WriteLine($"[CharacterManagementPage] 用户选择了皮肤文件: {file.Name}, 大小: {fileSize} 字节");
+                Debug.WriteLine($"[AccountManagementPage] 用户选择了皮肤文件: {file.Name}, 大小: {fileSize} 字节");
 
                 // 2. 验证文件是否符合要求（PNG格式、64x64尺寸）
                 if (!await ValidateSkinFileAsync(file))
                 {
-                    Debug.WriteLine($"[CharacterManagementPage] 皮肤文件验证失败");
+                    Debug.WriteLine($"[AccountManagementPage] 皮肤文件验证失败");
                     return;
                 }
 
@@ -1048,42 +1048,42 @@ namespace XianYuLauncher.Features.Accounts.Views
 
                 if (model == null)
                 {
-                    Debug.WriteLine($"[CharacterManagementPage] 用户取消了皮肤模型选择");
+                    Debug.WriteLine($"[AccountManagementPage] 用户取消了皮肤模型选择");
                     return;
                 }
                 
-                Debug.WriteLine($"[CharacterManagementPage] 用户选择了皮肤模型: {(string.IsNullOrEmpty(model) ? "Steve" : "Alex")}");
+                Debug.WriteLine($"[AccountManagementPage] 用户选择了皮肤模型: {(string.IsNullOrEmpty(model) ? "Steve" : "Alex")}");
 
                 // 4. 根据账户类型选择不同的上传逻辑
                 if (ViewModel.CurrentProfile.TokenType == "external")
                 {
                     // 外置登录账号上传逻辑
-                    Debug.WriteLine($"[CharacterManagementPage] 开始上传皮肤到外置登录服务器");
+                    Debug.WriteLine($"[AccountManagementPage] 开始上传皮肤到外置登录服务器");
                     await UploadExternalSkinAsync(file, model);
                 }
                 else
                 {
                     // 微软账号上传逻辑
-                    Debug.WriteLine($"[CharacterManagementPage] 开始上传皮肤到微软服务器");
+                    Debug.WriteLine($"[AccountManagementPage] 开始上传皮肤到微软服务器");
                     await ViewModel.UploadSkinAsync(file, model);
                 }
 
                 await ShowMessageAsync("Msg_UploadSuccess".GetLocalized(), "Msg_SkinUploaded".GetLocalized());
-                Debug.WriteLine($"[CharacterManagementPage] 皮肤上传成功");
+                Debug.WriteLine($"[AccountManagementPage] 皮肤上传成功");
 
                 // 5. 刷新皮肤信息
-                Debug.WriteLine($"[CharacterManagementPage] 开始刷新皮肤和披风信息");
+                Debug.WriteLine($"[AccountManagementPage] 开始刷新皮肤和披风信息");
                 await ViewModel.LoadCapesAsync();
-                Debug.WriteLine($"[CharacterManagementPage] 皮肤和披风信息刷新完成");
+                Debug.WriteLine($"[AccountManagementPage] 皮肤和披风信息刷新完成");
             }
             catch (HttpRequestException ex)
             {
-                Debug.WriteLine($"[CharacterManagementPage] 皮肤上传API请求失败: {ex.Message}");
+                Debug.WriteLine($"[AccountManagementPage] 皮肤上传API请求失败: {ex.Message}");
                 await ShowMessageAsync("Msg_UploadFailed".GetLocalized(), "Msg_ApiRequestFailed".GetLocalized(ex.Message));
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[CharacterManagementPage] 皮肤上传失败: {ex.Message}");
+                Debug.WriteLine($"[AccountManagementPage] 皮肤上传失败: {ex.Message}");
                 await ShowMessageAsync("Msg_UploadFailed".GetLocalized(), "Msg_SkinUploadError".GetLocalized(ex.Message));
             }
         }
@@ -1107,7 +1107,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             string apiUrl = $"{baseUrl}api/user/profile/{uuid}/skin";
             var request = new HttpRequestMessage(HttpMethod.Put, apiUrl);
             
-            Debug.WriteLine($"[CharacterManagementPage] 构建皮肤上传请求: URL={apiUrl}, Method=PUT");
+            Debug.WriteLine($"[AccountManagementPage] 构建皮肤上传请求: URL={apiUrl}, Method=PUT");
             
             // 2. 添加Authorization头
             if (!string.IsNullOrWhiteSpace(ViewModel.CurrentProfile.AccessToken))
@@ -1115,11 +1115,11 @@ namespace XianYuLauncher.Features.Accounts.Views
                 request.Headers.Authorization = new AuthenticationHeaderValue(
                     "Bearer",
                     ViewModel.CurrentProfile.AccessToken);
-                Debug.WriteLine($"[CharacterManagementPage] 添加Authorization头");
+                Debug.WriteLine($"[AccountManagementPage] 添加Authorization头");
             }
             else
             {
-                Debug.WriteLine($"[CharacterManagementPage] 未添加Authorization头: AccessToken为空");
+                Debug.WriteLine($"[AccountManagementPage] 未添加Authorization头: AccessToken为空");
             }
             
             // 3. 准备multipart/form-data请求体
@@ -1130,7 +1130,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             formContent.Add(
                 new StringContent(model),
                 "model");
-            Debug.WriteLine($"[CharacterManagementPage] 添加请求参数: model={model}");
+            Debug.WriteLine($"[AccountManagementPage] 添加请求参数: model={model}");
             
             // 5. 获取文件大小
             var basicProperties = await file.GetBasicPropertiesAsync();
@@ -1146,23 +1146,23 @@ namespace XianYuLauncher.Features.Accounts.Views
                     "file",
                     file.Name);
                 
-                Debug.WriteLine($"[CharacterManagementPage] 添加请求文件: {file.Name}, 大小: {fileSize} 字节, Content-Type: image/png");
+                Debug.WriteLine($"[AccountManagementPage] 添加请求文件: {file.Name}, 大小: {fileSize} 字节, Content-Type: image/png");
                 
                 request.Content = formContent;
                 
                 // 6. 发送请求
                 var httpClient = new HttpClient();
                 httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
-                Debug.WriteLine($"[CharacterManagementPage] 开始发送皮肤上传请求");
+                Debug.WriteLine($"[AccountManagementPage] 开始发送皮肤上传请求");
                 var response = await httpClient.SendAsync(request);
                 
-                Debug.WriteLine($"[CharacterManagementPage] 皮肤上传请求响应状态: {response.StatusCode}");
+                Debug.WriteLine($"[AccountManagementPage] 皮肤上传请求响应状态: {response.StatusCode}");
                 
                 // 7. 检查响应状态
                 if (!response.IsSuccessStatusCode)
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
-                    Debug.WriteLine($"[CharacterManagementPage] 皮肤上传请求失败，响应内容: {responseContent}");
+                    Debug.WriteLine($"[AccountManagementPage] 皮肤上传请求失败，响应内容: {responseContent}");
                     throw new HttpRequestException(
                         $"Response status code does not indicate success: {response.StatusCode}. " +
                         $"URL: {apiUrl}, " +
@@ -1172,7 +1172,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 }
                 else
                 {
-                    Debug.WriteLine($"[CharacterManagementPage] 皮肤上传请求成功");
+                    Debug.WriteLine($"[AccountManagementPage] 皮肤上传请求成功");
                 }
             }
         }
@@ -1253,12 +1253,12 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// <param name="e">路由事件参数</param>
         private async void BrowseCapeFileButton_Click(object sender, Microsoft.UI.Xaml.RoutedEventArgs e)
         {
-            Debug.WriteLine($"[CharacterManagementPage] 披风上传按钮被点击，当前账户类型: {ViewModel.CurrentProfile.TokenType}");
+            Debug.WriteLine($"[AccountManagementPage] 披风上传按钮被点击，当前账户类型: {ViewModel.CurrentProfile.TokenType}");
             
             if (ViewModel.CurrentProfile.IsOffline)
             {
                 await ShowMessageAsync("Msg_OperationFailed".GetLocalized(), "Msg_OfflineNoCapeUpload".GetLocalized());
-                Debug.WriteLine($"[CharacterManagementPage] 离线模式，拒绝上传披风");
+                Debug.WriteLine($"[AccountManagementPage] 离线模式，拒绝上传披风");
                 return;
             }
             
@@ -1266,7 +1266,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             if (ViewModel.CurrentProfile.TokenType == "external")
             {
                 await ShowMessageAsync("Msg_OperationFailed".GetLocalized(), "Msg_ExternalNoCapeUpload".GetLocalized());
-                Debug.WriteLine($"[CharacterManagementPage] 外置登录，拒绝上传披风");
+                Debug.WriteLine($"[AccountManagementPage] 外置登录，拒绝上传披风");
                 return;
             }
 
@@ -1286,19 +1286,19 @@ namespace XianYuLauncher.Features.Accounts.Views
                 var file = await picker.PickSingleFileAsync();
                 if (file == null)
                 {
-                    Debug.WriteLine($"[CharacterManagementPage] 用户取消了披风文件选择");
+                    Debug.WriteLine($"[AccountManagementPage] 用户取消了披风文件选择");
                     return;
                 }
                 
                 // 获取文件大小
                 var basicProperties = await file.GetBasicPropertiesAsync();
                 ulong fileSize = basicProperties.Size;
-                Debug.WriteLine($"[CharacterManagementPage] 用户选择了披风文件: {file.Name}, 大小: {fileSize} 字节");
+                Debug.WriteLine($"[AccountManagementPage] 用户选择了披风文件: {file.Name}, 大小: {fileSize} 字节");
 
                 // 2. 验证文件是否符合要求（PNG格式）
                 if (!await ValidateCapeFileAsync(file))
                 {
-                    Debug.WriteLine($"[CharacterManagementPage] 披风文件验证失败");
+                    Debug.WriteLine($"[AccountManagementPage] 披风文件验证失败");
                     return;
                 }
 
@@ -1306,33 +1306,33 @@ namespace XianYuLauncher.Features.Accounts.Views
                 if (ViewModel.CurrentProfile.TokenType == "external")
                 {
                     // 外置登录账号上传逻辑
-                    Debug.WriteLine($"[CharacterManagementPage] 开始上传披风到外置登录服务器");
+                    Debug.WriteLine($"[AccountManagementPage] 开始上传披风到外置登录服务器");
                     await UploadExternalCapeAsync(file);
                 }
                 else
                 {
                     // 微软账号不支持直接上传披风，显示提示
-                    Debug.WriteLine($"[CharacterManagementPage] 微软账号不支持直接上传披风");
+                    Debug.WriteLine($"[AccountManagementPage] 微软账号不支持直接上传披风");
                     await ShowMessageAsync("Msg_UploadTip".GetLocalized(), "Msg_MsNoCapeUpload".GetLocalized());
                     return;
                 }
 
                 await ShowMessageAsync("Msg_UploadSuccess".GetLocalized(), "Msg_CapeUploaded".GetLocalized());
-                Debug.WriteLine($"[CharacterManagementPage] 披风上传成功");
+                Debug.WriteLine($"[AccountManagementPage] 披风上传成功");
 
                 // 4. 刷新皮肤和披风信息
-                Debug.WriteLine($"[CharacterManagementPage] 开始刷新皮肤和披风信息");
+                Debug.WriteLine($"[AccountManagementPage] 开始刷新皮肤和披风信息");
                 await ViewModel.LoadCapesAsync();
-                Debug.WriteLine($"[CharacterManagementPage] 皮肤和披风信息刷新完成");
+                Debug.WriteLine($"[AccountManagementPage] 皮肤和披风信息刷新完成");
             }
             catch (HttpRequestException ex)
             {
-                Debug.WriteLine($"[CharacterManagementPage] 披风上传API请求失败: {ex.Message}");
+                Debug.WriteLine($"[AccountManagementPage] 披风上传API请求失败: {ex.Message}");
                 await ShowMessageAsync("Msg_UploadFailed".GetLocalized(), "Msg_ApiRequestFailed".GetLocalized(ex.Message));
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[CharacterManagementPage] 披风上传失败: {ex.Message}");
+                Debug.WriteLine($"[AccountManagementPage] 披风上传失败: {ex.Message}");
                 await ShowMessageAsync("Msg_UploadFailed".GetLocalized(), "Msg_CapeUploadError".GetLocalized(ex.Message));
             }
         }
@@ -1355,7 +1355,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             string apiUrl = $"{baseUrl}api/user/profile/{uuid}/cape";
             var request = new HttpRequestMessage(HttpMethod.Put, apiUrl);
             
-            Debug.WriteLine($"[CharacterManagementPage] 构建披风上传请求: URL={apiUrl}, Method=PUT");
+            Debug.WriteLine($"[AccountManagementPage] 构建披风上传请求: URL={apiUrl}, Method=PUT");
             
             // 2. 添加Authorization头
             if (!string.IsNullOrWhiteSpace(ViewModel.CurrentProfile.AccessToken))
@@ -1363,11 +1363,11 @@ namespace XianYuLauncher.Features.Accounts.Views
                 request.Headers.Authorization = new AuthenticationHeaderValue(
                     "Bearer",
                     ViewModel.CurrentProfile.AccessToken);
-                Debug.WriteLine($"[CharacterManagementPage] 添加Authorization头");
+                Debug.WriteLine($"[AccountManagementPage] 添加Authorization头");
             }
             else
             {
-                Debug.WriteLine($"[CharacterManagementPage] 未添加Authorization头: AccessToken为空");
+                Debug.WriteLine($"[AccountManagementPage] 未添加Authorization头: AccessToken为空");
             }
             
             // 3. 准备multipart/form-data请求体
@@ -1387,23 +1387,23 @@ namespace XianYuLauncher.Features.Accounts.Views
                     "file",
                     file.Name);
                 
-                Debug.WriteLine($"[CharacterManagementPage] 添加请求文件: {file.Name}, 大小: {fileSize} 字节, Content-Type: image/png");
+                Debug.WriteLine($"[AccountManagementPage] 添加请求文件: {file.Name}, 大小: {fileSize} 字节, Content-Type: image/png");
                 
                 request.Content = formContent;
                 
                 // 5. 发送请求
                 var httpClient = new HttpClient();
                 httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
-                Debug.WriteLine($"[CharacterManagementPage] 开始发送披风上传请求");
+                Debug.WriteLine($"[AccountManagementPage] 开始发送披风上传请求");
                 var response = await httpClient.SendAsync(request);
                 
-                Debug.WriteLine($"[CharacterManagementPage] 披风上传请求响应状态: {response.StatusCode}");
+                Debug.WriteLine($"[AccountManagementPage] 披风上传请求响应状态: {response.StatusCode}");
                 
                 // 6. 检查响应状态
                 if (!response.IsSuccessStatusCode)
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
-                    Debug.WriteLine($"[CharacterManagementPage] 披风上传请求失败，响应内容: {responseContent}");
+                    Debug.WriteLine($"[AccountManagementPage] 披风上传请求失败，响应内容: {responseContent}");
                     throw new HttpRequestException(
                         $"Response status code does not indicate success: {response.StatusCode}. " +
                         $"URL: {apiUrl}, " +
@@ -1412,7 +1412,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 }
                 else
                 {
-                    Debug.WriteLine($"[CharacterManagementPage] 披风上传请求成功");
+                    Debug.WriteLine($"[AccountManagementPage] 披风上传请求成功");
                 }
             }
         }

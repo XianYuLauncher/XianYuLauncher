@@ -21,13 +21,18 @@ public sealed class ProtocolCommandParser : IProtocolCommandParser
             queryParams.TryGetValue("map", out var mapName);
             queryParams.TryGetValue("server", out var serverIp);
             queryParams.TryGetValue("port", out var serverPort);
-            queryParams.TryGetValue("profileId", out var profileId);
-            if (string.IsNullOrWhiteSpace(profileId))
+            queryParams.TryGetValue("accountId", out var accountId);
+            if (string.IsNullOrWhiteSpace(accountId))
             {
-                queryParams.TryGetValue("profile", out profileId);
+                queryParams.TryGetValue("profileId", out accountId);
             }
 
-            command = new LaunchProtocolCommand(uri, targetPath, mapName, serverIp, serverPort, profileId);
+            if (string.IsNullOrWhiteSpace(accountId))
+            {
+                queryParams.TryGetValue("profile", out accountId);
+            }
+
+            command = new LaunchProtocolCommand(uri, targetPath, mapName, serverIp, serverPort, accountId);
             return true;
         }
 

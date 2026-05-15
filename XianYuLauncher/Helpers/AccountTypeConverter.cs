@@ -6,7 +6,7 @@ namespace XianYuLauncher.Helpers
     /// <summary>
     /// 角色类型转换器
     /// </summary>
-    public class ProfileTypeConverter : IValueConverter
+    public class AccountTypeConverter : IValueConverter
     {
         /// <summary>
         /// 将角色对象转换为对应的文本
@@ -18,20 +18,20 @@ namespace XianYuLauncher.Helpers
         /// <returns>转换后的文本</returns>
         public object Convert(object value, Type targetType, object parameter, string language)
         {
-            if (value is MinecraftProfile profile)
+            if (value is MinecraftAccount profile)
             {
                 // 根据角色属性判断类型
                 if (profile.IsOffline)
                 {
-                    return "ProfilePage_OfflineProfileText".GetLocalized();
+                    return "AccountPage_OfflineAccountText".GetLocalized();
                 }
                 else if (profile.TokenType == "external")
                 {
-                    return "ProfilePage_ProfileType_External".GetLocalized();
+                    return "AccountPage_AccountType_External".GetLocalized();
                 }
                 else
                 {
-                    return "ProfilePage_MicrosoftProfileText".GetLocalized();
+                    return "AccountPage_MicrosoftAccountText".GetLocalized();
                 }
             }
             return "未知类型";

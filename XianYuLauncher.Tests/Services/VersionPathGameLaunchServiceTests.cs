@@ -11,7 +11,7 @@ public sealed class VersionPathGameLaunchServiceTests : IDisposable
     private readonly Mock<IFileService> _fileService = new();
     private readonly Mock<IGameLaunchService> _gameLaunchService = new();
     private readonly Mock<ITokenRefreshService> _tokenRefreshService = new();
-    private readonly Mock<IProfileManager> _profileManager = new();
+    private readonly Mock<IAccountManager> _profileManager = new();
     private readonly Mock<ILogger<VersionPathGameLaunchService>> _logger = new();
     private readonly string _testRootDirectory;
 
@@ -61,15 +61,15 @@ public sealed class VersionPathGameLaunchServiceTests : IDisposable
         var preparedLaunch = CreateService().PrepareLaunch(versionPath);
         var originalMinecraftPath = Path.Combine(_testRootDirectory, "original-instance", ".minecraft");
         Directory.CreateDirectory(originalMinecraftPath);
-        var activeProfile = new MinecraftProfile { Name = "Offline", IsActive = true, IsOffline = true };
+        var activeProfile = new MinecraftAccount { Name = "Offline", IsActive = true, IsOffline = true };
         var callOrder = new List<string>();
 
         _fileService.Setup(service => service.GetMinecraftDataPath()).Returns(originalMinecraftPath);
         _fileService
             .Setup(service => service.SetMinecraftDataPath(It.IsAny<string>()))
             .Callback<string>(path => callOrder.Add($"set:{path}"));
-        _profileManager.Setup(service => service.LoadProfilesAsync()).ReturnsAsync([activeProfile]);
-        _profileManager.Setup(service => service.GetActiveProfile(It.IsAny<List<MinecraftProfile>>())).Returns(activeProfile);
+        _profileManager.Setup(service => service.LoadAccountsAsync()).ReturnsAsync([activeProfile]);
+        _profileManager.Setup(service => service.GetActiveAccount(It.IsAny<List<MinecraftAccount>>())).Returns(activeProfile);
         _gameLaunchService
             .Setup(service => service.LaunchGameAsync(
                 preparedLaunch.VersionName,
@@ -103,15 +103,15 @@ public sealed class VersionPathGameLaunchServiceTests : IDisposable
         var preparedLaunch = CreateService().PrepareLaunch(versionPath);
         var originalMinecraftPath = Path.Combine(_testRootDirectory, "original-instance", ".minecraft");
         Directory.CreateDirectory(originalMinecraftPath);
-        var activeProfile = new MinecraftProfile { Name = "Offline", IsActive = true, IsOffline = true };
+        var activeProfile = new MinecraftAccount { Name = "Offline", IsActive = true, IsOffline = true };
         var callOrder = new List<string>();
 
         _fileService.Setup(service => service.GetMinecraftDataPath()).Returns(originalMinecraftPath);
         _fileService
             .Setup(service => service.SetMinecraftDataPath(It.IsAny<string>()))
             .Callback<string>(path => callOrder.Add($"set:{path}"));
-        _profileManager.Setup(service => service.LoadProfilesAsync()).ReturnsAsync([activeProfile]);
-        _profileManager.Setup(service => service.GetActiveProfile(It.IsAny<List<MinecraftProfile>>())).Returns(activeProfile);
+        _profileManager.Setup(service => service.LoadAccountsAsync()).ReturnsAsync([activeProfile]);
+        _profileManager.Setup(service => service.GetActiveAccount(It.IsAny<List<MinecraftAccount>>())).Returns(activeProfile);
         _gameLaunchService
             .Setup(service => service.LaunchGameAsync(
                 preparedLaunch.VersionName,
@@ -146,7 +146,7 @@ public sealed class VersionPathGameLaunchServiceTests : IDisposable
         var preparedLaunchB = CreateService().PrepareLaunch(CreateVersionPath("target-instance-b", "1.21.11"));
         var originalMinecraftPath = Path.Combine(_testRootDirectory, "original-instance", ".minecraft");
         Directory.CreateDirectory(originalMinecraftPath);
-        var activeProfile = new MinecraftProfile { Name = "Offline", IsActive = true, IsOffline = true };
+        var activeProfile = new MinecraftAccount { Name = "Offline", IsActive = true, IsOffline = true };
         var callOrder = new List<string>();
         TaskCompletionSource<bool> firstLaunchEntered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         TaskCompletionSource<bool> allowFirstLaunchToFinish = new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -156,8 +156,8 @@ public sealed class VersionPathGameLaunchServiceTests : IDisposable
         _fileService
             .Setup(service => service.SetMinecraftDataPath(It.IsAny<string>()))
             .Callback<string>(path => callOrder.Add($"set:{path}"));
-        _profileManager.Setup(service => service.LoadProfilesAsync()).ReturnsAsync([activeProfile]);
-        _profileManager.Setup(service => service.GetActiveProfile(It.IsAny<List<MinecraftProfile>>())).Returns(activeProfile);
+        _profileManager.Setup(service => service.LoadAccountsAsync()).ReturnsAsync([activeProfile]);
+        _profileManager.Setup(service => service.GetActiveAccount(It.IsAny<List<MinecraftAccount>>())).Returns(activeProfile);
         _gameLaunchService
             .Setup(service => service.LaunchGameAsync(
                 It.IsAny<string>(),
@@ -169,7 +169,7 @@ public sealed class VersionPathGameLaunchServiceTests : IDisposable
                 It.IsAny<string?>(),
                 It.IsAny<string?>(),
                 It.IsAny<int?>()))
-            .Returns<string, MinecraftProfile, Action<double>?, Action<string>?, CancellationToken, string?, string?, string?, int?>(
+            .Returns<string, MinecraftAccount, Action<double>?, Action<string>?, CancellationToken, string?, string?, string?, int?>(
                 async (versionName, _, _, _, _, _, _, _, _) =>
                 {
                     callOrder.Add($"launch:{versionName}");
