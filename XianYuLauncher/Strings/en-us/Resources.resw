@@ -1951,7 +1951,7 @@ Continue downloading?</value>
   <data name="AccountPage_Subtitle.Text" xml:space="preserve">
      <value>Manage your Minecraft accounts</value>
   </data>
-  <data name="AccountPage_AddedProfilesText.Text" xml:space="preserve">
+    <data name="AccountPage_AddedAccountsText.Text" xml:space="preserve">
      <value>Added Accounts</value>
   </data>
   <data name="AccountPage_AddAccountButton.ToolTipService.ToolTip" xml:space="preserve">

@@ -1954,7 +1954,7 @@
   <data name="AccountPage_Subtitle.Text" xml:space="preserve">
      <value>管理您的 Minecraft 账户</value>
   </data>
-  <data name="AccountPage_AddedProfilesText.Text" xml:space="preserve">
+    <data name="AccountPage_AddedAccountsText.Text" xml:space="preserve">
      <value>已添加的账户</value>
   </data>
   <data name="AccountPage_AddAccountButton.ToolTipService.ToolTip" xml:space="preserve">

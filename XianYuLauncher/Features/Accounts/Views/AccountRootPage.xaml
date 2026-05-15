@@ -103,7 +103,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock 
-                            x:Uid="AccountPage_AddedProfilesText" 
+                            x:Uid="AccountPage_AddedAccountsText" 
                             Text="已添加的账户" 
                             Style="{StaticResource TitleTextBlockStyle}" 
                             FontSize="20" 
