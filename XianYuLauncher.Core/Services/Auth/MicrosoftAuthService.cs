@@ -225,7 +225,7 @@ public class MicrosoftAuthService
 
     #endregion
 
-    public async Task<LoginResult> LoginWithBrowserAsync()
+    public async Task<LoginResult> LoginInteractivelyAsync()
     {
         try
         {
@@ -245,7 +245,7 @@ public class MicrosoftAuthService
         }
         catch (MsalClientException ex)
         {
-            Log.Warning(ex, "浏览器登录失败");
+            Log.Warning(ex, "交互式登录失败");
             return CreateFailedLoginResult($"交互式登录失败: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
         }
         catch (MsalServiceException ex)
@@ -255,7 +255,7 @@ public class MicrosoftAuthService
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "浏览器登录过程中发生异常");
+            Log.Error(ex, "交互式登录过程中发生异常");
             return CreateFailedLoginResult($"交互式登录失败: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
         }
     }

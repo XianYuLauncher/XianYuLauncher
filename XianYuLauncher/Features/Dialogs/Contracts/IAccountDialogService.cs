@@ -16,9 +16,9 @@ public interface IAccountDialogService
     Task<LoginMethodSelectionResult> ShowLoginMethodSelectionDialogAsync(
         string? title = null,
         string? instruction = null,
-        string? browserDescription = null,
+        string? interactiveDescription = null,
         string? deviceCodeDescription = null,
-        string? browserButtonText = null,
+        string? interactiveButtonText = null,
         string? deviceCodeButtonText = null,
         string? cancelButtonText = null);
 

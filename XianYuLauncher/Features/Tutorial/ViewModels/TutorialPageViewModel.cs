@@ -830,11 +830,11 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                     return;
                 }
 
-                if (selectionResult == LoginMethodSelectionResult.Browser)
+                if (selectionResult == LoginMethodSelectionResult.Interactive)
                 {
-                    // === 浏览器登录流程 ===
-                    LoginStatus = "正在等待浏览器登录...";
-                    var result = await _microsoftAuthService.LoginWithBrowserAsync();
+                    // === 交互式微软登录流程 ===
+                    LoginStatus = "正在等待微软账号登录...";
+                    var result = await _microsoftAuthService.LoginInteractivelyAsync();
                     await HandleLoginResultAsync(result);
                 }
                 else
