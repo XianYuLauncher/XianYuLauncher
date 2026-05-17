@@ -26,6 +26,7 @@ public class MicrosoftAuthService
     private const string MicrosoftAuthority = "https://login.microsoftonline.com/consumers/";
     private const string MsalCacheFileName = "msal_user_token_cache.bin";
     private const string InteractiveLoginTitle = "XianYu Launcher 登录";
+    private const string BrokerRedirectUriPrefix = "ms-appx-web://microsoft.aad.brokerplugin/";
     private const string WamMigrationReloginMessage = "当前微软账户缺少可用的 WAM/MSAL 缓存，请重新登录一次。旧版浏览器或嵌入式登录切换到 WAM 后首次需要重新登录以建立新缓存。";
     private static readonly string[] MicrosoftScopes = new[] { "XboxLive.signin", "offline_access" };
 
@@ -247,12 +248,12 @@ public class MicrosoftAuthService
         catch (MsalClientException ex)
         {
             Log.Warning(ex, "交互式登录失败");
-            return CreateFailedLoginResult($"交互式登录失败: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
+            return CreateFailedLoginResult(CreateInteractiveLoginErrorMessage(ex));
         }
         catch (MsalServiceException ex)
         {
             Log.Warning(ex, "微软认证服务返回错误");
-            return CreateFailedLoginResult($"交互式登录失败: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
+            return CreateFailedLoginResult(CreateInteractiveLoginErrorMessage(ex));
         }
         catch (Exception ex)
         {
@@ -554,6 +555,33 @@ public class MicrosoftAuthService
         }
 
         return (null, false);
+    }
+
+    internal static bool IsBrokerConfigurationIssue(string? errorCode, string? message)
+    {
+        var diagnosticText = $"{errorCode} {message}";
+        return diagnosticText.Contains("broker", StringComparison.OrdinalIgnoreCase)
+            || diagnosticText.Contains("wam", StringComparison.OrdinalIgnoreCase)
+            || diagnosticText.Contains("redirect", StringComparison.OrdinalIgnoreCase)
+            || diagnosticText.Contains("appx", StringComparison.OrdinalIgnoreCase)
+            || diagnosticText.Contains("package identity", StringComparison.OrdinalIgnoreCase)
+            || diagnosticText.Contains("brokerplugin", StringComparison.OrdinalIgnoreCase);
+    }
+
+    internal static string BuildBrokerConfigurationGuidance(string clientId)
+    {
+        var resolvedClientId = string.IsNullOrWhiteSpace(clientId) ? "<your-client-id>" : clientId;
+        return $"当前 WAM Broker 配置未完成。请在 Azure Portal -> Microsoft Entra ID -> 应用注册 -> 你的应用 -> 身份验证 中添加平台“移动和桌面应用程序”，并登记 Redirect URI: {BrokerRedirectUriPrefix}{resolvedClientId}。完成后重启启动器再试；如果当前环境没有包身份，请改用设备码登录。";
+    }
+
+    private static string CreateInteractiveLoginErrorMessage(MsalException exception)
+    {
+        if (IsBrokerConfigurationIssue(exception.ErrorCode, exception.Message))
+        {
+            return BuildBrokerConfigurationGuidance(ClientId);
+        }
+
+        return $"交互式登录失败: {SensitiveDataSanitizer.Sanitize(exception.Message)}";
     }
 
     private async Task<IPublicClientApplication> GetPublicClientApplicationAsync()

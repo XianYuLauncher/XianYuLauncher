@@ -51,6 +51,28 @@ public sealed class MicrosoftAuthServiceTests
         result.UseOperatingSystemAccount.Should().BeFalse();
     }
 
+    [Fact]
+    public void IsBrokerConfigurationIssue_ShouldRecognizeRedirectUriFailures()
+    {
+        var result = MicrosoftAuthService.IsBrokerConfigurationIssue(
+            "broker_error",
+            "The configured redirect URI is missing for brokerplugin.");
+
+        result.Should().BeTrue();
+    }
+
+    [Fact]
+    public void BuildBrokerConfigurationGuidance_ShouldEmbedExpectedRedirectUri()
+    {
+        const string clientId = "3ff6354e-e14b-46e3-9088-3fe8c0bd3be9";
+
+        var result = MicrosoftAuthService.BuildBrokerConfigurationGuidance(clientId);
+
+        result.Should().Contain("Azure Portal");
+        result.Should().Contain("移动和桌面应用程序");
+        result.Should().Contain("ms-appx-web://microsoft.aad.brokerplugin/3ff6354e-e14b-46e3-9088-3fe8c0bd3be9");
+    }
+
     private sealed class FakeMsalAccount : IAccount
     {
         public FakeMsalAccount(string homeAccountId)
