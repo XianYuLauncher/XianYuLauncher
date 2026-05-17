@@ -252,6 +252,7 @@ public sealed class AccountDialogService : IAccountDialogService
         string? deviceCodeButtonText = null,
         string? cancelButtonText = null)
     {
+        var interactiveSupported = OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17763) && AppEnvironment.HasPackageIdentity;
         var resolvedTitle = string.IsNullOrWhiteSpace(title) ? "Dialog_LoginMethod_Title".GetLocalized() : title;
         var resolvedInstruction = string.IsNullOrWhiteSpace(instruction) ? "Dialog_LoginMethod_Instruction".GetLocalized() : instruction;
         var resolvedInteractiveDescription = string.IsNullOrWhiteSpace(interactiveDescription) ? "Dialog_LoginMethod_BrowserDesc".GetLocalized() : interactiveDescription;
@@ -260,20 +261,26 @@ public sealed class AccountDialogService : IAccountDialogService
         var resolvedDeviceCodeButtonText = string.IsNullOrWhiteSpace(deviceCodeButtonText) ? "Dialog_LoginMethod_DeviceCodeButton".GetLocalized() : deviceCodeButtonText;
         var resolvedCancelButtonText = string.IsNullOrWhiteSpace(cancelButtonText) ? "Msg_Cancel".GetLocalized() : cancelButtonText;
 
+        var contentPanel = new StackPanel();
+        contentPanel.Children.Add(new TextBlock { Text = resolvedInstruction, Margin = new Thickness(0, 0, 0, 10) });
+        contentPanel.Children.Add(new TextBlock
+        {
+            Text = interactiveSupported ? resolvedInteractiveDescription : resolvedDeviceCodeDescription,
+            Opacity = 0.8,
+            FontSize = 12,
+        });
+
+        if (interactiveSupported)
+        {
+            contentPanel.Children.Add(new TextBlock { Text = resolvedDeviceCodeDescription, Opacity = 0.8, FontSize = 12 });
+        }
+
         var dialog = new ContentDialog
         {
             Title = resolvedTitle,
-            Content = new StackPanel
-            {
-                Children =
-                {
-                    new TextBlock { Text = resolvedInstruction, Margin = new Thickness(0, 0, 0, 10) },
-                    new TextBlock { Text = resolvedInteractiveDescription, Opacity = 0.8, FontSize = 12 },
-                    new TextBlock { Text = resolvedDeviceCodeDescription, Opacity = 0.8, FontSize = 12 },
-                },
-            },
-            PrimaryButtonText = resolvedInteractiveButtonText,
-            SecondaryButtonText = resolvedDeviceCodeButtonText,
+            Content = contentPanel,
+            PrimaryButtonText = interactiveSupported ? resolvedInteractiveButtonText : resolvedDeviceCodeButtonText,
+            SecondaryButtonText = interactiveSupported ? resolvedDeviceCodeButtonText : string.Empty,
             CloseButtonText = resolvedCancelButtonText,
             DefaultButton = ContentDialogButton.Primary,
         };
@@ -281,8 +288,8 @@ public sealed class AccountDialogService : IAccountDialogService
         var result = await _dialogHostService.ShowAsync(dialog);
         return result switch
         {
-            ContentDialogResult.Primary => LoginMethodSelectionResult.Interactive,
-            ContentDialogResult.Secondary => LoginMethodSelectionResult.DeviceCode,
+            ContentDialogResult.Primary => interactiveSupported ? LoginMethodSelectionResult.Interactive : LoginMethodSelectionResult.DeviceCode,
+            ContentDialogResult.Secondary => interactiveSupported ? LoginMethodSelectionResult.DeviceCode : LoginMethodSelectionResult.Cancel,
             _ => LoginMethodSelectionResult.Cancel,
         };
     }

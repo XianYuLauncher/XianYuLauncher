@@ -100,6 +100,46 @@ public sealed class AccountManagerTests : IDisposable
         loadedProfiles[0].RefreshToken.Should().BeEmpty();
     }
 
+    [Fact]
+    public async Task LoadAccountsAsync_ShouldClearPersistedMicrosoftRefreshToken_DuringMigration()
+    {
+        var accountsPath = Path.Combine(_minecraftPath, MinecraftFileConsts.AccountsJson);
+        var encryptedAccessToken = TokenEncryption.Encrypt("plain-access-token");
+        var encryptedRefreshToken = TokenEncryption.Encrypt("legacy-microsoft-refresh-token");
+        var encryptedClientToken = TokenEncryption.Encrypt("plain-client-token");
+
+        var persistedProfiles = new List<MinecraftAccount>
+        {
+            new()
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                Name = "LegacyMicrosoftUser",
+                AccessToken = encryptedAccessToken,
+                RefreshToken = encryptedRefreshToken,
+                ClientToken = encryptedClientToken,
+                TokenType = "Bearer",
+                ExpiresIn = 3600,
+                IssueInstant = DateTime.UtcNow,
+                NotAfter = DateTime.UtcNow.AddHours(1),
+                IsOffline = false,
+            },
+        };
+
+        await File.WriteAllTextAsync(accountsPath, JsonConvert.SerializeObject(persistedProfiles, Formatting.Indented));
+
+        var accountManager = new AccountManager(new TestFileService(_minecraftPath));
+        var loadedProfiles = await accountManager.LoadAccountsAsync();
+
+        loadedProfiles.Should().ContainSingle();
+        loadedProfiles[0].RefreshToken.Should().BeEmpty();
+
+        var migratedProfiles = JsonConvert.DeserializeObject<List<MinecraftAccount>>(await File.ReadAllTextAsync(accountsPath));
+        migratedProfiles.Should().ContainSingle();
+        migratedProfiles![0].RefreshToken.Should().BeEmpty();
+        migratedProfiles[0].AccessToken.Should().StartWith("ENC:");
+        migratedProfiles[0].ClientToken.Should().StartWith("ENC:");
+    }
+
     private sealed class TestFileService : IFileService
     {
         private string _minecraftPath;

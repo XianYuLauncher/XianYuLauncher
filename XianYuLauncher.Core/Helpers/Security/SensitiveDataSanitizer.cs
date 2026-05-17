@@ -27,7 +27,7 @@ public static partial class SensitiveDataSanitizer
     [GeneratedRegex(@"(?i)(authorization\s*:\s*bearer\s+)[^\s,;]+")]
     private static partial Regex AuthorizationHeaderRegex();
 
-    [GeneratedRegex("""(?i)("(?:access_token|refresh_token|id_token|clientToken|client_token)"\s*:\s*")[^"]+(")""")]
+    [GeneratedRegex("""(?i)("(?:access_token|refresh_token|id_token|accessToken|refreshToken|idToken|clientToken|client_token)"\s*:\s*")[^"]+(")""")]
     private static partial Regex JsonTokenRegex();
 
     [GeneratedRegex(@"ENC:[A-Za-z0-9+/=]+")]

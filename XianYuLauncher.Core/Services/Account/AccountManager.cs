@@ -145,6 +145,13 @@ public class AccountManager : IAccountManager
                 System.Diagnostics.Debug.WriteLine($"[AccountManager] ⚠️ 检测到明文AccessToken: {profile.Name}");
                 needsMigration = true;
             }
+
+            if (!ShouldPersistRefreshToken(profile) && !string.IsNullOrEmpty(profile.RefreshToken))
+            {
+                System.Diagnostics.Debug.WriteLine($"[AccountManager] ⚠️ 检测到需要清理的 Microsoft RefreshToken: {profile.Name}");
+                profile.RefreshToken = string.Empty;
+                needsMigration = true;
+            }
             
             // 检查RefreshToken
             if (!string.IsNullOrEmpty(profile.RefreshToken) && !TokenEncryption.IsEncrypted(profile.RefreshToken))
@@ -191,7 +198,9 @@ public class AccountManager : IAccountManager
             
             if (!string.IsNullOrEmpty(profile.RefreshToken))
             {
-                profile.RefreshToken = TokenEncryption.Decrypt(profile.RefreshToken);
+                profile.RefreshToken = ShouldPersistRefreshToken(profile)
+                    ? TokenEncryption.Decrypt(profile.RefreshToken)
+                    : string.Empty;
             }
 
             if (!string.IsNullOrEmpty(profile.ClientToken))

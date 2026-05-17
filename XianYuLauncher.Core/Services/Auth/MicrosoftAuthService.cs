@@ -288,7 +288,15 @@ public class MicrosoftAuthService
                     })
                 .ExecuteAsync(cancellationToken);
 
-            var deviceCode = await promptSource.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            var promptTask = promptSource.Task;
+            var completedTask = await Task.WhenAny(promptTask, authenticationTask).WaitAsync(cancellationToken).ConfigureAwait(false);
+            if (completedTask == authenticationTask)
+            {
+                await authenticationTask.ConfigureAwait(false);
+                throw new InvalidOperationException("设备码登录未返回设备代码。");
+            }
+
+            var deviceCode = await promptTask.ConfigureAwait(false);
             return new DeviceCodeLoginSession
             {
                 DeviceCode = deviceCode,
@@ -310,7 +318,7 @@ public class MicrosoftAuthService
             return CreateFailedLoginResult("获取设备代码失败");
         }
 
-        Log.Information("请访问 {VerificationUri} 并输入代码 {UserCode}", session.DeviceCode.VerificationUri, session.DeviceCode.UserCode);
+        Log.Information("设备码登录已启动，请访问 {VerificationUri} 完成验证。", session.DeviceCode.VerificationUri);
 
         try
         {
@@ -505,21 +513,7 @@ public class MicrosoftAuthService
     private async Task<IAccount?> ResolveMsalAccountAsync(IPublicClientApplication publicClientApplication, MinecraftAccount account)
     {
         var accounts = (await publicClientApplication.GetAccountsAsync().ConfigureAwait(false)).ToList();
-        var (selectedAccount, useOperatingSystemAccount) = ResolveMsalAccountCandidate(accounts, account.MicrosoftHomeAccountId, AppEnvironment.HasPackageIdentity);
-
-        if (selectedAccount != null
-            && !string.IsNullOrWhiteSpace(account.MicrosoftHomeAccountId)
-            && !accounts.Any(item => string.Equals(item.HomeAccountId?.Identifier, account.MicrosoftHomeAccountId, StringComparison.Ordinal)))
-        {
-            Log.Warning("MicrosoftHomeAccountId 未命中缓存，将回退到当前唯一的 MSAL/WAM 账户。ExpectedHomeAccountId={ExpectedHomeAccountId}", account.MicrosoftHomeAccountId);
-        }
-
-        if (useOperatingSystemAccount)
-        {
-            Log.Information("未找到缓存账户，将尝试使用 Windows 当前登录账户进行静默续期。");
-            return PublicClientApplication.OperatingSystemAccount;
-        }
-
+        var (selectedAccount, _) = ResolveMsalAccountCandidate(accounts, account.MicrosoftHomeAccountId, AppEnvironment.HasPackageIdentity);
         return selectedAccount;
     }
 
@@ -535,23 +529,6 @@ public class MicrosoftAuthService
             {
                 return (matchedAccount, false);
             }
-
-            if (accounts.Count == 1)
-            {
-                return (accounts[0], false);
-            }
-
-            return (null, false);
-        }
-
-        if (accounts.Count == 1)
-        {
-            return (accounts[0], false);
-        }
-
-        if (accounts.Count == 0 && hasPackageIdentity)
-        {
-            return (null, true);
         }
 
         return (null, false);

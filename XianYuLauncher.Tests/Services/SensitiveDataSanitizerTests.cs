@@ -9,7 +9,7 @@ public sealed class SensitiveDataSanitizerTests
     {
         const string jwt = "eyJhbGciOiJIUzI1NiJ9.payload.signature";
         const string authorization = "Authorization: Bearer secret-access-token";
-        const string jsonToken = "{\"access_token\":\"top-secret\",\"clientToken\":\"client-secret\"}";
+        const string jsonToken = "{\"access_token\":\"top-secret\",\"accessToken\":\"camel-secret\",\"clientToken\":\"client-secret\"}";
         const string encryptedToken = "ENC:QmFzZTY0RW5jb2RlZFRva2Vu";
         const string deviceCode = "code=ABCD-EFGH";
 
@@ -19,6 +19,7 @@ public sealed class SensitiveDataSanitizerTests
 
         sanitized.Should().NotContain("secret-access-token");
         sanitized.Should().NotContain("top-secret");
+        sanitized.Should().NotContain("camel-secret");
         sanitized.Should().NotContain("client-secret");
         sanitized.Should().NotContain(encryptedToken);
         sanitized.Should().NotContain(jwt);

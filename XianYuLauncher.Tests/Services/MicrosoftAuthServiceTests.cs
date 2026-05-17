@@ -22,24 +22,25 @@ public sealed class MicrosoftAuthServiceTests
     }
 
     [Fact]
-    public void ResolveMsalAccountCandidate_ShouldFallbackToSingleCachedAccount_WhenHomeAccountIdMisses()
+    public void ResolveMsalAccountCandidate_ShouldRequireRelogin_WhenHomeAccountIdMisses()
     {
         var onlyAccount = new FakeMsalAccount("cached-home-account");
         var accounts = new List<IAccount> { onlyAccount };
 
         var result = MicrosoftAuthService.ResolveMsalAccountCandidate(accounts, "missing-home-account", hasPackageIdentity: true);
 
-        result.Account.Should().BeSameAs(onlyAccount);
+        result.Account.Should().BeNull();
         result.UseOperatingSystemAccount.Should().BeFalse();
     }
 
     [Fact]
-    public void ResolveMsalAccountCandidate_ShouldUseOperatingSystemAccount_WhenNoCacheAndPackaged()
+    public void ResolveMsalAccountCandidate_ShouldRequireRelogin_WhenNoHomeAccountId()
     {
-        var result = MicrosoftAuthService.ResolveMsalAccountCandidate(Array.Empty<IAccount>(), microsoftHomeAccountId: null, hasPackageIdentity: true);
+        var accounts = new List<IAccount> { new FakeMsalAccount("cached-home-account") };
+        var result = MicrosoftAuthService.ResolveMsalAccountCandidate(accounts, microsoftHomeAccountId: null, hasPackageIdentity: true);
 
         result.Account.Should().BeNull();
-        result.UseOperatingSystemAccount.Should().BeTrue();
+        result.UseOperatingSystemAccount.Should().BeFalse();
     }
 
     [Fact]

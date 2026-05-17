@@ -1399,7 +1399,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 {
                     _ = await response.Content.ReadAsStringAsync();
                     Debug.WriteLine($"[AccountManagementPage] 披风上传请求失败，状态码: {response.StatusCode}");
-                    throw new HttpRequestException($"披风切换失败，状态码: {response.StatusCode}。");
+                    throw new HttpRequestException($"披风上传失败，状态码: {response.StatusCode}。");
                 }
                 else
                 {
