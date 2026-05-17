@@ -17,7 +17,8 @@ using XianYuLauncher.Core.Models;
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-/// 微软登录服务，处理微软账号登录 Minecraft 的完整流程。
+    /// 微软登录服务，处理微软账号登录 Minecraft 的完整流程。
+    /// 交互式登录固定使用 MSAL 官方内嵌 WebView 承载，避免系统浏览器地址栏暴露授权码。
 /// </summary>
 public class MicrosoftAuthService
 {
@@ -220,15 +221,26 @@ public class MicrosoftAuthService
 
     #endregion
 
-    public async Task<LoginResult> LoginWithBrowserAsync()
+    public async Task<LoginResult> LoginWithBrowserAsync(IntPtr parentWindowHandle)
     {
         try
         {
             var publicClientApplication = await GetPublicClientApplicationAsync().ConfigureAwait(false);
-            var result = await publicClientApplication
+            var interactiveRequest = publicClientApplication
                 .AcquireTokenInteractive(MicrosoftScopes)
                 .WithPrompt(Prompt.SelectAccount)
-                .WithUseEmbeddedWebView(false)
+                .WithUseEmbeddedWebView(true)
+                .WithEmbeddedWebViewOptions(new EmbeddedWebViewOptions
+                {
+                    Title = "XianYu Launcher 登录",
+                });
+
+            if (parentWindowHandle != IntPtr.Zero)
+            {
+                interactiveRequest = interactiveRequest.WithParentActivityOrWindow(parentWindowHandle);
+            }
+
+            var result = await interactiveRequest
                 .ExecuteAsync()
                 .ConfigureAwait(false);
 

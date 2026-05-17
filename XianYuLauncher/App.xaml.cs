@@ -15,6 +15,7 @@ using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using XianYuLauncher.Services;
 using WinUIEx;
+using WinRT.Interop;
 
 namespace XianYuLauncher;
 
@@ -45,6 +46,8 @@ public partial class App : Application
     private static WindowEx? _mainWindow;
 
     public static WindowEx MainWindow => _mainWindow ??= new MainWindow();
+
+    public static IntPtr MainWindowHandle => WindowNative.GetWindowHandle(MainWindow);
 
     public static UIElement? AppTitlebar { get; set; }
     
