@@ -504,35 +504,56 @@ public class MicrosoftAuthService
     private async Task<IAccount?> ResolveMsalAccountAsync(IPublicClientApplication publicClientApplication, MinecraftAccount account)
     {
         var accounts = (await publicClientApplication.GetAccountsAsync().ConfigureAwait(false)).ToList();
-        if (!string.IsNullOrWhiteSpace(account.MicrosoftHomeAccountId))
+        var (selectedAccount, useOperatingSystemAccount) = ResolveMsalAccountCandidate(accounts, account.MicrosoftHomeAccountId, AppEnvironment.HasPackageIdentity);
+
+        if (selectedAccount != null
+            && !string.IsNullOrWhiteSpace(account.MicrosoftHomeAccountId)
+            && !accounts.Any(item => string.Equals(item.HomeAccountId?.Identifier, account.MicrosoftHomeAccountId, StringComparison.Ordinal)))
         {
-            var matchedAccount = accounts.FirstOrDefault(item => string.Equals(item.HomeAccountId?.Identifier, account.MicrosoftHomeAccountId, StringComparison.Ordinal));
-            if (matchedAccount != null)
-            {
-                return matchedAccount;
-            }
-
-            if (accounts.Count == 1)
-            {
-                Log.Warning("MicrosoftHomeAccountId 未命中缓存，将回退到当前唯一的 MSAL/WAM 账户。ExpectedHomeAccountId={ExpectedHomeAccountId}", account.MicrosoftHomeAccountId);
-                return accounts[0];
-            }
-
-            return null;
+            Log.Warning("MicrosoftHomeAccountId 未命中缓存，将回退到当前唯一的 MSAL/WAM 账户。ExpectedHomeAccountId={ExpectedHomeAccountId}", account.MicrosoftHomeAccountId);
         }
 
-        if (accounts.Count == 1)
-        {
-            return accounts[0];
-        }
-
-        if (accounts.Count == 0 && AppEnvironment.HasPackageIdentity)
+        if (useOperatingSystemAccount)
         {
             Log.Information("未找到缓存账户，将尝试使用 Windows 当前登录账户进行静默续期。");
             return PublicClientApplication.OperatingSystemAccount;
         }
 
-        return null;
+        return selectedAccount;
+    }
+
+    internal static (IAccount? Account, bool UseOperatingSystemAccount) ResolveMsalAccountCandidate(
+        IReadOnlyList<IAccount> accounts,
+        string? microsoftHomeAccountId,
+        bool hasPackageIdentity)
+    {
+        if (!string.IsNullOrWhiteSpace(microsoftHomeAccountId))
+        {
+            var matchedAccount = accounts.FirstOrDefault(item => string.Equals(item.HomeAccountId?.Identifier, microsoftHomeAccountId, StringComparison.Ordinal));
+            if (matchedAccount != null)
+            {
+                return (matchedAccount, false);
+            }
+
+            if (accounts.Count == 1)
+            {
+                return (accounts[0], false);
+            }
+
+            return (null, false);
+        }
+
+        if (accounts.Count == 1)
+        {
+            return (accounts[0], false);
+        }
+
+        if (accounts.Count == 0 && hasPackageIdentity)
+        {
+            return (null, true);
+        }
+
+        return (null, false);
     }
 
     private async Task<IPublicClientApplication> GetPublicClientApplicationAsync()
