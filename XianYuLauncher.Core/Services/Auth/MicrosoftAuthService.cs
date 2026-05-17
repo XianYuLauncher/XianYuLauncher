@@ -26,6 +26,7 @@ public class MicrosoftAuthService
     private const string MicrosoftAuthority = "https://login.microsoftonline.com/consumers/";
     private const string MsalCacheFileName = "msal_user_token_cache.bin";
     private const string InteractiveLoginTitle = "XianYu Launcher 登录";
+    private const string WamMigrationReloginMessage = "当前微软账户缺少可用的 WAM/MSAL 缓存，请重新登录一次。旧版浏览器或嵌入式登录切换到 WAM 后首次需要重新登录以建立新缓存。";
     private static readonly string[] MicrosoftScopes = new[] { "XboxLive.signin", "offline_access" };
 
     private readonly HttpClient _httpClient;
@@ -491,8 +492,7 @@ public class MicrosoftAuthService
         var msalAccount = await ResolveMsalAccountAsync(publicClientApplication, account).ConfigureAwait(false);
         if (msalAccount == null)
         {
-            throw new InvalidOperationException(
-                "当前微软账户缺少可用的 MSAL 缓存，请重新登录一次。旧版账号首次升级需要重新登录以建立安全缓存。");
+            throw new InvalidOperationException(WamMigrationReloginMessage);
         }
 
         return await publicClientApplication
@@ -506,10 +506,33 @@ public class MicrosoftAuthService
         var accounts = (await publicClientApplication.GetAccountsAsync().ConfigureAwait(false)).ToList();
         if (!string.IsNullOrWhiteSpace(account.MicrosoftHomeAccountId))
         {
-            return accounts.FirstOrDefault(item => string.Equals(item.HomeAccountId?.Identifier, account.MicrosoftHomeAccountId, StringComparison.Ordinal));
+            var matchedAccount = accounts.FirstOrDefault(item => string.Equals(item.HomeAccountId?.Identifier, account.MicrosoftHomeAccountId, StringComparison.Ordinal));
+            if (matchedAccount != null)
+            {
+                return matchedAccount;
+            }
+
+            if (accounts.Count == 1)
+            {
+                Log.Warning("MicrosoftHomeAccountId 未命中缓存，将回退到当前唯一的 MSAL/WAM 账户。ExpectedHomeAccountId={ExpectedHomeAccountId}", account.MicrosoftHomeAccountId);
+                return accounts[0];
+            }
+
+            return null;
         }
 
-        return accounts.Count == 1 ? accounts[0] : null;
+        if (accounts.Count == 1)
+        {
+            return accounts[0];
+        }
+
+        if (accounts.Count == 0 && AppEnvironment.HasPackageIdentity)
+        {
+            Log.Information("未找到缓存账户，将尝试使用 Windows 当前登录账户进行静默续期。");
+            return PublicClientApplication.OperatingSystemAccount;
+        }
+
+        return null;
     }
 
     private async Task<IPublicClientApplication> GetPublicClientApplicationAsync()
