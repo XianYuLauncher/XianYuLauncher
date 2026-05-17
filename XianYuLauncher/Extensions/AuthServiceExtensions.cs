@@ -18,7 +18,9 @@ internal static class AuthServiceExtensions
         services.AddSingleton(sp =>
         {
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
-            return new MicrosoftAuthService(httpClientFactory.CreateClient(nameof(MicrosoftAuthService)));
+            return new MicrosoftAuthService(
+                httpClientFactory.CreateClient(nameof(MicrosoftAuthService)),
+                () => App.MainWindowHandle);
         });
 
         services.AddSingleton<AuthlibInjectorService>();

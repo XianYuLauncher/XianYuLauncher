@@ -387,7 +387,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                 {
                     // === 浏览器登录流程 ===
                     LoginStatus = "正在等待浏览器登录...";
-                    var result = await _microsoftAuthService.LoginWithBrowserAsync(App.MainWindowHandle);
+                    var result = await _microsoftAuthService.LoginWithBrowserAsync();
                     await HandleLoginResultAsync(result);
                 }
                 else

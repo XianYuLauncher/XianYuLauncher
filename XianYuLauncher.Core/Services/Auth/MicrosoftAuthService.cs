@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Identity.Client;
+using Microsoft.Identity.Client.Broker;
 using Microsoft.Identity.Client.Extensions.Msal;
 using Newtonsoft.Json;
 using Serilog;
@@ -17,23 +18,26 @@ using XianYuLauncher.Core.Models;
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-    /// 微软登录服务，处理微软账号登录 Minecraft 的完整流程。
-    /// 交互式登录固定使用 MSAL 官方内嵌 WebView 承载，避免系统浏览器地址栏暴露授权码。
+/// 微软登录服务，处理微软账号登录 Minecraft 的完整流程。
+/// 交互式登录固定使用 WAM broker，避免回落到浏览器或嵌入式 WebView 方案。
 /// </summary>
 public class MicrosoftAuthService
 {
     private const string MicrosoftAuthority = "https://login.microsoftonline.com/consumers/";
     private const string MsalCacheFileName = "msal_user_token_cache.bin";
+    private const string InteractiveLoginTitle = "XianYu Launcher 登录";
     private static readonly string[] MicrosoftScopes = new[] { "XboxLive.signin", "offline_access" };
 
     private readonly HttpClient _httpClient;
+    private readonly Func<IntPtr> _parentWindowHandleProvider;
     private readonly Lazy<Task<IPublicClientApplication>> _publicClientApplicationTask;
 
     private static string ClientId => SecretsService.Config.MicrosoftAuth.ClientId;
 
-    public MicrosoftAuthService(HttpClient httpClient)
+    public MicrosoftAuthService(HttpClient httpClient, Func<IntPtr> parentWindowHandleProvider)
     {
         _httpClient = httpClient;
+        _parentWindowHandleProvider = parentWindowHandleProvider;
         if (!_httpClient.DefaultRequestHeaders.UserAgent.Any())
         {
             _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionHelper.GetUserAgent());
@@ -221,26 +225,19 @@ public class MicrosoftAuthService
 
     #endregion
 
-    public async Task<LoginResult> LoginWithBrowserAsync(IntPtr parentWindowHandle)
+    public async Task<LoginResult> LoginWithBrowserAsync()
     {
         try
         {
-            var publicClientApplication = await GetPublicClientApplicationAsync().ConfigureAwait(false);
-            var interactiveRequest = publicClientApplication
-                .AcquireTokenInteractive(MicrosoftScopes)
-                .WithPrompt(Prompt.SelectAccount)
-                .WithUseEmbeddedWebView(true)
-                .WithEmbeddedWebViewOptions(new EmbeddedWebViewOptions
-                {
-                    Title = "XianYu Launcher 登录",
-                });
-
-            if (parentWindowHandle != IntPtr.Zero)
+            if (!IsWamInteractiveLoginSupported())
             {
-                interactiveRequest = interactiveRequest.WithParentActivityOrWindow(parentWindowHandle);
+                return CreateFailedLoginResult("当前环境不支持 WAM 交互式登录，请改用设备码登录。");
             }
 
-            var result = await interactiveRequest
+            var publicClientApplication = await GetPublicClientApplicationAsync().ConfigureAwait(false);
+            var result = await publicClientApplication
+                .AcquireTokenInteractive(MicrosoftScopes)
+                .WithPrompt(Prompt.SelectAccount)
                 .ExecuteAsync()
                 .ConfigureAwait(false);
 
@@ -249,17 +246,17 @@ public class MicrosoftAuthService
         catch (MsalClientException ex)
         {
             Log.Warning(ex, "浏览器登录失败");
-            return CreateFailedLoginResult($"浏览器登录失败: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
+            return CreateFailedLoginResult($"交互式登录失败: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
         }
         catch (MsalServiceException ex)
         {
             Log.Warning(ex, "微软认证服务返回错误");
-            return CreateFailedLoginResult($"微软认证服务返回错误: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
+            return CreateFailedLoginResult($"交互式登录失败: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
         }
         catch (Exception ex)
         {
             Log.Error(ex, "浏览器登录过程中发生异常");
-            return CreateFailedLoginResult($"浏览器登录失败: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
+            return CreateFailedLoginResult($"交互式登录失败: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
         }
     }
 
@@ -527,14 +524,49 @@ public class MicrosoftAuthService
             throw new InvalidOperationException("未配置 MicrosoftAuth.ClientId。");
         }
 
+        var brokerOptions = new BrokerOptions(BrokerOptions.OperatingSystems.Windows)
+        {
+            Title = InteractiveLoginTitle,
+        };
+
         var publicClientApplication = PublicClientApplicationBuilder
             .Create(ClientId)
             .WithAuthority(MicrosoftAuthority)
             .WithDefaultRedirectUri()
+            .WithParentActivityOrWindow(GetParentWindowHandle)
+            .WithBroker(brokerOptions)
             .Build();
 
         await RegisterTokenCacheAsync(publicClientApplication).ConfigureAwait(false);
         return publicClientApplication;
+    }
+
+    private bool IsWamInteractiveLoginSupported()
+    {
+        if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17763))
+        {
+            return false;
+        }
+
+        if (!AppEnvironment.HasPackageIdentity)
+        {
+            return false;
+        }
+
+        return GetParentWindowHandle() != IntPtr.Zero;
+    }
+
+    private IntPtr GetParentWindowHandle()
+    {
+        try
+        {
+            return _parentWindowHandleProvider();
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "获取主窗口句柄失败");
+            return IntPtr.Zero;
+        }
     }
 
     private async Task RegisterTokenCacheAsync(IPublicClientApplication publicClientApplication)
