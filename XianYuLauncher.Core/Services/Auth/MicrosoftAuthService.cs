@@ -1,103 +1,83 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Identity.Client;
+using Microsoft.Identity.Client.Extensions.Msal;
 using Newtonsoft.Json;
 using Serilog;
-using XianYuLauncher.Core.Services;
+using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-/// 微软登录服务，处理微软账号登录Minecraft的完整流程
+/// 微软登录服务，处理微软账号登录 Minecraft 的完整流程。
 /// </summary>
 public class MicrosoftAuthService
 {
+    private const string MicrosoftAuthority = "https://login.microsoftonline.com/consumers/";
+    private const string MsalCacheFileName = "msal_user_token_cache.bin";
+    private static readonly string[] MicrosoftScopes = new[] { "XboxLive.signin", "offline_access" };
+
     private readonly HttpClient _httpClient;
-    
-    // Azure应用程序的客户端ID（从配置文件读取）
+    private readonly Lazy<Task<IPublicClientApplication>> _publicClientApplicationTask;
+
     private static string ClientId => SecretsService.Config.MicrosoftAuth.ClientId;
-    
+
     public MicrosoftAuthService(HttpClient httpClient)
     {
         _httpClient = httpClient;
-        _httpClient.DefaultRequestHeaders.Add("User-Agent", Helpers.VersionHelper.GetUserAgent());
+        if (!_httpClient.DefaultRequestHeaders.UserAgent.Any())
+        {
+            _httpClient.DefaultRequestHeaders.Add("User-Agent", VersionHelper.GetUserAgent());
+        }
+        _publicClientApplicationTask = new Lazy<Task<IPublicClientApplication>>(CreatePublicClientApplicationAsync);
     }
-    
+
     #region 数据模型
-    
-    // 设备代码响应
+
     public class DeviceCodeResponse
     {
-        [JsonProperty("device_code")]
         public string DeviceCode { get; set; } = string.Empty;
-        
-        [JsonProperty("user_code")]
         public string UserCode { get; set; } = string.Empty;
-        
-        [JsonProperty("verification_uri")]
         public string VerificationUri { get; set; } = string.Empty;
-        
-        [JsonProperty("expires_in")]
         public int ExpiresIn { get; set; }
-        
-        [JsonProperty("interval")]
         public int Interval { get; set; }
-        
-        [JsonProperty("message")]
         public string Message { get; set; } = string.Empty;
     }
-    
-    // 令牌响应
-    public class TokenResponse
+
+    public sealed class DeviceCodeLoginSession
     {
-        [JsonProperty("token_type")]
-        public string TokenType { get; set; } = string.Empty;
-        
-        [JsonProperty("scope")]
-        public string Scope { get; set; } = string.Empty;
-        
-        [JsonProperty("expires_in")]
-        public int ExpiresIn { get; set; }
-        
-        [JsonProperty("access_token")]
-        public string AccessToken { get; set; } = string.Empty;
-        
-        [JsonProperty("refresh_token")]
-        public string RefreshToken { get; set; } = string.Empty;
-        
-        [JsonProperty("id_token")]
-        public string IdToken { get; set; } = string.Empty;
-        
-        // 错误信息
-        [JsonProperty("error")]
-        public string Error { get; set; } = string.Empty;
-        
-        [JsonProperty("error_description")]
-        public string ErrorDescription { get; set; } = string.Empty;
+        public required DeviceCodeResponse DeviceCode { get; init; }
+
+        public required Task<LoginResult> CompletionTask { get; init; }
     }
-    
-    // Xbox Live身份验证响应
+
     public class XboxLiveAuthResponse
     {
         [JsonProperty("IssueInstant")]
         public string IssueInstant { get; set; } = string.Empty;
-        
+
         [JsonProperty("NotAfter")]
         public string NotAfter { get; set; } = string.Empty;
-        
+
         [JsonProperty("Token")]
         public string Token { get; set; } = string.Empty;
-        
+
         [JsonProperty("DisplayClaims")]
         public XboxLiveDisplayClaims DisplayClaims { get; set; } = null!;
-        
+
         public class XboxLiveDisplayClaims
         {
             [JsonProperty("xui")]
             public XuiItem[] Xui { get; set; } = Array.Empty<XuiItem>();
-            
+
             public class XuiItem
             {
                 [JsonProperty("uhs")]
@@ -105,27 +85,26 @@ public class MicrosoftAuthService
             }
         }
     }
-    
-    // XSTS身份验证响应
+
     public class XstsAuthResponse
     {
         [JsonProperty("IssueInstant")]
         public string IssueInstant { get; set; } = string.Empty;
-        
+
         [JsonProperty("NotAfter")]
         public string NotAfter { get; set; } = string.Empty;
-        
+
         [JsonProperty("Token")]
         public string Token { get; set; } = string.Empty;
-        
+
         [JsonProperty("DisplayClaims")]
         public XstsDisplayClaims DisplayClaims { get; set; } = null!;
-        
+
         public class XstsDisplayClaims
         {
             [JsonProperty("xui")]
             public XuiItem[] Xui { get; set; } = Array.Empty<XuiItem>();
-            
+
             public class XuiItem
             {
                 [JsonProperty("uhs")]
@@ -133,98 +112,94 @@ public class MicrosoftAuthService
             }
         }
     }
-    
-    // Minecraft身份验证响应
+
     public class MinecraftAuthResponse
     {
         [JsonProperty("username")]
         public string Username { get; set; } = string.Empty;
-        
+
         [JsonProperty("roles")]
         public string[] Roles { get; set; } = Array.Empty<string>();
-        
+
         [JsonProperty("access_token")]
         public string AccessToken { get; set; } = string.Empty;
-        
+
         [JsonProperty("token_type")]
         public string TokenType { get; set; } = string.Empty;
-        
+
         [JsonProperty("expires_in")]
         public int ExpiresIn { get; set; }
     }
-    
-    // 游戏拥有情况响应
+
     public class EntitlementsResponse
     {
         [JsonProperty("items")]
         public EntitlementItem[] Items { get; set; } = Array.Empty<EntitlementItem>();
-        
+
         [JsonProperty("signature")]
         public string Signature { get; set; } = string.Empty;
-        
+
         [JsonProperty("keyId")]
         public string KeyId { get; set; } = string.Empty;
-        
+
         public class EntitlementItem
         {
             [JsonProperty("name")]
             public string Name { get; set; } = string.Empty;
-            
+
             [JsonProperty("signature")]
             public string Signature { get; set; } = string.Empty;
         }
     }
-    
-    // 玩家档案响应
+
     public class ProfileResponse
     {
         [JsonProperty("id")]
         public string Id { get; set; } = string.Empty;
-        
+
         [JsonProperty("name")]
         public string Name { get; set; } = string.Empty;
-        
+
         [JsonProperty("skins")]
         public Skin[] Skins { get; set; } = Array.Empty<Skin>();
-        
+
         [JsonProperty("capes")]
         public Cape[] Capes { get; set; } = Array.Empty<Cape>();
-        
+
         public class Skin
         {
             [JsonProperty("id")]
             public string Id { get; set; } = string.Empty;
-            
+
             [JsonProperty("state")]
             public string State { get; set; } = string.Empty;
-            
+
             [JsonProperty("url")]
             public string Url { get; set; } = string.Empty;
-            
+
             [JsonProperty("variant")]
             public string Variant { get; set; } = string.Empty;
-            
+
             [JsonProperty("alias")]
             public string Alias { get; set; } = string.Empty;
         }
-        
+
         public class Cape
         {
             [JsonProperty("id")]
             public string Id { get; set; } = string.Empty;
-            
+
             [JsonProperty("state")]
             public string State { get; set; } = string.Empty;
-            
+
             [JsonProperty("url")]
             public string Url { get; set; } = string.Empty;
-            
+
             [JsonProperty("alias")]
             public string Alias { get; set; } = string.Empty;
         }
     }
-    
-    // 登录结果
+
     public class LoginResult
     {
         public bool Success { get; set; }
@@ -232,9 +207,8 @@ public class MicrosoftAuthService
         public string Uuid { get; set; } = string.Empty;
         public string AccessToken { get; set; } = string.Empty;
         public string RefreshToken { get; set; } = string.Empty;
+        public string MicrosoftHomeAccountId { get; set; } = string.Empty;
         public string ErrorMessage { get; set; } = string.Empty;
-        
-        // 扩展字段：玩家完整信息
         public ProfileResponse.Skin[] Skins { get; set; } = Array.Empty<ProfileResponse.Skin>();
         public ProfileResponse.Cape[] Capes { get; set; } = Array.Empty<ProfileResponse.Cape>();
         public string IssueInstant { get; set; } = string.Empty;
@@ -243,442 +217,349 @@ public class MicrosoftAuthService
         public int ExpiresIn { get; set; }
         public string TokenType { get; set; } = string.Empty;
     }
-    
+
     #endregion
-    
-    /// <summary>
-    /// 获取微软登录设备代码
-    /// </summary>
-    /// <returns>设备代码响应</returns>
-        public async Task<DeviceCodeResponse?> GetMicrosoftDeviceCodeAsync()
+
+    public async Task<LoginResult> LoginWithBrowserAsync()
     {
         try
         {
-            return await GetDeviceCodeAsync();
+            var publicClientApplication = await GetPublicClientApplicationAsync().ConfigureAwait(false);
+            var result = await publicClientApplication
+                .AcquireTokenInteractive(MicrosoftScopes)
+                .WithPrompt(Prompt.SelectAccount)
+                .WithUseEmbeddedWebView(false)
+                .ExecuteAsync()
+                .ConfigureAwait(false);
+
+            return await ProcessMicrosoftAuthenticationAsync(result).ConfigureAwait(false);
+        }
+        catch (MsalClientException ex)
+        {
+            Log.Warning(ex, "浏览器登录失败");
+            return CreateFailedLoginResult($"浏览器登录失败: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
+        }
+        catch (MsalServiceException ex)
+        {
+            Log.Warning(ex, "微软认证服务返回错误");
+            return CreateFailedLoginResult($"微软认证服务返回错误: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "获取设备代码失败");
-            
-            // 移除自动保存错误日志到文件的操作，保留日志记录
-            
+            Log.Error(ex, "浏览器登录过程中发生异常");
+            return CreateFailedLoginResult($"浏览器登录失败: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
+        }
+    }
+
+    public async Task<DeviceCodeLoginSession?> StartDeviceCodeLoginAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var publicClientApplication = await GetPublicClientApplicationAsync().ConfigureAwait(false);
+            var promptSource = new TaskCompletionSource<DeviceCodeResponse>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            var authenticationTask = publicClientApplication
+                .AcquireTokenWithDeviceCode(
+                    MicrosoftScopes,
+                    deviceCodeResult =>
+                    {
+                        promptSource.TrySetResult(new DeviceCodeResponse
+                        {
+                            DeviceCode = deviceCodeResult.UserCode,
+                            UserCode = deviceCodeResult.UserCode,
+                            VerificationUri = deviceCodeResult.VerificationUrl,
+                            ExpiresIn = Math.Max(1, (int)(deviceCodeResult.ExpiresOn - DateTimeOffset.UtcNow).TotalSeconds),
+                            Interval = 5,
+                            Message = deviceCodeResult.Message,
+                        });
+
+                        return Task.CompletedTask;
+                    })
+                .ExecuteAsync(cancellationToken);
+
+            var deviceCode = await promptSource.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            return new DeviceCodeLoginSession
+            {
+                DeviceCode = deviceCode,
+                CompletionTask = CompleteDeviceCodeLoginAsync(authenticationTask),
+            };
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "启动设备码登录失败");
             return null;
         }
     }
-    
-    /// <summary>
-    /// 处理 Minecraft 登录链（从 Xbox Live 认证到获取档案）
-    /// </summary>
-    /// <param name="msaAccessToken">微软账户访问令牌</param>
-    /// <param name="refreshToken">刷新令牌</param>
-    /// <returns>登录结果</returns>
-    private async Task<LoginResult> ProcessMinecraftLoginChainAsync(string msaAccessToken, string refreshToken)
+
+    public async Task<LoginResult> TestMicrosoftLoginAsync()
     {
-        // 4. Xbox Live身份验证
-        var (xboxLiveAuthResponse, rawXboxResponse) = await AuthenticateWithXboxLiveAsync(msaAccessToken);
-        if (xboxLiveAuthResponse == null || string.IsNullOrEmpty(xboxLiveAuthResponse.Token))
+        var session = await StartDeviceCodeLoginAsync().ConfigureAwait(false);
+        if (session == null)
         {
-            return new LoginResult
-            {
-                Success = false,
-                ErrorMessage = "Xbox Live身份验证失败"
-            };
+            return CreateFailedLoginResult("获取设备代码失败");
         }
 
-        string uhs = xboxLiveAuthResponse.DisplayClaims.Xui[0].Uhs;
+        Log.Information("请访问 {VerificationUri} 并输入代码 {UserCode}", session.DeviceCode.VerificationUri, session.DeviceCode.UserCode);
+
+        try
+        {
+            await OpenVerificationUriAsync(session.DeviceCode.VerificationUri).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Log.Warning(ex, "自动打开设备码验证页面失败");
+        }
+
+        return await session.CompletionTask.ConfigureAwait(false);
+    }
+
+    public async Task<LoginResult> RefreshMinecraftTokenAsync(MinecraftAccount account)
+    {
+        ArgumentNullException.ThrowIfNull(account);
+
+        try
+        {
+            var microsoftResult = await AcquireMicrosoftTokenSilentlyAsync(account).ConfigureAwait(false);
+            return await ProcessMicrosoftAuthenticationAsync(microsoftResult).ConfigureAwait(false);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Log.Warning(ex, "微软账户静默刷新失败，需要重新登录");
+            return CreateFailedLoginResult(SensitiveDataSanitizer.Sanitize(ex.Message));
+        }
+        catch (MsalUiRequiredException ex)
+        {
+            Log.Warning(ex, "微软账户需要重新登录");
+            return CreateFailedLoginResult("微软账户需要重新登录以刷新授权。");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "完整刷新 Minecraft 令牌失败");
+            return CreateFailedLoginResult($"刷新 Minecraft 令牌失败: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
+        }
+    }
+
+    public async Task<bool> ValidateMinecraftTokenAsync(string accessToken)
+    {
+        if (string.IsNullOrEmpty(accessToken))
+        {
+            Log.Warning("[MicrosoftAuth] 验证令牌失败：令牌为空");
+            return false;
+        }
+
+        try
+        {
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+            using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.minecraftservices.com/minecraft/profile");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+
+            var response = await _httpClient.SendAsync(request, cts.Token).ConfigureAwait(false);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Log.Information("[MicrosoftAuth] Minecraft 令牌验证通过");
+                return true;
+            }
+
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                Log.Warning("[MicrosoftAuth] Minecraft 令牌已失效 (401 Unauthorized)");
+                return false;
+            }
+
+            Log.Warning("[MicrosoftAuth] 令牌验证返回非预期状态码: {StatusCode}，假设令牌有效", response.StatusCode);
+            return true;
+        }
+        catch (TaskCanceledException)
+        {
+            Log.Warning("[MicrosoftAuth] 令牌验证超时，假设令牌有效");
+            return true;
+        }
+        catch (HttpRequestException ex)
+        {
+            Log.Warning(ex, "[MicrosoftAuth] 令牌验证网络错误，假设令牌有效");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[MicrosoftAuth] 令牌验证发生异常");
+            return true;
+        }
+    }
+
+    private async Task<LoginResult> CompleteDeviceCodeLoginAsync(Task<AuthenticationResult> authenticationTask)
+    {
+        try
+        {
+            var result = await authenticationTask.ConfigureAwait(false);
+            return await ProcessMicrosoftAuthenticationAsync(result).ConfigureAwait(false);
+        }
+        catch (MsalClientException ex)
+        {
+            Log.Warning(ex, "设备码登录失败");
+            return CreateFailedLoginResult($"设备码登录失败: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
+        }
+        catch (MsalServiceException ex)
+        {
+            Log.Warning(ex, "设备码登录服务返回错误");
+            return CreateFailedLoginResult($"设备码登录失败: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
+        }
+        catch (OperationCanceledException)
+        {
+            return CreateFailedLoginResult("设备码登录已取消");
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "完成设备码登录失败");
+            return CreateFailedLoginResult($"设备码登录失败: {SensitiveDataSanitizer.Sanitize(ex.Message)}");
+        }
+    }
+
+    private async Task<LoginResult> ProcessMicrosoftAuthenticationAsync(AuthenticationResult authenticationResult)
+    {
+        var microsoftHomeAccountId = authenticationResult.Account?.HomeAccountId?.Identifier ?? string.Empty;
+        return await ProcessMinecraftLoginChainAsync(authenticationResult.AccessToken, microsoftHomeAccountId).ConfigureAwait(false);
+    }
+
+    private async Task<LoginResult> ProcessMinecraftLoginChainAsync(string msaAccessToken, string microsoftHomeAccountId)
+    {
+        var xboxLiveAuthResponse = await AuthenticateWithXboxLiveAsync(msaAccessToken).ConfigureAwait(false);
+        var xboxUserHash = xboxLiveAuthResponse?.DisplayClaims?.Xui.FirstOrDefault()?.Uhs;
+        if (xboxLiveAuthResponse == null || string.IsNullOrEmpty(xboxLiveAuthResponse.Token) || string.IsNullOrWhiteSpace(xboxUserHash))
+        {
+            return CreateFailedLoginResult("Xbox Live 身份验证失败");
+        }
+
+        string uhs = xboxUserHash;
         string xblToken = xboxLiveAuthResponse.Token;
 
-        // 5. XSTS身份验证
-        var (xstsAuthResponse, rawXstsResponse) = await AuthorizeWithXstsAsync(xblToken);
+        var xstsAuthResponse = await AuthorizeWithXstsAsync(xblToken).ConfigureAwait(false);
         if (xstsAuthResponse == null || string.IsNullOrEmpty(xstsAuthResponse.Token))
         {
-            return new LoginResult
-            {
-                Success = false,
-                ErrorMessage = "XSTS身份验证失败"
-            };
+            return CreateFailedLoginResult("XSTS 身份验证失败");
         }
 
-        string xstsToken = xstsAuthResponse.Token;
-
-        // 6. 获取Minecraft访问令牌
-        var (minecraftAuthResponse, rawMinecraftResponse) = await LoginWithXboxAsync(uhs, xstsToken);
+        var minecraftAuthResponse = await LoginWithXboxAsync(uhs, xstsAuthResponse.Token).ConfigureAwait(false);
         if (minecraftAuthResponse == null || string.IsNullOrEmpty(minecraftAuthResponse.AccessToken))
         {
-            return new LoginResult
-            {
-                Success = false,
-                ErrorMessage = "获取Minecraft访问令牌失败"
-            };
+            return CreateFailedLoginResult("获取 Minecraft 访问令牌失败");
         }
 
         string minecraftToken = minecraftAuthResponse.AccessToken;
-
-        // 7. 检查游戏拥有情况
-        var (entitlementsResponse, rawEntitlementsResponse) = await CheckEntitlementsAsync(minecraftToken);
-        if (entitlementsResponse == null || entitlementsResponse.Items == null || entitlementsResponse.Items.Length == 0)
+        var entitlementsResponse = await CheckEntitlementsAsync(minecraftToken).ConfigureAwait(false);
+        if (entitlementsResponse == null || entitlementsResponse.Items.Length == 0)
         {
-            return new LoginResult
-            {
-                Success = false,
-                ErrorMessage = "该账号没有购买Minecraft"
-            };
+            return CreateFailedLoginResult("该账号没有购买Minecraft");
         }
 
-        // 8. 获取玩家信息
-        var (profileResponse, rawProfileResponse) = await GetProfileAsync(minecraftToken);
+        var profileResponse = await GetProfileAsync(minecraftToken).ConfigureAwait(false);
         if (profileResponse == null || string.IsNullOrEmpty(profileResponse.Id) || string.IsNullOrEmpty(profileResponse.Name))
         {
-            return new LoginResult
-            {
-                Success = false,
-                ErrorMessage = "获取玩家信息失败"
-            };
+            return CreateFailedLoginResult("获取玩家信息失败");
         }
 
-        // 9. 返回登录结果，包含完整信息
         return new LoginResult
         {
             Success = true,
             Username = profileResponse.Name,
             Uuid = profileResponse.Id,
             AccessToken = minecraftToken,
-            RefreshToken = refreshToken,
+            RefreshToken = string.Empty,
+            MicrosoftHomeAccountId = microsoftHomeAccountId,
             TokenType = minecraftAuthResponse.TokenType,
             ExpiresIn = minecraftAuthResponse.ExpiresIn,
             Roles = minecraftAuthResponse.Roles,
             Skins = profileResponse.Skins,
             Capes = profileResponse.Capes,
             IssueInstant = xboxLiveAuthResponse.IssueInstant,
-            NotAfter = xboxLiveAuthResponse.NotAfter
+            NotAfter = xboxLiveAuthResponse.NotAfter,
         };
     }
 
-    /// <summary>
-    /// 使用浏览器交互式登录 (Authorization Code Flow)
-    /// </summary>
-    /// <returns>登录结果</returns>
-    public async Task<LoginResult> LoginWithBrowserAsync()
+    private async Task<AuthenticationResult> AcquireMicrosoftTokenSilentlyAsync(MinecraftAccount account)
     {
-        string redirectUri = "http://localhost:8080/";
-        using var listener = new System.Net.HttpListener();
-        listener.Prefixes.Add(redirectUri);
-        
-        try
+        var publicClientApplication = await GetPublicClientApplicationAsync().ConfigureAwait(false);
+        var msalAccount = await ResolveMsalAccountAsync(publicClientApplication, account).ConfigureAwait(false);
+        if (msalAccount == null)
         {
-            listener.Start();
-        }
-        catch (Exception ex)
-        {
-            return new LoginResult { Success = false, ErrorMessage = $"无法启动本地监听服务 (端口8080可能被占用): {ex.Message}" };
+            throw new InvalidOperationException(
+                "当前微软账户缺少可用的 MSAL 缓存，请重新登录一次。旧版账号首次升级需要重新登录以建立安全缓存。");
         }
 
-        string authUrl = $"https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?client_id={ClientId}&response_type=code&redirect_uri={Uri.EscapeDataString(redirectUri)}&scope=XboxLive.signin%20offline_access";
-
-        // 打开浏览器
-        try
-        {
-            var psi = new System.Diagnostics.ProcessStartInfo
-            {
-                FileName = authUrl,
-                UseShellExecute = true
-            };
-            System.Diagnostics.Process.Start(psi);
-        }
-        catch (Exception ex)
-        {
-            return new LoginResult { Success = false, ErrorMessage = "无法打开浏览器: " + ex.Message };
-        }
-
-        // 等待回调
-        try
-        {
-            var context = await listener.GetContextAsync();
-            var request = context.Request;
-            var response = context.Response;
-
-            string? code = request.QueryString["code"];
-            string? error = request.QueryString["error"];
-
-            // 返回简单的响应页面
-            string responseString = "<html><head><meta charset='utf-8'><title>Login Result</title><style>body{font-family:'Segoe UI',sans-serif;text-align:center;padding:50px;}</style></head><body>";
-            if (!string.IsNullOrEmpty(code))
-            {
-                responseString += "<h1>登录成功</h1><p>您现在可以关闭此窗口并返回启动器。</p>";
-            }
-            else
-            {
-                responseString += $"<h1>登录失败</h1><p>{error}</p>";
-            }
-            responseString += "<script>window.opener=null;window.close();</script></body></html>";
-            
-            byte[] buffer = Encoding.UTF8.GetBytes(responseString);
-            response.ContentLength64 = buffer.Length;
-            using var output = response.OutputStream;
-            output.Write(buffer, 0, buffer.Length);
-            
-            listener.Stop();
-
-            if (string.IsNullOrEmpty(code))
-            {
-                return new LoginResult { Success = false, ErrorMessage = $"授权失败: {error}" };
-            }
-
-            // 用 Code 换 Token
-            var tokenResponse = await ExchangeCodeForTokenAsync(code, redirectUri);
-            if (tokenResponse == null || !string.IsNullOrEmpty(tokenResponse.Error))
-            {
-                return new LoginResult { Success = false, ErrorMessage = $"令牌交换失败: {tokenResponse?.ErrorDescription ?? tokenResponse?.Error}" };
-            }
-
-            return await ProcessMinecraftLoginChainAsync(tokenResponse.AccessToken, tokenResponse.RefreshToken);
-        }
-        catch (Exception ex)
-        {
-            return new LoginResult { Success = false, ErrorMessage = $"登录过程中发生错误: {ex.Message}" };
-        }
+        return await publicClientApplication
+            .AcquireTokenSilent(MicrosoftScopes, msalAccount)
+            .ExecuteAsync()
+            .ConfigureAwait(false);
     }
 
-    private async Task<TokenResponse?> ExchangeCodeForTokenAsync(string code, string redirectUri)
+    private async Task<IAccount?> ResolveMsalAccountAsync(IPublicClientApplication publicClientApplication, MinecraftAccount account)
+    {
+        var accounts = (await publicClientApplication.GetAccountsAsync().ConfigureAwait(false)).ToList();
+        if (!string.IsNullOrWhiteSpace(account.MicrosoftHomeAccountId))
+        {
+            return accounts.FirstOrDefault(item => string.Equals(item.HomeAccountId?.Identifier, account.MicrosoftHomeAccountId, StringComparison.Ordinal));
+        }
+
+        return accounts.Count == 1 ? accounts[0] : null;
+    }
+
+    private async Task<IPublicClientApplication> GetPublicClientApplicationAsync()
+    {
+        return await _publicClientApplicationTask.Value.ConfigureAwait(false);
+    }
+
+    private async Task<IPublicClientApplication> CreatePublicClientApplicationAsync()
+    {
+        if (string.IsNullOrWhiteSpace(ClientId))
+        {
+            throw new InvalidOperationException("未配置 MicrosoftAuth.ClientId。");
+        }
+
+        var publicClientApplication = PublicClientApplicationBuilder
+            .Create(ClientId)
+            .WithAuthority(MicrosoftAuthority)
+            .WithDefaultRedirectUri()
+            .Build();
+
+        await RegisterTokenCacheAsync(publicClientApplication).ConfigureAwait(false);
+        return publicClientApplication;
+    }
+
+    private async Task RegisterTokenCacheAsync(IPublicClientApplication publicClientApplication)
     {
         try
         {
-            var content = new FormUrlEncodedContent(new[]
-            {
-                new KeyValuePair<string, string>("client_id", ClientId),
-                new KeyValuePair<string, string>("scope", "XboxLive.signin offline_access"),
-                new KeyValuePair<string, string>("code", code),
-                new KeyValuePair<string, string>("redirect_uri", redirectUri),
-                new KeyValuePair<string, string>("grant_type", "authorization_code")
-            });
+            var cacheDirectory = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "XianYuLauncher",
+                "Auth");
 
-            var response = await _httpClient.PostAsync(
-                "https://login.microsoftonline.com/consumers/oauth2/v2.0/token",
-                content);
+            Directory.CreateDirectory(cacheDirectory);
 
-            var responseContent = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<TokenResponse>(responseContent);
+            var storageProperties = new StorageCreationPropertiesBuilder(MsalCacheFileName, cacheDirectory)
+                .Build();
+
+            var cacheHelper = await MsalCacheHelper.CreateAsync(storageProperties).ConfigureAwait(false);
+            cacheHelper.RegisterCache(publicClientApplication.UserTokenCache);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "代码换令牌失败");
-            return null;
+            Log.Warning(ex, "初始化 MSAL 持久化缓存失败，将回退为当前进程内缓存。");
         }
     }
 
-    /// <summary>
-    /// 使用设备代码完成微软登录
-    /// </summary>
-    /// <param name="deviceCode">设备代码</param>
-    /// <param name="interval">轮询间隔（秒）</param>
-    /// <param name="expiresIn">过期时间（秒）</param>
-    /// <returns>登录结果</returns>
-    public async Task<LoginResult> CompleteMicrosoftLoginAsync(string deviceCode, int interval, int expiresIn)
+    private static async Task OpenVerificationUriAsync(string verificationUri)
     {
-        try
+        var processStartInfo = new System.Diagnostics.ProcessStartInfo
         {
-            // 3. 轮询授权状态
-            var tokenResponse = await PollAuthorizationStatusAsync(deviceCode, interval, expiresIn);
-            if (tokenResponse == null || !string.IsNullOrEmpty(tokenResponse.Error))
-            {
-                string errorMsg = tokenResponse?.ErrorDescription ?? "授权失败";
-                string detailedMsg = tokenResponse != null ? 
-                    $"{errorMsg} (错误代码: {tokenResponse.Error})" : 
-                    errorMsg;
-                
-                Log.Information($"授权失败: {detailedMsg}");
-                return new LoginResult { Success = false, ErrorMessage = detailedMsg };
-            }
-            
-            return await ProcessMinecraftLoginChainAsync(tokenResponse.AccessToken, tokenResponse.RefreshToken);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "完成微软登录失败");
-            
-            // 移除自动保存完成微软登录失败详情到文件的操作，保留日志记录
-            
-            // 返回简洁的异常信息
-            return new LoginResult
-            {
-                Success = false,
-                ErrorMessage = $"登录失败: {ex.Message}"
-            };
-        }
+            FileName = verificationUri,
+            UseShellExecute = true,
+        };
+
+        await Task.Run(() => System.Diagnostics.Process.Start(processStartInfo)).ConfigureAwait(false);
     }
-    
-    /// <summary>
-    /// 测试微软登录流程
-    /// </summary>
-    /// <returns>登录结果</returns>
-    public async Task<LoginResult> TestMicrosoftLoginAsync()
-    {
-        try
-        {
-            // 1. 获取设备代码对
-            var deviceCodeResponse = await GetDeviceCodeAsync();
-            if (deviceCodeResponse == null)
-            {
-                return new LoginResult
-                {
-                    Success = false,
-                    ErrorMessage = "获取设备代码失败"
-                };
-            }
-            
-            // 2. 显示登录信息并自动打开浏览器
-            Log.Information($"请在浏览器中访问: {deviceCodeResponse.VerificationUri}");
-            Log.Information($"输入代码: {deviceCodeResponse.UserCode}");
-            Log.Information($"代码有效期: {deviceCodeResponse.ExpiresIn}秒");
-            
-            // 自动打开浏览器到验证URL
-            try
-            {
-                var psi = new System.Diagnostics.ProcessStartInfo
-                {
-                    FileName = deviceCodeResponse.VerificationUri,
-                    UseShellExecute = true
-                };
-                System.Diagnostics.Process.Start(psi);
-                Log.Information("已自动打开浏览器进行登录验证");
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "无法自动打开浏览器，请手动访问验证URL");
-            }
-            
-            // 3. 调用拆分后的方法完成登录
-            return await CompleteMicrosoftLoginAsync(
-                deviceCodeResponse.DeviceCode,
-                deviceCodeResponse.Interval,
-                deviceCodeResponse.ExpiresIn);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "微软登录失败");
-            
-            // 将详细错误信息保存到临时文件
-            string errorDetails = ex.ToString();
-            string tempFilePath = Path.Combine(Path.GetTempPath(), $"XianYuLauncher_MicrosoftLogin_Error_{DateTime.Now:yyyyMMdd_HHmmss}.txt");
-            
-            try
-            {
-                File.WriteAllText(tempFilePath, errorDetails);
-                Log.Information($"错误日志已保存到: {tempFilePath}");
-            }
-            catch (Exception writeEx)
-            {
-                Log.Error(writeEx, "无法保存错误日志到临时文件");
-                tempFilePath = "无法保存错误日志";
-            }
-            
-            // 返回详细的异常信息
-            return new LoginResult
-            {
-                Success = false,
-                ErrorMessage = $"登录失败: {ex.Message}\n\n异常摘要: {ex.GetType().Name}"
-            };
-        }
-    }
-    
-    /// <summary>
-    /// 获取设备代码对
-    /// </summary>
-    /// <returns>设备代码响应</returns>
-    private async Task<DeviceCodeResponse?> GetDeviceCodeAsync()
-    {
-        try
-        {
-            var content = new FormUrlEncodedContent(new[]
-            {
-                new KeyValuePair<string, string>("client_id", ClientId),
-                new KeyValuePair<string, string>("scope", "XboxLive.signin offline_access")
-            });
-            
-            var response = await _httpClient.PostAsync(
-                "https://login.microsoftonline.com/consumers/oauth2/v2.0/devicecode",
-                content);
-            
-            response.EnsureSuccessStatusCode();
-            
-            var responseContent = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<DeviceCodeResponse>(responseContent);
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"获取设备代码失败: {ex.Message}");
-            return null;
-        }
-    }
-    
-    /// <summary>
-    /// 轮询授权状态
-    /// </summary>
-    /// <param name="deviceCode">设备代码</param>
-    /// <param name="interval">轮询间隔（秒）</param>
-    /// <param name="expiresIn">过期时间（秒）</param>
-    /// <returns>令牌响应</returns>
-    private async Task<TokenResponse?> PollAuthorizationStatusAsync(string deviceCode, int interval, int expiresIn)
-    {
-        try
-        {
-            var startTime = DateTime.Now;
-            
-            while ((DateTime.Now - startTime).TotalSeconds < expiresIn)
-            {
-                var content = new FormUrlEncodedContent(new[]
-                {
-                    new KeyValuePair<string, string>("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
-                    new KeyValuePair<string, string>("client_id", ClientId),
-                    new KeyValuePair<string, string>("device_code", deviceCode)
-                });
-                
-                var response = await _httpClient.PostAsync(
-                    "https://login.microsoftonline.com/consumers/oauth2/v2.0/token",
-                    content);
-                
-                var responseContent = await response.Content.ReadAsStringAsync();
-                var tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(responseContent);
-                if (tokenResponse == null)
-                {
-                    throw new InvalidOperationException("微软设备登录令牌响应解析失败");
-                }
-                
-                if (string.IsNullOrEmpty(tokenResponse.Error) || tokenResponse.Error == "authorization_pending")
-                {
-                    if (string.IsNullOrEmpty(tokenResponse.Error))
-                    {
-                        return tokenResponse;
-                    }
-                    
-                    // 继续轮询
-                    await Task.Delay(interval * 1000);
-                }
-                else
-                {
-                    return tokenResponse;
-                }
-            }
-            
-            return new TokenResponse
-            {
-                Error = "expired_token",
-                ErrorDescription = "设备代码已过期"
-            };
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"轮询授权状态失败: {ex.Message}");
-            return null;
-        }
-    }
-    
-    /// <summary>
-    /// Xbox Live身份验证
-    /// </summary>
-    /// <param name="accessToken">访问令牌</param>
-    /// <returns>Xbox Live身份验证响应</returns>
-    private async Task<(XboxLiveAuthResponse?, string)> AuthenticateWithXboxLiveAsync(string accessToken)
+
+    private async Task<XboxLiveAuthResponse?> AuthenticateWithXboxLiveAsync(string accessToken)
     {
         try
         {
@@ -688,62 +569,32 @@ public class MicrosoftAuthService
                 {
                     AuthMethod = "RPS",
                     SiteName = "user.auth.xboxlive.com",
-                    RpsTicket = $"d={accessToken}"
+                    RpsTicket = $"d={accessToken}",
                 },
                 RelyingParty = "http://auth.xboxlive.com",
-                TokenType = "JWT"
+                TokenType = "JWT",
             });
-            
-            var content = new StringContent(requestBody, Encoding.UTF8, "application/json");
-            
-            var response = await _httpClient.PostAsync(
-                "https://user.auth.xboxlive.com/user/authenticate",
-                content);
-            
-            // 保存原始响应内容
-            string rawResponse = await response.Content.ReadAsStringAsync();
-            
-            if (response.IsSuccessStatusCode)
-            {
-                Log.Information("Xbox Live身份验证成功 (响应内容已隐藏)");
-            }
-            else
-            {
-                Log.Information($"Xbox Live身份验证原始响应: {rawResponse}");
-            }
-            
-            // 不使用EnsureSuccessStatusCode，避免丢失响应内容
+
+            using var content = new StringContent(requestBody, Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync("https://user.auth.xboxlive.com/user/authenticate", content).ConfigureAwait(false);
+            var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
             if (!response.IsSuccessStatusCode)
             {
-                Log.Error($"Xbox Live身份验证失败，状态码: {response.StatusCode}");
-                // 尝试解析响应
-                try
-                {
-                    var authResponse = JsonConvert.DeserializeObject<XboxLiveAuthResponse>(rawResponse);
-                    return (authResponse, rawResponse);
-                }
-                catch
-                {
-                    return (null, rawResponse);
-                }
+                Log.Warning("Xbox Live 身份验证失败，状态码: {StatusCode}", response.StatusCode);
+                return TryDeserialize<XboxLiveAuthResponse>(responseContent);
             }
-            
-            var responseObj = JsonConvert.DeserializeObject<XboxLiveAuthResponse>(rawResponse);
-            return (responseObj, rawResponse);
+
+            return TryDeserialize<XboxLiveAuthResponse>(responseContent);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "Xbox Live身份验证失败");
-            return (null, string.Empty);
+            Log.Error(ex, "Xbox Live 身份验证失败");
+            return null;
         }
     }
-    
-    /// <summary>
-    /// XSTS身份验证
-    /// </summary>
-    /// <param name="xblToken">XBL令牌</param>
-    /// <returns>XSTS身份验证响应</returns>
-    private async Task<(XstsAuthResponse?, string)> AuthorizeWithXstsAsync(string xblToken)
+
+    private async Task<XstsAuthResponse?> AuthorizeWithXstsAsync(string xblToken)
     {
         try
         {
@@ -752,385 +603,132 @@ public class MicrosoftAuthService
                 Properties = new
                 {
                     SandboxId = "RETAIL",
-                    UserTokens = new[] { xblToken }
+                    UserTokens = new[] { xblToken },
                 },
                 RelyingParty = "rp://api.minecraftservices.com/",
-                TokenType = "JWT"
+                TokenType = "JWT",
             });
-            
-            var content = new StringContent(requestBody, Encoding.UTF8, "application/json");
-            
-            var response = await _httpClient.PostAsync(
-                "https://xsts.auth.xboxlive.com/xsts/authorize",
-                content);
-            
-            // 保存原始响应内容
-            string rawResponse = await response.Content.ReadAsStringAsync();
-            
-            if (response.IsSuccessStatusCode)
-            {
-                Log.Information("XSTS身份验证成功 (响应内容已隐藏)");
-            }
-            else
-            {
-                Log.Information($"XSTS身份验证原始响应: {rawResponse}");
-            }
-            
-            // 不使用EnsureSuccessStatusCode，避免丢失响应内容
+
+            using var content = new StringContent(requestBody, Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync("https://xsts.auth.xboxlive.com/xsts/authorize", content).ConfigureAwait(false);
+            var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
             if (!response.IsSuccessStatusCode)
             {
-                Log.Error($"XSTS身份验证失败，状态码: {response.StatusCode}");
-                // 尝试解析响应
-                try
-                {
-                    var authResponse = JsonConvert.DeserializeObject<XstsAuthResponse>(rawResponse);
-                    return (authResponse, rawResponse);
-                }
-                catch
-                {
-                    return (null, rawResponse);
-                }
+                Log.Warning("XSTS 身份验证失败，状态码: {StatusCode}", response.StatusCode);
+                return TryDeserialize<XstsAuthResponse>(responseContent);
             }
-            
-            var responseObj = JsonConvert.DeserializeObject<XstsAuthResponse>(rawResponse);
-            return (responseObj, rawResponse);
+
+            return TryDeserialize<XstsAuthResponse>(responseContent);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "XSTS身份验证失败");
-            return (null, string.Empty);
+            Log.Error(ex, "XSTS 身份验证失败");
+            return null;
         }
     }
-    
-    /// <summary>
-    /// 使用Xbox令牌登录Minecraft
-    /// </summary>
-    /// <param name="uhs">用户哈希值</param>
-    /// <param name="xstsToken">XSTS令牌</param>
-    /// <returns>Minecraft身份验证响应</returns>
-    private async Task<(MinecraftAuthResponse?, string)> LoginWithXboxAsync(string uhs, string xstsToken)
+
+    private async Task<MinecraftAuthResponse?> LoginWithXboxAsync(string uhs, string xstsToken)
     {
         try
         {
-            var requestBody = new
+            var requestBody = JsonConvert.SerializeObject(new
             {
-                identityToken = $"XBL3.0 x={uhs};{xstsToken}"
-            };
-            
-            var content = new StringContent(
-                JsonConvert.SerializeObject(requestBody), 
-                Encoding.UTF8, 
-                "application/json");
-            
-            var response = await _httpClient.PostAsync(
-                "https://api.minecraftservices.com/authentication/login_with_xbox",
-                content);
-            
-            // 保存原始响应内容，无论状态码如何
-            string rawResponse = await response.Content.ReadAsStringAsync();
+                identityToken = $"XBL3.0 x={uhs};{xstsToken}",
+            });
 
-            if (response.IsSuccessStatusCode)
-            {
-                Log.Information("LoginWithXbox成功，已获取Minecraft访问令牌 (响应内容已隐藏)");
-            }
-            else
-            {
-                Log.Information($"LoginWithXbox原始响应: {rawResponse}");
-            }
-            
-            // 抛出异常由上层处理
+            using var content = new StringContent(requestBody, Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync("https://api.minecraftservices.com/authentication/login_with_xbox", content).ConfigureAwait(false);
+            var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
             if (!response.IsSuccessStatusCode)
             {
-                throw new HttpRequestException($"LoginWithXbox failed with status {response.StatusCode}: {rawResponse}");
+                Log.Warning("Minecraft/Xbox 登录失败，状态码: {StatusCode}", response.StatusCode);
+                return null;
             }
 
-            var authResponse = JsonConvert.DeserializeObject<MinecraftAuthResponse>(rawResponse);
-            return (authResponse, rawResponse);
+            return TryDeserialize<MinecraftAuthResponse>(responseContent);
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "LoginWithXbox异常");
-            throw;
+            Log.Error(ex, "Minecraft/Xbox 登录失败");
+            return null;
         }
     }
-    
-    /// <summary>
-    /// 检查游戏拥有情况
-    /// </summary>
-    /// <param name="minecraftToken">Minecraft访问令牌</param>
-    /// <returns>游戏拥有情况响应</returns>
-    private async Task<(EntitlementsResponse?, string)> CheckEntitlementsAsync(string minecraftToken)
+
+    private async Task<EntitlementsResponse?> CheckEntitlementsAsync(string minecraftToken)
     {
         try
         {
-            var request = new HttpRequestMessage(HttpMethod.Get, "https://api.minecraftservices.com/entitlements/mcstore");
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", minecraftToken);
-            
-            var response = await _httpClient.SendAsync(request);
-            
-            // 保存原始响应内容
-            string rawResponse = await response.Content.ReadAsStringAsync();
-            
-            // 不使用EnsureSuccessStatusCode，避免丢失响应内容
+            using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.minecraftservices.com/entitlements/mcstore");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", minecraftToken);
+
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+            var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
             if (!response.IsSuccessStatusCode)
             {
-                Log.Error($"检查游戏拥有情况失败，状态码: {response.StatusCode}");
-                // 尝试解析响应
-                try
-                {
-                    var entitlementsResponse = JsonConvert.DeserializeObject<EntitlementsResponse>(rawResponse);
-                    return (entitlementsResponse, rawResponse);
-                }
-                catch
-                {
-                    return (null, rawResponse);
-                }
+                Log.Warning("检查游戏拥有情况失败，状态码: {StatusCode}", response.StatusCode);
+                return TryDeserialize<EntitlementsResponse>(responseContent);
             }
-            
-            var responseObj = JsonConvert.DeserializeObject<EntitlementsResponse>(rawResponse);
-            return (responseObj, rawResponse);
+
+            return TryDeserialize<EntitlementsResponse>(responseContent);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "检查游戏拥有情况失败");
-            return (null, string.Empty);
-        }
-    }
-    
-    /// <summary>
-    /// 使用refresh_token刷新access_token
-    /// </summary>
-    /// <param name="refreshToken">刷新令牌</param>
-    /// <returns>刷新后的令牌响应</returns>
-    public async Task<TokenResponse?> RefreshAccessTokenAsync(string refreshToken)
-    {
-        try
-        {
-            var content = new FormUrlEncodedContent(new[]
-            {
-                new KeyValuePair<string, string>("client_id", ClientId),
-                new KeyValuePair<string, string>("refresh_token", refreshToken),
-                new KeyValuePair<string, string>("grant_type", "refresh_token"),
-                new KeyValuePair<string, string>("scope", "XboxLive.signin offline_access")
-            });
-            
-            var response = await _httpClient.PostAsync(
-                "https://login.microsoftonline.com/consumers/oauth2/v2.0/token",
-                content);
-            
-            response.EnsureSuccessStatusCode();
-            
-            var responseContent = await response.Content.ReadAsStringAsync();
-            return JsonConvert.DeserializeObject<TokenResponse>(responseContent);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "刷新访问令牌失败");
             return null;
         }
     }
-    
-    /// <summary>
-    /// 完整刷新Minecraft令牌
-    /// </summary>
-    /// <param name="refreshToken">刷新令牌</param>
-    /// <returns>刷新后的登录结果</returns>
-    public async Task<LoginResult> RefreshMinecraftTokenAsync(string refreshToken)
+
+    private async Task<ProfileResponse?> GetProfileAsync(string minecraftToken)
     {
         try
         {
-            // 1. 使用refresh_token获取新的Microsoft访问令牌
-            var tokenResponse = await RefreshAccessTokenAsync(refreshToken);
-            if (tokenResponse == null)
-            {
-                return new LoginResult
-                {
-                    Success = false,
-                    ErrorMessage = "无法刷新Microsoft访问令牌"
-                };
-            }
-            
-            // 2. Xbox Live身份验证
-            var (xboxLiveAuthResponse, rawXboxResponse) = await AuthenticateWithXboxLiveAsync(tokenResponse.AccessToken);
-            if (xboxLiveAuthResponse == null || string.IsNullOrEmpty(xboxLiveAuthResponse.Token))
-            {
-                return new LoginResult
-                {
-                    Success = false,
-                    ErrorMessage = "Xbox Live身份验证失败"
-                };
-            }
-            
-            string uhs = xboxLiveAuthResponse.DisplayClaims.Xui[0].Uhs;
-            string xblToken = xboxLiveAuthResponse.Token;
-            
-            // 3. XSTS身份验证
-            var (xstsAuthResponse, rawXstsResponse) = await AuthorizeWithXstsAsync(xblToken);
-            if (xstsAuthResponse == null || string.IsNullOrEmpty(xstsAuthResponse.Token))
-            {
-                return new LoginResult
-                {
-                    Success = false,
-                    ErrorMessage = "XSTS身份验证失败"
-                };
-            }
-            
-            string xstsToken = xstsAuthResponse.Token;
-            
-            // 4. 获取Minecraft访问令牌
-            var (minecraftAuthResponse, rawMinecraftResponse) = await LoginWithXboxAsync(uhs, xstsToken);
-            if (minecraftAuthResponse == null || string.IsNullOrEmpty(minecraftAuthResponse.AccessToken))
-            {
-                return new LoginResult
-                {
-                    Success = false,
-                    ErrorMessage = "获取Minecraft访问令牌失败"
-                };
-            }
-            
-            string minecraftToken = minecraftAuthResponse.AccessToken;
-            
-            // 5. 获取玩家信息
-            var (profileResponse, rawProfileResponse) = await GetProfileAsync(minecraftToken);
-            if (profileResponse == null || string.IsNullOrEmpty(profileResponse.Id) || string.IsNullOrEmpty(profileResponse.Name))
-            {
-                return new LoginResult
-                {
-                    Success = false,
-                    ErrorMessage = "获取玩家信息失败"
-                };
-            }
-            
-            // 6. 返回刷新后的登录结果
-            return new LoginResult
-            {
-                Success = true,
-                Username = profileResponse.Name,
-                Uuid = profileResponse.Id,
-                AccessToken = minecraftToken,
-                RefreshToken = tokenResponse.RefreshToken,
-                TokenType = minecraftAuthResponse.TokenType,
-                ExpiresIn = minecraftAuthResponse.ExpiresIn,
-                Roles = minecraftAuthResponse.Roles,
-                Skins = profileResponse.Skins,
-                Capes = profileResponse.Capes,
-                IssueInstant = xboxLiveAuthResponse.IssueInstant,
-                NotAfter = xboxLiveAuthResponse.NotAfter
-            };
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "完整刷新Minecraft令牌失败");
-            return new LoginResult
-            {
-                Success = false,
-                ErrorMessage = $"刷新Minecraft令牌失败: {ex.Message}"
-            };
-        }
-    }
-    
-    /// <summary>
-    /// 获取玩家档案
-    /// </summary>
-    /// <param name="minecraftToken">Minecraft访问令牌</param>
-    /// <returns>玩家档案响应</returns>
-    private async Task<(ProfileResponse?, string)> GetProfileAsync(string minecraftToken)
-    {
-        try
-        {
-            var request = new HttpRequestMessage(HttpMethod.Get, "https://api.minecraftservices.com/minecraft/profile");
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", minecraftToken);
-            
-            var response = await _httpClient.SendAsync(request);
-            
-            // 保存原始响应内容
-            string rawResponse = await response.Content.ReadAsStringAsync();
-            Log.Information($"获取玩家信息原始响应: {rawResponse}");
-            
-            // 不使用EnsureSuccessStatusCode，避免丢失响应内容
+            using var request = new HttpRequestMessage(HttpMethod.Get, "https://api.minecraftservices.com/minecraft/profile");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", minecraftToken);
+
+            var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
+            var responseContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
             if (!response.IsSuccessStatusCode)
             {
-                Log.Error($"获取玩家信息失败，状态码: {response.StatusCode}");
-                // 尝试解析响应
-                try
-                {
-                    var profileResponse = JsonConvert.DeserializeObject<ProfileResponse>(rawResponse);
-                    return (profileResponse, rawResponse);
-                }
-                catch
-                {
-                    return (null, rawResponse);
-                }
+                Log.Warning("获取玩家信息失败，状态码: {StatusCode}", response.StatusCode);
+                return TryDeserialize<ProfileResponse>(responseContent);
             }
-            
-            var responseObj = JsonConvert.DeserializeObject<ProfileResponse>(rawResponse);
-            return (responseObj, rawResponse);
+
+            return TryDeserialize<ProfileResponse>(responseContent);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "获取玩家信息失败");
-            return (null, string.Empty);
+            return null;
         }
     }
-    
-    /// <summary>
-    /// 验证 Minecraft 访问令牌是否有效
-    /// 通过调用 /minecraft/profile API 来验证
-    /// </summary>
-    /// <param name="accessToken">Minecraft 访问令牌</param>
-    /// <returns>令牌是否有效</returns>
-    public async Task<bool> ValidateMinecraftTokenAsync(string accessToken)
+
+    private static T? TryDeserialize<T>(string content)
     {
-        if (string.IsNullOrEmpty(accessToken))
+        if (string.IsNullOrWhiteSpace(content))
         {
-            Log.Warning("[MicrosoftAuth] 验证令牌失败：令牌为空");
-            return false;
+            return default;
         }
-        
+
         try
         {
-            Log.Information("[MicrosoftAuth] 开始验证 Minecraft 令牌...");
-            
-            using var cts = new System.Threading.CancellationTokenSource(TimeSpan.FromSeconds(10));
-            
-            var request = new HttpRequestMessage(HttpMethod.Get, "https://api.minecraftservices.com/minecraft/profile");
-            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
-            
-            var response = await _httpClient.SendAsync(request, cts.Token);
-            
-            Log.Information("[MicrosoftAuth] 令牌验证响应状态码: {StatusCode}", response.StatusCode);
-            
-            if (response.IsSuccessStatusCode)
-            {
-                Log.Information("[MicrosoftAuth] ✅ Minecraft 令牌验证通过");
-                return true;
-            }
-            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-            {
-                Log.Warning("[MicrosoftAuth] ❌ Minecraft 令牌已失效 (401 Unauthorized)");
-                return false;
-            }
-            else
-            {
-                // 其他错误（如网络问题），假设令牌有效，避免误判
-                Log.Warning("[MicrosoftAuth] ⚠️ 令牌验证返回非预期状态码: {StatusCode}，假设令牌有效", response.StatusCode);
-                return true;
-            }
+            return JsonConvert.DeserializeObject<T>(content);
         }
-        catch (TaskCanceledException)
+        catch
         {
-            Log.Warning("[MicrosoftAuth] ⚠️ 令牌验证超时，假设令牌有效");
-            return true;
+            return default;
         }
-        catch (HttpRequestException ex)
+    }
+
+    private static LoginResult CreateFailedLoginResult(string errorMessage)
+    {
+        return new LoginResult
         {
-            Log.Warning(ex, "[MicrosoftAuth] ⚠️ 令牌验证网络错误，假设令牌有效");
-            return true;
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[MicrosoftAuth] 令牌验证发生异常");
-            return true; // 出错时假设有效，避免阻止用户启动游戏
-        }
+            Success = false,
+            ErrorMessage = errorMessage,
+        };
     }
 }

@@ -52,6 +52,54 @@ public sealed class AccountManagerTests : IDisposable
         Assert.False(File.Exists(legacyProfilesPath));
     }
 
+    [Fact]
+    public async Task SaveAccountsAsync_ShouldStripMicrosoftRefreshToken_AndEncryptSensitiveTokens()
+    {
+        var accountsPath = Path.Combine(_minecraftPath, MinecraftFileConsts.AccountsJson);
+        var accountManager = new AccountManager(new TestFileService(_minecraftPath));
+        const string accessToken = "plain-access-token";
+        const string refreshToken = "plain-refresh-token";
+        const string clientToken = "plain-client-token";
+
+        var profiles = new List<MinecraftAccount>
+        {
+            new()
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                Name = "MicrosoftUser",
+                AccessToken = accessToken,
+                RefreshToken = refreshToken,
+                ClientToken = clientToken,
+                MicrosoftHomeAccountId = "msal-home-account-id",
+                TokenType = "Bearer",
+                ExpiresIn = 3600,
+                IssueInstant = DateTime.UtcNow,
+                NotAfter = DateTime.UtcNow.AddHours(1),
+                IsOffline = false,
+            },
+        };
+
+        await accountManager.SaveAccountsAsync(profiles);
+
+        var json = await File.ReadAllTextAsync(accountsPath);
+        json.Should().NotContain(accessToken);
+        json.Should().NotContain(refreshToken);
+        json.Should().NotContain(clientToken);
+
+        var savedProfiles = JsonConvert.DeserializeObject<List<MinecraftAccount>>(json);
+        savedProfiles.Should().ContainSingle();
+        savedProfiles![0].AccessToken.Should().StartWith("ENC:");
+        savedProfiles[0].ClientToken.Should().StartWith("ENC:");
+        savedProfiles[0].RefreshToken.Should().BeEmpty();
+        savedProfiles[0].MicrosoftHomeAccountId.Should().Be("msal-home-account-id");
+
+        var loadedProfiles = await accountManager.LoadAccountsAsync();
+        loadedProfiles.Should().ContainSingle();
+        loadedProfiles[0].AccessToken.Should().Be(accessToken);
+        loadedProfiles[0].ClientToken.Should().Be(clientToken);
+        loadedProfiles[0].RefreshToken.Should().BeEmpty();
+    }
+
     private sealed class TestFileService : IFileService
     {
         private string _minecraftPath;

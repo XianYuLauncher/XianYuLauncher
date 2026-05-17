@@ -321,9 +321,9 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// <returns>刷新是否成功</returns>
         public async Task<bool> AutoRefreshTokenAsync(MinecraftAccount profile)
         {
-            if (profile.IsOffline || string.IsNullOrEmpty(profile.RefreshToken))
+            if (profile.IsOffline || string.Equals(profile.TokenType, "external", StringComparison.OrdinalIgnoreCase))
             {
-                return true; // 离线角色或没有刷新令牌，无需刷新
+                return true; // 离线角色或外置登录角色无需走微软刷新链
             }
             
             if (!IsTokenExpired(profile))
@@ -334,12 +334,13 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             try
             {
                 // 刷新令牌
-                var result = await _microsoftAuthService.RefreshMinecraftTokenAsync(profile.RefreshToken);
+                var result = await _microsoftAuthService.RefreshMinecraftTokenAsync(profile);
                 if (result.Success)
                 {
                     // 更新角色信息
                     profile.AccessToken = result.AccessToken;
                     profile.RefreshToken = result.RefreshToken;
+                    profile.MicrosoftHomeAccountId = result.MicrosoftHomeAccountId;
                     profile.TokenType = result.TokenType;
                     profile.ExpiresIn = result.ExpiresIn;
                     profile.IssueInstant = DateTime.Parse(result.IssueInstant);
@@ -391,12 +392,10 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                 }
                 else
                 {
-                    // === 设备代码登录流程 ===
                     LoginStatus = "TutorialPage_LoginStatus_GettingCode".GetLocalized();
 
-                    // 获取设备代码
-                    var deviceCodeResponse = await _microsoftAuthService.GetMicrosoftDeviceCodeAsync();
-                    if (deviceCodeResponse == null)
+                    var session = await _microsoftAuthService.StartDeviceCodeLoginAsync();
+                    if (session == null)
                     {
                         await ShowLoginErrorDialogAsync("获取登录代码失败");
                         return;
@@ -404,25 +403,20 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
 
                     LoginStatus = string.Format("{0} {1}，{2}：{3}", 
                         "TutorialPage_LoginStatus_VisitUrl".GetLocalized(), 
-                        deviceCodeResponse.VerificationUri, 
+                        session.DeviceCode.VerificationUri, 
                         "TutorialPage_LoginStatus_EnterCode".GetLocalized(), 
-                        deviceCodeResponse.UserCode);
+                        session.DeviceCode.UserCode);
 
                     // 自动打开浏览器
-                    var uri = new Uri(deviceCodeResponse.VerificationUri);
+                    var uri = new Uri(session.DeviceCode.VerificationUri);
                     await Windows.System.Launcher.LaunchUriAsync(uri);
 
                     // 复制8位ID到剪贴板
                     var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
-                    dataPackage.SetText(deviceCodeResponse.UserCode);
+                    dataPackage.SetText(session.DeviceCode.UserCode);
                     Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
 
-                    // 完成登录
-                    var result = await _microsoftAuthService.CompleteMicrosoftLoginAsync(
-                        deviceCodeResponse.DeviceCode,
-                        deviceCodeResponse.Interval,
-                        deviceCodeResponse.ExpiresIn);
-
+                    var result = await session.CompletionTask;
                     await HandleLoginResultAsync(result);
                 }
             }
@@ -447,6 +441,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                     Name = result.Username,
                     AccessToken = result.AccessToken,
                     RefreshToken = result.RefreshToken,
+                    MicrosoftHomeAccountId = result.MicrosoftHomeAccountId,
                     TokenType = result.TokenType,
                     ExpiresIn = result.ExpiresIn,
                     IssueInstant = DateTime.Parse(result.IssueInstant),

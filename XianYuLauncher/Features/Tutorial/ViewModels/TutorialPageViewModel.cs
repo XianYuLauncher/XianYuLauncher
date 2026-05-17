@@ -841,9 +841,8 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                 {
                     LoginStatus = "TutorialPage_LoginStatus_GettingCode".GetLocalized();
 
-                    // 获取设备代码
-                    var deviceCodeResponse = await _microsoftAuthService.GetMicrosoftDeviceCodeAsync();
-                    if (deviceCodeResponse == null)
+                    var session = await _microsoftAuthService.StartDeviceCodeLoginAsync();
+                    if (session == null)
                     {
                         await ShowLoginErrorDialogAsync("获取登录代码失败");
                         return;
@@ -851,25 +850,20 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
 
                     LoginStatus = string.Format("{0} {1}，{2}：{3}", 
                         "TutorialPage_LoginStatus_VisitUrl".GetLocalized(), 
-                        deviceCodeResponse.VerificationUri, 
+                        session.DeviceCode.VerificationUri, 
                         "TutorialPage_LoginStatus_EnterCode".GetLocalized(), 
-                        deviceCodeResponse.UserCode);
+                        session.DeviceCode.UserCode);
 
                     // 自动打开浏览器
-                    var uri = new Uri(deviceCodeResponse.VerificationUri);
+                    var uri = new Uri(session.DeviceCode.VerificationUri);
                     await Windows.System.Launcher.LaunchUriAsync(uri);
 
                     // 复制8位ID到剪贴板
                     var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
-                    dataPackage.SetText(deviceCodeResponse.UserCode);
+                    dataPackage.SetText(session.DeviceCode.UserCode);
                     Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
 
-                    // 完成登录
-                    var result = await _microsoftAuthService.CompleteMicrosoftLoginAsync(
-                        deviceCodeResponse.DeviceCode,
-                        deviceCodeResponse.Interval,
-                        deviceCodeResponse.ExpiresIn);
-
+                    var result = await session.CompletionTask;
                     await HandleLoginResultAsync(result);
                 }
             }
@@ -894,6 +888,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                     Name = result.Username,
                     AccessToken = result.AccessToken,
                     RefreshToken = result.RefreshToken,
+                    MicrosoftHomeAccountId = result.MicrosoftHomeAccountId,
                     TokenType = result.TokenType,
                     ExpiresIn = result.ExpiresIn,
                     IssueInstant = DateTime.Parse(result.IssueInstant),

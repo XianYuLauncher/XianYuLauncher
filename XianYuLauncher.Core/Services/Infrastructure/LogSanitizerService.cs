@@ -25,6 +25,8 @@ public class LogSanitizerService : ILogSanitizerService
             return content;
         }
 
+        var sanitizedContent = SensitiveDataSanitizer.Sanitize(content);
+
         try
         {
             // 加载所有角色配置
@@ -33,7 +35,7 @@ public class LogSanitizerService : ILogSanitizerService
 
             if (activeProfile == null)
             {
-                return content;
+                return sanitizedContent;
             }
 
             // 收集敏感信息列表
@@ -64,14 +66,19 @@ public class LogSanitizerService : ILogSanitizerService
                 sensitiveWords.Add(activeProfile.RefreshToken);
             }
 
+            if (!string.IsNullOrEmpty(activeProfile.ClientToken))
+            {
+                sensitiveWords.Add(activeProfile.ClientToken);
+            }
+
             // 执行替换
-            var sb = new StringBuilder(content);
+            var sb = new StringBuilder(sanitizedContent);
             foreach (var word in sensitiveWords)
             {
                 // 确保关键词只含有敏感信息，不包含常见短词以避免误伤（虽然后台token一般很长）
                 if (word.Length < 3) continue;
 
-                sb.Replace(word, "idk");
+                sb.Replace(word, "[REDACTED]");
             }
 
             return sb.ToString();
@@ -79,10 +86,7 @@ public class LogSanitizerService : ILogSanitizerService
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[LogSanitizer] 脱敏过程出错: {ex.Message}");
-            // 如果脱敏出错，为了安全起见，理应报警，但为了不破坏导出流程，这里暂时返回原文
-            // 或者更激进的策略：返回错误提示，避免泄露
-            // 按照需求"规范规范规范"，我们catch并记录，但尽量保证功能可用。
-            return content; 
+            return sanitizedContent;
         }
     }
 }

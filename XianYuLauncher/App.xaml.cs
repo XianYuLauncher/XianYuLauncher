@@ -83,9 +83,9 @@ public partial class App : Application
         Log.Logger = new LoggerConfiguration()
             .ReadFrom.Configuration(configuration)
             .WriteTo.File(
+                new SensitiveLogTextFormatter("{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"),
                 logFilePath,
-                rollingInterval: Serilog.RollingInterval.Day,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+                rollingInterval: Serilog.RollingInterval.Day)
             .CreateLogger();
 
         Log.Information($"[App] Startup environment check. IsMSIX: {AppEnvironment.IsMSIX}");
