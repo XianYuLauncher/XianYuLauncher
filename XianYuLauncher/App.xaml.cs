@@ -15,6 +15,7 @@ using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using XianYuLauncher.Services;
 using WinUIEx;
+using WinRT.Interop;
 
 namespace XianYuLauncher;
 
@@ -45,6 +46,8 @@ public partial class App : Application
     private static WindowEx? _mainWindow;
 
     public static WindowEx MainWindow => _mainWindow ??= new MainWindow();
+
+    public static IntPtr MainWindowHandle => WindowNative.GetWindowHandle(MainWindow);
 
     public static UIElement? AppTitlebar { get; set; }
     
@@ -83,9 +86,9 @@ public partial class App : Application
         Log.Logger = new LoggerConfiguration()
             .ReadFrom.Configuration(configuration)
             .WriteTo.File(
+                new SensitiveLogTextFormatter("{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"),
                 logFilePath,
-                rollingInterval: Serilog.RollingInterval.Day,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+                rollingInterval: Serilog.RollingInterval.Day)
             .CreateLogger();
 
         Log.Information($"[App] Startup environment check. IsMSIX: {AppEnvironment.IsMSIX}");

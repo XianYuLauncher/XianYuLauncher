@@ -48,7 +48,7 @@ public sealed class AddServerDialogResult
 public enum LoginMethodSelectionResult
 {
     Cancel = 0,
-    Browser = 1,
+    Interactive = 1,
     DeviceCode = 2,
 }
 

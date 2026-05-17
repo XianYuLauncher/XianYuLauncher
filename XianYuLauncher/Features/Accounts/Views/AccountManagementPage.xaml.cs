@@ -1161,14 +1161,9 @@ namespace XianYuLauncher.Features.Accounts.Views
                 // 7. 检查响应状态
                 if (!response.IsSuccessStatusCode)
                 {
-                    var responseContent = await response.Content.ReadAsStringAsync();
-                    Debug.WriteLine($"[AccountManagementPage] 皮肤上传请求失败，响应内容: {responseContent}");
-                    throw new HttpRequestException(
-                        $"Response status code does not indicate success: {response.StatusCode}. " +
-                        $"URL: {apiUrl}, " +
-                        $"Method: PUT, " +
-                        $"Model: {model}, " +
-                        $"Response: {responseContent}");
+                    _ = await response.Content.ReadAsStringAsync();
+                    Debug.WriteLine($"[AccountManagementPage] 皮肤上传请求失败，状态码: {response.StatusCode}");
+                    throw new HttpRequestException($"皮肤上传失败，状态码: {response.StatusCode}。");
                 }
                 else
                 {
@@ -1402,13 +1397,9 @@ namespace XianYuLauncher.Features.Accounts.Views
                 // 6. 检查响应状态
                 if (!response.IsSuccessStatusCode)
                 {
-                    var responseContent = await response.Content.ReadAsStringAsync();
-                    Debug.WriteLine($"[AccountManagementPage] 披风上传请求失败，响应内容: {responseContent}");
-                    throw new HttpRequestException(
-                        $"Response status code does not indicate success: {response.StatusCode}. " +
-                        $"URL: {apiUrl}, " +
-                        $"Method: PUT, " +
-                        $"Response: {responseContent}");
+                    _ = await response.Content.ReadAsStringAsync();
+                    Debug.WriteLine($"[AccountManagementPage] 披风上传请求失败，状态码: {response.StatusCode}");
+                    throw new HttpRequestException($"披风上传失败，状态码: {response.StatusCode}。");
                 }
                 else
                 {

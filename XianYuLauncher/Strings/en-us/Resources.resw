@@ -4074,13 +4074,13 @@ Continue downloading?</value>
     <value>Please select your preferred login method:</value>
   </data>
   <data name="Dialog_LoginMethod_BrowserDesc" xml:space="preserve">
-    <value>• Browser Login: Opens system default browser for login (recommended)</value>
+    <value>• Microsoft Sign-in: Uses the Windows system account picker for authentication (recommended)</value>
   </data>
   <data name="Dialog_LoginMethod_DeviceCodeDesc" xml:space="preserve">
     <value>• Device Code Login: Get a code and manually enter it on a webpage</value>
   </data>
   <data name="Dialog_LoginMethod_BrowserButton" xml:space="preserve">
-    <value>Browser Login</value>
+    <value>Microsoft Sign-in</value>
   </data>
   <data name="Dialog_LoginMethod_DeviceCodeButton" xml:space="preserve">
     <value>Device Code Login</value>

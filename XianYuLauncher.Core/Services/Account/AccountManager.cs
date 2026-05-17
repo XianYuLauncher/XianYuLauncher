@@ -145,11 +145,24 @@ public class AccountManager : IAccountManager
                 System.Diagnostics.Debug.WriteLine($"[AccountManager] ⚠️ 检测到明文AccessToken: {profile.Name}");
                 needsMigration = true;
             }
+
+            if (!ShouldPersistRefreshToken(profile) && !string.IsNullOrEmpty(profile.RefreshToken))
+            {
+                System.Diagnostics.Debug.WriteLine($"[AccountManager] ⚠️ 检测到需要清理的 Microsoft RefreshToken: {profile.Name}");
+                profile.RefreshToken = string.Empty;
+                needsMigration = true;
+            }
             
             // 检查RefreshToken
             if (!string.IsNullOrEmpty(profile.RefreshToken) && !TokenEncryption.IsEncrypted(profile.RefreshToken))
             {
                 System.Diagnostics.Debug.WriteLine($"[AccountManager] ⚠️ 检测到明文RefreshToken: {profile.Name}");
+                needsMigration = true;
+            }
+
+            if (!string.IsNullOrEmpty(profile.ClientToken) && !TokenEncryption.IsEncrypted(profile.ClientToken))
+            {
+                System.Diagnostics.Debug.WriteLine($"[AccountManager] ⚠️ 检测到明文ClientToken: {profile.Name}");
                 needsMigration = true;
             }
         }
@@ -185,7 +198,14 @@ public class AccountManager : IAccountManager
             
             if (!string.IsNullOrEmpty(profile.RefreshToken))
             {
-                profile.RefreshToken = TokenEncryption.Decrypt(profile.RefreshToken);
+                profile.RefreshToken = ShouldPersistRefreshToken(profile)
+                    ? TokenEncryption.Decrypt(profile.RefreshToken)
+                    : string.Empty;
+            }
+
+            if (!string.IsNullOrEmpty(profile.ClientToken))
+            {
+                profile.ClientToken = TokenEncryption.Decrypt(profile.ClientToken);
             }
         }
     }
@@ -200,8 +220,9 @@ public class AccountManager : IAccountManager
             Id = p.Id,
             Name = p.Name,
             AccessToken = TokenEncryption.Encrypt(p.AccessToken),
-            RefreshToken = TokenEncryption.Encrypt(p.RefreshToken),
-            ClientToken = p.ClientToken,
+            RefreshToken = ShouldPersistRefreshToken(p) ? TokenEncryption.Encrypt(p.RefreshToken) : string.Empty,
+            ClientToken = TokenEncryption.Encrypt(p.ClientToken),
+            MicrosoftHomeAccountId = p.MicrosoftHomeAccountId,
             TokenType = p.TokenType,
             ExpiresIn = p.ExpiresIn,
             IssueInstant = p.IssueInstant,
@@ -211,6 +232,11 @@ public class AccountManager : IAccountManager
             IsOffline = p.IsOffline,
             AuthServer = p.AuthServer
         }).ToList();
+    }
+
+    private static bool ShouldPersistRefreshToken(MinecraftAccount profile)
+    {
+        return string.Equals(profile.TokenType, "external", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string? ResolveExistingAccountsPath(string minecraftPath)

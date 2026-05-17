@@ -552,17 +552,17 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                 // 外置登录账户刷新
                 await RefreshExternalLoginTokenAsync();
             }
-            else if (!string.IsNullOrWhiteSpace(CurrentProfile.RefreshToken))
+            else
             {
                 // 微软账户刷新
-                // 不管是否过期，直接刷新令牌
                 var authService = App.GetService<MicrosoftAuthService>();
-                var refreshResult = await authService.RefreshMinecraftTokenAsync(CurrentProfile.RefreshToken);
+                var refreshResult = await authService.RefreshMinecraftTokenAsync(CurrentProfile);
                 if (refreshResult.Success)
                 {
                     // 更新当前角色的令牌信息
                     CurrentProfile.AccessToken = refreshResult.AccessToken;
                     CurrentProfile.RefreshToken = refreshResult.RefreshToken;
+                    CurrentProfile.MicrosoftHomeAccountId = refreshResult.MicrosoftHomeAccountId;
                     CurrentProfile.TokenType = refreshResult.TokenType;
                     CurrentProfile.ExpiresIn = refreshResult.ExpiresIn;
                     CurrentProfile.IssueInstant = DateTime.Parse(refreshResult.IssueInstant);
@@ -576,10 +576,6 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                     // 刷新失败，抛出异常
                     throw new Exception(refreshResult.ErrorMessage);
                 }
-            }
-            else
-            {
-                throw new Exception("当前角色没有刷新令牌，无法刷新");
             }
         }
         
@@ -698,14 +694,9 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                 // 7. 如果请求失败，添加详细的错误信息
                 if (!response.IsSuccessStatusCode)
                 {
-                    var responseContent = await response.Content.ReadAsStringAsync();
+                    _ = await response.Content.ReadAsStringAsync();
                     throw new HttpRequestException(
-                        $"Response status code does not indicate success: {response.StatusCode}. " +
-                        $"URL: {apiUrl}, " +
-                        $"Method: POST, " +
-                        $"Variant: {variant}, " +
-                        $"Headers: {string.Join(", ", request.Headers.Select(h => $"{h.Key}: {string.Join(", ", h.Value)}"))}, " +
-                        $"Response: {responseContent}");
+                        $"皮肤上传失败，状态码: {response.StatusCode}。");
                 }
                 
                 response.EnsureSuccessStatusCode();
@@ -871,16 +862,17 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                             
                             // 检查令牌是否即将过期（30分钟内）
                             var timeUntilExpiry = minecraftTokenExpiryTime - DateTime.UtcNow;
-                            if (timeUntilExpiry.TotalMinutes <= 30 && !string.IsNullOrWhiteSpace(CurrentProfile.RefreshToken))
+                            if (timeUntilExpiry.TotalMinutes <= 30)
                             {
                                 // 令牌即将过期，需要刷新
                                 var authService = App.GetService<MicrosoftAuthService>();
-                                var refreshResult = await authService.RefreshMinecraftTokenAsync(CurrentProfile.RefreshToken);
+                                var refreshResult = await authService.RefreshMinecraftTokenAsync(CurrentProfile);
                                 if (refreshResult.Success)
                                 {
                                     // 更新当前角色的令牌信息
                                     CurrentProfile.AccessToken = refreshResult.AccessToken;
                                     CurrentProfile.RefreshToken = refreshResult.RefreshToken;
+                                    CurrentProfile.MicrosoftHomeAccountId = refreshResult.MicrosoftHomeAccountId;
                                     CurrentProfile.TokenType = refreshResult.TokenType;
                                     CurrentProfile.ExpiresIn = refreshResult.ExpiresIn;
                                     CurrentProfile.IssueInstant = DateTime.Parse(refreshResult.IssueInstant);

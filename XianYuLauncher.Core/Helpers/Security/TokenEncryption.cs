@@ -44,8 +44,7 @@ public static class TokenEncryption
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[TokenEncryption] 加密失败: {ex.Message}");
-            // 加密失败，返回原文（不应该发生，但保险起见）
-            return plainText;
+            throw new InvalidOperationException("敏感令牌加密失败，已阻止明文保存。", ex);
         }
     }
     
@@ -150,6 +149,11 @@ public static class TokenEncryption
                 if (!string.IsNullOrEmpty(profile.RefreshToken))
                 {
                     profile.RefreshToken = Decrypt(profile.RefreshToken);
+                }
+
+                if (!string.IsNullOrEmpty(profile.ClientToken))
+                {
+                    profile.ClientToken = Decrypt(profile.ClientToken);
                 }
             }
             

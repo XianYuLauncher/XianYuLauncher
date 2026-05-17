@@ -246,34 +246,41 @@ public sealed class AccountDialogService : IAccountDialogService
     public async Task<LoginMethodSelectionResult> ShowLoginMethodSelectionDialogAsync(
         string? title = null,
         string? instruction = null,
-        string? browserDescription = null,
+        string? interactiveDescription = null,
         string? deviceCodeDescription = null,
-        string? browserButtonText = null,
+        string? interactiveButtonText = null,
         string? deviceCodeButtonText = null,
         string? cancelButtonText = null)
     {
+        var interactiveSupported = OperatingSystem.IsWindowsVersionAtLeast(10, 0, 17763) && AppEnvironment.HasPackageIdentity;
         var resolvedTitle = string.IsNullOrWhiteSpace(title) ? "Dialog_LoginMethod_Title".GetLocalized() : title;
         var resolvedInstruction = string.IsNullOrWhiteSpace(instruction) ? "Dialog_LoginMethod_Instruction".GetLocalized() : instruction;
-        var resolvedBrowserDescription = string.IsNullOrWhiteSpace(browserDescription) ? "Dialog_LoginMethod_BrowserDesc".GetLocalized() : browserDescription;
+        var resolvedInteractiveDescription = string.IsNullOrWhiteSpace(interactiveDescription) ? "Dialog_LoginMethod_BrowserDesc".GetLocalized() : interactiveDescription;
         var resolvedDeviceCodeDescription = string.IsNullOrWhiteSpace(deviceCodeDescription) ? "Dialog_LoginMethod_DeviceCodeDesc".GetLocalized() : deviceCodeDescription;
-        var resolvedBrowserButtonText = string.IsNullOrWhiteSpace(browserButtonText) ? "Dialog_LoginMethod_BrowserButton".GetLocalized() : browserButtonText;
+        var resolvedInteractiveButtonText = string.IsNullOrWhiteSpace(interactiveButtonText) ? "Dialog_LoginMethod_BrowserButton".GetLocalized() : interactiveButtonText;
         var resolvedDeviceCodeButtonText = string.IsNullOrWhiteSpace(deviceCodeButtonText) ? "Dialog_LoginMethod_DeviceCodeButton".GetLocalized() : deviceCodeButtonText;
         var resolvedCancelButtonText = string.IsNullOrWhiteSpace(cancelButtonText) ? "Msg_Cancel".GetLocalized() : cancelButtonText;
+
+        var contentPanel = new StackPanel();
+        contentPanel.Children.Add(new TextBlock { Text = resolvedInstruction, Margin = new Thickness(0, 0, 0, 10) });
+        contentPanel.Children.Add(new TextBlock
+        {
+            Text = interactiveSupported ? resolvedInteractiveDescription : resolvedDeviceCodeDescription,
+            Opacity = 0.8,
+            FontSize = 12,
+        });
+
+        if (interactiveSupported)
+        {
+            contentPanel.Children.Add(new TextBlock { Text = resolvedDeviceCodeDescription, Opacity = 0.8, FontSize = 12 });
+        }
 
         var dialog = new ContentDialog
         {
             Title = resolvedTitle,
-            Content = new StackPanel
-            {
-                Children =
-                {
-                    new TextBlock { Text = resolvedInstruction, Margin = new Thickness(0, 0, 0, 10) },
-                    new TextBlock { Text = resolvedBrowserDescription, Opacity = 0.8, FontSize = 12 },
-                    new TextBlock { Text = resolvedDeviceCodeDescription, Opacity = 0.8, FontSize = 12 },
-                },
-            },
-            PrimaryButtonText = resolvedBrowserButtonText,
-            SecondaryButtonText = resolvedDeviceCodeButtonText,
+            Content = contentPanel,
+            PrimaryButtonText = interactiveSupported ? resolvedInteractiveButtonText : resolvedDeviceCodeButtonText,
+            SecondaryButtonText = interactiveSupported ? resolvedDeviceCodeButtonText : string.Empty,
             CloseButtonText = resolvedCancelButtonText,
             DefaultButton = ContentDialogButton.Primary,
         };
@@ -281,8 +288,8 @@ public sealed class AccountDialogService : IAccountDialogService
         var result = await _dialogHostService.ShowAsync(dialog);
         return result switch
         {
-            ContentDialogResult.Primary => LoginMethodSelectionResult.Browser,
-            ContentDialogResult.Secondary => LoginMethodSelectionResult.DeviceCode,
+            ContentDialogResult.Primary => interactiveSupported ? LoginMethodSelectionResult.Interactive : LoginMethodSelectionResult.DeviceCode,
+            ContentDialogResult.Secondary => interactiveSupported ? LoginMethodSelectionResult.DeviceCode : LoginMethodSelectionResult.Cancel,
             _ => LoginMethodSelectionResult.Cancel,
         };
     }

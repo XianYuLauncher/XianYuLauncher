@@ -4071,13 +4071,13 @@
     <value>请选择您喜欢的登录方式：</value>
   </data>
   <data name="Dialog_LoginMethod_BrowserDesc" xml:space="preserve">
-    <value>• 浏览器登录：打开系统默认浏览器进行登录 (推荐)</value>
+    <value>• 微软账号登录：使用 Windows 系统账户选择器完成认证 (推荐)</value>
   </data>
   <data name="Dialog_LoginMethod_DeviceCodeDesc" xml:space="preserve">
     <value>• 设备代码登录：获取代码后手动访问网页输入</value>
   </data>
   <data name="Dialog_LoginMethod_BrowserButton" xml:space="preserve">
-    <value>浏览器登录</value>
+    <value>微软账号登录</value>
   </data>
   <data name="Dialog_LoginMethod_DeviceCodeButton" xml:space="preserve">
     <value>设备代码登录</value>

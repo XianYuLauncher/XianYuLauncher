@@ -10,7 +10,18 @@ internal static class AuthServiceExtensions
 {
     public static IServiceCollection AddAuthServices(this IServiceCollection services)
     {
-        services.AddHttpClient<MicrosoftAuthService>();
+        services.AddHttpClient(nameof(MicrosoftAuthService), client =>
+        {
+            client.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
+        });
+
+        services.AddSingleton(sp =>
+        {
+            var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+            return new MicrosoftAuthService(
+                httpClientFactory.CreateClient(nameof(MicrosoftAuthService)),
+                () => App.MainWindowHandle);
+        });
 
         services.AddSingleton<AuthlibInjectorService>();
 
