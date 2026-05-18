@@ -57,6 +57,24 @@
 - 项目地址：https://github.com/microsoft/windowsappsdk
 - 归档位置：`NOTICE/license/Microsoft.WindowsAppSDK/`
 
+### Microsoft.Identity.Client
+- 许可证：MIT License
+- 项目地址：https://github.com/AzureAD/microsoft-authentication-library-for-dotnet
+- 使用包：Microsoft.Identity.Client
+- 归档位置：`NOTICE/license/Microsoft.Identity.Client/`
+
+### Microsoft.Identity.Client.Broker
+- 许可证：MIT License
+- 项目地址：https://github.com/AzureAD/microsoft-authentication-library-for-dotnet
+- 使用包：Microsoft.Identity.Client.Broker
+- 归档位置：`NOTICE/license/Microsoft.Identity.Client.Broker/`
+
+### Microsoft.Identity.Client.Extensions.Msal
+- 许可证：MIT License
+- 项目地址：https://github.com/AzureAD/microsoft-authentication-library-for-dotnet
+- 使用包：Microsoft.Identity.Client.Extensions.Msal
+- 归档位置：`NOTICE/license/Microsoft.Identity.Client.Extensions.Msal/`
+
 ### Serilog
 - 许可证：Apache License 2.0
 - 项目地址：https://github.com/serilog/serilog
