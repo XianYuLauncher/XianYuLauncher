@@ -16,6 +16,19 @@ on:
         - NoAction
         - Finalize
         - Halt
+      mandatory_update_action:
+        description: Mandatory update behavior for this Store submission
+        required: true
+        type: choice
+        default: Preserve
+        options:
+        - Preserve
+        - Enable
+        - Disable
+      mandatory_update_effective_date_utc:
+        description: Optional UTC datetime for mandatory update, for example 2026-05-18T08:00:00Z. Leave empty to use submission time when enabling.
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -282,7 +295,9 @@ jobs:
             packageVersion = $packages[0].packageVersion
             displayVersion = $packages[0].displayVersion
             packages = @($packages)
-          releaseNotes = @($releaseNotes.notes)
+            mandatoryUpdateAction = "${{ inputs.mandatory_update_action }}"
+            mandatoryUpdateEffectiveDateUtc = "${{ inputs.mandatory_update_effective_date_utc }}"
+            releaseNotes = @($releaseNotes.notes)
         }
 
         $summaryJson = $summary | ConvertTo-Json -Depth 5
@@ -293,6 +308,10 @@ jobs:
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Tag: $($summary.tagName)"
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Package version: $($summary.packageVersion)"
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Display version: $($summary.displayVersion)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Mandatory update action: $($summary.mandatoryUpdateAction)"
+        if (-not [string]::IsNullOrWhiteSpace($summary.mandatoryUpdateEffectiveDateUtc)) {
+          Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Mandatory update effective date (UTC): $($summary.mandatoryUpdateEffectiveDateUtc)"
+        }
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value ''
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '| Platform | Package | Identity | Publisher | Artifact |'
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value '| --- | --- | --- | --- | --- |'
@@ -420,7 +439,9 @@ jobs:
           -ReleaseNotesPath "store-release-notes\store-release-notes.json" `
           -TagName "${{ needs.validate-request.outputs.tag_name }}" `
           -OutputDirectory "store-submission-result" `
-          -ExistingPackageRolloutAction "${{ inputs.existing_rollout_action }}"
+          -ExistingPackageRolloutAction "${{ inputs.existing_rollout_action }}" `
+          -MandatoryUpdateAction "${{ inputs.mandatory_update_action }}" `
+          -MandatoryUpdateEffectiveDateUtc "${{ inputs.mandatory_update_effective_date_utc }}"
 
     - name: Write Store submission summary
       shell: powershell
@@ -437,6 +458,9 @@ jobs:
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Tag: $($result.tagName)"
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Submission ID: $($result.submissionId)"
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Target publish mode: $($result.targetPublishMode)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Mandatory update action: $($result.mandatoryUpdateAction)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Mandatory update enabled: $($result.mandatoryUpdateEnabled)"
+        Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Mandatory update effective date: $($result.mandatoryUpdateEffectiveDate)"
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Current status: $($result.status)"
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Timed out while polling: $($result.timedOut)"
         Add-Content -Path $env:GITHUB_STEP_SUMMARY -Value "- Partner Center: $($result.portalUrl)"

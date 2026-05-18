@@ -30,6 +30,11 @@ param(
     [ValidateSet('Default', 'Immediate', 'Manual', 'SpecificDate')]
     [string]$TargetPublishMode = 'Immediate',
 
+    [ValidateSet('Preserve', 'Enable', 'Disable')]
+    [string]$MandatoryUpdateAction = 'Preserve',
+
+    [string]$MandatoryUpdateEffectiveDateUtc = '',
+
     [ValidateRange(1, 240)]
     [int]$PollTimeoutMinutes = 20,
 
@@ -287,6 +292,85 @@ function Wait-ForSubmissionStatus {
     }
 }
 
+function Resolve-MandatoryUpdateEffectiveDateUtc {
+    param(
+        [AllowEmptyString()]
+        [string]$Value
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return [DateTimeOffset]::UtcNow
+    }
+
+    $parsedValue = $null
+    if (-not [DateTimeOffset]::TryParse($Value, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::AssumeUniversal, [ref]$parsedValue)) {
+        throw "MandatoryUpdateEffectiveDateUtc must be a valid ISO 8601 datetime string in UTC, for example 2026-05-18T08:00:00Z."
+    }
+
+    return $parsedValue.ToUniversalTime()
+}
+
+function Set-MandatoryUpdateOptions {
+    param(
+        [Parameter(Mandatory = $true)]
+        [pscustomobject]$Submission,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Action,
+
+        [AllowEmptyString()]
+        [string]$EffectiveDateUtc
+    )
+
+    if (-not $Submission.PSObject.Properties['packageDeliveryOptions'] -or $null -eq $Submission.packageDeliveryOptions) {
+        $Submission | Add-Member -MemberType NoteProperty -Name 'packageDeliveryOptions' -Value ([pscustomobject]@{})
+    }
+
+    $packageDeliveryOptions = $Submission.packageDeliveryOptions
+
+    switch ($Action) {
+        'Preserve' {
+            return
+        }
+        'Enable' {
+            $effectiveDate = Resolve-MandatoryUpdateEffectiveDateUtc -Value $EffectiveDateUtc
+
+            if ($packageDeliveryOptions.PSObject.Properties['isMandatoryUpdate']) {
+                $packageDeliveryOptions.isMandatoryUpdate = $true
+            }
+            else {
+                $packageDeliveryOptions | Add-Member -MemberType NoteProperty -Name 'isMandatoryUpdate' -Value $true
+            }
+
+            if ($packageDeliveryOptions.PSObject.Properties['mandatoryUpdateEffectiveDate']) {
+                $packageDeliveryOptions.mandatoryUpdateEffectiveDate = $effectiveDate.ToString('o')
+            }
+            else {
+                $packageDeliveryOptions | Add-Member -MemberType NoteProperty -Name 'mandatoryUpdateEffectiveDate' -Value $effectiveDate.ToString('o')
+            }
+        }
+        'Disable' {
+            if ($packageDeliveryOptions.PSObject.Properties['isMandatoryUpdate']) {
+                $packageDeliveryOptions.isMandatoryUpdate = $false
+            }
+            else {
+                $packageDeliveryOptions | Add-Member -MemberType NoteProperty -Name 'isMandatoryUpdate' -Value $false
+            }
+
+            $disabledDate = '1601-01-01T00:00:00.0000000Z'
+            if ($packageDeliveryOptions.PSObject.Properties['mandatoryUpdateEffectiveDate']) {
+                $packageDeliveryOptions.mandatoryUpdateEffectiveDate = $disabledDate
+            }
+            else {
+                $packageDeliveryOptions | Add-Member -MemberType NoteProperty -Name 'mandatoryUpdateEffectiveDate' -Value $disabledDate
+            }
+        }
+        default {
+            throw "Unsupported MandatoryUpdateAction '$Action'."
+        }
+    }
+}
+
 Assert-NotEmpty -Name 'AppId' -Value $AppId
 Assert-NotEmpty -Name 'TenantId' -Value $TenantId
 Assert-NotEmpty -Name 'ClientId' -Value $ClientId
@@ -339,6 +423,8 @@ if ($TargetPublishMode -ne 'Default') {
     }
 }
 
+Set-MandatoryUpdateOptions -Submission $clonedSubmission -Action $MandatoryUpdateAction -EffectiveDateUtc $MandatoryUpdateEffectiveDateUtc
+
 Set-ListingReleaseNotes -Submission $clonedSubmission -ReleaseNotes $releaseNotes
 
 $updatedSubmission = Set-ApplicationSubmission -AppId $AppId -UpdatedSubmission $clonedSubmission -NoStatus
@@ -371,6 +457,9 @@ $result = [ordered]@{
     appId = $AppId
     submissionId = $submissionId
     targetPublishMode = if ($TargetPublishMode -eq 'Default') { [string]$clonedSubmission.targetPublishMode } else { $TargetPublishMode }
+    mandatoryUpdateAction = $MandatoryUpdateAction
+    mandatoryUpdateEnabled = [bool]$clonedSubmission.packageDeliveryOptions.isMandatoryUpdate
+    mandatoryUpdateEffectiveDate = [string]$clonedSubmission.packageDeliveryOptions.mandatoryUpdateEffectiveDate
     status = [string]$statusResult.status
     timedOut = [bool]$statusResult.timedOut
     observedStatuses = @($statusResult.observedStatuses)
