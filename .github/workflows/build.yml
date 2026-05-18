@@ -58,8 +58,6 @@ jobs:
       Project_Path: XianYuLauncher/XianYuLauncher.csproj
       Configuration: Release
       Platform: ${{ matrix.platform }}
-      # 用于签名的临时文件名
-      Certificate_Path: GitHubActionsWorkflow.pfx
 
     steps:
     - name: Checkout
@@ -106,29 +104,7 @@ jobs:
       run: |
         .\scripts\generate-afdian-sponsors.ps1 -OutputPath "XianYuLauncher/Assets/Data/afdian-sponsors.json"
 
-    # 3. 准备证书 (Base64 -> PFX)
-    - name: Prepare Certificate
-      shell: powershell
-      run: |
-        $pfxBase64 = '${{ secrets.PFX_BASE64 }}'
-        if ([string]::IsNullOrWhiteSpace($pfxBase64)) {
-            Write-Error "Secret PFX_BASE64 missing"
-            exit 1
-        }
-        $pfxPath = "$env:GITHUB_WORKSPACE\sign.pfx"
-        $pfxBytes = [System.Convert]::FromBase64String($pfxBase64)
-        [System.IO.File]::WriteAllBytes($pfxPath, $pfxBytes)
-        
-        Write-Host "Cert saved to $pfxPath"
-        
-        # 显式导入证书并获取 Thumbprint
-        $password = ConvertTo-SecureString -String '${{ secrets.PFX_PASSWORD }}' -AsPlainText -Force
-        $cert = Import-PfxCertificate -FilePath $pfxPath -CertStoreLocation Cert:\CurrentUser\My -Password $password
-        
-        echo "PFX_THUMBPRINT=$($cert.Thumbprint)" >> $env:GITHUB_ENV
-        Write-Host "Imported certificate with Thumbprint: $($cert.Thumbprint)"
-
-    # 4. 根据 Tag 判断通道并修改 Manifest (Dev/Stable)
+    # 3. 根据 Tag 判断通道并修改 Manifest (Dev/Stable)
     - name: Configure Channel
       id: store_channel
       shell: powershell
@@ -139,11 +115,11 @@ jobs:
           -UpdateManifest `
           -ManifestPath "XianYuLauncher/Package.appxmanifest"
 
-    # 5. 还原包
+    # 4. 还原包
     - name: Restore
       run: nuget restore ${{ env.Solution_Name }} -ConfigFile NuGet.config
 
-    # 6. 构建并打包 (使用 MSBuild)
+    # 5. 构建并打包 (使用 MSBuild)
     - name: Build
       shell: powershell
       run: |
@@ -159,15 +135,16 @@ jobs:
           /p:GenerateAppxPackageOnBuild=true `
           /p:UapAppxPackageBuildMode=SideloadOnly `
           /p:AppxBundle=Never `
-          /p:AppxPackageSigningEnabled=true `
-          /p:PackageCertificateThumbprint="$env:PFX_THUMBPRINT" `
+              /p:AppxPackageSigningEnabled=false `
+              /p:PackageCertificateThumbprint= `
+              /p:PackageCertificateKeyFile= `
           /p:AppxPackageDir="$env:GITHUB_WORKSPACE\AppPackages\" `
           /p:PackageOutputPath="$env:GITHUB_WORKSPACE\AppPackages\" `
           /p:GenerateAppInstallerFile=false
 
-    # 稳定版 StoreUpload 构建已迁移到独立的手动发布工作流，这里仅保留签名的 Packaged 产物留档能力。
+            # 稳定版 StoreUpload 构建已迁移到独立的手动发布工作流，这里仅保留无签名的 Packaged 产物留档能力。
 
-    # 7. 上传已签名 SideLoadOnly 包（仅供工作流留档，不参与 GitHub Release）
+            # 6. 上传无签名 SideLoadOnly 包（仅供工作流留档，不参与 GitHub Release）
     - name: Upload Store Packaged Artifacts
       uses: actions/upload-artifact@v4
       with:
