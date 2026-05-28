@@ -75,9 +75,9 @@ public class TelemetryService
         }
     }
 
-    private async Task SendTelemetryDataAsync<T>(T data, JsonSerializerOptions? options = null, Func<Task>? onSuccess = null)
+    private Task SendTelemetryDataAsync<T>(T data, Func<Task>? onSuccess = null)
     {
-        var json = options == null ? JsonSerializer.Serialize(data) : JsonSerializer.Serialize(data, options);
+        var json = JsonSerializer.Serialize(data);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         // 异步发送，不等待
@@ -103,6 +103,8 @@ public class TelemetryService
                 System.Diagnostics.Debug.WriteLine("[Telemetry] 发送异常");
             }
         });
+
+        return Task.CompletedTask;
     }
 
     /// <summary>
