@@ -814,7 +814,7 @@
     <value>允许发送匿名诊断数据</value>
   </data>
   <data name="Settings_Telemetry.Description" xml:space="preserve">
-    <value>帮助改进启动器，仅收集游戏版本、运行性能及启动结果类数据</value>
+    <value>帮助改进启动器，仅收集启动器打开与首次使用等匿名统计，不包含游戏版本或运行日志。</value>
   </data>
   <data name="Settings_InstallDevChannel.Content" xml:space="preserve">
     <value>安装 Dev 通道版本</value>
