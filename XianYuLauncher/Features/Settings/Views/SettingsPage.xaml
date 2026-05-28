@@ -980,7 +980,7 @@
                 </controls:SettingsCard>
 
                 <!-- 遥测 -->
-                <controls:SettingsCard x:Uid="Settings_Telemetry" Header="允许发送匿名诊断数据" Description="帮助改进启动器，仅收集游戏版本、运行性能及启动结果类数据">
+                <controls:SettingsCard x:Uid="Settings_Telemetry" Header="允许发送匿名诊断数据" Description="帮助改进启动器，仅收集启动器打开与首次使用等匿名统计，不包含游戏版本或运行日志。">
                     <controls:SettingsCard.HeaderIcon>
                         <FontIcon Glyph="&#xE9D9;" />
                     </controls:SettingsCard.HeaderIcon>

@@ -2,8 +2,6 @@ using System;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using XianYuLauncher.Core.Contracts.Services;
@@ -11,7 +9,7 @@ using XianYuLauncher.Core.Contracts.Services;
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-/// 遥测统计服务
+/// 启动器使用统计服务（AppLaunch / FirstLaunch）
 /// </summary>
 public class TelemetryService
 {
@@ -77,9 +75,9 @@ public class TelemetryService
         }
     }
 
-    private async Task SendTelemetryDataAsync<T>(T data, JsonSerializerOptions? options = null, Func<Task>? onSuccess = null)
+    private Task SendTelemetryDataAsync<T>(T data, Func<Task>? onSuccess = null)
     {
-        var json = options == null ? JsonSerializer.Serialize(data) : JsonSerializer.Serialize(data, options);
+        var json = JsonSerializer.Serialize(data);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         // 异步发送，不等待
@@ -105,6 +103,8 @@ public class TelemetryService
                 System.Diagnostics.Debug.WriteLine("[Telemetry] 发送异常");
             }
         });
+
+        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -132,70 +132,4 @@ public class TelemetryService
             System.Diagnostics.Debug.WriteLine("[Telemetry] 启动统计发送失败");
         }
     }
-
-    /// <summary>
-    /// 记录游戏启动会话
-    /// </summary>
-    public async Task TrackGameSessionAsync(bool isSuccess, string mcVersion, string loaderType, string loaderVersion, int exitCode, double durationSeconds, int javaVersionMajor, int memoryAllocatedMb)
-    {
-        var isEnabled = await _localSettingsService.ReadSettingAsync<bool?>(EnableTelemetryKey) ?? true;
-        if (!isEnabled) return;
-        
-        if (string.IsNullOrEmpty(TelemetryEndpoint)) return;
-
-        try
-        {
-            var sanitizedMcVersion = isSuccess ? null : SanitizeString(mcVersion);
-            var sanitizedLoaderType = isSuccess ? null : SanitizeString(loaderType);
-            var sanitizedLoaderVersion = isSuccess ? null : SanitizeString(loaderVersion);
-
-            var data = new
-            {
-                EventType = "GameSession",
-                Timestamp = DateTime.UtcNow,
-                Properties = new 
-                {
-                    IsSuccess = isSuccess,
-                    MinecraftVersion = sanitizedMcVersion,
-                    LoaderType = sanitizedLoaderType,
-                    LoaderVersion = sanitizedLoaderVersion,
-                    JavaVersionMajor = javaVersionMajor,
-                    ExitCode = exitCode,
-                    DurationSeconds = durationSeconds,
-                    MemoryAllocatedMb = memoryAllocatedMb
-                }
-            };
-
-            var options = new JsonSerializerOptions
-            {
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            };
-
-            await SendTelemetryDataAsync(data, options);
-        }
-        catch (Exception)
-        {
-            System.Diagnostics.Debug.WriteLine("[Telemetry] 游戏会话统计发送失败");
-        }
-    }
-
-    /// <summary>
-    /// 清洗字符串，防止恶意Payload（仅允许字母数字和.-_）
-    /// </summary>
-    private string SanitizeString(string input, int maxLength = 32)
-    {
-        if (string.IsNullOrEmpty(input)) return string.Empty;
-        
-        // 1. 长度截断
-        if (input.Length > maxLength)
-        {
-            input = input.Substring(0, maxLength);
-        }
-        
-        // 2. 白名单过滤 (只允许字母、数字、点、横杠、下划线)
-        // 任何不在此列表中的字符都会被移除
-        return Regex.Replace(input, @"[^a-zA-Z0-9\.\-_]", ""); 
-    }
-
-
 }

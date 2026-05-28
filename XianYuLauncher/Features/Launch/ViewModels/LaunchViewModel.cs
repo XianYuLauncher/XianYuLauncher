@@ -414,11 +414,6 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     /// 当前游戏进程
     /// </summary>
     private Process? _currentGameProcess = null;
-
-    /// <summary>
-    /// 当前使用的 Java 路径（用于遥测）
-    /// </summary>
-    private string _currentUsedJavaPath = string.Empty;
     
     /// <summary>
     /// 下载取消令牌源
@@ -687,49 +682,6 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
             if (playTimeSeconds > 0)
             {
                 _ = _versionConfigService.RecordExitAsync(_currentLaunchedVersion, playTimeSeconds);
-            }
-
-            // 发送遥测（排除用户主动终止）
-            if (!e.IsUserTerminated)
-            {
-                try
-                {
-                    var versionConfig = await _versionConfigService.LoadConfigAsync(_currentLaunchedVersion);
-
-                    // 使用实际启动时的 Java 路径，确保遥测准确
-                    var javaPath = _currentUsedJavaPath;
-                    if (string.IsNullOrEmpty(javaPath))
-                    {
-                        javaPath = versionConfig.UseGlobalJavaSetting
-                            ? await _localSettingsService.ReadSettingAsync<string>(SelectedJavaVersionKey)
-                            : versionConfig.JavaPath;
-
-                        if (string.IsNullOrEmpty(javaPath))
-                        {
-                            javaPath = await _localSettingsService.ReadSettingAsync<string>(JavaPathKey);
-                        }
-                    }
-
-                    var javaVersion = await _javaRuntimeService.GetJavaVersionInfoAsync(javaPath ?? string.Empty);
-                    var javaVersionMajor = javaVersion?.MajorVersion ?? 0;
-                    var memoryAllocatedMb = (int)Math.Round(versionConfig.MaximumHeapMemory * 1024);
-                    var isSuccess = e.ExitCode == 0;
-
-                    var telemetryService = App.GetService<TelemetryService>();
-                    await telemetryService.TrackGameSessionAsync(
-                        isSuccess: isSuccess,
-                        mcVersion: versionConfig.MinecraftVersion,
-                        loaderType: versionConfig.ModLoaderType,
-                        loaderVersion: versionConfig.ModLoaderVersion,
-                        exitCode: e.ExitCode,
-                        durationSeconds: durationSeconds,
-                        javaVersionMajor: javaVersionMajor,
-                        memoryAllocatedMb: memoryAllocatedMb);
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine($"[Telemetry] 发送游戏会话失败: {ex.Message}");
-                }
             }
 
             _currentLaunchedVersion = string.Empty;
@@ -1613,8 +1565,6 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
                 currentQuickPlayServer,
                 currentQuickPlayPort);
 
-            _currentUsedJavaPath = result.Success ? result.UsedJavaPath : string.Empty;
-            
             _downloadCancellationTokenSource?.Dispose();
             _downloadCancellationTokenSource = null;
             _isPreparingGame = false;

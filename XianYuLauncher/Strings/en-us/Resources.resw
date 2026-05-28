@@ -814,7 +814,7 @@
     <value>Allow sending anonymous diagnostic data</value>
   </data>
   <data name="Settings_Telemetry.Description" xml:space="preserve">
-    <value>Help improve the launcher by collecting only game version, performance, and launch result data.</value>
+    <value>Help improve the launcher with anonymous stats such as app opens and first launch only. No game version or runtime logs are collected.</value>
   </data>
   <data name="Settings_InstallDevChannel.Content" xml:space="preserve">
     <value>Install Dev Channel Version</value>
