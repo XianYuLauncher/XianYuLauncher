@@ -886,7 +886,7 @@
                     </controls:SettingsExpander.Content>
                     <controls:SettingsExpander.Items>
                         <controls:SettingsCard ContentAlignment="Vertical" HorizontalContentAlignment="Stretch" Visibility="{x:Bind ViewModel.IsAIAnalysisEnabled, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <TextBlock x:Uid="Settings_AI_Disclaimer" Text="Launcher AI 仅提供接入 OpenAI API 规范的 LLM 的能力，软件内不提供任何 AI 服务或账号。使用前请确认您所在地区允许使用相关服务。"
+                            <TextBlock x:Uid="Settings_AI_Disclaimer" Text="Launcher AI 仅提供接入 OpenAI Chat Completions API 规范的 LLM 的能力，软件内不提供任何 AI 服务或账号。使用前请确认您所在地区允许使用相关服务。"
                                        Style="{ThemeResource CaptionTextBlockStyle}" TextWrapping="Wrap" Opacity="0.7" Margin="0,0,0,8" />
                         </controls:SettingsCard>
                         <controls:SettingsCard x:Uid="Settings_AI_ApiEndpoint" Header="API 端点" Description="OpenAI 兼容的 API 基础 URL"

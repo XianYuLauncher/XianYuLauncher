@@ -7,7 +7,7 @@ namespace XianYuLauncher.Core.Contracts.Services
     public interface IAIAnalysisService
     {
         /// <summary>
-        /// 带原生 function calling 的流式聊天
+        /// 通过 OpenAI Chat Completions API 进行带 function calling 的流式聊天
         /// </summary>
         IAsyncEnumerable<AiStreamChunk> StreamChatWithToolsAsync(
             IEnumerable<ChatMessage> messages,

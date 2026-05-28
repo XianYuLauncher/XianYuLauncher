@@ -1,7 +1,7 @@
 namespace XianYuLauncher.Core.Models;
 
 /// <summary>
-/// OpenAI function calling 工具定义
+/// OpenAI Chat Completions API function calling 工具定义
 /// </summary>
 public class AiToolDefinition
 {
