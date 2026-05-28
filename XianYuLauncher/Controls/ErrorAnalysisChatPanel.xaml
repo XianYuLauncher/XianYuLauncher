@@ -128,7 +128,7 @@
                                             </Grid>
                                             <StackPanel Grid.Column="1" Spacing="0" VerticalAlignment="Center">
                                                 <TextBlock
-                                                    Text="Invoking"
+                                                    Text="{x:Bind ToolCallStatusText, Mode=OneWay}"
                                                     FontSize="11"
                                                     LineHeight="12"
                                                     Opacity="0.72"
