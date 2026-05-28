@@ -33,27 +33,13 @@
             </Button>
         </Grid>
 
-        <Border Grid.Row="1"
-            VerticalAlignment="Stretch"
-                CornerRadius="8"
-                BorderThickness="1"
-                BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                Background="{ThemeResource LayerFillColorDefaultBrush}">
-            <Grid Padding="20">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <controls:ErrorAnalysisChatPanel
-                    Grid.RowSpan="3"
-                    ViewModel="{Binding ViewModel, ElementName=Root}"
-                    IsComposerEnabled="{Binding IsComposerEnabled, ElementName=Root}"
-                    MessagesMaxHeight="{Binding MessagesMaxHeight, ElementName=Root}"
-                    ShowEmptyPlaceholder="{Binding ShowEmptyPlaceholder, ElementName=Root}"
-                    EmptyPlaceholderText="{Binding EmptyPlaceholderText, ElementName=Root}" />
-            </Grid>
-        </Border>
+        <Grid Grid.Row="1" VerticalAlignment="Stretch">
+            <controls:ErrorAnalysisChatPanel
+                ViewModel="{Binding ViewModel, ElementName=Root}"
+                IsComposerEnabled="{Binding IsComposerEnabled, ElementName=Root}"
+                MessagesMaxHeight="{Binding MessagesMaxHeight, ElementName=Root}"
+                ShowEmptyPlaceholder="{Binding ShowEmptyPlaceholder, ElementName=Root}"
+                EmptyPlaceholderText="{Binding EmptyPlaceholderText, ElementName=Root}" />
+        </Grid>
     </Grid>
 </UserControl>
