@@ -2,6 +2,7 @@ using System.IO.Compression;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 
@@ -69,13 +70,16 @@ public class ErrorAnalysisExportService : IErrorAnalysisExportService
             }
 
             await _dialogService.ShowMessageDialogAsync(
-                "成功",
-                string.Format("崩溃日志已成功导出到：{0}\n\n包含内容：\n• 游戏崩溃日志\n• 启动参数\n• 启动器日志\n• 版本配置文件", zipFilePath),
-                "确定");
+                "Dialog_CrashExport_Success_Title".GetLocalized(),
+                "Dialog_CrashExport_Success_Content_Format".GetLocalized(zipFilePath),
+                "Dialog_OK".GetLocalized());
         }
         catch (Exception ex)
         {
-            await _dialogService.ShowMessageDialogAsync("错误", string.Format("导出崩溃日志失败：{0}", ex.Message), "确定");
+            await _dialogService.ShowMessageDialogAsync(
+                "Msg_Error".GetLocalized(),
+                "Dialog_CrashExport_Failed_Format".GetLocalized(ex.Message),
+                "Dialog_OK".GetLocalized());
         }
     }
 

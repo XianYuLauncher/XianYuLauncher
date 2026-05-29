@@ -1,4 +1,5 @@
 using XianYuLauncher.Contracts.Services;
+using XianYuLauncher.Helpers;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Models.VersionManagement;
 
@@ -27,10 +28,10 @@ public sealed class ScreenshotInteractionService : IScreenshotInteractionService
         try
         {
             var confirmed = await _dialogService.ShowConfirmationDialogAsync(
-                "确认删除",
-                $"确定要删除截图 '{screenshot.Name}' 吗？此操作不可恢复。",
-                "确定删除",
-                "取消");
+                "Dialog_Screenshot_DeleteConfirm_Title".GetLocalized(),
+                "Dialog_Screenshot_DeleteConfirm_Content_Format".GetLocalized(screenshot.Name),
+                "Dialog_ConfirmDelete".GetLocalized(),
+                "Dialog_Cancel".GetLocalized());
             if (!confirmed)
             {
                 return (false, string.Empty);

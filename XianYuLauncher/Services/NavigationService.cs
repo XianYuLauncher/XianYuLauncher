@@ -176,9 +176,9 @@ public class NavigationService : INavigationService
         catch (Exception ex)
         {
             _ = _dialogService.ShowMessageDialogAsync(
-                "导航错误",
-                $"无法导航到页面: {pageKey}\n\n错误信息: {ex.Message}\n\n堆栈跟踪: {ex.StackTrace}",
-                "确定");
+                "Dialog_Navigation_Error_Title".GetLocalized(),
+                "Dialog_Navigation_Error_Content_Format".GetLocalized(pageKey, ex.Message, ex.StackTrace ?? string.Empty),
+                "Dialog_OK".GetLocalized());
             return false;
         }
     }

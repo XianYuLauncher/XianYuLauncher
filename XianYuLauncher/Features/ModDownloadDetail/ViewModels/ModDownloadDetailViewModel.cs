@@ -422,7 +422,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
             try
             {
                 IsInstalling = false; // 确保安装状态已重置
-                await _commonDialogService.ShowMessageDialogAsync("提示", message);
+                await _commonDialogService.ShowMessageDialogAsync("Msg_Prompt".GetLocalized(), message);
             }
             catch (Exception ex)
             {

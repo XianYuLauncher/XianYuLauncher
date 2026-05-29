@@ -424,7 +424,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
     {
         if (item == null) return;
 
-        if (!await _dialogService.ShowConfirmationDialogAsync(title, message, "删除", "取消"))
+        if (!await _dialogService.ShowConfirmationDialogAsync(title, message, "Dialog_Delete".GetLocalized(), "Dialog_Cancel".GetLocalized()))
             return;
 
         try

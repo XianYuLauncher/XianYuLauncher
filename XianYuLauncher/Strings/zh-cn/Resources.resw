@@ -4540,6 +4540,191 @@
   <data name="Dialog_Account_OpenProfileLinkFailed_Content" xml:space="preserve">
     <value>无法打开创建档案链接，请手动访问该网址。</value>
   </data>
+  <data name="Dialog_Shortcut_Overwrite_Title" xml:space="preserve">
+    <value>快捷方式已存在</value>
+  </data>
+  <data name="Dialog_Shortcut_Overwrite_Content_Format" xml:space="preserve">
+    <value>桌面上已存在 {0} 的快捷方式。
+是否覆盖现有快捷方式？</value>
+  </data>
+  <data name="Dialog_Overwrite" xml:space="preserve">
+    <value>覆盖</value>
+  </data>
+  <data name="Dialog_Shortcut_Created_Title" xml:space="preserve">
+    <value>快捷方式已创建</value>
+  </data>
+  <data name="Dialog_Shortcut_Created_Version_Content_Format" xml:space="preserve">
+    <value>已在桌面创建 {0} 的快捷方式。
+双击该快捷方式可直接启动该版本。</value>
+  </data>
+  <data name="Dialog_Shortcut_Created_Map_Content_Format" xml:space="preserve">
+    <value>已在桌面创建 {0} 的快捷方式。
+双击可直接进入此存档。</value>
+  </data>
+  <data name="Dialog_Shortcut_CreateFailed_Title" xml:space="preserve">
+    <value>创建失败</value>
+  </data>
+  <data name="Dialog_Shortcut_CreateFailed_Content" xml:space="preserve">
+    <value>创建快捷方式时发生错误，请稍后重试。</value>
+  </data>
+  <data name="Dialog_Shortcut_CreateFailed_Server_Content" xml:space="preserve">
+    <value>创建快捷方式失败，请检查桌面权限或稍后重试。</value>
+  </data>
+  <data name="Dialog_Map_DeleteConfirm_Title" xml:space="preserve">
+    <value>确认删除</value>
+  </data>
+  <data name="Dialog_Map_DeleteConfirm_Content_Format" xml:space="preserve">
+    <value>确定要删除地图 '{0}' 吗？此操作不可恢复。</value>
+  </data>
+  <data name="Dialog_ConfirmDelete" xml:space="preserve">
+    <value>确定删除</value>
+  </data>
+  <data name="Dialog_Map_Rename_Title" xml:space="preserve">
+    <value>重命名地图</value>
+  </data>
+  <data name="Dialog_RenameFailed_Title" xml:space="preserve">
+    <value>重命名失败</value>
+  </data>
+  <data name="Dialog_Rename_NameExists" xml:space="preserve">
+    <value>该名称已存在，请使用其他名称。</value>
+  </data>
+  <data name="Dialog_Server_DeleteFailed_Format" xml:space="preserve">
+    <value>删除服务器失败: {0}</value>
+  </data>
+  <data name="Dialog_ResourceDownload_NoClientLink" xml:space="preserve">
+    <value>该版本没有客户端下载链接</value>
+  </data>
+  <data name="Dialog_ResourceDownload_NoServerLink" xml:space="preserve">
+    <value>该版本没有服务端下载链接</value>
+  </data>
+  <data name="Dialog_Download_Failed_Title" xml:space="preserve">
+    <value>下载失败</value>
+  </data>
+  <data name="Dialog_CrashExport_Failed_Format" xml:space="preserve">
+    <value>导出崩溃日志失败：{0}</value>
+  </data>
+  <data name="Dialog_Agent_ModNotFound_Title" xml:space="preserve">
+    <value>未找到</value>
+  </data>
+  <data name="Dialog_Agent_ModNotFound_Content_Format" xml:space="preserve">
+    <value>未在 Modrinth 或 CurseForge 找到与 '{0}' 对应的项目。</value>
+  </data>
+  <data name="Dialog_Agent_DeleteMod_Title" xml:space="preserve">
+    <value>删除 Mod</value>
+  </data>
+  <data name="Dialog_Agent_DeleteMod_Content_Format" xml:space="preserve">
+    <value>确定要删除该 Mod 吗？
+
+文件名：{0}
+路径：{1}
+
+注意：如果这是依赖库，可能会影响其它 Mod。</value>
+  </data>
+  <data name="Dialog_VersionComplete_Title" xml:space="preserve">
+    <value>版本补全</value>
+  </data>
+  <data name="Dialog_Close" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <data name="Dialog_VersionComplete_Status_Format" xml:space="preserve">
+    <value>版本 {0}
+正在检查依赖...</value>
+  </data>
+  <data name="Dialog_Server_DeleteConfirm_Title" xml:space="preserve">
+    <value>删除服务器</value>
+  </data>
+  <data name="Dialog_Server_DeleteConfirm_Content_Format" xml:space="preserve">
+    <value>确定要删除服务器 '{0}' 吗?</value>
+  </data>
+  <data name="Dialog_Shortcut_Created_Server_Content_Format" xml:space="preserve">
+    <value>已在桌面创建 {0} 的快捷方式。
+双击可直接连接此服务器。</value>
+  </data>
+  <data name="Dialog_Version_Rename_Title" xml:space="preserve">
+    <value>重命名版本</value>
+  </data>
+  <data name="Dialog_Version_Rename_Placeholder" xml:space="preserve">
+    <value>新版本名称</value>
+  </data>
+  <data name="Dialog_Version_Rename_Instruction" xml:space="preserve">
+    <value>请输入新的版本名称：</value>
+  </data>
+  <data name="Dialog_CrashExport_Success_Title" xml:space="preserve">
+    <value>成功</value>
+  </data>
+  <data name="Dialog_CrashExport_Success_Content_Format" xml:space="preserve">
+    <value>崩溃日志已成功导出到：{0}
+
+包含内容：
+• 游戏崩溃日志
+• 启动参数
+• 启动器日志
+• 版本配置文件</value>
+  </data>
+  <data name="Dialog_Navigation_Error_Title" xml:space="preserve">
+    <value>导航错误</value>
+  </data>
+  <data name="Dialog_Navigation_Error_Content_Format" xml:space="preserve">
+    <value>无法导航到页面: {0}
+
+错误信息: {1}
+
+堆栈跟踪: {2}</value>
+  </data>
+  <data name="Dialog_Screenshot_DeleteConfirm_Title" xml:space="preserve">
+    <value>确认删除</value>
+  </data>
+  <data name="Dialog_Screenshot_DeleteConfirm_Content_Format" xml:space="preserve">
+    <value>确定要删除截图 '{0}' 吗？此操作不可恢复。</value>
+  </data>
+  <data name="Msg_DownloadFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Multiplayer_PortTimeout_Content" xml:space="preserve">
+    <value>无法获取 Terracotta 端口信息，请检查：
+1. 防火墙是否阻止了程序
+2. 杀毒软件是否拦截了程序
+3. 是否有足够的磁盘空间
+
+这可能是一个 Bug，请前往 设置-&gt;关于-&gt;快速动作 导出日志并发送给开发者</value>
+  </data>
+  <data name="Dialog_Multiplayer_ServiceUnavailable" xml:space="preserve">
+    <value>联机服务文件不存在或无法下载，请检查网络连接后重试</value>
+  </data>
+  <data name="Dialog_Multiplayer_StartFailed_Format" xml:space="preserve">
+    <value>启动联机服务时发生错误：{0}</value>
+  </data>
+  <data name="Dialog_ExportLaunchArgs_Region_Title" xml:space="preserve">
+    <value>地区限制</value>
+  </data>
+  <data name="Dialog_ExportLaunchArgs_Region_Content" xml:space="preserve">
+    <value>当前地区仅允许微软账户登录用户导出启动参数。
+请先使用微软账户登录后再尝试导出。</value>
+  </data>
+  <data name="Dialog_ResourceDownload_ImportShareCode_Title" xml:space="preserve">
+    <value>导入分享码</value>
+  </data>
+  <data name="Dialog_ResourceDownload_ImportShareCode_Prompt" xml:space="preserve">
+    <value>请粘贴分享码（支持JSON数组或换行分隔）：</value>
+  </data>
+  <data name="Dialog_ResourceDownload_FavoritesDownload_Title" xml:space="preserve">
+    <value>收藏夹下载中</value>
+  </data>
+  <data name="Dialog_ResourceDownload_FavoritesDownload_Background" xml:space="preserve">
+    <value>后台下载</value>
+  </data>
+  <data name="Dialog_Settings_EasterEgg_On_Title" xml:space="preserve">
+    <value>🎉 彩蛋模式已开启</value>
+  </data>
+  <data name="Dialog_Settings_EasterEgg_Off_Title" xml:space="preserve">
+    <value>彩蛋模式已关闭</value>
+  </data>
+  <data name="Dialog_Settings_EasterEgg_On_Content" xml:space="preserve">
+    <value>恭喜你发现了隐藏彩蛋！看看有什么地方不同寻常吧()</value>
+  </data>
+  <data name="Dialog_Settings_EasterEgg_Off_Content" xml:space="preserve">
+    <value>彩蛋模式已关闭，一切恢复正常。</value>
+  </data>
   <data name="Dialog_Install" xml:space="preserve">
     <value>安装</value>
   </data>

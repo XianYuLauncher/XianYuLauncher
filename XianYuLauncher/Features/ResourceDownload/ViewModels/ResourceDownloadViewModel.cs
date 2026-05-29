@@ -772,10 +772,10 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
     public async Task OpenShareCodeImportAsync()
     {
         var input = await _dialogService.ShowTextInputDialogAsync(
-            "导入分享码",
-            "请粘贴分享码（支持JSON数组或换行分隔）：",
-            "导入",
-            "取消",
+            "Dialog_ResourceDownload_ImportShareCode_Title".GetLocalized(),
+            "Dialog_ResourceDownload_ImportShareCode_Prompt".GetLocalized(),
+            "Dialog_Confirm".GetLocalized(),
+            "Dialog_Cancel".GetLocalized(),
             acceptsReturn: true);
         if (string.IsNullOrWhiteSpace(input))
             return;
@@ -887,13 +887,13 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
 
         var downloadTask = ExecuteFavoritesDownloadCoreAsync(targets);
         var result = await _progressDialogService.ShowObservableProgressDialogAsync(
-            "收藏夹下载中",
+            "Dialog_ResourceDownload_FavoritesDownload_Title".GetLocalized(),
             () => FavoritesDownloadStatus,
             () => FavoritesDownloadProgress,
             () => FavoritesDownloadProgressText,
             this,
-            primaryButtonText: "后台下载",
-            closeButtonText: "取消",
+            primaryButtonText: "Dialog_ResourceDownload_FavoritesDownload_Background".GetLocalized(),
+            closeButtonText: "Dialog_Cancel".GetLocalized(),
             autoCloseWhen: downloadTask);
 
         if (result == Microsoft.UI.Xaml.Controls.ContentDialogResult.Primary)
@@ -1740,7 +1740,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
         var dialogService = App.GetService<ICommonDialogService>();
         if (dialogService != null)
         {
-            await dialogService.ShowMessageDialogAsync("提示", message);
+            await dialogService.ShowMessageDialogAsync("Msg_Prompt".GetLocalized(), message);
         }
     }
 
@@ -2406,7 +2406,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
 
             if (string.IsNullOrWhiteSpace(mappedClientUrl))
             {
-                await _dialogService.ShowMessageDialogAsync("错误", "该版本没有客户端下载链接");
+                await _dialogService.ShowMessageDialogAsync(
+                    "Msg_Error".GetLocalized(),
+                    "Dialog_ResourceDownload_NoClientLink".GetLocalized());
                 return;
             }
 
@@ -2431,7 +2433,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
         }
         catch (Exception ex)
         {
-            await _dialogService.ShowMessageDialogAsync("下载失败", ex.Message);
+            await _dialogService.ShowMessageDialogAsync(
+                "Dialog_Download_Failed_Title".GetLocalized(),
+                "Msg_DownloadFailed_Format".GetLocalized(ex.Message));
         }
     }
 
@@ -2461,7 +2465,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
 
             if (string.IsNullOrWhiteSpace(mappedServerUrl))
             {
-                await _dialogService.ShowMessageDialogAsync("错误", "该版本没有服务端下载链接");
+                await _dialogService.ShowMessageDialogAsync(
+                    "Msg_Error".GetLocalized(),
+                    "Dialog_ResourceDownload_NoServerLink".GetLocalized());
                 return;
             }
 
@@ -2489,7 +2495,9 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
         }
         catch (Exception ex)
         {
-            await _dialogService.ShowMessageDialogAsync("下载失败", ex.Message);
+            await _dialogService.ShowMessageDialogAsync(
+                "Dialog_Download_Failed_Title".GetLocalized(),
+                "Msg_DownloadFailed_Format".GetLocalized(ex.Message));
         }
     }
 

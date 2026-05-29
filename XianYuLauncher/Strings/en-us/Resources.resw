@@ -4543,6 +4543,191 @@ The launcher is not responsible for issues caused by custom sources. You assume 
   <data name="Dialog_Account_OpenProfileLinkFailed_Content" xml:space="preserve">
     <value>Could not open the profile creation link. Visit the URL manually.</value>
   </data>
+  <data name="Dialog_Shortcut_Overwrite_Title" xml:space="preserve">
+    <value>Shortcut already exists</value>
+  </data>
+  <data name="Dialog_Shortcut_Overwrite_Content_Format" xml:space="preserve">
+    <value>A shortcut named {0} already exists on the desktop.
+Overwrite it?</value>
+  </data>
+  <data name="Dialog_Overwrite" xml:space="preserve">
+    <value>Overwrite</value>
+  </data>
+  <data name="Dialog_Shortcut_Created_Title" xml:space="preserve">
+    <value>Shortcut created</value>
+  </data>
+  <data name="Dialog_Shortcut_Created_Version_Content_Format" xml:space="preserve">
+    <value>Created {0} on the desktop.
+Double-click it to launch this instance.</value>
+  </data>
+  <data name="Dialog_Shortcut_Created_Map_Content_Format" xml:space="preserve">
+    <value>Created {0} on the desktop.
+Double-click it to open this world.</value>
+  </data>
+  <data name="Dialog_Shortcut_CreateFailed_Title" xml:space="preserve">
+    <value>Create failed</value>
+  </data>
+  <data name="Dialog_Shortcut_CreateFailed_Content" xml:space="preserve">
+    <value>Could not create the shortcut. Try again later.</value>
+  </data>
+  <data name="Dialog_Shortcut_CreateFailed_Server_Content" xml:space="preserve">
+    <value>Could not create the shortcut. Check desktop permissions or try again later.</value>
+  </data>
+  <data name="Dialog_Map_DeleteConfirm_Title" xml:space="preserve">
+    <value>Confirm delete</value>
+  </data>
+  <data name="Dialog_Map_DeleteConfirm_Content_Format" xml:space="preserve">
+    <value>Delete world '{0}'? This cannot be undone.</value>
+  </data>
+  <data name="Dialog_ConfirmDelete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Dialog_Map_Rename_Title" xml:space="preserve">
+    <value>Rename world</value>
+  </data>
+  <data name="Dialog_RenameFailed_Title" xml:space="preserve">
+    <value>Rename failed</value>
+  </data>
+  <data name="Dialog_Rename_NameExists" xml:space="preserve">
+    <value>That name already exists. Choose another name.</value>
+  </data>
+  <data name="Dialog_Server_DeleteFailed_Format" xml:space="preserve">
+    <value>Failed to delete server: {0}</value>
+  </data>
+  <data name="Dialog_ResourceDownload_NoClientLink" xml:space="preserve">
+    <value>This version has no client download URL.</value>
+  </data>
+  <data name="Dialog_ResourceDownload_NoServerLink" xml:space="preserve">
+    <value>This version has no server download URL.</value>
+  </data>
+  <data name="Dialog_Download_Failed_Title" xml:space="preserve">
+    <value>Download failed</value>
+  </data>
+  <data name="Dialog_CrashExport_Failed_Format" xml:space="preserve">
+    <value>Failed to export crash log: {0}</value>
+  </data>
+  <data name="Dialog_Agent_ModNotFound_Title" xml:space="preserve">
+    <value>Not found</value>
+  </data>
+  <data name="Dialog_Agent_ModNotFound_Content_Format" xml:space="preserve">
+    <value>No Modrinth or CurseForge project matched '{0}'.</value>
+  </data>
+  <data name="Dialog_Agent_DeleteMod_Title" xml:space="preserve">
+    <value>Delete mod</value>
+  </data>
+  <data name="Dialog_Agent_DeleteMod_Content_Format" xml:space="preserve">
+    <value>Delete this mod?
+
+File: {0}
+Path: {1}
+
+If this is a library mod, other mods may break.</value>
+  </data>
+  <data name="Dialog_VersionComplete_Title" xml:space="preserve">
+    <value>Complete version files</value>
+  </data>
+  <data name="Dialog_Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Dialog_VersionComplete_Status_Format" xml:space="preserve">
+    <value>Version {0}
+Checking dependencies...</value>
+  </data>
+  <data name="Dialog_Server_DeleteConfirm_Title" xml:space="preserve">
+    <value>Delete server</value>
+  </data>
+  <data name="Dialog_Server_DeleteConfirm_Content_Format" xml:space="preserve">
+    <value>Delete server '{0}'?</value>
+  </data>
+  <data name="Dialog_Shortcut_Created_Server_Content_Format" xml:space="preserve">
+    <value>Created {0} on the desktop.
+Double-click it to connect to this server.</value>
+  </data>
+  <data name="Dialog_Version_Rename_Title" xml:space="preserve">
+    <value>Rename instance</value>
+  </data>
+  <data name="Dialog_Version_Rename_Placeholder" xml:space="preserve">
+    <value>New instance name</value>
+  </data>
+  <data name="Dialog_Version_Rename_Instruction" xml:space="preserve">
+    <value>Enter a new instance name:</value>
+  </data>
+  <data name="Dialog_CrashExport_Success_Title" xml:space="preserve">
+    <value>Success</value>
+  </data>
+  <data name="Dialog_CrashExport_Success_Content_Format" xml:space="preserve">
+    <value>Crash logs exported to: {0}
+
+Includes:
+• Game crash log
+• Launch arguments
+• Launcher log
+• Version config files</value>
+  </data>
+  <data name="Dialog_Navigation_Error_Title" xml:space="preserve">
+    <value>Navigation error</value>
+  </data>
+  <data name="Dialog_Navigation_Error_Content_Format" xml:space="preserve">
+    <value>Could not navigate to page: {0}
+
+Error: {1}
+
+Stack trace: {2}</value>
+  </data>
+  <data name="Dialog_Screenshot_DeleteConfirm_Title" xml:space="preserve">
+    <value>Confirm delete</value>
+  </data>
+  <data name="Dialog_Screenshot_DeleteConfirm_Content_Format" xml:space="preserve">
+    <value>Delete screenshot '{0}'? This cannot be undone.</value>
+  </data>
+  <data name="Msg_DownloadFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Multiplayer_PortTimeout_Content" xml:space="preserve">
+    <value>Could not get the Terracotta port. Check:
+1. Firewall blocking the app
+2. Antivirus quarantining the executable
+3. Available disk space
+
+This may be a bug. Export logs from Settings → About → Quick actions and send them to the developers.</value>
+  </data>
+  <data name="Dialog_Multiplayer_ServiceUnavailable" xml:space="preserve">
+    <value>Multiplayer service files are missing or could not be downloaded. Check your network and try again.</value>
+  </data>
+  <data name="Dialog_Multiplayer_StartFailed_Format" xml:space="preserve">
+    <value>Failed to start multiplayer service: {0}</value>
+  </data>
+  <data name="Dialog_ExportLaunchArgs_Region_Title" xml:space="preserve">
+    <value>Region restriction</value>
+  </data>
+  <data name="Dialog_ExportLaunchArgs_Region_Content" xml:space="preserve">
+    <value>In your region, only Microsoft-account users can export launch arguments.
+Sign in with a Microsoft account and try again.</value>
+  </data>
+  <data name="Dialog_ResourceDownload_ImportShareCode_Title" xml:space="preserve">
+    <value>Import share code</value>
+  </data>
+  <data name="Dialog_ResourceDownload_ImportShareCode_Prompt" xml:space="preserve">
+    <value>Paste a share code (JSON array or one ID per line):</value>
+  </data>
+  <data name="Dialog_ResourceDownload_FavoritesDownload_Title" xml:space="preserve">
+    <value>Downloading favorites</value>
+  </data>
+  <data name="Dialog_ResourceDownload_FavoritesDownload_Background" xml:space="preserve">
+    <value>Download in background</value>
+  </data>
+  <data name="Dialog_Settings_EasterEgg_On_Title" xml:space="preserve">
+    <value>🎉 Easter egg mode enabled</value>
+  </data>
+  <data name="Dialog_Settings_EasterEgg_Off_Title" xml:space="preserve">
+    <value>Easter egg mode disabled</value>
+  </data>
+  <data name="Dialog_Settings_EasterEgg_On_Content" xml:space="preserve">
+    <value>You found a hidden easter egg! See if anything looks different.</value>
+  </data>
+  <data name="Dialog_Settings_EasterEgg_Off_Content" xml:space="preserve">
+    <value>Easter egg mode is off. Everything is back to normal.</value>
+  </data>
   <data name="Dialog_Install" xml:space="preserve">
     <value>Install</value>
   </data>

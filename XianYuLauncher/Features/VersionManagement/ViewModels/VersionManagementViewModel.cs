@@ -3553,7 +3553,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         try
         {
             await _uiDispatcher.RunOnUiThreadAsync(() =>
-                _commonDialogService.ShowMessageDialogAsync("提示", message));
+                _commonDialogService.ShowMessageDialogAsync("Msg_Prompt".GetLocalized(), message));
         }
         catch (Exception ex)
         {

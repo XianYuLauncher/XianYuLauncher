@@ -731,8 +731,11 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                     var dialogService = App.GetService<ICommonDialogService>();
                     if (dialogService != null)
                     {
-                        var result = await dialogService.ShowConfirmationDialogAsync("快捷方式已存在", 
-                            $"桌面上已存在 {shortcutName} 的快捷方式。\n是否覆盖现有快捷方式？", "覆盖", "取消");
+                        var result = await dialogService.ShowConfirmationDialogAsync(
+                            "Dialog_Shortcut_Overwrite_Title".GetLocalized(),
+                            "Dialog_Shortcut_Overwrite_Content_Format".GetLocalized(shortcutName),
+                            "Dialog_Overwrite".GetLocalized(),
+                            "Dialog_Cancel".GetLocalized());
                         if (!result) return;
                     }
                 }
@@ -754,8 +757,9 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                 var dialogService = App.GetService<ICommonDialogService>();
                 if (dialogService != null)
                 {
-                    await dialogService.ShowMessageDialogAsync("快捷方式已创建", 
-                        $"已在桌面创建 {shortcutName} 的快捷方式。\n双击该快捷方式可直接启动该版本。");
+                    await dialogService.ShowMessageDialogAsync(
+                        "Dialog_Shortcut_Created_Title".GetLocalized(),
+                        "Dialog_Shortcut_Created_Version_Content_Format".GetLocalized(shortcutName));
                 }
             }
             catch (Exception ex)
@@ -772,7 +776,9 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                 var dialogService = App.GetService<ICommonDialogService>();
                 if (dialogService != null)
                 {
-                    await dialogService.ShowMessageDialogAsync("创建失败", "创建快捷方式时发生错误，请稍后重试。");
+                    await dialogService.ShowMessageDialogAsync(
+                        "Dialog_Shortcut_CreateFailed_Title".GetLocalized(),
+                        "Dialog_Shortcut_CreateFailed_Content".GetLocalized());
                 }
             }
             catch (Exception dialogEx)
@@ -1395,9 +1401,9 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
             if (!isMicrosoftLogin)
             {
                 await _dialogService.ShowMessageDialogAsync(
-                    "地区限制",
-                    "当前地区仅允许微软账户登录用户导出启动参数。\n请先使用微软账户登录后再尝试导出。",
-                    "确定");
+                    "Dialog_ExportLaunchArgs_Region_Title".GetLocalized(),
+                    "Dialog_ExportLaunchArgs_Region_Content".GetLocalized(),
+                    "Dialog_OK".GetLocalized());
                 StatusMessage = "导出已取消：地区限制";
                 return;
             }

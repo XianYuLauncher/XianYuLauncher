@@ -340,10 +340,10 @@ public sealed partial class VersionListRootPage : Page
                     _isRenameDialogOpen = true;
 
                     var newName = await _dialogService.ShowRenameDialogAsync(
-                        "重命名版本",
+                        "Dialog_Version_Rename_Title".GetLocalized(),
                         viewModel.NewVersionName,
-                        "新版本名称",
-                        "请输入新的版本名称：");
+                        "Dialog_Version_Rename_Placeholder".GetLocalized(),
+                        "Dialog_Version_Rename_Instruction".GetLocalized());
                     if (!string.IsNullOrWhiteSpace(newName))
                     {
                         viewModel.NewVersionName = newName;
@@ -352,7 +352,10 @@ public sealed partial class VersionListRootPage : Page
 
                         if (!success)
                         {
-                            await _dialogService.ShowMessageDialogAsync("重命名失败", message, "确定");
+                            await _dialogService.ShowMessageDialogAsync(
+                                "Dialog_RenameFailed_Title".GetLocalized(),
+                                message,
+                                "Dialog_OK".GetLocalized());
                         }
                     }
 
@@ -377,16 +380,16 @@ public sealed partial class VersionListRootPage : Page
         }
 
         _isCompleteVersionDialogOpen = true;
-        _completeVersionDialogState.Set($"版本 {e.Name}\n正在检查依赖...", 0, "0.0%");
+        _completeVersionDialogState.Set("Dialog_VersionComplete_Status_Format".GetLocalized(e.Name), 0, "0.0%");
 
         var dialogTask = _progressDialogService.ShowObservableProgressDialogAsync(
-            "版本补全",
+            "Dialog_VersionComplete_Title".GetLocalized(),
             () => _completeVersionDialogState.Status,
             () => _completeVersionDialogState.Progress,
             () => _completeVersionDialogState.ProgressText,
             _completeVersionDialogState,
             primaryButtonText: null,
-            closeButtonText: "关闭");
+            closeButtonText: "Dialog_Close".GetLocalized());
 
         _ = dialogTask.ContinueWith(_ => _isCompleteVersionDialogOpen = false, TaskScheduler.Default);
     }

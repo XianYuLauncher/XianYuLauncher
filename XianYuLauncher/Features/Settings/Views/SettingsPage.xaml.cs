@@ -242,11 +242,9 @@ public sealed partial class SettingsPage : Page
                 await localSettingsService.SaveSettingAsync(EasterEggModeKey, newMode);
                 
                 await _dialogService.ShowMessageDialogAsync(
-                    newMode ? "🎉 彩蛋模式已开启" : "彩蛋模式已关闭",
-                    newMode
-                        ? "恭喜你发现了隐藏彩蛋！看看有什么地方不同寻常吧()"
-                        : "彩蛋模式已关闭，一切恢复正常。",
-                    "好的");
+                    newMode ? "Dialog_Settings_EasterEgg_On_Title".GetLocalized() : "Dialog_Settings_EasterEgg_Off_Title".GetLocalized(),
+                    newMode ? "Dialog_Settings_EasterEgg_On_Content".GetLocalized() : "Dialog_Settings_EasterEgg_Off_Content".GetLocalized(),
+                    "Dialog_GotIt".GetLocalized());
             }
             catch (Exception ex)
             {
