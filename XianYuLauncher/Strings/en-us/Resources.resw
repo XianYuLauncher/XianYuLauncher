@@ -4329,6 +4329,220 @@ You can double-click the file to launch the game.</value>
   <data name="Dialog_Progress_AutoConfigureJava_Status_Format" xml:space="preserve">
     <value>Fetching Java component: {0}...</value>
   </data>
+  <data name="Msg_UnknownError" xml:space="preserve">
+    <value>Unknown error</value>
+  </data>
+  <data name="Msg_JavaListFetchFailed_Title" xml:space="preserve">
+    <value>Fetch failed</value>
+  </data>
+  <data name="Msg_JavaListFetchFailed_Content" xml:space="preserve">
+    <value>Could not fetch available Java versions. Check your network connection.</value>
+  </data>
+  <data name="Msg_OperationFailed_Format" xml:space="preserve">
+    <value>Operation failed: {0}</value>
+  </data>
+  <data name="Dialog_Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Dialog_Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Dialog_Update_CheckTitle" xml:space="preserve">
+    <value>Check for updates</value>
+  </data>
+  <data name="Dialog_Update_StoreChannel_Message" xml:space="preserve">
+    <value>You are using the Microsoft Store version. Updates are delivered through the Store.</value>
+  </data>
+  <data name="Dialog_Update_AlreadyLatest" xml:space="preserve">
+    <value>You are already on the latest version.</value>
+  </data>
+  <data name="Dialog_Update_CheckFailed_Format" xml:space="preserve">
+    <value>Could not check for updates: {0}</value>
+  </data>
+  <data name="Dialog_Update_DevChannel_Title" xml:space="preserve">
+    <value>Dev channel</value>
+  </data>
+  <data name="Dialog_Update_DevChannel_NoBuild" xml:space="preserve">
+    <value>No Dev build is currently available.</value>
+  </data>
+  <data name="Dialog_Update_DevChannel_CheckFailed_Format" xml:space="preserve">
+    <value>Could not fetch Dev build: {0}</value>
+  </data>
+  <data name="Dialog_Update_OpenReleasesFailed_Title" xml:space="preserve">
+    <value>Could not open download page</value>
+  </data>
+  <data name="Dialog_Update_OpenReleasesFailed_Message" xml:space="preserve">
+    <value>Could not open the Releases page. Download the new version from GitHub Releases manually.</value>
+  </data>
+  <data name="Dialog_Update_OpenInstallerFailed_Title" xml:space="preserve">
+    <value>Could not open installer link</value>
+  </data>
+  <data name="Dialog_Update_OpenInstallerFailed_Message" xml:space="preserve">
+    <value>Could not open the installer download link. Try again later.</value>
+  </data>
+  <data name="Dialog_Update_ManagedDownload_Title" xml:space="preserve">
+    <value>Downloading update</value>
+  </data>
+  <data name="Dialog_Update_ManagedDownload_Fetching_Format" xml:space="preserve">
+    <value>Fetching download for version {0}...</value>
+  </data>
+  <data name="Dialog_Update_ManagedDownload_Progress_Format" xml:space="preserve">
+    <value>Downloading update... {0}%</value>
+  </data>
+  <data name="Dialog_Update_ManagedDownload_Complete" xml:space="preserve">
+    <value>Download complete. Preparing to install...</value>
+  </data>
+  <data name="Dialog_Update_ManagedDownload_Failed_Format" xml:space="preserve">
+    <value>Could not download the new version: {0}</value>
+  </data>
+  <data name="Dialog_Update_ApplyFailed_Format" xml:space="preserve">
+    <value>The update package was downloaded, but the updater could not start: {0}</value>
+  </data>
+  <data name="Dialog_Update_DownloadFailed_Title" xml:space="preserve">
+    <value>Download failed</value>
+  </data>
+  <data name="Dialog_Update_ApplyFailed_Title" xml:space="preserve">
+    <value>Apply update failed</value>
+  </data>
+  <data name="Dialog_Settings_DeleteDirectoryConfirm_Title" xml:space="preserve">
+    <value>Confirm delete</value>
+  </data>
+  <data name="Dialog_Settings_DeleteDirectoryConfirm_Content_Format" xml:space="preserve">
+    <value>Remove game directory "{0}" from the list?
+
+This only removes it from the list; game files on disk are not deleted.</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_Disclaimer_Title" xml:space="preserve">
+    <value>Important</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_Disclaimer_Content" xml:space="preserve">
+    <value>Only add download sources you trust.
+
+The launcher is not responsible for issues caused by custom sources. You assume all risks.</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_Disclaimer_Continue" xml:space="preserve">
+    <value>I understand, continue</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_AddTitle_Official" xml:space="preserve">
+    <value>Add custom game resource source</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_AddTitle_Community" xml:space="preserve">
+    <value>Add custom community resource source</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_EmptyFields" xml:space="preserve">
+    <value>Source name and base URL cannot be empty.</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_AddFailed_Title" xml:space="preserve">
+    <value>Add failed</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_AddFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_AddFailed_Error_Format" xml:space="preserve">
+    <value>Add failed: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_UpdateFailed_Title" xml:space="preserve">
+    <value>Update failed</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_UpdateFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_EditFailed_Error_Format" xml:space="preserve">
+    <value>Edit failed: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_DeleteFailed_Title" xml:space="preserve">
+    <value>Delete failed</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_DeleteFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_DeleteFailed_Error_Format" xml:space="preserve">
+    <value>Delete failed: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ToggleFailed_Title" xml:space="preserve">
+    <value>Operation failed</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ToggleFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportFailed_Title" xml:space="preserve">
+    <value>Import failed</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportUnsupported_Message" xml:space="preserve">
+    <value>Only custom sources with the official resource template can be imported.</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportFailed_Error_Format" xml:space="preserve">
+    <value>Import failed: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportSuccess_Title" xml:space="preserve">
+    <value>Import successful</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportSuccess_Format" xml:space="preserve">
+    <value>Configuration imported: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_DeleteConfirm_Format" xml:space="preserve">
+    <value>Delete download source "{0}"?</value>
+  </data>
+  <data name="Dialog_Settings_JavaDownload_Title" xml:space="preserve">
+    <value>Download Java runtime</value>
+  </data>
+  <data name="Dialog_Settings_JavaDownload_Instruction" xml:space="preserve">
+    <value>Select a Java version to install:</value>
+  </data>
+  <data name="Dialog_Settings_JavaDownload_Tip" xml:space="preserve">
+    <value>We recommend a recent version (Java 21, Java 25) for better compatibility.</value>
+  </data>
+  <data name="Dialog_Settings_JavaDownload_PrimaryButton" xml:space="preserve">
+    <value>Download</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportSelectFirst" xml:space="preserve">
+    <value>Select a source to export first.</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportSuccess_Title" xml:space="preserve">
+    <value>Export successful</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportSuccess_Format" xml:space="preserve">
+    <value>Configuration exported to: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportFailed_Title" xml:space="preserve">
+    <value>Export failed</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportFailed_Error_Format" xml:space="preserve">
+    <value>Export failed: {0}</value>
+  </data>
+  <data name="Dialog_Account_NotPurchased_Title" xml:space="preserve">
+    <value>Minecraft not purchased</value>
+  </data>
+  <data name="Dialog_Account_NotPurchased_Content" xml:space="preserve">
+    <value>This Microsoft account does not own Minecraft. Purchase the game before signing in.</value>
+  </data>
+  <data name="Dialog_Account_PurchaseButton" xml:space="preserve">
+    <value>Buy Minecraft</value>
+  </data>
+  <data name="Dialog_Account_OpenLinkFailed_Title" xml:space="preserve">
+    <value>Could not open link</value>
+  </data>
+  <data name="Dialog_Account_OpenPurchaseLinkFailed_Content" xml:space="preserve">
+    <value>Could not open the purchase link. Visit the URL manually.</value>
+  </data>
+  <data name="Dialog_Account_ProfileError_Title" xml:space="preserve">
+    <value>Could not load profile</value>
+  </data>
+  <data name="Dialog_Account_ProfileError_Content" xml:space="preserve">
+    <value>This account owns Minecraft but may not have created a player profile yet.</value>
+  </data>
+  <data name="Dialog_Account_CreateProfileButton" xml:space="preserve">
+    <value>Create profile</value>
+  </data>
+  <data name="Dialog_Account_OpenProfileLinkFailed_Content" xml:space="preserve">
+    <value>Could not open the profile creation link. Visit the URL manually.</value>
+  </data>
   <data name="Dialog_Install" xml:space="preserve">
     <value>Install</value>
   </data>
