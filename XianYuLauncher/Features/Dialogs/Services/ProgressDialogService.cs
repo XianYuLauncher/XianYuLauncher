@@ -2,6 +2,7 @@ using System.Diagnostics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Features.Dialogs.Services;
 
@@ -22,8 +23,9 @@ public sealed class ProgressDialogService : IProgressDialogService
         string title,
         string message,
         Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback,
-        string? closeButtonText = "取消")
+        string? closeButtonText = null)
     {
+        var resolvedCloseButtonText = closeButtonText ?? "Dialog_Cancel".GetLocalized();
         var progressBar = new ProgressBar { Maximum = 100, Value = 0, MinHeight = 4, Margin = new Thickness(0, 10, 0, 10), IsIndeterminate = true };
         var statusText = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap };
 
@@ -36,17 +38,13 @@ public sealed class ProgressDialogService : IProgressDialogService
             Title = title,
             Content = contentPanel,
             DefaultButton = ContentDialogButton.None,
+            CloseButtonText = resolvedCloseButtonText,
         };
-
-        if (!string.IsNullOrEmpty(closeButtonText))
-        {
-            dialog.CloseButtonText = closeButtonText;
-        }
 
         var cts = new CancellationTokenSource();
         Task? backgroundWork = null;
         var allowDialogClose = false;
-        var allowUserCancel = !string.IsNullOrEmpty(closeButtonText);
+        var allowUserCancel = true;
 
         dialog.Closing += (_, args) =>
         {
@@ -88,7 +86,7 @@ public sealed class ProgressDialogService : IProgressDialogService
                 }
                 catch (Exception ex)
                 {
-                    statusProgress.Report($"操作失败: {ex.Message}");
+                    statusProgress.Report("Dialog_Progress_OperationFailed_Format".GetLocalized(ex.Message));
                     await Task.Delay(2000);
                 }
                 finally
@@ -189,10 +187,11 @@ public sealed class ProgressDialogService : IProgressDialogService
         Func<string> getProgressText,
         System.ComponentModel.INotifyPropertyChanged propertyChanged,
         string? primaryButtonText = null,
-        string? closeButtonText = "取消",
+        string? closeButtonText = null,
         Task? autoCloseWhen = null,
         Func<string>? getSpeed = null)
     {
+        closeButtonText ??= "Dialog_Cancel".GetLocalized();
         var secondaryTextBrush = _dialogThemePaletteService.GetSecondaryTextBrush();
         var statusText = new TextBlock { Text = getStatus(), FontSize = 16, TextWrapping = TextWrapping.WrapWholeWords };
         var progressBar = new ProgressBar { Value = getProgress(), Minimum = 0, Maximum = 100, Height = 8, CornerRadius = new CornerRadius(4) };

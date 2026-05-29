@@ -8,7 +8,7 @@ public interface IProgressDialogService
         string title,
         string message,
         Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback,
-        string? closeButtonText = "取消");
+        string? closeButtonText = null);
 
     Task<T> ShowProgressCallbackDialogAsync<T>(string title, string message, Func<IProgress<double>, Task<T>> workCallback);
 
@@ -19,7 +19,7 @@ public interface IProgressDialogService
         Func<string> getProgressText,
         System.ComponentModel.INotifyPropertyChanged propertyChanged,
         string? primaryButtonText = null,
-        string? closeButtonText = "取消",
+        string? closeButtonText = null,
         Task? autoCloseWhen = null,
         Func<string>? getSpeed = null);
 }

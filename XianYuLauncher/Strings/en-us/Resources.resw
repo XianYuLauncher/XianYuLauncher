@@ -4200,6 +4200,132 @@ You can double-click the file to launch the game.</value>
   <data name="Dialog_Confirm" xml:space="preserve">
     <value>Confirm</value>
   </data>
+  <data name="Dialog_Yes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="Dialog_No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="Dialog_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Dialog_GotIt" xml:space="preserve">
+    <value>Got it</value>
+  </data>
+  <data name="Dialog_Rename_Placeholder" xml:space="preserve">
+    <value>Enter a new name</value>
+  </data>
+  <data name="Dialog_Rename_Instruction" xml:space="preserve">
+    <value>Please enter a new name:</value>
+  </data>
+  <data name="Dialog_Crash_ExitTitle" xml:space="preserve">
+    <value>Game exited unexpectedly</value>
+  </data>
+  <data name="Dialog_Crash_ExitTitleWithName" xml:space="preserve">
+    <value>Game exited unexpectedly: {0}</value>
+  </data>
+  <data name="Dialog_Crash_ExportHint" xml:space="preserve">
+    <value>To resolve the issue quickly, export the full crash log instead of taking a screenshot.</value>
+  </data>
+  <data name="Dialog_ReleaseDate_Format" xml:space="preserve">
+    <value>Released: {0}</value>
+  </data>
+  <data name="Dialog_Update_ChangelogIntro" xml:space="preserve">
+    <value>What's new in this version:</value>
+  </data>
+  <data name="Dialog_Update_ImportantTitle" xml:space="preserve">
+    <value>Important update</value>
+  </data>
+  <data name="Dialog_Update_ImportantMessage" xml:space="preserve">
+    <value>This is an important update. We recommend installing it now.</value>
+  </data>
+  <data name="Dialog_Update_DownloadingTitle" xml:space="preserve">
+    <value>Downloading update</value>
+  </data>
+  <data name="Dialog_Update_VersionTitle_Format" xml:space="preserve">
+    <value>Version {0} update</value>
+  </data>
+  <data name="Dialog_Update_PreparingDownload" xml:space="preserve">
+    <value>Preparing download...</value>
+  </data>
+  <data name="Dialog_Update_DownloadComplete" xml:space="preserve">
+    <value>Download complete. Preparing to install...</value>
+  </data>
+  <data name="Dialog_Update_Extracting" xml:space="preserve">
+    <value>Extracting update package...</value>
+  </data>
+  <data name="Dialog_Update_CheckingCertificate" xml:space="preserve">
+    <value>Checking certificate...</value>
+  </data>
+  <data name="Dialog_Update_InstallingCertificate" xml:space="preserve">
+    <value>Attempting to install certificate automatically...</value>
+  </data>
+  <data name="Dialog_Update_CertificateManualHint" xml:space="preserve">
+    <value>Install the certificate to continue: right-click the certificate -&gt; Install -&gt; Local Machine -&gt; Trusted Root Certification Authorities</value>
+  </data>
+  <data name="Dialog_Update_CertificateTimeout" xml:space="preserve">
+    <value>Certificate installation timed out. Install the certificate manually and try again.</value>
+  </data>
+  <data name="Dialog_Update_CertificateSuccess" xml:space="preserve">
+    <value>Certificate installed. Preparing to install the MSIX package...</value>
+  </data>
+  <data name="Dialog_Update_InstallingMsix" xml:space="preserve">
+    <value>Requesting system update. The app will close shortly...</value>
+  </data>
+  <data name="Dialog_Update_Submitted" xml:space="preserve">
+    <value>Update request submitted</value>
+  </data>
+  <data name="Dialog_Update_InstallRequestFailed" xml:space="preserve">
+    <value>Install request failed. Try downloading the installer manually.</value>
+  </data>
+  <data name="Dialog_Update_InstallFailed_Format" xml:space="preserve">
+    <value>Installation failed: {0}</value>
+  </data>
+  <data name="Dialog_Update_DownloadFailed" xml:space="preserve">
+    <value>Download failed. Please try again.</value>
+  </data>
+  <data name="Dialog_Update_DownloadFailed_Format" xml:space="preserve">
+    <value>Download failed: {0}</value>
+  </data>
+  <data name="Dialog_Update_Downloading_Format" xml:space="preserve">
+    <value>Downloading: {0:F1}%</value>
+  </data>
+  <data name="Dialog_Update_Speed_Format" xml:space="preserve">
+    <value>Speed: {0:F1} {1}</value>
+  </data>
+  <data name="Dialog_Update_RemainingHours_Format" xml:space="preserve">
+    <value>{0:F1} hours</value>
+  </data>
+  <data name="Dialog_Update_RemainingMinutes_Format" xml:space="preserve">
+    <value>{0:F1} minutes</value>
+  </data>
+  <data name="Dialog_Update_RemainingSeconds_Format" xml:space="preserve">
+    <value>{0:F0} seconds</value>
+  </data>
+  <data name="Dialog_Update_RemainingCalculating" xml:space="preserve">
+    <value>Remaining: calculating...</value>
+  </data>
+  <data name="Dialog_Update_Remaining_Format" xml:space="preserve">
+    <value>Remaining: {0}</value>
+  </data>
+  <data name="Dialog_Update_NoChangelog" xml:space="preserve">
+    <value>No release notes available</value>
+  </data>
+  <data name="Dialog_Progress_OperationFailed_Format" xml:space="preserve">
+    <value>Operation failed: {0}</value>
+  </data>
+  <data name="Dialog_Progress_InstallingJava_Title" xml:space="preserve">
+    <value>Installing Java</value>
+  </data>
+  <data name="Dialog_Progress_InstallingJava_Status_Format" xml:space="preserve">
+    <value>Downloading and configuring {0}...</value>
+  </data>
+  <data name="Dialog_Progress_AutoConfigureJava_Title" xml:space="preserve">
+    <value>Auto-configuring Java</value>
+  </data>
+  <data name="Dialog_Progress_AutoConfigureJava_Status_Format" xml:space="preserve">
+    <value>Fetching Java component: {0}...</value>
+  </data>
   <data name="Dialog_Install" xml:space="preserve">
     <value>Install</value>
   </data>

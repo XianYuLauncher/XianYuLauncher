@@ -4197,6 +4197,132 @@
   <data name="Dialog_Confirm" xml:space="preserve">
     <value>确认</value>
   </data>
+  <data name="Dialog_Yes" xml:space="preserve">
+    <value>是</value>
+  </data>
+  <data name="Dialog_No" xml:space="preserve">
+    <value>否</value>
+  </data>
+  <data name="Dialog_Cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="Dialog_GotIt" xml:space="preserve">
+    <value>知道了</value>
+  </data>
+  <data name="Dialog_Rename_Placeholder" xml:space="preserve">
+    <value>输入新名称</value>
+  </data>
+  <data name="Dialog_Rename_Instruction" xml:space="preserve">
+    <value>请输入新的名称：</value>
+  </data>
+  <data name="Dialog_Crash_ExitTitle" xml:space="preserve">
+    <value>游戏意外退出</value>
+  </data>
+  <data name="Dialog_Crash_ExitTitleWithName" xml:space="preserve">
+    <value>游戏意外退出：{0}</value>
+  </data>
+  <data name="Dialog_Crash_ExportHint" xml:space="preserve">
+    <value>为了快速解决问题，请导出完整的崩溃日志，而不是截图。</value>
+  </data>
+  <data name="Dialog_ReleaseDate_Format" xml:space="preserve">
+    <value>发布日期: {0}</value>
+  </data>
+  <data name="Dialog_Update_ChangelogIntro" xml:space="preserve">
+    <value>新版本带来了以下更新：</value>
+  </data>
+  <data name="Dialog_Update_ImportantTitle" xml:space="preserve">
+    <value>重要更新</value>
+  </data>
+  <data name="Dialog_Update_ImportantMessage" xml:space="preserve">
+    <value>这是一个重要更新，建议立即安装</value>
+  </data>
+  <data name="Dialog_Update_DownloadingTitle" xml:space="preserve">
+    <value>正在下载更新</value>
+  </data>
+  <data name="Dialog_Update_VersionTitle_Format" xml:space="preserve">
+    <value>版本 {0} 更新</value>
+  </data>
+  <data name="Dialog_Update_PreparingDownload" xml:space="preserve">
+    <value>准备下载...</value>
+  </data>
+  <data name="Dialog_Update_DownloadComplete" xml:space="preserve">
+    <value>下载完成，准备安装...</value>
+  </data>
+  <data name="Dialog_Update_Extracting" xml:space="preserve">
+    <value>正在解压更新包...</value>
+  </data>
+  <data name="Dialog_Update_CheckingCertificate" xml:space="preserve">
+    <value>正在检查证书...</value>
+  </data>
+  <data name="Dialog_Update_InstallingCertificate" xml:space="preserve">
+    <value>正在尝试自动安装证书...</value>
+  </data>
+  <data name="Dialog_Update_CertificateManualHint" xml:space="preserve">
+    <value>请安装证书后继续: 右键证书-&gt;安装-&gt;本地计算机-&gt;受信任的根证书颁发机构</value>
+  </data>
+  <data name="Dialog_Update_CertificateTimeout" xml:space="preserve">
+    <value>证书安装超时，请手动安装证书后重试</value>
+  </data>
+  <data name="Dialog_Update_CertificateSuccess" xml:space="preserve">
+    <value>证书安装成功，准备安装MSIX包...</value>
+  </data>
+  <data name="Dialog_Update_InstallingMsix" xml:space="preserve">
+    <value>正在请求系统更新，应用即将自动关闭...</value>
+  </data>
+  <data name="Dialog_Update_Submitted" xml:space="preserve">
+    <value>更新请求已提交</value>
+  </data>
+  <data name="Dialog_Update_InstallRequestFailed" xml:space="preserve">
+    <value>安装请求失败，请尝试手动下载安装包</value>
+  </data>
+  <data name="Dialog_Update_InstallFailed_Format" xml:space="preserve">
+    <value>安装失败: {0}</value>
+  </data>
+  <data name="Dialog_Update_DownloadFailed" xml:space="preserve">
+    <value>下载失败，请重试</value>
+  </data>
+  <data name="Dialog_Update_DownloadFailed_Format" xml:space="preserve">
+    <value>下载失败: {0}</value>
+  </data>
+  <data name="Dialog_Update_Downloading_Format" xml:space="preserve">
+    <value>正在下载: {0:F1}%</value>
+  </data>
+  <data name="Dialog_Update_Speed_Format" xml:space="preserve">
+    <value>速度: {0:F1} {1}</value>
+  </data>
+  <data name="Dialog_Update_RemainingHours_Format" xml:space="preserve">
+    <value>{0:F1} 小时</value>
+  </data>
+  <data name="Dialog_Update_RemainingMinutes_Format" xml:space="preserve">
+    <value>{0:F1} 分钟</value>
+  </data>
+  <data name="Dialog_Update_RemainingSeconds_Format" xml:space="preserve">
+    <value>{0:F0} 秒</value>
+  </data>
+  <data name="Dialog_Update_RemainingCalculating" xml:space="preserve">
+    <value>剩余: 计算中...</value>
+  </data>
+  <data name="Dialog_Update_Remaining_Format" xml:space="preserve">
+    <value>剩余: {0}</value>
+  </data>
+  <data name="Dialog_Update_NoChangelog" xml:space="preserve">
+    <value>暂无更新内容</value>
+  </data>
+  <data name="Dialog_Progress_OperationFailed_Format" xml:space="preserve">
+    <value>操作失败: {0}</value>
+  </data>
+  <data name="Dialog_Progress_InstallingJava_Title" xml:space="preserve">
+    <value>正在安装 Java</value>
+  </data>
+  <data name="Dialog_Progress_InstallingJava_Status_Format" xml:space="preserve">
+    <value>正在下载并配置 {0}...</value>
+  </data>
+  <data name="Dialog_Progress_AutoConfigureJava_Title" xml:space="preserve">
+    <value>自动配置 Java 环境</value>
+  </data>
+  <data name="Dialog_Progress_AutoConfigureJava_Status_Format" xml:space="preserve">
+    <value>正在获取 Java 组件: {0}...</value>
+  </data>
   <data name="Dialog_Install" xml:space="preserve">
     <value>安装</value>
   </data>

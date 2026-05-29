@@ -8,11 +8,11 @@ public interface IUpdateDialogFlowService
         UpdateInfo updateInfo,
         string title,
         string primaryButtonText,
-        string? closeButtonText = "取消");
+        string? closeButtonText = null);
 
     Task<bool> ShowUpdateInstallFlowAsync(
         UpdateInfo updateInfo,
         string title,
         string primaryButtonText,
-        string? closeButtonText = "取消");
+        string? closeButtonText = null);
 }

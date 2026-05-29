@@ -5,13 +5,13 @@ namespace XianYuLauncher.Features.Dialogs.Contracts;
 
 public interface ICommonDialogService
 {
-    Task ShowMessageDialogAsync(string title, string message, string closeButtonText = "确定");
+    Task ShowMessageDialogAsync(string title, string message, string? closeButtonText = null);
 
     Task<bool> ShowConfirmationDialogAsync(
         string title,
         string message,
-        string primaryButtonText = "是",
-        string closeButtonText = "否",
+        string? primaryButtonText = null,
+        string? closeButtonText = null,
         ContentDialogButton defaultButton = ContentDialogButton.Primary);
 
     Task<ContentDialogResult> ShowDialogAsync(ContentDialog dialog);
@@ -31,13 +31,13 @@ public interface ICommonDialogService
     Task<string?> ShowTextInputDialogAsync(
         string title,
         string placeholder = "",
-        string primaryButtonText = "确认",
-        string closeButtonText = "取消",
+        string? primaryButtonText = null,
+        string? closeButtonText = null,
         bool acceptsReturn = false);
 
     Task<string?> ShowRenameDialogAsync(
         string title,
         string currentName,
-        string placeholder = "输入新名称",
-        string instruction = "请输入新的名称：");
+        string? placeholder = null,
+        string? instruction = null);
 }
