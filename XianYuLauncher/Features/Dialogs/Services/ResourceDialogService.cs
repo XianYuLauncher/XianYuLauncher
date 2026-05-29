@@ -325,7 +325,7 @@ public sealed class ResourceDialogService : IResourceDialogService
             Title = title,
             Content = panel,
             PrimaryButtonText = defaultPrimaryButtonText,
-            CloseButtonText = closeButtonText ?? "Msg_Cancel".GetLocalized(),
+            CloseButtonText = closeButtonText ?? "Dialog_Cancel".GetLocalized(),
             DefaultButton = ContentDialogButton.Primary,
         };
 
@@ -448,7 +448,7 @@ public sealed class ResourceDialogService : IResourceDialogService
             cardPanel.Children.Add(headerRow);
             cardPanel.Children.Add(new TextBlock
             {
-                Text = $"发布日期: {releaseDateFunc(item)}",
+                Text = "Dialog_ReleaseDate_Format".GetLocalized(releaseDateFunc(item)),
                 FontSize = 12,
                 Foreground = secondaryTextBrush,
             });
@@ -478,7 +478,7 @@ public sealed class ResourceDialogService : IResourceDialogService
             Title = title,
             Content = panel,
             PrimaryButtonText = primaryButtonText ?? "Dialog_Confirm".GetLocalized(),
-            CloseButtonText = closeButtonText ?? "Msg_Cancel".GetLocalized(),
+            CloseButtonText = closeButtonText ?? "Dialog_Cancel".GetLocalized(),
             DefaultButton = ContentDialogButton.Primary,
         };
 

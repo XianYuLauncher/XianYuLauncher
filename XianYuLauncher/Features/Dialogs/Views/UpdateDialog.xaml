@@ -6,7 +6,7 @@
 
     <StackPanel Spacing="12" Padding="20">
         <TextBlock Text="{x:Bind ViewModel.UpdateInfo.version, Mode=OneWay}" Style="{ThemeResource TitleTextBlockStyle}" />
-        <TextBlock Text="新版本带来了以下更新：" />
+        <TextBlock Text="{x:Bind ViewModel.ChangelogIntroText, Mode=OneWay}" />
 
         <ScrollViewer MaxHeight="200" BorderBrush="Transparent" BorderThickness="0" Padding="0">
             <TextBlock Text="{x:Bind ViewModel.ChangelogText}"
@@ -15,8 +15,8 @@
         </ScrollViewer>
 
         <InfoBar Severity="Warning"
-                 Title="重要更新"
-                 Message="这是一个重要更新，建议立即安装"
+                 Title="{x:Bind ViewModel.ImportantUpdateTitle, Mode=OneWay}"
+                 Message="{x:Bind ViewModel.ImportantUpdateMessage, Mode=OneWay}"
                  IsOpen="{x:Bind ViewModel.UpdateInfo.important_update, Mode=OneWay}"
                  IsClosable="False"
                  HorizontalAlignment="Stretch" />

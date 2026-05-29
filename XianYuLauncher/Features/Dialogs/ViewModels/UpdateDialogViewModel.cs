@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Dispatching;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
+using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Features.Dialogs.ViewModels;
 
@@ -47,6 +48,14 @@ public partial class UpdateDialogViewModel : ObservableRecipient
 
     [ObservableProperty]
     private string _estimatedTimeText;
+
+    public string ChangelogIntroText => "Dialog_Update_ChangelogIntro".GetLocalized();
+
+    public string ImportantUpdateTitle => "Dialog_Update_ImportantTitle".GetLocalized();
+
+    public string ImportantUpdateMessage => "Dialog_Update_ImportantMessage".GetLocalized();
+
+    public string DownloadingTitleText => "Dialog_Update_DownloadingTitle".GetLocalized();
 
     [RelayCommand]
     private void Cancel()
@@ -89,7 +98,7 @@ public partial class UpdateDialogViewModel : ObservableRecipient
             {
                 _logger.LogInformation("更新包下载成功");
                 Debug.WriteLine("[DEBUG] 更新包下载成功");
-                DownloadStatusText = "下载完成，准备安装...";
+                DownloadStatusText = "Dialog_Update_DownloadComplete".GetLocalized();
 
                 await Task.Delay(1000);
 
@@ -97,7 +106,7 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                 {
                     _logger.LogInformation("开始解压更新包: {DownloadPath}", downloadPath);
                     Debug.WriteLine($"[DEBUG] 开始解压更新包: {downloadPath}");
-                    DownloadStatusText = "正在解压更新包...";
+                    DownloadStatusText = "Dialog_Update_Extracting".GetLocalized();
 
                     var extractResult = await _updateService.ExtractUpdatePackageAsync(downloadPath);
 
@@ -105,7 +114,7 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                     {
                         _logger.LogInformation("检查证书安装状态: {CertificateFilePath}", extractResult.CertificateFilePath);
                         Debug.WriteLine($"[DEBUG] 检查证书安装状态: {extractResult.CertificateFilePath}");
-                        DownloadStatusText = "正在检查证书...";
+                        DownloadStatusText = "Dialog_Update_CheckingCertificate".GetLocalized();
 
                         bool isCertificateInstalled = _updateService.IsCertificateInstalled(extractResult.CertificateFilePath);
 
@@ -113,7 +122,7 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                         {
                             _logger.LogInformation("证书未安装，尝试静默安装");
                             Debug.WriteLine($"[DEBUG] 证书未安装，尝试静默安装: {extractResult.CertificateFilePath}");
-                            DownloadStatusText = "正在尝试自动安装证书...";
+                            DownloadStatusText = "Dialog_Update_InstallingCertificate".GetLocalized();
 
                             await _updateService.InstallCertificateSilentlyAsync(extractResult.CertificateFilePath);
                             isCertificateInstalled = _updateService.IsCertificateInstalled(extractResult.CertificateFilePath);
@@ -125,7 +134,7 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                             Debug.WriteLine("[DEBUG] 证书未安装，打开证书属性页");
 
                             _updateService.OpenCertificateProperties(extractResult.CertificateFilePath);
-                            DownloadStatusText = "请安装证书后继续: 右键证书->安装->本地计算机->受信任的根证书颁发机构";
+                            DownloadStatusText = "Dialog_Update_CertificateManualHint".GetLocalized();
 
                             _logger.LogInformation("请右键证书->安装->本地计算机->受信任的根证书颁发机构");
                             Debug.WriteLine("[DEBUG] 请右键证书->安装->本地计算机->受信任的根证书颁发机构");
@@ -146,20 +155,20 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                             {
                                 _logger.LogWarning("证书安装超时");
                                 Debug.WriteLine("[DEBUG] 证书安装超时");
-                                DownloadStatusText = "证书安装超时，请手动安装证书后重试";
+                                DownloadStatusText = "Dialog_Update_CertificateTimeout".GetLocalized();
                                 IsDownloading = false;
                                 return;
                             }
 
                             _logger.LogInformation("证书安装成功");
                             Debug.WriteLine("[DEBUG] 证书安装成功");
-                            DownloadStatusText = "证书安装成功，准备安装MSIX包...";
+                            DownloadStatusText = "Dialog_Update_CertificateSuccess".GetLocalized();
                         }
                     }
 
                     _logger.LogInformation("开始安装MSIX包: {MsixFilePath}", extractResult.MsixFilePath);
                     Debug.WriteLine($"[DEBUG] 开始安装MSIX包: {extractResult.MsixFilePath}");
-                    DownloadStatusText = "正在请求系统更新，应用即将自动关闭...";
+                    DownloadStatusText = "Dialog_Update_InstallingMsix".GetLocalized();
                     await Task.Delay(500);
 
                     bool installSuccess = await _updateService.InstallMsixPackageAsync(extractResult.ExtractDirectory, extractResult.MsixFilePath);
@@ -168,7 +177,7 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                     {
                         _logger.LogInformation("MSIX包安装请求成功");
                         Debug.WriteLine("[DEBUG] MSIX包安装请求成功");
-                        DownloadStatusText = "更新请求已提交";
+                        DownloadStatusText = "Dialog_Update_Submitted".GetLocalized();
 
                         await Task.Delay(1000);
                         OnCloseDialog(true);
@@ -177,7 +186,7 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                     {
                         _logger.LogError("MSIX包安装失败");
                         Debug.WriteLine("[DEBUG] MSIX包安装失败");
-                        DownloadStatusText = "安装请求失败，请尝试手动下载安装包";
+                        DownloadStatusText = "Dialog_Update_InstallRequestFailed".GetLocalized();
                         IsDownloading = false;
                         _updateService.CleanupTempFiles(extractResult.ExtractDirectory);
                     }
@@ -186,7 +195,7 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                 {
                     _logger.LogError(ex, "安装过程中发生错误");
                     Debug.WriteLine($"[DEBUG] 安装过程中发生错误: {ex.Message}");
-                    DownloadStatusText = $"安装失败: {ex.Message}";
+                    DownloadStatusText = "Dialog_Update_InstallFailed_Format".GetLocalized(ex.Message);
                     IsDownloading = false;
                 }
             }
@@ -194,7 +203,7 @@ public partial class UpdateDialogViewModel : ObservableRecipient
             {
                 _logger.LogError("更新包下载失败");
                 Debug.WriteLine("[DEBUG] 更新包下载失败");
-                DownloadStatusText = "下载失败，请重试";
+                DownloadStatusText = "Dialog_Update_DownloadFailed".GetLocalized();
                 IsDownloading = false;
             }
         }
@@ -202,7 +211,7 @@ public partial class UpdateDialogViewModel : ObservableRecipient
         {
             _logger.LogError(ex, "更新过程中发生错误");
             Debug.WriteLine($"[DEBUG] 更新过程中发生错误: {ex.Message}");
-            DownloadStatusText = $"下载失败: {ex.Message}";
+            DownloadStatusText = "Dialog_Update_DownloadFailed_Format".GetLocalized(ex.Message);
             IsDownloading = false;
         }
     }
@@ -216,14 +225,14 @@ public partial class UpdateDialogViewModel : ObservableRecipient
         _updateInfo = updateInfo;
         _dispatcherQueue = DispatcherQueue.GetForCurrentThread();
 
-        Title = string.Format("Version {0} 更新", updateInfo.version);
+        Title = "Dialog_Update_VersionTitle_Format".GetLocalized(updateInfo.version);
         ShowCancelButton = !updateInfo.important_update;
         ChangelogText = FormatChangelog(updateInfo.changelog);
         IsDownloading = false;
         DownloadProgress = 0;
-        DownloadStatusText = "准备下载...";
-        DownloadSpeedText = "速度: 0 B/s";
-        EstimatedTimeText = "剩余: 计算中...";
+        DownloadStatusText = "Dialog_Update_PreparingDownload".GetLocalized();
+        DownloadSpeedText = "Dialog_Update_Speed_Format".GetLocalized(0, "B/s");
+        EstimatedTimeText = "Dialog_Update_RemainingCalculating".GetLocalized();
 
         _logger.LogInformation("初始化更新弹窗ViewModel，版本: {Version}, 重要更新: {ImportantUpdate}", updateInfo.version, updateInfo.important_update);
         Debug.WriteLine($"[DEBUG] 初始化更新弹窗ViewModel，版本: {updateInfo.version}, 重要更新: {updateInfo.important_update}");
@@ -234,7 +243,7 @@ public partial class UpdateDialogViewModel : ObservableRecipient
         _dispatcherQueue.TryEnqueue(() =>
         {
             DownloadProgress = progressInfo.Progress;
-            DownloadStatusText = $"正在下载: {progressInfo.Progress:F1}%";
+            DownloadStatusText = "Dialog_Update_Downloading_Format".GetLocalized(progressInfo.Progress);
 
             string speedUnit = "B/s";
             double speed = progressInfo.SpeedBytesPerSecond;
@@ -250,29 +259,29 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                 speedUnit = "KB/s";
             }
 
-            DownloadSpeedText = $"速度: {speed:F1} {speedUnit}";
+            DownloadSpeedText = "Dialog_Update_Speed_Format".GetLocalized(speed, speedUnit);
 
             if (progressInfo.EstimatedTimeRemaining.TotalSeconds > 0)
             {
                 string timeText;
                 if (progressInfo.EstimatedTimeRemaining.TotalHours >= 1)
                 {
-                    timeText = $"{progressInfo.EstimatedTimeRemaining.TotalHours:F1} 小时";
+                    timeText = "Dialog_Update_RemainingHours_Format".GetLocalized(progressInfo.EstimatedTimeRemaining.TotalHours);
                 }
                 else if (progressInfo.EstimatedTimeRemaining.TotalMinutes >= 1)
                 {
-                    timeText = $"{progressInfo.EstimatedTimeRemaining.TotalMinutes:F1} 分钟";
+                    timeText = "Dialog_Update_RemainingMinutes_Format".GetLocalized(progressInfo.EstimatedTimeRemaining.TotalMinutes);
                 }
                 else
                 {
-                    timeText = $"{progressInfo.EstimatedTimeRemaining.TotalSeconds:F0} 秒";
+                    timeText = "Dialog_Update_RemainingSeconds_Format".GetLocalized(progressInfo.EstimatedTimeRemaining.TotalSeconds);
                 }
 
-                EstimatedTimeText = $"剩余: {timeText}";
+                EstimatedTimeText = "Dialog_Update_Remaining_Format".GetLocalized(timeText);
             }
             else
             {
-                EstimatedTimeText = "剩余: 计算中...";
+                EstimatedTimeText = "Dialog_Update_RemainingCalculating".GetLocalized();
             }
         });
     }
@@ -281,7 +290,7 @@ public partial class UpdateDialogViewModel : ObservableRecipient
     {
         if (changelog == null || !changelog.Any())
         {
-            return "暂无更新内容";
+            return "Dialog_Update_NoChangelog".GetLocalized();
         }
 
         return string.Join(Environment.NewLine + "• ", changelog.Prepend(""));

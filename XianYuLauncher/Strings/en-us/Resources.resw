@@ -4212,6 +4212,9 @@ You can double-click the file to launch the game.</value>
   <data name="Dialog_GotIt" xml:space="preserve">
     <value>Got it</value>
   </data>
+  <data name="Dialog_Announcement_PublishTimeLabel" xml:space="preserve">
+    <value>Published: </value>
+  </data>
   <data name="Dialog_Rename_Placeholder" xml:space="preserve">
     <value>Enter a new name</value>
   </data>

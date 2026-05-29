@@ -4209,6 +4209,9 @@
   <data name="Dialog_GotIt" xml:space="preserve">
     <value>知道了</value>
   </data>
+  <data name="Dialog_Announcement_PublishTimeLabel" xml:space="preserve">
+    <value>发布时间: </value>
+  </data>
   <data name="Dialog_Rename_Placeholder" xml:space="preserve">
     <value>输入新名称</value>
   </data>
