@@ -26,7 +26,7 @@ namespace XianYuLauncher.Core.Services
         }
 
         /// <summary>
-        /// 带原生 function calling 的流式聊天。
+        /// 通过 OpenAI Chat Completions API 进行带 function calling 的流式聊天。
         /// 返回 AiStreamChunk，调用方根据 IsContent / IsToolCall 分别处理。
         /// </summary>
         public async IAsyncEnumerable<AiStreamChunk> StreamChatWithToolsAsync(
@@ -332,7 +332,7 @@ namespace XianYuLauncher.Core.Services
         }
 
         /// <summary>
-        /// 规范化 API endpoint URL
+        /// 规范化 Chat Completions API 基础 URL
         /// </summary>
         private static string NormalizeEndpoint(string endpoint)
         {

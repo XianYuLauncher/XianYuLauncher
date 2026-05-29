@@ -2939,7 +2939,7 @@ Continue downloading?</value>
      <value>No launch accounts available</value>
   </data>
   <data name="Settings_AI_Disclaimer.Text" xml:space="preserve">
-    <value>Launcher AI only provides the capability to access LLMs compatible with the OpenAI API specification. No AI services or accounts are provided within the software. Please confirm that relevant services are permitted in your region before use, and strictly abide by the terms of service, usage policies, and privacy rules of the selected AI provider; API Keys must be applied for and kept by yourself, and relevant costs and compliance responsibilities are borne by the user.</value>
+    <value>Launcher AI only provides the capability to access LLMs compatible with the OpenAI Chat Completions API specification. No AI services or accounts are provided within the software. Please confirm that relevant services are permitted in your region before use, and strictly abide by the terms of service, usage policies, and privacy rules of the selected AI provider; API Keys must be applied for and kept by yourself, and relevant costs and compliance responsibilities are borne by the user.</value>
   </data>
   <data name="Settings_AI_ApiEndpoint.Header" xml:space="preserve">
     <value>API Endpoint (Base URL)</value>

@@ -33,6 +33,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Models
                 {
                     OnPropertyChanged(nameof(HasToolOutputContent));
                     OnPropertyChanged(nameof(FormattedToolOutputContent));
+                    OnPropertyChanged(nameof(ToolCallStatusText));
                 }
             }
         }
@@ -77,6 +78,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Models
                 {
                     OnPropertyChanged(nameof(HasToolOutputContent));
                     OnPropertyChanged(nameof(FormattedToolOutputContent));
+                    OnPropertyChanged(nameof(ToolCallStatusText));
                 }
             }
         }
@@ -105,6 +107,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Models
         public bool HasToolOutputContent => !string.IsNullOrWhiteSpace(GetToolOutputSource());
         public string FormattedToolInputContent => ToolInputContent ?? string.Empty;
         public string FormattedToolOutputContent => GetToolOutputSource() ?? "等待工具返回...";
+        public string ToolCallStatusText => IsTool && HasToolOutputContent ? "Called" : IsTool ? "Calling" : string.Empty;
         public bool ShouldShowMessageContainer => ShowUserText || HasImageAttachments || ShowAssistantText || IsTool;
         
         public UiChatMessage(string role, string content, bool includeInAIHistory = true, IEnumerable<ChatImageAttachment>? imageAttachments = null)
@@ -134,6 +137,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Models
             OnPropertyChanged(nameof(ShowAssistantText));
             OnPropertyChanged(nameof(HasToolOutputContent));
             OnPropertyChanged(nameof(FormattedToolOutputContent));
+            OnPropertyChanged(nameof(ToolCallStatusText));
             OnPropertyChanged(nameof(ShouldShowMessageContainer));
         }
 

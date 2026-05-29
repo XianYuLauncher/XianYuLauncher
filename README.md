@@ -26,7 +26,7 @@ A modern, feature-rich Minecraft Java Edition launcher with a polished user inte
 - **Server Management**: Add/manage servers, real-time status detection (MOTD, online players, latency), one-click instance launch and join server.
 
 ### 🔧 Smart Diagnosis & Repair
-- **AI Crash Analysis**: Compatible with OpenAI API services to intelligently analyze crash reasons *(requires self-configuration of API Endpoint and Key)*.
+- **AI Crash Analysis**: Compatible with OpenAI Chat Completions API-compatible services to intelligently analyze crash reasons *(requires self-configuration of Chat Completions API base URL and API key)*.
 - **XianYu Fixer**: One-click repair for common issues (Java version mismatch, missing Mod dependencies, etc.).
 - **Knowledge Base Matching**: Built-in error knowledge base for quick problem localization and solutions.
 - **Real-time Logs**: Monitor game output in real-time with log export support.
