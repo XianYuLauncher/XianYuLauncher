@@ -8,7 +8,8 @@ public interface IProgressDialogService
         string title,
         string message,
         Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback,
-        string? closeButtonText = null);
+        string? closeButtonText = null,
+        bool allowUserCancel = true);
 
     Task<T> ShowProgressCallbackDialogAsync<T>(string title, string message, Func<IProgress<double>, Task<T>> workCallback);
 

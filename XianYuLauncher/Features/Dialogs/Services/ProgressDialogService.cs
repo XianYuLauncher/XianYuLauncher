@@ -23,9 +23,15 @@ public sealed class ProgressDialogService : IProgressDialogService
         string title,
         string message,
         Func<IProgress<double>, IProgress<string>, CancellationToken, Task> workCallback,
-        string? closeButtonText = null)
+        string? closeButtonText = null,
+        bool allowUserCancel = true)
     {
-        var resolvedCloseButtonText = closeButtonText ?? "Dialog_Cancel".GetLocalized();
+        string? resolvedCloseButtonText = null;
+        if (allowUserCancel)
+        {
+            resolvedCloseButtonText = closeButtonText ?? "Dialog_Cancel".GetLocalized();
+        }
+
         var progressBar = new ProgressBar { Maximum = 100, Value = 0, MinHeight = 4, Margin = new Thickness(0, 10, 0, 10), IsIndeterminate = true };
         var statusText = new TextBlock { Text = message, TextWrapping = TextWrapping.Wrap };
 
@@ -38,13 +44,16 @@ public sealed class ProgressDialogService : IProgressDialogService
             Title = title,
             Content = contentPanel,
             DefaultButton = ContentDialogButton.None,
-            CloseButtonText = resolvedCloseButtonText,
         };
+
+        if (!string.IsNullOrEmpty(resolvedCloseButtonText))
+        {
+            dialog.CloseButtonText = resolvedCloseButtonText;
+        }
 
         var cts = new CancellationTokenSource();
         Task? backgroundWork = null;
         var allowDialogClose = false;
-        var allowUserCancel = true;
 
         dialog.Closing += (_, args) =>
         {

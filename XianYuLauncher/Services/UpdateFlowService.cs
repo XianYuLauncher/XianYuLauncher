@@ -379,7 +379,7 @@ public class UpdateFlowService : IUpdateFlowService
                     throw;
                 }
             },
-            closeButtonText: allowUserCancel ? "Dialog_Cancel".GetLocalized() : null);
+            allowUserCancel: allowUserCancel);
 
         cancellationToken.ThrowIfCancellationRequested();
 
