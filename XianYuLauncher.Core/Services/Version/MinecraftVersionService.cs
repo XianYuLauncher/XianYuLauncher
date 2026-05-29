@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using XianYuLauncher.Core.Models;
 using System.Linq;
 using System.Text.RegularExpressions;
+using XianYuLauncher.Core.Constants;
 using XianYuLauncher.Core.Services.DownloadSource;
 using VersionManifest = XianYuLauncher.Core.Models.VersionManifest;
 using VersionInfo = XianYuLauncher.Core.Models.VersionInfo;
@@ -1256,7 +1257,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 1. 下载缺失的依赖库 (5-45%)
             try
             {
-                currentDownloadCallback?.Invoke("正在下载依赖库...");
+                currentDownloadCallback?.Invoke(VersionCompleteStageKeys.DownloadingLibraries);
                 await DownloadLibrariesAsync(versionId, librariesDirectory, (status) =>
                 {
                     double adjustedProgress = 5 + (status.Percent * 0.4); // 0-100% 映射到 5-45%
@@ -1286,7 +1287,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 2. 解压原生库到natives目录 (45-50%)
             try
             {
-                currentDownloadCallback?.Invoke("正在解压原生库...");
+                currentDownloadCallback?.Invoke(VersionCompleteStageKeys.ExtractingNatives);
                 await ExtractNativeLibrariesAsync(versionId, librariesDirectory, nativesDirectory);
                 // 报告原生库解压完成
                 double nativeExtractProgress = 45 + (100 * 0.05); // 50%
@@ -1300,7 +1301,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 3. 确保资源索引文件可用 (50-55%)
             try
             {
-                currentDownloadCallback?.Invoke("正在处理资源索引...");
+                currentDownloadCallback?.Invoke(VersionCompleteStageKeys.ProcessingAssetIndex);
                 await EnsureAssetIndexAsync(versionId, minecraftDirectory, (status) =>
                 {
                     double adjustedProgress = 50 + (status.Percent * 0.05); // 0-100% 映射到 50-55%
@@ -1570,7 +1571,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                                 // 短暂延迟后重试：1s, 2s（不需要太长，因为超时已经很短了）
                                 int delaySeconds = retryCount;
                                 // 重试时也显示当前文件，让用户知道还在工作
-                                currentDownloadCallback?.Invoke($"重试中: {hash.Substring(0, 8)}...");
+                                currentDownloadCallback?.Invoke($"{VersionCompleteStageKeys.RetryAssetFormat}:{hash[..8]}");
                                 System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 下载失败，{delaySeconds}秒后重试 ({retryCount}/{maxRetries}): {hash}, 错误: {ex.Message}");
                                 await Task.Delay(TimeSpan.FromSeconds(delaySeconds));
                             }
@@ -1667,7 +1668,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                             try
                             {
                                 // 显示当前正在重试的文件
-                                currentDownloadCallback?.Invoke($"二次清扫: {hash.Substring(0, 8)}...");
+                                currentDownloadCallback?.Invoke($"{VersionCompleteStageKeys.SecondPassAssetFormat}:{hash[..8]}");
                                 
                                 // 使用更长的超时（60秒）
                                 await DownloadAssetFileWithTimeoutAsync(httpClient, downloadUrl, assetSavePath, 60);

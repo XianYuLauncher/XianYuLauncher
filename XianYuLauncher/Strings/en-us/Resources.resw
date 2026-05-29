@@ -1477,6 +1477,12 @@ Continue downloading?</value>
   <data name="VersionListPage_DeleteMenuItem.Text" xml:space="preserve">
     <value>Delete</value>
   </data>
+  <data name="VersionListPage_CreateShortcutMenuItem.Text" xml:space="preserve">
+    <value>Create Shortcut</value>
+  </data>
+  <data name="VersionListPage_RenameMenuItem.Text" xml:space="preserve">
+    <value>Rename</value>
+  </data>
   <data name="VersionListPage_ExportModpackMenuItem.Text" xml:space="preserve">
     <value>Export Modpack</value>
   </data>
@@ -1614,6 +1620,79 @@ Continue downloading?</value>
   </data>
   <data name="VersionListPage_LoadingDialog_ProgressText.Text" xml:space="preserve">
     <value>0.0%</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_CancellingStatus" xml:space="preserve">
+    <value>Cancelling export...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_FilteringServerFilesStatus" xml:space="preserve">
+    <value>Filtering files not supported on server...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_PreparingSaveStatus" xml:space="preserve">
+    <value>Preparing to save modpack...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_CreatingModpackStatus" xml:space="preserve">
+    <value>Creating modpack...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_ProcessingFilesStatus" xml:space="preserve">
+    <value>Processing files...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_CompressingStatus" xml:space="preserve">
+    <value>Compressing modpack...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_CompletedStatus" xml:space="preserve">
+    <value>Export completed!</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_FailedStatus_Format" xml:space="preserve">
+    <value>Export failed: {0}</value>
+  </data>
+  <!-- C# programmatic localization keys (no x:Uid .Text/.Title suffixes) -->
+  <data name="VersionListPage_ExportModpack_Title" xml:space="preserve">
+    <value>Export Modpack</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ConfirmButton" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_CancelButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_Instruction" xml:space="preserve">
+    <value>Please select data to export:</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ResourceAll" xml:space="preserve">
+    <value>Version directory resources</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ModpackNameLabel" xml:space="preserve">
+    <value>Modpack Name</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ModpackNamePlaceholder" xml:space="preserve">
+    <value>Enter modpack name</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ModpackVersionLabel" xml:space="preserve">
+    <value>Modpack Version</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ModpackVersionPlaceholder" xml:space="preserve">
+    <value>Enter modpack version</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_OfflineMode" xml:space="preserve">
+    <value>Offline Mode</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ServerOnly" xml:space="preserve">
+    <value>Export Server Modpack</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_LicenseWarningTitle" xml:space="preserve">
+    <value>License Warning</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_LicenseWarningMessage" xml:space="preserve">
+    <value>Including mods directly in the modpack may violate certain terms. Please do not distribute!</value>
+  </data>
+  <data name="VersionListPage_ExportModpackLoading_Title" xml:space="preserve">
+    <value>Exporting Modpack</value>
+  </data>
+  <data name="VersionListPage_ExportModpackLoading_CancelButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="VersionListPage_ExportModpackLoading_FetchingModrinth" xml:space="preserve">
+    <value>Fetching Modrinth resources...</value>
   </data>
   <data name="VersionListPage_ResourceItem_OptionsText" xml:space="preserve">
     <value>Player Settings</value>
@@ -1888,6 +1967,12 @@ Continue downloading?</value>
   <data name="VersionManagerPage_NavigateToMapPageButton.Content" xml:space="preserve">
     <value>Go to Maps Page</value>
   </data>
+  <data name="VersionManagerPage_CreateMapShortcutMenuItem.Text" xml:space="preserve">
+    <value>Create Shortcut</value>
+  </data>
+  <data name="VersionManagerPage_RenameMapMenuItem.Text" xml:space="preserve">
+    <value>Rename</value>
+  </data>
   <data name="VersionManagerPage_Title" xml:space="preserve">
     <value>Version</value>
   </data>
@@ -1980,6 +2065,64 @@ Continue downloading?</value>
   </data>
   <data name="AccountPage_ExternalLoginDialog_PasswordLabel" xml:space="preserve">
     <value>Password</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_EmailLabel" xml:space="preserve">
+    <value>Email</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_EmailPlaceholder" xml:space="preserve">
+    <value>Enter email</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_AccountLabel" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_AccountPlaceholder" xml:space="preserve">
+    <value>Enter account</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_EmailOrUsernamePlaceholder" xml:space="preserve">
+    <value>Enter email or username</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_PasswordPlaceholder" xml:space="preserve">
+    <value>Enter password</value>
+  </data>
+  <data name="AccountPage_OfflineLoginDialog_Instruction" xml:space="preserve">
+    <value>Please enter offline username</value>
+  </data>
+  <data name="AccountPage_OfflineLoginDialog_UsernamePlaceholder" xml:space="preserve">
+    <value>Enter username</value>
+  </data>
+  <data name="AccountPage_RefreshToken_VerifyingStatus" xml:space="preserve">
+    <value>Verifying token...</value>
+  </data>
+  <data name="AccountPage_RefreshToken_RefreshedStatus_Format" xml:space="preserve">
+    <value>Token renewed!
+Expires in: {0}</value>
+  </data>
+  <data name="AccountPage_RefreshToken_StillValidStatus_Format" xml:space="preserve">
+    <value>Token is still valid!
+Time remaining: {0}</value>
+  </data>
+  <data name="AccountPage_RefreshToken_TimeRemainingDays_Format" xml:space="preserve">
+    <value>{0} days</value>
+  </data>
+  <data name="AccountPage_RefreshToken_TimeRemainingHours_Format" xml:space="preserve">
+    <value>{0} hours</value>
+  </data>
+  <data name="AccountPage_RefreshToken_TimeRemainingMinutes_Format" xml:space="preserve">
+    <value>{0} minutes</value>
+  </data>
+  <data name="AccountPage_RefreshToken_ExpiredExternal" xml:space="preserve">
+    <value>Token has fully expired and cannot be renewed.
+Please remove this account and sign in again.</value>
+  </data>
+  <data name="AccountPage_RefreshToken_RenewFailed" xml:space="preserve">
+    <value>Token renewal failed. Please sign in again.</value>
+  </data>
+  <data name="AccountPage_RefreshToken_RenewFailedWithReason_Format" xml:space="preserve">
+    <value>Token renewal failed
+{0}</value>
+  </data>
+  <data name="AccountPage_OfflineLoginDialog_Title" xml:space="preserve">
+    <value>Offline Login</value>
   </data>
   <data name="AccountPage_ExternalLoginDialog_ConfirmButton" xml:space="preserve">
     <value>Confirm</value>
@@ -2988,6 +3131,15 @@ Continue downloading?</value>
   </data>
   <data name="ResourceDownloadPage_RemoveFavoritesButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>Remove selected items</value>
+  </data>
+  <data name="ResourceDownloadPage_ImportShareCodeButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Import share code</value>
+  </data>
+  <data name="ResourceDownloadPage_CopyShareCodeButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Copy share code</value>
+  </data>
+  <data name="ResourceDownloadPage_FavoritesMultiSelectButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Multi-select mode</value>
   </data>
   <data name="Settings_McModName" xml:space="preserve">
     <value>MCMOD</value>
@@ -4632,6 +4784,51 @@ If this is a library mod, other mods may break.</value>
   <data name="Dialog_VersionComplete_Status_Format" xml:space="preserve">
     <value>Version {0}
 Checking dependencies...</value>
+  </data>
+  <data name="Dialog_VersionComplete_CompletedStatus" xml:space="preserve">
+    <value>Version files completed!</value>
+  </data>
+  <data name="Dialog_VersionComplete_CurrentFile_Format" xml:space="preserve">
+    <value>Current: {0}</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_CheckingDeps" xml:space="preserve">
+    <value>Checking dependencies...</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_ProcessingModLoader" xml:space="preserve">
+    <value>Processing mod loader...</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_DownloadingLibraries" xml:space="preserve">
+    <value>Downloading libraries...</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_ExtractingNatives" xml:space="preserve">
+    <value>Extracting native libraries...</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_ProcessingAssetIndex" xml:space="preserve">
+    <value>Processing asset index...</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_DownloadingAssets" xml:space="preserve">
+    <value>Downloading resource files...</value>
+  </data>
+  <data name="Dialog_VersionComplete_AssetHash_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_VersionComplete_RetryAsset_Format" xml:space="preserve">
+    <value>Retrying: {0}...</value>
+  </data>
+  <data name="Dialog_VersionComplete_SecondPassAsset_Format" xml:space="preserve">
+    <value>Second pass: {0}...</value>
+  </data>
+  <data name="Dialog_VersionComplete_StatusBar_Format" xml:space="preserve">
+    <value>Completing dependencies for {0}...</value>
+  </data>
+  <data name="Dialog_VersionComplete_ProgressStatusBar_Format" xml:space="preserve">
+    <value>Completing {0}: {1}%</value>
+  </data>
+  <data name="Dialog_VersionComplete_CompletedVersion_Format" xml:space="preserve">
+    <value>{0} version files completed!</value>
+  </data>
+  <data name="Dialog_VersionComplete_Failed_Format" xml:space="preserve">
+    <value>Version completion failed: {0}</value>
   </data>
   <data name="Dialog_Server_DeleteConfirm_Title" xml:space="preserve">
     <value>Delete server</value>

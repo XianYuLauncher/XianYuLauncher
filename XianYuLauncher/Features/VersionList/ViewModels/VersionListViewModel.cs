@@ -22,6 +22,7 @@ using XianYuLauncher.Features.ModDownloadDetail.Models;
 using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.VersionManagement.ViewModels;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
+using XianYuLauncher.Core.Constants;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Shared.Models;
 
@@ -1483,10 +1484,12 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
         
         try
         {
-            StatusMessage = $"正在补全 {version.Name} 的依赖文件...";
+            StatusMessage = string.Format(
+                "Dialog_VersionComplete_StatusBar_Format".GetLocalized(),
+                version.Name);
             
             var minecraftPath = _fileService.GetMinecraftDataPath();
-            string currentStage = "正在检查依赖...";
+            string currentStage = VersionCompleteStageKeys.CheckingDeps;
             
             // 调用版本补全方法
             await _minecraftVersionService.EnsureVersionDependenciesAsync(
@@ -1497,21 +1500,24 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                     var progress = status.Percent;
                     // 根据进度判断当前阶段
                     if (progress < 5)
-                        currentStage = "正在处理 ModLoader...";
+                        currentStage = VersionCompleteStageKeys.ProcessingModLoader;
                     else if (progress < 45)
-                        currentStage = "正在下载依赖库...";
+                        currentStage = VersionCompleteStageKeys.DownloadingLibraries;
                     else if (progress < 50)
-                        currentStage = "正在解压原生库...";
+                        currentStage = VersionCompleteStageKeys.ExtractingNatives;
                     else if (progress < 55)
-                        currentStage = "正在处理资源索引...";
+                        currentStage = VersionCompleteStageKeys.ProcessingAssetIndex;
                     else
-                        currentStage = "正在下载资源文件...";
+                        currentStage = VersionCompleteStageKeys.DownloadingAssets;
                     
                     // 更新状态栏
-                    StatusMessage = $"正在补全 {version.Name}: {progress:F1}%";
+                    StatusMessage = string.Format(
+                        "Dialog_VersionComplete_ProgressStatusBar_Format".GetLocalized(),
+                        version.Name,
+                        progress.ToString("F1"));
                     
                     // 触发进度更新事件
-                    CompleteVersionProgressUpdated?.Invoke(this, (progress, currentStage, ""));
+                    CompleteVersionProgressUpdated?.Invoke(this, (progress, currentStage, string.Empty));
                 },
                 currentFile =>
                 {
@@ -1519,13 +1525,17 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                     CompleteVersionProgressUpdated?.Invoke(this, (-1, currentStage, currentFile));
                 });
             
-            StatusMessage = $"{version.Name} 版本补全完成！";
-            CompleteVersionCompleted?.Invoke(this, (true, $"{version.Name} 版本补全完成！"));
+            StatusMessage = string.Format(
+                "Dialog_VersionComplete_CompletedVersion_Format".GetLocalized(),
+                version.Name);
+            CompleteVersionCompleted?.Invoke(this, (true, StatusMessage));
         }
         catch (Exception ex)
         {
-            StatusMessage = $"版本补全失败: {ex.Message}";
-            CompleteVersionCompleted?.Invoke(this, (false, $"版本补全失败: {ex.Message}"));
+            StatusMessage = string.Format(
+                "Dialog_VersionComplete_Failed_Format".GetLocalized(),
+                ex.Message);
+            CompleteVersionCompleted?.Invoke(this, (false, StatusMessage));
             System.Diagnostics.Debug.WriteLine($"[版本补全] 错误: {ex}");
         }
     }
