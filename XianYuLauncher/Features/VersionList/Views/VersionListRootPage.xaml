@@ -287,7 +287,6 @@
                                 </MenuFlyoutItem>
                                 <MenuFlyoutItem
                                     x:Uid="VersionListPage_GenerateLaunchScriptMenuItem"
-                                    Text="生成启动参数"
                                     Command="{Binding DataContext.GenerateLaunchScriptCommand, ElementName=VersionsListView}"
                                     CommandParameter="{Binding}"
                                     IsEnabled="{Binding IsValid}">
@@ -297,7 +296,6 @@
                                 </MenuFlyoutItem>
                                 <MenuFlyoutItem
                                     x:Uid="VersionListPage_CreateShortcutMenuItem"
-                                    Text="创建快捷方式"
                                     Command="{Binding DataContext.CreateShortcutCommand, ElementName=VersionsListView}"
                                     CommandParameter="{Binding}"
                                     IsEnabled="{Binding IsValid}">
@@ -307,7 +305,6 @@
                                 </MenuFlyoutItem>
                                 <MenuFlyoutItem
                                     x:Uid="VersionListPage_CompleteVersionMenuItem"
-                                    Text="版本补全"
                                     Command="{Binding DataContext.CompleteVersionCommand, ElementName=VersionsListView}"
                                     CommandParameter="{Binding}"
                                     IsEnabled="{Binding IsValid}">
@@ -318,7 +315,6 @@
                                 <MenuFlyoutSeparator />
                                 <MenuFlyoutItem
                                     x:Uid="VersionListPage_RenameMenuItem"
-                                    Text="重命名"
                                     Command="{Binding DataContext.RenameVersionCommand, ElementName=VersionsListView}"
                                     CommandParameter="{Binding}">
                                     <MenuFlyoutItem.Icon>

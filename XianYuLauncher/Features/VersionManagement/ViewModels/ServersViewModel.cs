@@ -226,9 +226,10 @@ public partial class ServersViewModel : ObservableObject
         if (server == null) return;
 
         var confirmed = await _dialogService.ShowConfirmationDialogAsync(
-            "删除服务器",
-            $"确定要删除服务器 '{server.Name}' 吗?",
-            "删除", "取消");
+            "Dialog_Server_DeleteConfirm_Title".GetLocalized(),
+            "Dialog_Server_DeleteConfirm_Content_Format".GetLocalized(server.Name ?? string.Empty),
+            "Dialog_Delete".GetLocalized(),
+            "Dialog_Cancel".GetLocalized());
         if (!confirmed) return;
 
         try
@@ -246,7 +247,9 @@ public partial class ServersViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            await _dialogService.ShowMessageDialogAsync("错误", $"删除服务器失败: {ex.Message}");
+            await _dialogService.ShowMessageDialogAsync(
+                "Msg_Error".GetLocalized(),
+                "Dialog_Server_DeleteFailed_Format".GetLocalized(ex.Message));
         }
     }
 
@@ -281,9 +284,10 @@ public partial class ServersViewModel : ObservableObject
             if (Helpers.ShortcutHelper.ShortcutExists(shortcutPath))
             {
                 var overwrite = await _dialogService.ShowConfirmationDialogAsync(
-                    "快捷方式已存在",
-                    $"桌面上已存在 {shortcutName} 的快捷方式。\n是否覆盖现有快捷方式？",
-                    "覆盖", "取消");
+                    "Dialog_Shortcut_Overwrite_Title".GetLocalized(),
+                    "Dialog_Shortcut_Overwrite_Content_Format".GetLocalized(shortcutName),
+                    "Dialog_Overwrite".GetLocalized(),
+                    "Dialog_Cancel".GetLocalized());
                 if (!overwrite) return;
             }
 
@@ -295,14 +299,17 @@ public partial class ServersViewModel : ObservableObject
 
             _context.StatusMessage = $"快捷方式已创建: {shortcutName}";
 
-            await _dialogService.ShowMessageDialogAsync("快捷方式已创建",
-                $"已在桌面创建 {shortcutName} 的快捷方式。\n双击可直接连接此服务器。");
+            await _dialogService.ShowMessageDialogAsync(
+                "Dialog_Shortcut_Created_Title".GetLocalized(),
+                "Dialog_Shortcut_Created_Server_Content_Format".GetLocalized(shortcutName));
         }
         catch (Exception ex)
         {
             _context.StatusMessage = "创建快捷方式失败";
             System.Diagnostics.Debug.WriteLine($"创建服务器快捷方式失败: {ex}");
-            await _dialogService.ShowMessageDialogAsync("创建失败", "创建快捷方式失败，请检查桌面权限或稍后重试。");
+            await _dialogService.ShowMessageDialogAsync(
+                "Dialog_Shortcut_CreateFailed_Title".GetLocalized(),
+                "Dialog_Shortcut_CreateFailed_Server_Content".GetLocalized());
         }
     }
 

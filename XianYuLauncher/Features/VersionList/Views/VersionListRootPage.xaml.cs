@@ -340,10 +340,10 @@ public sealed partial class VersionListRootPage : Page
                     _isRenameDialogOpen = true;
 
                     var newName = await _dialogService.ShowRenameDialogAsync(
-                        "重命名版本",
+                        "Dialog_Version_Rename_Title".GetLocalized(),
                         viewModel.NewVersionName,
-                        "新版本名称",
-                        "请输入新的版本名称：");
+                        "Dialog_Version_Rename_Placeholder".GetLocalized(),
+                        "Dialog_Version_Rename_Instruction".GetLocalized());
                     if (!string.IsNullOrWhiteSpace(newName))
                     {
                         viewModel.NewVersionName = newName;
@@ -352,7 +352,10 @@ public sealed partial class VersionListRootPage : Page
 
                         if (!success)
                         {
-                            await _dialogService.ShowMessageDialogAsync("重命名失败", message, "确定");
+                            await _dialogService.ShowMessageDialogAsync(
+                                "Dialog_RenameFailed_Title".GetLocalized(),
+                                message,
+                                "Dialog_OK".GetLocalized());
                         }
                     }
 
@@ -377,16 +380,16 @@ public sealed partial class VersionListRootPage : Page
         }
 
         _isCompleteVersionDialogOpen = true;
-        _completeVersionDialogState.Set($"版本 {e.Name}\n正在检查依赖...", 0, "0.0%");
+        _completeVersionDialogState.Set("Dialog_VersionComplete_Status_Format".GetLocalized(e.Name), 0, "0.0%");
 
         var dialogTask = _progressDialogService.ShowObservableProgressDialogAsync(
-            "版本补全",
+            "Dialog_VersionComplete_Title".GetLocalized(),
             () => _completeVersionDialogState.Status,
             () => _completeVersionDialogState.Progress,
             () => _completeVersionDialogState.ProgressText,
             _completeVersionDialogState,
             primaryButtonText: null,
-            closeButtonText: "关闭");
+            closeButtonText: "Dialog_Close".GetLocalized());
 
         _ = dialogTask.ContinueWith(_ => _isCompleteVersionDialogOpen = false, TaskScheduler.Default);
     }
@@ -400,11 +403,16 @@ public sealed partial class VersionListRootPage : Page
 
         _uiDispatcher.TryEnqueue(() =>
         {
-            var status = string.IsNullOrEmpty(e.Stage) ? _completeVersionDialogState.Status : e.Stage;
+            var status = string.IsNullOrEmpty(e.Stage)
+                ? _completeVersionDialogState.Status
+                : VersionCompleteLocalization.Localize(e.Stage);
             if (!string.IsNullOrEmpty(e.CurrentFile))
             {
-                var displayFile = e.CurrentFile.Length > 8 ? e.CurrentFile.Substring(0, 8) + "..." : e.CurrentFile;
-                status = $"{status}\n当前: {displayFile}";
+                var localizedFile = VersionCompleteLocalization.LocalizeCurrentFile(e.CurrentFile);
+                if (!string.Equals(localizedFile, status, StringComparison.Ordinal))
+                {
+                    status = $"{status}\n{string.Format("Dialog_VersionComplete_CurrentFile_Format".GetLocalized(), localizedFile)}";
+                }
             }
 
             var progress = e.Progress >= 0 ? e.Progress : _completeVersionDialogState.Progress;
@@ -418,11 +426,14 @@ public sealed partial class VersionListRootPage : Page
         {
             if (e.Success)
             {
-                _completeVersionDialogState.Set("补全完成！", 100, "100%");
+                _completeVersionDialogState.Set("Dialog_VersionComplete_CompletedStatus".GetLocalized(), 100, "100%");
             }
             else
             {
-                _completeVersionDialogState.Set(e.Message, _completeVersionDialogState.Progress, _completeVersionDialogState.ProgressText);
+                _completeVersionDialogState.Set(
+                    VersionCompleteLocalization.Localize(e.Message),
+                    _completeVersionDialogState.Progress,
+                    _completeVersionDialogState.ProgressText);
             }
         });
     }
@@ -448,7 +459,7 @@ public sealed partial class VersionListRootPage : Page
 
         var instructionText = new TextBlock
         {
-            Text = "请选择要导出的数据：",
+            Text = "VersionListPage_ExportModpack_Instruction".GetLocalized(),
             FontSize = 14,
             Margin = new Thickness(0, 0, 0, 12),
             HorizontalAlignment = HorizontalAlignment.Left
@@ -495,7 +506,7 @@ public sealed partial class VersionListRootPage : Page
 
             var resourceAllCheckBox = new CheckBox
             {
-                Content = "版本目录资源",
+                Content = "VersionListPage_ExportModpack_ResourceAll".GetLocalized(),
                 IsThreeState = true,
                 VerticalContentAlignment = VerticalAlignment.Center
             };
@@ -599,10 +610,10 @@ public sealed partial class VersionListRootPage : Page
         };
 
         var nameStack = new StackPanel { Spacing = 4 };
-        nameStack.Children.Add(new TextBlock { Text = "整合包名称", FontSize = 14 });
+        nameStack.Children.Add(new TextBlock { Text = "VersionListPage_ExportModpack_ModpackNameLabel".GetLocalized(), FontSize = 14 });
         var nameTextBox = new TextBox
         {
-            PlaceholderText = "请输入整合包名称",
+            PlaceholderText = "VersionListPage_ExportModpack_ModpackNamePlaceholder".GetLocalized(),
             Text = viewModel.ModpackName,
             Width = 400,
             MaxWidth = 400
@@ -612,10 +623,10 @@ public sealed partial class VersionListRootPage : Page
         inputStack.Children.Add(nameStack);
 
         var versionStack = new StackPanel { Spacing = 4 };
-        versionStack.Children.Add(new TextBlock { Text = "整合包版本", FontSize = 14 });
+        versionStack.Children.Add(new TextBlock { Text = "VersionListPage_ExportModpack_ModpackVersionLabel".GetLocalized(), FontSize = 14 });
         var versionTextBox = new TextBox
         {
-            PlaceholderText = "请输入整合包版本",
+            PlaceholderText = "VersionListPage_ExportModpack_ModpackVersionPlaceholder".GetLocalized(),
             Text = viewModel.ModpackVersion,
             Width = 400,
             MaxWidth = 400
@@ -634,7 +645,7 @@ public sealed partial class VersionListRootPage : Page
 
         var offlineModeCheckBox = new CheckBox
         {
-            Content = "非联网模式",
+            Content = "VersionListPage_ExportModpack_OfflineMode".GetLocalized(),
             IsChecked = viewModel.IsOfflineMode,
             FontSize = 14,
             HorizontalAlignment = HorizontalAlignment.Center
@@ -642,7 +653,7 @@ public sealed partial class VersionListRootPage : Page
 
         var serverOnlyCheckBox = new CheckBox
         {
-            Content = "导出服务端整合包",
+            Content = "VersionListPage_ExportModpack_ServerOnly".GetLocalized(),
             IsChecked = viewModel.IsServerOnly,
             FontSize = 14,
             HorizontalAlignment = HorizontalAlignment.Center
@@ -650,8 +661,8 @@ public sealed partial class VersionListRootPage : Page
 
         var warningInfoBar = new InfoBar
         {
-            Title = "许可证警告",
-            Message = "直接将 Mod 放入整合包可能会违反部分条例，请不要进行分发！",
+            Title = "VersionListPage_ExportModpack_LicenseWarningTitle".GetLocalized(),
+            Message = "VersionListPage_ExportModpack_LicenseWarningMessage".GetLocalized(),
             Severity = InfoBarSeverity.Warning,
             IsOpen = true,
             IsClosable = false,
@@ -684,10 +695,10 @@ public sealed partial class VersionListRootPage : Page
         scrollViewer.Content = mainStack;
 
         var result = await _dialogService.ShowCustomDialogAsync(
-            "导出整合包",
+            "VersionListPage_ExportModpack_Title".GetLocalized(),
             scrollViewer,
-            primaryButtonText: "确认",
-            closeButtonText: "取消",
+            primaryButtonText: "VersionListPage_ExportModpack_ConfirmButton".GetLocalized(),
+            closeButtonText: "VersionListPage_ExportModpack_CancelButton".GetLocalized(),
             defaultButton: ContentDialogButton.Primary);
 
         if (result == ContentDialogResult.Primary)
@@ -724,7 +735,7 @@ public sealed partial class VersionListRootPage : Page
         System.Diagnostics.Debug.WriteLine("====================");
 
         ShowLoadingDialog();
-        UpdateLoadingDialog("正在获取Modrinth资源...", 0.0);
+        UpdateLoadingDialog("VersionListPage_ExportModpackLoading_FetchingModrinth".GetLocalized(), 0.0);
 
         _ = Task.Run(async () =>
         {
@@ -776,7 +787,7 @@ public sealed partial class VersionListRootPage : Page
                     _uiDispatcher.TryEnqueue(() =>
                     {
                         System.Diagnostics.Debug.WriteLine("开始搜索Modrinth获取文件信息...");
-                        UpdateLoadingDialog("正在获取Modrinth资源...", 10.0);
+                        UpdateLoadingDialog("VersionListPage_ExportModpackLoading_FetchingModrinth".GetLocalized(), 10.0);
                     });
 
                     fileResults = await viewModel.SearchModrinthForFilesAsync(viewModel.SelectedVersion, filteredOptions);
@@ -796,7 +807,7 @@ public sealed partial class VersionListRootPage : Page
                         _uiDispatcher.TryEnqueue(() =>
                         {
                             System.Diagnostics.Debug.WriteLine("开始过滤服务端不支持的文件...");
-                            UpdateLoadingDialog("正在过滤服务端不支持的文件...", 30.0);
+                            UpdateLoadingDialog("VersionListPage_LoadingDialog_FilteringServerFilesStatus".GetLocalized(), 30.0);
                         });
 
                         foreach (var kvp in fileResults)
@@ -886,7 +897,7 @@ public sealed partial class VersionListRootPage : Page
                     _uiDispatcher.TryEnqueue(() =>
                     {
                         System.Diagnostics.Debug.WriteLine("非联网模式且不导出服务端，跳过Modrinth搜索");
-                        UpdateLoadingDialog("准备保存整合包...", 20.0);
+                        UpdateLoadingDialog("VersionListPage_LoadingDialog_PreparingSaveStatus".GetLocalized(), 20.0);
                     });
                 }
 
@@ -896,7 +907,7 @@ public sealed partial class VersionListRootPage : Page
                     return;
                 }
 
-                _uiDispatcher.TryEnqueue(() => UpdateLoadingDialog("准备保存整合包...", 20.0));
+                _uiDispatcher.TryEnqueue(() => UpdateLoadingDialog("VersionListPage_LoadingDialog_PreparingSaveStatus".GetLocalized(), 20.0));
 
                 StorageFile? file = null;
                 var filePickerTask = new TaskCompletionSource<StorageFile?>();
@@ -931,7 +942,7 @@ public sealed partial class VersionListRootPage : Page
                     return;
                 }
 
-                _uiDispatcher.TryEnqueue(() => UpdateLoadingDialog("正在创建整合包...", 30.0));
+                _uiDispatcher.TryEnqueue(() => UpdateLoadingDialog("VersionListPage_LoadingDialog_CreatingModpackStatus".GetLocalized(), 30.0));
 
                 string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
                 Directory.CreateDirectory(tempDir);
@@ -1032,7 +1043,7 @@ public sealed partial class VersionListRootPage : Page
                     string jsonContent = Newtonsoft.Json.JsonConvert.SerializeObject(indexJson, Newtonsoft.Json.Formatting.Indented);
                     File.WriteAllText(indexJsonPath, jsonContent);
 
-                    _uiDispatcher.TryEnqueue(() => UpdateLoadingDialog("正在处理文件...", 40.0));
+                    _uiDispatcher.TryEnqueue(() => UpdateLoadingDialog("VersionListPage_LoadingDialog_ProcessingFilesStatus".GetLocalized(), 40.0));
 
                     HashSet<string> processedDirectories = new HashSet<string>();
                     var filesToExport = new List<string>();
@@ -1104,7 +1115,7 @@ public sealed partial class VersionListRootPage : Page
                         return;
                     }
 
-                    _uiDispatcher.TryEnqueue(() => UpdateLoadingDialog("正在压缩整合包...", 70.0));
+                    _uiDispatcher.TryEnqueue(() => UpdateLoadingDialog("VersionListPage_LoadingDialog_CompressingStatus".GetLocalized(), 70.0));
 
                     using (var fileStream = new FileStream(file.Path, FileMode.Create, FileAccess.Write))
                     using (var archive = new ZipArchive(fileStream, ZipArchiveMode.Create))
@@ -1123,7 +1134,7 @@ public sealed partial class VersionListRootPage : Page
                     {
                         _uiDispatcher.EnqueueAsync(async () =>
                         {
-                            UpdateLoadingDialog("导出完成！", 100.0);
+                            UpdateLoadingDialog("VersionListPage_LoadingDialog_CompletedStatus".GetLocalized(), 100.0);
                             System.Diagnostics.Debug.WriteLine($"整合包导出成功：{file.Path}");
                             await Task.Delay(1000);
                             HideLoadingDialog();
@@ -1155,7 +1166,7 @@ public sealed partial class VersionListRootPage : Page
                 _uiDispatcher.EnqueueAsync(async () =>
                 {
                     System.Diagnostics.Debug.WriteLine($"导出整合包失败：{ex.Message}");
-                    UpdateLoadingDialog($"导出失败：{ex.Message}", 0.0);
+                    UpdateLoadingDialog(string.Format("VersionListPage_LoadingDialog_FailedStatus_Format".GetLocalized(), ex.Message), 0.0);
                     await Task.Delay(2000);
                     HideLoadingDialog();
                 }).Observe("VersionListRootPage.ExportModpack.ErrorFinalize");
@@ -1170,17 +1181,17 @@ public sealed partial class VersionListRootPage : Page
             return;
         }
 
-        _loadingDialogState.Set("正在获取Modrinth资源...", 0.0, "0.0%");
+        _loadingDialogState.Set("VersionListPage_ExportModpackLoading_FetchingModrinth".GetLocalized(), 0.0, "0.0%");
         _loadingDialogCloseSignal = new TaskCompletionSource<bool>();
 
         var dialogTask = _progressDialogService.ShowObservableProgressDialogAsync(
-            "正在导出整合包",
+            "VersionListPage_ExportModpackLoading_Title".GetLocalized(),
             () => _loadingDialogState.Status,
             () => _loadingDialogState.Progress,
             () => _loadingDialogState.ProgressText,
             _loadingDialogState,
             primaryButtonText: null,
-            closeButtonText: "取消",
+            closeButtonText: "VersionListPage_ExportModpackLoading_CancelButton".GetLocalized(),
             autoCloseWhen: _loadingDialogCloseSignal.Task);
 
         _ = dialogTask.ContinueWith(task =>
@@ -1188,7 +1199,7 @@ public sealed partial class VersionListRootPage : Page
             if (!_isExportCancelled && task.Status == TaskStatus.RanToCompletion && task.Result == ContentDialogResult.None)
             {
                 _isExportCancelled = true;
-                _loadingDialogState.Set("正在取消导出...", _loadingDialogState.Progress, _loadingDialogState.ProgressText);
+                _loadingDialogState.Set("VersionListPage_LoadingDialog_CancellingStatus".GetLocalized(), _loadingDialogState.Progress, _loadingDialogState.ProgressText);
             }
 
             _loadingDialogCloseSignal = null;

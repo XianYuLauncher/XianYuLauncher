@@ -354,7 +354,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 {
                     Log.Error($"[Multiplayer] 超时：未能获取端口号");
                     isSuccess = false;
-                    errorMessage = "无法获取 Terracotta 端口信息，请检查：\n1. 防火墙是否阻止了程序\n2. 杀毒软件是否拦截了程序\n3. 是否有足够的磁盘空间\n\n这可能是一个Bug，请前往 设置->关于->快速动作 导出日志并发送给开发者";
+                    errorMessage = "Dialog_Multiplayer_PortTimeout_Content".GetLocalized();
                     
                     // 终止进程
                     if (_terracottaProcess != null && !_terracottaProcess.HasExited)
@@ -370,13 +370,13 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             else
             {
                 isSuccess = false;
-                errorMessage = "联机服务文件不存在或无法下载，请检查网络连接后重试";
+                errorMessage = "Dialog_Multiplayer_ServiceUnavailable".GetLocalized();
             }
         }
         catch (Exception ex)
         {
             isSuccess = false;
-            errorMessage = $"启动联机服务时发生错误：{ex.Message}";
+            errorMessage = "Dialog_Multiplayer_StartFailed_Format".GetLocalized(ex.Message);
         }
 
         ShowResult: // 标签，用于 goto 跳转
@@ -840,14 +840,14 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 else
                 {
                     isSuccess = false;
-                    await ShowErrorDialogAsync("联机服务文件不存在或无法下载，请检查网络连接后重试");
+                    await ShowErrorDialogAsync("Dialog_Multiplayer_ServiceUnavailable".GetLocalized());
                 }
             }
             catch (Exception ex)
             {
                 isSuccess = false;
                 Log.Error(ex, $"[Multiplayer-Join] 启动联机服务异常: {ex.Message}");
-                await ShowErrorDialogAsync($"启动联机服务时发生错误：{ex.Message}");
+                await ShowErrorDialogAsync("Dialog_Multiplayer_StartFailed_Format".GetLocalized(ex.Message));
             }
             
             if (isSuccess && !string.IsNullOrEmpty(port))

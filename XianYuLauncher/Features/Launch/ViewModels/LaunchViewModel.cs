@@ -115,7 +115,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
             System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] 读取版本 JSON 失败，使用默认 Java 组件。Error: {ex.Message}");
         }
 
-        await _progressDialogService.ShowProgressDialogAsync("自动配置 Java 环境", $"正在获取 Java 组件: {component}...", async (progress, status, token) => 
+        await _progressDialogService.ShowProgressDialogAsync("Dialog_Progress_AutoConfigureJava_Title".GetLocalized(), "Dialog_Progress_AutoConfigureJava_Status_Format".GetLocalized(component), async (progress, status, token) => 
         {
             try
             {

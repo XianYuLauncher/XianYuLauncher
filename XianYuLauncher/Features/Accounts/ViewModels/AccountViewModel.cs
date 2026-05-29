@@ -550,10 +550,10 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         private async Task ShowMinecraftPurchaseDialogAsync()
         {
             var shouldOpenPurchaseLink = await _dialogService.ShowConfirmationDialogAsync(
-                "账户未购买Minecraft",
-                "当前微软账户没有购买Minecraft，请先购买游戏后再尝试登录。",
-                "购买Minecraft",
-                "取消",
+                "Dialog_Account_NotPurchased_Title".GetLocalized(),
+                "Dialog_Account_NotPurchased_Content".GetLocalized(),
+                "Dialog_Account_PurchaseButton".GetLocalized(),
+                "Dialog_Cancel".GetLocalized(),
                 defaultButton: Microsoft.UI.Xaml.Controls.ContentDialogButton.Close);
 
             if (shouldOpenPurchaseLink)
@@ -565,7 +565,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                 }
                 catch
                 {
-                    await _dialogService.ShowMessageDialogAsync("打开链接失败", "无法打开购买链接，请手动访问该网址。", "确定");
+                    await _dialogService.ShowMessageDialogAsync("Dialog_Account_OpenLinkFailed_Title".GetLocalized(), "Dialog_Account_OpenPurchaseLinkFailed_Content".GetLocalized(), "Dialog_OK".GetLocalized());
                 }
             }
             
@@ -579,10 +579,10 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         private async Task ShowPlayerProfileErrorDialogAsync(string errorMessage)
         {
             var shouldCreateProfile = await _dialogService.ShowConfirmationDialogAsync(
-                "获取玩家信息失败",
-                "当前微软账户已购买Minecraft，但可能未创建玩家档案。",
-                "创建档案",
-                "确定",
+                "Dialog_Account_ProfileError_Title".GetLocalized(),
+                "Dialog_Account_ProfileError_Content".GetLocalized(),
+                "Dialog_Account_CreateProfileButton".GetLocalized(),
+                "Dialog_OK".GetLocalized(),
                 defaultButton: Microsoft.UI.Xaml.Controls.ContentDialogButton.Close);
 
             if (shouldCreateProfile)
@@ -594,7 +594,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                 }
                 catch
                 {
-                    await _dialogService.ShowMessageDialogAsync("打开链接失败", "无法打开创建档案链接，请手动访问该网址。", "确定");
+                    await _dialogService.ShowMessageDialogAsync("Dialog_Account_OpenLinkFailed_Title".GetLocalized(), "Dialog_Account_OpenProfileLinkFailed_Content".GetLocalized(), "Dialog_OK".GetLocalized());
                 }
             }
             
@@ -607,7 +607,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// </summary>
         private async Task ShowLoginErrorDialogAsync(string errorMessage)
         {
-            await _dialogService.ShowMessageDialogAsync("登录失败", errorMessage, "确定");
+            await _dialogService.ShowMessageDialogAsync("Msg_LoginFailed".GetLocalized(), errorMessage, "Dialog_OK".GetLocalized());
             
             // 重置登录状态
             LoginStatus = "登录已取消";

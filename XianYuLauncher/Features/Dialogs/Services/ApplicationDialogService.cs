@@ -22,7 +22,7 @@ public sealed class ApplicationDialogService : IApplicationDialogService
             Content = "Dialog_JavaNotFound_Content".GetLocalized(requiredVersion),
             PrimaryButtonText = "Dialog_JavaNotFound_AutoDownload".GetLocalized(),
             SecondaryButtonText = "Dialog_JavaNotFound_ManualDownload".GetLocalized(),
-            CloseButtonText = "Msg_Cancel".GetLocalized(),
+            CloseButtonText = "Dialog_Cancel".GetLocalized(),
         };
 
         dialog.PrimaryButtonClick += (_, _) => onAutoDownload?.Invoke();
@@ -94,7 +94,7 @@ public sealed class ApplicationDialogService : IApplicationDialogService
             Title = "Dialog_RegionRestricted_Title".GetLocalized(),
             Content = errorMessage,
             PrimaryButtonText = "Dialog_RegionRestricted_Go".GetLocalized(),
-            CloseButtonText = "Msg_Cancel".GetLocalized(),
+            CloseButtonText = "Dialog_Cancel".GetLocalized(),
             DefaultButton = ContentDialogButton.Close,
         };
 

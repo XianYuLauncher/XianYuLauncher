@@ -241,9 +241,10 @@ public partial class MapsViewModel : ObservableObject
         try
         {
             var confirmed = await _dialogService.ShowConfirmationDialogAsync(
-                "确认删除",
-                $"确定要删除地图 '{map.Name}' 吗？此操作不可恢复。",
-                "确定删除", "取消");
+                "Dialog_Map_DeleteConfirm_Title".GetLocalized(),
+                "Dialog_Map_DeleteConfirm_Content_Format".GetLocalized(map.Name),
+                "Dialog_ConfirmDelete".GetLocalized(),
+                "Dialog_Cancel".GetLocalized());
             if (!confirmed) return;
 
             await VersionManagementMapOps.DeleteMapDirectoryAsync(map.FilePath);
@@ -276,7 +277,9 @@ public partial class MapsViewModel : ObservableObject
         if (map == null) return;
         try
         {
-            var newName = await _dialogService.ShowRenameDialogAsync("重命名地图", map.Name, "输入新名称");
+            var newName = await _dialogService.ShowRenameDialogAsync(
+                "Dialog_Map_Rename_Title".GetLocalized(),
+                map.Name);
             if (newName == null) return;
             if (string.IsNullOrWhiteSpace(newName)) return;
 
@@ -284,7 +287,9 @@ public partial class MapsViewModel : ObservableObject
 
             if (renameResult.Status == VersionManagementMapOps.RenameMapStatus.NameExists)
             {
-                await _dialogService.ShowMessageDialogAsync("重命名失败", "该名称已存在，请使用其他名称。");
+                await _dialogService.ShowMessageDialogAsync(
+                    "Dialog_RenameFailed_Title".GetLocalized(),
+                    "Dialog_Rename_NameExists".GetLocalized());
                 return;
             }
 
@@ -359,9 +364,10 @@ public partial class MapsViewModel : ObservableObject
             if (Helpers.ShortcutHelper.ShortcutExists(shortcutPath))
             {
                 var overwrite = await _dialogService.ShowConfirmationDialogAsync(
-                    "快捷方式已存在",
-                    $"桌面上已存在 {shortcutName} 的快捷方式。\n是否覆盖现有快捷方式？",
-                    "覆盖", "取消");
+                    "Dialog_Shortcut_Overwrite_Title".GetLocalized(),
+                    "Dialog_Shortcut_Overwrite_Content_Format".GetLocalized(shortcutName),
+                    "Dialog_Overwrite".GetLocalized(),
+                    "Dialog_Cancel".GetLocalized());
                 if (!overwrite) return;
             }
 
@@ -373,8 +379,9 @@ public partial class MapsViewModel : ObservableObject
 
             _context.StatusMessage = $"快捷方式已创建: {shortcutName}";
 
-            await _dialogService.ShowMessageDialogAsync("快捷方式已创建",
-                $"已在桌面创建 {shortcutName} 的快捷方式。\n双击可直接进入此存档。");
+            await _dialogService.ShowMessageDialogAsync(
+                "Dialog_Shortcut_Created_Title".GetLocalized(),
+                "Dialog_Shortcut_Created_Map_Content_Format".GetLocalized(shortcutName));
         }
         catch (Exception ex)
         {

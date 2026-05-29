@@ -1673,8 +1673,8 @@
                                             <Grid.ContextFlyout>
                                                 <MenuFlyout>
                                                     <MenuFlyoutItem Text="启动游戏" Icon="Play" Command="{Binding DataContext.LaunchMapCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
-                                                    <MenuFlyoutItem Text="创建快捷方式" Icon="Link" Command="{Binding DataContext.CreateMapShortcutCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
-                                                    <MenuFlyoutItem Text="重命名" Icon="Rename" Command="{Binding DataContext.RenameMapCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
+                                                    <MenuFlyoutItem x:Uid="VersionManagerPage_CreateMapShortcutMenuItem" Icon="Link" Command="{Binding DataContext.CreateMapShortcutCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
+                                                    <MenuFlyoutItem x:Uid="VersionManagerPage_RenameMapMenuItem" Icon="Rename" Command="{Binding DataContext.RenameMapCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
                                                     <MenuFlyoutItem Text="导出为 ZIP" Icon="Save" Command="{Binding DataContext.ExportMapCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>
                                                     <MenuFlyoutSeparator />
                                                     <MenuFlyoutItem Text="删除" Icon="Delete" Command="{Binding DataContext.DeleteMapCommand, ElementName=MapListView}" CommandParameter="{Binding}"/>

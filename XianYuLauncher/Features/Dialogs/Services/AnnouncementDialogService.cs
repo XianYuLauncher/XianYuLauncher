@@ -5,6 +5,7 @@ using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.Dialogs.ViewModels;
 using XianYuLauncher.Features.Dialogs.Views;
+using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Features.Dialogs.Services;
 
@@ -24,7 +25,7 @@ public sealed class AnnouncementDialogService : IAnnouncementDialogService
         _dialogHostService = dialogHostService;
     }
 
-    public async Task ShowAnnouncementAsync(AnnouncementInfo announcement, string closeButtonText = "知道了")
+    public async Task ShowAnnouncementAsync(AnnouncementInfo announcement, string? closeButtonText = null)
     {
         var viewModel = new AnnouncementDialogViewModel(_logger, _announcementService, announcement);
         var dialog = new ContentDialog
@@ -36,7 +37,7 @@ public sealed class AnnouncementDialogService : IAnnouncementDialogService
 
         if (announcement.buttons is null || announcement.buttons.Count == 0)
         {
-            dialog.CloseButtonText = closeButtonText;
+            dialog.CloseButtonText = closeButtonText ?? "Dialog_GotIt".GetLocalized();
         }
 
         void OnCloseDialog(object? sender, EventArgs args)

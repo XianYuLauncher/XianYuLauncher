@@ -51,8 +51,8 @@ public sealed class CrashReportDialogService : ICrashReportDialogService
         };
 
         var titleText = string.IsNullOrWhiteSpace(crashTitle)
-            ? "游戏意外退出"
-            : $"游戏意外退出：{crashTitle}";
+            ? "Dialog_Crash_ExitTitle".GetLocalized()
+            : "Dialog_Crash_ExitTitleWithName".GetLocalized(crashTitle);
         var warningTitle = new TextBlock
         {
             Text = titleText,
@@ -69,7 +69,7 @@ public sealed class CrashReportDialogService : ICrashReportDialogService
 
         var hintText = new TextBlock
         {
-            Text = "为了快速解决问题，请导出完整的崩溃日志，而不是截图。",
+            Text = "Dialog_Crash_ExportHint".GetLocalized(),
             FontSize = 14,
             TextWrapping = TextWrapping.Wrap,
             Foreground = _dialogThemePaletteService.GetPrimaryTextBrush(),

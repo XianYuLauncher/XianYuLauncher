@@ -119,7 +119,7 @@ public sealed class SelectionDialogService : ISelectionDialogService
         {
             Title = "Dialog_AddServer_Title".GetLocalized(),
             PrimaryButtonText = "Dialog_AddServer_AddButton".GetLocalized(),
-            CloseButtonText = "Msg_Cancel".GetLocalized(),
+            CloseButtonText = "Dialog_Cancel".GetLocalized(),
             DefaultButton = ContentDialogButton.Primary,
             Content = stackPanel,
         };

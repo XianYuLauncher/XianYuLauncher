@@ -13,6 +13,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Features.Dialogs.Contracts;
+using XianYuLauncher.Helpers;
 using XianYuLauncher.Models;
 using CoreUpdateInfo = XianYuLauncher.Core.Models.UpdateInfo;
 using VelopackUpdateInfo = Velopack.UpdateInfo;
@@ -82,7 +83,7 @@ public class UpdateFlowService : IUpdateFlowService
 
             if (AppEnvironment.CurrentDistributionChannel == DistributionChannel.Store)
             {
-                await _dialogService.ShowMessageDialogAsync("检查更新", "您使用的是微软商店版本，应用将通过商店自动更新。");
+                await _dialogService.ShowMessageDialogAsync("Dialog_Update_CheckTitle".GetLocalized(), "Dialog_Update_StoreChannel_Message".GetLocalized());
                 return new UpdateFlowResult { Success = true, HasUpdate = false };
             }
 
@@ -90,7 +91,7 @@ public class UpdateFlowService : IUpdateFlowService
 
             if (updateInfo == null)
             {
-                await _dialogService.ShowMessageDialogAsync("检查更新", "当前已是最新版本！");
+                await _dialogService.ShowMessageDialogAsync("Dialog_Update_CheckTitle".GetLocalized(), "Dialog_Update_AlreadyLatest".GetLocalized());
                 return new UpdateFlowResult { Success = true, HasUpdate = false };
             }
 
@@ -103,7 +104,7 @@ public class UpdateFlowService : IUpdateFlowService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[UpdateFlowService] 检查更新流程失败");
-            await _dialogService.ShowMessageDialogAsync("检查更新失败", $"无法检查更新：{ex.Message}");
+            await _dialogService.ShowMessageDialogAsync("Dialog_Update_CheckTitle".GetLocalized(), "Dialog_Update_CheckFailed_Format".GetLocalized(ex.Message));
             return new UpdateFlowResult { Success = false, HasUpdate = false, ErrorMessage = ex.Message };
         }
     }
@@ -159,7 +160,7 @@ public class UpdateFlowService : IUpdateFlowService
             var updateInfo = await _updateService.GetResolvedManifestUpdateAsync(DistributionChannel.DevSideLoad, cancellationToken);
             if (updateInfo == null)
             {
-                await _dialogService.ShowMessageDialogAsync("Dev 通道", "当前没有可用的 Dev 版本。");
+                await _dialogService.ShowMessageDialogAsync("Dialog_Update_DevChannel_Title".GetLocalized(), "Dialog_Update_DevChannel_NoBuild".GetLocalized());
                 return new UpdateFlowResult { Success = true, HasUpdate = false };
             }
 
@@ -177,7 +178,7 @@ public class UpdateFlowService : IUpdateFlowService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[UpdateFlowService] Dev 安装流程失败");
-            await _dialogService.ShowMessageDialogAsync("Dev 通道检查失败", $"无法获取 Dev 版本: {ex.Message}");
+            await _dialogService.ShowMessageDialogAsync("Dialog_Update_DevChannel_Title".GetLocalized(), "Dialog_Update_DevChannel_CheckFailed_Format".GetLocalized(ex.Message));
             return new UpdateFlowResult { Success = false, HasUpdate = false, ErrorMessage = ex.Message };
         }
     }
@@ -314,10 +315,10 @@ public class UpdateFlowService : IUpdateFlowService
         var opened = await _applicationLifecycleService.OpenUriAsync(targetUri);
         if (!opened)
         {
-            var dialogTitle = updateInfo.SetupUri == null ? "打开下载页失败" : "打开安装器链接失败";
+            var dialogTitle = updateInfo.SetupUri == null ? "Dialog_Update_OpenReleasesFailed_Title".GetLocalized() : "Dialog_Update_OpenInstallerFailed_Title".GetLocalized();
             var dialogMessage = updateInfo.SetupUri == null
-                ? "无法打开 Releases 页面，请稍后手动前往 GitHub Releases 下载新版本。"
-                : "无法打开安装器下载链接，请稍后重试。";
+                ? "Dialog_Update_OpenReleasesFailed_Message".GetLocalized()
+                : "Dialog_Update_OpenInstallerFailed_Message".GetLocalized();
             var errorMessage = updateInfo.SetupUri == null ? "无法打开 Releases 页面" : "无法打开安装器下载链接";
             await _dialogService.ShowMessageDialogAsync(dialogTitle, dialogMessage);
             return new UpdateFlowResult { Success = false, HasUpdate = true, ErrorMessage = errorMessage };
@@ -343,28 +344,28 @@ public class UpdateFlowService : IUpdateFlowService
             allowUserCancel);
 
         await _progressDialogService.ShowProgressDialogAsync(
-            title: "下载更新",
-            message: $"正在获取新版本 {updateInfo.Version} 的下载资源...",
+            title: "Dialog_Update_ManagedDownload_Title".GetLocalized(),
+            message: "Dialog_Update_ManagedDownload_Fetching_Format".GetLocalized(updateInfo.Version),
             async (progress, status, dialogCancellationToken) =>
             {
                 try
                 {
-                    status.Report($"正在获取新版本 {updateInfo.Version} 的下载资源...");
+                    status.Report("Dialog_Update_ManagedDownload_Fetching_Format".GetLocalized(updateInfo.Version));
                     progress.Report(0);
-                    status.Report("正在下载更新... 0%");
+                    status.Report("Dialog_Update_ManagedDownload_Progress_Format".GetLocalized(0));
                     await updateManager.DownloadUpdatesAsync(
                         managedUpdateInfo,
                         percent =>
                         {
                             progress.Report(percent);
                             status.Report(percent >= 100
-                                ? "下载完成，正在准备安装..."
-                                : $"正在下载更新... {percent}%");
+                                ? "Dialog_Update_ManagedDownload_Complete".GetLocalized()
+                                : "Dialog_Update_ManagedDownload_Progress_Format".GetLocalized(percent));
                         },
                         dialogCancellationToken);
 
                     progress.Report(100);
-                    status.Report("下载完成，正在准备安装...");
+                    status.Report("Dialog_Update_ManagedDownload_Complete".GetLocalized());
                     downloadCompleted = true;
                 }
                 catch (OperationCanceledException)
@@ -378,7 +379,7 @@ public class UpdateFlowService : IUpdateFlowService
                     throw;
                 }
             },
-            closeButtonText: allowUserCancel ? "取消" : null);
+            allowUserCancel: allowUserCancel);
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -390,7 +391,7 @@ public class UpdateFlowService : IUpdateFlowService
         if (downloadException != null)
         {
             _logger.LogError(downloadException, "[UpdateFlowService] 受管更新下载失败");
-            await _dialogService.ShowMessageDialogAsync("下载更新失败", $"无法下载新版本：{downloadException.Message}");
+            await _dialogService.ShowMessageDialogAsync("Dialog_Update_DownloadFailed_Title".GetLocalized(), "Dialog_Update_ManagedDownload_Failed_Format".GetLocalized(downloadException.Message));
             return new UpdateFlowResult { Success = false, HasUpdate = true, InstallationStarted = false, ErrorMessage = downloadException.Message };
         }
 
@@ -408,7 +409,7 @@ public class UpdateFlowService : IUpdateFlowService
         catch (Exception ex)
         {
             _logger.LogError(ex, "[UpdateFlowService] 启动受管更新应用流程失败");
-            await _dialogService.ShowMessageDialogAsync("应用更新失败", $"更新包已下载，但无法启动更新器：{ex.Message}");
+            await _dialogService.ShowMessageDialogAsync("Dialog_Update_ApplyFailed_Title".GetLocalized(), "Dialog_Update_ApplyFailed_Format".GetLocalized(ex.Message));
             return new UpdateFlowResult { Success = false, HasUpdate = true, InstallationStarted = false, ErrorMessage = ex.Message };
         }
     }

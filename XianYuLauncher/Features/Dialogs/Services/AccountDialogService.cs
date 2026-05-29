@@ -302,7 +302,7 @@ public sealed class AccountDialogService : IAccountDialogService
             Content = "Dialog_SkinModel_Content".GetLocalized(),
             PrimaryButtonText = "Steve",
             SecondaryButtonText = "Alex",
-            CloseButtonText = "Msg_Cancel".GetLocalized(),
+            CloseButtonText = "Dialog_Cancel".GetLocalized(),
             DefaultButton = ContentDialogButton.None,
         };
 

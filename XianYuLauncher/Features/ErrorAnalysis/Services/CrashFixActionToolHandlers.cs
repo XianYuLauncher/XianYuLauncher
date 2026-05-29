@@ -9,6 +9,7 @@ using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
+using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Features.ErrorAnalysis.Services;
 
@@ -353,9 +354,9 @@ public sealed class SearchModrinthProjectActionHandler : IAgentActionHandler
         await _uiDispatcher.RunOnUiThreadAsync(async () =>
         {
             await _dialogService.ShowMessageDialogAsync(
-                "未找到",
-                $"未在 Modrinth 或 CurseForge 找到与 '{query}' 对应的项目。",
-                "确定");
+                "Dialog_Agent_ModNotFound_Title".GetLocalized(),
+                "Dialog_Agent_ModNotFound_Content_Format".GetLocalized(query),
+                "Dialog_OK".GetLocalized());
         });
     }
 
@@ -431,10 +432,10 @@ public sealed class DeleteModActionHandler : IAgentActionHandler
         await _uiDispatcher.RunOnUiThreadAsync(async () =>
         {
             shouldDelete = await _dialogService.ShowConfirmationDialogAsync(
-                "删除 Mod",
-                $"确定要删除该 Mod 吗？\n\n文件名：{Path.GetFileName(modFilePath)}\n路径：{modFilePath}\n\n注意：如果这是依赖库，可能会影响其它 Mod。",
-                "删除",
-                "取消");
+                "Dialog_Agent_DeleteMod_Title".GetLocalized(),
+                "Dialog_Agent_DeleteMod_Content_Format".GetLocalized(Path.GetFileName(modFilePath), modFilePath),
+                "Dialog_Delete".GetLocalized(),
+                "Dialog_Cancel".GetLocalized());
         });
 
         if (!shouldDelete)

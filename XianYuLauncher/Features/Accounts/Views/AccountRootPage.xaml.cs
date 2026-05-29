@@ -1219,6 +1219,27 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
         }
         
+        private static string FormatTokenRemainingTime(TimeSpan timeUntilExpiry)
+        {
+            if (timeUntilExpiry.TotalDays >= 1)
+            {
+                return string.Format(
+                    "AccountPage_RefreshToken_TimeRemainingDays_Format".GetLocalized(),
+                    timeUntilExpiry.TotalDays.ToString("F0"));
+            }
+
+            if (timeUntilExpiry.TotalHours >= 1)
+            {
+                return string.Format(
+                    "AccountPage_RefreshToken_TimeRemainingHours_Format".GetLocalized(),
+                    timeUntilExpiry.TotalHours.ToString("F0"));
+            }
+
+            return string.Format(
+                "AccountPage_RefreshToken_TimeRemainingMinutes_Format".GetLocalized(),
+                timeUntilExpiry.TotalMinutes.ToString("F0"));
+        }
+
         /// <summary>
         /// 显示续签令牌对话框
         /// </summary>
@@ -1237,18 +1258,14 @@ namespace XianYuLauncher.Features.Accounts.Views
                     "Msg_RefreshToken".GetLocalized(),
                     async (_, status, _) =>
                     {
-                        status.Report("正在验证令牌...");
+                        status.Report("AccountPage_RefreshToken_VerifyingStatus".GetLocalized());
                         var result = await tokenRefreshService.ValidateAndRefreshTokenAsync(profile);
                 
                         if (result.Success && result.WasRefreshed && result.UpdatedProfile != null)
                         {
                             var expiryTime = result.UpdatedProfile.IssueInstant.AddSeconds(result.UpdatedProfile.ExpiresIn);
                             var timeUntilExpiry = expiryTime - DateTime.UtcNow;
-                            var expiryText = timeUntilExpiry.TotalDays >= 1
-                                ? $"{timeUntilExpiry.TotalDays:F0} 天"
-                                : timeUntilExpiry.TotalHours >= 1
-                                    ? $"{timeUntilExpiry.TotalHours:F0} 小时"
-                                    : $"{timeUntilExpiry.TotalMinutes:F0} 分钟";
+                            var expiryText = FormatTokenRemainingTime(timeUntilExpiry);
 
                             var profileIndex = ViewModel.Profiles.IndexOf(profile);
                             if (profileIndex >= 0)
@@ -1256,7 +1273,9 @@ namespace XianYuLauncher.Features.Accounts.Views
                                 ViewModel.Profiles[profileIndex] = result.UpdatedProfile;
                             }
 
-                            status.Report($"续签完成！\n过期时间: {expiryText}");
+                            status.Report(string.Format(
+                                "AccountPage_RefreshToken_RefreshedStatus_Format".GetLocalized(),
+                                expiryText));
                             await Task.Delay(1000);
                             return;
                         }
@@ -1265,20 +1284,18 @@ namespace XianYuLauncher.Features.Accounts.Views
                         {
                             var expiryTime = profile.IssueInstant.AddSeconds(profile.ExpiresIn);
                             var timeUntilExpiry = expiryTime - DateTime.UtcNow;
-                            var expiryText = timeUntilExpiry.TotalDays >= 1
-                                ? $"{timeUntilExpiry.TotalDays:F0} 天"
-                                : timeUntilExpiry.TotalHours >= 1
-                                    ? $"{timeUntilExpiry.TotalHours:F0} 小时"
-                                    : $"{timeUntilExpiry.TotalMinutes:F0} 分钟";
+                            var expiryText = FormatTokenRemainingTime(timeUntilExpiry);
 
-                            status.Report($"令牌仍然有效！\n剩余时间: {expiryText}");
+                            status.Report(string.Format(
+                                "AccountPage_RefreshToken_StillValidStatus_Format".GetLocalized(),
+                                expiryText));
                             await Task.Delay(1000);
                             return;
                         }
 
                         var errorMessage = profile.TokenType == "external"
-                            ? "令牌已完全过期，无法续签\n请删除此账户并重新登录"
-                            : result.ErrorMessage ?? "续签失败，请重新登录";
+                            ? "AccountPage_RefreshToken_ExpiredExternal".GetLocalized()
+                            : result.ErrorMessage ?? "AccountPage_RefreshToken_RenewFailed".GetLocalized();
 
                         showFinalMessage = true;
                         finalMessage = errorMessage;
@@ -1290,8 +1307,8 @@ namespace XianYuLauncher.Features.Accounts.Views
             {
                 showFinalMessage = true;
                 finalMessage = profile.TokenType == "external"
-                    ? "令牌已完全过期，无法续签\n请删除此账户并重新登录"
-                    : $"续签失败\n{ex.Message}";
+                    ? "AccountPage_RefreshToken_ExpiredExternal".GetLocalized()
+                    : string.Format("AccountPage_RefreshToken_RenewFailedWithReason_Format".GetLocalized(), ex.Message);
             }
 
             if (showFinalMessage)
@@ -1510,7 +1527,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             var usernameStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
             var usernameLabel = new TextBlock
             {
-                Text = "邮箱", // 默认显示邮箱
+                Text = "AccountPage_ExternalLoginDialog_EmailLabel".GetLocalized(),
                 FontSize = 14,
                 FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                 Width = 80,
@@ -1518,7 +1535,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             };
             var usernameTextBox = new TextBox
             {
-                PlaceholderText = "输入邮箱",
+                PlaceholderText = "AccountPage_ExternalLoginDialog_EmailPlaceholder".GetLocalized(),
                 Width = 300,
                 Margin = new Thickness(0, 4, 0, 0)
             };
@@ -1538,7 +1555,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             };
             var passwordBox = new PasswordBox
             {
-                PlaceholderText = "输入密码",
+                PlaceholderText = "AccountPage_ExternalLoginDialog_PasswordPlaceholder".GetLocalized(),
                 Width = 300,
                 Margin = new Thickness(0, 4, 0, 0)
             };
@@ -1569,22 +1586,19 @@ namespace XianYuLauncher.Features.Accounts.Views
                             // 根据服务器支持的登录方式调整标签
                             if (metadata.meta.feature_no_email_login)
                             {
-                                // 支持非邮箱登录，显示"账户"
-                                usernameLabel.Text = "账户";
-                                usernameTextBox.PlaceholderText = "输入邮箱/用户名";
+                                usernameLabel.Text = "AccountPage_ExternalLoginDialog_AccountLabel".GetLocalized();
+                                usernameTextBox.PlaceholderText = "AccountPage_ExternalLoginDialog_EmailOrUsernamePlaceholder".GetLocalized();
                             }
                             else
                             {
-                                // 仅支持邮箱登录，显示"邮箱"
-                                usernameLabel.Text = "邮箱";
-                                usernameTextBox.PlaceholderText = "输入邮箱";
+                                usernameLabel.Text = "AccountPage_ExternalLoginDialog_EmailLabel".GetLocalized();
+                                usernameTextBox.PlaceholderText = "AccountPage_ExternalLoginDialog_EmailPlaceholder".GetLocalized();
                             }
                         }
                         else
                         {
-                            // 无法获取元数据，默认显示"用户名"
                             usernameLabel.Text = "AccountPage_ExternalLoginDialog_UsernameLabel".GetLocalized();
-                            usernameTextBox.PlaceholderText = "输入用户名";
+                            usernameTextBox.PlaceholderText = "AccountPage_OfflineLoginDialog_UsernamePlaceholder".GetLocalized();
                         }
                     }
                 }
@@ -2015,7 +2029,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             // 添加提示文本
             var textBlock = new TextBlock
             {
-                Text = "请输入离线用户名",
+                Text = "AccountPage_OfflineLoginDialog_Instruction".GetLocalized(),
                 FontSize = 14,
                 FontWeight = Microsoft.UI.Text.FontWeights.SemiBold
             };
@@ -2024,17 +2038,17 @@ namespace XianYuLauncher.Features.Accounts.Views
             // 添加文本框
             var textBox = new TextBox
             {
-                PlaceholderText = "输入用户名",
+                PlaceholderText = "AccountPage_OfflineLoginDialog_UsernamePlaceholder".GetLocalized(),
                 Width = 300,
                 Margin = new Thickness(0, 4, 0, 0)
             };
             stackPanel.Children.Add(textBox);
 
             var result = await _dialogService.ShowCustomDialogAsync(
-                "离线登录",
+                "AccountPage_OfflineLoginDialog_Title".GetLocalized(),
                 stackPanel,
-                primaryButtonText: "确定",
-                secondaryButtonText: "取消",
+                primaryButtonText: "Dialog_OK".GetLocalized(),
+                secondaryButtonText: "Dialog_Cancel".GetLocalized(),
                 defaultButton: ContentDialogButton.Primary);
 
             // 根据结果执行操作
@@ -2126,7 +2140,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             var usernameStack = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center };
             var usernameLabel = new TextBlock
             {
-                Text = "邮箱", // 默认显示邮箱
+                Text = "AccountPage_ExternalLoginDialog_EmailLabel".GetLocalized(),
                 FontSize = 14,
                 FontWeight = Microsoft.UI.Text.FontWeights.SemiBold,
                 Width = 80,
@@ -2134,7 +2148,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             };
             var usernameTextBox = new TextBox
             {
-                PlaceholderText = "输入邮箱",
+                PlaceholderText = "AccountPage_ExternalLoginDialog_EmailPlaceholder".GetLocalized(),
                 Width = 300,
                 Margin = new Thickness(0, 4, 0, 0)
             };
@@ -2154,7 +2168,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             };
             var passwordBox = new PasswordBox
             {
-                PlaceholderText = "输入密码",
+                PlaceholderText = "AccountPage_ExternalLoginDialog_PasswordPlaceholder".GetLocalized(),
                 Width = 300,
                 Margin = new Thickness(0, 4, 0, 0)
             };
@@ -2185,22 +2199,19 @@ namespace XianYuLauncher.Features.Accounts.Views
                             // 根据服务器支持的登录方式调整标签
                             if (metadata.meta.feature_no_email_login)
                             {
-                                // 支持非邮箱登录，显示"账户"
-                                usernameLabel.Text = "账户";
-                                usernameTextBox.PlaceholderText = "输入账户";
+                                usernameLabel.Text = "AccountPage_ExternalLoginDialog_AccountLabel".GetLocalized();
+                                usernameTextBox.PlaceholderText = "AccountPage_ExternalLoginDialog_AccountPlaceholder".GetLocalized();
                             }
                             else
                             {
-                                // 仅支持邮箱登录，显示"邮箱"
-                                usernameLabel.Text = "邮箱";
-                                usernameTextBox.PlaceholderText = "输入邮箱";
+                                usernameLabel.Text = "AccountPage_ExternalLoginDialog_EmailLabel".GetLocalized();
+                                usernameTextBox.PlaceholderText = "AccountPage_ExternalLoginDialog_EmailPlaceholder".GetLocalized();
                             }
                         }
                         else
                         {
-                            // 无法获取元数据，默认显示"邮箱"
-                            usernameLabel.Text = "邮箱";
-                            usernameTextBox.PlaceholderText = "输入邮箱";
+                            usernameLabel.Text = "AccountPage_ExternalLoginDialog_EmailLabel".GetLocalized();
+                            usernameTextBox.PlaceholderText = "AccountPage_ExternalLoginDialog_EmailPlaceholder".GetLocalized();
                         }
                     }
                 }

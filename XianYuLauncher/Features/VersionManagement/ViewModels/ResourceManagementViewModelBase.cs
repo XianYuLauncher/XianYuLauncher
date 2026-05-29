@@ -12,6 +12,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Models.VersionManagement;
@@ -424,7 +425,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
     {
         if (item == null) return;
 
-        if (!await _dialogService.ShowConfirmationDialogAsync(title, message, "删除", "取消"))
+        if (!await _dialogService.ShowConfirmationDialogAsync(title, message, "Dialog_Delete".GetLocalized(), "Dialog_Cancel".GetLocalized()))
             return;
 
         try

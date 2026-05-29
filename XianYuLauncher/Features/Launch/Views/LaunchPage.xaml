@@ -209,12 +209,10 @@
                             </Grid.ColumnDefinitions>
                             <TextBlock 
                                 x:Uid="LaunchPage_NewsAndAnnouncements"
-                                Text="新闻与公告"
                                 Style="{StaticResource BodyStrongTextBlockStyle}" />
                             <HyperlinkButton 
                                 Grid.Column="1"
                                 x:Uid="LaunchPage_ViewMore"
-                                Content="查看更多"
                                 Padding="0"
                                 FontSize="12"
                                 Click="ViewMoreNews_Click" />

@@ -583,7 +583,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                 var availableVersions = await _javaDownloadService.GetAvailableJavaVersionsAsync();
                 if (availableVersions.Count == 0)
                 {
-                    await _dialogService.ShowMessageDialogAsync("获取失败", "未能获取到可用的 Java 版本列表，请检查网络连接");
+                    await _dialogService.ShowMessageDialogAsync("Msg_JavaListFetchFailed_Title".GetLocalized(), "Msg_JavaListFetchFailed_Content".GetLocalized());
                     return;
                 }
 
@@ -604,13 +604,13 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             }
             catch (Exception ex)
             {
-                await _dialogService.ShowMessageDialogAsync("错误", $"操作失败: {ex.Message}");
+                await _dialogService.ShowMessageDialogAsync("Msg_Error".GetLocalized(), "Msg_OperationFailed_Format".GetLocalized(ex.Message));
             }
         }
 
         private async Task InstallJavaAsync(JavaVersionDownloadOption option)
         {
-            await _progressDialogService.ShowProgressDialogAsync("正在安装 Java", $"正在下载并配置 {option.DisplayName}...", async (progress, status, token) => 
+            await _progressDialogService.ShowProgressDialogAsync("Dialog_Progress_InstallingJava_Title".GetLocalized(), "Dialog_Progress_InstallingJava_Status_Format".GetLocalized(option.DisplayName), async (progress, status, token) => 
             {
                 try
                 {

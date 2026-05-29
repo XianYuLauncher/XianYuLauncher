@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
+using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Features.Dialogs.ViewModels;
 
@@ -21,6 +22,8 @@ public partial class AnnouncementDialogViewModel : ObservableObject
     private bool _hasCustomXaml;
 
     public bool HasButtons => Announcement.buttons != null && Announcement.buttons.Count > 0;
+
+    public string PublishTimeLabel => "Dialog_Announcement_PublishTimeLabel".GetLocalized();
 
     /// <summary>
     /// 关闭对话框事件

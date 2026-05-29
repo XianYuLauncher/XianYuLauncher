@@ -22,6 +22,7 @@ using XianYuLauncher.Features.ModDownloadDetail.Models;
 using XianYuLauncher.Features.Launch.ViewModels;
 using XianYuLauncher.Features.VersionManagement.ViewModels;
 using XianYuLauncher.Features.ModDownloadDetail.ViewModels;
+using XianYuLauncher.Core.Constants;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Shared.Models;
 
@@ -731,8 +732,11 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                     var dialogService = App.GetService<ICommonDialogService>();
                     if (dialogService != null)
                     {
-                        var result = await dialogService.ShowConfirmationDialogAsync("快捷方式已存在", 
-                            $"桌面上已存在 {shortcutName} 的快捷方式。\n是否覆盖现有快捷方式？", "覆盖", "取消");
+                        var result = await dialogService.ShowConfirmationDialogAsync(
+                            "Dialog_Shortcut_Overwrite_Title".GetLocalized(),
+                            "Dialog_Shortcut_Overwrite_Content_Format".GetLocalized(shortcutName),
+                            "Dialog_Overwrite".GetLocalized(),
+                            "Dialog_Cancel".GetLocalized());
                         if (!result) return;
                     }
                 }
@@ -754,8 +758,9 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                 var dialogService = App.GetService<ICommonDialogService>();
                 if (dialogService != null)
                 {
-                    await dialogService.ShowMessageDialogAsync("快捷方式已创建", 
-                        $"已在桌面创建 {shortcutName} 的快捷方式。\n双击该快捷方式可直接启动该版本。");
+                    await dialogService.ShowMessageDialogAsync(
+                        "Dialog_Shortcut_Created_Title".GetLocalized(),
+                        "Dialog_Shortcut_Created_Version_Content_Format".GetLocalized(shortcutName));
                 }
             }
             catch (Exception ex)
@@ -772,7 +777,9 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                 var dialogService = App.GetService<ICommonDialogService>();
                 if (dialogService != null)
                 {
-                    await dialogService.ShowMessageDialogAsync("创建失败", "创建快捷方式时发生错误，请稍后重试。");
+                    await dialogService.ShowMessageDialogAsync(
+                        "Dialog_Shortcut_CreateFailed_Title".GetLocalized(),
+                        "Dialog_Shortcut_CreateFailed_Content".GetLocalized());
                 }
             }
             catch (Exception dialogEx)
@@ -1395,9 +1402,9 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
             if (!isMicrosoftLogin)
             {
                 await _dialogService.ShowMessageDialogAsync(
-                    "地区限制",
-                    "当前地区仅允许微软账户登录用户导出启动参数。\n请先使用微软账户登录后再尝试导出。",
-                    "确定");
+                    "Dialog_ExportLaunchArgs_Region_Title".GetLocalized(),
+                    "Dialog_ExportLaunchArgs_Region_Content".GetLocalized(),
+                    "Dialog_OK".GetLocalized());
                 StatusMessage = "导出已取消：地区限制";
                 return;
             }
@@ -1477,10 +1484,12 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
         
         try
         {
-            StatusMessage = $"正在补全 {version.Name} 的依赖文件...";
+            StatusMessage = string.Format(
+                "Dialog_VersionComplete_StatusBar_Format".GetLocalized(),
+                version.Name);
             
             var minecraftPath = _fileService.GetMinecraftDataPath();
-            string currentStage = "正在检查依赖...";
+            string currentStage = VersionCompleteStageKeys.CheckingDeps;
             
             // 调用版本补全方法
             await _minecraftVersionService.EnsureVersionDependenciesAsync(
@@ -1491,21 +1500,24 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                     var progress = status.Percent;
                     // 根据进度判断当前阶段
                     if (progress < 5)
-                        currentStage = "正在处理 ModLoader...";
+                        currentStage = VersionCompleteStageKeys.ProcessingModLoader;
                     else if (progress < 45)
-                        currentStage = "正在下载依赖库...";
+                        currentStage = VersionCompleteStageKeys.DownloadingLibraries;
                     else if (progress < 50)
-                        currentStage = "正在解压原生库...";
+                        currentStage = VersionCompleteStageKeys.ExtractingNatives;
                     else if (progress < 55)
-                        currentStage = "正在处理资源索引...";
+                        currentStage = VersionCompleteStageKeys.ProcessingAssetIndex;
                     else
-                        currentStage = "正在下载资源文件...";
+                        currentStage = VersionCompleteStageKeys.DownloadingAssets;
                     
                     // 更新状态栏
-                    StatusMessage = $"正在补全 {version.Name}: {progress:F1}%";
+                    StatusMessage = string.Format(
+                        "Dialog_VersionComplete_ProgressStatusBar_Format".GetLocalized(),
+                        version.Name,
+                        progress.ToString("F1"));
                     
                     // 触发进度更新事件
-                    CompleteVersionProgressUpdated?.Invoke(this, (progress, currentStage, ""));
+                    CompleteVersionProgressUpdated?.Invoke(this, (progress, currentStage, string.Empty));
                 },
                 currentFile =>
                 {
@@ -1513,13 +1525,17 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                     CompleteVersionProgressUpdated?.Invoke(this, (-1, currentStage, currentFile));
                 });
             
-            StatusMessage = $"{version.Name} 版本补全完成！";
-            CompleteVersionCompleted?.Invoke(this, (true, $"{version.Name} 版本补全完成！"));
+            StatusMessage = string.Format(
+                "Dialog_VersionComplete_CompletedVersion_Format".GetLocalized(),
+                version.Name);
+            CompleteVersionCompleted?.Invoke(this, (true, StatusMessage));
         }
         catch (Exception ex)
         {
-            StatusMessage = $"版本补全失败: {ex.Message}";
-            CompleteVersionCompleted?.Invoke(this, (false, $"版本补全失败: {ex.Message}"));
+            StatusMessage = string.Format(
+                "Dialog_VersionComplete_Failed_Format".GetLocalized(),
+                ex.Message);
+            CompleteVersionCompleted?.Invoke(this, (false, StatusMessage));
             System.Diagnostics.Debug.WriteLine($"[版本补全] 错误: {ex}");
         }
     }

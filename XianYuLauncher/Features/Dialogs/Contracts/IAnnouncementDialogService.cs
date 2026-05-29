@@ -4,5 +4,5 @@ namespace XianYuLauncher.Features.Dialogs.Contracts;
 
 public interface IAnnouncementDialogService
 {
-    Task ShowAnnouncementAsync(AnnouncementInfo announcement, string closeButtonText = "知道了");
+    Task ShowAnnouncementAsync(AnnouncementInfo announcement, string? closeButtonText = null);
 }

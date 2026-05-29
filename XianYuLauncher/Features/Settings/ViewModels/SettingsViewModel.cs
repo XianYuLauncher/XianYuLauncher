@@ -2307,19 +2307,19 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
             var availableVersions = await _javaDownloadService.GetAvailableJavaVersionsAsync();
             if (availableVersions.Count == 0)
             {
-                await _dialogService.ShowMessageDialogAsync("获取失败", "未能获取到可用的 Java 版本列表，请检查网络连接");
+                await _dialogService.ShowMessageDialogAsync("Msg_JavaListFetchFailed_Title".GetLocalized(), "Msg_JavaListFetchFailed_Content".GetLocalized());
                 return;
             }
 
             // 2. 显示选择对话框并处理结果
             var selectedOption = await _resourceDialogService.ShowListSelectionDialogAsync(
-                title: "下载 Java 运行时",
-                instruction: "请选择要安装的 Java 版本:",
+                title: "Dialog_Settings_JavaDownload_Title".GetLocalized(),
+                instruction: "Dialog_Settings_JavaDownload_Instruction".GetLocalized(),
                 items: availableVersions,
                 displayMemberFunc: option => option.DisplayName,
-                tip: "建议选择较新的版本 (Java 21, Java 25) 以获得更好的兼容性。",
-                primaryButtonText: "下载",
-                closeButtonText: "取消");
+                tip: "Dialog_Settings_JavaDownload_Tip".GetLocalized(),
+                primaryButtonText: "Dialog_Settings_JavaDownload_PrimaryButton".GetLocalized(),
+                closeButtonText: "Dialog_Cancel".GetLocalized());
 
             if (selectedOption != null)
             {
@@ -2328,7 +2328,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
         }
         catch (Exception ex)
         {
-            await _dialogService.ShowMessageDialogAsync("错误", $"操作失败: {ex.Message}");
+            await _dialogService.ShowMessageDialogAsync("Msg_Error".GetLocalized(), "Msg_OperationFailed_Format".GetLocalized(ex.Message));
         }
     }
 
@@ -2336,7 +2336,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     {
         try
         {
-            await _progressDialogService.ShowProgressDialogAsync("正在安装 Java", $"正在下载并配置 {option.DisplayName}...", async (progress, status, token) => 
+            await _progressDialogService.ShowProgressDialogAsync("Dialog_Progress_InstallingJava_Title".GetLocalized(), "Dialog_Progress_InstallingJava_Status_Format".GetLocalized(option.DisplayName), async (progress, status, token) => 
             {
                 try
                 {
@@ -2882,10 +2882,10 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
         var itemToRemove = SelectedMinecraftPathItem;
         
         var confirmed = await _dialogService.ShowConfirmationDialogAsync(
-            "确认删除",
-            $"确定要从列表中删除游戏目录 \"{itemToRemove.Name}\" 吗？\n\n注意：这只会从列表中移除，不会删除实际的游戏文件。",
-            "删除",
-            "取消");
+            "Dialog_Settings_DeleteDirectoryConfirm_Title".GetLocalized(),
+            "Dialog_Settings_DeleteDirectoryConfirm_Content_Format".GetLocalized(itemToRemove.Name),
+            "Dialog_Delete".GetLocalized(),
+            "Dialog_Cancel".GetLocalized());
 
         if (confirmed)
         {
@@ -3593,10 +3593,10 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
         try
         {
             var acknowledged = await _dialogService.ShowConfirmationDialogAsync(
-                "重要提示",
-                "请仅添加您信任的下载源。\n\n使用自定义下载源产生的任何问题与启动器无关，您需要自行承担风险。",
-                "我已了解，继续添加",
-                "取消");
+                "Dialog_Settings_CustomSource_Disclaimer_Title".GetLocalized(),
+                "Dialog_Settings_CustomSource_Disclaimer_Content".GetLocalized(),
+                "Dialog_Settings_CustomSource_Disclaimer_Continue".GetLocalized(),
+                "Dialog_Cancel".GetLocalized());
 
             if (!acknowledged)
             {
@@ -3605,9 +3605,9 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
 
             var dialogResult = await _selectionDialogService.ShowSettingsCustomSourceDialogAsync(new SettingsCustomSourceDialogRequest
             {
-                Title = $"添加自定义{(template == DownloadSourceTemplateType.Official ? "游戏资源" : "社区资源")}源",
-                PrimaryButtonText = "保存",
-                CloseButtonText = "取消",
+                Title = template == DownloadSourceTemplateType.Official ? "Dialog_Settings_CustomSource_AddTitle_Official".GetLocalized() : "Dialog_Settings_CustomSource_AddTitle_Community".GetLocalized(),
+                PrimaryButtonText = "Dialog_Save".GetLocalized(),
+                CloseButtonText = "Dialog_Cancel".GetLocalized(),
                 Template = template,
                 Priority = 100,
                 Enabled = true,
@@ -3623,7 +3623,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
                 
                 if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(baseUrl))
                 {
-                    await _dialogService.ShowMessageDialogAsync("错误", "源名称和 Base URL 不能为空");
+                    await _dialogService.ShowMessageDialogAsync("Msg_Error".GetLocalized(), "Dialog_Settings_CustomSource_EmptyFields".GetLocalized());
                     return;
                 }
                 
@@ -3637,14 +3637,14 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
                 }
                 else
                 {
-                    await _dialogService.ShowMessageDialogAsync("添加失败", addResult.ErrorMessage ?? "未知错误");
+                    await _dialogService.ShowMessageDialogAsync("Dialog_Settings_CustomSource_AddFailed_Title".GetLocalized(), "Dialog_Settings_CustomSource_AddFailed_Format".GetLocalized(addResult.ErrorMessage ?? "Msg_UnknownError".GetLocalized()));
                 }
             }
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[Settings] 添加自定义下载源失败");
-            await _dialogService.ShowMessageDialogAsync("错误", $"添加失败: {ex.Message}");
+            await _dialogService.ShowMessageDialogAsync("Msg_Error".GetLocalized(), "Dialog_Settings_CustomSource_AddFailed_Error_Format".GetLocalized(ex.Message));
         }
     }
     
@@ -3709,7 +3709,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
                 
                 if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(baseUrl))
                 {
-                    await _dialogService.ShowMessageDialogAsync("错误", "源名称和 Base URL 不能为空");
+                    await _dialogService.ShowMessageDialogAsync("Msg_Error".GetLocalized(), "Dialog_Settings_CustomSource_EmptyFields".GetLocalized());
                     return;
                 }
                 
@@ -3723,14 +3723,14 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
                 }
                 else
                 {
-                    await _dialogService.ShowMessageDialogAsync("添加失败", addResult.ErrorMessage ?? "未知错误");
+                    await _dialogService.ShowMessageDialogAsync("Dialog_Settings_CustomSource_AddFailed_Title".GetLocalized(), "Dialog_Settings_CustomSource_AddFailed_Format".GetLocalized(addResult.ErrorMessage ?? "Msg_UnknownError".GetLocalized()));
                 }
             }
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[Settings] 添加自定义下载源失败");
-            await _dialogService.ShowMessageDialogAsync("错误", $"添加失败: {ex.Message}");
+            await _dialogService.ShowMessageDialogAsync("Msg_Error".GetLocalized(), "Dialog_Settings_CustomSource_AddFailed_Error_Format".GetLocalized(ex.Message));
         }
     }
     
@@ -3768,7 +3768,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
                 
                 if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(baseUrl))
                 {
-                    await _dialogService.ShowMessageDialogAsync("错误", "源名称和 Base URL 不能为空");
+                    await _dialogService.ShowMessageDialogAsync("Msg_Error".GetLocalized(), "Dialog_Settings_CustomSource_EmptyFields".GetLocalized());
                     return;
                 }
                 
@@ -3783,14 +3783,14 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
                 }
                 else
                 {
-                    await _dialogService.ShowMessageDialogAsync("更新失败", updateResult.ErrorMessage ?? "未知错误");
+                    await _dialogService.ShowMessageDialogAsync("Dialog_Settings_CustomSource_UpdateFailed_Title".GetLocalized(), "Dialog_Settings_CustomSource_UpdateFailed_Format".GetLocalized(updateResult.ErrorMessage ?? "Msg_UnknownError".GetLocalized()));
                 }
             }
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[Settings] 编辑自定义下载源失败");
-            await _dialogService.ShowMessageDialogAsync("错误", $"编辑失败: {ex.Message}");
+            await _dialogService.ShowMessageDialogAsync("Msg_Error".GetLocalized(), "Dialog_Settings_CustomSource_EditFailed_Error_Format".GetLocalized(ex.Message));
         }
     }
     
@@ -3805,10 +3805,10 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
         try
         {
             var confirmed = await _dialogService.ShowConfirmationDialogAsync(
-                "确认删除",
-                $"确定要删除下载源 \"{source.Name}\" 吗？",
-                "删除",
-                "取消");
+                "Dialog_Settings_DeleteDirectoryConfirm_Title".GetLocalized(),
+                "Dialog_Settings_CustomSource_DeleteConfirm_Format".GetLocalized(source.Name),
+                "Dialog_Delete".GetLocalized(),
+                "Dialog_Cancel".GetLocalized());
 
             if (confirmed)
             {
@@ -3822,14 +3822,14 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
                 }
                 else
                 {
-                    await _dialogService.ShowMessageDialogAsync("删除失败", deleteResult.ErrorMessage ?? "未知错误");
+                    await _dialogService.ShowMessageDialogAsync("Dialog_Settings_CustomSource_DeleteFailed_Title".GetLocalized(), "Dialog_Settings_CustomSource_DeleteFailed_Format".GetLocalized(deleteResult.ErrorMessage ?? "Msg_UnknownError".GetLocalized()));
                 }
             }
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[Settings] 删除自定义下载源失败");
-            await _dialogService.ShowMessageDialogAsync("错误", $"删除失败: {ex.Message}");
+            await _dialogService.ShowMessageDialogAsync("Msg_Error".GetLocalized(), "Dialog_Settings_CustomSource_DeleteFailed_Error_Format".GetLocalized(ex.Message));
         }
     }
     
@@ -3863,7 +3863,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
             if (!toggleResult.Success)
             {
                 Log.Error($"[Settings] 切换失败: {toggleResult.ErrorMessage}");
-                await _dialogService.ShowMessageDialogAsync("操作失败", toggleResult.ErrorMessage ?? "未知错误");
+                await _dialogService.ShowMessageDialogAsync("Dialog_Settings_CustomSource_ToggleFailed_Title".GetLocalized(), "Dialog_Settings_CustomSource_ToggleFailed_Format".GetLocalized(toggleResult.ErrorMessage ?? "Msg_UnknownError".GetLocalized()));
                 return false;
             }
             
@@ -3877,7 +3877,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
         catch (Exception ex)
         {
             Log.Error(ex, "[Settings] 切换自定义下载源状态失败");
-            await _dialogService.ShowMessageDialogAsync("错误", $"操作失败: {ex.Message}");
+            await _dialogService.ShowMessageDialogAsync("Msg_Error".GetLocalized(), "Msg_OperationFailed_Format".GetLocalized(ex.Message));
             return false;
         }
     }
@@ -3898,7 +3898,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
             {
                 // 如果失败，恢复原状态
                 source.Enabled = !source.Enabled;
-                await _dialogService.ShowMessageDialogAsync("操作失败", toggleResult.ErrorMessage ?? "未知错误");
+                await _dialogService.ShowMessageDialogAsync("Dialog_Settings_CustomSource_ToggleFailed_Title".GetLocalized(), "Dialog_Settings_CustomSource_ToggleFailed_Format".GetLocalized(toggleResult.ErrorMessage ?? "Msg_UnknownError".GetLocalized()));
             }
             else
             {
@@ -3910,7 +3910,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
             // 如果失败，恢复原状态
             source.Enabled = !source.Enabled;
             Log.Error(ex, "[Settings] 切换自定义下载源状态失败");
-            await _dialogService.ShowMessageDialogAsync("错误", $"操作失败: {ex.Message}");
+            await _dialogService.ShowMessageDialogAsync("Msg_Error".GetLocalized(), "Msg_OperationFailed_Format".GetLocalized(ex.Message));
         }
     }
     
@@ -3984,7 +3984,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
             var importResult = await _customSourceManager.ImportSourceAsync(selectedPath);
             if (!importResult.Success)
             {
-                await _dialogService.ShowMessageDialogAsync("导入失败", importResult.ErrorMessage ?? "未知错误");
+                await _dialogService.ShowMessageDialogAsync("Dialog_Settings_CustomSource_ImportFailed_Title".GetLocalized(), "Dialog_Settings_CustomSource_ImportFailed_Format".GetLocalized(importResult.ErrorMessage ?? "Msg_UnknownError".GetLocalized()));
                 return;
             }
 
@@ -3992,14 +3992,14 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
             await LoadCustomSourcesAsync();
 
             await _dialogService.ShowMessageDialogAsync(
-                "导入成功",
-                $"已成功导入配置: {importResult.Data?.Name ?? Path.GetFileNameWithoutExtension(selectedPath)}");
+                "Dialog_Settings_CustomSource_ImportSuccess_Title".GetLocalized(),
+                "Dialog_Settings_CustomSource_ImportSuccess_Format".GetLocalized(importResult.Data?.Name ?? Path.GetFileNameWithoutExtension(selectedPath)));
             Log.Information("[Settings] 成功导入配置: {Path}", selectedPath);
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[Settings] 导入配置失败");
-            await _dialogService.ShowMessageDialogAsync("错误", $"导入失败: {ex.Message}");
+            await _dialogService.ShowMessageDialogAsync("Msg_Error".GetLocalized(), "Dialog_Settings_CustomSource_ImportFailed_Error_Format".GetLocalized(ex.Message));
         }
     }
     
@@ -4013,7 +4013,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
         {
             if (source == null)
             {
-                await _dialogService.ShowMessageDialogAsync("错误", "请先选择要导出的源");
+                await _dialogService.ShowMessageDialogAsync("Msg_Error".GetLocalized(), "Dialog_Settings_CustomSource_ExportSelectFirst".GetLocalized());
                 return;
             }
             
@@ -4031,19 +4031,19 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
                 
                 if (exportResult.Success)
                 {
-                    await _dialogService.ShowMessageDialogAsync("导出成功", $"配置已导出到: {savePath}");
+                    await _dialogService.ShowMessageDialogAsync("Dialog_Settings_CustomSource_ExportSuccess_Title".GetLocalized(), "Dialog_Settings_CustomSource_ExportSuccess_Format".GetLocalized(savePath));
                     Log.Information($"[Settings] 成功导出配置: {savePath}");
                 }
                 else
                 {
-                    await _dialogService.ShowMessageDialogAsync("导出失败", exportResult.ErrorMessage ?? "未知错误");
+                    await _dialogService.ShowMessageDialogAsync("Dialog_Settings_CustomSource_ExportFailed_Title".GetLocalized(), "Dialog_Settings_CustomSource_ExportFailed_Format".GetLocalized(exportResult.ErrorMessage ?? "Msg_UnknownError".GetLocalized()));
                 }
             }
         }
         catch (Exception ex)
         {
             Log.Error(ex, "[Settings] 导出配置失败");
-            await _dialogService.ShowMessageDialogAsync("错误", $"导出失败: {ex.Message}");
+            await _dialogService.ShowMessageDialogAsync("Msg_Error".GetLocalized(), "Dialog_Settings_CustomSource_ExportFailed_Error_Format".GetLocalized(ex.Message));
         }
     }
     

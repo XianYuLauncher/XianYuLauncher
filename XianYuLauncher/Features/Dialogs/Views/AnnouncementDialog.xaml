@@ -40,7 +40,7 @@
                     <TextBlock FontSize="12"
                                Foreground="{ThemeResource TextFillColorTertiaryBrush}"
                                Margin="0,8,0,0">
-                        <Run Text="发布时间: "/>
+                        <Run Text="{x:Bind ViewModel.PublishTimeLabel, Mode=OneWay}"/>
                         <Run Text="{x:Bind ViewModel.Announcement.publish_time, Mode=OneWay}"/>
                     </TextBlock>
                 </StackPanel>

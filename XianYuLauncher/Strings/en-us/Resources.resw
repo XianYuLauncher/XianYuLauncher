@@ -1477,6 +1477,12 @@ Continue downloading?</value>
   <data name="VersionListPage_DeleteMenuItem.Text" xml:space="preserve">
     <value>Delete</value>
   </data>
+  <data name="VersionListPage_CreateShortcutMenuItem.Text" xml:space="preserve">
+    <value>Create Shortcut</value>
+  </data>
+  <data name="VersionListPage_RenameMenuItem.Text" xml:space="preserve">
+    <value>Rename</value>
+  </data>
   <data name="VersionListPage_ExportModpackMenuItem.Text" xml:space="preserve">
     <value>Export Modpack</value>
   </data>
@@ -1614,6 +1620,79 @@ Continue downloading?</value>
   </data>
   <data name="VersionListPage_LoadingDialog_ProgressText.Text" xml:space="preserve">
     <value>0.0%</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_CancellingStatus" xml:space="preserve">
+    <value>Cancelling export...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_FilteringServerFilesStatus" xml:space="preserve">
+    <value>Filtering files not supported on server...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_PreparingSaveStatus" xml:space="preserve">
+    <value>Preparing to save modpack...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_CreatingModpackStatus" xml:space="preserve">
+    <value>Creating modpack...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_ProcessingFilesStatus" xml:space="preserve">
+    <value>Processing files...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_CompressingStatus" xml:space="preserve">
+    <value>Compressing modpack...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_CompletedStatus" xml:space="preserve">
+    <value>Export completed!</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_FailedStatus_Format" xml:space="preserve">
+    <value>Export failed: {0}</value>
+  </data>
+  <!-- C# programmatic localization keys (no x:Uid .Text/.Title suffixes) -->
+  <data name="VersionListPage_ExportModpack_Title" xml:space="preserve">
+    <value>Export Modpack</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ConfirmButton" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_CancelButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_Instruction" xml:space="preserve">
+    <value>Please select data to export:</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ResourceAll" xml:space="preserve">
+    <value>Version directory resources</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ModpackNameLabel" xml:space="preserve">
+    <value>Modpack Name</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ModpackNamePlaceholder" xml:space="preserve">
+    <value>Enter modpack name</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ModpackVersionLabel" xml:space="preserve">
+    <value>Modpack Version</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ModpackVersionPlaceholder" xml:space="preserve">
+    <value>Enter modpack version</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_OfflineMode" xml:space="preserve">
+    <value>Offline Mode</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ServerOnly" xml:space="preserve">
+    <value>Export Server Modpack</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_LicenseWarningTitle" xml:space="preserve">
+    <value>License Warning</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_LicenseWarningMessage" xml:space="preserve">
+    <value>Including mods directly in the modpack may violate certain terms. Please do not distribute!</value>
+  </data>
+  <data name="VersionListPage_ExportModpackLoading_Title" xml:space="preserve">
+    <value>Exporting Modpack</value>
+  </data>
+  <data name="VersionListPage_ExportModpackLoading_CancelButton" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="VersionListPage_ExportModpackLoading_FetchingModrinth" xml:space="preserve">
+    <value>Fetching Modrinth resources...</value>
   </data>
   <data name="VersionListPage_ResourceItem_OptionsText" xml:space="preserve">
     <value>Player Settings</value>
@@ -1888,6 +1967,12 @@ Continue downloading?</value>
   <data name="VersionManagerPage_NavigateToMapPageButton.Content" xml:space="preserve">
     <value>Go to Maps Page</value>
   </data>
+  <data name="VersionManagerPage_CreateMapShortcutMenuItem.Text" xml:space="preserve">
+    <value>Create Shortcut</value>
+  </data>
+  <data name="VersionManagerPage_RenameMapMenuItem.Text" xml:space="preserve">
+    <value>Rename</value>
+  </data>
   <data name="VersionManagerPage_Title" xml:space="preserve">
     <value>Version</value>
   </data>
@@ -1980,6 +2065,64 @@ Continue downloading?</value>
   </data>
   <data name="AccountPage_ExternalLoginDialog_PasswordLabel" xml:space="preserve">
     <value>Password</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_EmailLabel" xml:space="preserve">
+    <value>Email</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_EmailPlaceholder" xml:space="preserve">
+    <value>Enter email</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_AccountLabel" xml:space="preserve">
+    <value>Account</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_AccountPlaceholder" xml:space="preserve">
+    <value>Enter account</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_EmailOrUsernamePlaceholder" xml:space="preserve">
+    <value>Enter email or username</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_PasswordPlaceholder" xml:space="preserve">
+    <value>Enter password</value>
+  </data>
+  <data name="AccountPage_OfflineLoginDialog_Instruction" xml:space="preserve">
+    <value>Please enter offline username</value>
+  </data>
+  <data name="AccountPage_OfflineLoginDialog_UsernamePlaceholder" xml:space="preserve">
+    <value>Enter username</value>
+  </data>
+  <data name="AccountPage_RefreshToken_VerifyingStatus" xml:space="preserve">
+    <value>Verifying token...</value>
+  </data>
+  <data name="AccountPage_RefreshToken_RefreshedStatus_Format" xml:space="preserve">
+    <value>Token renewed!
+Expires in: {0}</value>
+  </data>
+  <data name="AccountPage_RefreshToken_StillValidStatus_Format" xml:space="preserve">
+    <value>Token is still valid!
+Time remaining: {0}</value>
+  </data>
+  <data name="AccountPage_RefreshToken_TimeRemainingDays_Format" xml:space="preserve">
+    <value>{0} days</value>
+  </data>
+  <data name="AccountPage_RefreshToken_TimeRemainingHours_Format" xml:space="preserve">
+    <value>{0} hours</value>
+  </data>
+  <data name="AccountPage_RefreshToken_TimeRemainingMinutes_Format" xml:space="preserve">
+    <value>{0} minutes</value>
+  </data>
+  <data name="AccountPage_RefreshToken_ExpiredExternal" xml:space="preserve">
+    <value>Token has fully expired and cannot be renewed.
+Please remove this account and sign in again.</value>
+  </data>
+  <data name="AccountPage_RefreshToken_RenewFailed" xml:space="preserve">
+    <value>Token renewal failed. Please sign in again.</value>
+  </data>
+  <data name="AccountPage_RefreshToken_RenewFailedWithReason_Format" xml:space="preserve">
+    <value>Token renewal failed
+{0}</value>
+  </data>
+  <data name="AccountPage_OfflineLoginDialog_Title" xml:space="preserve">
+    <value>Offline Login</value>
   </data>
   <data name="AccountPage_ExternalLoginDialog_ConfirmButton" xml:space="preserve">
     <value>Confirm</value>
@@ -2988,6 +3131,15 @@ Continue downloading?</value>
   </data>
   <data name="ResourceDownloadPage_RemoveFavoritesButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>Remove selected items</value>
+  </data>
+  <data name="ResourceDownloadPage_ImportShareCodeButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Import share code</value>
+  </data>
+  <data name="ResourceDownloadPage_CopyShareCodeButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Copy share code</value>
+  </data>
+  <data name="ResourceDownloadPage_FavoritesMultiSelectButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>Multi-select mode</value>
   </data>
   <data name="Settings_McModName" xml:space="preserve">
     <value>MCMOD</value>
@@ -4199,6 +4351,579 @@ You can double-click the file to launch the game.</value>
   </data>
   <data name="Dialog_Confirm" xml:space="preserve">
     <value>Confirm</value>
+  </data>
+  <data name="Dialog_Yes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="Dialog_No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="Dialog_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Dialog_GotIt" xml:space="preserve">
+    <value>Got it</value>
+  </data>
+  <data name="Dialog_Announcement_PublishTimeLabel" xml:space="preserve">
+    <value>Published: </value>
+  </data>
+  <data name="Dialog_Rename_Placeholder" xml:space="preserve">
+    <value>Enter a new name</value>
+  </data>
+  <data name="Dialog_Rename_Instruction" xml:space="preserve">
+    <value>Please enter a new name:</value>
+  </data>
+  <data name="Dialog_Crash_ExitTitle" xml:space="preserve">
+    <value>Game exited unexpectedly</value>
+  </data>
+  <data name="Dialog_Crash_ExitTitleWithName" xml:space="preserve">
+    <value>Game exited unexpectedly: {0}</value>
+  </data>
+  <data name="Dialog_Crash_ExportHint" xml:space="preserve">
+    <value>To resolve the issue quickly, export the full crash log instead of taking a screenshot.</value>
+  </data>
+  <data name="Dialog_ReleaseDate_Format" xml:space="preserve">
+    <value>Released: {0}</value>
+  </data>
+  <data name="Dialog_Update_ChangelogIntro" xml:space="preserve">
+    <value>What's new in this version:</value>
+  </data>
+  <data name="Dialog_Update_ImportantTitle" xml:space="preserve">
+    <value>Important update</value>
+  </data>
+  <data name="Dialog_Update_ImportantMessage" xml:space="preserve">
+    <value>This is an important update. We recommend installing it now.</value>
+  </data>
+  <data name="Dialog_Update_DownloadingTitle" xml:space="preserve">
+    <value>Downloading update</value>
+  </data>
+  <data name="Dialog_Update_VersionTitle_Format" xml:space="preserve">
+    <value>Version {0} update</value>
+  </data>
+  <data name="Dialog_Update_PreparingDownload" xml:space="preserve">
+    <value>Preparing download...</value>
+  </data>
+  <data name="Dialog_Update_DownloadComplete" xml:space="preserve">
+    <value>Download complete. Preparing to install...</value>
+  </data>
+  <data name="Dialog_Update_Extracting" xml:space="preserve">
+    <value>Extracting update package...</value>
+  </data>
+  <data name="Dialog_Update_CheckingCertificate" xml:space="preserve">
+    <value>Checking certificate...</value>
+  </data>
+  <data name="Dialog_Update_InstallingCertificate" xml:space="preserve">
+    <value>Attempting to install certificate automatically...</value>
+  </data>
+  <data name="Dialog_Update_CertificateManualHint" xml:space="preserve">
+    <value>Install the certificate to continue: right-click the certificate -&gt; Install -&gt; Local Machine -&gt; Trusted Root Certification Authorities</value>
+  </data>
+  <data name="Dialog_Update_CertificateTimeout" xml:space="preserve">
+    <value>Certificate installation timed out. Install the certificate manually and try again.</value>
+  </data>
+  <data name="Dialog_Update_CertificateSuccess" xml:space="preserve">
+    <value>Certificate installed. Preparing to install the MSIX package...</value>
+  </data>
+  <data name="Dialog_Update_InstallingMsix" xml:space="preserve">
+    <value>Requesting system update. The app will close shortly...</value>
+  </data>
+  <data name="Dialog_Update_Submitted" xml:space="preserve">
+    <value>Update request submitted</value>
+  </data>
+  <data name="Dialog_Update_InstallRequestFailed" xml:space="preserve">
+    <value>Install request failed. Try downloading the installer manually.</value>
+  </data>
+  <data name="Dialog_Update_InstallFailed_Format" xml:space="preserve">
+    <value>Installation failed: {0}</value>
+  </data>
+  <data name="Dialog_Update_DownloadFailed" xml:space="preserve">
+    <value>Download failed. Please try again.</value>
+  </data>
+  <data name="Dialog_Update_DownloadFailed_Format" xml:space="preserve">
+    <value>Download failed: {0}</value>
+  </data>
+  <data name="Dialog_Update_Downloading_Format" xml:space="preserve">
+    <value>Downloading: {0:F1}%</value>
+  </data>
+  <data name="Dialog_Update_Speed_Format" xml:space="preserve">
+    <value>Speed: {0:F1} {1}</value>
+  </data>
+  <data name="Dialog_Update_RemainingHours_Format" xml:space="preserve">
+    <value>{0:F1} hours</value>
+  </data>
+  <data name="Dialog_Update_RemainingMinutes_Format" xml:space="preserve">
+    <value>{0:F1} minutes</value>
+  </data>
+  <data name="Dialog_Update_RemainingSeconds_Format" xml:space="preserve">
+    <value>{0:F0} seconds</value>
+  </data>
+  <data name="Dialog_Update_RemainingCalculating" xml:space="preserve">
+    <value>Remaining: calculating...</value>
+  </data>
+  <data name="Dialog_Update_Remaining_Format" xml:space="preserve">
+    <value>Remaining: {0}</value>
+  </data>
+  <data name="Dialog_Update_NoChangelog" xml:space="preserve">
+    <value>No release notes available</value>
+  </data>
+  <data name="Dialog_Progress_OperationFailed_Format" xml:space="preserve">
+    <value>Operation failed: {0}</value>
+  </data>
+  <data name="Dialog_Progress_InstallingJava_Title" xml:space="preserve">
+    <value>Installing Java</value>
+  </data>
+  <data name="Dialog_Progress_InstallingJava_Status_Format" xml:space="preserve">
+    <value>Downloading and configuring {0}...</value>
+  </data>
+  <data name="Dialog_Progress_AutoConfigureJava_Title" xml:space="preserve">
+    <value>Auto-configuring Java</value>
+  </data>
+  <data name="Dialog_Progress_AutoConfigureJava_Status_Format" xml:space="preserve">
+    <value>Fetching Java component: {0}...</value>
+  </data>
+  <data name="Msg_UnknownError" xml:space="preserve">
+    <value>Unknown error</value>
+  </data>
+  <data name="Msg_JavaListFetchFailed_Title" xml:space="preserve">
+    <value>Fetch failed</value>
+  </data>
+  <data name="Msg_JavaListFetchFailed_Content" xml:space="preserve">
+    <value>Could not fetch available Java versions. Check your network connection.</value>
+  </data>
+  <data name="Msg_OperationFailed_Format" xml:space="preserve">
+    <value>Operation failed: {0}</value>
+  </data>
+  <data name="Dialog_Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Dialog_Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Dialog_Update_CheckTitle" xml:space="preserve">
+    <value>Check for updates</value>
+  </data>
+  <data name="Dialog_Update_StoreChannel_Message" xml:space="preserve">
+    <value>You are using the Microsoft Store version. Updates are delivered through the Store.</value>
+  </data>
+  <data name="Dialog_Update_AlreadyLatest" xml:space="preserve">
+    <value>You are already on the latest version.</value>
+  </data>
+  <data name="Dialog_Update_CheckFailed_Format" xml:space="preserve">
+    <value>Could not check for updates: {0}</value>
+  </data>
+  <data name="Dialog_Update_DevChannel_Title" xml:space="preserve">
+    <value>Dev channel</value>
+  </data>
+  <data name="Dialog_Update_DevChannel_NoBuild" xml:space="preserve">
+    <value>No Dev build is currently available.</value>
+  </data>
+  <data name="Dialog_Update_DevChannel_CheckFailed_Format" xml:space="preserve">
+    <value>Could not fetch Dev build: {0}</value>
+  </data>
+  <data name="Dialog_Update_OpenReleasesFailed_Title" xml:space="preserve">
+    <value>Could not open download page</value>
+  </data>
+  <data name="Dialog_Update_OpenReleasesFailed_Message" xml:space="preserve">
+    <value>Could not open the Releases page. Download the new version from GitHub Releases manually.</value>
+  </data>
+  <data name="Dialog_Update_OpenInstallerFailed_Title" xml:space="preserve">
+    <value>Could not open installer link</value>
+  </data>
+  <data name="Dialog_Update_OpenInstallerFailed_Message" xml:space="preserve">
+    <value>Could not open the installer download link. Try again later.</value>
+  </data>
+  <data name="Dialog_Update_ManagedDownload_Title" xml:space="preserve">
+    <value>Downloading update</value>
+  </data>
+  <data name="Dialog_Update_ManagedDownload_Fetching_Format" xml:space="preserve">
+    <value>Fetching download for version {0}...</value>
+  </data>
+  <data name="Dialog_Update_ManagedDownload_Progress_Format" xml:space="preserve">
+    <value>Downloading update... {0}%</value>
+  </data>
+  <data name="Dialog_Update_ManagedDownload_Complete" xml:space="preserve">
+    <value>Download complete. Preparing to install...</value>
+  </data>
+  <data name="Dialog_Update_ManagedDownload_Failed_Format" xml:space="preserve">
+    <value>Could not download the new version: {0}</value>
+  </data>
+  <data name="Dialog_Update_ApplyFailed_Format" xml:space="preserve">
+    <value>The update package was downloaded, but the updater could not start: {0}</value>
+  </data>
+  <data name="Dialog_Update_DownloadFailed_Title" xml:space="preserve">
+    <value>Download failed</value>
+  </data>
+  <data name="Dialog_Update_ApplyFailed_Title" xml:space="preserve">
+    <value>Apply update failed</value>
+  </data>
+  <data name="Dialog_Settings_DeleteDirectoryConfirm_Title" xml:space="preserve">
+    <value>Confirm delete</value>
+  </data>
+  <data name="Dialog_Settings_DeleteDirectoryConfirm_Content_Format" xml:space="preserve">
+    <value>Remove game directory "{0}" from the list?
+
+This only removes it from the list; game files on disk are not deleted.</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_Disclaimer_Title" xml:space="preserve">
+    <value>Important</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_Disclaimer_Content" xml:space="preserve">
+    <value>Only add download sources you trust.
+
+The launcher is not responsible for issues caused by custom sources. You assume all risks.</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_Disclaimer_Continue" xml:space="preserve">
+    <value>I understand, continue</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_AddTitle_Official" xml:space="preserve">
+    <value>Add custom game resource source</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_AddTitle_Community" xml:space="preserve">
+    <value>Add custom community resource source</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_EmptyFields" xml:space="preserve">
+    <value>Source name and base URL cannot be empty.</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_AddFailed_Title" xml:space="preserve">
+    <value>Add failed</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_AddFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_AddFailed_Error_Format" xml:space="preserve">
+    <value>Add failed: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_UpdateFailed_Title" xml:space="preserve">
+    <value>Update failed</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_UpdateFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_EditFailed_Error_Format" xml:space="preserve">
+    <value>Edit failed: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_DeleteFailed_Title" xml:space="preserve">
+    <value>Delete failed</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_DeleteFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_DeleteFailed_Error_Format" xml:space="preserve">
+    <value>Delete failed: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ToggleFailed_Title" xml:space="preserve">
+    <value>Operation failed</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ToggleFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportFailed_Title" xml:space="preserve">
+    <value>Import failed</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportUnsupported_Message" xml:space="preserve">
+    <value>Only custom sources with the official resource template can be imported.</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportFailed_Error_Format" xml:space="preserve">
+    <value>Import failed: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportSuccess_Title" xml:space="preserve">
+    <value>Import successful</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportSuccess_Format" xml:space="preserve">
+    <value>Configuration imported: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_DeleteConfirm_Format" xml:space="preserve">
+    <value>Delete download source "{0}"?</value>
+  </data>
+  <data name="Dialog_Settings_JavaDownload_Title" xml:space="preserve">
+    <value>Download Java runtime</value>
+  </data>
+  <data name="Dialog_Settings_JavaDownload_Instruction" xml:space="preserve">
+    <value>Select a Java version to install:</value>
+  </data>
+  <data name="Dialog_Settings_JavaDownload_Tip" xml:space="preserve">
+    <value>We recommend a recent version (Java 21, Java 25) for better compatibility.</value>
+  </data>
+  <data name="Dialog_Settings_JavaDownload_PrimaryButton" xml:space="preserve">
+    <value>Download</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportSelectFirst" xml:space="preserve">
+    <value>Select a source to export first.</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportSuccess_Title" xml:space="preserve">
+    <value>Export successful</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportSuccess_Format" xml:space="preserve">
+    <value>Configuration exported to: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportFailed_Title" xml:space="preserve">
+    <value>Export failed</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportFailed_Error_Format" xml:space="preserve">
+    <value>Export failed: {0}</value>
+  </data>
+  <data name="Dialog_Account_NotPurchased_Title" xml:space="preserve">
+    <value>Minecraft not purchased</value>
+  </data>
+  <data name="Dialog_Account_NotPurchased_Content" xml:space="preserve">
+    <value>This Microsoft account does not own Minecraft. Purchase the game before signing in.</value>
+  </data>
+  <data name="Dialog_Account_PurchaseButton" xml:space="preserve">
+    <value>Buy Minecraft</value>
+  </data>
+  <data name="Dialog_Account_OpenLinkFailed_Title" xml:space="preserve">
+    <value>Could not open link</value>
+  </data>
+  <data name="Dialog_Account_OpenPurchaseLinkFailed_Content" xml:space="preserve">
+    <value>Could not open the purchase link. Visit the URL manually.</value>
+  </data>
+  <data name="Dialog_Account_ProfileError_Title" xml:space="preserve">
+    <value>Could not load profile</value>
+  </data>
+  <data name="Dialog_Account_ProfileError_Content" xml:space="preserve">
+    <value>This account owns Minecraft but may not have created a player profile yet.</value>
+  </data>
+  <data name="Dialog_Account_CreateProfileButton" xml:space="preserve">
+    <value>Create profile</value>
+  </data>
+  <data name="Dialog_Account_OpenProfileLinkFailed_Content" xml:space="preserve">
+    <value>Could not open the profile creation link. Visit the URL manually.</value>
+  </data>
+  <data name="Dialog_Shortcut_Overwrite_Title" xml:space="preserve">
+    <value>Shortcut already exists</value>
+  </data>
+  <data name="Dialog_Shortcut_Overwrite_Content_Format" xml:space="preserve">
+    <value>A shortcut named {0} already exists on the desktop.
+Overwrite it?</value>
+  </data>
+  <data name="Dialog_Overwrite" xml:space="preserve">
+    <value>Overwrite</value>
+  </data>
+  <data name="Dialog_Shortcut_Created_Title" xml:space="preserve">
+    <value>Shortcut created</value>
+  </data>
+  <data name="Dialog_Shortcut_Created_Version_Content_Format" xml:space="preserve">
+    <value>Created {0} on the desktop.
+Double-click it to launch this instance.</value>
+  </data>
+  <data name="Dialog_Shortcut_Created_Map_Content_Format" xml:space="preserve">
+    <value>Created {0} on the desktop.
+Double-click it to open this world.</value>
+  </data>
+  <data name="Dialog_Shortcut_CreateFailed_Title" xml:space="preserve">
+    <value>Create failed</value>
+  </data>
+  <data name="Dialog_Shortcut_CreateFailed_Content" xml:space="preserve">
+    <value>Could not create the shortcut. Try again later.</value>
+  </data>
+  <data name="Dialog_Shortcut_CreateFailed_Server_Content" xml:space="preserve">
+    <value>Could not create the shortcut. Check desktop permissions or try again later.</value>
+  </data>
+  <data name="Dialog_Map_DeleteConfirm_Title" xml:space="preserve">
+    <value>Confirm delete</value>
+  </data>
+  <data name="Dialog_Map_DeleteConfirm_Content_Format" xml:space="preserve">
+    <value>Delete world '{0}'? This cannot be undone.</value>
+  </data>
+  <data name="Dialog_ConfirmDelete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Dialog_Map_Rename_Title" xml:space="preserve">
+    <value>Rename world</value>
+  </data>
+  <data name="Dialog_RenameFailed_Title" xml:space="preserve">
+    <value>Rename failed</value>
+  </data>
+  <data name="Dialog_Rename_NameExists" xml:space="preserve">
+    <value>That name already exists. Choose another name.</value>
+  </data>
+  <data name="Dialog_Server_DeleteFailed_Format" xml:space="preserve">
+    <value>Failed to delete server: {0}</value>
+  </data>
+  <data name="Dialog_ResourceDownload_NoClientLink" xml:space="preserve">
+    <value>This version has no client download URL.</value>
+  </data>
+  <data name="Dialog_ResourceDownload_NoServerLink" xml:space="preserve">
+    <value>This version has no server download URL.</value>
+  </data>
+  <data name="Dialog_Download_Failed_Title" xml:space="preserve">
+    <value>Download failed</value>
+  </data>
+  <data name="Dialog_CrashExport_Failed_Format" xml:space="preserve">
+    <value>Failed to export crash log: {0}</value>
+  </data>
+  <data name="Dialog_Agent_ModNotFound_Title" xml:space="preserve">
+    <value>Not found</value>
+  </data>
+  <data name="Dialog_Agent_ModNotFound_Content_Format" xml:space="preserve">
+    <value>No Modrinth or CurseForge project matched '{0}'.</value>
+  </data>
+  <data name="Dialog_Agent_DeleteMod_Title" xml:space="preserve">
+    <value>Delete mod</value>
+  </data>
+  <data name="Dialog_Agent_DeleteMod_Content_Format" xml:space="preserve">
+    <value>Delete this mod?
+
+File: {0}
+Path: {1}
+
+If this is a library mod, other mods may break.</value>
+  </data>
+  <data name="Dialog_VersionComplete_Title" xml:space="preserve">
+    <value>Complete version files</value>
+  </data>
+  <data name="Dialog_Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Dialog_VersionComplete_Status_Format" xml:space="preserve">
+    <value>Version {0}
+Checking dependencies...</value>
+  </data>
+  <data name="Dialog_VersionComplete_CompletedStatus" xml:space="preserve">
+    <value>Version files completed!</value>
+  </data>
+  <data name="Dialog_VersionComplete_CurrentFile_Format" xml:space="preserve">
+    <value>Current: {0}</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_CheckingDeps" xml:space="preserve">
+    <value>Checking dependencies...</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_ProcessingModLoader" xml:space="preserve">
+    <value>Processing mod loader...</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_DownloadingLibraries" xml:space="preserve">
+    <value>Downloading libraries...</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_ExtractingNatives" xml:space="preserve">
+    <value>Extracting native libraries...</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_ProcessingAssetIndex" xml:space="preserve">
+    <value>Processing asset index...</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_DownloadingAssets" xml:space="preserve">
+    <value>Downloading resource files...</value>
+  </data>
+  <data name="Dialog_VersionComplete_AssetHash_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_VersionComplete_RetryAsset_Format" xml:space="preserve">
+    <value>Retrying: {0}...</value>
+  </data>
+  <data name="Dialog_VersionComplete_SecondPassAsset_Format" xml:space="preserve">
+    <value>Second pass: {0}...</value>
+  </data>
+  <data name="Dialog_VersionComplete_StatusBar_Format" xml:space="preserve">
+    <value>Completing dependencies for {0}...</value>
+  </data>
+  <data name="Dialog_VersionComplete_ProgressStatusBar_Format" xml:space="preserve">
+    <value>Completing {0}: {1}%</value>
+  </data>
+  <data name="Dialog_VersionComplete_CompletedVersion_Format" xml:space="preserve">
+    <value>{0} version files completed!</value>
+  </data>
+  <data name="Dialog_VersionComplete_Failed_Format" xml:space="preserve">
+    <value>Version completion failed: {0}</value>
+  </data>
+  <data name="Dialog_Server_DeleteConfirm_Title" xml:space="preserve">
+    <value>Delete server</value>
+  </data>
+  <data name="Dialog_Server_DeleteConfirm_Content_Format" xml:space="preserve">
+    <value>Delete server '{0}'?</value>
+  </data>
+  <data name="Dialog_Shortcut_Created_Server_Content_Format" xml:space="preserve">
+    <value>Created {0} on the desktop.
+Double-click it to connect to this server.</value>
+  </data>
+  <data name="Dialog_Version_Rename_Title" xml:space="preserve">
+    <value>Rename instance</value>
+  </data>
+  <data name="Dialog_Version_Rename_Placeholder" xml:space="preserve">
+    <value>New instance name</value>
+  </data>
+  <data name="Dialog_Version_Rename_Instruction" xml:space="preserve">
+    <value>Enter a new instance name:</value>
+  </data>
+  <data name="Dialog_CrashExport_Success_Title" xml:space="preserve">
+    <value>Success</value>
+  </data>
+  <data name="Dialog_CrashExport_Success_Content_Format" xml:space="preserve">
+    <value>Crash logs exported to: {0}
+
+Includes:
+• Game crash log
+• Launch arguments
+• Launcher log
+• Version config files</value>
+  </data>
+  <data name="Dialog_Navigation_Error_Title" xml:space="preserve">
+    <value>Navigation error</value>
+  </data>
+  <data name="Dialog_Navigation_Error_Content_Format" xml:space="preserve">
+    <value>Could not navigate to page: {0}
+
+Error: {1}
+
+Stack trace: {2}</value>
+  </data>
+  <data name="Dialog_Screenshot_DeleteConfirm_Title" xml:space="preserve">
+    <value>Confirm delete</value>
+  </data>
+  <data name="Dialog_Screenshot_DeleteConfirm_Content_Format" xml:space="preserve">
+    <value>Delete screenshot '{0}'? This cannot be undone.</value>
+  </data>
+  <data name="Msg_DownloadFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Multiplayer_PortTimeout_Content" xml:space="preserve">
+    <value>Could not get the Terracotta port. Check:
+1. Firewall blocking the app
+2. Antivirus quarantining the executable
+3. Available disk space
+
+This may be a bug. Export logs from Settings → About → Quick actions and send them to the developers.</value>
+  </data>
+  <data name="Dialog_Multiplayer_ServiceUnavailable" xml:space="preserve">
+    <value>Multiplayer service files are missing or could not be downloaded. Check your network and try again.</value>
+  </data>
+  <data name="Dialog_Multiplayer_StartFailed_Format" xml:space="preserve">
+    <value>Failed to start multiplayer service: {0}</value>
+  </data>
+  <data name="Dialog_ExportLaunchArgs_Region_Title" xml:space="preserve">
+    <value>Region restriction</value>
+  </data>
+  <data name="Dialog_ExportLaunchArgs_Region_Content" xml:space="preserve">
+    <value>In your region, only Microsoft-account users can export launch arguments.
+Sign in with a Microsoft account and try again.</value>
+  </data>
+  <data name="Dialog_ResourceDownload_ImportShareCode_Title" xml:space="preserve">
+    <value>Import share code</value>
+  </data>
+  <data name="Dialog_ResourceDownload_ImportShareCode_Prompt" xml:space="preserve">
+    <value>Paste a share code (JSON array or one ID per line):</value>
+  </data>
+  <data name="Dialog_ResourceDownload_FavoritesDownload_Title" xml:space="preserve">
+    <value>Downloading favorites</value>
+  </data>
+  <data name="Dialog_ResourceDownload_FavoritesDownload_Background" xml:space="preserve">
+    <value>Download in background</value>
+  </data>
+  <data name="Dialog_Settings_EasterEgg_On_Title" xml:space="preserve">
+    <value>🎉 Easter egg mode enabled</value>
+  </data>
+  <data name="Dialog_Settings_EasterEgg_Off_Title" xml:space="preserve">
+    <value>Easter egg mode disabled</value>
+  </data>
+  <data name="Dialog_Settings_EasterEgg_On_Content" xml:space="preserve">
+    <value>You found a hidden easter egg! See if anything looks different.</value>
+  </data>
+  <data name="Dialog_Settings_EasterEgg_Off_Content" xml:space="preserve">
+    <value>Easter egg mode is off. Everything is back to normal.</value>
   </data>
   <data name="Dialog_Install" xml:space="preserve">
     <value>Install</value>

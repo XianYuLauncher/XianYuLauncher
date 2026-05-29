@@ -986,7 +986,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// <param name="content">对话框内容</param>
         private async Task ShowMessageAsync(string title, string content)
         {
-            await _dialogService.ShowMessageDialogAsync(title, content, "确定");
+            await _dialogService.ShowMessageDialogAsync(title, content, "Dialog_OK".GetLocalized());
         }
 
         /// <summary>

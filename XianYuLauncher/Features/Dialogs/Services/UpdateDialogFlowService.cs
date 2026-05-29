@@ -5,6 +5,7 @@ using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Features.Dialogs.ViewModels;
 using XianYuLauncher.Features.Dialogs.Views;
+using XianYuLauncher.Helpers;
 
 namespace XianYuLauncher.Features.Dialogs.Services;
 
@@ -28,7 +29,7 @@ public sealed class UpdateDialogFlowService : IUpdateDialogFlowService
         UpdateInfo updateInfo,
         string title,
         string primaryButtonText,
-        string? closeButtonText = "取消")
+        string? closeButtonText = null)
     {
         return ShowUpdatePreviewCoreAsync(updateInfo, title, primaryButtonText, closeButtonText);
     }
@@ -37,7 +38,7 @@ public sealed class UpdateDialogFlowService : IUpdateDialogFlowService
         UpdateInfo updateInfo,
         string title,
         string primaryButtonText,
-        string? closeButtonText = "取消")
+        string? closeButtonText = null)
     {
         if (!await ShowUpdatePreviewCoreAsync(updateInfo, title, primaryButtonText, closeButtonText))
         {
@@ -54,9 +55,10 @@ public sealed class UpdateDialogFlowService : IUpdateDialogFlowService
             DefaultButton = ContentDialogButton.None,
         };
 
-        if (!string.IsNullOrWhiteSpace(closeButtonText))
+        var resolvedClose = closeButtonText ?? "Dialog_Cancel".GetLocalized();
+        if (!string.IsNullOrWhiteSpace(resolvedClose))
         {
-            downloadDialog.CloseButtonText = closeButtonText;
+            downloadDialog.CloseButtonText = resolvedClose;
             downloadDialog.CloseButtonClick += (_, _) => viewModel.CancelCommand.Execute(null);
         }
 
@@ -94,10 +96,7 @@ public sealed class UpdateDialogFlowService : IUpdateDialogFlowService
             DefaultButton = ContentDialogButton.Primary,
         };
 
-        if (!string.IsNullOrWhiteSpace(closeButtonText))
-        {
-            previewDialog.CloseButtonText = closeButtonText;
-        }
+        previewDialog.CloseButtonText = closeButtonText ?? "Dialog_Cancel".GetLocalized();
 
         var result = await _dialogHostService.ShowAsync(previewDialog);
         return result == ContentDialogResult.Primary;

@@ -6,7 +6,7 @@
     Height="250">
 
     <StackPanel Spacing="20" Padding="20" VerticalAlignment="Center">
-        <TextBlock Text="正在下载更新" FontWeight="Bold" FontSize="18" TextAlignment="Center" />
+        <TextBlock Text="{x:Bind ViewModel.DownloadingTitleText, Mode=OneWay}" FontWeight="Bold" FontSize="18" TextAlignment="Center" />
 
         <StackPanel Spacing="12">
             <ProgressBar Value="{x:Bind ViewModel.DownloadProgress, Mode=OneWay}"

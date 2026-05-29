@@ -1477,6 +1477,12 @@
   <data name="VersionListPage_DeleteMenuItem.Text" xml:space="preserve">
     <value>删除</value>
   </data>
+  <data name="VersionListPage_CreateShortcutMenuItem.Text" xml:space="preserve">
+    <value>创建快捷方式</value>
+  </data>
+  <data name="VersionListPage_RenameMenuItem.Text" xml:space="preserve">
+    <value>重命名</value>
+  </data>
   <data name="VersionListPage_ExportModpackMenuItem.Text" xml:space="preserve">
     <value>导出整合包</value>
   </data>
@@ -1614,6 +1620,79 @@
   </data>
   <data name="VersionListPage_LoadingDialog_ProgressText.Text" xml:space="preserve">
     <value>0.0%</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_CancellingStatus" xml:space="preserve">
+    <value>正在取消导出...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_FilteringServerFilesStatus" xml:space="preserve">
+    <value>正在过滤服务端不支持的文件...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_PreparingSaveStatus" xml:space="preserve">
+    <value>准备保存整合包...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_CreatingModpackStatus" xml:space="preserve">
+    <value>正在创建整合包...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_ProcessingFilesStatus" xml:space="preserve">
+    <value>正在处理文件...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_CompressingStatus" xml:space="preserve">
+    <value>正在压缩整合包...</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_CompletedStatus" xml:space="preserve">
+    <value>导出完成！</value>
+  </data>
+  <data name="VersionListPage_LoadingDialog_FailedStatus_Format" xml:space="preserve">
+    <value>导出失败：{0}</value>
+  </data>
+  <!-- C# 程序化本地化键（勿使用 x:Uid 的 .Text/.Title 后缀） -->
+  <data name="VersionListPage_ExportModpack_Title" xml:space="preserve">
+    <value>导出整合包</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ConfirmButton" xml:space="preserve">
+    <value>确认</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_CancelButton" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_Instruction" xml:space="preserve">
+    <value>请选择要导出的数据：</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ResourceAll" xml:space="preserve">
+    <value>版本目录资源</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ModpackNameLabel" xml:space="preserve">
+    <value>整合包名称</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ModpackNamePlaceholder" xml:space="preserve">
+    <value>请输入整合包名称</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ModpackVersionLabel" xml:space="preserve">
+    <value>整合包版本</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ModpackVersionPlaceholder" xml:space="preserve">
+    <value>请输入整合包版本</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_OfflineMode" xml:space="preserve">
+    <value>非联网模式</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_ServerOnly" xml:space="preserve">
+    <value>导出服务端整合包</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_LicenseWarningTitle" xml:space="preserve">
+    <value>许可证警告</value>
+  </data>
+  <data name="VersionListPage_ExportModpack_LicenseWarningMessage" xml:space="preserve">
+    <value>直接将 Mod 放入整合包可能会违反部分条例，请不要进行分发！</value>
+  </data>
+  <data name="VersionListPage_ExportModpackLoading_Title" xml:space="preserve">
+    <value>正在导出整合包</value>
+  </data>
+  <data name="VersionListPage_ExportModpackLoading_CancelButton" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="VersionListPage_ExportModpackLoading_FetchingModrinth" xml:space="preserve">
+    <value>正在获取 Modrinth 资源...</value>
   </data>
   <data name="VersionListPage_ResourceItem_OptionsText" xml:space="preserve">
     <value>玩家游戏设置</value>
@@ -1891,6 +1970,12 @@
   <data name="VersionManagerPage_NavigateToMapPageButton.Content" xml:space="preserve">
     <value>前往地图页面</value>
   </data>
+  <data name="VersionManagerPage_CreateMapShortcutMenuItem.Text" xml:space="preserve">
+    <value>创建快捷方式</value>
+  </data>
+  <data name="VersionManagerPage_RenameMapMenuItem.Text" xml:space="preserve">
+    <value>重命名</value>
+  </data>
   <data name="VersionManagerPage_Title" xml:space="preserve">
     <value>版本管理</value>
   </data>
@@ -1983,6 +2068,64 @@
   </data>
   <data name="AccountPage_ExternalLoginDialog_PasswordLabel" xml:space="preserve">
     <value>密码</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_EmailLabel" xml:space="preserve">
+    <value>邮箱</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_EmailPlaceholder" xml:space="preserve">
+    <value>输入邮箱</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_AccountLabel" xml:space="preserve">
+    <value>账户</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_AccountPlaceholder" xml:space="preserve">
+    <value>输入账户</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_EmailOrUsernamePlaceholder" xml:space="preserve">
+    <value>输入邮箱/用户名</value>
+  </data>
+  <data name="AccountPage_ExternalLoginDialog_PasswordPlaceholder" xml:space="preserve">
+    <value>输入密码</value>
+  </data>
+  <data name="AccountPage_OfflineLoginDialog_Instruction" xml:space="preserve">
+    <value>请输入离线用户名</value>
+  </data>
+  <data name="AccountPage_OfflineLoginDialog_UsernamePlaceholder" xml:space="preserve">
+    <value>输入用户名</value>
+  </data>
+  <data name="AccountPage_RefreshToken_VerifyingStatus" xml:space="preserve">
+    <value>正在验证令牌...</value>
+  </data>
+  <data name="AccountPage_RefreshToken_RefreshedStatus_Format" xml:space="preserve">
+    <value>续签完成！
+过期时间: {0}</value>
+  </data>
+  <data name="AccountPage_RefreshToken_StillValidStatus_Format" xml:space="preserve">
+    <value>令牌仍然有效！
+剩余时间: {0}</value>
+  </data>
+  <data name="AccountPage_RefreshToken_TimeRemainingDays_Format" xml:space="preserve">
+    <value>{0} 天</value>
+  </data>
+  <data name="AccountPage_RefreshToken_TimeRemainingHours_Format" xml:space="preserve">
+    <value>{0} 小时</value>
+  </data>
+  <data name="AccountPage_RefreshToken_TimeRemainingMinutes_Format" xml:space="preserve">
+    <value>{0} 分钟</value>
+  </data>
+  <data name="AccountPage_RefreshToken_ExpiredExternal" xml:space="preserve">
+    <value>令牌已完全过期，无法续签
+请删除此账户并重新登录</value>
+  </data>
+  <data name="AccountPage_RefreshToken_RenewFailed" xml:space="preserve">
+    <value>续签失败，请重新登录</value>
+  </data>
+  <data name="AccountPage_RefreshToken_RenewFailedWithReason_Format" xml:space="preserve">
+    <value>续签失败
+{0}</value>
+  </data>
+  <data name="AccountPage_OfflineLoginDialog_Title" xml:space="preserve">
+    <value>离线登录</value>
   </data>
   <data name="AccountPage_ExternalLoginDialog_ConfirmButton" xml:space="preserve">
     <value>确定</value>
@@ -2985,6 +3128,15 @@
   </data>
   <data name="ResourceDownloadPage_RemoveFavoritesButton.ToolTipService.ToolTip" xml:space="preserve">
     <value>删除选中项</value>
+  </data>
+  <data name="ResourceDownloadPage_ImportShareCodeButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>导入分享码</value>
+  </data>
+  <data name="ResourceDownloadPage_CopyShareCodeButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>复制分享码</value>
+  </data>
+  <data name="ResourceDownloadPage_FavoritesMultiSelectButton.ToolTipService.ToolTip" xml:space="preserve">
+    <value>多选模式</value>
   </data>
   <data name="Settings_McModName" xml:space="preserve">
     <value>MC百科</value>
@@ -4196,6 +4348,579 @@
   </data>
   <data name="Dialog_Confirm" xml:space="preserve">
     <value>确认</value>
+  </data>
+  <data name="Dialog_Yes" xml:space="preserve">
+    <value>是</value>
+  </data>
+  <data name="Dialog_No" xml:space="preserve">
+    <value>否</value>
+  </data>
+  <data name="Dialog_Cancel" xml:space="preserve">
+    <value>取消</value>
+  </data>
+  <data name="Dialog_GotIt" xml:space="preserve">
+    <value>知道了</value>
+  </data>
+  <data name="Dialog_Announcement_PublishTimeLabel" xml:space="preserve">
+    <value>发布时间: </value>
+  </data>
+  <data name="Dialog_Rename_Placeholder" xml:space="preserve">
+    <value>输入新名称</value>
+  </data>
+  <data name="Dialog_Rename_Instruction" xml:space="preserve">
+    <value>请输入新的名称：</value>
+  </data>
+  <data name="Dialog_Crash_ExitTitle" xml:space="preserve">
+    <value>游戏意外退出</value>
+  </data>
+  <data name="Dialog_Crash_ExitTitleWithName" xml:space="preserve">
+    <value>游戏意外退出：{0}</value>
+  </data>
+  <data name="Dialog_Crash_ExportHint" xml:space="preserve">
+    <value>为了快速解决问题，请导出完整的崩溃日志，而不是截图。</value>
+  </data>
+  <data name="Dialog_ReleaseDate_Format" xml:space="preserve">
+    <value>发布日期: {0}</value>
+  </data>
+  <data name="Dialog_Update_ChangelogIntro" xml:space="preserve">
+    <value>新版本带来了以下更新：</value>
+  </data>
+  <data name="Dialog_Update_ImportantTitle" xml:space="preserve">
+    <value>重要更新</value>
+  </data>
+  <data name="Dialog_Update_ImportantMessage" xml:space="preserve">
+    <value>这是一个重要更新，建议立即安装</value>
+  </data>
+  <data name="Dialog_Update_DownloadingTitle" xml:space="preserve">
+    <value>正在下载更新</value>
+  </data>
+  <data name="Dialog_Update_VersionTitle_Format" xml:space="preserve">
+    <value>版本 {0} 更新</value>
+  </data>
+  <data name="Dialog_Update_PreparingDownload" xml:space="preserve">
+    <value>准备下载...</value>
+  </data>
+  <data name="Dialog_Update_DownloadComplete" xml:space="preserve">
+    <value>下载完成，准备安装...</value>
+  </data>
+  <data name="Dialog_Update_Extracting" xml:space="preserve">
+    <value>正在解压更新包...</value>
+  </data>
+  <data name="Dialog_Update_CheckingCertificate" xml:space="preserve">
+    <value>正在检查证书...</value>
+  </data>
+  <data name="Dialog_Update_InstallingCertificate" xml:space="preserve">
+    <value>正在尝试自动安装证书...</value>
+  </data>
+  <data name="Dialog_Update_CertificateManualHint" xml:space="preserve">
+    <value>请安装证书后继续: 右键证书-&gt;安装-&gt;本地计算机-&gt;受信任的根证书颁发机构</value>
+  </data>
+  <data name="Dialog_Update_CertificateTimeout" xml:space="preserve">
+    <value>证书安装超时，请手动安装证书后重试</value>
+  </data>
+  <data name="Dialog_Update_CertificateSuccess" xml:space="preserve">
+    <value>证书安装成功，准备安装MSIX包...</value>
+  </data>
+  <data name="Dialog_Update_InstallingMsix" xml:space="preserve">
+    <value>正在请求系统更新，应用即将自动关闭...</value>
+  </data>
+  <data name="Dialog_Update_Submitted" xml:space="preserve">
+    <value>更新请求已提交</value>
+  </data>
+  <data name="Dialog_Update_InstallRequestFailed" xml:space="preserve">
+    <value>安装请求失败，请尝试手动下载安装包</value>
+  </data>
+  <data name="Dialog_Update_InstallFailed_Format" xml:space="preserve">
+    <value>安装失败: {0}</value>
+  </data>
+  <data name="Dialog_Update_DownloadFailed" xml:space="preserve">
+    <value>下载失败，请重试</value>
+  </data>
+  <data name="Dialog_Update_DownloadFailed_Format" xml:space="preserve">
+    <value>下载失败: {0}</value>
+  </data>
+  <data name="Dialog_Update_Downloading_Format" xml:space="preserve">
+    <value>正在下载: {0:F1}%</value>
+  </data>
+  <data name="Dialog_Update_Speed_Format" xml:space="preserve">
+    <value>速度: {0:F1} {1}</value>
+  </data>
+  <data name="Dialog_Update_RemainingHours_Format" xml:space="preserve">
+    <value>{0:F1} 小时</value>
+  </data>
+  <data name="Dialog_Update_RemainingMinutes_Format" xml:space="preserve">
+    <value>{0:F1} 分钟</value>
+  </data>
+  <data name="Dialog_Update_RemainingSeconds_Format" xml:space="preserve">
+    <value>{0:F0} 秒</value>
+  </data>
+  <data name="Dialog_Update_RemainingCalculating" xml:space="preserve">
+    <value>剩余: 计算中...</value>
+  </data>
+  <data name="Dialog_Update_Remaining_Format" xml:space="preserve">
+    <value>剩余: {0}</value>
+  </data>
+  <data name="Dialog_Update_NoChangelog" xml:space="preserve">
+    <value>暂无更新内容</value>
+  </data>
+  <data name="Dialog_Progress_OperationFailed_Format" xml:space="preserve">
+    <value>操作失败: {0}</value>
+  </data>
+  <data name="Dialog_Progress_InstallingJava_Title" xml:space="preserve">
+    <value>正在安装 Java</value>
+  </data>
+  <data name="Dialog_Progress_InstallingJava_Status_Format" xml:space="preserve">
+    <value>正在下载并配置 {0}...</value>
+  </data>
+  <data name="Dialog_Progress_AutoConfigureJava_Title" xml:space="preserve">
+    <value>自动配置 Java 环境</value>
+  </data>
+  <data name="Dialog_Progress_AutoConfigureJava_Status_Format" xml:space="preserve">
+    <value>正在获取 Java 组件: {0}...</value>
+  </data>
+  <data name="Msg_UnknownError" xml:space="preserve">
+    <value>未知错误</value>
+  </data>
+  <data name="Msg_JavaListFetchFailed_Title" xml:space="preserve">
+    <value>获取失败</value>
+  </data>
+  <data name="Msg_JavaListFetchFailed_Content" xml:space="preserve">
+    <value>未能获取到可用的 Java 版本列表，请检查网络连接</value>
+  </data>
+  <data name="Msg_OperationFailed_Format" xml:space="preserve">
+    <value>操作失败: {0}</value>
+  </data>
+  <data name="Dialog_Save" xml:space="preserve">
+    <value>保存</value>
+  </data>
+  <data name="Dialog_Delete" xml:space="preserve">
+    <value>删除</value>
+  </data>
+  <data name="Dialog_Update_CheckTitle" xml:space="preserve">
+    <value>检查更新</value>
+  </data>
+  <data name="Dialog_Update_StoreChannel_Message" xml:space="preserve">
+    <value>您使用的是微软商店版本，应用将通过商店自动更新。</value>
+  </data>
+  <data name="Dialog_Update_AlreadyLatest" xml:space="preserve">
+    <value>当前已是最新版本！</value>
+  </data>
+  <data name="Dialog_Update_CheckFailed_Format" xml:space="preserve">
+    <value>无法检查更新：{0}</value>
+  </data>
+  <data name="Dialog_Update_DevChannel_Title" xml:space="preserve">
+    <value>Dev 通道</value>
+  </data>
+  <data name="Dialog_Update_DevChannel_NoBuild" xml:space="preserve">
+    <value>当前没有可用的 Dev 版本。</value>
+  </data>
+  <data name="Dialog_Update_DevChannel_CheckFailed_Format" xml:space="preserve">
+    <value>无法获取 Dev 版本: {0}</value>
+  </data>
+  <data name="Dialog_Update_OpenReleasesFailed_Title" xml:space="preserve">
+    <value>打开下载页失败</value>
+  </data>
+  <data name="Dialog_Update_OpenReleasesFailed_Message" xml:space="preserve">
+    <value>无法打开 Releases 页面，请稍后手动前往 GitHub Releases 下载新版本。</value>
+  </data>
+  <data name="Dialog_Update_OpenInstallerFailed_Title" xml:space="preserve">
+    <value>打开安装器链接失败</value>
+  </data>
+  <data name="Dialog_Update_OpenInstallerFailed_Message" xml:space="preserve">
+    <value>无法打开安装器下载链接，请稍后重试。</value>
+  </data>
+  <data name="Dialog_Update_ManagedDownload_Title" xml:space="preserve">
+    <value>下载更新</value>
+  </data>
+  <data name="Dialog_Update_ManagedDownload_Fetching_Format" xml:space="preserve">
+    <value>正在获取新版本 {0} 的下载资源...</value>
+  </data>
+  <data name="Dialog_Update_ManagedDownload_Progress_Format" xml:space="preserve">
+    <value>正在下载更新... {0}%</value>
+  </data>
+  <data name="Dialog_Update_ManagedDownload_Complete" xml:space="preserve">
+    <value>下载完成，正在准备安装...</value>
+  </data>
+  <data name="Dialog_Update_ManagedDownload_Failed_Format" xml:space="preserve">
+    <value>无法下载新版本：{0}</value>
+  </data>
+  <data name="Dialog_Update_ApplyFailed_Format" xml:space="preserve">
+    <value>更新包已下载，但无法启动更新器：{0}</value>
+  </data>
+  <data name="Dialog_Update_DownloadFailed_Title" xml:space="preserve">
+    <value>下载更新失败</value>
+  </data>
+  <data name="Dialog_Update_ApplyFailed_Title" xml:space="preserve">
+    <value>应用更新失败</value>
+  </data>
+  <data name="Dialog_Settings_DeleteDirectoryConfirm_Title" xml:space="preserve">
+    <value>确认删除</value>
+  </data>
+  <data name="Dialog_Settings_DeleteDirectoryConfirm_Content_Format" xml:space="preserve">
+    <value>确定要从列表中删除游戏目录 "{0}" 吗？
+
+注意：这只会从列表中移除，不会删除实际的游戏文件。</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_Disclaimer_Title" xml:space="preserve">
+    <value>重要提示</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_Disclaimer_Content" xml:space="preserve">
+    <value>请仅添加您信任的下载源。
+
+使用自定义下载源产生的任何问题与启动器无关，您需要自行承担风险。</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_Disclaimer_Continue" xml:space="preserve">
+    <value>我已了解，继续添加</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_AddTitle_Official" xml:space="preserve">
+    <value>添加自定义游戏资源源</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_AddTitle_Community" xml:space="preserve">
+    <value>添加自定义社区资源源</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_EmptyFields" xml:space="preserve">
+    <value>源名称和 Base URL 不能为空</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_AddFailed_Title" xml:space="preserve">
+    <value>添加失败</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_AddFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_AddFailed_Error_Format" xml:space="preserve">
+    <value>添加失败: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_UpdateFailed_Title" xml:space="preserve">
+    <value>更新失败</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_UpdateFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_EditFailed_Error_Format" xml:space="preserve">
+    <value>编辑失败: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_DeleteFailed_Title" xml:space="preserve">
+    <value>删除失败</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_DeleteFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_DeleteFailed_Error_Format" xml:space="preserve">
+    <value>删除失败: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ToggleFailed_Title" xml:space="preserve">
+    <value>操作失败</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ToggleFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportFailed_Title" xml:space="preserve">
+    <value>导入失败</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportUnsupported_Message" xml:space="preserve">
+    <value>当前仅支持导入官方资源模板类型的自定义源。</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportFailed_Error_Format" xml:space="preserve">
+    <value>导入失败: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportSuccess_Title" xml:space="preserve">
+    <value>导入成功</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ImportSuccess_Format" xml:space="preserve">
+    <value>已成功导入配置: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_DeleteConfirm_Format" xml:space="preserve">
+    <value>确定要删除下载源 "{0}" 吗？</value>
+  </data>
+  <data name="Dialog_Settings_JavaDownload_Title" xml:space="preserve">
+    <value>下载 Java 运行时</value>
+  </data>
+  <data name="Dialog_Settings_JavaDownload_Instruction" xml:space="preserve">
+    <value>请选择要安装的 Java 版本:</value>
+  </data>
+  <data name="Dialog_Settings_JavaDownload_Tip" xml:space="preserve">
+    <value>建议选择较新的版本 (Java 21, Java 25) 以获得更好的兼容性。</value>
+  </data>
+  <data name="Dialog_Settings_JavaDownload_PrimaryButton" xml:space="preserve">
+    <value>下载</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportSelectFirst" xml:space="preserve">
+    <value>请先选择要导出的源</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportSuccess_Title" xml:space="preserve">
+    <value>导出成功</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportSuccess_Format" xml:space="preserve">
+    <value>配置已导出到: {0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportFailed_Title" xml:space="preserve">
+    <value>导出失败</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Settings_CustomSource_ExportFailed_Error_Format" xml:space="preserve">
+    <value>导出失败: {0}</value>
+  </data>
+  <data name="Dialog_Account_NotPurchased_Title" xml:space="preserve">
+    <value>账户未购买Minecraft</value>
+  </data>
+  <data name="Dialog_Account_NotPurchased_Content" xml:space="preserve">
+    <value>当前微软账户没有购买Minecraft，请先购买游戏后再尝试登录。</value>
+  </data>
+  <data name="Dialog_Account_PurchaseButton" xml:space="preserve">
+    <value>购买Minecraft</value>
+  </data>
+  <data name="Dialog_Account_OpenLinkFailed_Title" xml:space="preserve">
+    <value>打开链接失败</value>
+  </data>
+  <data name="Dialog_Account_OpenPurchaseLinkFailed_Content" xml:space="preserve">
+    <value>无法打开购买链接，请手动访问该网址。</value>
+  </data>
+  <data name="Dialog_Account_ProfileError_Title" xml:space="preserve">
+    <value>获取玩家信息失败</value>
+  </data>
+  <data name="Dialog_Account_ProfileError_Content" xml:space="preserve">
+    <value>当前微软账户已购买Minecraft，但可能未创建玩家档案。</value>
+  </data>
+  <data name="Dialog_Account_CreateProfileButton" xml:space="preserve">
+    <value>创建档案</value>
+  </data>
+  <data name="Dialog_Account_OpenProfileLinkFailed_Content" xml:space="preserve">
+    <value>无法打开创建档案链接，请手动访问该网址。</value>
+  </data>
+  <data name="Dialog_Shortcut_Overwrite_Title" xml:space="preserve">
+    <value>快捷方式已存在</value>
+  </data>
+  <data name="Dialog_Shortcut_Overwrite_Content_Format" xml:space="preserve">
+    <value>桌面上已存在 {0} 的快捷方式。
+是否覆盖现有快捷方式？</value>
+  </data>
+  <data name="Dialog_Overwrite" xml:space="preserve">
+    <value>覆盖</value>
+  </data>
+  <data name="Dialog_Shortcut_Created_Title" xml:space="preserve">
+    <value>快捷方式已创建</value>
+  </data>
+  <data name="Dialog_Shortcut_Created_Version_Content_Format" xml:space="preserve">
+    <value>已在桌面创建 {0} 的快捷方式。
+双击该快捷方式可直接启动该版本。</value>
+  </data>
+  <data name="Dialog_Shortcut_Created_Map_Content_Format" xml:space="preserve">
+    <value>已在桌面创建 {0} 的快捷方式。
+双击可直接进入此存档。</value>
+  </data>
+  <data name="Dialog_Shortcut_CreateFailed_Title" xml:space="preserve">
+    <value>创建失败</value>
+  </data>
+  <data name="Dialog_Shortcut_CreateFailed_Content" xml:space="preserve">
+    <value>创建快捷方式时发生错误，请稍后重试。</value>
+  </data>
+  <data name="Dialog_Shortcut_CreateFailed_Server_Content" xml:space="preserve">
+    <value>创建快捷方式失败，请检查桌面权限或稍后重试。</value>
+  </data>
+  <data name="Dialog_Map_DeleteConfirm_Title" xml:space="preserve">
+    <value>确认删除</value>
+  </data>
+  <data name="Dialog_Map_DeleteConfirm_Content_Format" xml:space="preserve">
+    <value>确定要删除地图 '{0}' 吗？此操作不可恢复。</value>
+  </data>
+  <data name="Dialog_ConfirmDelete" xml:space="preserve">
+    <value>确定删除</value>
+  </data>
+  <data name="Dialog_Map_Rename_Title" xml:space="preserve">
+    <value>重命名地图</value>
+  </data>
+  <data name="Dialog_RenameFailed_Title" xml:space="preserve">
+    <value>重命名失败</value>
+  </data>
+  <data name="Dialog_Rename_NameExists" xml:space="preserve">
+    <value>该名称已存在，请使用其他名称。</value>
+  </data>
+  <data name="Dialog_Server_DeleteFailed_Format" xml:space="preserve">
+    <value>删除服务器失败: {0}</value>
+  </data>
+  <data name="Dialog_ResourceDownload_NoClientLink" xml:space="preserve">
+    <value>该版本没有客户端下载链接</value>
+  </data>
+  <data name="Dialog_ResourceDownload_NoServerLink" xml:space="preserve">
+    <value>该版本没有服务端下载链接</value>
+  </data>
+  <data name="Dialog_Download_Failed_Title" xml:space="preserve">
+    <value>下载失败</value>
+  </data>
+  <data name="Dialog_CrashExport_Failed_Format" xml:space="preserve">
+    <value>导出崩溃日志失败：{0}</value>
+  </data>
+  <data name="Dialog_Agent_ModNotFound_Title" xml:space="preserve">
+    <value>未找到</value>
+  </data>
+  <data name="Dialog_Agent_ModNotFound_Content_Format" xml:space="preserve">
+    <value>未在 Modrinth 或 CurseForge 找到与 '{0}' 对应的项目。</value>
+  </data>
+  <data name="Dialog_Agent_DeleteMod_Title" xml:space="preserve">
+    <value>删除 Mod</value>
+  </data>
+  <data name="Dialog_Agent_DeleteMod_Content_Format" xml:space="preserve">
+    <value>确定要删除该 Mod 吗？
+
+文件名：{0}
+路径：{1}
+
+注意：如果这是依赖库，可能会影响其它 Mod。</value>
+  </data>
+  <data name="Dialog_VersionComplete_Title" xml:space="preserve">
+    <value>版本补全</value>
+  </data>
+  <data name="Dialog_Close" xml:space="preserve">
+    <value>关闭</value>
+  </data>
+  <data name="Dialog_VersionComplete_Status_Format" xml:space="preserve">
+    <value>版本 {0}
+正在检查依赖...</value>
+  </data>
+  <data name="Dialog_VersionComplete_CompletedStatus" xml:space="preserve">
+    <value>补全完成！</value>
+  </data>
+  <data name="Dialog_VersionComplete_CurrentFile_Format" xml:space="preserve">
+    <value>当前: {0}</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_CheckingDeps" xml:space="preserve">
+    <value>正在检查依赖...</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_ProcessingModLoader" xml:space="preserve">
+    <value>正在处理 ModLoader...</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_DownloadingLibraries" xml:space="preserve">
+    <value>正在下载依赖库...</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_ExtractingNatives" xml:space="preserve">
+    <value>正在解压原生库...</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_ProcessingAssetIndex" xml:space="preserve">
+    <value>正在处理资源索引...</value>
+  </data>
+  <data name="Dialog_VersionComplete_Stage_DownloadingAssets" xml:space="preserve">
+    <value>正在下载资源文件...</value>
+  </data>
+  <data name="Dialog_VersionComplete_AssetHash_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_VersionComplete_RetryAsset_Format" xml:space="preserve">
+    <value>重试中: {0}...</value>
+  </data>
+  <data name="Dialog_VersionComplete_SecondPassAsset_Format" xml:space="preserve">
+    <value>二次清扫: {0}...</value>
+  </data>
+  <data name="Dialog_VersionComplete_StatusBar_Format" xml:space="preserve">
+    <value>正在补全 {0} 的依赖文件...</value>
+  </data>
+  <data name="Dialog_VersionComplete_ProgressStatusBar_Format" xml:space="preserve">
+    <value>正在补全 {0}: {1}%</value>
+  </data>
+  <data name="Dialog_VersionComplete_CompletedVersion_Format" xml:space="preserve">
+    <value>{0} 版本补全完成！</value>
+  </data>
+  <data name="Dialog_VersionComplete_Failed_Format" xml:space="preserve">
+    <value>版本补全失败: {0}</value>
+  </data>
+  <data name="Dialog_Server_DeleteConfirm_Title" xml:space="preserve">
+    <value>删除服务器</value>
+  </data>
+  <data name="Dialog_Server_DeleteConfirm_Content_Format" xml:space="preserve">
+    <value>确定要删除服务器 '{0}' 吗?</value>
+  </data>
+  <data name="Dialog_Shortcut_Created_Server_Content_Format" xml:space="preserve">
+    <value>已在桌面创建 {0} 的快捷方式。
+双击可直接连接此服务器。</value>
+  </data>
+  <data name="Dialog_Version_Rename_Title" xml:space="preserve">
+    <value>重命名版本</value>
+  </data>
+  <data name="Dialog_Version_Rename_Placeholder" xml:space="preserve">
+    <value>新版本名称</value>
+  </data>
+  <data name="Dialog_Version_Rename_Instruction" xml:space="preserve">
+    <value>请输入新的版本名称：</value>
+  </data>
+  <data name="Dialog_CrashExport_Success_Title" xml:space="preserve">
+    <value>成功</value>
+  </data>
+  <data name="Dialog_CrashExport_Success_Content_Format" xml:space="preserve">
+    <value>崩溃日志已成功导出到：{0}
+
+包含内容：
+• 游戏崩溃日志
+• 启动参数
+• 启动器日志
+• 版本配置文件</value>
+  </data>
+  <data name="Dialog_Navigation_Error_Title" xml:space="preserve">
+    <value>导航错误</value>
+  </data>
+  <data name="Dialog_Navigation_Error_Content_Format" xml:space="preserve">
+    <value>无法导航到页面: {0}
+
+错误信息: {1}
+
+堆栈跟踪: {2}</value>
+  </data>
+  <data name="Dialog_Screenshot_DeleteConfirm_Title" xml:space="preserve">
+    <value>确认删除</value>
+  </data>
+  <data name="Dialog_Screenshot_DeleteConfirm_Content_Format" xml:space="preserve">
+    <value>确定要删除截图 '{0}' 吗？此操作不可恢复。</value>
+  </data>
+  <data name="Msg_DownloadFailed_Format" xml:space="preserve">
+    <value>{0}</value>
+  </data>
+  <data name="Dialog_Multiplayer_PortTimeout_Content" xml:space="preserve">
+    <value>无法获取 Terracotta 端口信息，请检查：
+1. 防火墙是否阻止了程序
+2. 杀毒软件是否拦截了程序
+3. 是否有足够的磁盘空间
+
+这可能是一个 Bug，请前往 设置-&gt;关于-&gt;快速动作 导出日志并发送给开发者</value>
+  </data>
+  <data name="Dialog_Multiplayer_ServiceUnavailable" xml:space="preserve">
+    <value>联机服务文件不存在或无法下载，请检查网络连接后重试</value>
+  </data>
+  <data name="Dialog_Multiplayer_StartFailed_Format" xml:space="preserve">
+    <value>启动联机服务时发生错误：{0}</value>
+  </data>
+  <data name="Dialog_ExportLaunchArgs_Region_Title" xml:space="preserve">
+    <value>地区限制</value>
+  </data>
+  <data name="Dialog_ExportLaunchArgs_Region_Content" xml:space="preserve">
+    <value>当前地区仅允许微软账户登录用户导出启动参数。
+请先使用微软账户登录后再尝试导出。</value>
+  </data>
+  <data name="Dialog_ResourceDownload_ImportShareCode_Title" xml:space="preserve">
+    <value>导入分享码</value>
+  </data>
+  <data name="Dialog_ResourceDownload_ImportShareCode_Prompt" xml:space="preserve">
+    <value>请粘贴分享码（支持JSON数组或换行分隔）：</value>
+  </data>
+  <data name="Dialog_ResourceDownload_FavoritesDownload_Title" xml:space="preserve">
+    <value>收藏夹下载中</value>
+  </data>
+  <data name="Dialog_ResourceDownload_FavoritesDownload_Background" xml:space="preserve">
+    <value>后台下载</value>
+  </data>
+  <data name="Dialog_Settings_EasterEgg_On_Title" xml:space="preserve">
+    <value>🎉 彩蛋模式已开启</value>
+  </data>
+  <data name="Dialog_Settings_EasterEgg_Off_Title" xml:space="preserve">
+    <value>彩蛋模式已关闭</value>
+  </data>
+  <data name="Dialog_Settings_EasterEgg_On_Content" xml:space="preserve">
+    <value>恭喜你发现了隐藏彩蛋！看看有什么地方不同寻常吧()</value>
+  </data>
+  <data name="Dialog_Settings_EasterEgg_Off_Content" xml:space="preserve">
+    <value>彩蛋模式已关闭，一切恢复正常。</value>
   </data>
   <data name="Dialog_Install" xml:space="preserve">
     <value>安装</value>
