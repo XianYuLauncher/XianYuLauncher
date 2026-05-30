@@ -64,7 +64,7 @@
                     <!-- 房间ID -->
                     <StackPanel Grid.Column="4" Spacing="4">
                         <TextBlock 
-                            x:Uid="联机大厅Page_RoomNumberLabel"
+                            x:Uid="MultiplayerLobbyPage_RoomNumberLabel"
                             Text="房间号"
                             Style="{ThemeResource CaptionTextBlockStyle}" 
                             Opacity="0.7" />
@@ -92,7 +92,7 @@
                     <Button 
                         Grid.Column="6" 
                         Click="ExitRoomButton_Click"
-                        x:Uid="联机大厅Page_ExitButton"
+                        x:Uid="MultiplayerLobbyPage_ExitButton"
                         Content="退出房间"
                         Style="{StaticResource DefaultButtonStyle}" 
                         HorizontalAlignment="Right" 
@@ -105,7 +105,7 @@
         <StackPanel Grid.Row="1" Spacing="16">
             <!-- 玩家列表标题 -->
             <TextBlock 
-                x:Uid="联机大厅Page_PlayerListTitle"
+                x:Uid="MultiplayerLobbyPage_PlayerListTitle"
                 Text="玩家列表" 
                 Style="{ThemeResource TitleTextBlockStyle}" 
                 FontSize="20" 
@@ -160,7 +160,7 @@
                     FontSize="48" 
                     Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}" />
                 <TextBlock 
-                    x:Uid="联机大厅Page_EmptyPlayerList"
+                    x:Uid="MultiplayerLobbyPage_EmptyPlayerList"
                     Text="当前没有其他玩家..." 
                     Style="{ThemeResource BodyTextBlockStyle}" 
                     FontSize="16" 

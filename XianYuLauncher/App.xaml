@@ -30,12 +30,12 @@
             <DataTemplate x:Key="PollingContentTemplate">
                 <StackPanel Spacing="16">
                     <TextBlock 
-                        x:Uid="联机Page_PollingContent"
+                        x:Uid="MultiplayerPage_PollingContent"
                         Text="请启动Minecraft,选择 对局域网开放 选项，然后运行联机服务即可" 
                         Style="{ThemeResource BodyTextBlockStyle}" />
                     <StackPanel Spacing="8">
                         <TextBlock 
-                            x:Uid="联机Page_PollingResultLabel"
+                            x:Uid="MultiplayerPage_PollingResultLabel"
                             Text="轮询结果:" 
                             Style="{ThemeResource CaptionTextBlockStyle}" 
                             FontWeight="SemiBold" />
