@@ -24,6 +24,8 @@ using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.Dialogs.Contracts;
 using XianYuLauncher.Helpers;
 using XianYuLauncher.Shared.Models;
+using XianYuLauncher.Features.ResourceDownload.Services;
+using ResourceDownloadFilterModels = XianYuLauncher.Features.ResourceDownload.Filtering;
 
 namespace XianYuLauncher.Features.ResourceDownload.ViewModels;
 
@@ -1862,13 +1864,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
     
     public void SetSelectedModCategories(IEnumerable<string> categoryTags)
     {
-        // TODO: 后续将加载器/类型/版本归并到统一筛选模型，再统一生成检索参数。
-        var normalized = categoryTags
-            .Where(tag => !string.IsNullOrWhiteSpace(tag) && !string.Equals(tag, "all", StringComparison.OrdinalIgnoreCase))
-            .Select(tag => tag.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(tag => tag, StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var normalized = ResourceDownloadFilterModels.CommunityResourceFilterState.NormalizeCategoryTags(categoryTags).ToList();
 
         SelectedModCategories.Clear();
         foreach (var tag in normalized)
@@ -1889,17 +1885,19 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
             .ToList();
     }
 
-    private string BuildModCategoryCacheKey()
-    {
-        var selectedTags = GetSelectedModCategoryTags();
-        if (selectedTags.Count == 0)
-        {
-            return "all";
-        }
+    private string BuildModCategoryCacheKey() =>
+        ResourceDownloadFilterModels.CommunityResourceFilterState.BuildCategoryCacheKey(GetSelectedModCategoryTags());
 
-        selectedTags.Sort(StringComparer.OrdinalIgnoreCase);
-        return string.Join(",", selectedTags);
-    }
+    private ResourceDownloadFilterModels.CommunityResourceFilterState CreateModFilterState() => new()
+    {
+        SelectedLoaders = SelectedLoaders.ToList(),
+        SelectedVersions = SelectedVersions.ToList(),
+        SelectedCategoryTags = GetSelectedModCategoryTags(),
+        VersionPolicy = ResourceDownloadFilterModels.VersionFacetPolicy.AlwaysWhenSelected,
+    };
+
+    private static List<List<string>> ToModrinthFacetLists(IReadOnlyList<IReadOnlyList<string>> facets) =>
+        facets.Select(group => group.ToList()).ToList();
 
     private List<int> GetSelectedCurseForgeModCategoryIds()
     {
@@ -2566,17 +2564,10 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
         {
             // 获取搜索关键词（支持中文转英文）
             var searchKeyword = _translationService.GetEnglishKeywordForSearch(SearchQuery);
-            var selectedCategoryTags = GetSelectedModCategoryTags();
-
-            // 生成缓存 key（用于多选筛选）
-            // 安全处理空集合情况，并对集合排序以避免同义筛选命中不同缓存 key
-            var loaderKey = SelectedLoaders.Count == 0 || SelectedLoaders.All(l => l == "all")
-                ? "all"
-                : string.Join(",", SelectedLoaders.OrderBy(l => l, StringComparer.Ordinal));
-            var versionKey = SelectedVersions.Count == 0 || SelectedVersions.All(v => v == "all")
-                ? "all"
-                : string.Join(",", SelectedVersions.OrderBy(v => v, StringComparer.Ordinal));
-            var categoryCacheKey = BuildModCategoryCacheKey();
+            var modSearchQuery = CommunityResourceSearchQueryBuilder.Build(CreateModFilterState());
+            var loaderKey = modSearchQuery.LoaderCacheKey;
+            var versionKey = modSearchQuery.VersionCacheKey;
+            var categoryCacheKey = modSearchQuery.CategoryCacheKey;
             System.Diagnostics.Debug.WriteLine($"[Mod搜索] 缓存 key: loader={loaderKey}, version={versionKey}, category={categoryCacheKey}");
 
             // 如果两个平台都未启用，直接返回
@@ -2606,47 +2597,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
                 }
                 else
                 {
-                    // 构建facets参数
-                    var facets = new List<List<string>>();
-                    
-                    // Modrinth 多选加载器逻辑（OR 关系）
-                    if (SelectedLoaders.Count > 0)
-                    {
-                        var loaderFacets = new List<string>();
-                        foreach (var loader in SelectedLoaders)
-                        {
-                            if (loader != "all")
-                            {
-                                loaderFacets.Add($"categories:{loader}");
-                            }
-                        }
-                        
-                        if (loaderFacets.Count > 0)
-                        {
-                            facets.Add(loaderFacets);
-                        }
-                    }
-
-                    // Modrinth 多选版本逻辑（OR 关系）
-                    if (SelectedVersions.Count > 0)
-                    {
-                        var versionFacets = new List<string>();
-                        foreach (var version in SelectedVersions)
-                        {
-                            versionFacets.Add($"versions:{version}");
-                        }
-
-                        if (versionFacets.Count > 0)
-                        {
-                            facets.Add(versionFacets);
-                        }
-                    }
-
-                    if (selectedCategoryTags.Count > 0)
-                    {
-                        // 多选类别在同一个 facet 子数组中，使用 OR 语义。
-                        facets.Add(selectedCategoryTags.Select(tag => $"categories:{tag}").ToList());
-                    }
+                    var facets = ToModrinthFacetLists(modSearchQuery.ModrinthFacets);
 
                     var modrinthResult = await _modrinthService.SearchModsAsync(
                         query: searchKeyword,
@@ -2934,17 +2885,10 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
         {
             // 获取搜索关键词（支持中文转英文）
             var searchKeyword = _translationService.GetEnglishKeywordForSearch(SearchQuery);
-            var selectedCategoryTags = GetSelectedModCategoryTags();
-
-            // 生成缓存 key（用于多选筛选）
-            // 安全处理空集合情况，并对集合排序以避免同义筛选命中不同缓存 key
-            var loaderKey = SelectedLoaders.Count == 0 || SelectedLoaders.All(l => l == "all")
-                ? "all"
-                : string.Join(",", SelectedLoaders.OrderBy(l => l, StringComparer.Ordinal));
-            var versionKey = SelectedVersions.Count == 0 || SelectedVersions.All(v => v == "all")
-                ? "all"
-                : string.Join(",", SelectedVersions.OrderBy(v => v, StringComparer.Ordinal));
-            var categoryCacheKey = BuildModCategoryCacheKey();
+            var modSearchQuery = CommunityResourceSearchQueryBuilder.Build(CreateModFilterState());
+            var loaderKey = modSearchQuery.LoaderCacheKey;
+            var versionKey = modSearchQuery.VersionCacheKey;
+            var categoryCacheKey = modSearchQuery.CategoryCacheKey;
 
             // 如果两个平台都未启用，直接返回
             if (!IsModrinthEnabled && !IsCurseForgeEnabled)
@@ -2961,47 +2905,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
             // 从Modrinth加载更多
             if (IsModrinthEnabled)
             {
-                // 构建facets参数
-                var facets = new List<List<string>>();
-
-                // Modrinth 多选加载器逻辑（OR 关系）
-                if (SelectedLoaders.Count > 0)
-                {
-                    var loaderFacets = new List<string>();
-                    foreach (var loader in SelectedLoaders)
-                    {
-                        if (loader != "all")
-                        {
-                            loaderFacets.Add($"categories:{loader}");
-                        }
-                    }
-
-                    if (loaderFacets.Count > 0)
-                    {
-                        facets.Add(loaderFacets);
-                    }
-                }
-
-                // Modrinth 多选版本逻辑（OR 关系）
-                if (SelectedVersions.Count > 0)
-                {
-                    var versionFacets = new List<string>();
-                    foreach (var version in SelectedVersions)
-                    {
-                        versionFacets.Add($"versions:{version}");
-                    }
-
-                    if (versionFacets.Count > 0)
-                    {
-                        facets.Add(versionFacets);
-                    }
-                }
-
-                if (selectedCategoryTags.Count > 0)
-                {
-                    // 多选类别在同一个 facet 子数组中，使用 OR 语义。
-                    facets.Add(selectedCategoryTags.Select(tag => $"categories:{tag}").ToList());
-                }
+                var facets = ToModrinthFacetLists(modSearchQuery.ModrinthFacets);
 
                 var result = await _modrinthService.SearchModsAsync(
                     query: searchKeyword,
