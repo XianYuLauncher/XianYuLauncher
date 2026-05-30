@@ -83,8 +83,8 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
         _dialogService = dialogService;
         _progressDialogService = progressDialogService;
 
-        HeaderMetadata.Title = "联机Page_HeaderTitle".GetLocalized();
-        HeaderMetadata.Subtitle = "联机Page_HeaderSubtitle".GetLocalized();
+        HeaderMetadata.Title = "MultiplayerPage_HeaderTitle".GetLocalized();
+        HeaderMetadata.Subtitle = "MultiplayerPage_HeaderSubtitle".GetLocalized();
     }
 
     private static ProcessStartInfo CreateTerracottaProcessStartInfo(string terracottaDirectory, string terracottaPath, string tempFilePath)
@@ -179,8 +179,8 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
         try
         {
             terracottaPath = await _progressDialogService.ShowProgressCallbackDialogAsync(
-                "联机Page_DownloadingTerracottaTitle".GetLocalized(),
-                "联机Page_DownloadingTerracottaMessage".GetLocalized(),
+                "MultiplayerPage_DownloadingTerracottaTitle".GetLocalized(),
+                "MultiplayerPage_DownloadingTerracottaMessage".GetLocalized(),
                 async (progress) => await _terracottaService.EnsureTerracottaAsync(p => progress.Report(p)));
             
             // 检查陶瓦插件是否成功获取
@@ -387,7 +387,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             if (!string.IsNullOrEmpty(port))
             {
                 // 初始化轮询结果
-                PollingResult = "联机Page_GettingStatusText".GetLocalized();
+                PollingResult = "MultiplayerPage_GettingStatusText".GetLocalized();
                 
                 // 创建CancellationTokenSource
                 _pollingCts = new CancellationTokenSource();
@@ -399,10 +399,10 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             // 创建弹窗
             _statusDialog = new Microsoft.UI.Xaml.Controls.ContentDialog
             {
-                Title = "联机Page_FindingRoomTitle".GetLocalized(),
+                Title = "MultiplayerPage_FindingRoomTitle".GetLocalized(),
                 Content = this, // 绑定到当前ViewModel，以便显示PollingResult
                 ContentTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["PollingContentTemplate"],
-                PrimaryButtonText = "联机Page_StopButton".GetLocalized(),
+                PrimaryButtonText = "MultiplayerPage_StopButton".GetLocalized(),
                 Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
                 DefaultButton = ContentDialogButton.None
             };
@@ -455,18 +455,18 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 if (scanningResponse.IsSuccessStatusCode)
                 {
                     Log.Information("[Multiplayer] 扫描请求成功");
-                    PollingResult = "联机Page_ScanningStatusSetText".GetLocalized();
+                    PollingResult = "MultiplayerPage_ScanningStatusSetText".GetLocalized();
                 }
                 else
                 {
                     Log.Warning($"[Multiplayer] 扫描请求失败: {scanningResponse.StatusCode}");
-                    PollingResult = "联机Page_ScanningStatusFailedText".GetLocalized(scanningResponse.StatusCode);
+                    PollingResult = "MultiplayerPage_ScanningStatusFailedText".GetLocalized(scanningResponse.StatusCode);
                 }
             }
             catch (Exception ex)
             {
                 Log.Error(ex, $"[Multiplayer] 扫描请求异常: {ex.Message}");
-                PollingResult = "联机Page_ScanningStatusErrorText".GetLocalized(ex.Message);
+                PollingResult = "MultiplayerPage_ScanningStatusErrorText".GetLocalized(ex.Message);
             }
             
             // 等待短暂时间，然后开始轮询
@@ -537,18 +537,18 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     else
                     {
                         Log.Warning($"[Multiplayer] 轮询状态失败: {response.StatusCode}");
-                        PollingResult = "联机Page_PollingFailedText".GetLocalized(response.StatusCode);
+                        PollingResult = "MultiplayerPage_PollingFailedText".GetLocalized(response.StatusCode);
                     }
                 }
                 catch (HttpRequestException ex)
                 {
                     Log.Error(ex, $"[Multiplayer] 轮询网络错误: {ex.Message}");
-                    PollingResult = "联机Page_NetworkErrorText".GetLocalized(ex.Message);
+                    PollingResult = "MultiplayerPage_NetworkErrorText".GetLocalized(ex.Message);
                 }
                 catch (Exception ex)
                 {
                     Log.Error(ex, $"[Multiplayer] 轮询未捕获异常: {ex.Message}");
-                    PollingResult = "联机Page_ErrorText".GetLocalized(ex.Message);
+                    PollingResult = "MultiplayerPage_ErrorText".GetLocalized(ex.Message);
                 }
                 
                 // 等待1秒后再次轮询
@@ -674,10 +674,10 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
     {
         // 1. 弹出输入房间号的弹窗
         var roomId = await _dialogService.ShowTextInputDialogAsync(
-            "联机Page_InputRoomIdTitle".GetLocalized(),
-            "联机Page_RoomIdPlaceholder".GetLocalized(),
-            "联机Page_ConfirmButton".GetLocalized(),
-            "联机Page_CancelButton".GetLocalized());
+            "MultiplayerPage_InputRoomIdTitle".GetLocalized(),
+            "MultiplayerPage_RoomIdPlaceholder".GetLocalized(),
+            "MultiplayerPage_ConfirmButton".GetLocalized(),
+            "MultiplayerPage_CancelButton".GetLocalized());
         
         if (!string.IsNullOrWhiteSpace(roomId))
         {
@@ -689,8 +689,8 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             try
             {
                 terracottaPath = await _progressDialogService.ShowProgressCallbackDialogAsync(
-                    "联机Page_DownloadingTerracottaTitle".GetLocalized(),
-                    "联机Page_DownloadingTerracottaMessage".GetLocalized(),
+                    "MultiplayerPage_DownloadingTerracottaTitle".GetLocalized(),
+                    "MultiplayerPage_DownloadingTerracottaMessage".GetLocalized(),
                     async (progress) => await _terracottaService.EnsureTerracottaAsync(p => progress.Report(p)));
                 
                 // 检查陶瓦插件是否成功获取
@@ -871,7 +871,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     {
                         Log.Warning("[Multiplayer-Join] 房间不存在 (400 Bad Request)");
                         // 400表示错误，通知玩家房间不存在
-                        await ShowErrorDialogAsync("联机Page_RoomNotFoundError".GetLocalized());
+                        await ShowErrorDialogAsync("MultiplayerPage_RoomNotFoundError".GetLocalized());
                         // 停止进程
                         StopTerracottaProcess();
                         return;
@@ -940,7 +940,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     }
                     else if (!cancellationToken.IsCancellationRequested)
                     {
-                        await ShowErrorDialogAsync("联机Page_JoinFailedError".GetLocalized());
+                        await ShowErrorDialogAsync("MultiplayerPage_JoinFailedError".GetLocalized());
                         // 停止进程
                         StopTerracottaProcess();
                     }

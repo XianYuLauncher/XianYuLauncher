@@ -24,7 +24,7 @@
                 IsOpen="True"
                 IsClosable="True"
                 Margin="0,0,0,30"
-                x:Uid="联机Page_Warning"
+                x:Uid="MultiplayerPage_Warning"
                 Title="警告"
                 Message="陶瓦联机是第三方开源自由软件，您在使用过程中所遇到的问题请通过其官方渠道进行反馈。陶瓦联机基于 P2P 点对点技术实现，联机成功后房间内用户之间将直接建立网络连接，无任何公共中转节点、不通过第三方服务器转发流量，最终联机体验取决于参与联机者的网络环境。您在使用多人联机功能的全过程中，必须严格遵守您所在国家与地区的全部法律法规，不得用于任何违法违规及经营性活动。" />
 
@@ -62,13 +62,13 @@
                                     FontSize="48"
                                     Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
                                 <TextBlock
-                                    x:Uid="联机Page_HostCardTitle"
+                                    x:Uid="MultiplayerPage_HostCardTitle"
                                     Text="我想当房主"
                                     Style="{ThemeResource SubtitleTextBlockStyle}"
                                     Foreground="{ThemeResource TextFillColorPrimary}"
                                     HorizontalAlignment="Center"/>
                                 <TextBlock
-                                    x:Uid="联机Page_HostCardDescription"
+                                    x:Uid="MultiplayerPage_HostCardDescription"
                                     Text="创建一个新的游戏房间，邀请其他玩家加入"
                                     Style="{ThemeResource BodyTextBlockStyle}"
                                     Foreground="{ThemeResource TextFillColorPrimary}"
@@ -101,13 +101,13 @@
                                     FontSize="48"
                                     Foreground="{ThemeResource SystemControlForegroundBaseMediumBrush}"/>
                                 <TextBlock
-                                    x:Uid="联机Page_GuestCardTitle"
+                                    x:Uid="MultiplayerPage_GuestCardTitle"
                                     Text="我想当房客"
                                     Style="{ThemeResource SubtitleTextBlockStyle}"
                                     Foreground="{ThemeResource TextFillColorPrimary}"
                                     HorizontalAlignment="Center"/>
                                 <TextBlock
-                                    x:Uid="联机Page_GuestCardDescription"
+                                    x:Uid="MultiplayerPage_GuestCardDescription"
                                     Text="加入其他玩家创建的游戏房间"
                                     Style="{ThemeResource BodyTextBlockStyle}"
                                     Foreground="{ThemeResource TextFillColorPrimary}"

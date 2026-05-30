@@ -123,28 +123,25 @@
   <data name="AppDescription" xml:space="preserve">
     <value>XianYu Launcher</value>
   </data>
-  <data name="Shell_启动.Content" xml:space="preserve">
+  <data name="Shell_Launch.Content" xml:space="preserve">
     <value>Launch</value>
   </data>
   <data name="Shell_LauncherAI.Content" xml:space="preserve">
     <value>Launcher AI</value>
   </data>
-  <data name="Shell_资源下载.Content" xml:space="preserve">
+  <data name="Shell_ResourceDownload.Content" xml:space="preserve">
     <value>Download</value>
   </data>
-  <data name="Shell_Mod.Content" xml:space="preserve">
-    <value>Mods</value>
-  </data>
-  <data name="Shell_版本列表.Content" xml:space="preserve">
+  <data name="Shell_VersionList.Content" xml:space="preserve">
     <value>Versions</value>
   </data>
   <data name="Shell_Account.Content" xml:space="preserve">
      <value>Account</value>
   </data>
-  <data name="Shell_联机.Content" xml:space="preserve">
+  <data name="Shell_Multiplayer.Content" xml:space="preserve">
     <value>Multiplayer</value>
   </data>
-  <data name="Shell_下载队列.Content" xml:space="preserve">
+  <data name="Shell_DownloadQueue.Content" xml:space="preserve">
     <value>Download Queue</value>
   </data>
   <data name="Shell_Settings" xml:space="preserve">
@@ -822,83 +819,62 @@
   <data name="SettingsPage_EulaLink.Content" xml:space="preserve">
     <value>EULA</value>
   </data>
-  <data name="联机Page_Title.Text" xml:space="preserve">
-    <value>Terracotta | 陶瓦联机</value>
-  </data>
-  <data name="联机Page_Subtitle.Text" xml:space="preserve">
-    <value>Choose Host/Guest</value>
-  </data>
-  <data name="联机Page_WarningTitle.Text" xml:space="preserve">
-    <value>Warning</value>
-  </data>
-  <data name="联机Page_WarningMessage.Text" xml:space="preserve">
-    <value>Terracotta is third-party open-source free software. Please provide feedback through its official channels if you encounter any issues while using it. Terracotta is based on P2P peer-to-peer technology. After successful connection, direct network connections will be established between users in the room, with no public relay nodes and no traffic forwarded through third-party servers. The final multiplayer experience depends on the network environment of the participants. You must strictly abide by all laws and regulations of your country and region when using the multiplayer feature, and must not use it for any illegal, non-compliant, or commercial activities.</value>
-  </data>
-  <data name="联机Page_HostCardTitle.Text" xml:space="preserve">
+  <data name="MultiplayerPage_HostCardTitle.Text" xml:space="preserve">
     <value>I want to be a Host</value>
   </data>
-  <data name="联机Page_HostCardDescription.Text" xml:space="preserve">
+  <data name="MultiplayerPage_HostCardDescription.Text" xml:space="preserve">
     <value>Create a new game room and invite other players to join</value>
   </data>
-  <data name="联机Page_GuestCardTitle.Text" xml:space="preserve">
+  <data name="MultiplayerPage_GuestCardTitle.Text" xml:space="preserve">
     <value>I want to be a Guest</value>
   </data>
-  <data name="联机Page_GuestCardDescription.Text" xml:space="preserve">
+  <data name="MultiplayerPage_GuestCardDescription.Text" xml:space="preserve">
     <value>Join a game room created by other players</value>
   </data>
-  <data name="联机大厅Page_Title.Text" xml:space="preserve">
-    <value>Multiplayer Lobby</value>
-  </data>
-  <data name="联机大厅Page_RoomIdPrefix.Text" xml:space="preserve">
-    <value>Room ID: </value>
-  </data>
-  <data name="联机大厅Page_ExitButton.Content" xml:space="preserve">
+  <data name="MultiplayerLobbyPage_ExitButton.Content" xml:space="preserve">
     <value>Exit Room</value>
   </data>
-  <data name="联机大厅Page_PlayerListTitle.Text" xml:space="preserve">
+  <data name="MultiplayerLobbyPage_PlayerListTitle.Text" xml:space="preserve">
     <value>Player List</value>
   </data>
-  <data name="联机大厅Page_EmptyPlayerList.Text" xml:space="preserve">
+  <data name="MultiplayerLobbyPage_EmptyPlayerList.Text" xml:space="preserve">
     <value>No other players currently...</value>
   </data>
-  <data name="联机大厅Page_RoomNumberLabel.Text" xml:space="preserve">
+  <data name="MultiplayerLobbyPage_RoomNumberLabel.Text" xml:space="preserve">
     <value>Room Number</value>
   </data>
-  <data name="联机大厅Page_HostLabel" xml:space="preserve">
+  <data name="MultiplayerLobbyPage_HostLabel" xml:space="preserve">
     <value>Host</value>
   </data>
-  <data name="联机大厅Page_GuestLabel" xml:space="preserve">
+  <data name="MultiplayerLobbyPage_GuestLabel" xml:space="preserve">
     <value>Guest</value>
   </data>
-  <data name="联机大厅Page_EasyTierLabel" xml:space="preserve">
+  <data name="MultiplayerLobbyPage_EasyTierLabel" xml:space="preserve">
     <value>EasyTier Version</value>
   </data>
-  <data name="联机Page_FindingRoomTitle" xml:space="preserve">
+  <data name="MultiplayerPage_FindingRoomTitle" xml:space="preserve">
     <value>Looking for room</value>
   </data>
-  <data name="联机Page_StopButton" xml:space="preserve">
+  <data name="MultiplayerPage_StopButton" xml:space="preserve">
     <value>Stop</value>
   </data>
-  <data name="联机Page_InputRoomIdTitle" xml:space="preserve">
+  <data name="MultiplayerPage_InputRoomIdTitle" xml:space="preserve">
     <value>Enter Room ID</value>
   </data>
-  <data name="联机Page_RoomIdPlaceholder" xml:space="preserve">
+  <data name="MultiplayerPage_RoomIdPlaceholder" xml:space="preserve">
     <value>Enter the room ID your friend sent you</value>
   </data>
-  <data name="联机Page_ConfirmButton" xml:space="preserve">
+  <data name="MultiplayerPage_ConfirmButton" xml:space="preserve">
     <value>Confirm</value>
   </data>
-  <data name="联机Page_CancelButton" xml:space="preserve">
+  <data name="MultiplayerPage_CancelButton" xml:space="preserve">
     <value>Cancel</value>
   </data>
-  <data name="联机Page_RoomNotFoundError" xml:space="preserve">
+  <data name="MultiplayerPage_RoomNotFoundError" xml:space="preserve">
     <value>Room not found or closed</value>
   </data>
-  <data name="联机Page_JoinFailedError" xml:space="preserve">
+  <data name="MultiplayerPage_JoinFailedError" xml:space="preserve">
     <value>Failed to join room, please try again later</value>
-  </data>
-  <data name="联机Page_TerracottaNotFoundError" xml:space="preserve">
-    <value>Terracotta executable not found, please check if terracotta-windows-x86_64.exe exists in plugins\Terracotta directory</value>
   </data>
   <data name="Common_ErrorTitle" xml:space="preserve">
     <value>Error</value>
@@ -906,31 +882,31 @@
   <data name="Common_OKButton" xml:space="preserve">
     <value>OK</value>
   </data>
-  <data name="联机Page_GettingStatusText" xml:space="preserve">
+  <data name="MultiplayerPage_GettingStatusText" xml:space="preserve">
     <value>Getting status...</value>
   </data>
-  <data name="联机Page_ScanningStatusSetText" xml:space="preserve">
+  <data name="MultiplayerPage_ScanningStatusSetText" xml:space="preserve">
     <value>Scanning status set, starting polling...</value>
   </data>
-  <data name="联机Page_ScanningStatusFailedText" xml:space="preserve">
+  <data name="MultiplayerPage_ScanningStatusFailedText" xml:space="preserve">
     <value>Failed to set scanning status: {0}</value>
   </data>
-  <data name="联机Page_ScanningStatusErrorText" xml:space="preserve">
+  <data name="MultiplayerPage_ScanningStatusErrorText" xml:space="preserve">
     <value>Error setting scanning status: {0}</value>
   </data>
-  <data name="联机Page_PollingFailedText" xml:space="preserve">
+  <data name="MultiplayerPage_PollingFailedText" xml:space="preserve">
     <value>Request failed: {0}</value>
   </data>
-  <data name="联机Page_NetworkErrorText" xml:space="preserve">
+  <data name="MultiplayerPage_NetworkErrorText" xml:space="preserve">
     <value>Network error: {0}</value>
   </data>
-  <data name="联机Page_ErrorText" xml:space="preserve">
+  <data name="MultiplayerPage_ErrorText" xml:space="preserve">
     <value>Error: {0}</value>
   </data>
-  <data name="联机Page_PollingContent.Text" xml:space="preserve">
+  <data name="MultiplayerPage_PollingContent.Text" xml:space="preserve">
     <value>Please start Minecraft, select 'Open to LAN' option, then run the multiplayer service</value>
   </data>
-  <data name="联机Page_PollingResultLabel.Text" xml:space="preserve">
+  <data name="MultiplayerPage_PollingResultLabel.Text" xml:space="preserve">
     <value>Polling Result:</value>
   </data>
   <data name="SettingsPage_EulaLink.NavigateUri" xml:space="preserve">
@@ -1784,10 +1760,10 @@ Continue downloading?</value>
   <data name="ErrorAnalysis_NoErrorInfoText" xml:space="preserve">
     <value>No analysis content because Minecraft hasn't crashed yet...</value>
   </data>
-  <data name="联机Page_DownloadingTerracottaTitle" xml:space="preserve">
+  <data name="MultiplayerPage_DownloadingTerracottaTitle" xml:space="preserve">
     <value>Downloading Terracotta Plugin</value>
   </data>
-  <data name="联机Page_DownloadingTerracottaMessage" xml:space="preserve">
+  <data name="MultiplayerPage_DownloadingTerracottaMessage" xml:space="preserve">
     <value>Downloading and installing Terracotta plugin, please wait...</value>
   </data>
   <data name="ErrorAnalysis_AnalysisCanceledText" xml:space="preserve">
@@ -3969,10 +3945,10 @@ Please remove this account and sign in again.</value>
     <value>May be unstable. Please report issues to the developers.</value>
   </data>
   <!-- MultiplayerPage: correct x:Uid key format for InfoBar -->
-  <data name="联机Page_Warning.Title" xml:space="preserve">
+  <data name="MultiplayerPage_Warning.Title" xml:space="preserve">
     <value>Warning</value>
   </data>
-  <data name="联机Page_Warning.Message" xml:space="preserve">
+  <data name="MultiplayerPage_Warning.Message" xml:space="preserve">
     <value>Terracotta Multiplayer is third-party open source software. Please report any issues through its official channels. Terracotta uses P2P technology — after connecting, players establish direct network connections with no public relay nodes or third-party server forwarding. The multiplayer experience depends on participants' network conditions. You must comply with all applicable laws and regulations while using the multiplayer feature.</value>
   </data>
   <!-- VersionManagementPage extra missing keys -->
@@ -4968,13 +4944,13 @@ Sign in with a Microsoft account and try again.</value>
   <data name="SettingsPage_HeaderSubtitle" xml:space="preserve">
     <value>Configure launcher settings</value>
   </data>
-  <data name="联机Page_HeaderTitle" xml:space="preserve">
+  <data name="MultiplayerPage_HeaderTitle" xml:space="preserve">
     <value>Terracotta | 陶瓦联机</value>
   </data>
-  <data name="联机Page_HeaderSubtitle" xml:space="preserve">
+  <data name="MultiplayerPage_HeaderSubtitle" xml:space="preserve">
     <value>Choose Host/Guest</value>
   </data>
-  <data name="联机大厅Page_HeaderTitle" xml:space="preserve">
+  <data name="MultiplayerLobbyPage_HeaderTitle" xml:space="preserve">
     <value>Multiplayer Lobby</value>
   </data>
   <data name="ResourceDownloadPage_HeaderTitle" xml:space="preserve">

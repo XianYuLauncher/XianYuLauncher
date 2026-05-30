@@ -123,28 +123,25 @@
   <data name="AppDescription" xml:space="preserve">
     <value>XianYu Launcher</value>
   </data>
-  <data name="Shell_启动.Content" xml:space="preserve">
+  <data name="Shell_Launch.Content" xml:space="preserve">
     <value>启动</value>
   </data>
   <data name="Shell_LauncherAI.Content" xml:space="preserve">
     <value>Launcher AI</value>
   </data>
-  <data name="Shell_资源下载.Content" xml:space="preserve">
+  <data name="Shell_ResourceDownload.Content" xml:space="preserve">
     <value>下载</value>
   </data>
-  <data name="Shell_Mod.Content" xml:space="preserve">
-    <value>模组</value>
-  </data>
-  <data name="Shell_版本列表.Content" xml:space="preserve">
+  <data name="Shell_VersionList.Content" xml:space="preserve">
     <value>版本列表</value>
   </data>
   <data name="Shell_Account.Content" xml:space="preserve">
      <value>账户</value>
   </data>
-  <data name="Shell_联机.Content" xml:space="preserve">
+  <data name="Shell_Multiplayer.Content" xml:space="preserve">
     <value>联机</value>
   </data>
-  <data name="Shell_下载队列.Content" xml:space="preserve">
+  <data name="Shell_DownloadQueue.Content" xml:space="preserve">
     <value>下载队列</value>
   </data>
   <data name="Shell_Settings" xml:space="preserve">
@@ -822,83 +819,62 @@
   <data name="SettingsPage_EulaLink.Content" xml:space="preserve">
     <value>最终用户协议</value>
   </data>
-  <data name="联机Page_Title.Text" xml:space="preserve">
-    <value>Terracotta 陶瓦联机</value>
-  </data>
-  <data name="联机Page_Subtitle.Text" xml:space="preserve">
-    <value>选择房主/房客</value>
-  </data>
-  <data name="联机Page_WarningTitle.Text" xml:space="preserve">
-    <value>警告</value>
-  </data>
-  <data name="联机Page_WarningMessage.Text" xml:space="preserve">
-    <value>陶瓦联机是第三方开源自由软件，您在使用过程中所遇到的问题请通过其官方渠道进行反馈。陶瓦联机基于 P2P 点对点技术实现，联机成功后房间内用户之间将直接建立网络连接，无任何公共中转节点、不通过第三方服务器转发流量，最终联机体验取决于参与联机者的网络环境。您在使用多人联机功能的全过程中，必须严格遵守您所在国家与地区的全部法律法规，不得用于任何违法违规及经营性活动。</value>
-  </data>
-  <data name="联机Page_HostCardTitle.Text" xml:space="preserve">
+  <data name="MultiplayerPage_HostCardTitle.Text" xml:space="preserve">
     <value>我想当房主</value>
   </data>
-  <data name="联机Page_HostCardDescription.Text" xml:space="preserve">
+  <data name="MultiplayerPage_HostCardDescription.Text" xml:space="preserve">
     <value>创建一个新的游戏房间，邀请其他玩家加入</value>
   </data>
-  <data name="联机Page_GuestCardTitle.Text" xml:space="preserve">
+  <data name="MultiplayerPage_GuestCardTitle.Text" xml:space="preserve">
     <value>我想当房客</value>
   </data>
-  <data name="联机Page_GuestCardDescription.Text" xml:space="preserve">
+  <data name="MultiplayerPage_GuestCardDescription.Text" xml:space="preserve">
     <value>加入其他玩家创建的游戏房间</value>
   </data>
-  <data name="联机大厅Page_Title.Text" xml:space="preserve">
-    <value>联机大厅</value>
-  </data>
-  <data name="联机大厅Page_RoomIdPrefix.Text" xml:space="preserve">
-    <value>房间 ID: </value>
-  </data>
-  <data name="联机大厅Page_ExitButton.Content" xml:space="preserve">
+  <data name="MultiplayerLobbyPage_ExitButton.Content" xml:space="preserve">
     <value>退出房间</value>
   </data>
-  <data name="联机大厅Page_PlayerListTitle.Text" xml:space="preserve">
+  <data name="MultiplayerLobbyPage_PlayerListTitle.Text" xml:space="preserve">
     <value>玩家列表</value>
   </data>
-  <data name="联机大厅Page_EmptyPlayerList.Text" xml:space="preserve">
+  <data name="MultiplayerLobbyPage_EmptyPlayerList.Text" xml:space="preserve">
     <value>当前没有其他玩家...</value>
   </data>
-  <data name="联机大厅Page_RoomNumberLabel.Text" xml:space="preserve">
+  <data name="MultiplayerLobbyPage_RoomNumberLabel.Text" xml:space="preserve">
     <value>房间号</value>
   </data>
-  <data name="联机大厅Page_HostLabel" xml:space="preserve">
+  <data name="MultiplayerLobbyPage_HostLabel" xml:space="preserve">
     <value>房主</value>
   </data>
-  <data name="联机大厅Page_GuestLabel" xml:space="preserve">
+  <data name="MultiplayerLobbyPage_GuestLabel" xml:space="preserve">
     <value>房客</value>
   </data>
-  <data name="联机大厅Page_EasyTierLabel" xml:space="preserve">
+  <data name="MultiplayerLobbyPage_EasyTierLabel" xml:space="preserve">
     <value>EasyTier 版本</value>
   </data>
-  <data name="联机Page_FindingRoomTitle" xml:space="preserve">
+  <data name="MultiplayerPage_FindingRoomTitle" xml:space="preserve">
     <value>正在寻找房间</value>
   </data>
-  <data name="联机Page_StopButton" xml:space="preserve">
+  <data name="MultiplayerPage_StopButton" xml:space="preserve">
     <value>停止</value>
   </data>
-  <data name="联机Page_InputRoomIdTitle" xml:space="preserve">
+  <data name="MultiplayerPage_InputRoomIdTitle" xml:space="preserve">
     <value>输入房间号</value>
   </data>
-  <data name="联机Page_RoomIdPlaceholder" xml:space="preserve">
+  <data name="MultiplayerPage_RoomIdPlaceholder" xml:space="preserve">
     <value>输入朋友发给你的房间号</value>
   </data>
-  <data name="联机Page_ConfirmButton" xml:space="preserve">
+  <data name="MultiplayerPage_ConfirmButton" xml:space="preserve">
     <value>确认</value>
   </data>
-  <data name="联机Page_CancelButton" xml:space="preserve">
+  <data name="MultiplayerPage_CancelButton" xml:space="preserve">
     <value>取消</value>
   </data>
-  <data name="联机Page_RoomNotFoundError" xml:space="preserve">
+  <data name="MultiplayerPage_RoomNotFoundError" xml:space="preserve">
     <value>房间不存在或已关闭</value>
   </data>
-  <data name="联机Page_JoinFailedError" xml:space="preserve">
+  <data name="MultiplayerPage_JoinFailedError" xml:space="preserve">
     <value>连接房间失败，请稍后重试</value>
-  </data>
-  <data name="联机Page_TerracottaNotFoundError" xml:space="preserve">
-    <value>联机服务文件不存在，请检查 plugins\Terracotta 目录下是否有 terracotta-windows-x86_64.exe 文件</value>
   </data>
   <data name="Common_ErrorTitle" xml:space="preserve">
     <value>错误</value>
@@ -906,31 +882,31 @@
   <data name="Common_OKButton" xml:space="preserve">
     <value>确定</value>
   </data>
-  <data name="联机Page_GettingStatusText" xml:space="preserve">
+  <data name="MultiplayerPage_GettingStatusText" xml:space="preserve">
     <value>正在获取状态...</value>
   </data>
-  <data name="联机Page_ScanningStatusSetText" xml:space="preserve">
+  <data name="MultiplayerPage_ScanningStatusSetText" xml:space="preserve">
     <value>已设置为查询状态，开始轮询...</value>
   </data>
-  <data name="联机Page_ScanningStatusFailedText" xml:space="preserve">
+  <data name="MultiplayerPage_ScanningStatusFailedText" xml:space="preserve">
     <value>设置查询状态失败: {0}</value>
   </data>
-  <data name="联机Page_ScanningStatusErrorText" xml:space="preserve">
+  <data name="MultiplayerPage_ScanningStatusErrorText" xml:space="preserve">
     <value>设置查询状态时发生错误: {0}</value>
   </data>
-  <data name="联机Page_PollingFailedText" xml:space="preserve">
+  <data name="MultiplayerPage_PollingFailedText" xml:space="preserve">
     <value>请求失败: {0}</value>
   </data>
-  <data name="联机Page_NetworkErrorText" xml:space="preserve">
+  <data name="MultiplayerPage_NetworkErrorText" xml:space="preserve">
     <value>网络错误: {0}</value>
   </data>
-  <data name="联机Page_ErrorText" xml:space="preserve">
+  <data name="MultiplayerPage_ErrorText" xml:space="preserve">
     <value>错误: {0}</value>
   </data>
-  <data name="联机Page_PollingContent.Text" xml:space="preserve">
+  <data name="MultiplayerPage_PollingContent.Text" xml:space="preserve">
     <value>请启动 Minecraft，选择「对局域网开放」选项，然后运行联机服务即可</value>
   </data>
-  <data name="联机Page_PollingResultLabel.Text" xml:space="preserve">
+  <data name="MultiplayerPage_PollingResultLabel.Text" xml:space="preserve">
     <value>轮询结果:</value>
   </data>
   <data name="SettingsPage_EulaLink.NavigateUri" xml:space="preserve">
@@ -1787,10 +1763,10 @@
   <data name="ErrorAnalysis_NoErrorInfoText" xml:space="preserve">
     <value>没有分析内容，因为 Minecraft 还没崩溃...</value>
   </data>
-  <data name="联机Page_DownloadingTerracottaTitle" xml:space="preserve">
+  <data name="MultiplayerPage_DownloadingTerracottaTitle" xml:space="preserve">
     <value>正在下载陶瓦插件</value>
   </data>
-  <data name="联机Page_DownloadingTerracottaMessage" xml:space="preserve">
+  <data name="MultiplayerPage_DownloadingTerracottaMessage" xml:space="preserve">
     <value>正在下载并安装 Terracotta 插件，请稍候...</value>
   </data>
   <data name="ErrorAnalysis_AnalysisCanceledText" xml:space="preserve">
@@ -3966,10 +3942,10 @@
     <value>可能不稳定，遇到问题请向开发人员反馈。</value>
   </data>
   <!-- MultiplayerPage: correct x:Uid key format for InfoBar -->
-  <data name="联机Page_Warning.Title" xml:space="preserve">
+  <data name="MultiplayerPage_Warning.Title" xml:space="preserve">
     <value>警告</value>
   </data>
-  <data name="联机Page_Warning.Message" xml:space="preserve">
+  <data name="MultiplayerPage_Warning.Message" xml:space="preserve">
     <value>陶瓦联机是第三方开源自由软件，您在使用过程中所遇到的问题请通过其官方渠道进行反馈。陶瓦联机基于 P2P 点对点技术实现，联机成功后房间内用户之间将直接建立网络连接，无任何公共中转节点、不通过第三方服务器转发流量，最终联机体验取决于参与联机者的网络环境。您在使用多人联机功能的全过程中，必须严格遵守您所在国家与地区的全部法律法规，不得用于任何违法违规及经营性活动。</value>
   </data>
   <!-- VersionManagementPage extra missing keys -->
@@ -4965,13 +4941,13 @@
   <data name="SettingsPage_HeaderSubtitle" xml:space="preserve">
     <value>配置启动器设置</value>
   </data>
-  <data name="联机Page_HeaderTitle" xml:space="preserve">
+  <data name="MultiplayerPage_HeaderTitle" xml:space="preserve">
     <value>Terracotta 陶瓦联机</value>
   </data>
-  <data name="联机Page_HeaderSubtitle" xml:space="preserve">
+  <data name="MultiplayerPage_HeaderSubtitle" xml:space="preserve">
     <value>选择房主/房客</value>
   </data>
-  <data name="联机大厅Page_HeaderTitle" xml:space="preserve">
+  <data name="MultiplayerLobbyPage_HeaderTitle" xml:space="preserve">
     <value>联机大厅</value>
   </data>
   <data name="ResourceDownloadPage_HeaderTitle" xml:space="preserve">

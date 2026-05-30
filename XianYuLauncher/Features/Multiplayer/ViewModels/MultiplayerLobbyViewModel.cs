@@ -36,7 +36,7 @@ public class RoomPlayer
 
 public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigationAware, IPageHeaderAware
 {
-    private const string MultiplayerLobbyHeaderTitleResourceKey = "联机大厅Page_HeaderTitle";
+    private const string MultiplayerLobbyHeaderTitleResourceKey = "MultiplayerLobbyPage_HeaderTitle";
 
     private readonly INavigationService _navigationService;
     private MultiplayerLobbyNavigationParameter? _navigationParameter;
@@ -66,10 +66,10 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
     
     // 显示文本
     [ObservableProperty]
-    private string _hostLabel = "联机大厅Page_HostLabel".GetLocalized();
+    private string _hostLabel = "MultiplayerLobbyPage_HostLabel".GetLocalized();
     
     [ObservableProperty]
-    private string _easyTierLabel = "联机大厅Page_EasyTierLabel".GetLocalized();
+    private string _easyTierLabel = "MultiplayerLobbyPage_EasyTierLabel".GetLocalized();
     
     // 端口信息，用于获取meta数据
     private string? _port;
@@ -184,9 +184,9 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
         Url = navigationParameter.Url;
 
         HostLabel = IsGuest
-            ? "联机大厅Page_GuestLabel".GetLocalized()
-            : "联机大厅Page_HostLabel".GetLocalized();
-        EasyTierLabel = "联机大厅Page_EasyTierLabel".GetLocalized();
+            ? "MultiplayerLobbyPage_GuestLabel".GetLocalized()
+            : "MultiplayerLobbyPage_HostLabel".GetLocalized();
+        EasyTierLabel = "MultiplayerLobbyPage_EasyTierLabel".GetLocalized();
     }
 
     private void ApplyHeaderMetadata()
