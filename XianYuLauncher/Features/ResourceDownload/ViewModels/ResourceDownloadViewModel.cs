@@ -60,13 +60,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
 
     public event EventHandler<ModDownloadDetailNavigationParameter>? ModDownloadDetailRequested;
 
-    // 版本下载相关属性和命令
-    [ObservableProperty]
-    private string _searchText = string.Empty;
-    
-    [ObservableProperty]
-    private string _selectedVersionType = "release";
-    
     // 收藏夹相关
     [ObservableProperty]
     private ObservableCollection<ModrinthProject> _favoriteItems = new();
@@ -141,71 +134,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
         SelectedFavorites.Clear();
         UpdateFavoritesState();
         _favoritesService.Save(FavoriteItems);
-    }
-
-    private const string VersionTypeFilterKey = "VersionTypeFilter";
-
-    [ObservableProperty]
-    private ObservableCollection<Core.Models.VersionEntry> _versions = new();
-
-    [ObservableProperty]
-    private ObservableCollection<Core.Models.VersionEntry> _filteredVersions = new();
-
-    [ObservableProperty]
-    private bool _isVersionLoading = false;
-    
-    [ObservableProperty]
-    private string _latestReleaseVersion = string.Empty;
-    
-    [ObservableProperty]
-    private string _latestSnapshotVersion = string.Empty;
-    
-    [ObservableProperty]
-    private bool _isRefreshing = false;
-    
-    // 监听SearchText变化，更新过滤结果
-    partial void OnSearchTextChanged(string value)
-    {
-        UpdateFilteredVersions();
-    }
-    
-    // 监听SelectedVersionType变化，更新过滤结果
-    partial void OnSelectedVersionTypeChanged(string value)
-    {
-        UpdateFilteredVersions();
-        // 保存用户选择
-        _ = _localSettingsService.SaveSettingAsync(VersionTypeFilterKey, value);
-    }
-    
-    /// <summary>
-    /// 更新过滤后的版本列表
-    /// </summary>
-    public void UpdateFilteredVersions()
-    {
-        // 1. 使用临时列表存储过滤结果
-        List<Core.Models.VersionEntry> tempList = Versions.ToList();
-        
-        // 2. 按类型筛选
-        if (SelectedVersionType != "all")
-        {
-            tempList = SelectedVersionType switch
-            {
-                "release" => tempList.Where(v => v.Type == "release").ToList(),
-                "snapshot" => tempList.Where(v => v.Type == "snapshot").ToList(),
-                "old" => tempList.Where(v => v.Type == "old_beta" || v.Type == "old_alpha").ToList(),
-                _ => tempList
-            };
-        }
-        
-        // 3. 按搜索文本筛选
-        if (!string.IsNullOrWhiteSpace(SearchText))
-        {
-            tempList = tempList.Where(v => v.Id.Contains(SearchText, System.StringComparison.OrdinalIgnoreCase)).ToList();
-        }
-        
-        // 4. 使用一次性替换集合的方式更新FilteredVersions，这是性能优化的关键
-        // 直接替换集合可以避免Clear()和多次Add()操作导致的频繁UI更新
-        FilteredVersions = new ObservableCollection<Core.Models.VersionEntry>(tempList);
     }
 
     // Mod 下载相关属性和命令
@@ -1805,34 +1733,14 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
             _favoritesService.Save(FavoriteItems);
         };
         UpdateFavoritesState();
-        
-        // 加载保存的版本类型筛选
-        LoadVersionTypeFilter();
+
+        InitializeVersionTab();
         
         // 加载保存的平台选择
         LoadPlatformSelection();
         
         // 移除自动加载，改为完全由SelectionChanged事件控制
         // 这样可以避免版本列表被加载两次
-    }
-    
-    /// <summary>
-    /// 加载保存的版本类型筛选
-    /// </summary>
-    private async void LoadVersionTypeFilter()
-    {
-        try
-        {
-            var savedFilter = await _localSettingsService.ReadSettingAsync<string>(VersionTypeFilterKey);
-            if (!string.IsNullOrEmpty(savedFilter))
-            {
-                SelectedVersionType = savedFilter;
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"加载版本类型筛选失败: {ex.Message}");
-        }
     }
     
     /// <summary>
@@ -2285,63 +2193,6 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
     
     // 移除InitializeAsync方法，不再自动加载版本列表
     
-    // 版本下载命令
-    [RelayCommand]
-    private async Task SearchVersionsAsync()
-    {
-        await LoadVersionsAsync();
-    }
-    
-    [RelayCommand]
-    private async Task RefreshVersionsAsync()
-    {
-        IsRefreshing = true;
-        System.Diagnostics.Debug.WriteLine("[版本缓存] 用户手动刷新，强制重新加载版本列表");
-        await LoadVersionsAsync(forceRefresh: true);
-        IsRefreshing = false;
-    }
-    
-    private async Task LoadVersionsAsync(bool forceRefresh = false)
-    {
-        IsVersionLoading = true;
-        try
-        {
-            var catalog = await _gameManifestQueryService.GetCatalogAsync(forceRefresh);
-            System.Diagnostics.Debug.WriteLine($"[版本缓存] {(catalog.IsFromCache ? "成功加载缓存" : "从网络加载版本列表")}, 共 {catalog.Versions.Count} 个版本");
-            await UpdateVersionsUI(catalog.Versions.ToList(), catalog.LatestReleaseVersion, catalog.LatestSnapshotVersion);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"[版本缓存] 加载失败: {ex.Message}");
-            ErrorMessage = $"加载版本列表失败: {ex.Message}";
-        }
-        finally
-        {
-            IsVersionLoading = false;
-        }
-    }
-    
-    /// <summary>
-    /// 更新版本列表UI
-    /// </summary>
-    private async Task UpdateVersionsUI(List<Core.Models.VersionEntry> versionList, string latestReleaseVersion, string latestSnapshotVersion)
-    {
-        // 更新最新版本信息（使用延迟更新，减少UI刷新）
-        LatestReleaseVersion = latestReleaseVersion;
-        LatestSnapshotVersion = latestSnapshotVersion;
-        
-        // 1. 使用临时列表存储所有版本，然后一次性替换Versions集合
-        // 这是性能优化的关键：减少UI更新次数
-        var tempVersions = new ObservableCollection<Core.Models.VersionEntry>(versionList);
-        Versions = tempVersions;
-        
-        // 2. 一次性更新过滤后的版本列表
-        UpdateFilteredVersions();
-        
-        // 3. 同时更新可用版本列表，避免重复请求
-        await UpdateAvailableVersionsFromManifest(versionList);
-    }
-    
     /// <summary>
     /// 从已获取的版本列表更新可用版本，避免重复网络请求
     /// </summary>
@@ -2372,180 +2223,7 @@ public partial class ResourceDownloadViewModel : ObservableRecipient, IPageHeade
 
     partial void OnIsShowAllVersionsChanged(bool value)
     {
-        // 当 CheckBox 状态改变时，重新基于现有缓存的版本列表刷新 AvailableVersions
-        if (Versions != null && Versions.Count > 0)
-        {
-            _ = UpdateAvailableVersionsFromManifest(Versions.ToList());
-        }
-    }
-
-    [RelayCommand]
-    private async Task DownloadClientJarAsync(object parameter)
-    {
-        string versionId = string.Empty;
-        
-        if (parameter is Core.Models.VersionEntry versionEntry)
-        {
-            versionId = versionEntry.Id;
-        }
-        else if (parameter is string stringId)
-        {
-            versionId = stringId;
-        }
-        
-        if (string.IsNullOrEmpty(versionId))
-        {
-            return;
-        }
-
-        try
-        {
-            var mappedClientUrl = await _minecraftVersionService.GetClientJarDownloadUrlAsync(versionId);
-
-            if (string.IsNullOrWhiteSpace(mappedClientUrl))
-            {
-                await _dialogService.ShowMessageDialogAsync(
-                    "Msg_Error".GetLocalized(),
-                    "Dialog_ResourceDownload_NoClientLink".GetLocalized());
-                return;
-            }
-
-            var savePicker = new Windows.Storage.Pickers.FileSavePicker();
-            savePicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.Downloads;
-            savePicker.FileTypeChoices.Add("Java Archive", new List<string>() { FileExtensionConsts.Jar });
-            savePicker.SuggestedFileName = $"client-{versionId}.jar";
-
-            var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
-            WinRT.Interop.InitializeWithWindow.Initialize(savePicker, windowHandle);
-
-            var file = await savePicker.PickSaveFileAsync();
-            if (file == null) return;
-
-            await _downloadTaskManager.StartFileDownloadAsync(
-                mappedClientUrl,
-                file.Path,
-                $"客户端 {versionId}",
-                showInTeachingTip: true,
-                displayNameResourceKey: "DownloadQueue_DisplayName_Client",
-                displayNameResourceArguments: new[] { versionId });
-        }
-        catch (Exception ex)
-        {
-            await _dialogService.ShowMessageDialogAsync(
-                "Dialog_Download_Failed_Title".GetLocalized(),
-                "Msg_DownloadFailed_Format".GetLocalized(ex.Message));
-        }
-    }
-
-    [RelayCommand]
-    private async Task DownloadServerJarAsync(object parameter)
-    {
-        string versionId = string.Empty;
-        
-        if (parameter is Core.Models.VersionEntry versionEntry)
-        {
-            versionId = versionEntry.Id;
-        }
-        else if (parameter is string stringId)
-        {
-            versionId = stringId;
-        }
-        
-        if (string.IsNullOrEmpty(versionId))
-        {
-            return;
-        }
-
-        try
-        {
-            // 1. 获取服务端下载链接（由 Service 层完成下载源映射）
-            var mappedServerUrl = await _minecraftVersionService.GetServerJarDownloadUrlAsync(versionId);
-
-            if (string.IsNullOrWhiteSpace(mappedServerUrl))
-            {
-                await _dialogService.ShowMessageDialogAsync(
-                    "Msg_Error".GetLocalized(),
-                    "Dialog_ResourceDownload_NoServerLink".GetLocalized());
-                return;
-            }
-
-            // 2. 选择保存位置
-            var savePicker = new Windows.Storage.Pickers.FileSavePicker();
-            savePicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.Downloads;
-            savePicker.FileTypeChoices.Add("Java Archive", new List<string>() { FileExtensionConsts.Jar });
-            savePicker.SuggestedFileName = $"server-{versionId}.jar";
-
-            // WinUI 3 Window handle 
-            var windowHandle = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);
-            WinRT.Interop.InitializeWithWindow.Initialize(savePicker, windowHandle);
-
-            var file = await savePicker.PickSaveFileAsync();
-            if (file == null) return;
-
-            // 3. 启动后台下载
-            await _downloadTaskManager.StartFileDownloadAsync(
-                mappedServerUrl,
-                file.Path,
-                $"服务端 {versionId}",
-                showInTeachingTip: true,
-                displayNameResourceKey: "DownloadQueue_DisplayName_Server",
-                displayNameResourceArguments: new[] { versionId });
-        }
-        catch (Exception ex)
-        {
-            await _dialogService.ShowMessageDialogAsync(
-                "Dialog_Download_Failed_Title".GetLocalized(),
-                "Msg_DownloadFailed_Format".GetLocalized(ex.Message));
-        }
-    }
-
-    [RelayCommand]
-    private async Task DownloadVersionAsync(object parameter)
-    {
-        string versionId = string.Empty;
-        
-        // 处理不同类型的参数
-        if (parameter is Core.Models.VersionEntry versionEntry)
-        {
-            versionId = versionEntry.Id;
-        }
-        else if (parameter is string stringId)
-        {
-            versionId = stringId;
-        }
-        
-        if (string.IsNullOrEmpty(versionId))
-        {
-            return;
-        }
-
-        try
-        {
-            IsVersionLoading = true;
-
-            var navigationParameter = new ModLoaderSelectorNavigationParameter
-            {
-                VersionId = versionId,
-                BreadcrumbRoot = BreadcrumbNavigationRoot.CreateLocal(
-                    HeaderMetadata.Title,
-                    new LocalNavigationTarget
-                    {
-                        RouteKey = "resource-download/root",
-                        Parameter = "version",
-                    }),
-            };
-
-            ModLoaderSelectorRequested?.Invoke(this, navigationParameter);
-        }
-        catch (Exception ex)
-        {
-            Log.Warning(ex, "[ResourceDownload] 打开 ModLoader 选择页失败，VersionId={VersionId}", versionId);
-            ErrorMessage = $"打开 Mod 加载器选择页失败: {ex.Message}";
-        }
-        finally
-        {
-            IsVersionLoading = false;
-        }
+        _ = VersionTab.SyncAvailableVersionsForHostAsync();
     }
 
     // Mod 下载命令
