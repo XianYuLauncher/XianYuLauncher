@@ -11,47 +11,16 @@
   xmlns:media="using:CommunityToolkit.WinUI.Media"
   xmlns:mediaAnimation="using:Microsoft.UI.Xaml.Media.Animation"
   xmlns:localControls="using:XianYuLauncher.Controls"
+  xmlns:tabs="using:XianYuLauncher.Features.ResourceDownload.Views.Tabs"
   NavigationCacheMode="Required"
   mc:Ignorable="d">
 
   <Page.Resources>
-    <helpers:InverseBoolToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
-    <Style x:Key="CommunityResourceListViewItemStyle" TargetType="ListViewItem">
-      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-      <Setter Property="Margin" Value="0,0,0,12" />
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderBrush" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="Template">
-        <Setter.Value>
-          <ControlTemplate TargetType="ListViewItem">
-            <ListViewItemPresenter
-              Content="{TemplateBinding Content}"
-              ContentTemplate="{TemplateBinding ContentTemplate}"
-              ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
-              ContentTransitions="{TemplateBinding ContentTransitions}"
-              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
-              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
-              Padding="{TemplateBinding Padding}"
-              Background="Transparent"
-              PointerOverBackground="Transparent"
-              PressedBackground="Transparent"
-              SelectedBackground="Transparent"
-              SelectedPointerOverBackground="Transparent"
-              SelectedPressedBackground="Transparent"
-              BorderBrush="{TemplateBinding BorderBrush}"
-              BorderThickness="{TemplateBinding BorderThickness}" />
-          </ControlTemplate>
-        </Setter.Value>
-      </Setter>
-    </Style>
-    <Style x:Key="CardGridViewItemStyle" TargetType="GridViewItem">
-      <Setter Property="Margin" Value="6" />
-      <Setter Property="Padding" Value="0" />
-      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-      <Setter Property="VerticalContentAlignment" Value="Stretch" />
-    </Style>
-    <helpers:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/Features/ResourceDownload/Views/ResourceDownloadTabResources.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
   </Page.Resources>
 
   <Grid x:Name="ContentArea"
@@ -84,145 +53,7 @@
                 <TextBlock x:Uid="ResourceDownloadPage_VersionTabHeader" Text="版本下载" VerticalAlignment="Center" />
               </StackPanel>
             </TabViewItem.Header>
-            <Grid>
-              <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-              </Grid.RowDefinitions>
-
-              <Grid Grid.Row="0" Margin="12,10,12,20">
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*" />
-                  <ColumnDefinition Width="10" />
-                  <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-
-                <Border CornerRadius="8" Padding="15" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="1" Background="{ThemeResource CardBackgroundFillColorDefault}" HorizontalAlignment="Stretch">
-                  <StackPanel>
-                    <TextBlock x:Uid="ResourceDownloadPage_LatestRelease" Text="最新正式版" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondary}" />
-                    <TextBlock Text="{Binding LatestReleaseVersion, Mode=OneWay}" Style="{StaticResource TitleTextBlockStyle}" Foreground="{ThemeResource TextFillColorPrimary}" />
-                    <Button x:Uid="ResourceDownloadPage_DownloadButton" Content="下载" Style="{StaticResource DefaultButtonStyle}" HorizontalAlignment="Left" Margin="0,10,0,0"
-                        Command="{Binding DownloadVersionCommand}" CommandParameter="{Binding LatestReleaseVersion, Mode=OneWay}" />
-                  </StackPanel>
-                </Border>
-
-                <Border Grid.Column="2" CornerRadius="8" Padding="15" BorderBrush="{ThemeResource SystemControlForegroundBaseLowBrush}" BorderThickness="1" Background="{ThemeResource CardBackgroundFillColorDefault}" HorizontalAlignment="Stretch">
-                  <StackPanel>
-                    <TextBlock x:Uid="ResourceDownloadPage_LatestSnapshot" Text="最新快照版" Style="{StaticResource CaptionTextBlockStyle}" Foreground="{ThemeResource TextFillColorSecondary}" />
-                    <TextBlock Text="{Binding LatestSnapshotVersion, Mode=OneWay}" Style="{StaticResource TitleTextBlockStyle}" Foreground="{ThemeResource TextFillColorPrimary}" />
-                    <Button x:Uid="ResourceDownloadPage_DownloadButton" Content="下载" Style="{StaticResource DefaultButtonStyle}" HorizontalAlignment="Left" Margin="0,10,0,0"
-                        Command="{Binding DownloadVersionCommand}" CommandParameter="{Binding LatestSnapshotVersion, Mode=OneWay}" />
-                  </StackPanel>
-                </Border>
-              </Grid>
-
-              <Grid Grid.Row="1" Margin="12,0,12,20">
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*" />
-                  <ColumnDefinition Width="Auto" />
-                  <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
-                <TextBox
-                  Grid.Column="0"
-                  x:Name="VersionSearchBox"
-                  x:Uid="ResourceDownloadPage_VersionSearchBox"
-                  PlaceholderText="搜索版本..."
-                  Text="{Binding SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                  KeyDown="VersionSearchBox_KeyDown"
-                  HorizontalAlignment="Stretch" />
-
-                <ComboBox
-                  Grid.Column="1"
-                  x:Name="VersionTypeComboBox"
-                  x:Uid="ResourceDownloadPage_VersionTypeComboBox"
-                  Margin="10,0,0,0"
-                  MinWidth="80"
-                  PlaceholderText="筛选"
-                  SelectedValuePath="Tag"
-                  SelectedValue="{Binding SelectedVersionType, Mode=TwoWay}">
-                  <ComboBoxItem x:Uid="ResourceDownloadPage_AllVersionTypes" Content="全部" Tag="all" />
-                  <ComboBoxItem x:Uid="ResourceDownloadPage_ReleaseVersionType" Content="正式版" Tag="release" IsSelected="True" />
-                  <ComboBoxItem x:Uid="ResourceDownloadPage_SnapshotVersionType" Content="快照版" Tag="snapshot" />
-                  <ComboBoxItem x:Uid="ResourceDownloadPage_OldVersionType" Content="旧版" Tag="old" />
-                </ComboBox>
-
-                <Button Grid.Column="2" Margin="10,0,0,0" Command="{Binding RefreshVersionsCommand}">
-                  <Grid Width="20" Height="20">
-                    <FontIcon FontFamily="{StaticResource SymbolThemeFontFamily}" Glyph="&#xe72c;" FontSize="16" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="{Binding IsRefreshing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}" />
-                    <ProgressRing IsActive="{Binding IsRefreshing, Mode=OneWay}" Width="20" Height="20" Visibility="{Binding IsRefreshing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-                  </Grid>
-                </Button>
-              </Grid>
-
-              <Grid Grid.Row="2" Margin="12,0,12,0">
-                <ProgressRing IsActive="{Binding IsVersionLoading, Mode=OneWay}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-
-                <ListView
-                  x:Name="VersionListView"
-                  ItemsSource="{Binding FilteredVersions, Mode=OneWay}"
-                  IsItemClickEnabled="True"
-                  ItemClick="VersionListView_ItemClick"
-                  SelectionMode="None"
-                  Background="Transparent"
-                  BorderThickness="0"
-                  Visibility="{Binding IsVersionLoading, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}"
-                  ShowsScrollingPlaceholders="True">
-                  <ListView.Resources>
-                    <Style TargetType="ScrollViewer">
-                      <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
-                      <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
-                      <Setter Property="IsScrollInertiaEnabled" Value="True" />
-                      <Setter Property="ScrollViewer.VerticalScrollMode" Value="Enabled" />
-                      <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
-                    </Style>
-                  </ListView.Resources>
-                  <ListView.ItemsPanel>
-                    <ItemsPanelTemplate>
-                      <ItemsStackPanel />
-                    </ItemsPanelTemplate>
-                  </ListView.ItemsPanel>
-                  <ListView.ItemContainerStyle>
-                    <Style TargetType="ListViewItem">
-                      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-                      <Setter Property="Margin" Value="0,0,0,10" />
-                      <Setter Property="Padding" Value="10" />
-                      <Setter Property="BorderThickness" Value="0" />
-                      <Setter Property="Background" Value="Transparent" />
-                      <Setter Property="UseLayoutRounding" Value="True" />
-                      <Setter Property="CacheMode" Value="BitmapCache" />
-                    </Style>
-                  </ListView.ItemContainerStyle>
-                  <ListView.ItemTemplate>
-                    <DataTemplate>
-                      <StackPanel Padding="10">
-                        <StackPanel.ContextFlyout>
-                          <MenuFlyout>
-                            <MenuFlyoutItem Text="下载客户端" Click="DownloadClient_Click">
-                              <MenuFlyoutItem.Icon>
-                                <FontIcon Glyph="&#xE896;" />
-                              </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                            <MenuFlyoutItem Text="下载服务端" Click="DownloadServer_Click">
-                              <MenuFlyoutItem.Icon>
-                                <FontIcon Glyph="&#xE753;" />
-                              </MenuFlyoutItem.Icon>
-                            </MenuFlyoutItem>
-                          </MenuFlyout>
-                        </StackPanel.ContextFlyout>
-                        <TextBlock Text="{Binding Id}" Style="{StaticResource SubtitleTextBlockStyle}" />
-                        <StackPanel Orientation="Horizontal" Margin="0,5,0,0">
-                          <TextBlock Text="{Binding Type}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="Gray" />
-                          <TextBlock Text=" | " Style="{StaticResource CaptionTextBlockStyle}" Foreground="Gray" />
-                          <TextBlock Text="{Binding ReleaseTime}" Style="{StaticResource CaptionTextBlockStyle}" Foreground="Gray" />
-                        </StackPanel>
-                      </StackPanel>
-                    </DataTemplate>
-                  </ListView.ItemTemplate>
-                </ListView>
-              </Grid>
-            </Grid>
+            <tabs:VersionDownloadTabView />
           </TabViewItem>
 
           <TabViewItem>
@@ -232,181 +63,7 @@
                 <TextBlock x:Uid="ResourceDownloadPage_ModTabHeader" Text="Mod 下载" VerticalAlignment="Center" />
               </StackPanel>
             </TabViewItem.Header>
-            <Grid>
-              <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-                <RowDefinition Height="Auto" />
-              </Grid.RowDefinitions>
-
-              <Grid Grid.Row="0" Margin="20,10,20,10">
-                <Grid.RowDefinitions>
-                  <RowDefinition Height="Auto" />
-                  <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <Grid Grid.Row="0">
-                  <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                  </Grid.ColumnDefinitions>
-
-                  <AutoSuggestBox
-                    x:Name="ModSearchBox"
-                    x:Uid="ResourceDownloadPage_ModSearchBox"
-                    Grid.Column="0"
-                    QueryIcon="Find"
-                    Margin="0,0,8,0"
-                    Text="{Binding SearchQuery, Mode=TwoWay}"
-                    QuerySubmitted="ModSearchBox_QuerySubmitted" />
-
-                  <DropDownButton
-                    x:Name="ModCategoryFilterButton"
-                    Grid.Column="1"
-                    Margin="0,0,8,0"
-                    HorizontalAlignment="Stretch"
-                    HorizontalContentAlignment="Left">
-                    <DropDownButton.Content>
-                      <StackPanel Orientation="Horizontal" Spacing="6">
-                        <FontIcon Glyph="&#xE71C;" FontSize="12" />
-                        <TextBlock x:Uid="ResourceDownloadPage_UnifiedFilterLabel" Text="筛选" />
-                      </StackPanel>
-                    </DropDownButton.Content>
-                    <DropDownButton.Flyout>
-                      <Flyout x:Name="ModFilterFlyout" Placement="Bottom" Opening="ModFilterFlyout_Opening" Closed="ModFilterFlyout_Closed">
-                        <localControls:ResourceFilterFlyout
-                          x:Name="ModFilterControl"
-                          SelectionChanged="ResourceFilterControl_SelectionChanged"
-                          ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged" />
-                      </Flyout>
-                    </DropDownButton.Flyout>
-                  </DropDownButton>
-
-                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0">
-                    <ToggleButton
-                      x:Name="ModrinthToggle"
-                      x:Uid="ResourceDownloadPage_ModrinthToggle"
-                      IsChecked="{Binding IsModrinthEnabled, Mode=TwoWay}"
-                      Click="ModrinthToggleButton_Click"
-                      CornerRadius="4,0,0,4"
-                      Padding="10,6"
-                      MinWidth="80">
-                      <StackPanel Orientation="Horizontal" Spacing="4">
-                        <FontIcon Glyph="&#xE774;" FontSize="12" />
-                        <TextBlock Text="Modrinth" FontSize="12" />
-                      </StackPanel>
-                    </ToggleButton>
-                    <ToggleButton
-                      x:Name="CurseForgeToggle"
-                      x:Uid="ResourceDownloadPage_CurseForgeToggle"
-                      IsChecked="{Binding IsCurseForgeEnabled, Mode=TwoWay}"
-                      Click="CurseForgeToggleButton_Click"
-                      CornerRadius="0,4,4,0"
-                      Padding="10,6"
-                      MinWidth="80">
-                      <StackPanel Orientation="Horizontal" Spacing="4">
-                        <FontIcon Glyph="&#xE945;" FontSize="12" />
-                        <TextBlock Text="CurseForge" FontSize="12" />
-                      </StackPanel>
-                    </ToggleButton>
-                  </StackPanel>
-                </Grid>
-              </Grid>
-
-              <ProgressRing
-                Grid.Row="2"
-                Margin="20"
-                IsActive="{Binding IsModProcessing, Mode=OneWay}"
-                VerticalAlignment="Center"
-                HorizontalAlignment="Center"
-                Visibility="{Binding IsModProcessing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-
-              <ScrollViewer
-                x:Name="ModListScrollViewer"
-                Grid.Row="2"
-                Margin="20"
-                Padding="0,0,12,0"
-                VerticalScrollBarVisibility="Auto"
-                ViewChanged="ModListScrollViewer_ScrollChanged"
-                LayoutUpdated="ModListScrollViewer_LayoutUpdated"
-                SizeChanged="ModListScrollViewer_SizeChanged">
-                <ListView
-                  x:Name="ModListView"
-                  SelectionMode="Single"
-                  ItemsSource="{Binding Mods, Mode=OneWay}"
-                  CanDragItems="True"
-                  DragItemsStarting="CommunityListView_DragItemsStarting"
-                  CanReorderItems="True"
-                  AllowDrop="True"
-                  IsItemClickEnabled="True"
-                  ItemClick="ModListView_ItemClick"
-                  Visibility="{Binding IsModProcessing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
-                  <ListView.Resources>
-                    <Style TargetType="ScrollViewer">
-                      <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
-                    </Style>
-                  </ListView.Resources>
-                  <ListView.ItemsPanel>
-                    <ItemsPanelTemplate>
-                      <VirtualizingStackPanel VirtualizationMode="Recycling" />
-                    </ItemsPanelTemplate>
-                  </ListView.ItemsPanel>
-                  <ListView.ItemContainerStyle>
-                    <StaticResource ResourceKey="CommunityResourceListViewItemStyle" />
-                  </ListView.ItemContainerStyle>
-                  <ListView.ItemTemplate>
-                    <DataTemplate x:DataType="models:ModrinthProject">
-                        <Grid Height="120" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
-                          CornerRadius="8" Padding="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
-                          BorderThickness="1">
-                        <Grid.ColumnDefinitions>
-                          <ColumnDefinition Width="Auto" />
-                          <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                          <RowDefinition Height="Auto" />
-                          <RowDefinition Height="*" />
-                          <RowDefinition Height="Auto" />
-                        </Grid.RowDefinitions>
-
-                        <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="3" Width="64" Height="64" Margin="0,0,12,0"
-                            CornerRadius="32" Background="Transparent">
-                          <Image Stretch="UniformToFill">
-                            <Image.Source>
-                              <BitmapImage UriSource="{Binding IconUrl, Mode=OneWay}" DecodePixelWidth="64" DecodePixelHeight="64" />
-                            </Image.Source>
-                          </Image>
-                        </Border>
-
-                        <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding DisplayTitle, Mode=OneWay}"
-                               FontSize="16" FontWeight="SemiBold" />
-
-                        <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding DisplayDescription, Mode=OneWay}"
-                               Style="{ThemeResource BodyTextBlockStyle}" Opacity="0.8" TextWrapping="WrapWholeWords"
-                               MaxLines="2" VerticalAlignment="Center" />
-
-                        <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
-                          <TextBlock Text="{Binding Author, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" />
-                          <TextBlock Text="{Binding LatestSupportedVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" />
-                          <TextBlock Text="{Binding Downloads, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" />
-                        </StackPanel>
-                      </Grid>
-                    </DataTemplate>
-                  </ListView.ItemTemplate>
-                  <ListView.Footer>
-                    <ProgressRing
-                      IsActive="{Binding IsModLoadingMore, Mode=OneWay}"
-                      Width="32"
-                      Height="32"
-                      Margin="0,10,0,10"
-                      HorizontalAlignment="Center"
-                      Visibility="{Binding IsModLoadingMore, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
-                  </ListView.Footer>
-                </ListView>
-              </ScrollViewer>
-            </Grid>
+            <tabs:ModResourceTabView x:Name="ModResourceTab" />
           </TabViewItem>
 
           <TabViewItem>
@@ -512,10 +169,7 @@
                 Grid.Row="2"
                 Margin="20"
                 Padding="0,0,12,0"
-                VerticalScrollBarVisibility="Auto"
-                ViewChanged="ShaderPackListScrollViewer_ScrollChanged"
-                LayoutUpdated="ShaderPackListScrollViewer_LayoutUpdated"
-                SizeChanged="ShaderPackListScrollViewer_SizeChanged">
+                VerticalScrollBarVisibility="Auto">
                 <controls:AdaptiveGridView
                   x:Name="ShaderPackListView"
                   SelectionMode="Single"
@@ -710,10 +364,7 @@
                 Grid.Row="2"
                 Margin="20"
                 Padding="0,0,12,0"
-                VerticalScrollBarVisibility="Auto"
-                ViewChanged="ResourcePackListScrollViewer_ScrollChanged"
-                LayoutUpdated="ResourcePackListScrollViewer_LayoutUpdated"
-                SizeChanged="ResourcePackListScrollViewer_SizeChanged">
+                VerticalScrollBarVisibility="Auto">
                 <controls:AdaptiveGridView
                   x:Name="ResourcePackListView"
                   SelectionMode="Single"
@@ -909,10 +560,7 @@
                 Grid.Row="2"
                 Margin="20"
                 Padding="0,0,12,0"
-                VerticalScrollBarVisibility="Auto"
-                ViewChanged="DatapackListScrollViewer_ScrollChanged"
-                LayoutUpdated="DatapackListScrollViewer_LayoutUpdated"
-                SizeChanged="DatapackListScrollViewer_SizeChanged">
+                VerticalScrollBarVisibility="Auto">
                 <ListView
                   x:Name="DatapackListView"
                   SelectionMode="Single"
@@ -1094,10 +742,7 @@
                 Grid.Row="2"
                 Margin="20"
                 Padding="0,0,12,0"
-                VerticalScrollBarVisibility="Auto"
-                ViewChanged="ModpackListScrollViewer_ScrollChanged"
-                LayoutUpdated="ModpackListScrollViewer_LayoutUpdated"
-                SizeChanged="ModpackListScrollViewer_SizeChanged">
+                VerticalScrollBarVisibility="Auto">
                 <ListView
                   x:Name="ModpackListView"
                   SelectionMode="Single"
@@ -1281,10 +926,7 @@
                 Grid.Row="2"
                 Margin="20"
                 Padding="0,0,12,0"
-                VerticalScrollBarVisibility="Auto"
-                ViewChanged="WorldListScrollViewer_ScrollChanged"
-                LayoutUpdated="WorldListScrollViewer_LayoutUpdated"
-                SizeChanged="WorldListScrollViewer_SizeChanged">
+                VerticalScrollBarVisibility="Auto">
                 <ListView
                   x:Name="WorldListView"
                   SelectionMode="Single"
