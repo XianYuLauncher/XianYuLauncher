@@ -63,7 +63,7 @@ public sealed partial class ResourceDownloadRootPage : Page
     private bool _suppressNextSelectedTabContentAnimation;
     private bool _isPageActive;
 
-    public ResourceDownloadViewModel ViewModel { get; private set; } = null!;
+    public ResourceDownloadHostViewModel ViewModel { get; private set; } = null!;
 
     public bool IsLocalNavigationTargetElementEnabled => EntranceNavigationTransitionInfo.GetIsTargetElement(ContentArea);
 
@@ -79,7 +79,7 @@ public sealed partial class ResourceDownloadRootPage : Page
     {
         base.OnNavigatedTo(e);
         _isPageActive = true;
-        SetViewModel(e.Parameter as ResourceDownloadViewModel ?? App.GetService<ResourceDownloadViewModel>());
+        SetViewModel(e.Parameter as ResourceDownloadHostViewModel ?? App.GetService<ResourceDownloadHostViewModel>());
         ApplyPendingNavigationState();
     }
 
@@ -142,7 +142,7 @@ public sealed partial class ResourceDownloadRootPage : Page
         _isPageActive = false;
     }
 
-    private void SetViewModel(ResourceDownloadViewModel viewModel)
+    private void SetViewModel(ResourceDownloadHostViewModel viewModel)
     {
         if (ReferenceEquals(ViewModel, viewModel))
         {

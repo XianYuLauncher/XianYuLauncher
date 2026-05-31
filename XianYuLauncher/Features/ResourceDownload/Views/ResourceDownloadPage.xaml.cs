@@ -46,7 +46,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
     private bool _isPageLoaded;
     private int _deferredUiActionGeneration;
 
-    public ResourceDownloadViewModel ViewModel { get; }
+    public ResourceDownloadHostViewModel ViewModel { get; }
 
     public event EventHandler? LocalNavigationStateChanged;
 
@@ -55,7 +55,7 @@ public sealed partial class ResourceDownloadPage : Page, INavigationAware, ILoca
     public ResourceDownloadPage()
     {
         _navigationService = App.GetService<INavigationService>();
-        ViewModel = App.GetService<ResourceDownloadViewModel>();
+        ViewModel = App.GetService<ResourceDownloadHostViewModel>();
         _rootHeaderTitle = ViewModel.HeaderMetadata.Title;
         _rootHeaderSubtitle = ViewModel.HeaderMetadata.Subtitle;
         DataContext = ViewModel;

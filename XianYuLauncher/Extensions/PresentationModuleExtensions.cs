@@ -18,6 +18,7 @@ using XianYuLauncher.Features.Multiplayer.Views;
 using XianYuLauncher.Features.News.ViewModels;
 using XianYuLauncher.Features.News.Views;
 using XianYuLauncher.Features.ResourceDownload.ViewModels;
+using XianYuLauncher.Features.ResourceDownload.ViewModels.Tabs;
 using XianYuLauncher.Features.ResourceDownload.Views;
 using XianYuLauncher.Features.Shell.ViewModels;
 using XianYuLauncher.Features.Shell.Views;
@@ -112,9 +113,13 @@ internal static class PresentationModuleExtensions
         services.AddTransient<ModDownloadDetailPage>();
         services.AddPageMap<ModDownloadDetailViewModel, ModDownloadDetailPage>();
 
+        services.AddTransient<ResourceDownloadHostViewModel>();
         services.AddTransient<ResourceDownloadViewModel>();
+        services.AddTransient<WorldResourceTabViewModel>();
+        services.AddTransient<CommunityResourceTabViewModel>();
+        services.AddTransient<ModResourceTabViewModel>();
         services.AddTransient<ResourceDownloadPage>();
-        services.AddPageMap<ResourceDownloadViewModel, ResourceDownloadPage>();
+        services.AddPageMap<ResourceDownloadHostViewModel, ResourceDownloadPage>();
 
         return services;
     }
