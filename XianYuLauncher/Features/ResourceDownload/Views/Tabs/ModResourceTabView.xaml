@@ -1,0 +1,191 @@
+<UserControl
+  x:Class="XianYuLauncher.Features.ResourceDownload.Views.Tabs.ModResourceTabView"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:models="using:XianYuLauncher.Core.Models"
+  xmlns:localControls="using:XianYuLauncher.Controls"
+  mc:Ignorable="d">
+
+  <UserControl.Resources>
+    <ResourceDictionary>
+      <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/Features/ResourceDownload/Views/ResourceDownloadTabResources.xaml" />
+      </ResourceDictionary.MergedDictionaries>
+    </ResourceDictionary>
+  </UserControl.Resources>
+
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <Grid Grid.Row="0" Margin="20,10,20,10">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+
+      <Grid Grid.Row="0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <AutoSuggestBox
+          x:Name="ModSearchBox"
+          x:Uid="ResourceDownloadPage_ModSearchBox"
+          Grid.Column="0"
+          QueryIcon="Find"
+          Margin="0,0,8,0"
+          Text="{Binding SearchQuery, Mode=TwoWay}"
+          QuerySubmitted="ModSearchBox_QuerySubmitted" />
+
+        <DropDownButton
+          x:Name="ModCategoryFilterButton"
+          Grid.Column="1"
+          Margin="0,0,8,0"
+          HorizontalAlignment="Stretch"
+          HorizontalContentAlignment="Left">
+          <DropDownButton.Content>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <FontIcon Glyph="&#xE71C;" FontSize="12" />
+              <TextBlock x:Uid="ResourceDownloadPage_UnifiedFilterLabel" Text="筛选" />
+            </StackPanel>
+          </DropDownButton.Content>
+          <DropDownButton.Flyout>
+            <Flyout x:Name="ModFilterFlyout" Placement="Bottom" Opening="ModFilterFlyout_Opening" Closed="ModFilterFlyout_Closed">
+              <localControls:ResourceFilterFlyout
+                x:Name="ModFilterControl"
+                SelectionChanged="ResourceFilterControl_SelectionChanged"
+                ShowAllVersionsChanged="ResourceFilterControl_ShowAllVersionsChanged" />
+            </Flyout>
+          </DropDownButton.Flyout>
+        </DropDownButton>
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="0">
+          <ToggleButton
+            x:Name="ModrinthToggle"
+            x:Uid="ResourceDownloadPage_ModrinthToggle"
+            IsChecked="{Binding IsModrinthEnabled, Mode=TwoWay}"
+            Click="ModrinthToggleButton_Click"
+            CornerRadius="4,0,0,4"
+            Padding="10,6"
+            MinWidth="80">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <FontIcon Glyph="&#xE774;" FontSize="12" />
+              <TextBlock Text="Modrinth" FontSize="12" />
+            </StackPanel>
+          </ToggleButton>
+          <ToggleButton
+            x:Name="CurseForgeToggle"
+            x:Uid="ResourceDownloadPage_CurseForgeToggle"
+            IsChecked="{Binding IsCurseForgeEnabled, Mode=TwoWay}"
+            Click="CurseForgeToggleButton_Click"
+            CornerRadius="0,4,4,0"
+            Padding="10,6"
+            MinWidth="80">
+            <StackPanel Orientation="Horizontal" Spacing="4">
+              <FontIcon Glyph="&#xE945;" FontSize="12" />
+              <TextBlock Text="CurseForge" FontSize="12" />
+            </StackPanel>
+          </ToggleButton>
+        </StackPanel>
+      </Grid>
+    </Grid>
+
+    <ProgressRing
+      Grid.Row="2"
+      Margin="20"
+      IsActive="{Binding IsModProcessing, Mode=OneWay}"
+      VerticalAlignment="Center"
+      HorizontalAlignment="Center"
+      Visibility="{Binding IsModProcessing, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+
+    <ScrollViewer
+      x:Name="ModListScrollViewer"
+      Grid.Row="2"
+      Margin="20"
+      Padding="0,0,12,0"
+      VerticalScrollBarVisibility="Auto">
+      <ListView
+        x:Name="ModListView"
+        SelectionMode="Single"
+        ItemsSource="{Binding Mods, Mode=OneWay}"
+        CanDragItems="True"
+        DragItemsStarting="CommunityListView_DragItemsStarting"
+        CanReorderItems="True"
+        AllowDrop="True"
+        IsItemClickEnabled="True"
+        ItemClick="ModListView_ItemClick"
+        Visibility="{Binding IsModProcessing, Mode=OneWay, Converter={StaticResource InverseBoolToVisibilityConverter}}">
+        <ListView.Resources>
+          <Style TargetType="ScrollViewer">
+            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+          </Style>
+        </ListView.Resources>
+        <ListView.ItemsPanel>
+          <ItemsPanelTemplate>
+            <VirtualizingStackPanel VirtualizationMode="Recycling" />
+          </ItemsPanelTemplate>
+        </ListView.ItemsPanel>
+        <ListView.ItemContainerStyle>
+          <StaticResource ResourceKey="CommunityResourceListViewItemStyle" />
+        </ListView.ItemContainerStyle>
+        <ListView.ItemTemplate>
+          <DataTemplate x:DataType="models:ModrinthProject">
+            <Grid Height="120" Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
+              CornerRadius="8" Padding="12" BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
+              BorderThickness="1">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+              </Grid.RowDefinitions>
+
+              <Border Grid.Column="0" Grid.Row="0" Grid.RowSpan="3" Width="64" Height="64" Margin="0,0,12,0"
+                  CornerRadius="32" Background="Transparent">
+                <Image Stretch="UniformToFill">
+                  <Image.Source>
+                    <BitmapImage UriSource="{Binding IconUrl, Mode=OneWay}" DecodePixelWidth="64" DecodePixelHeight="64" />
+                  </Image.Source>
+                </Image>
+              </Border>
+
+              <TextBlock Grid.Column="1" Grid.Row="0" Text="{Binding DisplayTitle, Mode=OneWay}"
+                     FontSize="16" FontWeight="SemiBold" />
+
+              <TextBlock Grid.Column="1" Grid.Row="1" Text="{Binding DisplayDescription, Mode=OneWay}"
+                     Style="{ThemeResource BodyTextBlockStyle}" Opacity="0.8" TextWrapping="WrapWholeWords"
+                     MaxLines="2" VerticalAlignment="Center" />
+
+              <StackPanel Grid.Column="1" Grid.Row="2" Orientation="Horizontal" Spacing="8" VerticalAlignment="Bottom">
+                <TextBlock Text="{Binding Author, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" />
+                <TextBlock Text="{Binding LatestSupportedVersion, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" />
+                <TextBlock Text="{Binding Downloads, Mode=OneWay}" Style="{ThemeResource CaptionTextBlockStyle}" Opacity="0.7" />
+              </StackPanel>
+            </Grid>
+          </DataTemplate>
+        </ListView.ItemTemplate>
+        <ListView.Footer>
+          <ProgressRing
+            IsActive="{Binding IsModLoadingMore, Mode=OneWay}"
+            Width="32"
+            Height="32"
+            Margin="0,10,0,10"
+            HorizontalAlignment="Center"
+            Visibility="{Binding IsModLoadingMore, Mode=OneWay, Converter={StaticResource BoolToVisibilityConverter}}" />
+        </ListView.Footer>
+      </ListView>
+    </ScrollViewer>
+  </Grid>
+</UserControl>
