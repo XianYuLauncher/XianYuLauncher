@@ -12,7 +12,7 @@ namespace XianYuLauncher.Features.ResourceDownload.Views.Tabs;
 public sealed partial class ModResourceTabView : UserControl
 {
     private readonly CommunityResourceFilterFlyoutHelper _filterHelper;
-    private readonly IResourceDownloadTabCoordinator _tabCoordinator;
+    private IResourceDownloadTabCoordinator? _tabCoordinator;
     private string _modFilterSelectionSnapshot = string.Empty;
     private Func<int>? _getSelectedTabIndex;
     private Func<bool>? _isPageActive;
@@ -22,15 +22,18 @@ public sealed partial class ModResourceTabView : UserControl
     {
         InitializeComponent();
         _filterHelper = App.GetService<CommunityResourceFilterFlyoutHelper>();
-        _tabCoordinator = App.GetService<IResourceDownloadTabCoordinator>();
         Loaded += ModResourceTabView_Loaded;
         Unloaded += ModResourceTabView_Unloaded;
     }
 
-    public void ConfigureHostContext(Func<int> getSelectedTabIndex, Func<bool> isPageActive)
+    public void ConfigureHostContext(
+        Func<int> getSelectedTabIndex,
+        Func<bool> isPageActive,
+        IResourceDownloadTabCoordinator tabCoordinator)
     {
         _getSelectedTabIndex = getSelectedTabIndex;
         _isPageActive = isPageActive;
+        _tabCoordinator = tabCoordinator;
         EnsureLoadMoreAttached();
     }
 
@@ -99,9 +102,10 @@ public sealed partial class ModResourceTabView : UserControl
             return;
         }
 
+        var currentFilterKey = _filterHelper.GetModFilterSelectionStateKey(HostViewModel);
         var hasFilterChanged = !string.Equals(
             _modFilterSelectionSnapshot,
-            _filterHelper.GetModFilterSelectionStateKey(HostViewModel),
+            currentFilterKey,
             StringComparison.Ordinal);
 
         if (!hasFilterChanged)
@@ -109,7 +113,7 @@ public sealed partial class ModResourceTabView : UserControl
             return;
         }
 
-        if (_getSelectedTabIndex?.Invoke() == 1 && _tabCoordinator.IsTabLoaded(1))
+        if (_getSelectedTabIndex?.Invoke() == 1 && _tabCoordinator!.IsTabLoaded(1))
         {
             await HostViewModel.SearchModsCommand.ExecuteAsync(null);
         }
@@ -152,9 +156,9 @@ public sealed partial class ModResourceTabView : UserControl
 
     private async Task HandlePlatformToggleAsync()
     {
-        if (_getSelectedTabIndex?.Invoke() == 1
-            && _tabCoordinator.IsTabLoaded(1)
-            && HostViewModel is not null)
+        var tabIndex = _getSelectedTabIndex?.Invoke();
+        var isTabLoaded = _tabCoordinator?.IsTabLoaded(1) ?? false;
+        if (tabIndex == 1 && isTabLoaded && HostViewModel is not null)
         {
             await HostViewModel.SearchModsCommand.ExecuteAsync(null);
         }

@@ -48,7 +48,7 @@ public sealed partial class ResourceDownloadRootPage : Page
         _tabCoordinator = App.GetService<IResourceDownloadTabCoordinator>();
         _filterHelper = App.GetService<CommunityResourceFilterFlyoutHelper>();
 
-        ModResourceTab.ConfigureHostContext(() => ResourceTabView.SelectedIndex, () => _isPageActive);
+        ModResourceTab.ConfigureHostContext(() => ResourceTabView.SelectedIndex, () => _isPageActive, _tabCoordinator);
 
         Loaded += ResourceDownloadRootPage_Loaded;
         Unloaded += ResourceDownloadRootPage_Unloaded;
@@ -181,6 +181,7 @@ public sealed partial class ResourceDownloadRootPage : Page
 
         var selectedIndex = ResourceTabView.SelectedIndex;
         await _tabCoordinator.EnsureSelectedTabLoadedAsync(ViewModel, selectedIndex);
+
         ScheduleLoadMoreForTab(selectedIndex);
     }
 
