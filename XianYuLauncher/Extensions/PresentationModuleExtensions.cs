@@ -122,7 +122,7 @@ internal static class PresentationModuleExtensions
         services.AddTransient<CommunityResourceTabViewModel>();
         services.AddTransient<ModResourceTabViewModel>();
         services.AddTransient<ResourceDownloadPage>();
-        services.AddPageMap<ResourceDownloadHostViewModel, ResourceDownloadPage>();
+        services.AddPageMap<ResourceDownloadViewModel, ResourceDownloadPage>();
 
         return services;
     }
