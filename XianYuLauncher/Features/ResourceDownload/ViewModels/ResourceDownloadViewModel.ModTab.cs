@@ -8,7 +8,7 @@ using XianYuLauncher.Features.ResourceDownload.ViewModels.Tabs;
 
 namespace XianYuLauncher.Features.ResourceDownload.ViewModels;
 
-public partial class ResourceDownloadViewModel
+public partial class ResourceDownloadHostViewModel
 {
     public ModResourceTabViewModel ModTab { get; private set; } = null!;
 
