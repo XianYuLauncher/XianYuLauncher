@@ -15,7 +15,7 @@ using ResourceDownloadFilterModels = XianYuLauncher.Features.ResourceDownload.Fi
 
 namespace XianYuLauncher.Features.ResourceDownload.ViewModels.Tabs;
 
-public sealed partial class ModResourceTabViewModel : CommunityResourceTabViewModel
+public sealed partial class ModResourceTabViewModel : ObservableObject
 {
     private readonly ModrinthService _modrinthService;
     private readonly CurseForgeService _curseForgeService;
@@ -23,6 +23,19 @@ public sealed partial class ModResourceTabViewModel : CommunityResourceTabViewMo
     private readonly CurseForgeCacheService _curseForgeCacheService;
     private readonly ITranslationService _translationService;
     private readonly ModResourceTabHostBridge _host;
+    private const int PageSize = 20;
+
+    private static List<ModrinthProject> InterleaveLists(List<ModrinthProject> modrinthList, List<ModrinthProject> curseForgeList)
+    {
+        var result = new List<ModrinthProject>();
+        int maxCount = Math.Max(modrinthList.Count, curseForgeList.Count);
+        for (int i = 0; i < maxCount; i++)
+        {
+            if (i < modrinthList.Count) result.Add(modrinthList[i]);
+            if (i < curseForgeList.Count) result.Add(curseForgeList[i]);
+        }
+        return result;
+    }
     // Mod 下载相关属性和命令
     [ObservableProperty]
     private string _searchQuery = string.Empty;
