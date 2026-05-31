@@ -138,7 +138,9 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
     private ResourceDownloadFilterModels.CommunityResourceFilterState CreateModFilterState() => new()
     {
         SelectedLoaders = SelectedLoaders.ToList(),
-        SelectedVersions = _host.GetSelectedVersions().ToList(),
+        SelectedVersions = _host.GetSelectedVersions()
+            .Where(v => !string.Equals(v, "all", StringComparison.OrdinalIgnoreCase))
+            .ToList(),
         SelectedCategoryTags = GetSelectedModCategoryTags(),
         VersionPolicy = ResourceDownloadFilterModels.VersionFacetPolicy.AlwaysWhenSelected,
     };

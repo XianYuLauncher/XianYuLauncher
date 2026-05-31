@@ -67,9 +67,14 @@ public static class CommunityResourceSearchQueryBuilder
             return;
         }
 
-        var versionFacets = filter.SelectedVersions
-            .Select(version => $"versions:{version}")
-            .ToList();
+        var versionFacets = new List<string>();
+        foreach (var version in filter.SelectedVersions)
+        {
+            if (!string.Equals(version, "all", StringComparison.OrdinalIgnoreCase))
+            {
+                versionFacets.Add($"versions:{version}");
+            }
+        }
 
         if (versionFacets.Count > 0)
         {

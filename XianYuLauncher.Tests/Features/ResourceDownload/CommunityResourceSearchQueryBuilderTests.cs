@@ -67,4 +67,19 @@ public class CommunityResourceSearchQueryBuilderTests
 
         CommunityResourceSearchQueryBuilder.BuildModrinthFacets(resourcePackFilter).Should().BeEmpty();
     }
+
+    [Fact]
+    public void BuildModrinthFacets_ShouldSkipAllVersionToken()
+    {
+        var filter = new CommunityResourceFilterState
+        {
+            SelectedVersions = new[] { "all", "1.20.1" },
+            VersionPolicy = VersionFacetPolicy.AlwaysWhenSelected,
+        };
+
+        CommunityResourceSearchQueryBuilder.BuildModrinthFacets(filter)
+            .Should().ContainSingle()
+            .Which.Should().ContainSingle()
+            .Which.Should().Be("versions:1.20.1");
+    }
 }

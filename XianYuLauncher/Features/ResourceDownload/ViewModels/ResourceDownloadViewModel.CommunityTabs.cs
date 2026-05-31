@@ -41,11 +41,11 @@ public partial class ResourceDownloadHostViewModel
         WorldTab = new WorldResourceTabViewModel(
             _curseForgeService, _curseForgeCacheService, _translationService, worldBridge);
 
-        ShaderTab.PropertyChanged += (_, e) => OnCommunityTabPropertyChanged(e, nameof(IsShaderPackProcessing));
-        ResourcePackTab.PropertyChanged += (_, e) => OnCommunityTabPropertyChanged(e, nameof(IsResourcePackProcessing));
-        DatapackTab.PropertyChanged += (_, e) => OnCommunityTabPropertyChanged(e, nameof(IsDatapackProcessing));
-        ModpackTab.PropertyChanged += (_, e) => OnCommunityTabPropertyChanged(e, nameof(IsModpackProcessing));
-        WorldTab.PropertyChanged += (_, e) => OnCommunityTabPropertyChanged(e, nameof(IsWorldProcessing));
+        ShaderTab.PropertyChanged += (_, e) => OnCommunityTabPropertyChanged(e, CommunityTabHostPropertyMaps.ShaderTab, nameof(IsShaderPackProcessing));
+        ResourcePackTab.PropertyChanged += (_, e) => OnCommunityTabPropertyChanged(e, CommunityTabHostPropertyMaps.ResourcePackTab, nameof(IsResourcePackProcessing));
+        DatapackTab.PropertyChanged += (_, e) => OnCommunityTabPropertyChanged(e, CommunityTabHostPropertyMaps.DatapackTab, nameof(IsDatapackProcessing));
+        ModpackTab.PropertyChanged += (_, e) => OnCommunityTabPropertyChanged(e, CommunityTabHostPropertyMaps.ModpackTab, nameof(IsModpackProcessing));
+        WorldTab.PropertyChanged += (_, e) => OnCommunityTabPropertyChanged(e, CommunityTabHostPropertyMaps.WorldTab, nameof(IsWorldProcessing));
     }
 
     private CommunityResourceTabHostBridge CreateCommunityResourceTabHostBridge() => new()
@@ -80,17 +80,26 @@ public partial class ResourceDownloadHostViewModel
             .Distinct()
             .ToList();
 
-    private void OnCommunityTabPropertyChanged(PropertyChangedEventArgs e, string processingPropertyName)
+    private void OnCommunityTabPropertyChanged(
+        PropertyChangedEventArgs e,
+        IReadOnlyDictionary<string, string[]> hostPropertyMap,
+        string processingPropertyName)
     {
         if (string.IsNullOrEmpty(e.PropertyName))
         {
             return;
         }
 
-        OnPropertyChanged(e.PropertyName);
+        if (hostPropertyMap.TryGetValue(e.PropertyName, out var hostPropertyNames))
+        {
+            foreach (var hostPropertyName in hostPropertyNames)
+            {
+                OnPropertyChanged(hostPropertyName);
+            }
+        }
 
         if (e.PropertyName is nameof(CommunityResourceTabViewModel.IsLoading)
-            or nameof(WorldResourceTabViewModel.IsLoading))
+            or nameof(CommunityResourceTabViewModel.IsCategoryLoading))
         {
             OnPropertyChanged(processingPropertyName);
         }

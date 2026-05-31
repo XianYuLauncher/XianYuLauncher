@@ -45,19 +45,18 @@ public partial class ResourceDownloadHostViewModel
             return;
         }
 
-        OnPropertyChanged(e.PropertyName);
+        if (CommunityTabHostPropertyMaps.ModTab.TryGetValue(e.PropertyName, out var hostPropertyNames))
+        {
+            foreach (var hostPropertyName in hostPropertyNames)
+            {
+                OnPropertyChanged(hostPropertyName);
+            }
+        }
 
         if (e.PropertyName is nameof(ModResourceTabViewModel.IsModLoading)
             or nameof(ModResourceTabViewModel.IsModCategoryLoading))
         {
             OnPropertyChanged(nameof(IsModProcessing));
-        }
-
-        if (e.PropertyName is nameof(ModResourceTabViewModel.SearchModsCommand)
-            or nameof(ModResourceTabViewModel.LoadMoreModsCommand))
-        {
-            OnPropertyChanged(nameof(SearchModsCommand));
-            OnPropertyChanged(nameof(LoadMoreModsCommand));
         }
     }
 
