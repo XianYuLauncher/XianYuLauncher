@@ -96,7 +96,7 @@ public static class InfiniteScrollLoadMoreAttachment
         });
     }
 
-    private static void ScrollViewer_ViewChanged(object sender, ScrollViewerViewChangedEventArgs e)
+    private static void ScrollViewer_ViewChanged(object? sender, ScrollViewerViewChangedEventArgs e)
     {
         if (sender is ScrollViewer scrollViewer)
         {
@@ -104,7 +104,7 @@ public static class InfiniteScrollLoadMoreAttachment
         }
     }
 
-    private static void ScrollViewer_LayoutUpdated(object sender, object e)
+    private static void ScrollViewer_LayoutUpdated(object? sender, object e)
     {
         if (sender is ScrollViewer scrollViewer)
         {
@@ -112,7 +112,7 @@ public static class InfiniteScrollLoadMoreAttachment
         }
     }
 
-    private static void ScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
+    private static void ScrollViewer_SizeChanged(object? sender, SizeChangedEventArgs e)
     {
         if (sender is ScrollViewer scrollViewer)
         {
