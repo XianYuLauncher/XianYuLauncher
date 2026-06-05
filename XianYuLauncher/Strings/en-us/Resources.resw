@@ -453,6 +453,15 @@
   <data name="Settings_Language_English.Content" xml:space="preserve">
     <value>English</value>
   </data>
+  <data name="Settings_LanguageOption_ZhCn" xml:space="preserve">
+    <value>Simplified Chinese</value>
+  </data>
+  <data name="Settings_LanguageOption_ZhTw" xml:space="preserve">
+    <value>Traditional Chinese</value>
+  </data>
+  <data name="Settings_LanguageOption_EnUs" xml:space="preserve">
+    <value>English</value>
+  </data>
   <data name="Settings_LanguageDescription.Text" xml:space="preserve">
     <value>Select app language. Changes will take effect after restarting the app.</value>
   </data>

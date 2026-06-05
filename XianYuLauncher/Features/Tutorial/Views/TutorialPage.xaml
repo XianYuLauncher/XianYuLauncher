@@ -157,14 +157,15 @@
                             <controls:SettingsCard.HeaderIcon>
                                 <FontIcon Glyph="&#xF2B7;" />
                             </controls:SettingsCard.HeaderIcon>
-                            <StackPanel Orientation="Horizontal" Spacing="8">
-                                <RadioButton x:Uid="TutorialPage_Language_Chinese" Content="简体中文" 
-                                             IsChecked="{x:Bind ViewModel.Language, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=zh-CN, Mode=OneWay}"
-                                             Command="{x:Bind ViewModel.SwitchLanguageCommand}" CommandParameter="zh-CN" GroupName="TutorialLanguage" />
-                                <RadioButton x:Uid="TutorialPage_Language_English" Content="English" 
-                                             IsChecked="{x:Bind ViewModel.Language, Converter={StaticResource StringToBooleanConverter}, ConverterParameter=en-US, Mode=OneWay}"
-                                             Command="{x:Bind ViewModel.SwitchLanguageCommand}" CommandParameter="en-US" GroupName="TutorialLanguage" />
-                            </StackPanel>
+                            <ComboBox MinWidth="200"
+                                      ItemsSource="{x:Bind ViewModel.AvailableLanguages, Mode=OneWay}"
+                                      SelectedItem="{x:Bind ViewModel.SelectedLanguage, Mode=TwoWay}">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate x:DataType="sharedModels:AppLanguageOption">
+                                        <TextBlock Text="{x:Bind DisplayName}" />
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
                         </controls:SettingsCard>
                     </Border>
 

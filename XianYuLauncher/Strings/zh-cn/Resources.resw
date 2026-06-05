@@ -453,6 +453,15 @@
   <data name="Settings_Language_English.Content" xml:space="preserve">
     <value>English</value>
   </data>
+  <data name="Settings_LanguageOption_ZhCn" xml:space="preserve">
+    <value>简体中文</value>
+  </data>
+  <data name="Settings_LanguageOption_ZhTw" xml:space="preserve">
+    <value>繁體中文</value>
+  </data>
+  <data name="Settings_LanguageOption_EnUs" xml:space="preserve">
+    <value>English</value>
+  </data>
   <data name="Settings_LanguageDescription.Text" xml:space="preserve">
     <value>选择应用语言，更改后需要重启应用才能生效</value>
   </data>

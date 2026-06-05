@@ -12,6 +12,7 @@ using Microsoft.Win32;
 using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Helpers;
+using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Core.Services;
 using XianYuLauncher.Features.Accounts.ViewModels;
@@ -39,6 +40,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
         private readonly IJavaDownloadService _javaDownloadService;
         private readonly IThemeSelectorService _themeSelectorService;
         private readonly ILanguageSelectorService _languageSelectorService;
+        private readonly IApplicationLifecycleService _applicationLifecycleService;
         private readonly MaterialService _materialService;
         private readonly IUiDispatcher _uiDispatcher;
 
@@ -71,7 +73,14 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
 
         // 语言设置
         [ObservableProperty]
-        private string _language = "zh-CN";
+        private string _language = AppLanguageCodes.ZhCn;
+
+        public IReadOnlyList<AppLanguageOption> AvailableLanguages { get; } = AppLanguageOptionFactory.CreateAvailableLanguages();
+
+        [ObservableProperty]
+        private AppLanguageOption? _selectedLanguage;
+
+        private bool _isInitializingLanguage = true;
 
         [RelayCommand]
         private async Task SwitchTheme(ElementTheme theme)
@@ -83,31 +92,45 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             }
         }
 
-        [RelayCommand]
-        private async Task SwitchLanguage(string lang)
+        partial void OnSelectedLanguageChanged(AppLanguageOption? value)
         {
-            if (Language != lang)
+            if (_isInitializingLanguage || value == null)
             {
-                Language = lang;
-                await _languageSelectorService.SetLanguageAsync(lang);
+                return;
+            }
 
-                // WinUI 3 限制：运行时无法刷新 x:Uid，必须重启
-                var resourceLoader = new Microsoft.Windows.ApplicationModel.Resources.ResourceLoader();
-                var shouldRestartNow = await _dialogService.ShowConfirmationDialogAsync(
-                    resourceLoader.GetString("Settings_LanguageChanged_Title"),
-                    resourceLoader.GetString("Settings_LanguageChanged_Content"),
-                    resourceLoader.GetString("Settings_LanguageChanged_RestartNow"),
-                    resourceLoader.GetString("Settings_LanguageChanged_RestartLater"));
+            var newLanguage = value.Code;
+            if (string.Equals(Language, newLanguage, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
 
-                if (shouldRestartNow)
-                {
-                    var exePath = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName;
-                    if (!string.IsNullOrEmpty(exePath))
-                    {
-                        System.Diagnostics.Process.Start(exePath);
-                        App.MainWindow.Close();
-                    }
-                }
+            var previousLanguage = Language;
+            Language = newLanguage;
+
+            _ = ApplyLanguageChangeAsync(newLanguage, previousLanguage);
+        }
+
+        private async Task ApplyLanguageChangeAsync(string newLanguage, string previousLanguage)
+        {
+            if (string.IsNullOrWhiteSpace(newLanguage)
+                || string.Equals(previousLanguage, newLanguage, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            await _languageSelectorService.SetLanguageAsync(newLanguage);
+
+            var resourceLoader = new Microsoft.Windows.ApplicationModel.Resources.ResourceLoader();
+            var shouldRestart = await _dialogService.ShowConfirmationDialogAsync(
+                resourceLoader.GetString("Settings_LanguageChanged_Title"),
+                resourceLoader.GetString("Settings_LanguageChanged_Content"),
+                resourceLoader.GetString("Settings_LanguageChanged_RestartNow"),
+                resourceLoader.GetString("Settings_LanguageChanged_RestartLater"));
+
+            if (shouldRestart)
+            {
+                await _applicationLifecycleService.RestartApplicationAsync();
             }
         }
 
@@ -1078,6 +1101,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             IJavaDownloadService javaDownloadService,
             IThemeSelectorService themeSelectorService,
             ILanguageSelectorService languageSelectorService,
+            IApplicationLifecycleService applicationLifecycleService,
             MaterialService materialService,
             IUiDispatcher uiDispatcher)
         {
@@ -1096,12 +1120,15 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             _javaDownloadService = javaDownloadService;
             _themeSelectorService = themeSelectorService;
             _languageSelectorService = languageSelectorService;
+            _applicationLifecycleService = applicationLifecycleService;
             _materialService = materialService;
             _uiDispatcher = uiDispatcher;
 
             // 初始化主题和语言
             _elementTheme = _themeSelectorService.Theme;
             _language = _languageSelectorService.Language;
+            _selectedLanguage = AppLanguageOptionFactory.FindByCode(AvailableLanguages, _language);
+            _isInitializingLanguage = false;
 
             // 异步加载材质设置
             _ = LoadMaterialTypeAsync();
