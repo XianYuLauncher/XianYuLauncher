@@ -68,6 +68,59 @@ public static class SystemRegionHelper
     }
 }
 
+public static class AppLanguageCodes
+{
+    public const string ZhCn = "zh-CN";
+    public const string ZhTw = "zh-TW";
+    public const string EnUs = "en-US";
+
+    public static readonly IReadOnlyList<string> Supported = [ZhCn, ZhTw, EnUs];
+
+    public static string Normalize(string? language)
+    {
+        if (string.Equals(language, ZhCn, StringComparison.OrdinalIgnoreCase)) return ZhCn;
+        if (string.Equals(language, ZhTw, StringComparison.OrdinalIgnoreCase)) return ZhTw;
+        if (string.Equals(language, EnUs, StringComparison.OrdinalIgnoreCase)) return EnUs;
+        return GetDefaultForCurrentCulture();
+    }
+
+    public static string GetDefaultForCurrentCulture()
+    {
+        var uiCulture = CultureInfo.CurrentUICulture.Name;
+        if (uiCulture.StartsWith("zh", StringComparison.OrdinalIgnoreCase))
+        {
+            return IsTraditionalChineseRegion(uiCulture) ? ZhTw : ZhCn;
+        }
+
+        return EnUs;
+    }
+
+    public static bool IsChinese(string? language) =>
+        string.Equals(language, ZhCn, StringComparison.OrdinalIgnoreCase)
+        || string.Equals(language, ZhTw, StringComparison.OrdinalIgnoreCase);
+
+    public static bool IsTraditionalChinese(string? language) =>
+        string.Equals(language, ZhTw, StringComparison.OrdinalIgnoreCase);
+
+    public static string GetAiPromptLanguageName(string? language) => Normalize(language) switch
+    {
+        ZhCn => "Simplified Chinese",
+        ZhTw => "Traditional Chinese",
+        _ => "English"
+    };
+
+    private static bool IsTraditionalChineseRegion(string cultureName)
+    {
+        if (cultureName.StartsWith("zh-Hant", StringComparison.OrdinalIgnoreCase)) return true;
+        if (cultureName.Length >= 5 && cultureName[2] == '-'
+            && cultureName.AsSpan(3).Equals("TW", StringComparison.OrdinalIgnoreCase)) return true;
+        if (cultureName.Length >= 5 && cultureName[2] == '-'
+            && (cultureName.AsSpan(3).Equals("HK", StringComparison.OrdinalIgnoreCase)
+                || cultureName.AsSpan(3).Equals("MO", StringComparison.OrdinalIgnoreCase))) return true;
+        return false;
+    }
+}
+
 public sealed record SystemRegionContext(
     string HomeGeographicRegion,
     string CurrentCultureName,

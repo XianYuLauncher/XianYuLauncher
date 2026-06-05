@@ -763,16 +763,14 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     /// 当前应用语言
     /// </summary>
     [ObservableProperty]
-    private string _language = "zh-CN";
-    
-    /// <summary>
-    /// 语言切换命令
-    /// </summary>
-    public ICommand SwitchLanguageCommand
-    {
-        get;
-    }
-    
+    private string _language = AppLanguageCodes.ZhCn;
+
+    public IReadOnlyList<AppLanguageOption> AvailableLanguages { get; } = AppLanguageOptionFactory.CreateAvailableLanguages();
+
+    [ObservableProperty]
+    private AppLanguageOption? _selectedLanguage;
+
+    private bool _isInitializingLanguage = true;
 
     /// <summary>
     /// 旧版版本隔离兼容状态。
@@ -1175,7 +1173,9 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
 
         // 初始化语言设置
         _language = _personalizationSettingsDomainService.GetCurrentLanguage();
-        
+        _selectedLanguage = AppLanguageOptionFactory.FindByCode(AvailableLanguages, _language);
+        _isInitializingLanguage = false;
+
         SwitchThemeCommand = new RelayCommand<ElementTheme>(
             async (param) =>
             {
@@ -1195,29 +1195,6 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
                 }
             });
         
-        SwitchLanguageCommand = new RelayCommand<string>(
-            async (param) =>
-            {
-                if (!string.IsNullOrWhiteSpace(param) && Language != param)
-                {
-                    Language = param;
-                    await _personalizationSettingsDomainService.SetLanguageAsync(param);
-                    
-                    // WinUI 3 限制：运行时无法刷新 x:Uid 资源绑定，必须重启应用
-                    var resourceLoader = new Microsoft.Windows.ApplicationModel.Resources.ResourceLoader();
-                    var shouldRestart = await _dialogService.ShowConfirmationDialogAsync(
-                        resourceLoader.GetString("Settings_LanguageChanged_Title"),
-                        resourceLoader.GetString("Settings_LanguageChanged_Content"),
-                        resourceLoader.GetString("Settings_LanguageChanged_RestartNow"),
-                        resourceLoader.GetString("Settings_LanguageChanged_RestartLater"));
-
-                    if (shouldRestart)
-                    {
-                        await _applicationLifecycleService.RestartApplicationAsync();
-                    }
-                }
-            });
-
         SwitchNavigationStyleCommand = new RelayCommand<string>(
             (param) =>
             {
@@ -2127,6 +2104,48 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     partial void OnEnableVersionIsolationChanged(bool value)
     {
         QueueSettingWrite("EnableVersionIsolation", () => _gameSettingsDomainService.SaveEnableVersionIsolationAsync(value));
+    }
+
+    partial void OnSelectedLanguageChanged(AppLanguageOption? value)
+    {
+        if (_isInitializingLanguage || value == null)
+        {
+            return;
+        }
+
+        var newLanguage = value.Code;
+        if (string.Equals(Language, newLanguage, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        var previousLanguage = Language;
+        Language = newLanguage;
+
+        _ = ApplyLanguageChangeAsync(newLanguage, previousLanguage);
+    }
+
+    private async Task ApplyLanguageChangeAsync(string newLanguage, string previousLanguage)
+    {
+        if (string.IsNullOrWhiteSpace(newLanguage)
+            || string.Equals(previousLanguage, newLanguage, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        await _personalizationSettingsDomainService.SetLanguageAsync(newLanguage);
+
+        var resourceLoader = new Microsoft.Windows.ApplicationModel.Resources.ResourceLoader();
+        var shouldRestart = await _dialogService.ShowConfirmationDialogAsync(
+            resourceLoader.GetString("Settings_LanguageChanged_Title"),
+            resourceLoader.GetString("Settings_LanguageChanged_Content"),
+            resourceLoader.GetString("Settings_LanguageChanged_RestartNow"),
+            resourceLoader.GetString("Settings_LanguageChanged_RestartLater"));
+
+        if (shouldRestart)
+        {
+            await _applicationLifecycleService.RestartApplicationAsync();
+        }
     }
 
     partial void OnSelectedGameIsolationModeChanged(GameIsolationModeOption? value)

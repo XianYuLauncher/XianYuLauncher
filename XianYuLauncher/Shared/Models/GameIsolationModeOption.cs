@@ -11,3 +11,12 @@ public class GameIsolationModeOption
         return DisplayName;
     }
 }
+
+public class AppLanguageOption
+{
+    public string Code { get; init; } = string.Empty;
+
+    public string DisplayName { get; init; } = string.Empty;
+
+    public override string ToString() => DisplayName;
+}

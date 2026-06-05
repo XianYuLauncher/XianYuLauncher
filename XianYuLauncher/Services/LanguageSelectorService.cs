@@ -15,10 +15,8 @@ public class LanguageSelectorService : ILanguageSelectorService
     private const string SettingsKey = "AppLanguage";
     private const string DefaultApplicationDataFolder = "ApplicationData";
     private const string DefaultLocalSettingsFile = "LocalSettings.json";
-    private const string ChineseLanguage = "zh-CN";
-    private const string EnglishLanguage = "en-US";
 
-    public string Language { get; set; } = GetDefaultLanguage();
+    public string Language { get; set; } = AppLanguageCodes.GetDefaultForCurrentCulture();
 
     private readonly ILocalSettingsService _localSettingsService;
 
@@ -34,7 +32,7 @@ public class LanguageSelectorService : ILanguageSelectorService
 
     public async Task InitializeAsync()
     {
-        Language = NormalizeLanguage(await LoadLanguageFromSettingsAsync());
+        Language = AppLanguageCodes.Normalize(await LoadLanguageFromSettingsAsync());
         Language = ApplyLanguage(Language);
     }
 
@@ -46,26 +44,26 @@ public class LanguageSelectorService : ILanguageSelectorService
 
     private async Task<string> LoadLanguageFromSettingsAsync()
     {
-        return NormalizeLanguage(await _localSettingsService.ReadSettingAsync<string>(SettingsKey));
+        return AppLanguageCodes.Normalize(await _localSettingsService.ReadSettingAsync<string>(SettingsKey));
     }
 
     private async Task SaveLanguageInSettingsAsync(string language)
     {
-        await _localSettingsService.SaveSettingAsync(SettingsKey, NormalizeLanguage(language));
+        await _localSettingsService.SaveSettingAsync(SettingsKey, AppLanguageCodes.Normalize(language));
     }
 
     public static string ApplyLanguage(string? language)
     {
         try
         {
-            var normalizedLanguage = NormalizeLanguage(language);
+            var normalizedLanguage = AppLanguageCodes.Normalize(language);
             ApplyLanguageCore(normalizedLanguage);
             return normalizedLanguage;
         }
         catch (CultureNotFoundException)
         {
-            ApplyLanguageCore(ChineseLanguage);
-            return ChineseLanguage;
+            ApplyLanguageCore(AppLanguageCodes.ZhCn);
+            return AppLanguageCodes.ZhCn;
         }
     }
 
@@ -117,27 +115,5 @@ public class LanguageSelectorService : ILanguageSelectorService
         {
             return null;
         }
-    }
-
-    private static string NormalizeLanguage(string? language)
-    {
-        if (string.Equals(language, ChineseLanguage, StringComparison.OrdinalIgnoreCase))
-        {
-            return ChineseLanguage;
-        }
-
-        if (string.Equals(language, EnglishLanguage, StringComparison.OrdinalIgnoreCase))
-        {
-            return EnglishLanguage;
-        }
-
-        return GetDefaultLanguage();
-    }
-
-    private static string GetDefaultLanguage()
-    {
-        return CultureInfo.CurrentUICulture.Name.StartsWith("zh", StringComparison.OrdinalIgnoreCase)
-            ? ChineseLanguage
-            : EnglishLanguage;
     }
 }

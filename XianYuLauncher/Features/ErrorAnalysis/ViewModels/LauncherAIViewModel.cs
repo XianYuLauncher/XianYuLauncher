@@ -69,9 +69,7 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable,
         ? _workspaceState.Conversations.FirstOrDefault(conversation => conversation.Id == id)
         : _workspaceState.Conversations.FirstOrDefault();
 
-    public string EmptyStateText => _languageSelectorService.Language == "zh-CN"
-        ? "还没有对话，先向 Launcher AI 提一个问题。"
-        : "No conversation yet. Ask Launcher AI a question to get started.";
+    public string EmptyStateText => "LauncherAI_EmptyStateText".GetLocalized();
 
     public async Task InitializeAsync(bool ensureDefaultConversation = true)
     {
@@ -541,21 +539,20 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable,
 
         if (snapshot.ChatMessages.Any(message => message.IsUser && message.HasImageAttachments))
         {
-            return _languageSelectorService.Language == "zh-CN" ? "图片对话" : "Image Chat";
+            return "LauncherAI_ConversationTitle_ImageChat".GetLocalized();
         }
 
         if (conversation.IsErrorAnalysisConversation)
         {
-            return _languageSelectorService.Language == "zh-CN" ? "崩溃分析" : "Crash Analysis";
+            return "LauncherAI_ConversationTitle_CrashAnalysis".GetLocalized();
         }
 
-        var prefix = _languageSelectorService.Language == "zh-CN" ? "新对话" : "New Chat";
         if (fallbackNumber > 0)
         {
-            return $"{prefix} {fallbackNumber}";
+            return "LauncherAI_ConversationTitle_NewChat_Number".GetLocalized(fallbackNumber);
         }
 
-        return prefix;
+        return "LauncherAI_ConversationTitle_NewChat".GetLocalized();
     }
 
     private static string Truncate(string value, int maxLength)
@@ -1080,9 +1077,7 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable,
             {
                 Kind = "ai_analysis_in_progress",
                 InterruptedAtUtc = DateTimeOffset.UtcNow,
-                Message = _languageSelectorService.Language == "zh-CN"
-                    ? "上次应用退出时，此对话中的 AI 处理已中断。聊天历史已恢复，但不会自动继续，请根据需要重新发起请求。"
-                    : "The previous AI run in this conversation was interrupted when the app exited. History has been restored, but it will not resume automatically."
+                Message = "LauncherAI_Interruption_AiAnalysisInProgress".GetLocalized()
             };
         }
 
@@ -1092,9 +1087,7 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable,
             {
                 Kind = "tool_continuation_pending",
                 InterruptedAtUtc = DateTimeOffset.UtcNow,
-                Message = _languageSelectorService.Language == "zh-CN"
-                    ? "上次应用退出时，此对话中的待继续工具流程已中断。聊天历史和待确认操作已恢复，但不会自动继续，请根据需要重新发起请求。"
-                    : "The pending tool flow in this conversation was interrupted when the app exited. History and pending actions were restored, but the flow will not resume automatically."
+                Message = "LauncherAI_Interruption_ToolContinuationPending".GetLocalized()
             };
         }
 
@@ -1104,9 +1097,7 @@ public sealed partial class LauncherAIViewModel : ObservableObject, IDisposable,
     private UiChatMessage CreateInterruptedConversationMessage(LauncherAIConversationInterruptionStorageModel interruption)
     {
         var content = string.IsNullOrWhiteSpace(interruption.Message)
-            ? (_languageSelectorService.Language == "zh-CN"
-                ? "上次应用退出时，此对话已中断。聊天历史已恢复，但不会自动继续。"
-                : "This conversation was interrupted when the app exited. History has been restored, but it will not resume automatically.")
+            ? "LauncherAI_Interruption_Default".GetLocalized()
             : interruption.Message!;
 
         return new UiChatMessage("assistant", content, includeInAIHistory: false)

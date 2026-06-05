@@ -31,3 +31,33 @@ public class AppEnvironmentTests
         path.Should().Be(@"C:\Users\pc\AppData\Local\XianYuLauncher.Dev");
     }
 }
+
+public class AppLanguageCodesTests
+{
+    [Theory]
+    [InlineData("zh-tw", "zh-TW")]
+    [InlineData("zh-cn", "zh-CN")]
+    [InlineData("en-us", "en-US")]
+    public void Normalize_ReturnsCanonicalLanguageCodes(string input, string expected)
+    {
+        AppLanguageCodes.Normalize(input).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("zh-CN", true)]
+    [InlineData("zh-TW", true)]
+    [InlineData("en-US", false)]
+    public void IsChinese_RecognizesChineseLocales(string language, bool expected)
+    {
+        AppLanguageCodes.IsChinese(language).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("zh-CN", "Simplified Chinese")]
+    [InlineData("zh-TW", "Traditional Chinese")]
+    [InlineData("en-US", "English")]
+    public void GetAiPromptLanguageName_ReturnsExpectedPrompt(string language, string expected)
+    {
+        AppLanguageCodes.GetAiPromptLanguageName(language).Should().Be(expected);
+    }
+}

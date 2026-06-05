@@ -1,0 +1,453 @@
+{
+  "version": "1.0.0",
+  "errors": [
+    {
+      "id": "manually_triggered",
+      "type": "ManuallyTriggered",
+      "priority": 100,
+      "patterns": [
+        {
+          "type": "contains",
+          "value": "Manually triggered debug crash"
+        }
+      ],
+      "title": "除錯崩潰",
+      "analysis": "這是手動觸發的除錯崩潰，用於測試崩潰處理功能。",
+      "suggestions": [
+        "這不是真正的遊戲崩潰，無需擔心。"
+      ]
+    },
+    {
+      "id": "out_of_memory",
+      "type": "OutOfMemory",
+      "priority": 90,
+      "patterns": [
+        {
+          "type": "contains",
+          "value": "OutOfMemoryError"
+        },
+        {
+          "type": "contains",
+          "value": "Java heap space"
+        },
+        {
+          "type": "contains",
+          "value": "unable to create new native thread"
+        }
+      ],
+      "title": "記憶體不足",
+      "analysis": "遊戲因記憶體不足而崩潰。Java 虛擬機器無法分配足夠的記憶體來執行遊戲。",
+      "suggestions": [
+        "嘗試增加遊戲分配的記憶體（在版本管理中設定 JVM 引數）",
+        "關閉其他佔用記憶體的程式，如瀏覽器、影片播放器等",
+        "減少遊戲中的渲染距離和圖形設定",
+        "如果使用了大量 Mod，考慮減少 Mod 數量",
+        "對於 32 位系統，建議升級到 64 位系統以支援更大記憶體"
+      ]
+    },
+    {
+      "id": "mod_conflict",
+      "type": "ModConflict",
+      "priority": 85,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*(?i)mod.*conflict"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*(?i)mod.*conflict"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*(?i)mod.*incompatible"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*(?i)mod.*incompatible"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*Mod file"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*Mod file"
+        }
+      ],
+      "title": "Mod 衝突",
+      "analysis": "檢測到 Mod 衝突或不相容。這通常是因為多個 Mod 修改了相同的遊戲內容，或者 Mod 版本與遊戲版本不匹配。",
+      "suggestions": [
+        "仔細檢視崩潰日誌中提到的具體 Mod 名稱",
+        "嘗試移除最近新增的 Mod，逐個測試",
+        "確保所有 Mod 版本與當前遊戲版本匹配",
+        "檢查 Mod 的依賴關係，確保安裝了所有前置 Mod",
+        "訪問 Mod 的官方頁面檢視相容性說明"
+      ]
+    },
+    {
+      "id": "fabric_hard_dependency",
+      "type": "MissingDependency",
+      "priority": 96,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "(?i)(Immediate reason|Reason): \\[(HARD_DEP_NO_CANDIDATE|HARD_DEP)\\s+(?<source>[\\w\\-_]+)\\s+(?<mod_version>[^\\s]+)\\s+\\{depends\\s+(?<target>(?!java\\b)[\\w\\-_]+)\\s+@\\s+(?<version>\\[[^\\]]+\\])\\}\\]"
+        }
+      ],
+      "title": "缺少前置依賴",
+      "analysis": "檢測到模組 {source} 需要前置 {target}，版本要求 {version}。",
+      "suggestions": [
+        "點選下方按鈕嘗試自動搜尋並開啟 {target}。",
+        "如果自動搜尋失敗，請手動下載 {target} 對應版本。"
+      ],
+      "action": {
+        "type": "SearchModrinthProject",
+        "buttonText": "搜尋並開啟 {target}",
+        "parameters": {
+          "query": "{target}",
+          "projectType": "mod",
+          "loader": "auto",
+          "versionRange": "{version}"
+        }
+      }
+    },
+    {
+      "id": "fabric_incompatible_mod_version",
+      "type": "ModConflict",
+      "priority": 97,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "(?i)Immediate reason: \\[(HARD_DEP_INCOMPATIBLE_PRESELECTED)\\s+(?<source>[\\w\\-_]+)\\s+(?<mod_version>[^\\s]+)\\s+\\{depends\\s+minecraft\\s+@\\s+(?<mc_range>\\[[^\\]]+\\])\\}\\]"
+        },
+        {
+          "type": "regex",
+          "value": "(?i)Reason: \\[(HARD_DEP)\\s+(?<source>[\\w\\-_]+)\\s+(?<mod_version>[^\\s]+)\\s+\\{depends\\s+minecraft\\s+@\\s+(?<mc_range>\\[[^\\]]+\\])\\}\\]"
+        },
+        {
+          "type": "regex",
+          "value": "Fix:.*\\[\\[minecraft\\s+(?<mc_version>[^\\]\\s]+)\\]\\s*->\\s*add:minecraft\\s+(?<required_mc>[^\\s]+)"
+        }
+      ],
+      "title": "Mod 版本不相容",
+      "analysis": "檢測到模組 {source}（{mod_version}）與當前 Minecraft 版本 {mc_version} 不相容。該模組要求的 MC 版本範圍為 {mc_range}。",
+      "suggestions": [
+        "請下載與當前 Minecraft 版本相容的 {source} 模組版本",
+        "若希望保留該模組版本，請改用 {required_mc} 範圍內的 Minecraft 版本",
+        "點選下方按鈕搜尋並開啟 {source}"
+      ],
+      "actions": [
+        {
+          "type": "SearchModrinthProject",
+          "buttonText": "搜尋並開啟 {source}",
+          "parameters": {
+            "query": "{source}",
+            "projectType": "mod",
+            "loader": "auto",
+            "versionRange": "{mc_range}"
+          }
+        },
+        {
+          "type": "DeleteMod",
+          "buttonText": "刪除該 Mod",
+          "parameters": {
+            "modId": "{source}"
+          }
+        }
+      ]
+    },
+    {
+      "id": "neoforge_missing_dependency",
+      "type": "MissingDependency",
+      "priority": 94,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "Mod ID:\\s*(?:['\"‘’])?(?<target>[^,'\"‘’\\s]+)(?:['\"‘’])?\\s*,\\s*Requested by:\\s*(?:['\"‘’])?(?<source>[^,'\"‘’\\s]+)(?:['\"‘’])?\\s*,\\s*Expected range:\\s*(?:['\"‘’])?(?<version>\\[[^\\]]+\\])(?:['\"‘’])?\\s*,\\s*Actual version:\\s*(?:['\"‘’])?\\[MISSING\\](?:['\"‘’])?"
+        },
+        {
+          "type": "regex",
+          "value": "Mod\\s+(?<source>[^\\s]+)\\s+requires\\s+(?<target>[^\\s]+)\\s+(?<version>[0-9][^\\s]*)\\s+or\\s+(?<range>above|below)"
+        }
+      ],
+      "title": "缺少前置依賴",
+      "analysis": "檢測到模組 {source} 需要前置 {target}，版本要求 {version}。",
+      "suggestions": [
+        "點選下方按鈕嘗試自動搜尋並開啟 {target}。",
+        "如果自動搜尋失敗，請手動下載 {target} 對應版本。"
+      ],
+      "action": {
+        "type": "SearchModrinthProject",
+        "buttonText": "搜尋並開啟 {target}",
+        "parameters": {
+          "query": "{target}",
+          "projectType": "mod",
+          "loader": "auto",
+          "versionRange": "{version}"
+        }
+      }
+    },
+    {
+      "id": "missing_dependency",
+      "type": "MissingDependency",
+      "priority": 80,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*ClassNotFoundException"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*ClassNotFoundException"
+        },
+        {
+          "type": "regex",
+          "value": "(?i)caused by.*ClassNotFoundException"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*NoClassDefFoundError"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*NoClassDefFoundError"
+        },
+        {
+          "type": "regex",
+          "value": "(?i)caused by.*NoClassDefFoundError"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*FileNotFoundException"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*FileNotFoundException"
+        }
+      ],
+      "title": "缺少依賴",
+      "analysis": "遊戲缺少必要的依賴檔案或類庫。這可能是因為遊戲檔案不完整，或者某些 Mod 缺少前置依賴。",
+      "suggestions": [
+        "嘗試重新下載並安裝遊戲版本",
+        "檢查是否缺少必要的庫檔案（libraries 資料夾）",
+        "確保遊戲檔案完整，沒有被防毒軟體誤刪",
+        "如果使用了 Mod，檢查是否安裝了所有前置 Mod",
+        "嘗試使用啟動器的修復功能重新下載缺失檔案"
+      ]
+    },
+    {
+      "id": "entity_tick_crash",
+      "type": "Unknown",
+      "priority": 93,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "(?i)(ReportedException:\\s*Ticking entity|Description:\\s*Ticking entity)"
+        },
+        {
+          "type": "regex",
+          "value": "Entity Type:\\s*(?<entity_type>[^\\s]+)(?:\\s*\\((?<entity_class>[^\\)]+)\\))?"
+        },
+        {
+          "type": "regex",
+          "value": "Entity ID:\\s*(?<entity_id>\\d+)"
+        },
+        {
+          "type": "regex",
+          "value": "Entity Name:\\s*(?<entity_name>.+)"
+        },
+        {
+          "type": "regex",
+          "value": "Entity's Exact location:\\s*(?<entity_pos>-?\\d+\\.?\\d*\\s*,\\s*-?\\d+\\.?\\d*\\s*,\\s*-?\\d+\\.?\\d*)"
+        },
+        {
+          "type": "regex",
+          "value": "Level dimension:\\s*(?<dimension>[^\\s]+)"
+        }
+      ],
+      "title": "實體 Tick 崩潰",
+      "analysis": "檢測到實體 {entity_type}（{entity_name}，ID {entity_id}）在 {dimension} 座標 {entity_pos} 發生崩潰（實體 Tick）。通常是實體邏輯異常或相關 Mod 注入導致。",
+      "suggestions": [
+        "如果這是自定義實體或 Mod 實體，請檢查其 Tick 邏輯是否丟擲異常",
+        "嘗試移除或更新與該實體相關的 Mod",
+        "若無法進入世界，可回檔或在存檔中移除該實體",
+        "如果是渲染執行緒崩潰，檢查客戶端側渲染相關 Mod"
+      ]
+    },
+    {
+      "id": "java_version_mismatch",
+      "type": "JavaVersionMismatch",
+      "priority": 95,
+      "patterns": [
+        {
+          "type": "contains",
+          "value": "UnsupportedClassVersionError"
+        },
+        {
+          "type": "contains",
+          "value": "java.lang.UnsupportedClassVersionError"
+        },
+        {
+          "type": "regex",
+          "value": "(?i)unsupported.*class.*version"
+        },
+        {
+          "type": "regex",
+          "value": "class file version \\d+\\.\\d+"
+        },
+        {
+          "type": "regex",
+          "value": "compiled by a more recent version"
+        },
+        {
+          "type": "regex",
+          "value": "(?i)\\bFix:\\s*add.*replace.*\\bjava\\s*\\d+"
+        }
+      ],
+      "title": "Java 版本不匹配",
+      "analysis": "Java 版本不匹配。遊戲需要更高版本的 Java 才能執行。當前使用的 Java 版本過低，無法載入較新版本編譯的類檔案。",
+      "suggestions": [
+        "檢查遊戲所需的 Java 版本（通常在遊戲說明中）",
+        "在啟動器設定中選擇正確的 Java 版本",
+        "Minecraft 1.17+ 建議使用 Java 17",
+        "Minecraft 1.20.5+ 需要 Java 21",
+        "如果當前 Java 版本過低（如 Java 8），請下載並安裝更高版本的 Java"
+      ],
+      "action": {
+        "type": "SwitchJavaForVersion",
+        "buttonText": "自動切換 Java 並重新啟動",
+        "parameters": {
+          "source": "version.json"
+        }
+      }
+    },
+    {
+      "id": "graphics_driver",
+      "type": "GraphicsDriver",
+      "priority": 75,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*OpenGL"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*OpenGL"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*GLFW"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*GLFW"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*graphics driver"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*graphics driver"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*pixel format"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*pixel format"
+        }
+      ],
+      "title": "顯示卡驅動問題",
+      "analysis": "圖形驅動程式問題。遊戲無法正確初始化圖形渲染系統。",
+      "suggestions": [
+        "更新顯示卡驅動程式到最新版本",
+        "如果使用膝上型電腦，確保遊戲使用獨立顯示卡而非整合顯示卡",
+        "嘗試在啟動引數中新增 -Dorg.lwjgl.opengl.Display.allowSoftwareOpenGL=true",
+        "檢查 OpenGL 版本是否滿足遊戲要求（通常需要 OpenGL 3.2+）",
+        "對於老舊顯示卡，考慮使用 OptiFine 等最佳化 Mod"
+      ]
+    },
+    {
+      "id": "network_error",
+      "type": "NetworkError",
+      "priority": 70,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*Connection refused"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*Connection refused"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*Connection timed out"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*Connection timed out"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*UnknownHostException"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*UnknownHostException"
+        }
+      ],
+      "title": "網路連線問題",
+      "analysis": "網路連線問題。遊戲無法連線到伺服器或下載必要的資源。",
+      "suggestions": [
+        "檢查網路連線是否正常",
+        "如果連線多人伺服器，確認伺服器地址和埠正確",
+        "嘗試關閉防火牆或防毒軟體的網路攔截",
+        "檢查是否需要配置代理伺服器",
+        "如果下載資源失敗，嘗試切換下載源"
+      ]
+    },
+    {
+      "id": "corrupted_world",
+      "type": "CorruptedWorld",
+      "priority": 65,
+      "patterns": [
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*(?i)corrupt.*chunk"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*(?i)corrupt.*chunk"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*Failed to load chunk"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*Failed to load chunk"
+        },
+        {
+          "type": "regex",
+          "value": "\\[ERROR\\].*region file"
+        },
+        {
+          "type": "regex",
+          "value": "\\[FATAL\\].*region file"
+        }
+      ],
+      "title": "存檔損壞",
+      "analysis": "存檔檔案損壞。遊戲世界的某些區塊資料出現問題。",
+      "suggestions": [
+        "嘗試使用備份恢復存檔",
+        "如果只是部分割槽塊損壞，可以刪除對應的 region 檔案（會重新生成地形）",
+        "定期備份重要存檔以防資料丟失",
+        "檢查硬碟是否有壞道或空間不足"
+      ]
+    }
+  ]
+}
