@@ -26,8 +26,7 @@
 - **服务器管理**：添加/管理服务器、实时状态检测（MOTD、在线人数、延迟）、一键启动实例并加入服务器
 
 ### 🔧 智能诊断与修复
-- **AI 崩溃分析**：支持接入 OpenAI Chat Completions API 兼容服务，智能分析崩溃原因 *（需自行配置 Chat Completions API 基础 URL 与 API Key）*
-- **XianYu Fixer**：一键修复常见问题（Java 版本不匹配、Mod 前置缺失等）
+- **Launcher AI**：支持接入 OpenAI Chat Completions API 兼容服务，自动完成游戏、模组安装、崩溃修复与更多 *（需自行配置 Chat Completions API 基础 URL 与 API Key）*
 - **知识库匹配**：内置错误知识库，快速定位问题并提供解决方案
 - **实时日志**：游戏输出实时监控，支持日志导出
 
