@@ -545,7 +545,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels
             PickerLocationId.PicturesLibrary,
             PickerViewMode.Thumbnail,
             settingsIdentifier: "LauncherAIChatImages",
-            commitButtonText: _languageSelectorService.Language == "zh-CN" ? "选择图片" : "Select images");
+            commitButtonText: "ErrorAnalysis_SelectImages".GetLocalized());
 
         if (selectedPaths.Count == 0)
         {

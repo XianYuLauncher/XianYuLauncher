@@ -477,6 +477,33 @@
   <data name="Settings_LanguageChanged_RestartLater" xml:space="preserve">
     <value>稍后重启</value>
   </data>
+  <data name="LauncherAI_EmptyStateText" xml:space="preserve">
+    <value>还没有对话，先向 Launcher AI 提一个问题。</value>
+  </data>
+  <data name="LauncherAI_ConversationTitle_ImageChat" xml:space="preserve">
+    <value>图片对话</value>
+  </data>
+  <data name="LauncherAI_ConversationTitle_CrashAnalysis" xml:space="preserve">
+    <value>崩溃分析</value>
+  </data>
+  <data name="LauncherAI_ConversationTitle_NewChat" xml:space="preserve">
+    <value>新对话</value>
+  </data>
+  <data name="LauncherAI_ConversationTitle_NewChat_Number" xml:space="preserve">
+    <value>新对话 {0}</value>
+  </data>
+  <data name="LauncherAI_Interruption_AiAnalysisInProgress" xml:space="preserve">
+    <value>上次应用退出时，此对话中的 AI 处理已中断。聊天历史已恢复，但不会自动继续，请根据需要重新发起请求。</value>
+  </data>
+  <data name="LauncherAI_Interruption_ToolContinuationPending" xml:space="preserve">
+    <value>上次应用退出时，此对话中的待继续工具流程已中断。聊天历史和待确认操作已恢复，但不会自动继续，请根据需要重新发起请求。</value>
+  </data>
+  <data name="LauncherAI_Interruption_Default" xml:space="preserve">
+    <value>上次应用退出时，此对话已中断。聊天历史已恢复，但不会自动继续。</value>
+  </data>
+  <data name="ErrorAnalysis_SelectImages" xml:space="preserve">
+    <value>选择图片</value>
+  </data>
   <data name="Settings_JavaTitle.Text" xml:space="preserve">
     <value>Java 设置</value>
   </data>

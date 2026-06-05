@@ -477,6 +477,33 @@
   <data name="Settings_LanguageChanged_RestartLater" xml:space="preserve">
     <value>Later</value>
   </data>
+  <data name="LauncherAI_EmptyStateText" xml:space="preserve">
+    <value>No conversation yet. Ask Launcher AI a question to get started.</value>
+  </data>
+  <data name="LauncherAI_ConversationTitle_ImageChat" xml:space="preserve">
+    <value>Image Chat</value>
+  </data>
+  <data name="LauncherAI_ConversationTitle_CrashAnalysis" xml:space="preserve">
+    <value>Crash Analysis</value>
+  </data>
+  <data name="LauncherAI_ConversationTitle_NewChat" xml:space="preserve">
+    <value>New Chat</value>
+  </data>
+  <data name="LauncherAI_ConversationTitle_NewChat_Number" xml:space="preserve">
+    <value>New Chat {0}</value>
+  </data>
+  <data name="LauncherAI_Interruption_AiAnalysisInProgress" xml:space="preserve">
+    <value>The previous AI run in this conversation was interrupted when the app exited. History has been restored, but it will not resume automatically.</value>
+  </data>
+  <data name="LauncherAI_Interruption_ToolContinuationPending" xml:space="preserve">
+    <value>The pending tool flow in this conversation was interrupted when the app exited. History and pending actions were restored, but the flow will not resume automatically.</value>
+  </data>
+  <data name="LauncherAI_Interruption_Default" xml:space="preserve">
+    <value>This conversation was interrupted when the app exited. History has been restored, but it will not resume automatically.</value>
+  </data>
+  <data name="ErrorAnalysis_SelectImages" xml:space="preserve">
+    <value>Select images</value>
+  </data>
   <data name="Settings_JavaTitle.Text" xml:space="preserve">
     <value>Java Settings</value>
   </data>

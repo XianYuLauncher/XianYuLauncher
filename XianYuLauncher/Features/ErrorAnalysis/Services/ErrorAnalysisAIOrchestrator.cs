@@ -5,6 +5,7 @@ using XianYuLauncher.Contracts.Services;
 using XianYuLauncher.Contracts.Services.Settings;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Exceptions;
+using XianYuLauncher.Core.Helpers;
 using XianYuLauncher.Core.Models;
 using XianYuLauncher.Features.ErrorAnalysis.Models;
 using XianYuLauncher.Helpers;
@@ -660,7 +661,7 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
     private async Task<List<ChatMessage>> BuildApiMessagesAsync(CancellationToken cancellationToken)
     {
         List<ChatMessage> apiMessages = [];
-        string languageForAi = _languageSelectorService.Language == "zh-CN" ? "Simplified Chinese" : "English";
+        string languageForAi = AppLanguageCodes.GetAiPromptLanguageName(_languageSelectorService.Language);
         var settings = await _aiSettingsDomainService.LoadAsync();
         apiMessages.Add(new ChatMessage("system", BuildSystemPrompt(settings, languageForAi)));
 
