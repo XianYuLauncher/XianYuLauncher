@@ -183,11 +183,17 @@ public sealed class ModLoaderIconPresentationService : IModLoaderIconPresentatio
             && string.Equals(loaderName, selectedModLoaderName, StringComparison.OrdinalIgnoreCase);
     }
 
+    public string GetIconDisplayName(string fileNameWithoutExt, string parentFolderName)
+    {
+        return BuildIconDisplayName(fileNameWithoutExt, parentFolderName);
+    }
+
     private static string BuildIconDisplayName(string fileNameWithoutExt, string parentFolderName)
     {
         return fileNameWithoutExt.ToLowerInvariant() switch
         {
             "grass_block_side" => "Vanilla",
+            "icon_128x128" => "Vanilla",
             "fabric" => "Fabric",
             "fabric_icon" => "Fabric",
             "forge" => "Forge",
