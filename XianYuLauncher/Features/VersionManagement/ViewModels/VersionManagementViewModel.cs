@@ -1074,7 +1074,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         string fileNameWithoutExt;
         string parentFolderName;
-        bool isBuiltInAssetPath = normalizedPath.StartsWith("ms-appx://", StringComparison.OrdinalIgnoreCase);
+        bool isBuiltInAssetPath = AppAssetResolver.IsAppAssetPath(normalizedPath);
 
         if (Uri.TryCreate(normalizedPath, UriKind.Absolute, out var fileUri) && fileUri.IsFile)
         {
