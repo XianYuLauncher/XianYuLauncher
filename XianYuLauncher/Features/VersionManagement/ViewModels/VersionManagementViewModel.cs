@@ -1074,6 +1074,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
         string fileNameWithoutExt;
         string parentFolderName;
+        bool isBuiltInAssetPath = normalizedPath.StartsWith("ms-appx://", StringComparison.OrdinalIgnoreCase);
 
         if (Uri.TryCreate(normalizedPath, UriKind.Absolute, out var fileUri) && fileUri.IsFile)
         {
@@ -1092,7 +1093,14 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             return;
         }
 
-        SelectedVersionIconDisplayName = _modLoaderIconPresentationService.GetIconDisplayName(fileNameWithoutExt, parentFolderName);
+        if (isBuiltInAssetPath)
+        {
+            SelectedVersionIconDisplayName = _modLoaderIconPresentationService.GetIconDisplayName(fileNameWithoutExt, parentFolderName);
+        }
+        else
+        {
+            SelectedVersionIconDisplayName = fileNameWithoutExt;
+        }
     }
 
     private void InitializeOverviewCountObservers()
