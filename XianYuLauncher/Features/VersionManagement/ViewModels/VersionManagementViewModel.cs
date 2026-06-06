@@ -1072,18 +1072,35 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             return;
         }
 
+        string fileNameWithoutExt;
+        string parentFolderName;
+        bool isBuiltInAssetPath = AppAssetResolver.IsAppAssetPath(normalizedPath);
+
         if (Uri.TryCreate(normalizedPath, UriKind.Absolute, out var fileUri) && fileUri.IsFile)
         {
-            var fileNameFromUri = Path.GetFileNameWithoutExtension(fileUri.LocalPath);
-            if (!string.IsNullOrWhiteSpace(fileNameFromUri))
-            {
-                SelectedVersionIconDisplayName = fileNameFromUri;
-                return;
-            }
+            fileNameWithoutExt = Path.GetFileNameWithoutExtension(fileUri.LocalPath);
+            parentFolderName = Path.GetFileName(Path.GetDirectoryName(fileUri.LocalPath) ?? string.Empty);
+        }
+        else
+        {
+            fileNameWithoutExt = Path.GetFileNameWithoutExtension(normalizedPath);
+            parentFolderName = Path.GetFileName(Path.GetDirectoryName(normalizedPath) ?? string.Empty);
         }
 
-        var fileName = Path.GetFileNameWithoutExtension(normalizedPath);
-        SelectedVersionIconDisplayName = string.IsNullOrWhiteSpace(fileName) ? "Vanilla" : fileName;
+        if (string.IsNullOrWhiteSpace(fileNameWithoutExt))
+        {
+            SelectedVersionIconDisplayName = "Vanilla";
+            return;
+        }
+
+        if (isBuiltInAssetPath)
+        {
+            SelectedVersionIconDisplayName = _modLoaderIconPresentationService.GetIconDisplayName(fileNameWithoutExt, parentFolderName);
+        }
+        else
+        {
+            SelectedVersionIconDisplayName = fileNameWithoutExt;
+        }
     }
 
     private void InitializeOverviewCountObservers()
