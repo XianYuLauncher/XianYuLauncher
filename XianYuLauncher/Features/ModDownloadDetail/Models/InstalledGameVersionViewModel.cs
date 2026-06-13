@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace XianYuLauncher.Features.ModDownloadDetail.Models
 {
-    // 已安装游戏版本ViewModel
+    // 已安装游戏版本 ViewModel
     public partial class InstalledGameVersionViewModel : ObservableObject
     {
         [ObservableProperty]

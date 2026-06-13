@@ -43,7 +43,7 @@ public sealed partial class WorldOverviewPage : Page
                 var originalToolTip = ToolTipService.GetToolTip(button);
                 ToolTipService.SetToolTip(button, "已复制！");
                 
-                // 2秒后恢复原始提示
+                // 2 秒后恢复原始提示
                 var timer = new System.Threading.Timer(_ =>
                 {
                     _uiDispatcher.TryEnqueue(() =>

@@ -13,7 +13,7 @@ using XianYuLauncher.Helpers;
 namespace XianYuLauncher.Features.Dialogs.ViewModels;
 
 /// <summary>
-/// 更新弹窗的ViewModel
+/// 更新弹窗的 ViewModel
 /// </summary>
 public partial class UpdateDialogViewModel : ObservableRecipient
 {

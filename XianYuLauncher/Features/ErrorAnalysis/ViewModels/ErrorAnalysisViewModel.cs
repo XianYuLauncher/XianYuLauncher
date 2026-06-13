@@ -86,7 +86,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels
         }
 
         /// <summary>
-        /// 加入QQ群进行反馈
+        /// 加入 QQ 群进行反馈
         /// </summary>
         [RelayCommand]
         private async Task JoinQQGroup()

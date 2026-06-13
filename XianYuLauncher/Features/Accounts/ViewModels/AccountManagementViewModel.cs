@@ -42,7 +42,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
     }
 
     /// <summary>
-    /// 角色管理页面的ViewModel
+    /// 角色管理页面的 ViewModel
     /// </summary>
     public partial class AccountManagementViewModel : ObservableRecipient, INavigationAware, IPageHeaderAware
     {
@@ -185,7 +185,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         private MinecraftAccount _currentProfile = new() { IsOffline = true };
         
         /// <summary>
-        /// 原始UUID，用于保存时查找要更新的角色
+        /// 原始 UUID，用于保存时查找要更新的角色
         /// </summary>
         private string _originalUUID = string.Empty;
 
@@ -195,7 +195,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// <param name="value">新的角色信息</param>
         partial void OnCurrentProfileChanged(MinecraftAccount value)
         {
-            // 初始化新用户名和UUID
+            // 初始化新用户名和 UUID
             if (value != null)
             {
                 NewUsername = value.Name;
@@ -203,7 +203,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                 _originalUUID = value.Id; // 保存原始UUID用于后续更新
             }
             
-            // 通知UI IsCapeSelectionEnabled和IsCapeApplyEnabled属性可能发生变化
+            // 通知 UI IsCapeSelectionEnabled 和 IsCapeApplyEnabled 属性可能发生变化
             OnPropertyChanged(nameof(IsCapeSelectionEnabled));
             OnPropertyChanged(nameof(IsCapeApplyEnabled));
             ApplyHeaderMetadata();
@@ -212,13 +212,13 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// <summary>
         /// 处理皮肤纹理，确保清晰显示
         /// </summary>
-        /// <param name="skinUrl">皮肤纹理URL</param>
+        /// <param name="skinUrl">皮肤纹理 URL</param>
         /// <returns>处理后的皮肤纹理</returns>
         private async Task<Microsoft.UI.Xaml.Media.ImageSource?> ProcessSkinTextureAsync(string skinUrl)
         {
             try
             {
-                // 创建CanvasDevice
+                // 创建 CanvasDevice
                 var device = CanvasDevice.GetSharedDevice();
                 CanvasBitmap canvasBitmap;
 
@@ -236,7 +236,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                     canvasBitmap = await CanvasBitmap.LoadAsync(device, stream.AsRandomAccessStream());
                 }
 
-                // 创建CanvasRenderTarget用于处理，使用固定大小确保清晰显示
+                // 创建 CanvasRenderTarget 用于处理，使用固定大小确保清晰显示
                 var renderTarget = new CanvasRenderTarget(
                     device,
                     128, // 显示宽度
@@ -255,7 +255,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                         new Windows.Foundation.Rect(0, 0, canvasBitmap.SizeInPixels.Width, canvasBitmap.SizeInPixels.Height)); // 源位置和大小
                 }
 
-                // 转换为BitmapImage
+                // 转换为 BitmapImage
                 using (var outputStream = new InMemoryRandomAccessStream())
                 {
                     await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
@@ -279,7 +279,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         private string _newUsername = string.Empty;
         
         /// <summary>
-        /// 新UUID（用于修改UUID功能）
+        /// 新 UUID（用于修改 UUID 功能）
         /// </summary>
         [ObservableProperty]
         private string _newUUID = string.Empty;
@@ -301,7 +301,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             {
                 SelectedCape = value.FirstOrDefault();
             }
-            // 通知UI IsCapeSelectionEnabled和IsCapeApplyEnabled属性可能发生变化
+            // 通知 UI IsCapeSelectionEnabled 和 IsCapeApplyEnabled 属性可能发生变化
             OnPropertyChanged(nameof(IsCapeSelectionEnabled));
             OnPropertyChanged(nameof(IsCapeApplyEnabled));
         }
@@ -318,7 +318,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// <param name="value">新选中的披风</param>
         partial void OnSelectedCapeChanged(CapeInfo? value)
         {
-            // 通知UI IsCapeApplyEnabled属性可能发生变化
+            // 通知 UI IsCapeApplyEnabled 属性可能发生变化
             OnPropertyChanged(nameof(IsCapeApplyEnabled));
         }
         
@@ -329,7 +329,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         private SkinInfo? _currentSkin;
         
         /// <summary>
-        /// 当前皮肤变化时，通知UI CurrentSkinModel属性可能发生变化
+        /// 当前皮肤变化时，通知 UI CurrentSkinModel 属性可能发生变化
         /// </summary>
         /// <param name="value">新的皮肤信息</param>
         partial void OnCurrentSkinChanged(SkinInfo? value)
@@ -488,7 +488,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         }
         
         /// <summary>
-        /// 保存UUID修改命令
+        /// 保存 UUID 修改命令
         /// </summary>
         [RelayCommand]
         private void SaveUUID()
@@ -508,7 +508,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         {
             try
             {
-                // 🔒 使用 AccountManager 安全保存（自动加密token）
+                // 🔒 使用 AccountManager 安全保存（自动加密 token）
                 var profiles = await _accountManager.LoadAccountsAsync();
                 
                 // 更新当前角色
@@ -627,7 +627,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// 上传皮肤到服务器（根据账户类型自动选择 API）
         /// </summary>
         /// <param name="file">皮肤文件</param>
-        /// <param name="model">皮肤模型：空字符串为Steve，"slim"为Alex</param>
+        /// <param name="model">皮肤模型：空字符串为 Steve，"slim"为 Alex</param>
         public async Task UploadSkinAsync(Windows.Storage.StorageFile file, string model)
         {
             // 根据账户类型选择不同的上传方式
@@ -647,14 +647,14 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// 上传皮肤到 Mojang API（微软账户）
         /// </summary>
         /// <param name="file">皮肤文件</param>
-        /// <param name="model">皮肤模型：空字符串为Steve，"slim"为Alex</param>
+        /// <param name="model">皮肤模型：空字符串为 Steve，"slim"为 Alex</param>
         private async Task UploadSkinToMojangAsync(Windows.Storage.StorageFile file, string model)
         {
-            // 1. 准备API请求 - 使用POST方法
+            // 1. 准备 API 请求 - 使用 POST 方法
             var apiUrl = "https://api.minecraftservices.com/minecraft/profile/skins";
             var request = new HttpRequestMessage(HttpMethod.Post, apiUrl);
             
-            // 2. 添加Authorization头
+            // 2. 添加 Authorization 头
             if (!string.IsNullOrWhiteSpace(CurrentProfile.AccessToken))
             {
                 request.Headers.Authorization = new AuthenticationHeaderValue(
@@ -662,11 +662,11 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                     CurrentProfile.AccessToken);
             }
             
-            // 3. 准备multipart/form-data请求体
+            // 3. 准备 multipart/form-data 请求体
             var formContent = new MultipartFormDataContent();
             
-            // 4. 添加variant参数
-            // variant: classic为Steve模型，slim为Alex模型
+            // 4. 添加 variant 参数
+            // variant: classic 为 Steve 模型，slim 为 Alex 模型
             string variant = "classic"; // 默认Steve模型
             if (!string.IsNullOrWhiteSpace(model) && (model.Equals("slim", StringComparison.OrdinalIgnoreCase) || model.Equals("SLIM", StringComparison.OrdinalIgnoreCase)))
             {
@@ -676,7 +676,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                 new StringContent(variant),
                 "variant");
             
-            // 5. 添加file参数
+            // 5. 添加 file 参数
             using (var fileStream = await file.OpenStreamForReadAsync())
             {
                 var fileContent = new StreamContent(fileStream);
@@ -707,7 +707,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// 上传皮肤到外置登录服务器（Yggdrasil API）
         /// </summary>
         /// <param name="file">皮肤文件</param>
-        /// <param name="model">皮肤模型：空字符串为Steve，"slim"为Alex</param>
+        /// <param name="model">皮肤模型：空字符串为 Steve，"slim"为 Alex</param>
         private async Task UploadSkinToExternalServerAsync(Windows.Storage.StorageFile file, string model)
         {
             if (string.IsNullOrEmpty(CurrentProfile.AuthServer))
@@ -760,7 +760,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             {
                 try
                 {
-                    // 调用API切换披风
+                    // 调用 API 切换披风
                     await SwitchCapeAsync(SelectedCape.Id);
                     // 更新成功后，刷新配置
                     await LoadCapesAsync();
@@ -773,15 +773,15 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         }
         
         /// <summary>
-        /// 从披风URL中裁剪并处理披风图标
+        /// 从披风 URL 中裁剪并处理披风图标
         /// </summary>
-        /// <param name="capeUrl">披风纹理URL</param>
+        /// <param name="capeUrl">披风纹理 URL</param>
         /// <returns>处理后的披风图标</returns>
         private async Task<ImageSource?> ProcessCapeIconAsync(string capeUrl)
         {
             try
             {
-                // 创建CanvasDevice
+                // 创建 CanvasDevice
                 var device = CanvasDevice.GetSharedDevice();
                 CanvasBitmap canvasBitmap;
                 
@@ -799,7 +799,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                     canvasBitmap = await CanvasBitmap.LoadAsync(device, stream.AsRandomAccessStream());
                 }
                 
-                // 创建CanvasRenderTarget用于裁剪和处理
+                // 创建 CanvasRenderTarget 用于裁剪和处理
                 var renderTarget = new CanvasRenderTarget(
                     device,
                     16, // 显示宽度
@@ -810,7 +810,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                 // 执行裁剪和放大，使用最近邻插值保持像素锐利
                 using (var ds = renderTarget.CreateDrawingSession())
                 {
-                    // 从源图片的(1,1)位置裁剪9x16区域（披风图标区域：1,1到10,16）
+                    // 从源图片的(1,1)位置裁剪 9x16 区域（披风图标区域：1,1 到 10,16）
                     PixelArtRenderHelper.DrawNearestNeighbor(
                         ds,
                         canvasBitmap,
@@ -818,7 +818,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                         new Windows.Foundation.Rect(1, 1, 10, 16)); // 源位置和大小（1,1-10,17）
                 }
                 
-                // 转换为BitmapImage
+                // 转换为 BitmapImage
                 using (var outputStream = new InMemoryRandomAccessStream())
                 {
                     await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
@@ -844,23 +844,23 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             {
                 try
                 {
-                    // 根据不同的TokenType处理不同的登录方式
+                    // 根据不同的 TokenType 处理不同的登录方式
                     if (CurrentProfile.TokenType == "external")
                     {
-                        // 外部登录账号：使用Yggdrasil API获取纹理
+                        // 外部登录账号：使用 Yggdrasil API 获取纹理
                         await LoadExternalLoginTexturesAsync();
                     }
                     else
                     {
-                        // 微软账号：使用Mojang API获取纹理
+                        // 微软账号：使用 Mojang API 获取纹理
                         // 检查并刷新令牌
                         if (CurrentProfile != null)
                         {
-                            // 计算Minecraft访问令牌的过期时间
+                            // 计算 Minecraft 访问令牌的过期时间
                             DateTime minecraftTokenIssueTime = CurrentProfile.IssueInstant;
                             DateTime minecraftTokenExpiryTime = minecraftTokenIssueTime.AddSeconds(CurrentProfile.ExpiresIn);
                             
-                            // 检查令牌是否即将过期（30分钟内）
+                            // 检查令牌是否即将过期（30 分钟内）
                             var timeUntilExpiry = minecraftTokenExpiryTime - DateTime.UtcNow;
                             if (timeUntilExpiry.TotalMinutes <= 30)
                             {
@@ -884,11 +884,11 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                             }
                         }
                         
-                        // 准备API请求
+                        // 准备 API 请求
                         var apiUrl = "https://api.minecraftservices.com/minecraft/profile";
                         var request = new HttpRequestMessage(HttpMethod.Get, apiUrl);
                         
-                        // 添加Authorization请求头
+                        // 添加 Authorization 请求头
                         string? accessToken = CurrentProfile?.AccessToken;
                         if (!string.IsNullOrWhiteSpace(accessToken))
                         {
@@ -919,7 +919,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                                     {
                                         try
                                         {
-                                            // 使用WIN2D处理皮肤纹理，确保清晰显示
+                                            // 使用 WIN2D 处理皮肤纹理，确保清晰显示
                                             CurrentSkinTexture = await ProcessSkinTextureAsync(CurrentSkin.Url);
                                         }
                                         catch (Exception)
@@ -995,7 +995,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         {
             try
             {
-                // 1. 构建profile.properties URL
+                // 1. 构建 profile.properties URL
                 // 通常格式：https://authserver.example.com/sessionserver/session/minecraft/profile/{uuid}
                 string? authServer = CurrentProfile.AuthServer;
                 string uuid = CurrentProfile.Id;
@@ -1005,13 +1005,13 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                     return;
                 }
                 
-                // 确保authServer以/结尾，否则添加/
+                // 确保 authServer 以/结尾，否则添加/
                 string baseUrl = authServer.TrimEnd('/') + "/";
                 
-                // 构建完整的session URL，格式：{baseUrl}sessionserver/session/minecraft/profile/{uuid}
+                // 构建完整的 session URL，格式：{baseUrl}sessionserver/session/minecraft/profile/{uuid}
                 string sessionUrl = $"{baseUrl}sessionserver/session/minecraft/profile/{uuid}";
 
-                // 2. 发送请求获取profile.properties
+                // 2. 发送请求获取 profile.properties
                 var httpClient = new HttpClient();
                 httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
                 var response = await httpClient.GetAsync(sessionUrl);
@@ -1024,14 +1024,14 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                 var responseJson = await response.Content.ReadAsStringAsync();
                 var profileData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(responseJson);
 
-                // 4. 检查properties
+                // 4. 检查 properties
                 var properties = profileData?["properties"] as JArray;
                 if (properties == null || properties.Count == 0)
                 {
                     return;
                 }
 
-                // 5. 查找textures属性
+                // 5. 查找 textures 属性
                 string? texturesBase64 = properties
                     .OfType<JObject>()
                     .FirstOrDefault(property => string.Equals(property["name"]?.ToString(), "textures", StringComparison.Ordinal))?
@@ -1042,12 +1042,12 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                     return;
                 }
 
-                // 6. 解码textures
+                // 6. 解码 textures
                 byte[] texturesBytes = Convert.FromBase64String(texturesBase64);
                 string texturesJson = System.Text.Encoding.UTF8.GetString(texturesBytes);
                 var texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(texturesJson);
 
-                // 7. 提取皮肤和披风URL
+                // 7. 提取皮肤和披风 URL
                 string? skinUrl = texturesData?["textures"]?["SKIN"]?["url"]?.ToString();
                 string? capeUrl = texturesData?["textures"]?["CAPE"]?["url"]?.ToString();
 
@@ -1058,10 +1058,10 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                     {
                         try
                         {
-                            // 使用WIN2D处理皮肤纹理，确保清晰显示
+                            // 使用 WIN2D 处理皮肤纹理，确保清晰显示
                             CurrentSkinTexture = await ProcessSkinTextureAsync(skinUrl);
                             
-                            // 创建临时SkinInfo对象，用于保存皮肤信息
+                            // 创建临时 SkinInfo 对象，用于保存皮肤信息
                             CurrentSkin = new SkinInfo
                             {
                                 Id = "external-skin",
@@ -1082,7 +1082,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                     {
                         try
                         {
-                            // 使用WIN2D处理披风纹理，确保清晰显示
+                            // 使用 WIN2D 处理披风纹理，确保清晰显示
                             CurrentCapeTexture = await ProcessCapeTextureAsync(capeUrl);
                         }
                         catch (Exception)
@@ -1101,13 +1101,13 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// <summary>
         /// 处理披风纹理，确保清晰显示
         /// </summary>
-        /// <param name="capeUrl">披风纹理URL</param>
+        /// <param name="capeUrl">披风纹理 URL</param>
         /// <returns>处理后的披风纹理</returns>
         private async Task<Microsoft.UI.Xaml.Media.ImageSource?> ProcessCapeTextureAsync(string capeUrl)
         {
             try
             {
-                // 创建CanvasDevice
+                // 创建 CanvasDevice
                 var device = CanvasDevice.GetSharedDevice();
                 CanvasBitmap canvasBitmap;
 
@@ -1125,7 +1125,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                     canvasBitmap = await CanvasBitmap.LoadAsync(device, stream.AsRandomAccessStream());
                 }
 
-                // 创建CanvasRenderTarget用于处理，使用固定大小确保清晰显示
+                // 创建 CanvasRenderTarget 用于处理，使用固定大小确保清晰显示
                 var renderTarget = new CanvasRenderTarget(
                     device,
                     128, // 显示宽度
@@ -1144,7 +1144,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                         new Windows.Foundation.Rect(0, 0, canvasBitmap.SizeInPixels.Width, canvasBitmap.SizeInPixels.Height)); // 源位置和大小
                 }
 
-                // 转换为BitmapImage
+                // 转换为 BitmapImage
                 using (var outputStream = new InMemoryRandomAccessStream())
                 {
                     await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);
@@ -1164,7 +1164,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// <summary>
         /// 切换披风
         /// </summary>
-        /// <param name="capeId">披风ID</param>
+        /// <param name="capeId">披风 ID</param>
         private async Task SwitchCapeAsync(string capeId)
         {
             // 构建请求内容
@@ -1185,7 +1185,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                 Content = content
             };
             
-            // 添加Authorization头
+            // 添加 Authorization 头
             if (!string.IsNullOrWhiteSpace(CurrentProfile.AccessToken))
             {
                 request.Headers.Authorization = new AuthenticationHeaderValue(
@@ -1205,7 +1205,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         public class CapeInfo
         {
             /// <summary>
-            /// 披风ID
+            /// 披风 ID
             /// </summary>
             [System.Text.Json.Serialization.JsonPropertyName("id")]
             public string Id { get; set; } = string.Empty;
@@ -1217,7 +1217,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             public string State { get; set; } = string.Empty;
             
             /// <summary>
-            /// 披风URL
+            /// 披风 URL
             /// </summary>
             [System.Text.Json.Serialization.JsonPropertyName("url")]
             public string Url { get; set; } = string.Empty;
@@ -1245,7 +1245,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         public class SkinInfo
         {
             /// <summary>
-            /// 皮肤ID
+            /// 皮肤 ID
             /// </summary>
             [System.Text.Json.Serialization.JsonPropertyName("id")]
             public string Id { get; set; } = string.Empty;
@@ -1257,7 +1257,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             public string State { get; set; } = string.Empty;
             
             /// <summary>
-            /// 皮肤URL
+            /// 皮肤 URL
             /// </summary>
             [System.Text.Json.Serialization.JsonPropertyName("url")]
             public string Url { get; set; } = string.Empty;
@@ -1281,7 +1281,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         private class ProfileResponse
         {
             /// <summary>
-            /// 玩家UUID
+            /// 玩家 UUID
             /// </summary>
             [System.Text.Json.Serialization.JsonPropertyName("id")]
             public string Id { get; set; } = string.Empty;

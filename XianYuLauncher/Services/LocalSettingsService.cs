@@ -111,7 +111,7 @@ public class LocalSettingsService : ILocalSettingsService
                         return directValue;
                     }
                     
-                    // 调试：检查读取的Java版本数据
+                    // 调试：检查读取的 Java 版本数据
                     if (key == "JavaVersions")
                     {
                         Console.WriteLine($"读取 Java 版本列表，类型: {obj.GetType().Name}");
@@ -219,7 +219,7 @@ public class LocalSettingsService : ILocalSettingsService
 
                 _settings[key] = value!;
                 
-                // 调试：检查保存的Java版本数量
+                // 调试：检查保存的 Java 版本数量
                 if (key == "JavaVersions" && value is List<object> javaList)
                 {
                     Console.WriteLine($"保存 Java 版本列表，数量: {javaList.Count}");

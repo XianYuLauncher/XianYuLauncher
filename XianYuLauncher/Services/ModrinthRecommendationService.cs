@@ -39,7 +39,7 @@ public class ModrinthRecommendationService
     }
     
     /// <summary>
-    /// 获取当前下载源对应的User-Agent
+    /// 获取当前下载源对应的 User-Agent
     /// </summary>
     private string GetUserAgent(IDownloadSource? source = null)
     {
@@ -132,7 +132,7 @@ public class ModrinthRecommendationService
             }
             else
             {
-                // 无 FallbackDownloadManager 时直接请求官方API
+                // 无 FallbackDownloadManager 时直接请求官方 API
                 using var request = new HttpRequestMessage(HttpMethod.Get, OfficialApiUrl);
                 ConfigureModrinthRequest(request, _downloadSourceFactory.GetModrinthSource());
                 httpResponse = await _httpClient.SendAsync(request);

@@ -59,7 +59,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     public ShadersViewModel ShadersModule { get; private set; } = null!;
     /// <summary>资源包管理子 ViewModel</summary>
     public ResourcePacksViewModel ResourcePacksModule { get; private set; } = null!;
-    /// <summary>Mod管理子 ViewModel</summary>
+    /// <summary>Mod 管理子 ViewModel</summary>
     public ModsViewModel ModsModule { get; private set; } = null!;
     private readonly IFileService _fileService;
     private readonly IMinecraftVersionService _minecraftVersionService;
@@ -79,7 +79,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private VersionListViewModel.VersionInfoItem? _selectedVersion;
 
     /// <summary>
-    /// 当前版本的Minecraft文件夹路径
+    /// 当前版本的 Minecraft 文件夹路径
     /// </summary>
     [ObservableProperty]
     private string _minecraftPath = string.Empty;
@@ -266,7 +266,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     }
     
     /// <summary>
-    /// Mod数量
+    /// Mod 数量
     /// </summary>
     public int ModCount => ModsModule?.Mods.Count ?? 0;
     
@@ -553,7 +553,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private string _currentLoaderSummaryDisplay = string.Empty;
     
     /// <summary>
-    /// 当前加载器图标URL（主加载器）
+    /// 当前加载器图标 URL（主加载器）
     /// </summary>
     [ObservableProperty]
     private string? _currentLoaderIconUrl;
@@ -667,7 +667,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private bool _isResultDialogVisible = false;
     
     /// <summary>
-    /// 当前选中的Tab索引
+    /// 当前选中的 Tab 索引
     /// </summary>
     [ObservableProperty]
     private int _selectedTabIndex = 0;
@@ -765,13 +765,13 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     private double _maximumHeapMemory = 12;
     
     /// <summary>
-    /// Java设置模式（已废弃，由 UseGlobalSettings 统一控制）
+    /// Java 设置模式（已废弃，由 UseGlobalSettings 统一控制）
     /// </summary>
     [ObservableProperty]
     private bool _useGlobalJavaSetting = true;
     
     /// <summary>
-    /// Java路径
+    /// Java 路径
     /// </summary>
     [ObservableProperty]
     private string _javaPath = string.Empty;
@@ -964,7 +964,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         ResourceTransferState = new ResourceTransferStateViewModel(resourceTransferInfrastructureService);
         ResourceTransferState.PropertyChanged += ResourceTransferState_PropertyChanged;
         
-        // 订阅Minecraft路径变化事件
+        // 订阅 Minecraft 路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
         
         // 初始化子 ViewModels
@@ -1336,7 +1336,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     }
     
     /// <summary>
-    /// 浏览Java路径命令
+    /// 浏览 Java 路径命令
     /// </summary>
     [RelayCommand]
     private async Task BrowseJavaAsync()
@@ -1374,7 +1374,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
 
     
     /// <summary>
-    /// 当Minecraft路径变化时触发。
+    /// 当 Minecraft 路径变化时触发。
     /// MinecraftPathChanged 由 FileService 在后台线程（Settings 防抖保存）或 UI 线程触发，
     /// 整个处理必须在 UI 线程执行，否则 PropertyChanged（MinecraftPath、IsLoading 等）会引发 COMException (0x8001010E)。
     /// async void 需包 try/catch，避免调度失败或内部异常以未观察异常形式崩溃进程。
@@ -2119,7 +2119,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     }
     
     /// <summary>
-    /// 从选中的版本获取Minecraft版本号
+    /// 从选中的版本获取 Minecraft 版本号
     /// </summary>
     private async Task<string> GetMinecraftVersionFromSelectedVersionAsync()
     {
@@ -2217,7 +2217,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
         catch (Exception ex)
         {
-            // 对于Legacy Fabric，如果是版本未找到等错误，不显示状态消息（避免干扰用户）
+            // 对于 Legacy Fabric，如果是版本未找到等错误，不显示状态消息（避免干扰用户）
             if (loader.LoaderType.Equals("LegacyFabric", StringComparison.OrdinalIgnoreCase))
             {
                 System.Diagnostics.Debug.WriteLine($"加载{loader.Name}版本列表失败：{ex.Message}");
@@ -2264,7 +2264,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     }
     
     /// <summary>
-    /// 卸载加载器命令（RemoveLoaderAsync的别名）
+    /// 卸载加载器命令（RemoveLoaderAsync 的别名）
     /// </summary>
     [RelayCommand]
     private async Task UninstallLoaderAsync(LoaderItemViewModel loader)
@@ -2274,7 +2274,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     
     /// <summary>
     /// 保存扩展配置命令 - 将选中的加载器安装到版本目录
-    /// 流程：下载原版JSON覆盖 → 执行安装逻辑（跳过JAR下载）
+    /// 流程：下载原版 JSON 覆盖 → 执行安装逻辑（跳过 JAR 下载）
     /// </summary>
     [RelayCommand]
     private async Task SaveExtensionConfigAsync()
@@ -2722,7 +2722,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 });
             }
 
-            // 恢复加载状态，避免UI阻塞
+            // 恢复加载状态，避免 UI 阻塞
             IsLoading = true;
             if (!string.Equals(_trackedModpackUpdateVersionName, SelectedVersion.Name, StringComparison.OrdinalIgnoreCase))
             {
@@ -2878,7 +2878,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
             {
                 var saveInfos = await _overviewDataService.LoadSavesAsync(SelectedVersion, CurrentGameDir, cancellationToken);
                 
-                // 更新UI
+                // 更新 UI
                 _uiDispatcher.TryEnqueue(() =>
                 {
                     try
@@ -3059,7 +3059,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     }
     
     /// <summary>
-    /// 打开当前选中Tab对应的文件夹
+    /// 打开当前选中 Tab 对应的文件夹
     /// </summary>
     [RelayCommand]
     private async Task OpenCurrentFolderAsync()
@@ -3207,7 +3207,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     #region 共享图标和资源工具方法
 
     /// <summary>
-    /// 计算文件的SHA1哈希值
+    /// 计算文件的 SHA1 哈希值
     /// </summary>
     public string CalculateSHA1(string filePath)
     {
@@ -3241,10 +3241,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         /// <summary>
         /// 异步加载并更新单个资源的图标
         /// </summary>
-        /// <param name="iconProperty">图标属性的Action委托</param>
+        /// <param name="iconProperty">图标属性的 Action 委托</param>
         /// <param name="filePath">资源文件路径</param>
         /// <param name="resourceType">资源类型</param>
-        /// <param name="isModrinthSupported">是否支持从Modrinth API获取</param>
+        /// <param name="isModrinthSupported">是否支持从 Modrinth API 获取</param>
         /// <param name="cancellationToken">取消令牌</param>
         public async Task LoadResourceIconAsync(Action<string> iconProperty, string filePath, string resourceType, bool isModrinthSupported = false, CancellationToken cancellationToken = default)
         {
@@ -3337,9 +3337,9 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
         
         /// <summary>
-        /// 下载Mod文件
+        /// 下载 Mod 文件
         /// </summary>
-        /// <param name="downloadUrl">下载URL</param>
+        /// <param name="downloadUrl">下载 URL</param>
         /// <param name="destinationPath">保存路径</param>
         /// <returns>是否下载成功</returns>
         public async Task<bool> DownloadModAsync(string downloadUrl, string destinationPath)
@@ -3394,10 +3394,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     [RelayCommand]
     private void NavigateToDataPackPage()
     {
-        // 设置ResourceDownloadPage的TargetTabIndex为3（资源包下载标签页，数据包和资源包共用一个页面）
+        // 设置 ResourceDownloadPage 的 TargetTabIndex 为 3（资源包下载标签页，数据包和资源包共用一个页面）
         XianYuLauncher.Features.ResourceDownload.Views.ResourceDownloadPage.TargetTabIndex = 3;
         
-        // 导航到ResourceDownloadPage
+        // 导航到 ResourceDownloadPage
         _navigationService.NavigateTo(typeof(XianYuLauncher.Features.ResourceDownload.ViewModels.ResourceDownloadViewModel).FullName!);
     }
     
@@ -3407,10 +3407,10 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     [RelayCommand]
     private void NavigateToMapPage()
     {
-        // 设置ResourceDownloadPage的TargetTabIndex为6（世界下载标签页）
+        // 设置 ResourceDownloadPage 的 TargetTabIndex 为 6（世界下载标签页）
         XianYuLauncher.Features.ResourceDownload.Views.ResourceDownloadPage.TargetTabIndex = 6;
         
-        // 导航到ResourceDownloadPage
+        // 导航到 ResourceDownloadPage
         _navigationService.NavigateTo(typeof(XianYuLauncher.Features.ResourceDownload.ViewModels.ResourceDownloadViewModel).FullName!);
     }
 

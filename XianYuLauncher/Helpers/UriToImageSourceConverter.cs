@@ -4,7 +4,7 @@ using Microsoft.UI.Xaml.Media.Imaging;
 namespace XianYuLauncher.Helpers
 {
     /// <summary>
-    /// 将Uri转换为ImageSource的转换器
+    /// 将 Uri 转换为 ImageSource 的转换器
     /// </summary>
     public class UriToImageSourceConverter : IValueConverter
     {
@@ -18,7 +18,7 @@ namespace XianYuLauncher.Helpers
                 }
                 catch (Exception)
                 {
-                    // 如果Uri无效，返回null
+                    // 如果 Uri 无效，返回 null
                     return null;
                 }
             }

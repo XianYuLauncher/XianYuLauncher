@@ -1,32 +1,32 @@
 namespace XianYuLauncher.Models.VersionManagement;
 
 /// <summary>
-/// 版本设置数据模型，用于存储XianYuL.cfg中的配置信息
+/// 版本设置数据模型，用于存储 XianYuL.cfg 中的配置信息
 /// </summary>
 public class VersionSettings
 {
     /// <summary>
-    /// ModLoader类型（fabric, neoforge, forge）
+    /// ModLoader 类型（fabric, neoforge, forge）
     /// </summary>
     public string ModLoaderType { get; set; } = string.Empty;
     
     /// <summary>
-    /// ModLoader版本号
+    /// ModLoader 版本号
     /// </summary>
     public string ModLoaderVersion { get; set; } = string.Empty;
     
     /// <summary>
-    /// Optifine版本号
+    /// Optifine 版本号
     /// </summary>
     public string? OptifineVersion { get; set; }
 
     /// <summary>
-    /// LiteLoader版本号（如果安装了LiteLoader）
+    /// LiteLoader 版本号（如果安装了 LiteLoader）
     /// </summary>
     public string? LiteLoaderVersion { get; set; }
 
     /// <summary>
-    /// Minecraft版本号
+    /// Minecraft 版本号
     /// </summary>
     public string MinecraftVersion { get; set; } = string.Empty;
     
@@ -56,12 +56,12 @@ public class VersionSettings
     public double MaximumHeapMemory { get; set; } = 12;
     
     /// <summary>
-    /// Java路径
+    /// Java 路径
     /// </summary>
     public string JavaPath { get; set; } = string.Empty;
     
     /// <summary>
-    /// 是否使用全局Java设置
+    /// 是否使用全局 Java 设置
     /// </summary>
     public bool UseGlobalJavaSetting { get; set; } = true;
     

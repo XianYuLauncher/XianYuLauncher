@@ -29,7 +29,7 @@ public class DefaultActivationHandler : ActivationHandler<LaunchActivatedEventAr
             // 检查是否已经完成新手教程
             bool isTutorialCompleted = await _localSettingsService.ReadSettingAsync<bool>("TutorialCompleted");
             
-            // 添加Debug输出，以便在Visual Studio中查看
+            // 添加 Debug 输出，以便在 Visual Studio 中查看
             System.Diagnostics.Debug.WriteLine($"[首次启动检查] TutorialCompleted 值: {isTutorialCompleted}");
             
             if (!isTutorialCompleted)

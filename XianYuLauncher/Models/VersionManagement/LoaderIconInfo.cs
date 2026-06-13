@@ -11,7 +11,7 @@ public class LoaderIconInfo
     public string Name { get; set; } = string.Empty;
     
     /// <summary>
-    /// 加载器图标URL
+    /// 加载器图标 URL
     /// </summary>
     public string IconUrl { get; set; } = string.Empty;
     

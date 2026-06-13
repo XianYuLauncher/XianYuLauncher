@@ -66,7 +66,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
     [ObservableProperty]
     private int _modOffset = 0;
     
-    // 为每个平台单独维护offset
+    // 为每个平台单独维护 offset
     private int _modrinthModOffset = 0;
     private int _curseForgeModOffset = 0;
     // 使用复合 key：(classId, categoryId, loaderType, gameVersion)，支持多选分页
@@ -210,7 +210,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
             int modrinthTotalHits = 0;
             int curseForgeTotalHits = 0;
 
-            // 从Modrinth搜索或缓存加载
+            // 从 Modrinth 搜索或缓存加载
             if (_host.IsModrinthEnabled())
             {
                 var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
@@ -247,7 +247,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
                 }
             }
 
-            // 从CurseForge搜索或缓存加载
+            // 从 CurseForge 搜索或缓存加载
             if (_host.IsCurseForgeEnabled())
             {
                 var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
@@ -306,7 +306,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
             // 翻译描述（如果当前语言是中文）
             await _host.TranslateProjectDescriptionsAsync(allMods);
 
-            // 更新Mod列表
+            // 更新 Mod 列表
             Mods.Clear();
             foreach (var mod in allMods)
             {
@@ -358,7 +358,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
             int modrinthTotalHits = 0;
             int curseForgeTotalHits = 0;
 
-            // 从Modrinth加载更多
+            // 从 Modrinth 加载更多
             if (_host.IsModrinthEnabled())
             {
                 var facets = ToModrinthFacetLists(modSearchQuery.ModrinthFacets);
@@ -385,7 +385,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
                 }
             }
 
-            // 从CurseForge加载更多
+            // 从 CurseForge 加载更多
             if (_host.IsCurseForgeEnabled())
             {
                 try

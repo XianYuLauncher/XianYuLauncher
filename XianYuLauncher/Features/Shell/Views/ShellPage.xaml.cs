@@ -66,7 +66,7 @@ public sealed partial class ShellPage : Page
         _materialService.BackgroundChanged += OnBackgroundChanged;
         _materialService.MotionSettingsChanged += OnMotionSettingsChanged;
         
-        // 设置材质应用委托（UI层实现）
+        // 设置材质应用委托（UI 层实现）
         _materialService.ApplyMaterialAction = ApplyMaterialToWindowImpl;
         Log.Information("[Material.Shell] ApplyMaterialAction assigned in ShellPage constructor.");
         
@@ -255,7 +255,7 @@ public sealed partial class ShellPage : Page
     }
     
     /// <summary>
-    /// 应用材质到窗口的实现（UI层）
+    /// 应用材质到窗口的实现（UI 层）
     /// </summary>
     private void ApplyMaterialToWindowImpl(object windowObj, MaterialType materialType)
     {

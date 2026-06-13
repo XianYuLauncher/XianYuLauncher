@@ -35,7 +35,7 @@ using XianYuLauncher.Shared.Models;
 namespace XianYuLauncher.Features.Settings.ViewModels;
 
 /// <summary>
-/// Java选择方式枚举
+/// Java 选择方式枚举
 /// </summary>
 public enum JavaSelectionModeType
 {
@@ -50,7 +50,7 @@ public enum JavaSelectionModeType
 }
 
 /// <summary>
-/// Minecraft游戏目录项
+/// Minecraft 游戏目录项
 /// </summary>
 public partial class MinecraftPathItem : ObservableObject
 {
@@ -181,7 +181,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     }
     
     /// <summary>
-    /// 游戏资源下载源列表（MC本体、ModLoader、版本列表）
+    /// 游戏资源下载源列表（MC 本体、ModLoader、版本列表）
     /// </summary>
     [ObservableProperty]
     private ObservableCollection<DownloadSourceItem> _gameDownloadSources = new ObservableCollection<DownloadSourceItem>();
@@ -370,7 +370,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     private bool _autoSelectFastestSource = false;
 
     /// <summary>
-    /// 是否可以手动选择下载源（当自动选择关闭时为true）
+    /// 是否可以手动选择下载源（当自动选择关闭时为 true）
     /// </summary>
     public bool CanSelectDownloadSource => !AutoSelectFastestSource;
 
@@ -405,7 +405,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     private List<Core.Models.SpeedTestResult> _communitySourceSpeedResults = new();
 
     /// <summary>
-    /// 测速结果列表（CurseForge资源源）
+    /// 测速结果列表（CurseForge 资源源）
     /// </summary>
     [ObservableProperty]
     private List<Core.Models.SpeedTestResult> _curseforgeSourceSpeedResults = new();
@@ -477,7 +477,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     private string _fastestFileDownloadSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
 
     /// <summary>
-    /// 显示的最快CurseForge源信息
+    /// 显示的最快 CurseForge 源信息
     /// </summary>
     [ObservableProperty]
     private string _fastestCurseForgeSourceInfo = "Settings_SpeedTest_NeverTested".GetLocalized();
@@ -546,7 +546,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     private XianYuLauncher.Core.Services.MaterialType _materialType = XianYuLauncher.Core.Services.MaterialType.Mica;
     
     /// <summary>
-    /// 材质类型列表，用于ComboBox数据源
+    /// 材质类型列表，用于 ComboBox 数据源
     /// </summary>
     public List<XianYuLauncher.Core.Services.MaterialType> MaterialTypes => Enum.GetValues<XianYuLauncher.Core.Services.MaterialType>().ToList();
     
@@ -808,14 +808,14 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     [ObservableProperty]
     private string? _javaPath;
     
-    // 保存之前的Minecraft路径，用于回退
+    // 保存之前的 Minecraft 路径，用于回退
     private string? _previousMinecraftPath;
     
     [ObservableProperty]
     private string? _minecraftPath;
     
     /// <summary>
-    /// Minecraft游戏目录列表
+    /// Minecraft 游戏目录列表
     /// </summary>
     [ObservableProperty]
     private ObservableCollection<MinecraftPathItem> _minecraftPaths = new ObservableCollection<MinecraftPathItem>();
@@ -827,35 +827,35 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     private MinecraftPathItem? _selectedMinecraftPathItem;
     
     /// <summary>
-    /// Minecraft路径列表存储键
+    /// Minecraft 路径列表存储键
     /// </summary>
     /// <summary>
-    /// 所有检测到的Java版本列表
+    /// 所有检测到的 Java 版本列表
     /// </summary>
     [ObservableProperty]
     private ObservableCollection<JavaVersionInfo> _javaVersions = new ObservableCollection<JavaVersionInfo>();
     
     /// <summary>
-    /// 当前选中的Java版本
+    /// 当前选中的 Java 版本
     /// </summary>
     [ObservableProperty]
     private JavaVersionInfo? _selectedJavaVersion;
     
     /// <summary>
-    /// Java列表是否正在加载
+    /// Java 列表是否正在加载
     /// </summary>
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(CanRefreshJavaVersions))]
     private bool _isLoadingJavaVersions = false;
 
     /// <summary>
-    /// Java选择方式
+    /// Java 选择方式
     /// </summary>
     [ObservableProperty]
     private JavaSelectionModeType _javaSelectionMode = JavaSelectionModeType.Auto;
 
     /// <summary>
-    /// 是否可以刷新Java版本列表
+    /// 是否可以刷新 Java 版本列表
     /// </summary>
     public bool CanRefreshJavaVersions => !IsLoadingJavaVersions;
 
@@ -874,13 +874,13 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     private ObservableCollection<AcknowledgmentPerson> _acknowledgmentPersons;
     
     /// <summary>
-    /// 下载前置Mod设置
+    /// 下载前置 Mod 设置
     /// </summary>
     [ObservableProperty]
     private bool _downloadDependencies = true;
     
     /// <summary>
-    /// 下载前置Mod设置键
+    /// 下载前置 Mod 设置键
     /// </summary>
     private const string DownloadDependenciesKey = "DownloadDependencies";
     
@@ -1051,7 +1051,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     }
     
     /// <summary>
-    /// 加载爱发电赞助者列表（带24小时缓存）
+    /// 加载爱发电赞助者列表（带 24 小时缓存）
     /// </summary>
     private async Task LoadAfdianSponsorsAsync()
     {
@@ -1209,7 +1209,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
             _aboutSettingsDomainService.GetDefaultAcknowledgments()
                 .Select(item => new AcknowledgmentPerson(item.Name, item.SupportInfo, item.Avatar)));
         
-        // 初始化Java版本列表变化事件
+        // 初始化 Java 版本列表变化事件
         JavaVersions.CollectionChanged += JavaVersions_CollectionChanged;
 
         // Phase4 之前字体加载是独立异步任务，不阻塞初始化主链路。
@@ -1347,17 +1347,17 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     }
     
     /// <summary>
-    /// 加载下载前置Mod设置
+    /// 加载下载前置 Mod 设置
     /// </summary>
     private async Task LoadDownloadDependenciesAsync()
     {
-        // 读取下载前置Mod设置，如果不存在则使用默认值true
+        // 读取下载前置 Mod 设置，如果不存在则使用默认值 true
         var value = await _settingsRepository.ReadAsync<bool?>(DownloadDependenciesKey);
         DownloadDependencies = value ?? true;
     }
     
     /// <summary>
-    /// 当下载前置Mod设置变化时保存
+    /// 当下载前置 Mod 设置变化时保存
     /// </summary>
     partial void OnDownloadDependenciesChanged(bool value)
     {
@@ -1369,7 +1369,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     /// </summary>
     private async Task LoadHideSnapshotVersionsAsync()
     {
-        // 读取隐藏快照版本设置，如果不存在则使用默认值true
+        // 读取隐藏快照版本设置，如果不存在则使用默认值 true
         var value = await _settingsRepository.ReadAsync<bool?>(HideSnapshotVersionsKey);
         HideSnapshotVersions = value ?? true;
     }
@@ -1401,11 +1401,11 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
 
         DownloadQueueMaxConcurrentTasks = normalizedQueueValue;
 
-        // 读取下载线程数设置，如果不存在则使用默认值32
+        // 读取下载线程数设置，如果不存在则使用默认值 32
         var value = await _settingsRepository.ReadAsync<int?>(DownloadThreadCountKey);
         DownloadThreadCount = value ?? 32;
 
-         // 读取下载分片数设置，如果不存在则使用默认值4
+         // 读取下载分片数设置，如果不存在则使用默认值 4
         var shardValue = await _settingsRepository.ReadAsync<int?>(DownloadShardCountKey);
         DownloadShardCount = shardValue ?? 4;
     }
@@ -1665,7 +1665,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     /// </summary>
     private async Task LoadEnableTelemetryAsync()
     {
-        // 读取遥测设置，如果不存在则使用默认值true
+        // 读取遥测设置，如果不存在则使用默认值 true
         EnableTelemetry = await _aboutSettingsDomainService.LoadTelemetryEnabledAsync();
     }
 
@@ -1768,7 +1768,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
             }
 
             // 移除设置页打开时的材质刷新，避免窗口闪烁
-            // 材质在应用启动时已经由MainWindow.ApplyMaterialSettings()应用
+            // 材质在应用启动时已经由 MainWindow.ApplyMaterialSettings()应用
             BackgroundImagePath = state.BackgroundImagePath;
             BackgroundBlurAmount = state.BackgroundBlurAmount;
             Log.Information("[Material.Settings] LoadMaterialSettings applied to view model. MaterialType={MaterialType}; BackgroundImagePath={BackgroundImagePath}; BackgroundBlurAmount={BackgroundBlurAmount}; IsInitializingMaterial={IsInitializingMaterial}", MaterialType, BackgroundImagePath ?? string.Empty, BackgroundBlurAmount, _isInitializingMaterial);
@@ -1790,7 +1790,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
             Log.Information("[Material.Settings] MaterialType changed. Value={MaterialType}; IsInitializing={IsInitializing}; WindowAvailable={WindowAvailable}; BackgroundImagePath={BackgroundImagePath}", value, isInitializing, App.MainWindow is not null, BackgroundImagePath ?? string.Empty);
             if (!isInitializing)
             {
-                // 保存设置（异步调用，不等待完成，避免阻塞UI）
+                // 保存设置（异步调用，不等待完成，避免阻塞 UI）
                 Log.Information("[Material.Settings] Queue material type save. MaterialType={MaterialType}", value);
                 QueueSettingWrite("MaterialType", () => _personalizationSettingsDomainService.SaveMaterialTypeAsync(value));
             }
@@ -1954,10 +1954,10 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
             // 通过修改应用资源来设置全局字体
             if (fontFamilyName != null && fontFamilyName != "默认")
             {
-                // 创建FontFamily对象
+                // 创建 FontFamily 对象
                 var fontFamily = new Microsoft.UI.Xaml.Media.FontFamily(fontFamilyName);
                 
-                // 设置所有可能的全局FontFamily资源
+                // 设置所有可能的全局 FontFamily 资源
                 App.Current.Resources["ContentControlThemeFontFamily"] = fontFamily;
                 App.Current.Resources["ControlContentThemeFontFamily"] = fontFamily;
                 App.Current.Resources["TextControlThemeFontFamily"] = fontFamily;
@@ -2019,7 +2019,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
             // 设置主窗口内容的字体
             if (App.MainWindow != null && App.MainWindow.Content is Microsoft.UI.Xaml.Controls.Control rootControl)
             {
-                // 创建FontFamily对象或使用null（默认字体）
+                // 创建 FontFamily 对象或使用 null（默认字体）
                 Microsoft.UI.Xaml.Media.FontFamily? fontFamily = null;
                 if (fontFamilyName != null && fontFamilyName != "默认")
                 {
@@ -2028,22 +2028,22 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
                 
                 rootControl.FontFamily = fontFamily;
                 
-                // 更新TextBlock相关样式
+                // 更新 TextBlock 相关样式
                 if (fontFamily != null)
                 {
-                    // 更新CaptionTextBlockStyle（用于灰色小字）
+                    // 更新 CaptionTextBlockStyle（用于灰色小字）
                     var captionStyle = new Microsoft.UI.Xaml.Style(typeof(Microsoft.UI.Xaml.Controls.TextBlock));
                     captionStyle.BasedOn = App.Current.Resources["CaptionTextBlockStyle"] as Microsoft.UI.Xaml.Style;
                     captionStyle.Setters.Add(new Microsoft.UI.Xaml.Setter(Microsoft.UI.Xaml.Controls.TextBlock.FontFamilyProperty, fontFamily));
                     App.Current.Resources["CaptionTextBlockStyle"] = captionStyle;
                     
-                    // 更新BodyTextBlockStyle
+                    // 更新 BodyTextBlockStyle
                     var bodyStyle = new Microsoft.UI.Xaml.Style(typeof(Microsoft.UI.Xaml.Controls.TextBlock));
                     bodyStyle.BasedOn = App.Current.Resources["BodyTextBlockStyle"] as Microsoft.UI.Xaml.Style;
                     bodyStyle.Setters.Add(new Microsoft.UI.Xaml.Setter(Microsoft.UI.Xaml.Controls.TextBlock.FontFamilyProperty, fontFamily));
                     App.Current.Resources["BodyTextBlockStyle"] = bodyStyle;
                     
-                    // 更新PageTitleStyle（用于Shell标题）
+                    // 更新 PageTitleStyle（用于 Shell 标题）
                     var titleStyle = new Microsoft.UI.Xaml.Style(typeof(Microsoft.UI.Xaml.Controls.TextBlock));
                     titleStyle.BasedOn = App.Current.Resources["PageTitleStyle"] as Microsoft.UI.Xaml.Style;
                     titleStyle.Setters.Add(new Microsoft.UI.Xaml.Setter(Microsoft.UI.Xaml.Controls.TextBlock.FontFamilyProperty, fontFamily));
@@ -2065,7 +2065,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     /// </summary>
     private void ApplyFontToVisualTree(Microsoft.UI.Xaml.DependencyObject root, Microsoft.UI.Xaml.Media.FontFamily? fontFamily)
     {
-        // 应用到当前元素（如果是Control类型）
+        // 应用到当前元素（如果是 Control 类型）
         if (root is Microsoft.UI.Xaml.Controls.Control control)
         {
             control.FontFamily = fontFamily;
@@ -2186,7 +2186,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     }
     
     /// <summary>
-    /// 加载Java选择方式
+    /// 加载 Java 选择方式
     /// </summary>
     private async Task LoadJavaSelectionModeAsync()
     {
@@ -2207,7 +2207,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     }
     
     /// <summary>
-    /// 当Java选择方式变化时保存
+    /// 当 Java 选择方式变化时保存
     /// </summary>
     partial void OnJavaSelectionModeChanged(JavaSelectionModeType value)
     {
@@ -2216,7 +2216,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     }
     
     /// <summary>
-    /// 刷新Java版本列表
+    /// 刷新 Java 版本列表
     /// </summary>
     [RelayCommand]
     private async Task RefreshJavaVersionsAsync()
@@ -2236,7 +2236,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
             Console.WriteLine($"当前列表中有 {existingVersions.Count} 个 Java 版本");
             cancellationToken.ThrowIfCancellationRequested();
             
-            // 使用JavaRuntimeService扫描系统中的Java版本
+            // 使用 JavaRuntimeService 扫描系统中的 Java 版本
             var scannedJavaVersions = await _javaRuntimeService.DetectJavaVersionsAsync(forceRefresh: true);
             Console.WriteLine($"系统扫描到 {scannedJavaVersions.Count} 个 Java 版本");
             cancellationToken.ThrowIfCancellationRequested();
@@ -2244,7 +2244,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
             // 清空当前列表
             JavaVersions.Clear();
             
-            // 智能合并：先添加扫描到的系统Java
+            // 智能合并：先添加扫描到的系统 Java
             foreach (var jv in scannedJavaVersions)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -2258,7 +2258,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
                 });
             }
             
-            // 再添加用户手动添加的Java（路径不重复的）
+            // 再添加用户手动添加的 Java（路径不重复的）
             foreach (var existing in existingVersions)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -2290,7 +2290,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     }
     
     /// <summary>
-    /// 清除所有Java版本
+    /// 清除所有 Java 版本
     /// </summary>
     [RelayCommand]
     private async Task ClearJavaVersionsAsync()
@@ -2397,11 +2397,11 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
         }
     }
 
-    // 注意：以下Java扫描方法已被JavaRuntimeService替代
-    // 所有Java检测逻辑现在统一在XianYuLauncher.Core/Services/JavaRuntimeService.cs中
+    // 注意：以下 Java 扫描方法已被 JavaRuntimeService 替代
+    // 所有 Java 检测逻辑现在统一在 XianYuLauncher.Core/Services/JavaRuntimeService.cs 中
     
     /// <summary>
-    /// 加载保存的Java版本列表
+    /// 加载保存的 Java 版本列表
     /// </summary>
     private async Task LoadJavaVersionsAsync()
     {
@@ -2471,7 +2471,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
 
     
     /// <summary>
-    /// 保存Java版本列表到本地设置
+    /// 保存 Java 版本列表到本地设置
     /// </summary>
     private async Task SaveJavaVersionsAsync()
     {
@@ -2499,7 +2499,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     }
     
     /// <summary>
-    /// Java版本列表变化事件处理
+    /// Java 版本列表变化事件处理
     /// </summary>
     private void JavaVersions_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
     {
@@ -2515,7 +2515,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     
     
     /// <summary>
-    /// 解析Java版本号（已废弃，使用JavaRuntimeService.TryParseJavaVersion）
+    /// 解析 Java 版本号（已废弃，使用 JavaRuntimeService.TryParseJavaVersion）
     /// </summary>
     private bool TryParseJavaVersion(string javaVersionString, out int majorVersion)
     {
@@ -2547,7 +2547,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     }
     
     /// <summary>
-    /// 手动添加Java版本到列表
+    /// 手动添加 Java 版本到列表
     /// </summary>
     [RelayCommand]
     private async Task AddJavaVersionAsync()
@@ -2566,7 +2566,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
             try
             {
                 Console.WriteLine($"正在解析 Java 可执行文件: {selectedPath}");
-                // 使用JavaRuntimeService解析Java版本信息
+                // 使用 JavaRuntimeService 解析 Java 版本信息
                 var javaVersion = await _javaRuntimeService.GetJavaVersionInfoAsync(selectedPath);
                 if (javaVersion != null)
                 {
@@ -2756,7 +2756,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     #region Minecraft游戏目录管理
     
     /// <summary>
-    /// 加载Minecraft游戏目录列表
+    /// 加载 Minecraft 游戏目录列表
     /// </summary>
     private async Task LoadMinecraftPathsAsync()
     {
@@ -2838,7 +2838,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     }
     
     /// <summary>
-    /// 保存Minecraft游戏目录列表
+    /// 保存 Minecraft 游戏目录列表
     /// </summary>
     private async Task SaveMinecraftPathsAsync()
     {
@@ -2854,7 +2854,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     }
     
     /// <summary>
-    /// 添加Minecraft游戏目录
+    /// 添加 Minecraft 游戏目录
     /// </summary>
     [RelayCommand]
     private async Task AddMinecraftPathAsync()
@@ -2888,7 +2888,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     }
     
     /// <summary>
-    /// 删除选中的Minecraft游戏目录
+    /// 删除选中的 Minecraft 游戏目录
     /// </summary>
     [RelayCommand]
     private async Task RemoveMinecraftPathAsync()
@@ -2932,7 +2932,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     }
     
     /// <summary>
-    /// 切换到指定的Minecraft游戏目录
+    /// 切换到指定的 Minecraft 游戏目录
     /// </summary>
     [RelayCommand]
     private async Task SwitchMinecraftPathAsync(MinecraftPathItem pathItem)

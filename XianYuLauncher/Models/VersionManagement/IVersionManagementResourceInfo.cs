@@ -23,7 +23,7 @@ public interface IVersionManagementResourceInfo
     /// <summary>来源平台 (Modrinth/CurseForge)</summary>
     string? Source { get; set; }
 
-    /// <summary>项目ID</summary>
+    /// <summary>项目 ID</summary>
     string? ProjectId { get; set; }
 
     /// <summary>稳定的社区资源实例标识</summary>

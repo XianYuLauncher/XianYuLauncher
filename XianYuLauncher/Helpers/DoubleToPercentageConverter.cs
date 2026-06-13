@@ -4,7 +4,7 @@ using Microsoft.UI.Xaml;
 namespace XianYuLauncher.Helpers;
 
 /// <summary>
-/// 将Double值转换为百分比字符串的转换器
+/// 将 Double 值转换为百分比字符串的转换器
 /// </summary>
 public class DoubleToPercentageConverter : IValueConverter
 {

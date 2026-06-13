@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using Microsoft.UI.Xaml;
@@ -306,7 +306,7 @@ public class ActivationService : IActivationService
     {
         await _themeSelectorService.SetRequestedThemeAsync();
 
-        // 延迟1秒，确保主窗口完全初始化
+        // 延迟 1 秒，确保主窗口完全初始化
         await Task.Delay(1000);
 
         Serilog.Log.Information("主窗口状态检查: Content={IsContentNull}", App.MainWindow.Content == null ? "null" : "not null");

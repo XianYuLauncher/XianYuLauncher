@@ -808,7 +808,7 @@
                     </controls:SettingsCard.ActionIcon>
                 </controls:SettingsCard>
 
-                <!-- 下载前置Mod -->
+                <!-- 下载前置 Mod -->
                 <controls:SettingsCard x:Uid="Settings_DownloadDependencies" Header="下载前置 Mod" Description="自动下载所需的前置 Mod">
                     <controls:SettingsCard.HeaderIcon>
                         <FontIcon Glyph="&#xE74E;" />

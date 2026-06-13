@@ -64,7 +64,7 @@ public partial class ServerItem : ObservableObject
 
             var bytes = Convert.FromBase64String(base64Data);
             
-            // 在UI线程创建BitmapImage
+            // 在 UI 线程创建 BitmapImage
             await uiDispatcher.RunOnUiThreadAsync(async () =>
             {
                 using var stream = new InMemoryRandomAccessStream();

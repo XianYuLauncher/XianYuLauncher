@@ -128,7 +128,7 @@ public sealed partial class MotionBackgroundControl : UserControl
             _rootContainer.Size = new Vector2((float)e.NewSize.Width, (float)e.NewSize.Height);
             
             // 防抖处理：只有停止调整大小 500ms 后才重置动画路径
-            // 解决 "改0.01px也跳动" 的问题
+            // 解决 "改 0.01px 也跳动" 的问题
             if (_resizeTimer.IsEnabled) _resizeTimer.Stop();
              _resizeTimer.Start();
         }

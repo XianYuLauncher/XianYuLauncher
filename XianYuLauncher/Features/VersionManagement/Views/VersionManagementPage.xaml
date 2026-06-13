@@ -28,7 +28,7 @@
             <Setter Property="Foreground" Value="{ThemeResource SystemControlForegroundBaseMediumBrush}" />
         </Style>
         
-        <!-- 概览Tab专用的可见卡片样式 -->
+        <!-- 概览 Tab 专用的可见卡片样式 -->
         <SolidColorBrush x:Key="OverviewCardBackgroundBrush" Color="{ThemeResource CardBackgroundFillColorDefault}" />
         <SolidColorBrush x:Key="OverviewCardBorderBrush" Color="{ThemeResource CardStrokeColorDefault}" />
         
@@ -41,7 +41,7 @@
         <helpers:StringNullOrEmptyToBoolConverter x:Key="StringNullOrEmptyToVisibilityConverter" />
         <helpers:DoubleToPercentageConverter x:Key="DoubleToPercentageConverter" />
         
-        <!-- 简化的CheckBox样式，精确控制点击区域 -->
+        <!-- 简化的 CheckBox 样式，精确控制点击区域 -->
         <Style x:Key="CustomCheckboxStyle" TargetType="CheckBox">
             <Setter Property="Width" Value="20" />
             <Setter Property="Height" Value="20" />
@@ -546,7 +546,7 @@
                 <vmviews:VersionSettingsControl DataContext="{Binding}" />
             </TabViewItem>
             
-            <!-- Mod管理模块 -->
+            <!-- Mod 管理模块 -->
             <TabViewItem>
                 <TabViewItem.Header>
                     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
@@ -583,9 +583,9 @@
                         </ComboBox>
                     </Grid>
                     
-                    <!-- Mod列表容器 -->
+                    <!-- Mod 列表容器 -->
                     <Grid Grid.Row="1" AllowDrop="True">
-                        <!-- Mod列表 -->
+                        <!-- Mod 列表 -->
                         <ListView 
                             x:Name="ModListView"
                             ItemsSource="{Binding ModsModule.Mods, Mode=OneWay}"
@@ -605,7 +605,7 @@
                             </ListView.Resources>
                             <ListView.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <!-- 使用ItemsStackPanel替代ScrollViewer+ListView，提供更好的性能和虚拟化支持 -->
+                                    <!-- 使用 ItemsStackPanel 替代 ScrollViewer+ListView，提供更好的性能和虚拟化支持 -->
                                     <ItemsStackPanel/>
                                 </ItemsPanelTemplate>
                             </ListView.ItemsPanel>
@@ -619,7 +619,7 @@
                                     <!-- 优化布局性能 -->
                                     <Setter Property="UseLayoutRounding" Value="True"/>
                                     <Setter Property="CacheMode" Value="BitmapCache"/>
-                                    <!-- 简化模板，移除复杂的VisualStateManager，使用默认模板 -->
+                                    <!-- 简化模板，移除复杂的 VisualStateManager，使用默认模板 -->
                                 </Style>
                             </ListView.ItemContainerStyle>
                                 <ListView.ItemTemplate>
@@ -681,9 +681,9 @@
                                             <Grid.ColumnDefinitions>
                                                 <!-- 复选框列 -->
                                                 <ColumnDefinition Width="Auto" />
-                                                <!-- Mod图标列 -->
+                                                <!-- Mod 图标列 -->
                                                 <ColumnDefinition Width="Auto" />
-                                                <!-- Mod名称列 -->
+                                                <!-- Mod 名称列 -->
                                                 <ColumnDefinition Width="*" />
                                                 <!-- 启用/禁用开关列 -->
                                                 <ColumnDefinition Width="Auto" />
@@ -709,7 +709,7 @@
                                                 </CheckBox>
                                             </Grid>
                                             
-                                            <!-- Mod图标 -->
+                                            <!-- Mod 图标 -->
                                             <Grid Grid.Column="1" Width="24" Height="24" VerticalAlignment="Center" Margin="0,0,12,0">
                                                 <FontIcon 
                                                     Glyph="" 
@@ -726,7 +726,7 @@
                                                     Visibility="{Binding Icon, Mode=OneWay, Converter={StaticResource StringNullOrEmptyToVisibilityConverter}}"/>
                                             </Grid>
                                             
-                                            <!-- Mod名称 -->
+                                            <!-- Mod 名称 -->
                                             <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="4">
                                                 <TextBlock 
                                                     Text="{Binding Name}" 
@@ -735,7 +735,7 @@
                                                     Foreground="{ThemeResource SystemControlForegroundBaseHighBrush}"
                                                     TextTrimming="CharacterEllipsis"/>
                                                 
-                                                <!-- Mod描述区域 -->
+                                                <!-- Mod 描述区域 -->
                                                 <Grid>
                                                     <!-- 加载中指示器 -->
                                                     <StackPanel Orientation="Horizontal" Spacing="6" 
@@ -895,7 +895,7 @@
                             </ListView.Resources>
                             <ListView.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <!-- 使用ItemsStackPanel替代ScrollViewer+ListView，提供更好的性能和虚拟化支持 -->
+                                    <!-- 使用 ItemsStackPanel 替代 ScrollViewer+ListView，提供更好的性能和虚拟化支持 -->
                                     <ItemsStackPanel/>
                                 </ItemsPanelTemplate>
                             </ListView.ItemsPanel>
@@ -909,7 +909,7 @@
                                     <!-- 优化布局性能 -->
                                     <Setter Property="UseLayoutRounding" Value="True"/>
                                     <Setter Property="CacheMode" Value="BitmapCache"/>
-                                    <!-- 简化模板，移除复杂的VisualStateManager，使用默认模板 -->
+                                    <!-- 简化模板，移除复杂的 VisualStateManager，使用默认模板 -->
                                 </Style>
                             </ListView.ItemContainerStyle>
                                 <ListView.ItemTemplate>
@@ -1165,7 +1165,7 @@
                             </ListView.Resources>
                             <ListView.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <!-- 使用ItemsStackPanel替代ScrollViewer+ListView，提供更好的性能和虚拟化支持 -->
+                                    <!-- 使用 ItemsStackPanel 替代 ScrollViewer+ListView，提供更好的性能和虚拟化支持 -->
                                     <ItemsStackPanel/>
                                 </ItemsPanelTemplate>
                             </ListView.ItemsPanel>
@@ -1179,7 +1179,7 @@
                                     <!-- 优化布局性能 -->
                                     <Setter Property="UseLayoutRounding" Value="True"/>
                                     <Setter Property="CacheMode" Value="BitmapCache"/>
-                                    <!-- 简化模板，移除复杂的VisualStateManager，使用默认模板 -->
+                                    <!-- 简化模板，移除复杂的 VisualStateManager，使用默认模板 -->
                                 </Style>
                             </ListView.ItemContainerStyle>
                                 <ListView.ItemTemplate>
@@ -1650,7 +1650,7 @@
                             </ListView.Resources>
                             <ListView.ItemsPanel>
                                 <ItemsPanelTemplate>
-                                    <!-- 使用ItemsStackPanel替代ScrollViewer+ListView，提供更好的性能和虚拟化支持 -->
+                                    <!-- 使用 ItemsStackPanel 替代 ScrollViewer+ListView，提供更好的性能和虚拟化支持 -->
                                     <ItemsStackPanel/>
                                 </ItemsPanelTemplate>
                             </ListView.ItemsPanel>
@@ -1664,7 +1664,7 @@
                                     <!-- 优化布局性能 -->
                                     <Setter Property="UseLayoutRounding" Value="True"/>
                                     <Setter Property="CacheMode" Value="BitmapCache"/>
-                                    <!-- 简化模板，移除复杂的VisualStateManager，使用默认模板 -->
+                                    <!-- 简化模板，移除复杂的 VisualStateManager，使用默认模板 -->
                                 </Style>
                             </ListView.ItemContainerStyle>
                                 <ListView.ItemTemplate>

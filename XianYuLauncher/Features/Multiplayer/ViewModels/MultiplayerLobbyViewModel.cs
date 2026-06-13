@@ -71,24 +71,24 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
     [ObservableProperty]
     private string _easyTierLabel = "MultiplayerLobbyPage_EasyTierLabel".GetLocalized();
     
-    // 端口信息，用于获取meta数据
+    // 端口信息，用于获取 meta 数据
     private string? _port;
     
-    // HttpClient用于获取meta数据和玩家列表
+    // HttpClient 用于获取 meta 数据和玩家列表
     private readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
     
-    // FileService用于获取文件路径
+    // FileService 用于获取文件路径
     private readonly IFileService _fileService;
     private readonly IUiDispatcher _uiDispatcher;
     
     // 计时器用于轮询玩家列表
     private readonly DispatcherTimer _playerListTimer;
     
-    // 玩家列表属性，用于绑定到UI
+    // 玩家列表属性，用于绑定到 UI
     [ObservableProperty]
     private ObservableCollection<RoomPlayer> _playerList = new ObservableCollection<RoomPlayer>();
     
-    // 玩家列表是否为空的属性，用于绑定到UI
+    // 玩家列表是否为空的属性，用于绑定到 UI
     [ObservableProperty]
     private bool _isPlayerListEmpty = true;
 
@@ -133,7 +133,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
         catch (Exception ex)
         {
             Log.Error(ex, $"格式化时间失败: {ex.Message}");
-            // 确保ElapsedTimeText有一个默认值，避免UI崩溃
+            // 确保 ElapsedTimeText 有一个默认值，避免 UI 崩溃
             ElapsedTimeText = "00:00:00";
         }
     }
@@ -268,7 +268,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
             {
                 string content = await response.Content.ReadAsStringAsync();
                 
-                // 解析JSON
+                // 解析 JSON
                 using (JsonDocument doc = JsonDocument.Parse(content))
                 {
                     JsonElement root = doc.RootElement;
@@ -298,7 +298,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
                             }
                         }
                         
-                        // 更新UI线程上的玩家列表
+                        // 更新 UI 线程上的玩家列表
                         _uiDispatcher.TryEnqueue(() =>
                         {
                             // 清空现有列表
@@ -322,7 +322,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
     }
     
     /// <summary>
-    /// 获取默认的史蒂夫头像，使用Win2D进行邻近插值处理
+    /// 获取默认的史蒂夫头像，使用 Win2D 进行邻近插值处理
     /// </summary>
     private async Task<BitmapImage> GetDefaultSteveAvatarAsync()
     {
@@ -347,7 +347,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
             // 获取角色数据文件路径
             string profilesFilePath = Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.AccountsJson);
 
-            // 🔒 使用安全方法读取（自动解密token）
+            // 🔒 使用安全方法读取（自动解密 token）
             var profiles = XianYuLauncher.Core.Helpers.TokenEncryption.LoadAccountsSecurely(profilesFilePath);
             
             // 查找活跃角色
@@ -364,7 +364,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
     }
     
     /// <summary>
-    /// 从meta API获取数据
+    /// 从 meta API 获取数据
     /// </summary>
     private async Task GetMetaDataAsync()
     {
@@ -379,7 +379,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
             {
                 string content = await response.Content.ReadAsStringAsync();
                 
-                // 解析JSON获取easytier_version
+                // 解析 JSON 获取 easytier_version
                 using (JsonDocument doc = JsonDocument.Parse(content))
                 {
                     JsonElement root = doc.RootElement;
@@ -405,7 +405,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
     }
     
     /// <summary>
-    /// 停止terracotta进程
+    /// 停止 terracotta 进程
     /// </summary>
     private async void StopTerracottaProcess()
     {
@@ -414,12 +414,12 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
 
         try
         {
-            // 尝试使用terracotta官方HTTP接口优雅关闭进程
+            // 尝试使用 terracotta 官方 HTTP 接口优雅关闭进程
             if (!string.IsNullOrEmpty(port))
             {
                 try
                 {
-                    // 首先尝试使用peaceful=true优雅退出
+                    // 首先尝试使用 peaceful=true 优雅退出
                     string panicUrl = $"http://localhost:{port}/panic?peaceful=true";
                     HttpResponseMessage response = await _httpClient.GetAsync(panicUrl, CancellationToken.None);
                     Log.Information($"调用 terracotta /panic 接口结果：{response.StatusCode}");
@@ -430,7 +430,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
                 catch (Exception ex)
                 {
                     Log.Error(ex, $"调用 terracotta /panic 接口时发生错误：{ex.Message}");
-                    // 可以尝试使用peaceful=false强制退出
+                    // 可以尝试使用 peaceful=false 强制退出
                     try
                     {
                         string panicUrl = $"http://localhost:{port}/panic?peaceful=false";
@@ -445,7 +445,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
                 }
             }
             
-            // 检查是否还有剩余的terracotta进程，如果有则使用传统方式终止
+            // 检查是否还有剩余的 terracotta 进程，如果有则使用传统方式终止
             Process[] terracottaProcesses = Process.GetProcessesByName("terracotta-windows-x86_64");
             foreach (Process process in terracottaProcesses)
             {

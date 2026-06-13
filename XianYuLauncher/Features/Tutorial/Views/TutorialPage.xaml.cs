@@ -27,7 +27,7 @@ namespace XianYuLauncher.Features.Tutorial.Views
             this.InitializeComponent();
             _httpClient.DefaultRequestHeaders.Add("User-Agent", XianYuLauncher.Core.Helpers.VersionHelper.GetUserAgent());
             
-            // 监听CurrentPageIndex和ProfileName属性变化
+            // 监听 CurrentPageIndex 和 ProfileName 属性变化
             ViewModel.PropertyChanged += ViewModel_PropertyChanged;
         }
 
@@ -53,7 +53,7 @@ namespace XianYuLauncher.Features.Tutorial.Views
 
         private void SwitchPageVisibility(int pageIndex)
         {
-            // 步骤3内部有 HideAnimations，需要先置透明避免残影
+            // 步骤 3 内部有 HideAnimations，需要先置透明避免残影
             ProfileSettingsPanel.Opacity = 0;
 
             // 隐藏所有页面
@@ -164,7 +164,7 @@ namespace XianYuLauncher.Features.Tutorial.Views
         }
 
         /// <summary>
-        /// 处理默认角色头像，使用WIN2D的最近邻插值保持像素锐利
+        /// 处理默认角色头像，使用 WIN2D 的最近邻插值保持像素锐利
         /// </summary>
         private async Task ProcessAvatarAsync()
         {
@@ -202,7 +202,7 @@ namespace XianYuLauncher.Features.Tutorial.Views
 
                 if (ViewModel.IsExternalLogin)
                 {
-                    // 先临时设置为清晰的Steve头像作为占位符（虽然Init时已经设置过，但防止被重置）
+                    // 先临时设置为清晰的 Steve 头像作为占位符（虽然 Init 时已经设置过，但防止被重置）
                     await ProcessAvatarAsync(); 
                     
                     // 外置登录：使用 ViewModel 暴露的 ID 和 AuthServer
@@ -225,7 +225,7 @@ namespace XianYuLauncher.Features.Tutorial.Views
                 }
                 else
                 {
-                    // 获取UUID失败，或无网络，保持Steve头像（已在ProcessAvatarAsync中初始化为清晰版）
+                    // 获取 UUID 失败，或无网络，保持 Steve 头像（已在 ProcessAvatarAsync 中初始化为清晰版）
                 }
             }
             catch (Exception ex)

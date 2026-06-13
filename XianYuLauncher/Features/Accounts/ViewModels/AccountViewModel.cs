@@ -21,7 +21,7 @@ using XianYuLauncher.Shared.Models;
 namespace XianYuLauncher.Features.Accounts.ViewModels
 {
     /// <summary>
-    /// 角色管理页面的ViewModel
+    /// 角色管理页面的 ViewModel
     /// </summary>
     public partial class AccountViewModel : ObservableObject, IPageHeaderAware
     {
@@ -44,7 +44,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         private ObservableCollection<MinecraftAccount> _profiles = new ObservableCollection<MinecraftAccount>();
 
         /// <summary>
-        /// 监听Profiles集合的变化
+        /// 监听 Profiles 集合的变化
         /// </summary>
         partial void OnProfilesChanged(ObservableCollection<MinecraftAccount>? oldValue, ObservableCollection<MinecraftAccount> newValue)
         {
@@ -57,16 +57,16 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             newValue.CollectionChanged -= Profiles_CollectionChanged;
             newValue.CollectionChanged += Profiles_CollectionChanged;
             
-            // 更新IsProfilesEmpty属性
+            // 更新 IsProfilesEmpty 属性
             IsProfilesEmpty = newValue.Count == 0;
         }
 
         /// <summary>
-        /// 当Profiles集合的元素变化时触发
+        /// 当 Profiles 集合的元素变化时触发
         /// </summary>
         private void Profiles_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
         {
-            // 更新IsProfilesEmpty属性
+            // 更新 IsProfilesEmpty 属性
             IsProfilesEmpty = Profiles.Count == 0;
         }
 
@@ -123,11 +123,11 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             HeaderMetadata.Title = "AccountPage_HeaderTitle".GetLocalized();
             HeaderMetadata.Subtitle = "AccountPage_HeaderSubtitle".GetLocalized();
             
-            // 手动注册CollectionChanged事件
+            // 手动注册 CollectionChanged 事件
             Profiles.CollectionChanged += Profiles_CollectionChanged;
             
             LoadProfiles();
-            // 初始化IsProfilesEmpty属性
+            // 初始化 IsProfilesEmpty 属性
             IsProfilesEmpty = Profiles.Count == 0;
         }
 
@@ -158,7 +158,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         {
             try
             {
-                // 🔒 使用 AccountManager 安全加载（自动解密token）
+                // 🔒 使用 AccountManager 安全加载（自动解密 token）
                 var profilesList = await _accountManager.LoadAccountsAsync();
                 
                 // 清空现有列表并添加所有角色
@@ -188,7 +188,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                 Profiles.Clear();
             }
             
-            // 更新IsProfilesEmpty属性
+            // 更新 IsProfilesEmpty 属性
             IsProfilesEmpty = Profiles.Count == 0;
         }
 
@@ -199,7 +199,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         {
             try
             {
-                // 🔒 使用 AccountManager 安全保存（自动加密token）
+                // 🔒 使用 AccountManager 安全保存（自动加密 token）
                 await _accountManager.SaveAccountsAsync(Profiles.ToList());
                 System.Diagnostics.Debug.WriteLine($"[Character] 角色列表已保存（token 已加密），共 {Profiles.Count} 个角色");
             }
@@ -226,7 +226,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// <summary>
         /// 检测当前地区是否为中国大陆
         /// </summary>
-        /// <returns>如果是中国大陆地区返回true，否则返回false</returns>
+        /// <returns>如果是中国大陆地区返回 true，否则返回 false</returns>
         private bool IsChinaMainland()
         {
             try
@@ -237,7 +237,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             }
             catch (Exception ex)
             {
-                // 添加Debug输出，显示异常信息
+                // 添加 Debug 输出，显示异常信息
                 System.Diagnostics.Debug.WriteLine($"[地区检测] 检测失败，异常: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"[地区检测] 默认不允许离线登录");
                 // 如果检测失败，默认不允许离线登录
@@ -304,12 +304,12 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         /// <returns>是否需要刷新</returns>
         private bool IsTokenExpired(MinecraftAccount profile)
         {
-            // 计算Minecraft访问令牌的过期时间
-            // 正确方式：令牌颁发时间 + expires_in秒
+            // 计算 Minecraft 访问令牌的过期时间
+            // 正确方式：令牌颁发时间 + expires_in 秒
             DateTime minecraftTokenIssueTime = profile.IssueInstant;
             DateTime minecraftTokenExpiryTime = minecraftTokenIssueTime.AddSeconds(profile.ExpiresIn);
             
-            // 如果还有30分钟或更少的有效期，需要刷新
+            // 如果还有 30 分钟或更少的有效期，需要刷新
             var timeUntilExpiry = minecraftTokenExpiryTime - DateTime.UtcNow;
             return timeUntilExpiry.TotalMinutes <= 30;
         }
@@ -411,7 +411,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                     var uri = new Uri(session.DeviceCode.VerificationUri);
                     await Windows.System.Launcher.LaunchUriAsync(uri);
 
-                    // 复制8位ID到剪贴板
+                    // 复制 8 位 ID 到剪贴板
                     var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
                     dataPackage.SetText(session.DeviceCode.UserCode);
                     Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
@@ -459,7 +459,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             }
             else
             {
-                // 检查是否是账户没有购买Minecraft的错误
+                // 检查是否是账户没有购买 Minecraft 的错误
                 if (!string.IsNullOrEmpty(result.ErrorMessage) && result.ErrorMessage.Contains("该账号没有购买 Minecraft"))
                 {
                     // 显示购买提示弹窗
@@ -545,7 +545,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
         }
         
         /// <summary>
-        /// 显示Minecraft购买提示弹窗
+        /// 显示 Minecraft 购买提示弹窗
         /// </summary>
         private async Task ShowMinecraftPurchaseDialogAsync()
         {

@@ -50,7 +50,7 @@ public class ScreenshotInfo
         FilePath = filePath;
         FileName = Path.GetFileName(filePath);
         
-        // 提取显示名称（去掉.png扩展名）
+        // 提取显示名称（去掉.png 扩展名）
         string displayName = Path.GetFileNameWithoutExtension(FileName);
         Name = displayName;
         

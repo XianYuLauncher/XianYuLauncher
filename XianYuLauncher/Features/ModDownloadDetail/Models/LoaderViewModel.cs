@@ -16,7 +16,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Models
         [ObservableProperty]
         private bool _isExpanded = false;
 
-        // 父级GameVersionViewModel的引用，用于通知版本数量变化
+        // 父级 GameVersionViewModel 的引用，用于通知版本数量变化
         public GameVersionViewModel? ParentGameVersion { get; set; }
 
         public LoaderViewModel(string loaderName)
@@ -24,7 +24,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Models
             LoaderName = loaderName;
             ModVersions = new ObservableCollection<ModVersionViewModel>();
 
-            // 监听ModVersions集合变化，通知父级更新总数
+            // 监听 ModVersions 集合变化，通知父级更新总数
             ModVersions.CollectionChanged += (s, e) =>
             {
                 ParentGameVersion?.NotifyTotalModVersionsCountChanged();

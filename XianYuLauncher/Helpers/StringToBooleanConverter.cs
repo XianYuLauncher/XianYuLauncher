@@ -18,7 +18,7 @@ public class StringToBooleanConverter : IValueConverter
     /// <param name="targetType">目标类型</param>
     /// <param name="parameter">比较的字符串参数</param>
     /// <param name="language">语言</param>
-    /// <returns>如果值与参数相等返回true，否则返回false</returns>
+    /// <returns>如果值与参数相等返回 true，否则返回 false</returns>
     public object? Convert(object? value, Type targetType, object? parameter, string language)
     {
         if (parameter is string paramString && value is string stringValue)
@@ -36,7 +36,7 @@ public class StringToBooleanConverter : IValueConverter
     /// <param name="targetType">目标类型</param>
     /// <param name="parameter">比较的字符串参数</param>
     /// <param name="language">语言</param>
-    /// <returns>如果布尔值为true返回参数字符串，否则返回null</returns>
+    /// <returns>如果布尔值为 true 返回参数字符串，否则返回 null</returns>
     public object? ConvertBack(object? value, Type targetType, object? parameter, string language)
     {
         if (parameter is string paramString && value is bool boolValue && boolValue)

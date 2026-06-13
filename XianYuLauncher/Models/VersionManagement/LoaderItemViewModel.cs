@@ -4,7 +4,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace XianYuLauncher.Models.VersionManagement;
 
 /// <summary>
-/// 加载器项视图模型，用于扩展Tab中的加载器列表
+/// 加载器项视图模型，用于扩展 Tab 中的加载器列表
 /// </summary>
 public partial class LoaderItemViewModel : ObservableObject
 {
@@ -21,7 +21,7 @@ public partial class LoaderItemViewModel : ObservableObject
     private string _loaderType = string.Empty;
     
     /// <summary>
-    /// 加载器图标URL
+    /// 加载器图标 URL
     /// </summary>
     [ObservableProperty]
     private string _iconUrl = string.Empty;

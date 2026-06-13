@@ -1,17 +1,17 @@
 namespace XianYuLauncher.Models;
 
 /// <summary>
-/// 类别项模型，用于UI绑定
+/// 类别项模型，用于 UI 绑定
 /// </summary>
 public class CategoryItem
 {
     /// <summary>
-    /// 类别ID（CurseForge使用）
+    /// 类别 ID（CurseForge 使用）
     /// </summary>
     public int? Id { get; set; }
     
     /// <summary>
-    /// 类别标识（Modrinth使用）
+    /// 类别标识（Modrinth 使用）
     /// </summary>
     public string Tag { get; set; } = string.Empty;
     
@@ -21,7 +21,7 @@ public class CategoryItem
     public string DisplayName { get; set; } = string.Empty;
     
     /// <summary>
-    /// 来源平台（modrinth或curseforge）
+    /// 来源平台（modrinth 或 curseforge）
     /// </summary>
     public string Source { get; set; } = string.Empty;
     

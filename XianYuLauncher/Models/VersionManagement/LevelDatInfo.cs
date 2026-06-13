@@ -16,7 +16,7 @@ public class LevelDatInfo
     public int GameType { get; set; }
     
     /// <summary>
-    /// 最后游玩时间（Unix时间戳毫秒）
+    /// 最后游玩时间（Unix 时间戳毫秒）
     /// </summary>
     public long LastPlayed { get; set; }
 }

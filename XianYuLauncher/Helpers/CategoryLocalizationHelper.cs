@@ -11,11 +11,11 @@ public static class CategoryLocalizationHelper
     private static readonly ResourceLoader _resourceLoader = new ResourceLoader();
     
     /// <summary>
-    /// CurseForge类别名称到本地化键的映射
+    /// CurseForge 类别名称到本地化键的映射
     /// </summary>
     private static readonly Dictionary<string, string> CurseForgeCategoryKeyMap = new()
     {
-        // Mods类别
+        // Mods 类别
         { "Armor, Tools, and Weapons", "Category_Equipment" },
         { "Adventure and RPG", "Category_Adventure" },
         { "API and Library", "Category_Library" },
@@ -61,7 +61,7 @@ public static class CategoryLocalizationHelper
         { "ModJam 2025", "Category_ModJam2025" },
         { "CreativeMode", "Category_CreativeMode" },
         
-        // Shaders类别
+        // Shaders 类别
         { "Realistic", "Category_Realistic" },
         { "Fantasy", "Category_Fantasy" },
         { "Vanilla", "Category_Vanilla" },
@@ -71,7 +71,7 @@ public static class CategoryLocalizationHelper
         { "Atmospheric", "Category_Atmospheric" },
         { "Vibrant", "Category_Vibrant" },
         
-        // Resource Packs类别
+        // Resource Packs 类别
         { "16x", "Category_16x" },
         { "32x", "Category_32x" },
         { "64x", "Category_64x" },
@@ -90,7 +90,7 @@ public static class CategoryLocalizationHelper
         { "Traditional", "Category_Traditional" },
         { "Tweaks", "Category_Tweaks" },
         
-        // Modpacks类别
+        // Modpacks 类别
         { "Combat / PvP", "Category_CombatPvP" },
         { "Expert", "Category_Expert" },
         { "Exploration", "Category_Exploration" },
@@ -108,12 +108,12 @@ public static class CategoryLocalizationHelper
         { "Tech", "Category_Tech" },
         { "Vanilla+", "Category_VanillaPlus" },
         
-        // Data Packs类别
+        // Data Packs 类别
         { "Adventure", "Category_Adventure" },
     };
     
     /// <summary>
-    /// Modrinth类别标签到本地化键的映射
+    /// Modrinth 类别标签到本地化键的映射
     /// </summary>
     private static readonly Dictionary<string, string> ModrinthCategoryKeyMap = new()
     {
@@ -151,9 +151,9 @@ public static class CategoryLocalizationHelper
     };
     
     /// <summary>
-    /// 获取CurseForge类别的本地化名称
+    /// 获取 CurseForge 类别的本地化名称
     /// </summary>
-    /// <param name="categoryName">CurseForge类别名称</param>
+    /// <param name="categoryName">CurseForge 类别名称</param>
     /// <returns>本地化名称</returns>
     public static string GetLocalizedCategoryName(string categoryName)
     {
@@ -180,9 +180,9 @@ public static class CategoryLocalizationHelper
     }
     
     /// <summary>
-    /// 获取Modrinth类别的本地化名称（从资源文件）
+    /// 获取 Modrinth 类别的本地化名称（从资源文件）
     /// </summary>
-    /// <param name="tag">Modrinth类别标签</param>
+    /// <param name="tag">Modrinth 类别标签</param>
     /// <returns>本地化名称</returns>
     public static string GetModrinthCategoryName(string tag)
     {

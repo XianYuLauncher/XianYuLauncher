@@ -41,7 +41,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         private bool _isWebViewInitializing;
 
         /// <summary>
-        /// ViewModel实例
+        /// ViewModel 实例
         /// </summary>
         public AccountManagementViewModel ViewModel
         {
@@ -111,11 +111,11 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
 
         /// <summary>
-        /// 当ViewModel属性变化时触发
+        /// 当 ViewModel 属性变化时触发
         /// </summary>
         private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            // 当CurrentProfile变化时，重新加载头像
+            // 当 CurrentProfile 变化时，重新加载头像
             if (e.PropertyName == nameof(ViewModel.CurrentProfile))
             {
                 LoadProfileAvatar();
@@ -131,7 +131,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             base.OnNavigatedTo(e);
             AttachLifecycleEvents();
             
-            // 将导航参数传递给ViewModel
+            // 将导航参数传递给 ViewModel
             if (ViewModel is INavigationAware navigationAware)
             {
                 navigationAware.OnNavigatedTo(e.Parameter);
@@ -201,7 +201,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
 
         /// <summary>
-        /// 初始化WebView2
+        /// 初始化 WebView2
         /// </summary>
         private async Task InitializeWebView2Async()
         {
@@ -209,28 +209,28 @@ namespace XianYuLauncher.Features.Accounts.Views
             {
                 Debug.WriteLine($"[角色管理 Page] 开始初始化 WebView2");
                 
-                // 确保CoreWebView2初始化
+                // 确保 CoreWebView2 初始化
                 await Skin3DPreviewWebView.EnsureCoreWebView2Async();
                 
                 Debug.WriteLine($"[角色管理 Page] CoreWebView2 初始化完成");
                 
-                // 禁用开发者工具，防止按下F12打开开发者模式
+                // 禁用开发者工具，防止按下 F12 打开开发者模式
                 if (Skin3DPreviewWebView.CoreWebView2 != null)
                 {
                     Skin3DPreviewWebView.CoreWebView2.Settings.AreDevToolsEnabled = false;
                     Debug.WriteLine($"[角色管理 Page] 已禁用 WebView2 开发者工具");
                 }
                 
-                // 将HTML文件复制到应用数据目录，然后从那里加载
+                // 将 HTML 文件复制到应用数据目录，然后从那里加载
                 string htmlPath = await CopyHtmlToAppDataAsync();
                 
                 if (!string.IsNullOrWhiteSpace(htmlPath))
                 {
-                    // 从应用数据目录加载HTML文件
+                    // 从应用数据目录加载 HTML 文件
                     Skin3DPreviewWebView.Source = new Uri(htmlPath);
                     Debug.WriteLine($"[角色管理 Page] 已设置 WebView2 Source 为: {htmlPath}");
                     
-                    // 初始化完成后，延迟加载当前皮肤，确保WebView2已完全加载
+                    // 初始化完成后，延迟加载当前皮肤，确保 WebView2 已完全加载
                     await Task.Delay(1000);
                     await UpdateSkinInWebViewAsync();
                 }
@@ -246,9 +246,9 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
 
         /// <summary>
-        /// 将HTML文件和相关资源复制到应用数据目录
+        /// 将 HTML 文件和相关资源复制到应用数据目录
         /// </summary>
-        /// <returns>复制后的HTML文件路径</returns>
+        /// <returns>复制后的 HTML 文件路径</returns>
         private async Task<string> CopyHtmlToAppDataAsync()
         {
             try
@@ -262,19 +262,19 @@ namespace XianYuLauncher.Features.Accounts.Views
                 Directory.CreateDirectory(htmlFolderPath);
                 Directory.CreateDirectory(libsFolderPath);
                 
-                // 复制HTML文件
+                // 复制 HTML 文件
                 string destHtmlPath = Path.Combine(htmlFolderPath, "Skin3DPreview.html");
                 string sourceHtmlPath = AppAssetResolver.ToAbsolutePath(AppAssetResolver.Skin3DPreviewHtmlAssetPath);
                 File.Copy(sourceHtmlPath, destHtmlPath, true);
                 Debug.WriteLine($"[角色管理 Page] 已将 HTML 文件复制到应用数据目录");
                 
-                // 复制skinview3d.bundle.js文件
+                // 复制 skinview3d.bundle.js 文件
                 string destLibPath = Path.Combine(libsFolderPath, "skinview3d.bundle.js");
                 string sourceLibPath = AppAssetResolver.ToAbsolutePath("Assets/Libs/skinview3d.bundle.js");
                 File.Copy(sourceLibPath, destLibPath, true);
                 Debug.WriteLine($"[角色管理 Page] 已将 skinview3d.bundle.js 文件复制到应用数据目录");
                 
-                // 返回file://协议的URL
+                // 返回 file://协议的 URL
                 return new Uri(destHtmlPath).AbsoluteUri;
             }
             catch (Exception ex)
@@ -285,17 +285,17 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
 
         /// <summary>
-        /// 当CurrentSkin变化时触发
+        /// 当 CurrentSkin 变化时触发
         /// </summary>
         private void ViewModel_CurrentSkinChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
-            // 当CurrentSkin变化时，强制刷新头像
+            // 当 CurrentSkin 变化时，强制刷新头像
             if (e.PropertyName == nameof(ViewModel.CurrentSkin))
             {
                 LoadProfileAvatar(true);
             }
 
-            // 当CurrentSkin、SelectedCape或CurrentProfile变化时，更新WebView中的皮肤
+            // 当 CurrentSkin、SelectedCape 或 CurrentProfile 变化时，更新 WebView 中的皮肤
             if (e.PropertyName == nameof(ViewModel.CurrentSkin) || 
                 e.PropertyName == nameof(ViewModel.SelectedCape) ||
                 e.PropertyName == nameof(ViewModel.CurrentProfile))
@@ -305,13 +305,13 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
 
         /// <summary>
-        /// 更新WebView中的皮肤
+        /// 更新 WebView 中的皮肤
         /// </summary>
         private async Task UpdateSkinInWebViewAsync()
         {
             if (Skin3DPreviewWebView.CoreWebView2 == null)
             {
-                // WebView2尚未初始化完成，等待初始化
+                // WebView2 尚未初始化完成，等待初始化
                 await InitializeWebView2Async();
                 if (Skin3DPreviewWebView.CoreWebView2 == null)
                 {
@@ -325,16 +325,16 @@ namespace XianYuLauncher.Features.Accounts.Views
                 string skinUrl = string.Empty;
                 string capeUrl = string.Empty;
 
-                // 根据角色类型获取皮肤和披风URL
+                // 根据角色类型获取皮肤和披风 URL
                 if (ViewModel.CurrentProfile != null)
                 {
                     if (ViewModel.CurrentProfile.IsOffline)
                     {
-                        // 离线角色：使用本地Steve默认皮肤
+                        // 离线角色：使用本地 Steve 默认皮肤
                         Debug.WriteLine($"[角色管理 Page] 当前是离线角色，使用本地 Steve 默认皮肤");
                         // 使用本地资源文件作为默认皮肤
                         string defaultSkinPath = AppAssetResolver.DefaultSkinTextureAssetPath;
-                        // 从本地资源加载并转换为base64
+                        // 从本地资源加载并转换为 base64
                         skinUrl = await LoadLocalImageAsBase64Async(defaultSkinPath);
                         capeUrl = string.Empty;
                         Debug.WriteLine($"[角色管理 Page] 已加载默认 Steve 皮肤: {skinUrl}");
@@ -343,14 +343,14 @@ namespace XianYuLauncher.Features.Accounts.Views
                     {
                         if (ViewModel.CurrentProfile.TokenType == "external")
                         {
-                            // 外置登录角色：从profile.properties中获取皮肤和披风，需要解决CORS问题
+                            // 外置登录角色：从 profile.properties 中获取皮肤和披风，需要解决 CORS 问题
                             Debug.WriteLine($"[角色管理 Page] 当前是外置登录角色，尝试获取皮肤和披风");
                             var textures = await GetExternalLoginTexturesAsync();
                             string originalSkinUrl = textures.Item1;
                             string originalCapeUrl = textures.Item2;
                             Debug.WriteLine($"[角色管理 Page] 已获取外置登录皮肤: {originalSkinUrl}, 披风: {originalCapeUrl}");
                             
-                            // 解决CORS问题：使用HttpClient下载图片并转换为base64
+                            // 解决 CORS 问题：使用 HttpClient 下载图片并转换为 base64
                             if (!string.IsNullOrEmpty(originalSkinUrl))
                             {
                                 Debug.WriteLine($"[角色管理 Page] 尝试下载皮肤图片: {originalSkinUrl}");
@@ -367,13 +367,13 @@ namespace XianYuLauncher.Features.Accounts.Views
                         }
                         else
                         {
-                            // 微软账户：从ViewModel获取皮肤和披风URL，下载并转换为base64以解决CORS问题
+                            // 微软账户：从 ViewModel 获取皮肤和披风 URL，下载并转换为 base64 以解决 CORS 问题
                             Debug.WriteLine($"[角色管理 Page] 当前是微软账户，获取皮肤和披风 URL");
                             string originalSkinUrl = CleanUrl(ViewModel.CurrentSkin?.Url);
                             string originalCapeUrl = CleanUrl(ViewModel.SelectedCape?.Url);
                             Debug.WriteLine($"[角色管理 Page] 已获取微软账户皮肤: {originalSkinUrl}, 披风: {originalCapeUrl}");
                             
-                            // 解决CORS问题：使用HttpClient下载图片并转换为base64
+                            // 解决 CORS 问题：使用 HttpClient 下载图片并转换为 base64
                             if (!string.IsNullOrEmpty(originalSkinUrl))
                             {
                                 Debug.WriteLine($"[角色管理 Page] 尝试下载皮肤图片: {originalSkinUrl}");
@@ -391,7 +391,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                     }
                 }
 
-                // 调用JavaScript方法更新皮肤和披风，使用JSON.stringify确保URL格式正确
+                // 调用 JavaScript 方法更新皮肤和披风，使用 JSON.stringify 确保 URL 格式正确
                 await Skin3DPreviewWebView.CoreWebView2.ExecuteScriptAsync($"window.setSkinTexture({JsonSerializer.Serialize(skinUrl)}, {JsonSerializer.Serialize(capeUrl)});");
                 Debug.WriteLine($"[角色管理 Page] 已更新 WebView2 皮肤: {skinUrl}, 披风: {capeUrl}");
             }
@@ -402,10 +402,10 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
 
         /// <summary>
-        /// 下载图片并转换为base64编码
+        /// 下载图片并转换为 base64 编码
         /// </summary>
-        /// <param name="imageUrl">图片URL</param>
-        /// <returns>base64编码的图片数据</returns>
+        /// <param name="imageUrl">图片 URL</param>
+        /// <returns>base64 编码的图片数据</returns>
         private async Task<string> DownloadImageAsBase64Async(string imageUrl)
         {
             try
@@ -425,11 +425,11 @@ namespace XianYuLauncher.Features.Accounts.Views
                     var imageBytes = await response.Content.ReadAsByteArrayAsync();
                     Debug.WriteLine($"[角色管理 Page] 图片下载成功，大小: {imageBytes.Length}字节");
 
-                    // 转换为base64编码
+                    // 转换为 base64 编码
                     var base64String = Convert.ToBase64String(imageBytes);
                     Debug.WriteLine($"[角色管理 Page] 图片转换为 base64 成功");
 
-                    // 返回完整的base64图片URL
+                    // 返回完整的 base64 图片 URL
                     return $"data:image/png;base64,{base64String}";
                 }
             }
@@ -441,10 +441,10 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
 
         /// <summary>
-        /// 从本地资源加载图片并转换为base64编码
+        /// 从本地资源加载图片并转换为 base64 编码
         /// </summary>
         /// <param name="assetPath">本地资源路径，支持应用资源路径与本地绝对路径</param>
-        /// <returns>base64编码的图片数据</returns>
+        /// <returns>base64 编码的图片数据</returns>
         private async Task<string> LoadLocalImageAsBase64Async(string assetPath)
         {
             try
@@ -457,22 +457,22 @@ namespace XianYuLauncher.Features.Accounts.Views
                 // 读取文件内容
                 using (var stream = await file.OpenReadAsync())
                 {
-                    // 将IRandomAccessStream转换为byte数组
+                    // 将 IRandomAccessStream 转换为 byte 数组
                     var buffer = new Windows.Storage.Streams.Buffer((uint)stream.Size);
                     await stream.ReadAsync(buffer, (uint)stream.Size, Windows.Storage.Streams.InputStreamOptions.None);
                     
-                    // 获取byte数组
+                    // 获取 byte 数组
                     var dataReader = Windows.Storage.Streams.DataReader.FromBuffer(buffer);
                     var imageBytes = new byte[buffer.Length];
                     dataReader.ReadBytes(imageBytes);
                     
                     Debug.WriteLine($"[角色管理 Page] 本地图片加载成功，大小: {imageBytes.Length}字节");
                     
-                    // 转换为base64编码
+                    // 转换为 base64 编码
                     var base64String = Convert.ToBase64String(imageBytes);
                     Debug.WriteLine($"[角色管理 Page] 本地图片转换为 base64 成功");
                     
-                    // 返回完整的base64图片URL
+                    // 返回完整的 base64 图片 URL
                     return $"data:image/png;base64,{base64String}";
                 }
             }
@@ -484,14 +484,14 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
 
         /// <summary>
-        /// 从外置登录的profile.properties中获取皮肤和披风URL
+        /// 从外置登录的 profile.properties 中获取皮肤和披风 URL
         /// </summary>
-        /// <returns>皮肤URL和披风URL的元组</returns>
+        /// <returns>皮肤 URL 和披风 URL 的元组</returns>
         private async Task<(string skinUrl, string capeUrl)> GetExternalLoginTexturesAsync()
         {
             try
             {
-                // 1. 构建profile.properties URL
+                // 1. 构建 profile.properties URL
                 string? authServer = ViewModel.CurrentProfile.AuthServer;
                 string uuid = ViewModel.CurrentProfile.Id;
                 
@@ -503,15 +503,15 @@ namespace XianYuLauncher.Features.Accounts.Views
                 
                 Log.Information("[Avatar.AccountManagementPage] 外置登录获取皮肤，AuthServer: {AuthServer}, UUID: {Uuid}", authServer, uuid);
                 
-                // 确保authServer以/结尾，否则添加/
+                // 确保 authServer 以/结尾，否则添加/
                 string baseUrl = authServer.TrimEnd('/') + "/";
                 
-                // 构建完整的session URL，格式：{baseUrl}sessionserver/session/minecraft/profile/{uuid}
+                // 构建完整的 session URL，格式：{baseUrl}sessionserver/session/minecraft/profile/{uuid}
                 string sessionUrl = $"{baseUrl}sessionserver/session/minecraft/profile/{uuid}";
                 
                 Log.Information("[Avatar.AccountManagementPage] 外置登录 Session URL: {Url}", sessionUrl);
 
-                // 2. 发送请求获取profile.properties（复用页面 _httpClient，避免连接泄漏）
+                // 2. 发送请求获取 profile.properties（复用页面 _httpClient，避免连接泄漏）
                 using var response = await _httpClient.GetAsync(sessionUrl);
                 if (!response.IsSuccessStatusCode)
                 {
@@ -524,14 +524,14 @@ namespace XianYuLauncher.Features.Accounts.Views
                 var profileData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(responseJson);
                 var properties = profileData?["properties"] as JArray;
 
-                // 4. 检查properties
+                // 4. 检查 properties
                 if (properties == null || properties.Count == 0)
                 {
                     Log.Warning("[Avatar.AccountManagementPage] 外置登录 profile.properties 为空，URL: {Url}", sessionUrl);
                     return (string.Empty, string.Empty);
                 }
 
-                // 5. 查找textures属性
+                // 5. 查找 textures 属性
                 string? texturesBase64 = null;
                 foreach (var property in properties)
                 {
@@ -553,12 +553,12 @@ namespace XianYuLauncher.Features.Accounts.Views
                     return (string.Empty, string.Empty);
                 }
 
-                // 6. 解码textures
+                // 6. 解码 textures
                 byte[] texturesBytes = Convert.FromBase64String(texturesBase64);
                 string texturesJson = System.Text.Encoding.UTF8.GetString(texturesBytes);
                 var texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(texturesJson);
 
-                // 7. 提取皮肤和披风URL
+                // 7. 提取皮肤和披风 URL
                 var texturesNode = texturesData?["textures"];
                 string skinUrl = texturesNode?["SKIN"]?["url"]?.Value<string>() ?? string.Empty;
                 string capeUrl = texturesNode?["CAPE"]?["url"]?.Value<string>() ?? string.Empty;
@@ -575,10 +575,10 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
 
         /// <summary>
-        /// 清理URL，移除可能的格式问题
+        /// 清理 URL，移除可能的格式问题
         /// </summary>
-        /// <param name="url">原始URL</param>
-        /// <returns>清理后的URL</returns>
+        /// <param name="url">原始 URL</param>
+        /// <returns>清理后的 URL</returns>
         private string CleanUrl(string? url)
         {
             if (string.IsNullOrWhiteSpace(url))
@@ -604,7 +604,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
 
         /// <summary>
-        /// WebView2导航开始事件
+        /// WebView2 导航开始事件
         /// </summary>
         private void Skin3DPreviewWebView_NavigationStarting(object sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationStartingEventArgs e)
         {
@@ -612,23 +612,23 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
 
         /// <summary>
-        /// WebView2导航完成事件
+        /// WebView2 导航完成事件
         /// </summary>
         private async void Skin3DPreviewWebView_NavigationCompleted(object sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e)
         {
-            // 使用WebView2.Source获取当前URI
+            // 使用 WebView2.Source 获取当前 URI
             string currentUri = Skin3DPreviewWebView.Source?.ToString() ?? "未知URI";
             
             if (e.IsSuccess)
             {
                 Debug.WriteLine($"[角色管理 Page] 导航完成: {currentUri}");
                 
-                // 导航完成后检查CoreWebView2是否可用
+                // 导航完成后检查 CoreWebView2 是否可用
                 if (Skin3DPreviewWebView.CoreWebView2 != null)
                 {
                     Debug.WriteLine($"[角色管理 Page] CoreWebView2 可用");
                     
-                    // 获取当前主题并传递给WebView2
+                    // 获取当前主题并传递给 WebView2
                     var currentTheme = this.ActualTheme;
                     string theme = currentTheme.ToString().ToLower();
                     await Skin3DPreviewWebView.CoreWebView2.ExecuteScriptAsync($"window.setTheme('{theme}');");
@@ -676,7 +676,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             
             try
             {
-                // 1. 离线玩家使用Steve头像
+                // 1. 离线玩家使用 Steve 头像
                 if (ViewModel.CurrentProfile.IsOffline)
                 {
                     Debug.WriteLine($"[角色管理 Page] 角色 {ViewModel.CurrentProfile.Name} 是离线角色，使用 Steve 头像");
@@ -860,7 +860,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                // 创建CanvasDevice
+                // 创建 CanvasDevice
                 var device = CanvasDevice.GetSharedDevice();
                 CanvasBitmap canvasBitmap;
                 
@@ -884,7 +884,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
         
         /// <summary>
-        /// 处理史蒂夫头像，使用Win2D确保清晰显示
+        /// 处理史蒂夫头像，使用 Win2D 确保清晰显示
         /// </summary>
         private async Task<BitmapImage?> ProcessSteveAvatarAsync()
         {
@@ -922,7 +922,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 savePicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary;
                 savePicker.FileTypeChoices.Add("PNG 图片", new List<string>() { ".png" });
                 
-                // 使用当前时间作为默认文件名，避免依赖CurrentSkin
+                // 使用当前时间作为默认文件名，避免依赖 CurrentSkin
                 string suggestedFileName = ViewModel.CurrentSkin != null 
                     ? $"skin_{ViewModel.CurrentSkin.Id}" 
                     : $"skin_{DateTime.Now:yyyyMMddHHmmss}";
@@ -948,7 +948,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
 
         /// <summary>
-        /// 将ImageSource保存到文件
+        /// 将 ImageSource 保存到文件
         /// </summary>
         /// <param name="imageSource">要保存的图像源</param>
         /// <param name="file">目标文件</param>
@@ -956,7 +956,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             if (imageSource is BitmapImage bitmapImage)
             {
-                // 对于BitmapImage，我们需要从原始URL重新下载，因为BitmapImage的像素数据不容易直接访问
+                // 对于 BitmapImage，我们需要从原始 URL 重新下载，因为 BitmapImage 的像素数据不容易直接访问
                 string? currentSkinUrl = ViewModel.CurrentSkin?.Url;
                 if (!string.IsNullOrEmpty(currentSkinUrl))
                 {
@@ -1030,7 +1030,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 ulong fileSize = basicProperties.Size;
                 Debug.WriteLine($"[AccountManagementPage] 用户选择了皮肤文件: {file.Name}, 大小: {fileSize} 字节");
 
-                // 2. 验证文件是否符合要求（PNG格式、64x64尺寸）
+                // 2. 验证文件是否符合要求（PNG 格式、64x64 尺寸）
                 if (!await ValidateSkinFileAsync(file))
                 {
                     Debug.WriteLine($"[AccountManagementPage] 皮肤文件验证失败");
@@ -1092,10 +1092,10 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// 上传皮肤到外置登录服务器
         /// </summary>
         /// <param name="file">皮肤文件</param>
-        /// <param name="model">皮肤模型：空字符串为Steve，"slim"为Alex</param>
+        /// <param name="model">皮肤模型：空字符串为 Steve，"slim"为 Alex</param>
         private async Task UploadExternalSkinAsync(Windows.Storage.StorageFile file, string model)
         {
-            // 1. 准备API请求 - 使用PUT方法
+            // 1. 准备 API 请求 - 使用 PUT 方法
             string? authServer = ViewModel.CurrentProfile.AuthServer;
             if (string.IsNullOrWhiteSpace(authServer))
             {
@@ -1109,7 +1109,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             
             Debug.WriteLine($"[AccountManagementPage] 构建皮肤上传请求: URL={apiUrl}, Method=PUT");
             
-            // 2. 添加Authorization头
+            // 2. 添加 Authorization 头
             if (!string.IsNullOrWhiteSpace(ViewModel.CurrentProfile.AccessToken))
             {
                 request.Headers.Authorization = new AuthenticationHeaderValue(
@@ -1122,11 +1122,11 @@ namespace XianYuLauncher.Features.Accounts.Views
                 Debug.WriteLine($"[AccountManagementPage] 未添加 Authorization 头: AccessToken 为空");
             }
             
-            // 3. 准备multipart/form-data请求体
+            // 3. 准备 multipart/form-data 请求体
             var formContent = new MultipartFormDataContent();
             
-            // 4. 添加model参数（仅用于皮肤）
-            // model: 空字符串为Steve模型，"slim"为Alex模型
+            // 4. 添加 model 参数（仅用于皮肤）
+            // model: 空字符串为 Steve 模型，"slim"为 Alex 模型
             formContent.Add(
                 new StringContent(model),
                 "model");
@@ -1136,7 +1136,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             var basicProperties = await file.GetBasicPropertiesAsync();
             ulong fileSize = basicProperties.Size;
             
-            // 6. 添加file参数
+            // 6. 添加 file 参数
             using (var fileStream = await file.OpenStreamForReadAsync())
             {
                 var fileContent = new StreamContent(fileStream);
@@ -1173,7 +1173,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
 
         /// <summary>
-        /// 验证皮肤文件是否符合要求（PNG格式、64x64尺寸）
+        /// 验证皮肤文件是否符合要求（PNG 格式、64x64 尺寸）
         /// </summary>
         /// <param name="file">要验证的文件</param>
         /// <returns>是否符合要求</returns>
@@ -1181,14 +1181,14 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                // 1. 检查文件扩展名是否为PNG
+                // 1. 检查文件扩展名是否为 PNG
                 if (file.FileType != ".png")
                 {
                     await ShowMessageAsync("Msg_ValidationFailed".GetLocalized(), "Msg_SkinMustBePng".GetLocalized());
                     return false;
                 }
 
-                // 2. 使用Win2D加载图片，检查尺寸
+                // 2. 使用 Win2D 加载图片，检查尺寸
                 var device = Microsoft.Graphics.Canvas.CanvasDevice.GetSharedDevice();
                 using (var stream = await file.OpenReadAsync())
                 {
@@ -1210,7 +1210,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
 
         /// <summary>
-        /// 验证披风文件是否符合要求（PNG格式）
+        /// 验证披风文件是否符合要求（PNG 格式）
         /// </summary>
         /// <param name="file">要验证的文件</param>
         /// <returns>是否符合要求</returns>
@@ -1218,14 +1218,14 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                // 1. 检查文件扩展名是否为PNG
+                // 1. 检查文件扩展名是否为 PNG
                 if (file.FileType != ".png")
                 {
                     await ShowMessageAsync("Msg_ValidationFailed".GetLocalized(), "Msg_CapeMustBePng".GetLocalized());
                     return false;
                 }
 
-                // 2. 使用Win2D加载图片，验证是否有效PNG
+                // 2. 使用 Win2D 加载图片，验证是否有效 PNG
                 var device = Microsoft.Graphics.Canvas.CanvasDevice.GetSharedDevice();
                 using (var stream = await file.OpenReadAsync())
                 {
@@ -1290,7 +1290,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 ulong fileSize = basicProperties.Size;
                 Debug.WriteLine($"[AccountManagementPage] 用户选择了披风文件: {file.Name}, 大小: {fileSize} 字节");
 
-                // 2. 验证文件是否符合要求（PNG格式）
+                // 2. 验证文件是否符合要求（PNG 格式）
                 if (!await ValidateCapeFileAsync(file))
                 {
                     Debug.WriteLine($"[AccountManagementPage] 披风文件验证失败");
@@ -1338,7 +1338,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// <param name="file">披风文件</param>
         private async Task UploadExternalCapeAsync(Windows.Storage.StorageFile file)
         {
-            // 1. 准备API请求 - 使用PUT方法
+            // 1. 准备 API 请求 - 使用 PUT 方法
             string? authServer = ViewModel.CurrentProfile.AuthServer;
             if (string.IsNullOrWhiteSpace(authServer))
             {
@@ -1352,7 +1352,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             
             Debug.WriteLine($"[AccountManagementPage] 构建披风上传请求: URL={apiUrl}, Method=PUT");
             
-            // 2. 添加Authorization头
+            // 2. 添加 Authorization 头
             if (!string.IsNullOrWhiteSpace(ViewModel.CurrentProfile.AccessToken))
             {
                 request.Headers.Authorization = new AuthenticationHeaderValue(
@@ -1365,14 +1365,14 @@ namespace XianYuLauncher.Features.Accounts.Views
                 Debug.WriteLine($"[AccountManagementPage] 未添加 Authorization 头: AccessToken 为空");
             }
             
-            // 3. 准备multipart/form-data请求体
+            // 3. 准备 multipart/form-data 请求体
             var formContent = new MultipartFormDataContent();
             
             // 4. 获取文件大小
             var basicProperties = await file.GetBasicPropertiesAsync();
             ulong fileSize = basicProperties.Size;
             
-            // 5. 添加file参数（披风不需要model参数）
+            // 5. 添加 file 参数（披风不需要 model 参数）
             using (var fileStream = await file.OpenStreamForReadAsync())
             {
                 var fileContent = new StreamContent(fileStream);
@@ -1409,7 +1409,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         }
         
         /// <summary>
-        /// 点击披风纹理图片时，显示TeachingTip
+        /// 点击披风纹理图片时，显示 TeachingTip
         /// </summary>
         /// <param name="sender">触发事件的控件</param>
         /// <param name="e">指针事件参数</param>
