@@ -188,7 +188,7 @@
                                 <TextBox 
                                     x:Uid="TutorialPage_MinecraftPathTextBox"
                                     Text="{x:Bind ViewModel.MinecraftPath, Mode=TwoWay}" 
-                                    PlaceholderText="请选择Minecraft游戏目录" 
+                                    PlaceholderText="请选择 Minecraft 游戏目录" 
                                     HorizontalAlignment="Stretch"/>
                                 <Button 
                                     Grid.Column="1"

@@ -258,7 +258,7 @@
                                         Padding="12,8">
                                     <StackPanel Orientation="Horizontal" Spacing="8">
                                         <FontIcon Glyph="&#xE8F1;" FontSize="16" />
-                                        <TextBlock x:Uid="ModDownloadDetailPage_McmodButton" Text="MC百科" FontSize="14" VerticalAlignment="Center" />
+                                        <TextBlock x:Uid="ModDownloadDetailPage_McmodButton" Text="MC 百科" FontSize="14" VerticalAlignment="Center" />
                                     </StackPanel>
                                 </Button>
                             </StackPanel>

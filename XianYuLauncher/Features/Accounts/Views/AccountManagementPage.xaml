@@ -110,13 +110,13 @@
                             <StackPanel Spacing="8">
                                 <TextBlock
                                     x:Uid="AccountManagementPage_Skin3DPreviewTitle"
-                                    Text="皮肤3D预览"
+                                    Text="皮肤 3D 预览"
                                     Style="{StaticResource TitleTextBlockStyle}"
                                     FontSize="18"
                                     FontWeight="SemiBold" />
                                 <TextBlock
                                     x:Uid="AccountManagementPage_Skin3DPreviewNote"
-                                    Text="3D皮肤模型预览，支持旋转和缩放"
+                                    Text="3D 皮肤模型预览，支持旋转和缩放"
                                     Style="{StaticResource CaptionTextBlockStyle}"
                                     Foreground="{ThemeResource TextFillColorSecondary}" />
                             </StackPanel>
@@ -219,7 +219,7 @@
                         <StackPanel Spacing="8">
                             <TextBlock
                                 x:Uid="AccountManagementPage_ChangeUuidTitle"
-                                Text="修改UUID"
+                                Text="修改 UUID"
                                 Style="{StaticResource TitleTextBlockStyle}"
                                 FontSize="18"
                                 FontWeight="SemiBold" />
@@ -240,7 +240,7 @@
                                 x:Uid="AccountManagementPage_NewUuidTextBox"
                                 Grid.Column="0"
                                 Text="{x:Bind ViewModel.NewUUID, Mode=TwoWay}"
-                                PlaceholderText="输入新UUID"
+                                PlaceholderText="输入新 UUID"
                                 IsEnabled="{x:Bind ViewModel.CurrentProfile.IsOffline, Mode=OneWay}"
                                 Margin="0,0,12,0" />
                             
