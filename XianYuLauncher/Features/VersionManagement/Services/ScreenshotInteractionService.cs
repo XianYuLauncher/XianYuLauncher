@@ -61,7 +61,7 @@ public sealed class ScreenshotInteractionService : IScreenshotInteractionService
         {
             var picker = new Windows.Storage.Pickers.FileSavePicker();
             picker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.Desktop;
-            picker.FileTypeChoices.Add("PNG图片", new List<string> { ".png" });
+            picker.FileTypeChoices.Add("PNG 图片", new List<string> { ".png" });
             picker.SuggestedFileName = screenshot.Name;
 
             var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(App.MainWindow);

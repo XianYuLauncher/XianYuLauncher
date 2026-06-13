@@ -864,7 +864,7 @@ public partial class ResourceDownloadHostViewModel : ObservableRecipient, IPageH
     {
         if (!TryGetCurseForgeId(project.ProjectId, out int modId))
         {
-            return (false, "无法解析CurseForge ID");
+            return (false, "无法解析 CurseForge ID");
         }
 
         int? modLoaderType = gameVersion.LoaderType?.ToLower() switch
@@ -961,7 +961,7 @@ public partial class ResourceDownloadHostViewModel : ObservableRecipient, IPageH
             {
                 if (!TryGetCurseForgeId(project.ProjectId, out int modId))
                 {
-                    return (false, "无法解析CurseForge ID");
+                    return (false, "无法解析 CurseForge ID");
                 }
 
                 var files = await _curseForgeService.GetModFilesAsync(

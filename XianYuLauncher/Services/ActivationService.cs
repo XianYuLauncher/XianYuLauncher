@@ -439,12 +439,12 @@ public class ActivationService : IActivationService
                 Serilog.Log.Information("准备显示用户协议弹窗");
                 
                 // 构建用户协议内容
-                string agreementContent = "在正式开始使用XianYu Launcher前,您需阅读并同意相关协议后方可使用。";
+                string agreementContent = "在正式开始使用 XianYu Launcher 前，您需阅读并同意相关协议后方可使用。";
 
                 // 显示弹窗并处理结果
                 Serilog.Log.Information("开始显示用户协议弹窗");
                 var result = await _dialogService.ShowPrivacyAgreementDialogAsync(
-                    "XianYu Launcher用户协议",
+                    "XianYu Launcher 用户协议",
                     agreementContent,
                     onOpenAgreementLink: async () =>
                     {

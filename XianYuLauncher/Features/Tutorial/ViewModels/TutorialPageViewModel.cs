@@ -932,7 +932,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             else
             {
                 // 检查是否是账户没有购买Minecraft的错误
-                if (!string.IsNullOrEmpty(result.ErrorMessage) && result.ErrorMessage.Contains("该账号没有购买Minecraft"))
+                if (!string.IsNullOrEmpty(result.ErrorMessage) && result.ErrorMessage.Contains("该账号没有购买 Minecraft"))
                 {
                     // 显示购买提示弹窗
                     await ShowMinecraftPurchaseDialogAsync();

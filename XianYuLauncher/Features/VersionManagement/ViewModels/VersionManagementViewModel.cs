@@ -1360,7 +1360,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
         }
         catch (Exception ex)
         {
-            StatusMessage = $"浏览Java路径失败：{ex.Message}";
+            StatusMessage = $"浏览 Java 路径失败：{ex.Message}";
         }
     }
     

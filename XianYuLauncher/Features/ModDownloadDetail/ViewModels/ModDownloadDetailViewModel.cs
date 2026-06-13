@@ -664,7 +664,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"加载Mod详情失败: {ex.Message}";
+                ErrorMessage = $"加载 Mod 详情失败: {ex.Message}";
                 WriteErrorLog(ex, "加载 Mod 详情失败");
             }
             finally
@@ -1365,7 +1365,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
             WinRT.Interop.InitializeWithWindow.Initialize(filePicker, windowHandle);
             
             filePicker.SuggestedFileName = selectedModVersion.FileName;
-            filePicker.FileTypeChoices.Add("Mod文件", new[] { FileExtensionConsts.Jar });
+            filePicker.FileTypeChoices.Add("Mod 文件", new[] { FileExtensionConsts.Jar });
             
             var file = await filePicker.PickSaveFileAsync();
             
@@ -1489,7 +1489,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
                 var currentDownloadingModVersion = _currentDownloadingModVersion;
                 if (currentDownloadingModVersion == null)
                 {
-                    throw new Exception("未找到正在下载的Mod版本");
+                    throw new Exception("未找到正在下载的 Mod 版本");
                 }
                 
                 string? selectedSaveName = SelectedSaveName;
@@ -2750,7 +2750,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
             catch (Exception ex)
             {
                 WriteErrorLog(ex, "显示 Mod 版本选择失败");
-                await ShowMessageAsync($"显示Mod版本选择失败: {ex.Message}");
+                await ShowMessageAsync($"显示 Mod 版本选择失败: {ex.Message}");
             }
         }
         

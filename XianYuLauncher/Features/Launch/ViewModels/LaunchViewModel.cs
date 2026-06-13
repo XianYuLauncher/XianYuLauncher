@@ -1237,7 +1237,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
             var versionsPath = Path.Combine(minecraftPath, MinecraftPathConsts.Versions);
             
             // 更新启动状态显示路径信息
-            SetLaunchStatusThreadSafe($"当前Minecraft版本路径: {versionsPath}");
+            SetLaunchStatusThreadSafe($"当前 Minecraft 版本路径: {versionsPath}");
         }
         catch (Exception ex)
         {

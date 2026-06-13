@@ -920,7 +920,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 // 创建文件保存对话框
                 var savePicker = new Windows.Storage.Pickers.FileSavePicker();
                 savePicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.PicturesLibrary;
-                savePicker.FileTypeChoices.Add("PNG图片", new List<string>() { ".png" });
+                savePicker.FileTypeChoices.Add("PNG 图片", new List<string>() { ".png" });
                 
                 // 使用当前时间作为默认文件名，避免依赖CurrentSkin
                 string suggestedFileName = ViewModel.CurrentSkin != null 
