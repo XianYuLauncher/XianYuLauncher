@@ -7,22 +7,22 @@ using XianYuLauncher.Core.Services;
 namespace XianYuLauncher.Core.Models;
 
 /// <summary>
-/// 用于保存Optifine版本信息，包括版本名和兼容的Forge版本
+/// 用于保存 Optifine 版本信息，包括版本名和兼容的 Forge 版本
 /// </summary>
 public class OptifineVersionInfo
 {
     /// <summary>
-    /// Optifine版本名（Type_Patch格式）
+    /// Optifine 版本名（Type_Patch 格式）
     /// </summary>
     public string VersionName { get; set; } = string.Empty;
     
     /// <summary>
-    /// 兼容的Forge版本
+    /// 兼容的 Forge 版本
     /// </summary>
     public string CompatibleForgeVersion { get; set; } = string.Empty;
     
     /// <summary>
-    /// 完整的Optifine版本对象
+    /// 完整的 Optifine 版本对象
     /// </summary>
     public OptifineVersion FullVersion { get; set; } = null!;
     
@@ -35,7 +35,7 @@ public class OptifineVersionInfo
         {
             if (CompatibleForgeVersion == "Forge N/A")
             {
-                return "不兼容Forge";
+                return "不兼容 Forge";
             }
             return $"兼容 {CompatibleForgeVersion}";
         }
@@ -43,7 +43,7 @@ public class OptifineVersionInfo
 }
 
 /// <summary>
-/// 表示一个ModLoader项，包含其名称、版本列表、加载状态等信息
+/// 表示一个 ModLoader 项，包含其名称、版本列表、加载状态等信息
 /// </summary>
 public class ModLoaderItem : INotifyPropertyChanged
 {
@@ -55,7 +55,7 @@ public class ModLoaderItem : INotifyPropertyChanged
     private string? _selectedVersion;
     
     /// <summary>
-    /// 保存Optifine完整版本信息的字典
+    /// 保存 Optifine 完整版本信息的字典
     /// </summary>
     private Dictionary<string, OptifineVersionInfo> _optifineVersionInfoDict = new();
 
@@ -65,7 +65,7 @@ public class ModLoaderItem : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     /// <summary>
-    /// ModLoader名称
+    /// ModLoader 名称
     /// </summary>
     public string Name 
     {
@@ -74,7 +74,7 @@ public class ModLoaderItem : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// Expander 展开状态（仅UI状态）
+    /// Expander 展开状态（仅 UI 状态）
     /// </summary>
     public bool IsExpanded
     {
@@ -110,12 +110,12 @@ public class ModLoaderItem : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// 可用的ModLoader版本列表
+    /// 可用的 ModLoader 版本列表
     /// </summary>
     public ObservableCollection<string> Versions { get; set; }
 
     /// <summary>
-    /// 当前选中的ModLoader版本
+    /// 当前选中的 ModLoader 版本
     /// </summary>
     public string? SelectedVersion 
     {
@@ -124,9 +124,9 @@ public class ModLoaderItem : INotifyPropertyChanged
     }
     
     /// <summary>
-    /// 获取Optifine版本的兼容信息
+    /// 获取 Optifine 版本的兼容信息
     /// </summary>
-    /// <param name="versionName">Optifine版本名</param>
+    /// <param name="versionName">Optifine 版本名</param>
     /// <returns>兼容信息</returns>
     public string GetOptifineCompatibleInfo(string versionName)
     {
@@ -140,10 +140,10 @@ public class ModLoaderItem : INotifyPropertyChanged
     }
     
     /// <summary>
-    /// 获取Optifine版本的完整信息
+    /// 获取 Optifine 版本的完整信息
     /// </summary>
-    /// <param name="versionName">Optifine版本名</param>
-    /// <returns>OptifineVersionInfo对象</returns>
+    /// <param name="versionName">Optifine 版本名</param>
+    /// <returns>OptifineVersionInfo 对象</returns>
     public OptifineVersionInfo? GetOptifineVersionInfo(string versionName)
     {
         if (Name != "Optifine") return null;
@@ -167,16 +167,16 @@ public class ModLoaderItem : INotifyPropertyChanged
     }
     
     /// <summary>
-    /// 添加Optifine版本信息
+    /// 添加 Optifine 版本信息
     /// </summary>
-    /// <param name="info">Optifine版本信息</param>
+    /// <param name="info">Optifine 版本信息</param>
     public void AddOptifineVersionInfo(OptifineVersionInfo info)
     {
         _optifineVersionInfoDict[info.VersionName] = info;
     }
     
     /// <summary>
-    /// 清空Optifine版本信息
+    /// 清空 Optifine 版本信息
     /// </summary>
     public void ClearOptifineVersionInfo()
     {
@@ -184,7 +184,7 @@ public class ModLoaderItem : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// ModLoader图标URL
+    /// ModLoader 图标 URL
     /// </summary>
     public string IconUrl
         {
@@ -202,7 +202,7 @@ public class ModLoaderItem : INotifyPropertyChanged
     /// <summary>
     /// 构造函数
     /// </summary>
-    /// <param name="name">ModLoader名称</param>
+    /// <param name="name">ModLoader 名称</param>
     public ModLoaderItem(string name)
     {
         _name = name;

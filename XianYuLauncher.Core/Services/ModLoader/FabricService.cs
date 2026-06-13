@@ -9,7 +9,7 @@ using XianYuLauncher.Core.Helpers;
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-/// Fabric服务类，用于获取Fabric版本列表
+/// Fabric 服务类，用于获取 Fabric 版本列表
 /// </summary>
 public class FabricService
 {
@@ -31,10 +31,10 @@ public class FabricService
     }
 
     /// <summary>
-    /// 获取指定Minecraft版本的Fabric加载器版本列表
+    /// 获取指定 Minecraft 版本的 Fabric 加载器版本列表
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <returns>Fabric加载器版本列表</returns>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <returns>Fabric 加载器版本列表</returns>
     public async Task<List<FabricLoaderVersion>> GetFabricLoaderVersionsAsync(string minecraftVersion)
     {
         try
@@ -65,7 +65,7 @@ public class FabricService
                 }
                 else
                 {
-                    throw new Exception($"获取Fabric版本列表失败: {result.ErrorMessage}");
+                    throw new Exception($"获取 Fabric 版本列表失败: {result.ErrorMessage}");
                 }
             }
             
@@ -75,21 +75,21 @@ public class FabricService
         catch (HttpRequestException ex)
         {
             System.Diagnostics.Debug.WriteLine($"[FabricService] 获取 Fabric 版本列表失败: {ex.Message}");
-            throw new Exception($"获取Fabric版本列表失败: {ex.Message}");
+            throw new Exception($"获取 Fabric 版本列表失败: {ex.Message}");
         }
         catch (JsonException ex)
         {
             System.Diagnostics.Debug.WriteLine($"[FabricService] 解析 Fabric 版本列表失败: {ex.Message}");
-            throw new Exception($"解析Fabric版本列表失败: {ex.Message}");
+            throw new Exception($"解析 Fabric 版本列表失败: {ex.Message}");
         }
-        catch (Exception ex) when (ex.Message.StartsWith("获取Fabric") || ex.Message.StartsWith("解析Fabric"))
+        catch (Exception ex) when (ex.Message.StartsWith("获取 Fabric") || ex.Message.StartsWith("解析 Fabric"))
         {
             throw; // 重新抛出已处理的异常
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[FabricService] 获取 Fabric 版本列表时发生错误: {ex.Message}");
-            throw new Exception($"获取Fabric版本列表时发生错误: {ex.Message}");
+            throw new Exception($"获取 Fabric 版本列表时发生错误: {ex.Message}");
         }
     }
     
@@ -101,7 +101,7 @@ public class FabricService
         // 使用 Fabric 专用下载源
         var downloadSource = _downloadSourceFactory.GetFabricSource();
         
-        // 使用下载源获取Fabric版本列表URL
+        // 使用下载源获取 Fabric 版本列表 URL
         string url = downloadSource.GetFabricVersionsUrl(minecraftVersion);
         
         System.Diagnostics.Debug.WriteLine($"[FabricService] 使用原有逻辑，下载源: {downloadSource.Name}，URL: {url}");
@@ -113,10 +113,10 @@ public class FabricService
             request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
         }
         
-        // 发送HTTP请求
+        // 发送 HTTP 请求
         HttpResponseMessage response = await _httpClient.SendAsync(request);
         
-        // 检查是否为 BMCLAPI 类型的源且返回404
+        // 检查是否为 BMCLAPI 类型的源且返回 404
         if (downloadSource.RequiresBmclapiUserAgent(url) && response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
             System.Diagnostics.Debug.WriteLine($"[FabricService] BMCLAPI 类型源返回 404，切换到官方源");

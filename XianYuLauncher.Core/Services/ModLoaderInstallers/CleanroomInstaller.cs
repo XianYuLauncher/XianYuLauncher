@@ -16,8 +16,8 @@ using XianYuLauncher.Core.Services.DownloadSource;
 namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 
 /// <summary>
-/// Cleanroom ModLoader安装器
-/// Cleanroom基于Forge 1.12.2，安装流程与Forge完全一致，只是下载URL不同
+/// Cleanroom ModLoader 安装器
+/// Cleanroom 基于 Forge 1.12.2，安装流程与 Forge 完全一致，只是下载 URL 不同
 /// </summary>
 public class CleanroomInstaller : ModLoaderInstallerBase
 {
@@ -71,13 +71,13 @@ public class CleanroomInstaller : ModLoaderInstallerBase
         Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
-        // Cleanroom仅支持Minecraft 1.12.2
+        // Cleanroom 仅支持 Minecraft 1.12.2
         if (minecraftVersionId != "1.12.2")
         {
-            throw new InvalidOperationException($"Cleanroom仅支持Minecraft 1.12.2，当前版本: {minecraftVersionId}");
+            throw new InvalidOperationException($"Cleanroom 仅支持 Minecraft 1.12.2，当前版本: {minecraftVersionId}");
         }
 
-        Logger.LogInformation("开始安装Cleanroom: {CleanroomVersion} for Minecraft {MinecraftVersion}, SkipJarDownload={SkipJar}",
+        Logger.LogInformation("开始安装 Cleanroom: {CleanroomVersion} for Minecraft {MinecraftVersion}, SkipJarDownload={SkipJar}",
             modLoaderVersion, minecraftVersionId, options.SkipJarDownload);
 
         string? cacheDirectory = null;
@@ -86,7 +86,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
 
         try
         {
-            // 1. 生成版本ID和创建目录
+            // 1. 生成版本 ID 和创建目录
             var versionId = GetVersionId(minecraftVersionId, modLoaderVersion, options.CustomVersionName);
             var versionDirectory = CreateVersionDirectory(minecraftDirectory, versionId);
             var librariesDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Libraries);
@@ -96,8 +96,8 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             // 2. 保存版本配置
             await SaveVersionConfigAsync(versionDirectory, minecraftVersionId, modLoaderVersion);
 
-            // 3. 获取原版Minecraft版本信息
-            Logger.LogInformation("获取原版Minecraft版本信息: {MinecraftVersion}", minecraftVersionId);
+            // 3. 获取原版 Minecraft 版本信息
+            Logger.LogInformation("获取原版 Minecraft 版本信息: {MinecraftVersion}", minecraftVersionId);
             var originalVersionInfo = await VersionInfoManager.GetVersionInfoAsync(
                 minecraftVersionId,
                 minecraftDirectory,
@@ -106,8 +106,8 @@ public class CleanroomInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 10));
 
-            // 4. 下载原版Minecraft JAR（支持跳过）
-            Logger.LogInformation("处理Minecraft JAR, SkipJarDownload={SkipJar}", options.SkipJarDownload);
+            // 4. 下载原版 Minecraft JAR（支持跳过）
+            Logger.LogInformation("处理 Minecraft JAR, SkipJarDownload={SkipJar}", options.SkipJarDownload);
             await EnsureMinecraftJarAsync(
                 versionDirectory,
                 versionId,
@@ -118,8 +118,8 @@ public class CleanroomInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 35));
 
-            // 5. 下载Cleanroom Installer
-            Logger.LogInformation("下载Cleanroom Installer");
+            // 5. 下载 Cleanroom Installer
+            Logger.LogInformation("下载 Cleanroom Installer");
             cacheDirectory = Path.Combine(Path.GetTempPath(), "XianYuLauncher", "cache", "cleanroom");
             Directory.CreateDirectory(cacheDirectory);
             
@@ -138,25 +138,25 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             if (!downloadResult.Success)
             {
                 throw new ModLoaderInstallException(
-                    $"下载Cleanroom Installer失败: {downloadResult.ErrorMessage}",
+                    $"下载 Cleanroom Installer 失败: {downloadResult.ErrorMessage}",
                     ModLoaderType,
                     modLoaderVersion,
                     minecraftVersionId,
-                    "下载Installer",
+                    "下载 Installer",
                     downloadResult.Exception);
             }
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 55));
 
-            // 6. 解压Cleanroom Installer（与Forge流程相同）
-            Logger.LogInformation("解压Cleanroom Installer");
+            // 6. 解压 Cleanroom Installer（与 Forge 流程相同）
+            Logger.LogInformation("解压 Cleanroom Installer");
             extractedPath = Path.Combine(cacheDirectory, $"extracted-{modLoaderVersion}");
             Directory.CreateDirectory(extractedPath);
             
             await ExtractInstallerAsync(installerPath, extractedPath, cancellationToken);
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 65));
 
-            // 7. 读取install_profile.json（与Forge流程相同）
+            // 7. 读取 install_profile.json（与 Forge 流程相同）
             Logger.LogInformation("读取 install_profile.json");
             var installProfilePath = Path.Combine(extractedPath, MinecraftFileConsts.InstallProfileJson);
             if (!File.Exists(installProfilePath))
@@ -178,7 +178,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 70));
 
-            // 8. 下载install_profile中的依赖库
+            // 8. 下载 install_profile 中的依赖库
             Logger.LogInformation("开始解析依赖库列表");
             var installProfileLibraries = ParseInstallProfileLibraries(installProfile);
             Logger.LogInformation("解析到 {Count} 个依赖库", installProfileLibraries.Count);
@@ -192,7 +192,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 80));
 
-            // 9. 读取version.json
+            // 9. 读取 version.json
             Logger.LogInformation("读取 version.json");
             var versionJsonPath = Path.Combine(extractedPath, "version.json");
             if (!File.Exists(versionJsonPath))
@@ -216,7 +216,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                 if (!File.Exists(versionJsonPath))
                 {
                     throw new ModLoaderInstallException(
-                        "在Cleanroom安装包中未找到version.json文件",
+                        "在 Cleanroom 安装包中未找到 version.json 文件",
                         ModLoaderType,
                         modLoaderVersion,
                         minecraftVersionId,
@@ -265,28 +265,28 @@ public class CleanroomInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 98));
 
-            // 11. 合并版本JSON并保存
+            // 11. 合并版本 JSON 并保存
             Logger.LogInformation("合并版本信息");
             var mergedVersionInfo = ResolveVersionInfo(originalVersionInfo, cleanroomVersionInfo, installProfileLibraries);
             mergedVersionInfo.Id = versionId;
             
-            Logger.LogInformation("保存版本JSON文件");
+            Logger.LogInformation("保存版本 JSON 文件");
             await SaveVersionJsonAsync(versionDirectory, versionId, mergedVersionInfo);
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
 
-            Logger.LogInformation("Cleanroom安装完成: {VersionId}", versionId);
+            Logger.LogInformation("Cleanroom 安装完成: {VersionId}", versionId);
             return versionId;
         }
         catch (OperationCanceledException)
         {
-            Logger.LogWarning("Cleanroom安装已取消");
+            Logger.LogWarning("Cleanroom 安装已取消");
             throw;
         }
         catch (Exception ex) when (ex is not ModLoaderInstallException)
         {
-            Logger.LogError(ex, "Cleanroom安装失败");
+            Logger.LogError(ex, "Cleanroom 安装失败");
             throw new ModLoaderInstallException(
-                $"Cleanroom安装失败: {ex.Message}",
+                $"Cleanroom 安装失败: {ex.Message}",
                 ModLoaderType,
                 modLoaderVersion,
                 minecraftVersionId,
@@ -304,21 +304,21 @@ public class CleanroomInstaller : ModLoaderInstallerBase
         string minecraftVersionId,
         CancellationToken cancellationToken = default)
     {
-        // Cleanroom仅支持Minecraft 1.12.2
+        // Cleanroom 仅支持 Minecraft 1.12.2
         if (minecraftVersionId != "1.12.2")
         {
-            Logger.LogWarning("Cleanroom仅支持Minecraft 1.12.2，当前版本: {MinecraftVersion}", minecraftVersionId);
+            Logger.LogWarning("Cleanroom 仅支持 Minecraft 1.12.2，当前版本: {MinecraftVersion}", minecraftVersionId);
             return new List<string>();
         }
 
-        // 版本列表由CleanroomService提供，这里返回空列表
+        // 版本列表由 CleanroomService 提供，这里返回空列表
         return new List<string>();
     }
 
     #region 私有方法
 
     /// <summary>
-    /// 获取Cleanroom Installer的下载URL
+    /// 获取 Cleanroom Installer 的下载 URL
     /// </summary>
     private string GetCleanroomInstallerUrl(string cleanroomVersion)
     {
@@ -326,7 +326,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
     }
 
     /// <summary>
-    /// 解压Installer
+    /// 解压 Installer
     /// </summary>
     private async Task ExtractInstallerAsync(string installerPath, string extractPath, CancellationToken cancellationToken)
     {
@@ -351,7 +351,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
     }
 
     /// <summary>
-    /// 解析install_profile中的依赖库
+    /// 解析 install_profile 中的依赖库
     /// </summary>
     private List<Library> ParseInstallProfileLibraries(JObject installProfile)
     {
@@ -373,7 +373,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
     }
 
     /// <summary>
-    /// 下载/提取install_profile中的依赖库
+    /// 下载/提取 install_profile 中的依赖库
     /// </summary>
     private async Task DownloadInstallProfileLibrariesAsync(
         List<Library> libraries,
@@ -404,10 +404,10 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                 continue;
             }
 
-            // 尝试从installer中提取
+            // 尝试从 installer 中提取
             if (await TryExtractFromInstallerAsync(library, libraryPath, installerPath))
             {
-                Logger.LogInformation("已从Installer中提取库: {LibraryName}", library.Name);
+                Logger.LogInformation("已从 Installer 中提取库: {LibraryName}", library.Name);
                 continue;
             }
 
@@ -428,7 +428,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
 
             if (string.IsNullOrEmpty(downloadUrl))
             {
-                Logger.LogWarning("无法构建下载URL，跳过库: {LibraryName}", library.Name);
+                Logger.LogWarning("无法构建下载 URL，跳过库: {LibraryName}", library.Name);
                 continue;
             }
 
@@ -456,11 +456,11 @@ public class CleanroomInstaller : ModLoaderInstallerBase
     }
 
     /// <summary>
-    /// 尝试从Installer jar中直接提取库文件
+    /// 尝试从 Installer jar 中直接提取库文件
     /// </summary>
     private async Task<bool> TryExtractFromInstallerAsync(Library library, string destPath, string installerPath)
     {
-        // 只有Cleanroom自身或显式声明在maven路径下的库才尝试提取
+        // 只有 Cleanroom 自身或显式声明在 maven 路径下的库才尝试提取
         // 通常 cleanroom-installer.jar 包含 maven/com/cleanroommc/...
         
         // 构建库的相对路径
@@ -495,7 +495,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             }
             catch (Exception ex)
             {
-                Logger.LogWarning(ex, "尝试从Installer提取库失败: {Path}", mavenPath);
+                Logger.LogWarning(ex, "尝试从 Installer 提取库失败: {Path}", mavenPath);
             }
             return false;
         });
@@ -511,7 +511,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
             throw new ArgumentNullException(nameof(original));
         }
 
-        Logger.LogDebug("安装期额外依赖库不会写入最终manifest: {Count}", additionalLibraries?.Count ?? 0);
+        Logger.LogDebug("安装期额外依赖库不会写入最终 manifest: {Count}", additionalLibraries?.Count ?? 0);
 
         var manifestPatch = CreateManifestPatch(original, cleanroom);
         var resolutionResult = _manifestResolver.ResolvePatch(
@@ -523,7 +523,7 @@ public class CleanroomInstaller : ModLoaderInstallerBase
                 legacyArgumentMergeMode: LegacyArgumentMergeMode.PreferAnyWithLoaderPriority,
                 modernArgumentMergeMode: ModernArgumentMergeMode.OverrideSections));
 
-        Logger.LogInformation("通过ManifestPatch解析了 {LibraryCount} 个Cleanroom依赖库", manifestPatch.Libraries?.Count ?? 0);
+        Logger.LogInformation("通过 ManifestPatch 解析了 {LibraryCount} 个 Cleanroom 依赖库", manifestPatch.Libraries?.Count ?? 0);
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", resolutionResult.ResolvedManifest.Libraries?.Count ?? 0);
 
         return resolutionResult.ResolvedManifest;

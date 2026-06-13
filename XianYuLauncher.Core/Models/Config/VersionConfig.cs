@@ -3,32 +3,32 @@ using System;
 namespace XianYuLauncher.Core.Models;
 
 /// <summary>
-/// 版本配置文件模型，存储版本的ModLoader信息
+/// 版本配置文件模型，存储版本的 ModLoader 信息
 /// </summary>
 public class VersionConfig
 {
     /// <summary>
-    /// ModLoader类型（fabric, neoforge, forge, vanilla）
+    /// ModLoader 类型（fabric, neoforge, forge, vanilla）
     /// </summary>
     public string ModLoaderType { get; set; } = string.Empty;
     
     /// <summary>
-    /// ModLoader版本号（完整版本，如21.11.0-beta）
+    /// ModLoader 版本号（完整版本，如 21.11.0-beta）
     /// </summary>
     public string ModLoaderVersion { get; set; } = string.Empty;
     
     /// <summary>
-    /// Minecraft版本号
+    /// Minecraft 版本号
     /// </summary>
     public string MinecraftVersion { get; set; } = string.Empty;
     
     /// <summary>
-    /// Optifine版本号（如果安装了Optifine）
+    /// Optifine 版本号（如果安装了 Optifine）
     /// </summary>
     public string? OptifineVersion { get; set; }
     
     /// <summary>
-    /// LiteLoader版本号（如果安装了LiteLoader）
+    /// LiteLoader 版本号（如果安装了 LiteLoader）
     /// </summary>
     public string? LiteLoaderVersion { get; set; }
     
@@ -58,7 +58,7 @@ public class VersionConfig
     public double MaximumHeapMemory { get; set; } = 12.0;
     
     /// <summary>
-    /// Java路径
+    /// Java 路径
     /// </summary>
     public string JavaPath { get; set; } = string.Empty;
     
@@ -73,7 +73,7 @@ public class VersionConfig
     public string GarbageCollectorMode { get; set; } = Helpers.GarbageCollectorModeHelper.Auto;
     
     /// <summary>
-    /// 是否使用全局Java设置（兼容旧版，等同于 !OverrideJava）
+    /// 是否使用全局 Java 设置（兼容旧版，等同于 !OverrideJava）
     /// </summary>
     public bool UseGlobalJavaSetting { get; set; } = true;
     

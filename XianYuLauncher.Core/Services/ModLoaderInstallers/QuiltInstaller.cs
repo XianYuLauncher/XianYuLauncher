@@ -16,7 +16,7 @@ using XianYuLauncher.Core.Services.DownloadSource;
 namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 
 /// <summary>
-/// Quilt ModLoader安装器
+/// Quilt ModLoader 安装器
 /// </summary>
 public class QuiltInstaller : ModLoaderInstallerBase
 {
@@ -25,7 +25,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
     private readonly IUnifiedVersionManifestResolver _manifestResolver;
     
     /// <summary>
-    /// Quilt Meta API基础URL（官方源备用）
+    /// Quilt Meta API 基础 URL（官方源备用）
     /// </summary>
     private const string QuiltMetaApiUrl = "https://meta.quiltmc.org/v3";
     
@@ -79,20 +79,20 @@ public class QuiltInstaller : ModLoaderInstallerBase
         Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
-        Logger.LogInformation("开始安装Quilt: {QuiltVersion} for Minecraft {MinecraftVersion}, SkipJarDownload={SkipJar}",
+        Logger.LogInformation("开始安装 Quilt: {QuiltVersion} for Minecraft {MinecraftVersion}, SkipJarDownload={SkipJar}",
             modLoaderVersion, minecraftVersionId, options.SkipJarDownload);
 
         try
         {
-            // 1. 生成版本ID和创建目录
+            // 1. 生成版本 ID 和创建目录
             var versionId = GetVersionId(minecraftVersionId, modLoaderVersion, options.CustomVersionName);
             var versionDirectory = CreateVersionDirectory(minecraftDirectory, versionId);
             var librariesDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Libraries);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 5));
 
-            // 2. 获取原版Minecraft版本信息
-            Logger.LogInformation("获取原版Minecraft版本信息: {MinecraftVersion}", minecraftVersionId);
+            // 2. 获取原版 Minecraft 版本信息
+            Logger.LogInformation("获取原版 Minecraft 版本信息: {MinecraftVersion}", minecraftVersionId);
             var originalVersionInfo = await VersionInfoManager.GetVersionInfoAsync(
                 minecraftVersionId,
                 minecraftDirectory,
@@ -101,8 +101,8 @@ public class QuiltInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 10));
 
-            // 3. 获取Quilt Profile
-            Logger.LogInformation("获取Quilt Profile");
+            // 3. 获取 Quilt Profile
+            Logger.LogInformation("获取 Quilt Profile");
             var quiltProfile = await GetQuiltProfileAsync(minecraftVersionId, modLoaderVersion, cancellationToken);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 15));
@@ -110,8 +110,8 @@ public class QuiltInstaller : ModLoaderInstallerBase
             // 4. 保存版本配置
             await SaveVersionConfigAsync(versionDirectory, minecraftVersionId, modLoaderVersion);
 
-            // 5. 下载原版Minecraft JAR（支持跳过）
-            Logger.LogInformation("处理Minecraft JAR, SkipJarDownload={SkipJar}", options.SkipJarDownload);
+            // 5. 下载原版 Minecraft JAR（支持跳过）
+            Logger.LogInformation("处理 Minecraft JAR, SkipJarDownload={SkipJar}", options.SkipJarDownload);
             await EnsureMinecraftJarAsync(
                 versionDirectory,
                 versionId,
@@ -122,8 +122,8 @@ public class QuiltInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 35));
 
-            // 6. 下载Quilt库文件
-            Logger.LogInformation("下载Quilt库文件");
+            // 6. 下载 Quilt 库文件
+            Logger.LogInformation("下载 Quilt 库文件");
             var quiltLibraries = ParseQuiltLibraries(quiltProfile);
             await DownloadModLoaderLibrariesAsync(
                 quiltLibraries,
@@ -133,26 +133,26 @@ public class QuiltInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 80));
 
-            // 7. 生成Quilt版本JSON（与原版合并）
-            Logger.LogInformation("生成Quilt版本JSON");
+            // 7. 生成 Quilt 版本 JSON（与原版合并）
+            Logger.LogInformation("生成 Quilt 版本 JSON");
             var quiltVersionJson = ResolveVersionInfo(originalVersionInfo, quiltProfile, versionId);
             await SaveVersionJsonAsync(versionDirectory, versionId, quiltVersionJson);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
 
-            Logger.LogInformation("Quilt安装完成: {VersionId}", versionId);
+            Logger.LogInformation("Quilt 安装完成: {VersionId}", versionId);
             return versionId;
         }
         catch (OperationCanceledException)
         {
-            Logger.LogWarning("Quilt安装已取消");
+            Logger.LogWarning("Quilt 安装已取消");
             throw;
         }
         catch (Exception ex) when (ex is not ModLoaderInstallException)
         {
-            Logger.LogError(ex, "Quilt安装失败");
+            Logger.LogError(ex, "Quilt 安装失败");
             throw new ModLoaderInstallException(
-                $"Quilt安装失败: {ex.Message}",
+                $"Quilt 安装失败: {ex.Message}",
                 ModLoaderType,
                 modLoaderVersion,
                 minecraftVersionId,
@@ -177,7 +177,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "获取Quilt版本列表失败: {MinecraftVersion}", minecraftVersionId);
+            Logger.LogError(ex, "获取 Quilt 版本列表失败: {MinecraftVersion}", minecraftVersionId);
             return new List<string>();
         }
     }
@@ -185,7 +185,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
     #region 私有方法
 
     /// <summary>
-    /// 获取Quilt Profile
+    /// 获取 Quilt Profile
     /// </summary>
     private async Task<JObject> GetQuiltProfileAsync(
         string minecraftVersionId,
@@ -197,7 +197,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
         var url = downloadSource.GetQuiltProfileUrl(minecraftVersionId, quiltVersion);
         var officialUrl = $"{QuiltMetaApiUrl}/versions/loader/{minecraftVersionId}/{quiltVersion}/profile/json";
         
-        Logger.LogInformation("使用下载源 {DownloadSource} 获取Quilt Profile: {Url}", downloadSource.Name, url);
+        Logger.LogInformation("使用下载源 {DownloadSource} 获取 Quilt Profile: {Url}", downloadSource.Name, url);
         System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 获取 Quilt Profile: {url}");
 
         try
@@ -208,11 +208,11 @@ public class QuiltInstaller : ModLoaderInstallerBase
             if (profile == null)
             {
                 throw new ModLoaderInstallException(
-                    "无法解析Quilt Profile",
+                    "无法解析 Quilt Profile",
                     ModLoaderType,
                     quiltVersion,
                     minecraftVersionId,
-                    "获取Profile");
+                    "获取 Profile");
             }
 
             return profile;
@@ -229,11 +229,11 @@ public class QuiltInstaller : ModLoaderInstallerBase
             if (profile == null)
             {
                 throw new ModLoaderInstallException(
-                    "无法解析Quilt Profile",
+                    "无法解析 Quilt Profile",
                     ModLoaderType,
                     quiltVersion,
                     minecraftVersionId,
-                    "获取Profile");
+                    "获取 Profile");
             }
 
             return profile;
@@ -241,7 +241,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
     }
 
     /// <summary>
-    /// 解析Quilt库列表
+    /// 解析 Quilt 库列表
     /// </summary>
     private List<ModLoaderLibrary> ParseQuiltLibraries(JObject quiltProfile)
     {
@@ -285,7 +285,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
                 legacyArgumentMergeMode: LegacyArgumentMergeMode.PreferBaseIfPresent,
                 modernArgumentMergeMode: ModernArgumentMergeMode.MergeLists));
 
-        Logger.LogInformation("通过ManifestPatch解析了 {LibraryCount} 个Quilt依赖库", manifestPatch.Libraries?.Count ?? 0);
+        Logger.LogInformation("通过 ManifestPatch 解析了 {LibraryCount} 个 Quilt 依赖库", manifestPatch.Libraries?.Count ?? 0);
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", resolutionResult.ResolvedManifest.Libraries?.Count ?? 0);
 
         return resolutionResult.ResolvedManifest;

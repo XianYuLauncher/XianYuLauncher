@@ -577,7 +577,7 @@ public sealed partial class VersionManagementPage : Page
     
     #endregion
     
-    #region Mod开关事件处理
+    #region Mod 开关事件处理
     
     /// <summary>
     /// 处理 Mod 启用/禁用开关的 Toggled 事件
@@ -602,7 +602,7 @@ public sealed partial class VersionManagementPage : Page
     
     #endregion
     
-    #region 扩展Tab事件处理
+    #region 扩展 Tab 事件处理
     
     /// <summary>
     /// 处理加载器 Expander 展开事件，加载版本列表

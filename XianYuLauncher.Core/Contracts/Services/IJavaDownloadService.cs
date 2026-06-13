@@ -47,7 +47,7 @@ public interface IJavaDownloadService
     /// <summary>
     /// 根据游戏版本信息自动下载并安装合适的 Java 运行时
     /// </summary>
-    /// <param name="component">Java组件名称 (如 java-runtime-gamma)</param>
+    /// <param name="component">Java 组件名称 (如 java-runtime-gamma)</param>
     /// <param name="progressCallback">进度回调 (0.0 - 100.0)</param>
     /// <param name="statusCallback">状态文本回调</param>
     /// <param name="cancellationToken">取消令牌</param>

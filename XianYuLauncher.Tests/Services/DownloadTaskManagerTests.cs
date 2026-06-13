@@ -2039,7 +2039,7 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
     }
 
     /// <summary>
-    /// 创建测试用的zip文件内容
+    /// 创建测试用的 zip 文件内容
     /// </summary>
     private byte[] CreateTestZipContent(string worldFolderName = "TestWorld")
     {
@@ -2473,7 +2473,7 @@ public class DownloadTaskManagerWorldDownloadTests : IDisposable
     }
 
     /// <summary>
-    /// 测试世界下载进度更新（下载阶段0-70%，解压阶段70-100%）
+    /// 测试世界下载进度更新（下载阶段 0-70%，解压阶段 70-100%）
     /// </summary>
     [Fact]
     public async Task StartWorldDownloadAsync_ShouldRaiseProgressEvents()

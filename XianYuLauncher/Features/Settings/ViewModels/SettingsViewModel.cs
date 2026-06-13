@@ -2753,7 +2753,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
         }
     }
     
-    #region Minecraft游戏目录管理
+    #region Minecraft 游戏目录管理
     
     /// <summary>
     /// 加载 Minecraft 游戏目录列表

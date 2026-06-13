@@ -13,12 +13,12 @@ public class DownloadMirror
     public string name { get; set; } = string.Empty;
     
     /// <summary>
-    /// 镜像URL（旧版本兼容字段）
+    /// 镜像 URL（旧版本兼容字段）
     /// </summary>
     public string url { get; set; } = string.Empty;
     
     /// <summary>
-    /// 不同架构的下载URL映射
+    /// 不同架构的下载 URL 映射
     /// </summary>
     public Dictionary<string, string> arch_urls { get; set; } = new Dictionary<string, string>();
 }

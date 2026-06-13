@@ -9,7 +9,7 @@ using XianYuLauncher.Core.Helpers;
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-/// Legacy Fabric服务类，用于获取Legacy Fabric版本列表
+/// Legacy Fabric 服务类，用于获取 Legacy Fabric 版本列表
 /// </summary>
 public class LegacyFabricService
 {
@@ -31,10 +31,10 @@ public class LegacyFabricService
     }
 
     /// <summary>
-    /// 获取指定Minecraft版本的Legacy Fabric加载器版本列表
+    /// 获取指定 Minecraft 版本的 Legacy Fabric 加载器版本列表
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <returns>Legacy Fabric加载器版本列表</returns>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <returns>Legacy Fabric 加载器版本列表</returns>
     public async Task<List<FabricLoaderVersion>> GetLegacyFabricLoaderVersionsAsync(string minecraftVersion)
     {
         try
@@ -65,7 +65,7 @@ public class LegacyFabricService
                 }
                 else
                 {
-                    throw new Exception($"获取Legacy Fabric版本列表失败: {result.ErrorMessage}");
+                    throw new Exception($"获取 Legacy Fabric 版本列表失败: {result.ErrorMessage}");
                 }
             }
             
@@ -75,21 +75,21 @@ public class LegacyFabricService
         catch (HttpRequestException ex)
         {
             System.Diagnostics.Debug.WriteLine($"[LegacyFabricService] 获取 Legacy Fabric 版本列表失败: {ex.Message}");
-            throw new Exception($"获取Legacy Fabric版本列表失败: {ex.Message}");
+            throw new Exception($"获取 Legacy Fabric 版本列表失败: {ex.Message}");
         }
         catch (JsonException ex)
         {
             System.Diagnostics.Debug.WriteLine($"[LegacyFabricService] 解析 Legacy Fabric 版本列表失败: {ex.Message}");
-            throw new Exception($"解析Legacy Fabric版本列表失败: {ex.Message}");
+            throw new Exception($"解析 Legacy Fabric 版本列表失败: {ex.Message}");
         }
-        catch (Exception ex) when (ex.Message.StartsWith("获取Legacy Fabric") || ex.Message.StartsWith("解析Legacy Fabric"))
+        catch (Exception ex) when (ex.Message.StartsWith("获取 Legacy Fabric") || ex.Message.StartsWith("解析 Legacy Fabric"))
         {
             throw; // 重新抛出已处理的异常
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[LegacyFabricService] 获取 Legacy Fabric 版本列表时发生错误: {ex.Message}");
-            throw new Exception($"获取Legacy Fabric版本列表时发生错误: {ex.Message}");
+            throw new Exception($"获取 Legacy Fabric 版本列表时发生错误: {ex.Message}");
         }
     }
     
@@ -101,7 +101,7 @@ public class LegacyFabricService
         // 使用 LegacyFabric 专用下载源
         var downloadSource = _downloadSourceFactory.GetLegacyFabricSource();
         
-        // 使用下载源获取Legacy Fabric版本列表URL
+        // 使用下载源获取 Legacy Fabric 版本列表 URL
         string url = downloadSource.GetLegacyFabricVersionsUrl(minecraftVersion);
         
         System.Diagnostics.Debug.WriteLine($"[LegacyFabricService] 使用原有逻辑，下载源: {downloadSource.Name}，URL: {url}");
@@ -113,10 +113,10 @@ public class LegacyFabricService
             request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
         }
         
-        // 发送HTTP请求
+        // 发送 HTTP 请求
         HttpResponseMessage response = await _httpClient.SendAsync(request);
         
-        // 检查是否为 BMCLAPI 类型的源且返回404
+        // 检查是否为 BMCLAPI 类型的源且返回 404
         if (downloadSource.RequiresBmclapiUserAgent(url) && response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
             System.Diagnostics.Debug.WriteLine($"[LegacyFabricService] BMCLAPI 类型源返回 404，切换到官方源");

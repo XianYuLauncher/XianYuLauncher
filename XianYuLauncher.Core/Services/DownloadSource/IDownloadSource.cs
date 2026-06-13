@@ -31,7 +31,7 @@ public interface IDownloadSource
     bool SupportsVersionManifest { get; }
 
     /// <summary>
-    /// 下载源是否支持文件下载（client.jar、libraries、ModLoader安装包等）
+    /// 下载源是否支持文件下载（client.jar、libraries、ModLoader 安装包等）
     /// </summary>
     bool SupportsFileDownload { get; }
 
@@ -90,48 +90,48 @@ public interface IDownloadSource
     #endregion
 
     /// <summary>
-    /// 获取Minecraft版本清单URL
+    /// 获取 Minecraft 版本清单 URL
     /// </summary>
-    /// <returns>版本清单URL</returns>
+    /// <returns>版本清单 URL</returns>
     string GetVersionManifestUrl();
     
     #region Modrinth API
     
     /// <summary>
-    /// 获取Modrinth API基础URL
+    /// 获取 Modrinth API 基础 URL
     /// </summary>
-    /// <returns>Modrinth API基础URL</returns>
+    /// <returns>Modrinth API 基础 URL</returns>
     string GetModrinthApiBaseUrl();
     
     /// <summary>
-    /// 获取Modrinth CDN基础URL
+    /// 获取 Modrinth CDN 基础 URL
     /// </summary>
-    /// <returns>Modrinth CDN基础URL</returns>
+    /// <returns>Modrinth CDN 基础 URL</returns>
     string GetModrinthCdnBaseUrl();
     
     /// <summary>
-    /// 转换Modrinth API URL
+    /// 转换 Modrinth API URL
     /// </summary>
-    /// <param name="originalUrl">原始Modrinth API URL</param>
-    /// <returns>转换后的URL</returns>
+    /// <param name="originalUrl">原始 Modrinth API URL</param>
+    /// <returns>转换后的 URL</returns>
     string TransformModrinthApiUrl(string originalUrl);
     
     /// <summary>
-    /// 转换Modrinth CDN URL（文件下载）
+    /// 转换 Modrinth CDN URL（文件下载）
     /// </summary>
-    /// <param name="originalUrl">原始Modrinth CDN URL</param>
-    /// <returns>转换后的URL</returns>
+    /// <param name="originalUrl">原始 Modrinth CDN URL</param>
+    /// <returns>转换后的 URL</returns>
     string TransformModrinthCdnUrl(string originalUrl);
     
     /// <summary>
-    /// 获取Modrinth请求的User-Agent
-    /// 符合中国MC启动器社区规范
+    /// 获取 Modrinth 请求的 User-Agent
+    /// 符合中国 MC 启动器社区规范
     /// </summary>
-    /// <returns>User-Agent字符串，如果不需要特殊UA则返回null</returns>
+    /// <returns>User-Agent 字符串，如果不需要特殊 UA 则返回 null</returns>
     string? GetModrinthUserAgent();
     
     /// <summary>
-    /// 是否需要为Modrinth请求设置特殊User-Agent
+    /// 是否需要为 Modrinth 请求设置特殊 User-Agent
     /// </summary>
     bool RequiresModrinthUserAgent { get; }
     
@@ -140,169 +140,169 @@ public interface IDownloadSource
     #region CurseForge API
     
     /// <summary>
-    /// 获取CurseForge API基础URL
+    /// 获取 CurseForge API 基础 URL
     /// </summary>
-    /// <returns>CurseForge API基础URL</returns>
+    /// <returns>CurseForge API 基础 URL</returns>
     string GetCurseForgeApiBaseUrl();
     
     /// <summary>
-    /// 获取CurseForge CDN基础URL
+    /// 获取 CurseForge CDN 基础 URL
     /// </summary>
-    /// <returns>CurseForge CDN基础URL</returns>
+    /// <returns>CurseForge CDN 基础 URL</returns>
     string GetCurseForgeCdnBaseUrl();
     
     /// <summary>
-    /// 转换CurseForge API URL
+    /// 转换 CurseForge API URL
     /// </summary>
-    /// <param name="originalUrl">原始CurseForge API URL</param>
-    /// <returns>转换后的URL</returns>
+    /// <param name="originalUrl">原始 CurseForge API URL</param>
+    /// <returns>转换后的 URL</returns>
     string TransformCurseForgeApiUrl(string originalUrl);
     
     /// <summary>
-    /// 转换CurseForge CDN URL（文件下载）
+    /// 转换 CurseForge CDN URL（文件下载）
     /// 注意：mediafilez.forgecdn.net 不应被转换
     /// </summary>
-    /// <param name="originalUrl">原始CurseForge CDN URL</param>
-    /// <returns>转换后的URL</returns>
+    /// <param name="originalUrl">原始 CurseForge CDN URL</param>
+    /// <returns>转换后的 URL</returns>
     string TransformCurseForgeCdnUrl(string originalUrl);
     
     /// <summary>
-    /// 获取CurseForge请求的User-Agent
-    /// 符合中国MC启动器社区规范
+    /// 获取 CurseForge 请求的 User-Agent
+    /// 符合中国 MC 启动器社区规范
     /// </summary>
-    /// <returns>User-Agent字符串，如果不需要特殊UA则返回null</returns>
+    /// <returns>User-Agent 字符串，如果不需要特殊 UA 则返回 null</returns>
     string? GetCurseForgeUserAgent();
     
     /// <summary>
-    /// 是否需要为CurseForge请求设置特殊User-Agent
+    /// 是否需要为 CurseForge 请求设置特殊 User-Agent
     /// </summary>
     bool RequiresCurseForgeUserAgent { get; }
     
     /// <summary>
-    /// 是否应在CurseForge请求中包含API Key
-    /// 镜像源不应包含API Key
+    /// 是否应在 CurseForge 请求中包含 API Key
+    /// 镜像源不应包含 API Key
     /// </summary>
     bool ShouldIncludeCurseForgeApiKey { get; }
     
     #endregion
     
     /// <summary>
-    /// 获取指定版本的详细信息URL
+    /// 获取指定版本的详细信息 URL
     /// </summary>
-    /// <param name="versionId">版本ID</param>
-    /// <param name="originalUrl">原始URL（来自版本清单）</param>
-    /// <returns>版本详细信息URL</returns>
+    /// <param name="versionId">版本 ID</param>
+    /// <param name="originalUrl">原始 URL（来自版本清单）</param>
+    /// <returns>版本详细信息 URL</returns>
     string GetVersionInfoUrl(string versionId, string originalUrl);
     
     /// <summary>
-    /// 获取资源下载URL
+    /// 获取资源下载 URL
     /// </summary>
     /// <param name="resourceType">资源类型</param>
-    /// <param name="originalUrl">原始URL</param>
-    /// <returns>资源下载URL</returns>
+    /// <param name="originalUrl">原始 URL</param>
+    /// <returns>资源下载 URL</returns>
     string GetResourceUrl(string resourceType, string originalUrl);
     
     /// <summary>
-    /// 获取NeoForge版本列表URL
+    /// 获取 NeoForge 版本列表 URL
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <returns>NeoForge版本列表URL</returns>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <returns>NeoForge 版本列表 URL</returns>
     string GetNeoForgeVersionsUrl(string minecraftVersion);
     
     /// <summary>
-    /// 获取NeoForge安装包URL
+    /// 获取 NeoForge 安装包 URL
     /// </summary>
-    /// <param name="neoForgeVersion">NeoForge版本号</param>
-    /// <returns>NeoForge安装包URL</returns>
+    /// <param name="neoForgeVersion">NeoForge 版本号</param>
+    /// <returns>NeoForge 安装包 URL</returns>
     string GetNeoForgeInstallerUrl(string neoForgeVersion);
     
     /// <summary>
-    /// 获取Forge版本列表URL
+    /// 获取 Forge 版本列表 URL
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <returns>Forge版本列表URL</returns>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <returns>Forge 版本列表 URL</returns>
     string GetForgeVersionsUrl(string minecraftVersion);
     
     /// <summary>
-    /// 获取Forge安装包URL
+    /// 获取 Forge 安装包 URL
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <param name="forgeVersion">Forge版本号</param>
-    /// <returns>Forge安装包URL</returns>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <param name="forgeVersion">Forge 版本号</param>
+    /// <returns>Forge 安装包 URL</returns>
     string GetForgeInstallerUrl(string minecraftVersion, string forgeVersion);
     
     /// <summary>
-    /// 获取Fabric版本列表URL
+    /// 获取 Fabric 版本列表 URL
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <returns>Fabric版本列表URL</returns>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <returns>Fabric 版本列表 URL</returns>
     string GetFabricVersionsUrl(string minecraftVersion);
     
     /// <summary>
-    /// 获取Fabric完整配置URL
+    /// 获取 Fabric 完整配置 URL
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <param name="fabricVersion">Fabric版本号</param>
-    /// <returns>Fabric完整配置URL</returns>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <param name="fabricVersion">Fabric 版本号</param>
+    /// <returns>Fabric 完整配置 URL</returns>
     string GetFabricProfileUrl(string minecraftVersion, string fabricVersion);
     
     /// <summary>
-    /// 获取Quilt版本列表URL
+    /// 获取 Quilt 版本列表 URL
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <returns>Quilt版本列表URL</returns>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <returns>Quilt 版本列表 URL</returns>
     string GetQuiltVersionsUrl(string minecraftVersion);
     
     /// <summary>
-    /// 获取Quilt完整配置URL
+    /// 获取 Quilt 完整配置 URL
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <param name="quiltVersion">Quilt版本号</param>
-    /// <returns>Quilt完整配置URL</returns>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <param name="quiltVersion">Quilt 版本号</param>
+    /// <returns>Quilt 完整配置 URL</returns>
     string GetQuiltProfileUrl(string minecraftVersion, string quiltVersion);
     
     /// <summary>
-    /// 获取Legacy Fabric版本列表URL
+    /// 获取 Legacy Fabric 版本列表 URL
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <returns>Legacy Fabric版本列表URL</returns>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <returns>Legacy Fabric 版本列表 URL</returns>
     string GetLegacyFabricVersionsUrl(string minecraftVersion);
     
     /// <summary>
-    /// 获取Legacy Fabric完整配置URL
+    /// 获取 Legacy Fabric 完整配置 URL
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <param name="modLoaderVersion">Legacy Fabric版本号</param>
-    /// <returns>Legacy Fabric完整配置URL</returns>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <param name="modLoaderVersion">Legacy Fabric 版本号</param>
+    /// <returns>Legacy Fabric 完整配置 URL</returns>
     string GetLegacyFabricProfileUrl(string minecraftVersion, string modLoaderVersion);
 
     /// <summary>
-    /// 获取OptiFine版本列表URL
+    /// 获取 OptiFine 版本列表 URL
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <returns>OptiFine版本列表URL</returns>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <returns>OptiFine 版本列表 URL</returns>
     string GetOptifineVersionsUrl(string minecraftVersion);
 
     /// <summary>
-    /// 获取OptiFine下载URL
+    /// 获取 OptiFine 下载 URL
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <param name="optifineVersion">OptiFine版本</param>
-    /// <returns>OptiFine下载URL</returns>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <param name="optifineVersion">OptiFine 版本</param>
+    /// <returns>OptiFine 下载 URL</returns>
     string GetOptifineDownloadUrl(string minecraftVersion, string optifineVersion);
 
     /// <summary>
-    /// 获取LiteLoader版本列表URL
+    /// 获取 LiteLoader 版本列表 URL
     /// </summary>
-    /// <returns>LiteLoader版本列表URL</returns>
+    /// <returns>LiteLoader 版本列表 URL</returns>
     string GetLiteLoaderVersionsUrl();
 
     /// <summary>
-    /// 获取LiteLoader Maven jar下载URL
+    /// 获取 LiteLoader Maven jar 下载 URL
     /// </summary>
-    /// <param name="relativePath">Maven相对路径</param>
-    /// <param name="originalBaseUrl">原始BaseUrl (Repo Url)</param>
-    /// <returns>下载URL</returns>
+    /// <param name="relativePath">Maven 相对路径</param>
+    /// <param name="originalBaseUrl">原始 BaseUrl (Repo Url)</param>
+    /// <returns>下载 URL</returns>
     string GetLiteLoaderJarUrl(string relativePath, string? originalBaseUrl = null);
 
     #region Cleanroom
@@ -336,26 +336,26 @@ public interface IDownloadSource
     #endregion
 
     /// <summary>
-    /// 获取依赖库下载URL
+    /// 获取依赖库下载 URL
     /// </summary>
     /// <param name="libraryName">库名称</param>
-    /// <param name="originalUrl">原始URL（如果有）</param>
-    /// <returns>依赖库下载URL</returns>
+    /// <param name="originalUrl">原始 URL（如果有）</param>
+    /// <returns>依赖库下载 URL</returns>
     string GetLibraryUrl(string libraryName, string? originalUrl = null);
     
     /// <summary>
-    /// 获取客户端JAR下载URL
+    /// 获取客户端 JAR 下载 URL
     /// </summary>
-    /// <param name="versionId">版本ID</param>
-    /// <param name="originalUrl">原始URL</param>
-    /// <returns>客户端JAR下载URL</returns>
+    /// <param name="versionId">版本 ID</param>
+    /// <param name="originalUrl">原始 URL</param>
+    /// <returns>客户端 JAR 下载 URL</returns>
     string GetClientJarUrl(string versionId, string originalUrl);
     
     /// <summary>
-    /// 获取客户端JSON下载URL
+    /// 获取客户端 JSON 下载 URL
     /// </summary>
-    /// <param name="versionId">版本ID</param>
-    /// <param name="originalUrl">原始URL</param>
-    /// <returns>客户端JSON下载URL</returns>
+    /// <param name="versionId">版本 ID</param>
+    /// <param name="originalUrl">原始 URL</param>
+    /// <returns>客户端 JSON 下载 URL</returns>
     string GetClientJsonUrl(string versionId, string originalUrl);
 }

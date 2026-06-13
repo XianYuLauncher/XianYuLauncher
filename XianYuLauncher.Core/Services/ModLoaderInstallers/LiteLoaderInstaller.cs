@@ -104,7 +104,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
         bool isAddonMode = ShouldInstallAsAddon(options, minecraftDirectory);
         System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 安装模式: {(isAddonMode ? "Addon" : "独立")}");
         
-        // 4. 生成版本ID和创建目录
+        // 4. 生成版本 ID 和创建目录
         var versionId = options.CustomVersionName ?? $"{minecraftVersionId}-LiteLoader-{modLoaderVersion}";
         var versionDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Versions, versionId);
         Directory.CreateDirectory(versionDirectory);
@@ -188,7 +188,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
 
         progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 10));
 
-        // 6. 下载原版Minecraft JAR（如果是独立模式）
+        // 6. 下载原版 Minecraft JAR（如果是独立模式）
         if (!isAddonMode)
         {
             System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 下载原版 Minecraft JAR");
@@ -265,7 +265,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
 
         progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 80));
 
-        // 9. 生成/合并版本JSON
+        // 9. 生成/合并版本 JSON
         System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 生成版本 JSON");
         var mergedVersionInfo = ResolveVersionInfo(baseVersionInfo, artifact, versionId, isAddonMode);
         

@@ -43,7 +43,7 @@ namespace XianYuLauncher.IntegrationTests
             // 验证结果包含延迟信息
             foreach (var result in successfulResults)
             {
-                Assert.True(result.LatencyMs > 0, "延迟应该大于0");
+                Assert.True(result.LatencyMs > 0, "延迟应该大于 0");
                 Assert.False(string.IsNullOrEmpty(result.SourceKey), "源键不应为空");
             }
 
@@ -81,7 +81,7 @@ namespace XianYuLauncher.IntegrationTests
             // 验证结果包含延迟信息
             foreach (var result in successfulResults)
             {
-                Assert.True(result.LatencyMs > 0, "延迟应该大于0");
+                Assert.True(result.LatencyMs > 0, "延迟应该大于 0");
             }
 
             // 输出测速结果供查看

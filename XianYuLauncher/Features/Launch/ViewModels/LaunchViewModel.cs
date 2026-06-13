@@ -669,7 +669,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
 
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
-            LaunchStatus += $"\n游戏进程已退出，退出代码: {e.ExitCode}";
+            LaunchStatus += $"\n 游戏进程已退出，退出代码: {e.ExitCode}";
             IsGameRunning = false;
             _currentGameProcess = null;
         });

@@ -201,7 +201,7 @@ public sealed class LaunchGameActionHandler : IAgentActionHandler
 
     private static string AppendOperationStatusHint(string message, string operationId)
     {
-        return $"{message}\noperation_id: {operationId}\n可继续使用 getOperationStatus 查询本次启动请求状态。";
+        return $"{message}\noperation_id: {operationId}\n 可继续使用 getOperationStatus 查询本次启动请求状态。";
     }
 
     private static string NormalizeLaunchErrorMessage(string? errorMessage)

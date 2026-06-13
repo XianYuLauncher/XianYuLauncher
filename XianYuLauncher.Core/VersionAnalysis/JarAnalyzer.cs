@@ -66,7 +66,7 @@ namespace XianYuLauncher.Core.VersionAnalysis
                                 // 'name' 字段 (如 "26.1 Snapshot 1") 大多是显示用途，包含空格等非标准字符，不可用于逻辑判断
                                 if (!string.IsNullOrEmpty(info?.Id))
                                 {
-                                    _logger?.LogInformation($"[JarAnalyzer] 从 .jar/version.json 提取到ID: {info.Id}");
+                                    _logger?.LogInformation($"[JarAnalyzer] 从 .jar/version.json 提取到 ID: {info.Id}");
                                     return info.Id;
                                 }
                             }

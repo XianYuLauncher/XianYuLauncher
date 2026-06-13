@@ -10,7 +10,7 @@ using Microsoft.Extensions.Http;
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-/// Optifine服务类，用于获取指定Minecraft版本的Optifine加载器版本列表
+/// Optifine 服务类，用于获取指定 Minecraft 版本的 Optifine 加载器版本列表
 /// </summary>
 public class OptifineService
 {
@@ -21,7 +21,7 @@ public class OptifineService
     /// <summary>
     /// 构造函数
     /// </summary>
-    /// <param name="httpClientFactory">HttpClient工厂实例</param>
+    /// <param name="httpClientFactory">HttpClient 工厂实例</param>
     /// <param name="downloadSourceFactory">下载源工厂</param>
     /// <param name="logger">日志记录器</param>
     public OptifineService(
@@ -35,10 +35,10 @@ public class OptifineService
     }
 
     /// <summary>
-    /// 获取指定Minecraft版本的Optifine版本列表
+    /// 获取指定 Minecraft 版本的 Optifine 版本列表
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本号</param>
-    /// <returns>Optifine版本列表</returns>
+    /// <param name="minecraftVersion">Minecraft 版本号</param>
+    /// <returns>Optifine 版本列表</returns>
     public async Task<List<OptifineVersion>> GetOptifineVersionsAsync(string minecraftVersion)
     {
         try
@@ -57,7 +57,7 @@ public class OptifineService
                 request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
             }
 
-            // 发送HTTP请求
+            // 发送 HTTP 请求
             HttpResponseMessage response = await _httpClient.SendAsync(request);
 
             // 确保响应成功
@@ -68,7 +68,7 @@ public class OptifineService
 
             System.Diagnostics.Debug.WriteLine($"[DEBUG] Optifine 版本列表响应内容长度: {responseContent.Length} 字节");
 
-            // 解析JSON数据
+            // 解析 JSON 数据
             var optifineVersions = JsonConvert.DeserializeObject<List<OptifineVersion>>(responseContent);
 
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 解析 Optifine 版本列表成功，共获取 {optifineVersions?.Count ?? 0} 个版本");

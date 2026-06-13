@@ -14,7 +14,7 @@ using XianYuLauncher.Core.Models;
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-/// 资源管理器实现，负责Minecraft游戏资源的下载和管理
+/// 资源管理器实现，负责 Minecraft 游戏资源的下载和管理
 /// </summary>
 public class AssetManager : IAssetManager
 {
@@ -22,7 +22,7 @@ public class AssetManager : IAssetManager
     private readonly ILogger<AssetManager> _logger;
     
     /// <summary>
-    /// 官方资源下载基础URL
+    /// 官方资源下载基础 URL
     /// </summary>
     private const string OfficialResourceBaseUrl = "https://resources.download.minecraft.net";
     
@@ -80,7 +80,7 @@ public class AssetManager : IAssetManager
         // 下载资源索引文件
         if (string.IsNullOrEmpty(assetIndexUrl))
         {
-            throw new AssetDownloadException($"版本 {versionId} 的资源索引URL为空");
+            throw new AssetDownloadException($"版本 {versionId} 的资源索引 URL 为空");
         }
 
         _logger.LogInformation("开始下载资源索引: {AssetIndexId} from {Url}", assetIndexId, assetIndexUrl);
@@ -124,7 +124,7 @@ public class AssetManager : IAssetManager
         // 确保目录存在
         Directory.CreateDirectory(objectsDirectory);
 
-        // 获取资源索引ID（从版本目录中查找）
+        // 获取资源索引 ID（从版本目录中查找）
         var assetIndexId = await GetAssetIndexIdFromVersionAsync(versionId, minecraftDirectory);
         if (string.IsNullOrEmpty(assetIndexId))
         {
@@ -174,14 +174,14 @@ public class AssetManager : IAssetManager
                 continue;
             }
 
-            // 构建下载URL
+            // 构建下载 URL
             var downloadUrl = $"{OfficialResourceBaseUrl}/{hashPrefix}/{assetMeta.Hash}";
 
             downloadTasks.Add(new DownloadTask
             {
                 Url = downloadUrl,
                 TargetPath = assetPath,
-                ExpectedSha1 = assetMeta.Hash, // 资源文件的文件名就是SHA1
+                ExpectedSha1 = assetMeta.Hash, // 资源文件的文件名就是 SHA1
                 ExpectedSize = assetMeta.Size,
                 Description = $"资源: {assetName}",
                 Priority = 0
@@ -302,7 +302,7 @@ public class AssetManager : IAssetManager
 
         try
         {
-            // 尝试解析JSON验证格式
+            // 尝试解析 JSON 验证格式
             var jsonContent = await File.ReadAllTextAsync(indexFilePath);
             var indexData = JsonConvert.DeserializeObject<AssetIndexJson>(jsonContent);
             
@@ -311,7 +311,7 @@ public class AssetManager : IAssetManager
                 return false;
             }
 
-            // 如果提供了SHA1，验证文件完整性
+            // 如果提供了 SHA1，验证文件完整性
             if (!string.IsNullOrEmpty(expectedSha1))
             {
                 var actualSha1 = ComputeFileSha1(indexFilePath);
@@ -353,7 +353,7 @@ public class AssetManager : IAssetManager
     }
 
     /// <summary>
-    /// 从版本信息中获取资源索引ID
+    /// 从版本信息中获取资源索引 ID
     /// </summary>
     private async Task<string?> GetAssetIndexIdFromVersionAsync(string versionId, string minecraftDirectory)
     {
@@ -381,7 +381,7 @@ public class AssetManager : IAssetManager
     }
 
     /// <summary>
-    /// 计算文件的SHA1哈希值
+    /// 计算文件的 SHA1 哈希值
     /// </summary>
     private static string ComputeFileSha1(string filePath)
     {

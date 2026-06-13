@@ -502,7 +502,7 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                 var modVersion = new ModVersionViewModel
                 {
                     FileName = modpackFileName,
-                    DownloadUrl = modpackFilePath // 本地文件路径作为DownloadUrl
+                    DownloadUrl = modpackFilePath // 本地文件路径作为 DownloadUrl
                 };
                 
                 // 调用安装方法，直接使用现有的安装逻辑和弹窗

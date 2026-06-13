@@ -11,15 +11,15 @@ namespace XianYuLauncher.Core.Services
     public enum MaterialType
     {
         /// <summary>
-        /// Mica材质
+        /// Mica 材质
         /// </summary>
         Mica,
         /// <summary>
-        /// MicaAlt材质
+        /// MicaAlt 材质
         /// </summary>
         MicaAlt,
         /// <summary>
-        /// Acrylic材质
+        /// Acrylic 材质
         /// </summary>
         Acrylic,
         /// <summary>
@@ -43,7 +43,7 @@ namespace XianYuLauncher.Core.Services
 
     /// <summary>
     /// 材质服务，用于处理窗口材质的加载和应用
-    /// 注意：UI相关的应用方法需要在UI层实现
+    /// 注意：UI 相关的应用方法需要在 UI 层实现
     /// </summary>
     public class MaterialService
     {
@@ -65,7 +65,7 @@ namespace XianYuLauncher.Core.Services
         public event EventHandler? MotionSettingsChanged;
         
         /// <summary>
-        /// 应用材质到窗口的委托（由UI层设置）
+        /// 应用材质到窗口的委托（由 UI 层设置）
         /// </summary>
         public Action<object, MaterialType>? ApplyMaterialAction { get; set; }
 
@@ -157,7 +157,7 @@ namespace XianYuLauncher.Core.Services
         }
 
         /// <summary>
-        /// 应用材质到窗口（通过委托调用UI层实现）
+        /// 应用材质到窗口（通过委托调用 UI 层实现）
         /// </summary>
         /// <param name="window">要应用材质的窗口对象</param>
         /// <param name="materialType">材质类型</param>

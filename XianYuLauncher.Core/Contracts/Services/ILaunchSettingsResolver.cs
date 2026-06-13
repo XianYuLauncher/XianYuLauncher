@@ -11,7 +11,7 @@ public interface ILaunchSettingsResolver
     /// 解析最终生效的启动设置
     /// </summary>
     /// <param name="versionConfig">版本配置</param>
-    /// <param name="requiredJavaVersion">所需的Java主版本号</param>
+    /// <param name="requiredJavaVersion">所需的 Java 主版本号</param>
     /// <returns>合并后的最终设置</returns>
     Task<EffectiveLaunchSettings> ResolveAsync(VersionConfig versionConfig, int requiredJavaVersion = 8);
 }

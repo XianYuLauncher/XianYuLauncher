@@ -11,7 +11,7 @@ using XianYuLauncher.Core.Services.DownloadSource;
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-/// Minecraft版本服务 - 基础功能部分
+/// Minecraft 版本服务 - 基础功能部分
 /// </summary>
 public partial class MinecraftVersionService
 {

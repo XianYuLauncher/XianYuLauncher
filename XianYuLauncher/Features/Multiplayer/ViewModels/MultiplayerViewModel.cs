@@ -263,10 +263,10 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 // 我们只需要等待文件被写入即可
                 
                 // 等待并多次尝试读取端口信息
-                int maxRetries = 20; // 增加到20次
+                int maxRetries = 20; // 增加到 20 次
                 for (int i = 0; i < maxRetries; i++)
                 {
-                    await Task.Delay(500); // 每次等待500ms
+                    await Task.Delay(500); // 每次等待 500ms
                     
                     // 尝试读取临时文件
                     if (File.Exists(tempFilePath))
@@ -400,7 +400,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             _statusDialog = new Microsoft.UI.Xaml.Controls.ContentDialog
             {
                 Title = "MultiplayerPage_FindingRoomTitle".GetLocalized(),
-                Content = this, // 绑定到当前ViewModel，以便显示PollingResult
+                Content = this, // 绑定到当前 ViewModel，以便显示 PollingResult
                 ContentTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["PollingContentTemplate"],
                 PrimaryButtonText = "MultiplayerPage_StopButton".GetLocalized(),
                 Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
@@ -631,7 +631,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             if (_terracottaProcess != null && !_terracottaProcess.HasExited)
             {
                 _terracottaProcess.Kill();
-                _terracottaProcess.WaitForExit(5000); // 等待最多5秒
+                _terracottaProcess.WaitForExit(5000); // 等待最多 5 秒
                 _terracottaProcess.Dispose();
                 _terracottaProcess = null;
             }
@@ -880,7 +880,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     // 4. 轮询访问 http://localhost:{端口}/state，直到 state 为 guest-ok
                     string url = string.Empty;
                     
-                    for (int i = 0; i < 30 && !cancellationToken.IsCancellationRequested; i++) // 最多尝试30次，每次间隔1秒
+                    for (int i = 0; i < 30 && !cancellationToken.IsCancellationRequested; i++) // 最多尝试 30 次，每次间隔 1 秒
                     {
                         try
                         {

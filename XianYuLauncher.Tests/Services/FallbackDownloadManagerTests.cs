@@ -180,7 +180,7 @@ public class FallbackDownloadManagerTests : IDisposable
 
     #endregion
 
-    #region SHA1验证失败测试
+    #region SHA1 验证失败测试
 
     [Fact]
     public async Task DownloadFileWithFallbackAsync_Sha1ValidationFails_DoesNotRetryOrFallback()
@@ -200,13 +200,13 @@ public class FallbackDownloadManagerTests : IDisposable
 
         // Assert
         result.Success.Should().BeFalse();
-        result.AttemptedSources.Should().HaveCount(1); // SHA1失败不应该回退
+        result.AttemptedSources.Should().HaveCount(1); // SHA1 失败不应该回退
     }
 
     #endregion
 
 
-    #region URL转换测试
+    #region URL 转换测试
 
     [Fact]
     public async Task DownloadFileForCommunityAsync_CurseForgeCdn_SkipsUnsupportedSources()
@@ -303,7 +303,7 @@ public class FallbackDownloadManagerTests : IDisposable
 
         // Assert
         result.Success.Should().BeTrue();
-        // 官方源应该保持原URL
+        // 官方源应该保持原 URL
         capturedUrl.Should().Be(originalUrl);
     }
 
@@ -327,7 +327,7 @@ public class FallbackDownloadManagerTests : IDisposable
 
         // Assert
         result.Success.Should().BeTrue();
-        capturedUrl.Should().Be(originalUrl); // 未知类型应该使用原始URL
+        capturedUrl.Should().Be(originalUrl); // 未知类型应该使用原始 URL
     }
 
     #endregion
@@ -350,7 +350,7 @@ public class FallbackDownloadManagerTests : IDisposable
             .ReturnsAsync(() =>
             {
                 callCount++;
-                // 前3次失败（主源重试3次），第4次成功（第一个备用源）
+                // 前 3 次失败（主源重试 3 次），第 4 次成功（第一个备用源）
                 if (callCount <= 3)
                 {
                     return DownloadResult.Failed(originalUrl, "临时网络错误");
@@ -364,7 +364,7 @@ public class FallbackDownloadManagerTests : IDisposable
 
         // Assert
         result.Success.Should().BeTrue();
-        // 主源尝试3次（1次初始 + 2次重试），然后备用源成功
+        // 主源尝试 3 次（1 次初始 + 2 次重试），然后备用源成功
         callCount.Should().Be(4);
     }
 

@@ -37,7 +37,7 @@ public class FileService : IFileService
             Directory.CreateDirectory(_applicationDataFolder);
         }
         
-        // 在构造函数中从本地设置加载保存的Minecraft路径
+        // 在构造函数中从本地设置加载保存的 Minecraft 路径
         LoadMinecraftPathFromSettings();
     }
     
@@ -97,7 +97,7 @@ public class FileService : IFileService
             return _customMinecraftDataPath;
         }
         
-        // 默认返回桌面的.minecraft文件夹路径
+        // 默认返回桌面的.minecraft 文件夹路径
         return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), ".minecraft");
     }
     
@@ -168,7 +168,7 @@ public class FileService : IFileService
                     jObject = Newtonsoft.Json.Linq.JObject.Parse(json);
                 }
                 
-                // 更新Minecraft路径
+                // 更新 Minecraft 路径
                 jObject[MinecraftPathKey] = path;
                 System.Diagnostics.Debug.WriteLine($"成功保存 Minecraft 路径: {path} 到 {settingsPath}");
                 

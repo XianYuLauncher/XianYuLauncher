@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 namespace XianYuLauncher.Core.Models;
 
 /// <summary>
-/// CurseForge搜索结果
+/// CurseForge 搜索结果
 /// </summary>
 public class CurseForgeSearchResult
 {
@@ -17,7 +17,7 @@ public class CurseForgeSearchResult
 }
 
 /// <summary>
-/// CurseForge分页信息
+/// CurseForge 分页信息
 /// </summary>
 public class CurseForgePagination
 {
@@ -35,7 +35,7 @@ public class CurseForgePagination
 }
 
 /// <summary>
-/// CurseForge Mod信息
+/// CurseForge Mod 信息
 /// </summary>
 public class CurseForgeMod
 {
@@ -113,7 +113,7 @@ public class CurseForgeMod
 }
 
 /// <summary>
-/// CurseForge链接信息
+/// CurseForge 链接信息
 /// </summary>
 public class CurseForgeLinks
 {
@@ -131,7 +131,7 @@ public class CurseForgeLinks
 }
 
 /// <summary>
-/// CurseForge分类信息
+/// CurseForge 分类信息
 /// </summary>
 public class CurseForgeCategory
 {
@@ -167,7 +167,7 @@ public class CurseForgeCategory
 }
 
 /// <summary>
-/// CurseForge作者信息
+/// CurseForge 作者信息
 /// </summary>
 public class CurseForgeAuthor
 {
@@ -182,7 +182,7 @@ public class CurseForgeAuthor
 }
 
 /// <summary>
-/// CurseForge Logo信息
+/// CurseForge Logo 信息
 /// </summary>
 public class CurseForgeLogo
 {
@@ -206,7 +206,7 @@ public class CurseForgeLogo
 }
 
 /// <summary>
-/// CurseForge截图信息
+/// CurseForge 截图信息
 /// </summary>
 public class CurseForgeScreenshot
 {
@@ -230,7 +230,7 @@ public class CurseForgeScreenshot
 }
 
 /// <summary>
-/// CurseForge文件信息
+/// CurseForge 文件信息
 /// </summary>
 public class CurseForgeFile
 {
@@ -296,7 +296,7 @@ public class CurseForgeFile
 }
 
 /// <summary>
-/// CurseForge文件哈希
+/// CurseForge 文件哈希
 /// </summary>
 public class CurseForgeFileHash
 {
@@ -308,7 +308,7 @@ public class CurseForgeFileHash
 }
 
 /// <summary>
-/// CurseForge可排序游戏版本
+/// CurseForge 可排序游戏版本
 /// </summary>
 public class CurseForgeSortableGameVersion
 {
@@ -329,7 +329,7 @@ public class CurseForgeSortableGameVersion
 }
 
 /// <summary>
-/// CurseForge依赖信息
+/// CurseForge 依赖信息
 /// </summary>
 public class CurseForgeDependency
 {
@@ -341,7 +341,7 @@ public class CurseForgeDependency
 }
 
 /// <summary>
-/// CurseForge模块信息
+/// CurseForge 模块信息
 /// </summary>
 public class CurseForgeModule
 {
@@ -353,7 +353,7 @@ public class CurseForgeModule
 }
 
 /// <summary>
-/// CurseForge文件索引
+/// CurseForge 文件索引
 /// </summary>
 public class CurseForgeFileIndex
 {
@@ -377,7 +377,7 @@ public class CurseForgeFileIndex
 }
 
 /// <summary>
-/// CurseForge Mod详情响应
+/// CurseForge Mod 详情响应
 /// </summary>
 public class CurseForgeModDetailResponse
 {
@@ -386,15 +386,15 @@ public class CurseForgeModDetailResponse
 }
 
 /// <summary>
-/// CurseForge Mod详情
+/// CurseForge Mod 详情
 /// </summary>
 public class CurseForgeModDetail : CurseForgeMod
 {
-    // 继承自CurseForgeMod，可以添加额外的详情字段
+    // 继承自 CurseForgeMod，可以添加额外的详情字段
 }
 
 /// <summary>
-/// CurseForge文件列表响应
+/// CurseForge 文件列表响应
 /// </summary>
 public class CurseForgeFilesResponse
 {
@@ -406,7 +406,7 @@ public class CurseForgeFilesResponse
 }
 
 /// <summary>
-/// CurseForge批量获取Mod响应
+/// CurseForge 批量获取 Mod 响应
 /// </summary>
 public class CurseForgeModsResponse
 {
@@ -415,7 +415,7 @@ public class CurseForgeModsResponse
 }
 
 /// <summary>
-/// CurseForge类别列表响应
+/// CurseForge 类别列表响应
 /// </summary>
 public class CurseForgeCategoriesResponse
 {
@@ -424,7 +424,7 @@ public class CurseForgeCategoriesResponse
 }
 
 /// <summary>
-/// CurseForge批量获取文件响应
+/// CurseForge 批量获取文件响应
 /// </summary>
 public class CurseForgeFilesListResponse
 {
@@ -433,7 +433,7 @@ public class CurseForgeFilesListResponse
 }
 
 /// <summary>
-/// CurseForge单个文件响应
+/// CurseForge 单个文件响应
 /// </summary>
 public class CurseForgeFileResponse
 {
@@ -444,7 +444,7 @@ public class CurseForgeFileResponse
 #region CurseForge 整合包 Manifest 模型
 
 /// <summary>
-/// CurseForge整合包manifest.json根对象
+/// CurseForge 整合包 manifest.json 根对象
 /// </summary>
 public class CurseForgeManifest
 {
@@ -474,7 +474,7 @@ public class CurseForgeManifest
 }
 
 /// <summary>
-/// CurseForge整合包Minecraft信息
+/// CurseForge 整合包 Minecraft 信息
 /// </summary>
 public class CurseForgeManifestMinecraft
 {
@@ -486,7 +486,7 @@ public class CurseForgeManifestMinecraft
 }
 
 /// <summary>
-/// CurseForge整合包ModLoader信息
+/// CurseForge 整合包 ModLoader 信息
 /// </summary>
 public class CurseForgeManifestModLoader
 {
@@ -498,7 +498,7 @@ public class CurseForgeManifestModLoader
 }
 
 /// <summary>
-/// CurseForge整合包文件引用
+/// CurseForge 整合包文件引用
 /// </summary>
 public class CurseForgeManifestFile
 {

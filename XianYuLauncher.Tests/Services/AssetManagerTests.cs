@@ -166,7 +166,7 @@ public class AssetManagerTests : IDisposable
         var result = await _assetManager.GetMissingAssetCountAsync(assetIndexId, _testDirectory);
 
         // Assert
-        Assert.Equal(1, result); // 只有asset2缺失
+        Assert.Equal(1, result); // 只有 asset2 缺失
     }
 
     [Fact]
@@ -362,7 +362,7 @@ public class AssetManagerTests : IDisposable
         Directory.CreateDirectory(versionsDir);
         Directory.CreateDirectory(indexesDir);
 
-        // 创建版本JSON
+        // 创建版本 JSON
         var versionInfo = new VersionInfo
         {
             AssetIndex = new AssetIndex { Id = "1.20" }
@@ -417,7 +417,7 @@ public class AssetManagerTests : IDisposable
         Directory.CreateDirectory(versionsDir);
         Directory.CreateDirectory(indexesDir);
 
-        // 创建版本JSON
+        // 创建版本 JSON
         var versionInfo = new VersionInfo
         {
             AssetIndex = new AssetIndex { Id = "1.20" }

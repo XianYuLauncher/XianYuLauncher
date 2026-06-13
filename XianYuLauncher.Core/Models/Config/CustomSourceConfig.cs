@@ -74,12 +74,12 @@ public class CustomSource
 public enum DownloadSourceTemplateType
 {
     /// <summary>
-    /// 官方资源模板（MC本体、ModLoader、版本列表等）
+    /// 官方资源模板（MC 本体、ModLoader、版本列表等）
     /// </summary>
     Official,
 
     /// <summary>
-    /// 社区资源模板（Modrinth、CurseForge等）
+    /// 社区资源模板（Modrinth、CurseForge 等）
     /// </summary>
     Community
 }

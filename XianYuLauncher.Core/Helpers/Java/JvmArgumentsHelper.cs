@@ -1,4 +1,4 @@
-﻿namespace XianYuLauncher.Core.Helpers;
+namespace XianYuLauncher.Core.Helpers;
 
 /// <summary>
 /// JVM 参数处理辅助类
@@ -34,7 +34,7 @@ public static class JvmArgumentsHelper
 
         // 分两套策略：
         // 1) 启动器/Loader 原始参数不做全局去重，避免破坏成对参数（如 --add-opens + value）。
-        // 2) 仅在“用户覆盖域”（内存/GC/-D属性）做覆盖，用户参数优先。
+        // 2) 仅在“用户覆盖域”（内存/GC/-D 属性）做覆盖，用户参数优先。
         var filteredCustom = FilterCustomArgumentsForOverrides(customArgArray);
         var combined = new List<string>(launcherArgs.Count + filteredCustom.Count);
         combined.AddRange(launcherArgs);

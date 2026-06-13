@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace XianYuLauncher.Core.Models;
 
 /// <summary>
-/// Fabric加载器版本信息
+/// Fabric 加载器版本信息
 /// </summary>
 public class FabricLoaderVersion
 {
@@ -27,7 +27,7 @@ public class FabricLoaderVersion
 }
 
 /// <summary>
-/// Fabric组件信息
+/// Fabric 组件信息
 /// </summary>
 public class FabricComponent
 {
@@ -44,7 +44,7 @@ public class FabricComponent
     public int Build { get; set; }
 
     /// <summary>
-    /// Maven坐标
+    /// Maven 坐标
     /// </summary>
     [JsonPropertyName("maven")]
     public string Maven { get; set; } = null!;
@@ -63,7 +63,7 @@ public class FabricComponent
 }
 
 /// <summary>
-/// Fabric启动器元数据
+/// Fabric 启动器元数据
 /// </summary>
 public class FabricLauncherMeta
 {
@@ -74,7 +74,7 @@ public class FabricLauncherMeta
     public int Version { get; set; }
 
     /// <summary>
-    /// 最小Java版本要求
+    /// 最小 Java 版本要求
     /// </summary>
     [JsonPropertyName("min_java_version")]
     public int MinJavaVersion { get; set; }
@@ -87,7 +87,7 @@ public class FabricLauncherMeta
 }
 
 /// <summary>
-/// Fabric依赖库集合
+/// Fabric 依赖库集合
 /// </summary>
 public class FabricLibraries
 {
@@ -117,42 +117,42 @@ public class FabricLibraries
 }
 
 /// <summary>
-/// Fabric依赖库信息
+/// Fabric 依赖库信息
 /// </summary>
 public class FabricLibrary
 {
     /// <summary>
-    /// Maven坐标
+    /// Maven 坐标
     /// </summary>
     [JsonPropertyName("name")]
     public string Name { get; set; } = null!;
 
     /// <summary>
-    /// 下载URL
+    /// 下载 URL
     /// </summary>
     [JsonPropertyName("url")]
     public string Url { get; set; } = null!;
 
     /// <summary>
-    /// MD5哈希值
+    /// MD5 哈希值
     /// </summary>
     [JsonPropertyName("md5")]
     public string Md5 { get; set; } = null!;
 
     /// <summary>
-    /// SHA1哈希值
+    /// SHA1 哈希值
     /// </summary>
     [JsonPropertyName("sha1")]
     public string Sha1 { get; set; } = null!;
 
     /// <summary>
-    /// SHA256哈希值
+    /// SHA256 哈希值
     /// </summary>
     [JsonPropertyName("sha256")]
     public string Sha256 { get; set; } = null!;
 
     /// <summary>
-    /// SHA512哈希值
+    /// SHA512 哈希值
     /// </summary>
     [JsonPropertyName("sha512")]
     public string Sha512 { get; set; } = null!;
@@ -165,7 +165,7 @@ public class FabricLibrary
 }
 
 /// <summary>
-/// Fabric主类信息
+/// Fabric 主类信息
 /// </summary>
 public class FabricMainClass
 {

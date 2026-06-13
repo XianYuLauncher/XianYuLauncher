@@ -72,7 +72,7 @@ public class ModInfoService
     // API 限流
     private readonly SemaphoreSlim _apiThrottle = new(3, 3);
     
-    // 缓存过期时间（7天）
+    // 缓存过期时间（7 天）
     private static readonly TimeSpan CacheExpiration = TimeSpan.FromDays(7);
     
     // 缓存文件路径

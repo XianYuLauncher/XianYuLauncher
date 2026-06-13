@@ -97,7 +97,7 @@ public partial class App : Application
         Host = Microsoft.Extensions.Hosting.Host.
         CreateDefaultBuilder().
         UseContentRoot(AppContext.BaseDirectory).
-        UseSerilog() // 使用Serilog作为日志提供程序
+        UseSerilog() // 使用 Serilog 作为日志提供程序
         .ConfigureServices((context, services) =>
         {
             services.AddHttpClient();

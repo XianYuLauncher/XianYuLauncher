@@ -11,7 +11,7 @@ public class ResourceDependency
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// 下载URL
+    /// 下载 URL
     /// </summary>
     public string DownloadUrl { get; set; } = string.Empty;
 

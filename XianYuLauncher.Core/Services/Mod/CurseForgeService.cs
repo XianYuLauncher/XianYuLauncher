@@ -7,8 +7,8 @@ using XianYuLauncher.Core.Services.DownloadSource;
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-/// CurseForge服务类，用于调用CurseForge API
-/// 支持官方源和MCIM镜像源切换
+/// CurseForge 服务类，用于调用 CurseForge API
+/// 支持官方源和 MCIM 镜像源切换
 /// </summary>
 public class CurseForgeService
 {
@@ -19,37 +19,37 @@ public class CurseForgeService
     private readonly IHashLookupCenter? _hashLookupCenter;
     
     /// <summary>
-    /// CurseForge官方API基础URL
+    /// CurseForge 官方 API 基础 URL
     /// </summary>
     private const string OfficialApiBaseUrl = "https://api.curseforge.com";
     
     /// <summary>
-    /// Minecraft游戏ID
+    /// Minecraft 游戏 ID
     /// </summary>
     private const int MinecraftGameId = 432;
     
     /// <summary>
-    /// Mod分类ID
+    /// Mod 分类 ID
     /// </summary>
     private const int ModsClassId = 6;
     
     /// <summary>
-    /// 资源包分类ID
+    /// 资源包分类 ID
     /// </summary>
     private const int ResourcePacksClassId = 12;
     
     /// <summary>
-    /// 整合包分类ID
+    /// 整合包分类 ID
     /// </summary>
     private const int ModpacksClassId = 4471;
     
     /// <summary>
-    /// 光影分类ID
+    /// 光影分类 ID
     /// </summary>
     private const int ShadersClassId = 6552;
     
     /// <summary>
-    /// 数据包分类ID
+    /// 数据包分类 ID
     /// </summary>
     private const int DatapacksClassId = 6945;
     private const int DownloadCallbackThrottleMilliseconds = 100;
@@ -188,12 +188,12 @@ public class CurseForgeService
     }
     
     /// <summary>
-    /// 获取当前CurseForge下载源（独立的下载源设置）
+    /// 获取当前 CurseForge 下载源（独立的下载源设置）
     /// </summary>
     private IDownloadSource GetCurseForgeSource() => _downloadSourceFactory.GetCurseForgeSource();
     
     /// <summary>
-    /// 转换API URL（根据当前下载源，仅供无FallbackDownloadManager的兼容路径使用）
+    /// 转换 API URL（根据当前下载源，仅供无 FallbackDownloadManager 的兼容路径使用）
     /// </summary>
     private string TransformApiUrl(string originalUrl)
     {
@@ -201,8 +201,8 @@ public class CurseForgeService
     }
     
     /// <summary>
-    /// 构造下载URL（针对API返回空URL的情况）
-    /// 返回官方Edge URL，FallbackDownloadManager 会自动转换
+    /// 构造下载 URL（针对 API 返回空 URL 的情况）
+    /// 返回官方 Edge URL，FallbackDownloadManager 会自动转换
     /// </summary>
     public string ConstructDownloadUrl(long fileId, string fileName)
     {
@@ -212,7 +212,7 @@ public class CurseForgeService
     }
 
     /// <summary>
-    /// 转换CDN下载URL（仅供无FallbackDownloadManager的兼容路径使用）
+    /// 转换 CDN 下载 URL（仅供无 FallbackDownloadManager 的兼容路径使用）
     /// </summary>
     private string TransformCdnUrl(string originalUrl)
     {
@@ -220,9 +220,9 @@ public class CurseForgeService
     }
     
     /// <summary>
-    /// 创建HttpRequestMessage（仅供无FallbackDownloadManager的兼容路径使用）
-    /// 根据下载源决定是否添加API Key和User-Agent
-    /// 重要：镜像源严禁携带API Key！
+    /// 创建 HttpRequestMessage（仅供无 FallbackDownloadManager 的兼容路径使用）
+    /// 根据下载源决定是否添加 API Key 和 User-Agent
+    /// 重要：镜像源严禁携带 API Key！
     /// </summary>
     private HttpRequestMessage CreateRequest(HttpMethod method, string url, IDownloadSource? source = null)
     {
@@ -312,7 +312,7 @@ public class CurseForgeService
                 ConfigureCurseForgeRequest);
 
             if (!result.Success)
-                throw new HttpRequestException($"所有源POST请求失败: {result.ErrorMessage}");
+                throw new HttpRequestException($"所有源 POST 请求失败: {result.ErrorMessage}");
 
             return result.Response!;
         }
@@ -327,12 +327,12 @@ public class CurseForgeService
 
 
     /// <summary>
-    /// 搜索Mod
+    /// 搜索 Mod
     /// </summary>
     /// <param name="searchFilter">搜索关键词</param>
     /// <param name="gameVersion">游戏版本</param>
     /// <param name="modLoaderType">加载器类型 (1=Forge, 4=Fabric, 5=Quilt, 6=NeoForge)</param>
-    /// <param name="categoryId">分类ID</param>
+    /// <param name="categoryId">分类 ID</param>
     /// <param name="index">起始索引</param>
     /// <param name="pageSize">每页数量</param>
     /// <param name="sortField">排序字段 (1=Featured, 2=Popularity, 3=LastUpdated, 4=Name, 5=Author, 6=TotalDownloads)</param>
@@ -350,7 +350,7 @@ public class CurseForgeService
     {
         try
         {
-            // 构建官方API URL（FallbackDownloadManager 会自动转换）
+            // 构建官方 API URL（FallbackDownloadManager 会自动转换）
             var urlBuild = new StringBuilder($"{OfficialApiBaseUrl}/v1/mods/search?gameId={MinecraftGameId}&classId={ModsClassId}");
             
             if (!string.IsNullOrEmpty(searchFilter))
@@ -375,7 +375,7 @@ public class CurseForgeService
         }
         catch (HttpRequestException ex)
         {
-            string errorMsg = $"搜索Mod失败: {ex.Message}";
+            string errorMsg = $"搜索 Mod 失败: {ex.Message}";
             if (ex.StatusCode.HasValue)
                 errorMsg += $" (状态码: {ex.StatusCode})";
             throw new Exception(errorMsg);
@@ -386,17 +386,17 @@ public class CurseForgeService
         }
         catch (Exception ex)
         {
-            throw new Exception($"搜索Mod时发生错误: {ex.Message}");
+            throw new Exception($"搜索 Mod 时发生错误: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// 通用搜索方法 - 根据classId搜索不同类型的资源
+    /// 通用搜索方法 - 根据 classId 搜索不同类型的资源
     /// </summary>
-    /// <param name="classId">资源类型ID (6=Mods, 12=ResourcePacks, 4471=Modpacks)</param>
+    /// <param name="classId">资源类型 ID (6=Mods, 12=ResourcePacks, 4471=Modpacks)</param>
     /// <param name="searchFilter">搜索关键词</param>
     /// <param name="gameVersion">游戏版本</param>
-    /// <param name="categoryId">分类ID</param>
+    /// <param name="categoryId">分类 ID</param>
     /// <param name="index">起始索引</param>
     /// <param name="pageSize">每页数量</param>
     /// <param name="sortField">排序字段</param>
@@ -456,10 +456,10 @@ public class CurseForgeService
     }
 
     /// <summary>
-    /// 获取Mod详情
+    /// 获取 Mod 详情
     /// </summary>
     /// <param name="modId">Mod ID</param>
-    /// <returns>Mod详情</returns>
+    /// <returns>Mod 详情</returns>
     public async Task<CurseForgeModDetail> GetModDetailAsync(int modId)
     {
         try
@@ -507,24 +507,24 @@ public class CurseForgeService
         }
         catch (HttpRequestException ex)
         {
-            string errorMsg = $"获取Mod详情失败: {ex.Message}";
+            string errorMsg = $"获取 Mod 详情失败: {ex.Message}";
             if (ex.StatusCode.HasValue)
                 errorMsg += $" (状态码: {ex.StatusCode})";
             throw new Exception(errorMsg);
         }
         catch (JsonException ex)
         {
-            throw new Exception($"解析Mod详情失败: {ex.Message}");
+            throw new Exception($"解析 Mod 详情失败: {ex.Message}");
         }
         catch (Exception ex)
         {
-            throw new Exception($"获取Mod详情时发生错误: {ex.Message}");
+            throw new Exception($"获取 Mod 详情时发生错误: {ex.Message}");
         }
     }
 
 
     /// <summary>
-    /// 获取Mod文件列表
+    /// 获取 Mod 文件列表
     /// </summary>
     /// <param name="modId">Mod ID</param>
     /// <param name="gameVersion">游戏版本筛选</param>
@@ -561,25 +561,25 @@ public class CurseForgeService
         }
         catch (HttpRequestException ex)
         {
-            string errorMsg = $"获取Mod文件列表失败: {ex.Message}";
+            string errorMsg = $"获取 Mod 文件列表失败: {ex.Message}";
             if (ex.StatusCode.HasValue)
                 errorMsg += $" (状态码: {ex.StatusCode})";
             throw new Exception(errorMsg);
         }
         catch (JsonException ex)
         {
-            throw new Exception($"解析Mod文件列表失败: {ex.Message}");
+            throw new Exception($"解析 Mod 文件列表失败: {ex.Message}");
         }
         catch (Exception ex)
         {
-            throw new Exception($"获取Mod文件列表时发生错误: {ex.Message}");
+            throw new Exception($"获取 Mod 文件列表时发生错误: {ex.Message}");
         }
     }
 
     /// <summary>
     /// 下载文件
     /// </summary>
-    /// <param name="downloadUrl">下载URL</param>
+    /// <param name="downloadUrl">下载 URL</param>
     /// <param name="destinationPath">保存路径</param>
     /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
@@ -610,11 +610,11 @@ public class CurseForgeService
             string fileName = Path.GetFileName(destinationPath);
             var progressReporter = new DownloadProgressReporter(fileName, progressCallback, downloadStatusCallback);
             
-            // 还原为官方CDN URL（FallbackDownloadManager 会自动转换）
+            // 还原为官方 CDN URL（FallbackDownloadManager 会自动转换）
             string originalUrl = downloadUrl;
             if (downloadUrl.Contains("mcimirror.top"))
             {
-                // edge.forgecdn.net 是官方CDN
+                // edge.forgecdn.net 是官方 CDN
                 originalUrl = downloadUrl.Replace("https://mod.mcimirror.top", "https://edge.forgecdn.net");
             }
             
@@ -726,10 +726,10 @@ public class CurseForgeService
     }
 
     /// <summary>
-    /// 批量获取Mod详情
+    /// 批量获取 Mod 详情
     /// </summary>
-    /// <param name="modIds">Mod ID列表</param>
-    /// <returns>Mod详情列表</returns>
+    /// <param name="modIds">Mod ID 列表</param>
+    /// <returns>Mod 详情列表</returns>
     public async Task<List<CurseForgeMod>> GetModsByIdsAsync(List<int> modIds)
     {
         if (modIds == null || modIds.Count == 0)
@@ -756,7 +756,7 @@ public class CurseForgeService
         }
         catch (HttpRequestException ex)
         {
-            string errorMsg = $"批量获取Mod详情失败: {ex.Message}";
+            string errorMsg = $"批量获取 Mod 详情失败: {ex.Message}";
             if (ex.StatusCode.HasValue)
                 errorMsg += $" (状态码: {ex.StatusCode})";
             System.Diagnostics.Debug.WriteLine($"[CurseForgeService] {errorMsg}");
@@ -764,18 +764,18 @@ public class CurseForgeService
         }
         catch (JsonException ex)
         {
-            throw new Exception($"解析Mod详情失败: {ex.Message}");
+            throw new Exception($"解析 Mod 详情失败: {ex.Message}");
         }
         catch (Exception ex)
         {
-            throw new Exception($"批量获取Mod详情时发生错误: {ex.Message}");
+            throw new Exception($"批量获取 Mod 详情时发生错误: {ex.Message}");
         }
     }
 
     /// <summary>
     /// 批量获取文件详情（用于整合包安装）
     /// </summary>
-    /// <param name="fileIds">文件ID列表</param>
+    /// <param name="fileIds">文件 ID 列表</param>
     /// <returns>文件详情列表</returns>
     public async Task<List<CurseForgeFile>> GetFilesByIdsAsync(List<int> fileIds)
     {
@@ -827,7 +827,7 @@ public class CurseForgeService
     /// 获取单个文件详情
     /// </summary>
     /// <param name="modId">Mod ID</param>
-    /// <param name="fileId">文件ID</param>
+    /// <param name="fileId">文件 ID</param>
     /// <returns>文件详情</returns>
     public async Task<CurseForgeFile?> GetFileAsync(int modId, int fileId)
     {
@@ -867,14 +867,14 @@ public class CurseForgeService
     }
 
     /// <summary>
-    /// 处理CurseForge依赖下载（递归）
+    /// 处理 CurseForge 依赖下载（递归）
     /// </summary>
     /// <param name="dependencies">依赖列表</param>
     /// <param name="destinationPath">目标路径</param>
     /// <param name="currentFile">当前文件信息（用于筛选兼容版本）</param>
     /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
-    /// <param name="checkModId">是否检查Mod ID，避免重复下载同一Mod的不同版本</param>
+    /// <param name="checkModId">是否检查 Mod ID，避免重复下载同一 Mod 的不同版本</param>
     /// <returns>成功处理的依赖数量</returns>
     public async Task<int> ProcessDependenciesAsync(
         List<CurseForgeDependency> dependencies,
@@ -953,7 +953,7 @@ public class CurseForgeService
             
             try
             {
-                // 获取依赖Mod的详情
+                // 获取依赖 Mod 的详情
                 System.Diagnostics.Debug.WriteLine($"  - 正在获取 Mod 详情：{dependency.ModId}");
                 var depMod = await GetModDetailAsync(dependency.ModId);
                 
@@ -972,7 +972,7 @@ public class CurseForgeService
                     dependencyDestinationPath = await resolveDestinationPathAsync(depMod);
                 }
 
-                // 获取目标目录下已存在的Mod ID映射
+                // 获取目标目录下已存在的 Mod ID 映射
                 Dictionary<int, string>? existingModIds = null;
                 if (checkModId)
                 {
@@ -983,7 +983,7 @@ public class CurseForgeService
                     }
                 }
 
-                // 检查Mod ID是否已存在
+                // 检查 Mod ID 是否已存在
                 if (existingModIds != null && existingModIds.ContainsKey(dependency.ModId))
                 {
                     System.Diagnostics.Debug.WriteLine($"  - 跳过：Mod {dependency.ModId} 已存在 ({existingModIds[dependency.ModId]})");
@@ -1016,7 +1016,7 @@ public class CurseForgeService
                     System.Diagnostics.Debug.WriteLine($"    - 游戏版本: {string.Join(", ", gameVersions)}");
                     System.Diagnostics.Debug.WriteLine($"    - 加载器: {string.Join(", ", loaders)}");
                     
-                    // 从latestFiles中查找兼容的文件
+                    // 从 latestFiles 中查找兼容的文件
                     if (depMod.LatestFiles != null && depMod.LatestFiles.Count > 0)
                     {
                         // 优先查找完全匹配的文件
@@ -1058,7 +1058,7 @@ public class CurseForgeService
                     ? ConstructDownloadUrl(depFile.Id, depFile.FileName)
                     : depFile.DownloadUrl;
                 
-                // 检查是否已存在相同SHA1的文件
+                // 检查是否已存在相同 SHA1 的文件
                 bool alreadyExists = false;
                 string filePath = Path.Combine(dependencyDestinationPath, depFile.FileName);
                 System.Diagnostics.Debug.WriteLine($"  - 目标路径：{filePath}");
@@ -1145,11 +1145,11 @@ public class CurseForgeService
     }
     
     /// <summary>
-    /// 获取现有mod的Mod ID映射
+    /// 获取现有 mod 的 Mod ID 映射
     /// </summary>
     /// <param name="destinationPath">目标路径</param>
     /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>Mod ID到文件路径的映射</returns>
+    /// <returns>Mod ID 到文件路径的映射</returns>
     private async Task<Dictionary<int, string>> GetExistingModIdsAsync(string destinationPath, CancellationToken cancellationToken = default)
     {
         var modIdMap = new Dictionary<int, string>();
@@ -1164,7 +1164,7 @@ public class CurseForgeService
             var jarFiles = Directory.GetFiles(destinationPath, "*.jar");
             System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 扫描现有文件：找到{jarFiles.Length}个 jar 文件");
             
-            // 注意：CurseForge没有像Modrinth那样在文件中嵌入项目ID
+            // 注意：CurseForge 没有像 Modrinth 那样在文件中嵌入项目 ID
             // 这里我们只能通过文件名或其他方式来识别，暂时返回空字典
             // 如果需要更精确的去重，可以考虑维护一个本地元数据文件
             
@@ -1178,10 +1178,10 @@ public class CurseForgeService
     }
     
     /// <summary>
-    /// 计算文件的SHA1哈希值
+    /// 计算文件的 SHA1 哈希值
     /// </summary>
     /// <param name="filePath">文件路径</param>
-    /// <returns>SHA1哈希值（小写十六进制字符串）</returns>
+    /// <returns>SHA1 哈希值（小写十六进制字符串）</returns>
     private string CalculateSHA1(string filePath)
     {
         try
@@ -1199,9 +1199,9 @@ public class CurseForgeService
     }
     
     /// <summary>
-    /// 获取CurseForge类别列表
+    /// 获取 CurseForge 类别列表
     /// </summary>
-    /// <param name="classId">资源类型ID (6=Mods, 12=ResourcePacks, 4471=Modpacks, 6552=Shaders, 6945=DataPacks)</param>
+    /// <param name="classId">资源类型 ID (6=Mods, 12=ResourcePacks, 4471=Modpacks, 6552=Shaders, 6945=DataPacks)</param>
     /// <returns>类别列表</returns>
     public async Task<List<CurseForgeCategory>> GetCategoriesAsync(int? classId = null)
     {

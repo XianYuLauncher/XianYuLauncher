@@ -42,10 +42,10 @@ public class AccountManager : IAccountManager
                 sourcePath = await MigrateLegacyProfilesFileAsync(sourcePath, accountsPath, json);
             }
             
-            // 🔒 安全检查：检测并迁移明文token
+            // 🔒 安全检查：检测并迁移明文 token
             bool needsMigration = await MigrateUnencryptedTokensAsync(accounts, sourcePath);
             
-            // 🔓 解密所有token供内存使用
+            // 🔓 解密所有 token 供内存使用
             DecryptAccountTokens(accounts);
             
             System.Diagnostics.Debug.WriteLine($"[AccountManager] 成功加载 {accounts.Count} 个角色{(needsMigration ? "（已自动加密明文 token）" : "")}");
@@ -68,7 +68,7 @@ public class AccountManager : IAccountManager
             var minecraftPath = _fileService.GetMinecraftDataPath();
             var accountsPath = Path.Combine(minecraftPath, MinecraftFileConsts.AccountsJson);
             
-            // 🔒 克隆并加密token后再保存
+            // 🔒 克隆并加密 token 后再保存
             var profilesToSave = EncryptAccountsForSave(profiles);
             
             var json = JsonConvert.SerializeObject(profilesToSave, Formatting.Indented);
@@ -130,16 +130,16 @@ public class AccountManager : IAccountManager
     // ========== 🔒 安全相关私有方法 ==========
     
     /// <summary>
-    /// 检测并迁移明文token
+    /// 检测并迁移明文 token
     /// </summary>
-    /// <returns>true表示进行了迁移</returns>
+    /// <returns>true 表示进行了迁移</returns>
     private async Task<bool> MigrateUnencryptedTokensAsync(List<MinecraftAccount> profiles, string profilesPath)
     {
         bool needsMigration = false;
         
         foreach (var profile in profiles)
         {
-            // 检查AccessToken
+            // 检查 AccessToken
             if (!string.IsNullOrEmpty(profile.AccessToken) && !TokenEncryption.IsEncrypted(profile.AccessToken))
             {
                 System.Diagnostics.Debug.WriteLine($"[AccountManager] ⚠️ 检测到明文 AccessToken: {profile.Name}");
@@ -153,7 +153,7 @@ public class AccountManager : IAccountManager
                 needsMigration = true;
             }
             
-            // 检查RefreshToken
+            // 检查 RefreshToken
             if (!string.IsNullOrEmpty(profile.RefreshToken) && !TokenEncryption.IsEncrypted(profile.RefreshToken))
             {
                 System.Diagnostics.Debug.WriteLine($"[AccountManager] ⚠️ 检测到明文 RefreshToken: {profile.Name}");
@@ -171,7 +171,7 @@ public class AccountManager : IAccountManager
         {
             System.Diagnostics.Debug.WriteLine("[AccountManager] 🔒 开始自动迁移明文 token...");
             
-            // 加密所有明文token
+            // 加密所有明文 token
             var encryptedProfiles = EncryptAccountsForSave(profiles);
             
             // 立即保存加密后的数据
@@ -185,7 +185,7 @@ public class AccountManager : IAccountManager
     }
     
     /// <summary>
-    /// 解密profiles中的所有token（供内存使用）
+    /// 解密 profiles 中的所有 token（供内存使用）
     /// </summary>
     private void DecryptAccountTokens(List<MinecraftAccount> profiles)
     {
@@ -211,7 +211,7 @@ public class AccountManager : IAccountManager
     }
     
     /// <summary>
-    /// 克隆并加密profiles用于保存
+    /// 克隆并加密 profiles 用于保存
     /// </summary>
     private List<MinecraftAccount> EncryptAccountsForSave(List<MinecraftAccount> profiles)
     {

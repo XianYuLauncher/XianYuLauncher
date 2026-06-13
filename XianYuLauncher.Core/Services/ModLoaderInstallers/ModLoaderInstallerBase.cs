@@ -17,7 +17,7 @@ using XianYuLauncher.Core.Services.DownloadSource;
 namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 
 /// <summary>
-/// ModLoader安装器基类，提供共同的安装逻辑
+/// ModLoader 安装器基类，提供共同的安装逻辑
 /// </summary>
 public abstract class ModLoaderInstallerBase : IModLoaderInstaller
 {
@@ -101,7 +101,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
     #region 受保护的辅助方法
 
     /// <summary>
-    /// 生成版本ID
+    /// 生成版本 ID
     /// </summary>
     protected virtual string GetVersionId(string minecraftVersionId, string modLoaderVersion, string? customVersionName)
     {
@@ -176,7 +176,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
     }
 
     /// <summary>
-    /// 保存版本JSON文件
+    /// 保存版本 JSON 文件
     /// </summary>
     protected async Task SaveVersionJsonAsync(string versionDirectory, string versionId, VersionInfo versionInfo)
     {
@@ -184,12 +184,12 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         var jsonContent = VersionManifestJsonHelper.SerializeVersionJson(versionInfo);
         await File.WriteAllTextAsync(jsonPath, jsonContent);
 
-        Logger.LogInformation("已保存版本JSON: {JsonPath}", jsonPath);
+        Logger.LogInformation("已保存版本 JSON: {JsonPath}", jsonPath);
     }
 
 
     /// <summary>
-    /// 下载原版Minecraft JAR文件
+    /// 下载原版 Minecraft JAR 文件
     /// </summary>
     protected async Task DownloadMinecraftJarAsync(
         string versionDirectory,
@@ -201,11 +201,11 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         if (originalVersionInfo.Downloads?.Client == null)
         {
             throw new ModLoaderInstallException(
-                $"无法获取Minecraft客户端下载信息",
+                $"无法获取 Minecraft 客户端下载信息",
                 ModLoaderType,
                 versionId,
                 originalVersionInfo.Id ?? "unknown",
-                "下载JAR");
+                "下载 JAR");
         }
 
         var clientDownload = originalVersionInfo.Downloads.Client;
@@ -214,14 +214,14 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         if (string.IsNullOrEmpty(clientDownload.Url))
         {
             throw new ModLoaderInstallException(
-                "客户端JAR下载URL为空",
+                "客户端 JAR 下载 URL 为空",
                 ModLoaderType,
                 versionId,
                 originalVersionInfo.Id ?? "unknown",
-                "下载JAR");
+                "下载 JAR");
         }
 
-        Logger.LogInformation("开始下载Minecraft JAR: {Url}", clientDownload.Url);
+        Logger.LogInformation("开始下载 Minecraft JAR: {Url}", clientDownload.Url);
 
         var result = clientDownload.Size > 0
             ? await DownloadManager.DownloadFileAsync(
@@ -241,19 +241,19 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         if (!result.Success)
         {
             throw new ModLoaderInstallException(
-                $"下载Minecraft JAR失败: {result.ErrorMessage}",
+                $"下载 Minecraft JAR 失败: {result.ErrorMessage}",
                 ModLoaderType,
                 versionId,
                 originalVersionInfo.Id ?? "unknown",
-                "下载JAR",
+                "下载 JAR",
                 result.Exception);
         }
 
-        Logger.LogInformation("Minecraft JAR下载完成: {JarPath}", jarPath);
+        Logger.LogInformation("Minecraft JAR 下载完成: {JarPath}", jarPath);
     }
     
     /// <summary>
-    /// 确保Minecraft JAR文件存在（如果不存在则下载）
+    /// 确保 Minecraft JAR 文件存在（如果不存在则下载）
     /// </summary>
     protected async Task EnsureMinecraftJarAsync(
         string versionDirectory,
@@ -267,14 +267,14 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
         
         if (File.Exists(jarPath))
         {
-            Logger.LogInformation("Minecraft JAR已存在，跳过下载: {JarPath}", jarPath);
+            Logger.LogInformation("Minecraft JAR 已存在，跳过下载: {JarPath}", jarPath);
             progressCallback?.Invoke(new DownloadProgressStatus(100, 100, 100));
             return;
         }
         
         if (skipDownload)
         {
-            Logger.LogInformation("跳过JAR下载（skipDownload=true），JAR文件不存在: {JarPath}", jarPath);
+            Logger.LogInformation("跳过 JAR 下载（skipDownload=true），JAR 文件不存在: {JarPath}", jarPath);
             progressCallback?.Invoke(new DownloadProgressStatus(100, 100, 100));
             return;
         }
@@ -283,7 +283,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
     }
 
     /// <summary>
-    /// 下载ModLoader库文件
+    /// 下载 ModLoader 库文件
     /// </summary>
     protected async Task DownloadModLoaderLibrariesAsync(
         IEnumerable<ModLoaderLibrary> libraries,
@@ -308,7 +308,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
             var downloadPlan = BuildLibraryDownloadPlan(library, libraryPath);
             if (downloadPlan == null)
             {
-                Logger.LogWarning("无法构建库文件下载URL: {LibraryName}", library.Name);
+                Logger.LogWarning("无法构建库文件下载 URL: {LibraryName}", library.Name);
                 continue;
             }
 
@@ -579,7 +579,7 @@ public abstract class ModLoaderInstallerBase : IModLoaderInstaller
 }
 
 /// <summary>
-/// ModLoader库信息
+/// ModLoader 库信息
 /// </summary>
 public class ModLoaderLibrary
 {

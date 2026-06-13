@@ -378,7 +378,7 @@ public class ModpackInstallationService : IModpackInstallationService
             progress,
             50,
             "50%",
-            $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...",
+            $"正在下载 Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...",
             statusResourceKey: "DownloadQueue_Status_ModpackDownloadingCoreVersion",
             statusResourceArguments: [minecraftVersion, modLoaderType, modLoaderVersion]);
 
@@ -392,7 +392,7 @@ public class ModpackInstallationService : IModpackInstallationService
                     progress,
                     p,
                     $"{p:F1}%",
-                    $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...",
+                    $"正在下载 Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...",
                     status.SpeedText,
                     status.BytesPerSecond,
                     "DownloadQueue_Status_ModpackDownloadingCoreVersion",
@@ -430,7 +430,7 @@ public class ModpackInstallationService : IModpackInstallationService
     private static (string Type, string Name, string Version) ParseModrinthDependencies(JObject indexData)
     {
         var deps = indexData["dependencies"]
-            ?? throw new Exception("整合包中缺少Mod Loader依赖信息");
+            ?? throw new Exception("整合包中缺少 Mod Loader 依赖信息");
 
         if (deps["fabric-loader"] != null)
             return ("Fabric", "fabric", deps["fabric-loader"]!.ToString());
@@ -444,7 +444,7 @@ public class ModpackInstallationService : IModpackInstallationService
         if (deps["quilt-loader"] != null)
             return ("Quilt", "quilt", deps["quilt-loader"]!.ToString());
 
-        throw new Exception("整合包中缺少Mod Loader依赖信息");
+        throw new Exception("整合包中缺少 Mod Loader 依赖信息");
     }
 
     private async Task DownloadModrinthFilesAsync(
@@ -576,10 +576,10 @@ public class ModpackInstallationService : IModpackInstallationService
         string manifestJson = await File.ReadAllTextAsync(manifestPath, cancellationToken);
         var manifest = System.Text.Json.JsonSerializer.Deserialize<CurseForgeManifest>(manifestJson,
             new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-            ?? throw new Exception("无法解析CurseForge整合包manifest.json");
+            ?? throw new Exception("无法解析 CurseForge 整合包 manifest.json");
 
         string minecraftVersion = manifest.Minecraft?.Version
-            ?? throw new Exception("整合包中缺少Minecraft版本信息");
+            ?? throw new Exception("整合包中缺少 Minecraft 版本信息");
 
         var (modLoaderType, _, modLoaderVersion) = ParseCurseForgeDependencies(manifest);
 
@@ -655,12 +655,12 @@ public class ModpackInstallationService : IModpackInstallationService
         string manifestJson = await File.ReadAllTextAsync(manifestPath, cancellationToken);
         var manifest = System.Text.Json.JsonSerializer.Deserialize<CurseForgeManifest>(manifestJson,
             new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })
-            ?? throw new Exception("无法解析CurseForge整合包manifest.json");
+            ?? throw new Exception("无法解析 CurseForge 整合包 manifest.json");
 
         Debug.WriteLine($"[CurseForge 整合包] 名称: {manifest.Name}, 版本: {manifest.Version}");
 
         string minecraftVersion = manifest.Minecraft?.Version
-            ?? throw new Exception("整合包中缺少Minecraft版本信息");
+            ?? throw new Exception("整合包中缺少 Minecraft 版本信息");
 
         var (modLoaderType, _, modLoaderVersion) = ParseCurseForgeDependencies(manifest);
 
@@ -668,7 +668,7 @@ public class ModpackInstallationService : IModpackInstallationService
             progress,
             45,
             "45%",
-            $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...",
+            $"正在下载 Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...",
             statusResourceKey: "DownloadQueue_Status_ModpackDownloadingCoreVersion",
             statusResourceArguments: [minecraftVersion, modLoaderType, modLoaderVersion]);
 
@@ -682,7 +682,7 @@ public class ModpackInstallationService : IModpackInstallationService
                     progress,
                     p,
                     $"{p:F1}%",
-                    $"正在下载Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...",
+                    $"正在下载 Minecraft {minecraftVersion} 和 {modLoaderType} {modLoaderVersion}...",
                     status.SpeedText,
                     status.BytesPerSecond,
                     "DownloadQueue_Status_ModpackDownloadingCoreVersion",
@@ -956,14 +956,14 @@ public class ModpackInstallationService : IModpackInstallationService
     {
         var primaryModLoader = manifest.Minecraft?.ModLoaders?.FirstOrDefault(ml => ml.Primary)
             ?? manifest.Minecraft?.ModLoaders?.FirstOrDefault()
-            ?? throw new Exception("整合包中缺少ModLoader信息");
+            ?? throw new Exception("整合包中缺少 ModLoader 信息");
 
         if (string.IsNullOrEmpty(primaryModLoader.Id))
-            throw new Exception("整合包中缺少ModLoader信息");
+            throw new Exception("整合包中缺少 ModLoader 信息");
 
         var loaderParts = primaryModLoader.Id.Split('-', 2);
         if (loaderParts.Length < 2)
-            throw new Exception($"无法解析ModLoader信息: {primaryModLoader.Id}");
+            throw new Exception($"无法解析 ModLoader 信息: {primaryModLoader.Id}");
 
         string loaderPrefix = loaderParts[0].ToLower();
         string version = loaderParts[1];
@@ -974,7 +974,7 @@ public class ModpackInstallationService : IModpackInstallationService
             "fabric" => ("Fabric", "fabric", version),
             "quilt" => ("Quilt", "quilt", version),
             "neoforge" => ("NeoForge", "neoforge", version),
-            _ => throw new Exception($"不支持的Mod Loader类型: {loaderPrefix}")
+            _ => throw new Exception($"不支持的 Mod Loader 类型: {loaderPrefix}")
         };
     }
 

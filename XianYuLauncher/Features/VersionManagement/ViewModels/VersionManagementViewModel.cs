@@ -206,7 +206,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     
     #endregion
     
-    #region 概览Tab相关属性
+    #region 概览 Tab 相关属性
     
     /// <summary>
     /// 启动次数
@@ -526,7 +526,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     
     #endregion
     
-    #region 扩展Tab相关属性
+    #region 扩展 Tab 相关属性
     
     /// <summary>
     /// 当前加载器显示名称
@@ -2831,7 +2831,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
                 cancellationToken);
         }
         
-        #region 概览Tab相关方法
+        #region 概览 Tab 相关方法
         
         /// <summary>
         /// 加载概览统计数据
@@ -3066,7 +3066,7 @@ public partial class VersionManagementViewModel : ObservableRecipient, INavigati
     {
         switch (SelectedTabIndex)
         {
-            case 2: // Mod管理
+            case 2: // Mod 管理
                 await ModsModule.OpenModFolderCommand.ExecuteAsync(null);
                 break;
             case 3: // 光影管理

@@ -302,7 +302,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
         [RelayCommand]
         private async Task Next()
         {
-            if (CurrentPageIndex < 2) // 三个页面，索引0-2
+            if (CurrentPageIndex < 2) // 三个页面，索引 0-2
             {
                 // 移除了空格检查限制，允许用户使用带空格的路径
                 

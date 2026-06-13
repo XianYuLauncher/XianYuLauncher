@@ -13,7 +13,7 @@ using XianYuLauncher.Core.Services.DownloadSource;
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-/// Minecraft版本服务 - 工具方法部分
+/// Minecraft 版本服务 - 工具方法部分
 /// 包含使用 DownloadManager 的辅助下载方法
 /// </summary>
 public partial class MinecraftVersionService
@@ -45,10 +45,10 @@ public partial class MinecraftVersionService
     /// 使用 DownloadManager 下载文件，支持下载源回退
     /// 如果主下载源失败，自动切换到官方源重试
     /// </summary>
-    /// <param name="primaryUrl">主下载URL</param>
-    /// <param name="fallbackUrl">备用下载URL（官方源）</param>
+    /// <param name="primaryUrl">主下载 URL</param>
+    /// <param name="fallbackUrl">备用下载 URL（官方源）</param>
     /// <param name="targetPath">目标文件路径</param>
-    /// <param name="expectedSha1">预期的SHA1哈希值（可选）</param>
+    /// <param name="expectedSha1">预期的 SHA1 哈希值（可选）</param>
     /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
     private async Task DownloadFileWithFallbackAsync(
@@ -88,8 +88,8 @@ public partial class MinecraftVersionService
     /// <summary>
     /// 使用 VersionInfoManager 获取版本配置
     /// </summary>
-    /// <param name="versionId">版本ID</param>
-    /// <param name="minecraftDirectory">Minecraft目录</param>
+    /// <param name="versionId">版本 ID</param>
+    /// <param name="minecraftDirectory">Minecraft 目录</param>
     /// <returns>版本配置</returns>
     private async Task<VersionConfig?> GetVersionConfigWithManagerAsync(
         string versionId,
@@ -101,8 +101,8 @@ public partial class MinecraftVersionService
     /// <summary>
     /// 获取版本配置信息（公共接口）
     /// </summary>
-    /// <param name="versionId">版本ID</param>
-    /// <param name="minecraftDirectory">Minecraft目录，如果为null则使用默认目录</param>
+    /// <param name="versionId">版本 ID</param>
+    /// <param name="minecraftDirectory">Minecraft 目录，如果为 null 则使用默认目录</param>
     /// <returns>版本配置</returns>
     public async Task<VersionConfig?> GetVersionConfigAsync(string versionId, string? minecraftDirectory = null)
     {

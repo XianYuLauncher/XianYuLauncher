@@ -6,7 +6,7 @@ using XianYuLauncher.Core.Contracts.Services;
 namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 
 /// <summary>
-/// ModLoader安装器工厂实现
+/// ModLoader 安装器工厂实现
 /// </summary>
 public class ModLoaderInstallerFactory : IModLoaderInstallerFactory
 {
@@ -25,7 +25,7 @@ public class ModLoaderInstallerFactory : IModLoaderInstallerFactory
     {
         if (string.IsNullOrEmpty(modLoaderType))
         {
-            throw new ArgumentException("ModLoader类型不能为空", nameof(modLoaderType));
+            throw new ArgumentException("ModLoader 类型不能为空", nameof(modLoaderType));
         }
 
         if (_installers.TryGetValue(modLoaderType.ToLowerInvariant(), out var installer))
@@ -33,7 +33,7 @@ public class ModLoaderInstallerFactory : IModLoaderInstallerFactory
             return installer;
         }
 
-        throw new NotSupportedException($"不支持的ModLoader类型: {modLoaderType}");
+        throw new NotSupportedException($"不支持的 ModLoader 类型: {modLoaderType}");
     }
 
     /// <inheritdoc/>

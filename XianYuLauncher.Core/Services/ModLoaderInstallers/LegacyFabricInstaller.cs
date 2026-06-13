@@ -16,7 +16,7 @@ using XianYuLauncher.Core.Services.DownloadSource;
 namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 
 /// <summary>
-/// Legacy Fabric ModLoader安装器
+/// Legacy Fabric ModLoader 安装器
 /// </summary>
 public class LegacyFabricInstaller : ModLoaderInstallerBase
 {
@@ -25,7 +25,7 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
     private readonly IUnifiedVersionManifestResolver _manifestResolver;
     
     /// <summary>
-    /// Legacy Fabric Meta API基础URL
+    /// Legacy Fabric Meta API 基础 URL
     /// </summary>
     private const string LegacyFabricMetaApiUrl = "https://meta.legacyfabric.net/v2";
     
@@ -79,20 +79,20 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
         Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
-        Logger.LogInformation("开始安装Legacy Fabric: {FabricVersion} for Minecraft {MinecraftVersion}, SkipJarDownload={SkipJar}",
+        Logger.LogInformation("开始安装 Legacy Fabric: {FabricVersion} for Minecraft {MinecraftVersion}, SkipJarDownload={SkipJar}",
             modLoaderVersion, minecraftVersionId, options.SkipJarDownload);
 
         try
         {
-            // 1. 生成版本ID和创建目录
+            // 1. 生成版本 ID 和创建目录
             var versionId = GetVersionId(minecraftVersionId, modLoaderVersion, options.CustomVersionName);
             var versionDirectory = CreateVersionDirectory(minecraftDirectory, versionId);
             var librariesDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Libraries);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 5));
 
-            // 2. 获取原版Minecraft版本信息
-            Logger.LogInformation("获取原版Minecraft版本信息: {MinecraftVersion}", minecraftVersionId);
+            // 2. 获取原版 Minecraft 版本信息
+            Logger.LogInformation("获取原版 Minecraft 版本信息: {MinecraftVersion}", minecraftVersionId);
             var originalVersionInfo = await VersionInfoManager.GetVersionInfoAsync(
                 minecraftVersionId,
                 minecraftDirectory,
@@ -101,8 +101,8 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 10));
 
-            // 3. 获取Legacy Fabric Profile
-            Logger.LogInformation("获取Legacy Fabric Profile");
+            // 3. 获取 Legacy Fabric Profile
+            Logger.LogInformation("获取 Legacy Fabric Profile");
             var fabricProfile = await GetLegacyFabricProfileAsync(minecraftVersionId, modLoaderVersion, cancellationToken);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 15));
@@ -110,8 +110,8 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
             // 4. 保存版本配置
             await SaveVersionConfigAsync(versionDirectory, minecraftVersionId, modLoaderVersion);
 
-            // 5. 下载原版Minecraft JAR（支持跳过）
-            Logger.LogInformation("处理Minecraft JAR, SkipJarDownload={SkipJar}", options.SkipJarDownload);
+            // 5. 下载原版 Minecraft JAR（支持跳过）
+            Logger.LogInformation("处理 Minecraft JAR, SkipJarDownload={SkipJar}", options.SkipJarDownload);
             await EnsureMinecraftJarAsync(
                 versionDirectory,
                 versionId,
@@ -122,8 +122,8 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 35));
 
-            // 6. 下载Legacy Fabric库文件
-            Logger.LogInformation("下载Legacy Fabric库文件");
+            // 6. 下载 Legacy Fabric 库文件
+            Logger.LogInformation("下载 Legacy Fabric 库文件");
             var fabricLibraries = ParseLegacyFabricLibraries(fabricProfile);
             await DownloadModLoaderLibrariesAsync(
                 fabricLibraries,
@@ -133,26 +133,26 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 80));
 
-            // 7. 生成Legacy Fabric版本JSON（与原版合并）
-            Logger.LogInformation("生成Legacy Fabric版本JSON");
+            // 7. 生成 Legacy Fabric 版本 JSON（与原版合并）
+            Logger.LogInformation("生成 Legacy Fabric 版本 JSON");
             var fabricVersionJson = ResolveVersionInfo(originalVersionInfo, fabricProfile, versionId);
             await SaveVersionJsonAsync(versionDirectory, versionId, fabricVersionJson);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
 
-            Logger.LogInformation("Legacy Fabric安装完成: {VersionId}", versionId);
+            Logger.LogInformation("Legacy Fabric 安装完成: {VersionId}", versionId);
             return versionId;
         }
         catch (OperationCanceledException)
         {
-            Logger.LogWarning("Legacy Fabric安装已取消");
+            Logger.LogWarning("Legacy Fabric 安装已取消");
             throw;
         }
         catch (Exception ex) when (ex is not ModLoaderInstallException)
         {
-            Logger.LogError(ex, "Legacy Fabric安装失败");
+            Logger.LogError(ex, "Legacy Fabric 安装失败");
             throw new ModLoaderInstallException(
-                $"Legacy Fabric安装失败: {ex.Message}",
+                $"Legacy Fabric 安装失败: {ex.Message}",
                 ModLoaderType,
                 modLoaderVersion,
                 minecraftVersionId,
@@ -178,7 +178,7 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "获取Legacy Fabric版本列表失败: {MinecraftVersion}", minecraftVersionId);
+            Logger.LogError(ex, "获取 Legacy Fabric 版本列表失败: {MinecraftVersion}", minecraftVersionId);
             return new List<string>();
         }
     }
@@ -186,7 +186,7 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
     #region 私有方法
 
     /// <summary>
-    /// 获取Legacy Fabric Profile
+    /// 获取 Legacy Fabric Profile
     /// </summary>
     private async Task<JObject> GetLegacyFabricProfileAsync(
         string minecraftVersionId,
@@ -198,7 +198,7 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
         var url = downloadSource.GetLegacyFabricProfileUrl(minecraftVersionId, fabricVersion);
         var officialUrl = $"{LegacyFabricMetaApiUrl}/versions/loader/{minecraftVersionId}/{fabricVersion}/profile/json";
         
-        Logger.LogInformation("使用下载源 {DownloadSource} 获取Legacy Fabric Profile: {Url}", downloadSource.Name, url);
+        Logger.LogInformation("使用下载源 {DownloadSource} 获取 Legacy Fabric Profile: {Url}", downloadSource.Name, url);
         System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 获取 Legacy Fabric Profile: {url}");
 
         try
@@ -209,11 +209,11 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
             if (profile == null)
             {
                 throw new ModLoaderInstallException(
-                    "无法解析Legacy Fabric Profile",
+                    "无法解析 Legacy Fabric Profile",
                     ModLoaderType,
                     fabricVersion,
                     minecraftVersionId,
-                    "获取Profile");
+                    "获取 Profile");
             }
 
             return profile;
@@ -230,11 +230,11 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
             if (profile == null)
             {
                 throw new ModLoaderInstallException(
-                    "无法解析Legacy Fabric Profile",
+                    "无法解析 Legacy Fabric Profile",
                     ModLoaderType,
                     fabricVersion,
                     minecraftVersionId,
-                    "获取Profile");
+                    "获取 Profile");
             }
 
             return profile;
@@ -242,7 +242,7 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
     }
 
     /// <summary>
-    /// 解析Legacy Fabric库列表
+    /// 解析 Legacy Fabric 库列表
     /// </summary>
     private List<ModLoaderLibrary> ParseLegacyFabricLibraries(JObject fabricProfile)
     {
@@ -295,7 +295,7 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
 
         FinalizeLegacyFabricLibraries(resolutionResult.ResolvedManifest.Libraries);
 
-        Logger.LogInformation("通过ManifestPatch解析了 {LibraryCount} 个Legacy Fabric依赖库", manifestPatch.Libraries?.Count ?? 0);
+        Logger.LogInformation("通过 ManifestPatch 解析了 {LibraryCount} 个 Legacy Fabric 依赖库", manifestPatch.Libraries?.Count ?? 0);
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", resolutionResult.ResolvedManifest.Libraries?.Count ?? 0);
 
         return resolutionResult.ResolvedManifest;

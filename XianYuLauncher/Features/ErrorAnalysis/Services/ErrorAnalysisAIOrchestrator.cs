@@ -640,7 +640,7 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
         var settings = await _aiSettingsDomainService.LoadAsync();
         if (!settings.IsEnabled)
         {
-            await SetLastAssistantMessageAsync($"{assistantPrefix}\n\n当前为知识库模式，无法继续 AI 对话。请在设置中开启 AI 分析。");
+            await SetLastAssistantMessageAsync($"{assistantPrefix}\n\n 当前为知识库模式，无法继续 AI 对话。请在设置中开启 AI 分析。");
             return;
         }
 
@@ -966,7 +966,7 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
             return displayMessage;
         }
 
-        return $"{displayMessage}\n\n当前操作处理后，还会继续逐项确认剩余 {pendingActionCount - 1} 个操作。";
+        return $"{displayMessage}\n\n 当前操作处理后，还会继续逐项确认剩余 {pendingActionCount - 1} 个操作。";
     }
 
     private static string ExtractDisplayMessage(string message)
@@ -1018,7 +1018,7 @@ public class ErrorAnalysisAIOrchestrator : IErrorAnalysisAIOrchestrator
             var buttonText = proposal?.ButtonText ?? "该操作";
             return string.IsNullOrWhiteSpace(actionResult)
                 ? $"我已确认执行你刚才申请的操作“{buttonText}”。请继续。注意：这次确认只对这一个具体操作生效，不代表我同意你后续的其他操作。后面如果你还想调用任何需要确认的工具，仍然必须重新发起新的确认。"
-                : $"我已确认执行你刚才申请的操作“{buttonText}”。操作结果如下：\n{actionResult}\n请基于这个结果继续。注意：这次确认只对这一个具体操作生效，不代表我同意你后续的其他操作。后面如果你还想调用任何需要确认的工具，仍然必须重新发起新的确认。";
+                : $"我已确认执行你刚才申请的操作“{buttonText}”。操作结果如下：\n{actionResult}\n 请基于这个结果继续。注意：这次确认只对这一个具体操作生效，不代表我同意你后续的其他操作。后面如果你还想调用任何需要确认的工具，仍然必须重新发起新的确认。";
         }
 
         var rejectedTarget = string.IsNullOrWhiteSpace(rejectedActionText)

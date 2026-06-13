@@ -35,7 +35,7 @@ public interface IDownloadTaskManager
     /// <summary>
     /// 启动原版 Minecraft 下载
     /// </summary>
-    /// <param name="versionId">版本ID</param>
+    /// <param name="versionId">版本 ID</param>
     /// <param name="customVersionName">自定义版本名称</param>
     Task StartVanillaDownloadAsync(string versionId, string customVersionName, string? versionIconPath = null, bool showInTeachingTip = false);
 
@@ -101,7 +101,7 @@ public interface IDownloadTaskManager
     /// <summary>
     /// 启动通用文件下载
     /// </summary>
-    /// <param name="url">下载URL</param>
+    /// <param name="url">下载 URL</param>
     /// <param name="targetPath">保存路径</param>
     /// <param name="description">任务描述（如：下载服务端 server.jar）</param>
     Task StartFileDownloadAsync(
@@ -224,9 +224,9 @@ public interface IDownloadTaskManager
     /// </summary>
     /// <param name="resourceName">资源名称（用于显示）</param>
     /// <param name="resourceType">资源类型（mod, resourcepack, shader, datapack, world）</param>
-    /// <param name="downloadUrl">下载URL</param>
+    /// <param name="downloadUrl">下载 URL</param>
     /// <param name="savePath">保存路径</param>
-    /// <param name="iconUrl">图标URL（可选，用于缓存图标）</param>
+    /// <param name="iconUrl">图标 URL（可选，用于缓存图标）</param>
     /// <param name="dependencies">依赖列表（可选）</param>
     Task StartResourceDownloadAsync(
         string resourceName,
@@ -253,13 +253,13 @@ public interface IDownloadTaskManager
         long? expectedSize = null);
 
     /// <summary>
-    /// 启动世界下载（下载zip并解压到saves目录）
+    /// 启动世界下载（下载 zip 并解压到 saves 目录）
     /// </summary>
     /// <param name="worldName">世界名称（用于显示）</param>
-    /// <param name="downloadUrl">下载URL</param>
-    /// <param name="savesDirectory">saves目录路径</param>
+    /// <param name="downloadUrl">下载 URL</param>
+    /// <param name="savesDirectory">saves 目录路径</param>
     /// <param name="fileName">下载文件名</param>
-    /// <param name="iconUrl">图标URL（可选）</param>
+    /// <param name="iconUrl">图标 URL（可选）</param>
     Task StartWorldDownloadAsync(
         string worldName,
         string downloadUrl,

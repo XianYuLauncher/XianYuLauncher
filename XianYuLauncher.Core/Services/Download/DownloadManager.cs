@@ -194,7 +194,7 @@ public class DownloadManager : IDownloadManager
             };
         
         // 确定并发线程数。
-        // 如果外部强制指定了maxConcurrency(例如批量下载时指定为1)，则优先使用
+        // 如果外部强制指定了 maxConcurrency(例如批量下载时指定为 1)，则优先使用
         // 否则读取"下载分片数"配置 (而不是之前的"下载线程数"配置)
         // 这样就实现了: 
         // 1. 批量小文件时 -> 单文件线程=1，总文件并发=DownloadThreadCount
@@ -734,13 +734,13 @@ public class DownloadManager : IDownloadManager
                     ? status => ReportBatchProgress(indexedTask.Index, status)
                     : null;
                 
-                // 重要修复：在批量下载模式下，强制单个文件的下载不进行分片（或限制为1），避免 32并发 x 32分片 = 1000+连接数 导致的 429 错误
+                // 重要修复：在批量下载模式下，强制单个文件的下载不进行分片（或限制为 1），避免 32 并发 x 32 分片 = 1000+连接数 导致的 429 错误
                 var result = await DownloadFileInternalAsync(
                     task.Url,
                     task.TargetPath,
                     task.ExpectedSha1,
                     taskProgressCallback,
-                    1,    // 强制单文件并发数为1 (禁用内部分片并发)
+                    1,    // 强制单文件并发数为 1 (禁用内部分片并发)
                     false,
                     task.ExpectedSize,
                     ct);
@@ -1342,7 +1342,7 @@ public class DownloadManager : IDownloadManager
                                   long sampleTick = Interlocked.Read(ref lastSampleTick);
                                   long elapsedMs = currentTick - sampleTick;
                                   double speed;
-                                  if (elapsedMs > 100) { // 至少100ms才采样
+                                  if (elapsedMs > 100) { // 至少 100ms 才采样
                                       long sampleBytes = Interlocked.Read(ref lastSampleBytes);
                                       double instantSpeed = (newTotal - sampleBytes) * 1000.0 / elapsedMs;
                                       double prevEma = BitConverter.Int64BitsToDouble(Interlocked.Read(ref emaSpeedBits));
@@ -1537,7 +1537,7 @@ public class DownloadManager : IDownloadManager
         var actualSha1 = await ComputeSha1Async(filePath, ct);
         if (!string.Equals(actualSha1, expectedSha1, StringComparison.OrdinalIgnoreCase)) {
             CleanupFile(filePath);
-            throw new HashVerificationException($"SHA1校验失败", expectedSha1, actualSha1);
+            throw new HashVerificationException($"SHA1 校验失败", expectedSha1, actualSha1);
         }
     }
 

@@ -78,12 +78,12 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     }
     
     /// <summary>
-    /// 下载Optifine+Forge组合版本（已废弃，内部调用新的多加载器安装方法）
+    /// 下载 Optifine+Forge 组合版本（已废弃，内部调用新的多加载器安装方法）
     /// </summary>
-    /// <param name="minecraftVersionId">Minecraft版本ID</param>
-    /// <param name="forgeVersion">Forge版本</param>
-    /// <param name="optifineType">Optifine类型</param>
-    /// <param name="optifinePatch">Optifine补丁版本</param>
+    /// <param name="minecraftVersionId">Minecraft 版本 ID</param>
+    /// <param name="forgeVersion">Forge 版本</param>
+    /// <param name="optifineType">Optifine 类型</param>
+    /// <param name="optifinePatch">Optifine 补丁版本</param>
     /// <param name="versionsDirectory">版本目录</param>
     /// <param name="librariesDirectory">库目录</param>
     /// <param name="progressCallback">进度回调</param>
@@ -178,7 +178,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             var versionManifestUrl = downloadSource.GetVersionManifestUrl();
             _logger.LogInformation("使用版本清单 URL: {VersionManifestUrl}", versionManifestUrl);
             
-            // 添加Debug输出，显示当前下载源和请求URL
+            // 添加 Debug 输出，显示当前下载源和请求 URL
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在加载 MC 版本列表，下载源: {downloadSource.Name}，请求 URL: {versionManifestUrl}");
             
             // 添加超时机制
@@ -203,7 +203,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         {
             _logger.LogInformation("正在获取 Minecraft 版本{VersionId}的详细信息", versionId);
             
-            // 初始化目录变量（使用与GetInstalledVersionsAsync相同的默认路径）
+            // 初始化目录变量（使用与 GetInstalledVersionsAsync 相同的默认路径）
             string defaultMinecraftDirectory = minecraftDirectory ?? _fileService.GetMinecraftDataPath();
             string versionDirectory = Path.Combine(defaultMinecraftDirectory, MinecraftPathConsts.Versions, versionId);
             
@@ -299,7 +299,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     {
         try
         {
-            // 检查是否为ModLoader版本（Fabric或NeoForge）
+            // 检查是否为 ModLoader 版本（Fabric 或 NeoForge）
             bool isModLoaderVersion = false;
             
             // 先尝试从配置文件读取 (使用异步版本)
@@ -328,7 +328,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             
             if (isModLoaderVersion)
             {
-                // 从本地找到ModLoader版本JSON文件
+                // 从本地找到 ModLoader 版本 JSON 文件
                 string jsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
                 
                 if (File.Exists(jsonPath))
@@ -337,7 +337,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 }
             }
             
-            // 如果不是ModLoader版本或本地文件不存在，且允许网络请求，则从API获取
+            // 如果不是 ModLoader 版本或本地文件不存在，且允许网络请求，则从 API 获取
             if (allowNetwork)
             {
                 var manifest = await GetVersionManifestAsync();
@@ -380,7 +380,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         {
             _logger.LogInformation("正在获取已安装的 Minecraft 版本");
             
-            // 设置默认Minecraft目录（使用程序路径下的.minecraft）
+            // 设置默认 Minecraft 目录（使用程序路径下的.minecraft）
             string defaultMinecraftDirectory = minecraftDirectory ?? _fileService.GetMinecraftDataPath();
             string versionsDirectory = Path.Combine(defaultMinecraftDirectory, MinecraftPathConsts.Versions);
             
@@ -414,10 +414,10 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         }
     }
 
-    // 接口实现 - 与IMinecraftVersionService接口保持一致
+    // 接口实现 - 与 IMinecraftVersionService 接口保持一致
     public async Task DownloadVersionAsync(string versionId, string targetDirectory, string? customVersionName = null, string? versionIconPath = null)
     {
-        // 调用带有进度回调的重载版本，传递null作为进度回调
+        // 调用带有进度回调的重载版本，传递 null 作为进度回调
         await DownloadVersionAsync(versionId, targetDirectory, null, customVersionName, versionIconPath);
     }
 
@@ -432,7 +432,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     {
         try
         {
-            // 同时获取版本信息对象和原始JSON字符串
+            // 同时获取版本信息对象和原始 JSON 字符串
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 10)); // 10% - 开始获取版本信息
             string minecraftDirectory = GetParentDirectoryOrThrow(targetDirectory);
             var versionInfoTask = GetVersionInfoAsync(versionId, minecraftDirectory, allowNetwork: true);
@@ -449,34 +449,34 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 throw new Exception($"Client download information not found for version {versionId}. This version may not be available for download.");
             }
 
-            // 下载JAR文件
+            // 下载 JAR 文件
             var clientDownload = versionInfo.Downloads.Client;
             if (string.IsNullOrWhiteSpace(clientDownload.Url))
             {
                 throw new Exception($"Client download URL not found for version {versionId}");
             }
             
-            // 使用自定义版本名称（如果提供）作为文件名，否则使用原始版本ID
+            // 使用自定义版本名称（如果提供）作为文件名，否则使用原始版本 ID
             string finalVersionName = customVersionName ?? versionId;
             var jarPath = Path.Combine(targetDirectory, $"{finalVersionName}.jar");
 
             // 创建目标目录（如果不存在）
             Directory.CreateDirectory(targetDirectory);
             
-            // 检查并创建launcher_profiles.json文件
+            // 检查并创建 launcher_profiles.json 文件
             EnsureLauncherProfileJson(minecraftDirectory);
 
             var downloadSource = _downloadSourceFactory.GetFileDownloadSource();
 
-            // 使用下载源获取客户端JAR的下载URL
+            // 使用下载源获取客户端 JAR 的下载 URL
             var clientJarUrl = downloadSource.GetClientJarUrl(versionId, clientDownload.Url);
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载内容: JAR 核心文件, 下载源: {downloadSource.Name}, 版本: {finalVersionName}, 下载 URL: {clientJarUrl}");
             
-            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 20)); // 20% - 开始下载JAR文件
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 20)); // 20% - 开始下载 JAR 文件
 
             Action<DownloadProgressStatus> downloadProgressCallback = status =>
             {
-                // 计算进度（20% - 80%用于JAR下载）
+                // 计算进度（20% - 80%用于 JAR 下载）
                 double progress = 20 + (status.Percent * 0.6);
                 progressCallback?.Invoke(new DownloadProgressStatus(status.DownloadedBytes, status.TotalBytes, progress, status.BytesPerSecond));
             };
@@ -501,16 +501,16 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     default);
             }
 
-            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 85)); // 85% - 开始验证JAR文件
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 85)); // 85% - 开始验证 JAR 文件
 
-            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 95)); // 95% - 开始保存JSON文件
+            progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 95)); // 95% - 开始保存 JSON 文件
             
-            // 保存原始版本JSON文件，使用自定义版本名称（如果提供）
+            // 保存原始版本 JSON 文件，使用自定义版本名称（如果提供）
             var jsonPath = Path.Combine(targetDirectory, $"{finalVersionName}.json");
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载内容: JSON 配置文件, 下载源: {downloadSource.Name}, 版本: {finalVersionName}");
             await File.WriteAllTextAsync(jsonPath, versionInfoJson);
             
-            // 创建XianYuL.cfg配置文件
+            // 创建 XianYuL.cfg 配置文件
             string settingsFileName = MinecraftFileConsts.VersionConfig;
             string settingsFilePath = Path.Combine(targetDirectory, settingsFileName);
             var normalizedIconPath = VersionIconPathHelper.NormalizeOrDefault(versionIconPath);
@@ -527,15 +527,15 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 return;
             }
             
-            // 解析版本ID，提取Minecraft版本和ModLoader信息
+            // 解析版本 ID，提取 Minecraft 版本和 ModLoader 信息
             string minecraftVersion = string.Empty;
             string modLoaderType = string.Empty;
             string modLoaderVersion = string.Empty;
             
-            // 尝试从finalVersionName中提取信息
+            // 尝试从 finalVersionName 中提取信息
             string versionName = finalVersionName;
             
-            // 处理ModLoader版本格式（如fabric-1.20.1-0.15.7）
+            // 处理 ModLoader 版本格式（如 fabric-1.20.1-0.15.7）
             if (versionName.Contains("fabric-"))
             {
                 var parts = versionName.Split('-');
@@ -568,7 +568,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             }
             else
             {
-                // 原版Minecraft版本 - 使用原始版本ID而不是自定义名称
+                // 原版 Minecraft 版本 - 使用原始版本 ID 而不是自定义名称
                 minecraftVersion = versionId;
                 modLoaderType = "vanilla";
             }
@@ -589,7 +589,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 Icon = normalizedIconPath
             };
             
-            // 序列化到JSON
+            // 序列化到 JSON
             string settingsJson = System.Text.Json.JsonSerializer.Serialize(versionConfig, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(settingsFilePath, settingsJson);
             
@@ -606,12 +606,12 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     }
 
     /// <summary>
-    /// 下载Mod Loader版本（接口实现）
+    /// 下载 Mod Loader 版本（接口实现）
     /// </summary>
-    /// <param name="minecraftVersionId">Minecraft版本ID</param>
-    /// <param name="modLoaderType">Mod Loader类型（如Fabric、Forge等）</param>
-    /// <param name="modLoaderVersion">Mod Loader版本</param>
-    /// <param name="minecraftDirectory">Minecraft目录</param>
+    /// <param name="minecraftVersionId">Minecraft 版本 ID</param>
+    /// <param name="modLoaderType">Mod Loader 类型（如 Fabric、Forge 等）</param>
+    /// <param name="modLoaderVersion">Mod Loader 版本</param>
+    /// <param name="minecraftDirectory">Minecraft 目录</param>
     /// <param name="progressCallback">进度回调</param>
     public async Task DownloadModLoaderVersionAsync(string minecraftVersionId, string modLoaderType, string modLoaderVersion, string minecraftDirectory, Action<DownloadProgressStatus>? progressCallback = null, string? customVersionName = null, string? versionIconPath = null)
     {
@@ -619,12 +619,12 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     }
 
     /// <summary>
-    /// 下载Mod Loader版本（带取消令牌）
+    /// 下载 Mod Loader 版本（带取消令牌）
     /// </summary>
-    /// <param name="minecraftVersionId">Minecraft版本ID</param>
-    /// <param name="modLoaderType">Mod Loader类型（如Fabric、Forge等）</param>
-    /// <param name="modLoaderVersion">Mod Loader版本</param>
-    /// <param name="minecraftDirectory">Minecraft目录</param>
+    /// <param name="minecraftVersionId">Minecraft 版本 ID</param>
+    /// <param name="modLoaderType">Mod Loader 类型（如 Fabric、Forge 等）</param>
+    /// <param name="modLoaderVersion">Mod Loader 版本</param>
+    /// <param name="minecraftDirectory">Minecraft 目录</param>
     /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <param name="customVersionName">自定义版本名称</param>
@@ -641,7 +641,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             Directory.CreateDirectory(versionsDirectory);
             Directory.CreateDirectory(librariesDirectory);
             
-            // 检查并创建launcher_profiles.json文件
+            // 检查并创建 launcher_profiles.json 文件
             EnsureLauncherProfileJson(minecraftDirectory);
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 0));
@@ -686,7 +686,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             
             // 检查是否已经是详细错误信息，如果是则直接抛出
             // 否则，添加额外的上下文信息
-            if (ex.Message.Contains("内部错误:") || ex.Message.Contains("HTTP状态码:") || ex.Message.Contains("建议:"))
+            if (ex.Message.Contains("内部错误:") || ex.Message.Contains("HTTP 状态码:") || ex.Message.Contains("建议:"))
             {
                 // 已经是详细错误信息，直接抛出
                 throw;
@@ -702,7 +702,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 }
                 
                 // 添加建议
-                detailedMessage += "\n建议: 请检查您的网络连接，确保版本号正确，或者尝试使用其他版本。";
+                detailedMessage += "\n 建议: 请检查您的网络连接，确保版本号正确，或者尝试使用其他版本。";
                 
                 throw new Exception(detailedMessage, ex);
             }
@@ -777,7 +777,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     : System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux) ? "linux"
                     : System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX) ? "osx"
                     : "windows";
-                // 正确检测当前架构（包括ARM64）
+                // 正确检测当前架构（包括 ARM64）
                 string currentArch;
                 switch (System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture)
                 {
@@ -943,10 +943,10 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         string? detectedClassifier = null;
         string? detectedExtension = null;
         
-        // 检查版本号是否包含@符号，可能包含extension信息
+        // 检查版本号是否包含@符号，可能包含 extension 信息
         if (version.Contains('@'))
         {
-            // 分割版本号和extension
+            // 分割版本号和 extension
             string[] versionParts = version.Split('@');
             if (versionParts.Length == 2)
             {
@@ -956,7 +956,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             }
         }
 
-        // 如果库名称中包含分类器（即有4个或更多部分），则提取分类器
+        // 如果库名称中包含分类器（即有 4 个或更多部分），则提取分类器
         if (parts.Length >= 4)
         {
             detectedClassifier = parts[3];
@@ -965,20 +965,20 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         // 优先使用方法参数传入的分类器，如果没有则使用从库名称中提取的分类器
         string? finalClassifier = !string.IsNullOrEmpty(classifier) ? classifier : detectedClassifier;
         
-        // 处理分类器中的@符号和$extension占位符
+        // 处理分类器中的@符号和$extension 占位符
         if (!string.IsNullOrEmpty(finalClassifier))
         {
             // 替换分类器中的@符号为点字符
             finalClassifier = finalClassifier.Replace('@', '.');
-            // 处理分类器中的$extension占位符
+            // 处理分类器中的$extension 占位符
             if (finalClassifier.Equals("$extension", StringComparison.OrdinalIgnoreCase))
             {
-                finalClassifier = "zip"; // 默认使用zip作为备选扩展名
+                finalClassifier = "zip"; // 默认使用 zip 作为备选扩展名
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] 替换分类器中的$extension 占位符为: {finalClassifier}");
             }
         }
 
-        // 将groupId中的点替换为目录分隔符
+        // 将 groupId 中的点替换为目录分隔符
         string groupPath = groupId.Replace('.', Path.DirectorySeparatorChar);
 
         // 构建基础文件路径
@@ -992,21 +992,21 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         string extension = ".jar"; // 默认扩展名
         bool hasExtension = false;
         
-        // 特殊处理neoform文件，确保使用正确的扩展名
+        // 特殊处理 neoform 文件，确保使用正确的扩展名
         if (artifactId.Equals("neoform", StringComparison.OrdinalIgnoreCase))
         {
-            // 使用从版本号中提取的extension，默认为zip
+            // 使用从版本号中提取的 extension，默认为 zip
             extension = detectedExtension != null ? $".{detectedExtension}" : ".zip";
             hasExtension = false; // 确保添加扩展名
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 特殊处理 neoform 文件，使用扩展名: {extension}");
         }
-        // 特殊处理mcp_config文件，确保使用正确的zip扩展名
+        // 特殊处理 mcp_config 文件，确保使用正确的 zip 扩展名
         else if (artifactId.Equals("mcp_config", StringComparison.OrdinalIgnoreCase))
         {
             extension = ".zip";
             hasExtension = false; // 确保添加扩展名
         }
-        // 如果从版本号中提取到了extension，使用它
+        // 如果从版本号中提取到了 extension，使用它
         else if (detectedExtension != null)
         {
             extension = $".{detectedExtension}";
@@ -1058,7 +1058,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
 
         var downloadSource = _downloadSourceFactory.GetFileDownloadSource();
         
-        // 使用下载源获取正确的库文件URL
+        // 使用下载源获取正确的库文件 URL
         if (string.IsNullOrWhiteSpace(downloadFile.Url))
         {
             throw new Exception($"Library download URL not found for {libraryName ?? downloadFile.Path ?? "unknown"}");
@@ -1066,13 +1066,13 @@ public partial class MinecraftVersionService : IMinecraftVersionService
 
         string downloadUrl = downloadSource.GetLibraryUrl(libraryName ?? string.Empty, downloadFile.Url);
         
-        // 修复URL中的$extension占位符
+        // 修复 URL 中的$extension 占位符
         downloadUrl = downloadUrl.Replace("$extension", "jar");
         
         _logger.LogInformation("使用下载源 {DownloadSource} 下载库文件: {Url}", downloadSource.Name, downloadUrl);
         System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载库文件: {downloadUrl}");
         
-        // 获取官方源URL作为备用
+        // 获取官方源 URL 作为备用
         var officialSource = _downloadSourceFactory.GetSource("official");
         string officialUrl = officialSource.GetLibraryUrl(libraryName ?? string.Empty, downloadFile.Url);
         officialUrl = officialUrl.Replace("$extension", "jar");
@@ -1097,13 +1097,13 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 throw new Exception($"No libraries found for version {versionId}");
             }
 
-            // 创建natives目录
+            // 创建 natives 目录
             Directory.CreateDirectory(nativesDirectory);
 
             // 当前操作系统名称和架构
-            // 使用Environment.Is64BitProcess检测当前进程的位数，而不仅仅是操作系统
+            // 使用 Environment.Is64BitProcess 检测当前进程的位数，而不仅仅是操作系统
             string currentOs = "windows";
-            // 正确检测当前架构（包括ARM64）
+            // 正确检测当前架构（包括 ARM64）
             string currentArch;
             switch (System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture)
             {
@@ -1136,7 +1136,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     continue;
                 }
 
-                // 第一种原生库格式：库名称中包含classifier（如：com.mojang:jtracy:1.0.36:natives-windows）
+                // 第一种原生库格式：库名称中包含 classifier（如：com.mojang:jtracy:1.0.36:natives-windows）
                 var libraryNameParts = library.Name.Split(':');
                 if (libraryNameParts.Length >= 4)
                 {
@@ -1175,7 +1175,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     }
                 }
 
-                // 第二种原生库格式：通过Natives属性和Classifiers指定（提取时仅当前架构，避免覆盖错误二进制）
+                // 第二种原生库格式：通过 Natives 属性和 Classifiers 指定（提取时仅当前架构，避免覆盖错误二进制）
                 if (library.Natives != null && library.Downloads?.Classifiers != null)
                 {
                     var classifiers = GetNativeClassifiersForCurrentOs(library.Downloads.Classifiers.Keys, currentOs).ToList();
@@ -1223,7 +1223,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     }
 
     /// <summary>
-    /// 从版本目录读取配置文件，获取ModLoader信息
+    /// 从版本目录读取配置文件，获取 ModLoader 信息
     /// </summary>
     private async Task<VersionConfig> ReadVersionConfigAsync(string versionId, string versionDirectory)
     {
@@ -1245,7 +1245,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // - 资源索引处理：50-55%
             // - 资源对象下载：55-100%
             
-            // 初始化阶段 - 报告0%进度
+            // 初始化阶段 - 报告 0%进度
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 0));
             
             // 声明需要在多个步骤中使用的变量
@@ -1284,7 +1284,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 }
             }
 
-            // 2. 解压原生库到natives目录 (45-50%)
+            // 2. 解压原生库到 natives 目录 (45-50%)
             try
             {
                 currentDownloadCallback?.Invoke(VersionCompleteStageKeys.ExtractingNatives);
@@ -1334,7 +1334,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 _logger.LogInformation("[EnsureDeps] 开始下载资源对象阶段 (55-100%)");
                 System.Diagnostics.Debug.WriteLine($"[DEBUG][EnsureDeps] 开始下载资源对象阶段 (55-100%)");
                 
-                // 使用传入的currentDownloadCallback参数，同时记录日志
+                // 使用传入的 currentDownloadCallback 参数，同时记录日志
                 Action<string>? combinedCallback = null;
                 if (currentDownloadCallback != null)
                 {
@@ -1401,7 +1401,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
 
             // 获取用户设置的下载线程数
             var downloadThreadCount = await _localSettingsService.ReadSettingAsync<int?>("DownloadThreadCount");
-            int maxConcurrency = downloadThreadCount ?? 32; // 默认32线程
+            int maxConcurrency = downloadThreadCount ?? 32; // 默认 32 线程
             if (maxConcurrency < 1) maxConcurrency = 1;
             if (maxConcurrency > 128) maxConcurrency = 128;
             _logger.LogInformation("下载线程数: {ThreadCount}", maxConcurrency);
@@ -1415,7 +1415,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             // 创建必要的目录
             Directory.CreateDirectory(objectsDirectory);
 
-            // 2. 获取版本信息，确定资源索引ID
+            // 2. 获取版本信息，确定资源索引 ID
             var versionInfo = await GetVersionInfoAsync(versionId, minecraftDirectory);
             if (versionInfo == null)
                 throw new Exception($"Version {versionId} not found");
@@ -1493,7 +1493,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             int completedCount = 0;
             double lastReportedProgress = -1.0;
             var lockObj = new object();
-            var failedAssets = new List<string>();            // 报告初始进度0%
+            var failedAssets = new List<string>();            // 报告初始进度 0%
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 0));
 
             using var semaphore = new SemaphoreSlim(maxConcurrency);
@@ -1533,7 +1533,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                     // 创建子目录
                     Directory.CreateDirectory(assetSubDir);
 
-                    // 构建下载URL
+                    // 构建下载 URL
                     string officialUrl = $"https://resources.download.minecraft.net/{hashPrefix}/{hash}";
                     string downloadUrl = downloadSource.GetResourceUrl("asset_object", officialUrl);
 
@@ -1608,7 +1608,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             void UpdateProgressIfNeeded()
             {
                 double currentProgress = totalCount > 0 ? (double)completedCount / totalCount * 100 : 100;
-                if (Math.Abs(currentProgress - lastReportedProgress) >= 0.5) // 每0.5%更新一次
+                if (Math.Abs(currentProgress - lastReportedProgress) >= 0.5) // 每 0.5%更新一次
                 {
                 progressCallback?.Invoke(new DownloadProgressStatus(0, 100, currentProgress));
                     lastReportedProgress = currentProgress;
@@ -1654,7 +1654,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                             return;
                         }
                         
-                        // 构建下载URL
+                        // 构建下载 URL
                         string officialUrl = $"https://resources.download.minecraft.net/{hashPrefix}/{hash}";
                         string downloadUrl = downloadSource.GetResourceUrl("asset_object", officialUrl);
                         
@@ -1670,7 +1670,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                                 // 显示当前正在重试的文件
                                 currentDownloadCallback?.Invoke($"{VersionCompleteStageKeys.SecondPassAssetFormat}:{hash[..8]}");
                                 
-                                // 使用更长的超时（60秒）
+                                // 使用更长的超时（60 秒）
                                 await DownloadAssetFileWithTimeoutAsync(httpClient, downloadUrl, assetSavePath, 60);
                                 
                                 // 校验资源大小
@@ -1723,7 +1723,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
             _logger.LogInformation("[Assets] Task.WhenAll 完成，准备报告最终进度");
             System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] Task.WhenAll 完成，准备报告最终进度");
             
-            // 确保最终报告100%进度
+            // 确保最终报告 100%进度
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
             System.Diagnostics.Debug.WriteLine($"[DEBUG][Assets] 已报告最终进度 100%");
 
@@ -1866,7 +1866,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
 
                 var downloadSource = _downloadSourceFactory.GetFileDownloadSource();
                 
-                // 转换资源索引URL
+                // 转换资源索引 URL
                 string convertedAssetIndexUrl = downloadSource.GetResourceUrl("asset_index", assetIndexUrl);
                 _logger.LogInformation("正在下载 assets 索引: {AssetIndexId}, 官方 URL: {AssetIndexUrl}, 转换后 URL: {ConvertedAssetIndexUrl}", assetIndexId, assetIndexUrl, convertedAssetIndexUrl);
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前 assets 索引下载源: {downloadSource.Name}, 资源索引 ID: {assetIndexId}, 官方 URL: {assetIndexUrl}, 转换后 URL: {convertedAssetIndexUrl}");
@@ -1923,7 +1923,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         try
         {
             _logger.LogInformation("开始下载文件: {Url} to {TargetPath}", url, targetPath);
-            // 添加调试输出，显示下载URL
+            // 添加调试输出，显示下载 URL
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在下载文件: {url}，目标路径: {targetPath}");
 
             await _downloadManager.DownloadFileAsync(
@@ -1939,10 +1939,10 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         {
             // 保持原始的异常处理和日志记录逻辑，虽然 IDownloadManager 可能抛出不同的异常，
             // 但保留这段逻辑可以确保日志连贯性
-            string errorMessage = $"下载文件时发生错误: {url}\n详细信息: {ex.Message}";
+            string errorMessage = $"下载文件时发生错误: {url}\n 详细信息: {ex.Message}";
             if (ex.InnerException != null)
             {
-                errorMessage += $"\n内部错误: {ex.InnerException.Message}";
+                errorMessage += $"\n 内部错误: {ex.InnerException.Message}";
             }
             _logger.LogError(ex, errorMessage);
             throw new Exception(errorMessage, ex);
@@ -1976,14 +1976,14 @@ public partial class MinecraftVersionService : IMinecraftVersionService
     }
     
     /// <summary>
-    /// 从ZIP包中提取文件
+    /// 从 ZIP 包中提取文件
     /// </summary>
     private void ExtractFileFromArchive(ZipArchive archive, string entryName, string destinationPath)
     {
         var entry = archive.GetEntry(entryName);
         if (entry == null)
         {
-            throw new Exception($"未找到ZIP条目: {entryName}");
+            throw new Exception($"未找到 ZIP 条目: {entryName}");
         }
         
         string fullDestinationPath = Path.Combine(destinationPath, Path.GetFileName(entryName));
@@ -1996,29 +1996,29 @@ public partial class MinecraftVersionService : IMinecraftVersionService
  
     
     /// <summary>
-    /// 下载installertools
+    /// 下载 installertools
     /// </summary>
 
     
     /// <summary>
-    /// 检查ZIP文件是否有效
+    /// 检查 ZIP 文件是否有效
     /// </summary>
  
 
     /// <summary>
-    /// 从jar文件中获取主类
+    /// 从 jar 文件中获取主类
     /// </summary>
 
     
     /// <summary>
-    /// 检查并创建launcher_profiles.json文件（同步版本）
+    /// 检查并创建 launcher_profiles.json 文件（同步版本）
     /// </summary>
-    /// <param name="minecraftDirectory">Minecraft目录路径</param>
+    /// <param name="minecraftDirectory">Minecraft 目录路径</param>
     private void EnsureLauncherProfileJson(string minecraftDirectory)
     {
         try
         {
-            // 构建launcher_profiles.json文件路径
+            // 构建 launcher_profiles.json 文件路径
             string launcherProfilePath = Path.Combine(minecraftDirectory, MinecraftFileConsts.LauncherProfilesJson);
             
             // 检查文件是否已存在
@@ -2028,7 +2028,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
                 return;
             }
             
-            // 创建默认的launcher_profiles.json内容
+            // 创建默认的 launcher_profiles.json 内容
             string defaultContent = @"{
    ""profiles"": {
      ""None"": {
@@ -2045,7 +2045,7 @@ public partial class MinecraftVersionService : IMinecraftVersionService
         catch (Exception ex)
         {
             _logger.LogError(ex, "创建 launcher_profiles.json 文件失败");
-            // 记录Debug信息
+            // 记录 Debug 信息
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 创建 launcher_profiles.json 文件失败: {ex.Message}");
         }
     }

@@ -40,8 +40,8 @@ namespace XianYuLauncher.Core.Services
                 string architecture = GetCurrentArchitecture();
                 Log.Information($"[TerracottaService] 当前架构: {architecture}");
                 
-                // 2. 获取地区信息，选择合适的API
-                progressCallback?.Invoke(10); // 10% - 开始获取API信息
+                // 2. 获取地区信息，选择合适的 API
+                progressCallback?.Invoke(10); // 10% - 开始获取 API 信息
                 string apiUrl = await GetAppropriateApiUrlAsync();
                 Log.Information($"[TerracottaService] 使用 API URL: {apiUrl}");
                 
@@ -128,7 +128,7 @@ namespace XianYuLauncher.Core.Services
         /// <summary>
         /// 获取本地缓存的陶瓦插件路径
         /// </summary>
-        /// <returns>本地缓存路径，如果不存在返回null</returns>
+        /// <returns>本地缓存路径，如果不存在返回 null</returns>
         private string? GetCachedTerracottaPath(string architecture)
         {
             // 查找缓存目录中所有匹配当前架构的可执行文件
@@ -149,7 +149,7 @@ namespace XianYuLauncher.Core.Services
         /// <summary>
         /// 获取当前系统架构
         /// </summary>
-        /// <returns>架构名称，如x86_64或arm64</returns>
+        /// <returns>架构名称，如 x86_64 或 arm64</returns>
         private string GetCurrentArchitecture()
         {
             switch (RuntimeInformation.ProcessArchitecture)
@@ -168,13 +168,13 @@ namespace XianYuLauncher.Core.Services
         }
         
         /// <summary>
-        /// 获取合适的API URL
+        /// 获取合适的 API URL
         /// </summary>
         private async Task<string> GetAppropriateApiUrlAsync()
         {
             try
             {
-                // 简单的地区检测：尝试访问Gitee API，如果成功则使用Gitee，否则使用GitHub
+                // 简单的地区检测：尝试访问 Gitee API，如果成功则使用 Gitee，否则使用 GitHub
                 // 使用 DownloadManager 下载字符串来检测，虽然不是最佳实践但可以复用
                 await _downloadManager.DownloadStringAsync(GiteeApiUrl);
                 
@@ -222,7 +222,7 @@ namespace XianYuLauncher.Core.Services
         {
             Log.Information($"[TerracottaService] 开始下载陶瓦插件: {asset.name} -> {asset.browser_download_url}");
             
-            // 1. 下载tar.gz文件到临时目录
+            // 1. 下载 tar.gz 文件到临时目录
             string tempDir = Path.GetTempPath();
             string tempTarGzPath = Path.Combine(tempDir, asset.name);
             
@@ -244,7 +244,7 @@ namespace XianYuLauncher.Core.Services
             progressCallback?.Invoke(80);
             await CleanupOldFilesAsync(architecture);
             
-            // 3. 解压tar.gz文件 (85% - 95%)
+            // 3. 解压 tar.gz 文件 (85% - 95%)
             progressCallback?.Invoke(85);
             await ExtractTarGzAsync(tempTarGzPath, _cacheDirectory);
             
@@ -275,7 +275,7 @@ namespace XianYuLauncher.Core.Services
                     Log.Information($"[TerracottaService] 删除旧文件: {file}");
                 }
                 
-                // 对于ARM64架构，还要删除VCRUNTIME140.DLL
+                // 对于 ARM64 架构，还要删除 VCRUNTIME140.DLL
                 if (architecture == "arm64")
                 {
                     string vcruntimePath = Path.Combine(_cacheDirectory, "VCRUNTIME140.DLL");
@@ -293,7 +293,7 @@ namespace XianYuLauncher.Core.Services
         }
         
         /// <summary>
-        /// 解压tar.gz文件
+        /// 解压 tar.gz 文件
         /// </summary>
         private async Task ExtractTarGzAsync(string tarGzPath, string destinationPath)
         {
@@ -312,7 +312,7 @@ namespace XianYuLauncher.Core.Services
         /// </summary>
         private string GetExpectedFileName(string tagName, string architecture)
         {
-            // 从tagName中提取版本号，如v0.4.1-rc.5 -> 0.4.1-rc.5
+            // 从 tagName 中提取版本号，如 v0.4.1-rc.5 -> 0.4.1-rc.5
             string version = tagName.StartsWith("v") ? tagName.Substring(1) : tagName;
             return $"terracotta-{version}-windows-{architecture}.exe";
         }

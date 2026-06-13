@@ -12,7 +12,7 @@ namespace XianYuLauncher.Core.Contracts.Services;
 public interface IVersionInfoManager
 {
     /// <summary>
-    /// 获取Minecraft版本清单
+    /// 获取 Minecraft 版本清单
     /// </summary>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>版本清单</returns>
@@ -22,8 +22,8 @@ public interface IVersionInfoManager
     /// <summary>
     /// 获取指定版本的详细信息
     /// </summary>
-    /// <param name="versionId">版本ID</param>
-    /// <param name="minecraftDirectory">Minecraft目录（可选）</param>
+    /// <param name="versionId">版本 ID</param>
+    /// <param name="minecraftDirectory">Minecraft 目录（可选）</param>
     /// <param name="allowNetwork">是否允许网络请求</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>版本信息</returns>
@@ -34,14 +34,14 @@ public interface IVersionInfoManager
         CancellationToken cancellationToken = default);
     
     /// <summary>
-    /// 获取指定版本的原始JSON内容
+    /// 获取指定版本的原始 JSON 内容
     /// </summary>
-    /// <param name="versionId">版本ID</param>
-    /// <param name="minecraftDirectory">Minecraft目录（可选）</param>
+    /// <param name="versionId">版本 ID</param>
+    /// <param name="minecraftDirectory">Minecraft 目录（可选）</param>
     /// <param name="allowNetwork">是否允许网络请求</param>
-    /// <param name="preferLocal">是否优先使用本地版本JSON。为 false 时将跳过本地文件；若 allowNetwork 为 true 则回退到网络清单，否则按未找到版本处理。</param>
+    /// <param name="preferLocal">是否优先使用本地版本 JSON。为 false 时将跳过本地文件；若 allowNetwork 为 true 则回退到网络清单，否则按未找到版本处理。</param>
     /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>JSON字符串</returns>
+    /// <returns>JSON 字符串</returns>
     Task<string> GetVersionInfoJsonAsync(
         string versionId, 
         string? minecraftDirectory = null,
@@ -52,23 +52,23 @@ public interface IVersionInfoManager
     /// <summary>
     /// 获取已安装的版本列表
     /// </summary>
-    /// <param name="minecraftDirectory">Minecraft目录（可选）</param>
-    /// <returns>已安装的版本ID列表</returns>
+    /// <param name="minecraftDirectory">Minecraft 目录（可选）</param>
+    /// <returns>已安装的版本 ID 列表</returns>
     Task<List<string>> GetInstalledVersionsAsync(string? minecraftDirectory = null);
     
     /// <summary>
     /// 获取版本配置
     /// </summary>
-    /// <param name="versionId">版本ID</param>
-    /// <param name="minecraftDirectory">Minecraft目录</param>
+    /// <param name="versionId">版本 ID</param>
+    /// <param name="minecraftDirectory">Minecraft 目录</param>
     /// <returns>版本配置</returns>
     Task<VersionConfig?> GetVersionConfigAsync(string versionId, string minecraftDirectory);
     
     /// <summary>
     /// 保存版本配置
     /// </summary>
-    /// <param name="versionId">版本ID</param>
-    /// <param name="minecraftDirectory">Minecraft目录</param>
+    /// <param name="versionId">版本 ID</param>
+    /// <param name="minecraftDirectory">Minecraft 目录</param>
     /// <param name="config">版本配置</param>
     Task SaveVersionConfigAsync(string versionId, string minecraftDirectory, VersionConfig config);
     

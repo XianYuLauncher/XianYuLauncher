@@ -292,7 +292,7 @@ public class TokenRefreshService : ITokenRefreshService
                 Serilog.Log.Information("令牌有效期充足 (剩余 {RemainingHours:F2} 小时)", timeUntilExpiry.TotalHours);
             }
             
-            // 如果剩余有效期小于1小时，刷新令牌
+            // 如果剩余有效期小于 1 小时，刷新令牌
             if (timeUntilExpiry < TimeSpan.FromHours(1))
             {
                 Serilog.Log.Information("开始执行令牌刷新...");

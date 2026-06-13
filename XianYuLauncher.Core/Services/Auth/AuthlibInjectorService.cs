@@ -53,9 +53,9 @@ public sealed class AuthlibInjectorService
     }
         
     /// <summary>
-    /// 下载authlib-injector（如果需要）
+    /// 下载 authlib-injector（如果需要）
     /// </summary>
-    /// <returns>authlib-injector.jar的本地路径</returns>
+    /// <returns>authlib-injector.jar 的本地路径</returns>
         public async Task<string?> EnsureAuthlibInjectorAsync()
     {
         _logger.LogInformation("[AuthlibInjector] ========== 开始检查并下载 authlib-injector ==========");
@@ -70,7 +70,7 @@ public sealed class AuthlibInjectorService
             bool isBmclapiType = downloadSourceKey.ToLowerInvariant().Contains("bmclapi") || 
                                  downloadSourceKey.ToLowerInvariant() == "bmclapi";
                 
-            // 3. 构建API URL
+            // 3. 构建 API URL
             string apiUrl = isBmclapiType
                 ? "https://bmclapi2.bangbang93.com/mirrors/authlib-injector/artifact/latest.json"
                 : "https://authlib-injector.yushi.moe/artifact/latest.json";
@@ -144,7 +144,7 @@ public sealed class AuthlibInjectorService
                 var fileInfo = new FileInfo(localJarPath);
                 _logger.LogInformation("[AuthlibInjector] 下载完成，文件大小: {Size} 字节", fileInfo.Length);
                     
-                // 验证SHA256（如果可用）
+                // 验证 SHA256（如果可用）
                 if (!string.IsNullOrEmpty(latestInfo.checksums?.sha256))
                 {
                     _logger.LogDebug("[AuthlibInjector] 开始验证 SHA256 校验和...");
@@ -204,9 +204,9 @@ public sealed class AuthlibInjectorService
     }
         
     /// <summary>
-    /// 获取本地缓存的authlib-injector路径
+    /// 获取本地缓存的 authlib-injector 路径
     /// </summary>
-    /// <returns>本地缓存路径，如果不存在返回null</returns>
+    /// <returns>本地缓存路径，如果不存在返回 null</returns>
     private string? GetCachedAuthlibInjectorPath()
     {
         var localJarPath = Path.Combine(_cacheDirectory, AuthlibInjectorFileName);
@@ -225,10 +225,10 @@ public sealed class AuthlibInjectorService
     }
         
     /// <summary>
-    /// 获取最新的authlib-injector版本信息
+    /// 获取最新的 authlib-injector 版本信息
     /// </summary>
-    /// <param name="apiUrl">API地址</param>
-    /// <param name="isBmclapi">是否为BMCLAPI下载源</param>
+    /// <param name="apiUrl">API 地址</param>
+    /// <param name="isBmclapi">是否为 BMCLAPI 下载源</param>
     /// <returns>版本信息</returns>
     private async Task<AuthlibInjectorLatestInfo?> GetLatestAuthlibInjectorInfo(string apiUrl, bool isBmclapi)
     {
@@ -236,7 +236,7 @@ public sealed class AuthlibInjectorService
         {
             _logger.LogDebug("[AuthlibInjector] 发送 HTTP 请求: {Url}", apiUrl);
                 
-            // 创建请求消息，为BMCLAPI请求添加User-Agent
+            // 创建请求消息，为 BMCLAPI 请求添加 User-Agent
             using var request = new HttpRequestMessage(HttpMethod.Get, apiUrl);
             if (isBmclapi)
             {
@@ -275,11 +275,11 @@ public sealed class AuthlibInjectorService
     }
         
     /// <summary>
-    /// 下载authlib-injector
+    /// 下载 authlib-injector
     /// </summary>
     /// <param name="downloadUrl">下载地址</param>
     /// <param name="localPath">本地保存路径</param>
-    /// <param name="isBmclapi">是否为BMCLAPI下载源</param>
+    /// <param name="isBmclapi">是否为 BMCLAPI 下载源</param>
     private async Task DownloadAuthlibInjectorAsync(string downloadUrl, string localPath, bool isBmclapi)
     {
         _logger.LogInformation("[AuthlibInjector] 开始下载: {Url} -> {Path}", downloadUrl, localPath);
@@ -312,10 +312,10 @@ public sealed class AuthlibInjectorService
     }
         
     /// <summary>
-    /// 验证文件的SHA256校验和
+    /// 验证文件的 SHA256 校验和
     /// </summary>
     /// <param name="filePath">文件路径</param>
-    /// <param name="expectedChecksum">预期的SHA256校验和</param>
+    /// <param name="expectedChecksum">预期的 SHA256 校验和</param>
     /// <returns>校验是否通过</returns>
     private async Task<bool> VerifyFileChecksumAsync(string filePath, string expectedChecksum)
     {
@@ -335,10 +335,10 @@ public sealed class AuthlibInjectorService
     }
         
     /// <summary>
-    /// 预获取API元数据
+    /// 预获取 API 元数据
     /// </summary>
-    /// <param name="apiUrl">验证服务器API地址</param>
-    /// <returns>Base64编码的API元数据</returns>
+    /// <param name="apiUrl">验证服务器 API 地址</param>
+    /// <returns>Base64 编码的 API 元数据</returns>
     public async Task<string> PrefetchApiMetadataAsync(string apiUrl)
     {
         _logger.LogInformation("[AuthlibInjector] 开始预获取 API 元数据: {Url}", apiUrl);
@@ -353,7 +353,7 @@ public sealed class AuthlibInjectorService
             var metadata = await response.Content.ReadAsStringAsync();
             _logger.LogDebug("[AuthlibInjector] API 元数据获取成功，长度: {Length} 字符", metadata.Length);
                 
-            // Base64编码
+            // Base64 编码
             var base64Metadata = Convert.ToBase64String(Encoding.UTF8.GetBytes(metadata));
             _logger.LogDebug("[AuthlibInjector] API 元数据 Base64 编码完成，长度: {Length} 字符", base64Metadata.Length);
                 
@@ -367,10 +367,10 @@ public sealed class AuthlibInjectorService
     }
         
     /// <summary>
-    /// 获取启动所需的JVM参数
+    /// 获取启动所需的 JVM 参数
     /// </summary>
-    /// <param name="apiUrl">验证服务器API地址</param>
-    /// <returns>JVM参数列表</returns>
+    /// <param name="apiUrl">验证服务器 API 地址</param>
+    /// <returns>JVM 参数列表</returns>
     public async Task<List<string>> GetJvmArgumentsAsync(string apiUrl)
     {
         _logger.LogInformation("[AuthlibInjector] ========== 开始构建外置登录 JVM 参数 ==========");
@@ -378,7 +378,7 @@ public sealed class AuthlibInjectorService
             
         var jvmArgs = new List<string>();
             
-        // 1. 确保authlib-injector已下载
+        // 1. 确保 authlib-injector 已下载
         var authlibPath = await EnsureAuthlibInjectorAsync();
         if (string.IsNullOrEmpty(authlibPath))
         {
@@ -390,12 +390,12 @@ public sealed class AuthlibInjectorService
             
         _logger.LogInformation("[AuthlibInjector] authlib-injector 路径: {Path}", authlibPath);
             
-        // 2. 添加javaagent参数
+        // 2. 添加 javaagent 参数
         var javaAgentArg = $"-javaagent:{authlibPath}={apiUrl}";
         jvmArgs.Add(javaAgentArg);
         _logger.LogInformation("[AuthlibInjector] 添加 JVM 参数: -javaagent:{Path}={Url}", authlibPath, apiUrl);
             
-        // 3. 预获取API元数据并添加参数
+        // 3. 预获取 API 元数据并添加参数
         var base64Metadata = await PrefetchApiMetadataAsync(apiUrl);
         if (!string.IsNullOrEmpty(base64Metadata))
         {
@@ -427,7 +427,7 @@ public sealed class AuthlibInjectorService
             
         var processedArgs = new List<string>();
             
-        // 确定userType
+        // 确定 userType
         string userType = profile.TokenType == "external" ? "mojang" : profile.IsOffline ? "offline" : "msa";
         _logger.LogDebug("[AuthlibInjector] 用户类型: {UserType}", userType);
             
@@ -563,7 +563,7 @@ public sealed class AuthlibInjectorService
                 
             _logger.LogInformation("[AuthlibInjector] 响应状态码: {StatusCode} ({StatusCodeInt})", response.StatusCode, (int)response.StatusCode);
                 
-            // 尝试读取响应内容（即使是204也尝试读取）
+            // 尝试读取响应内容（即使是 204 也尝试读取）
             string responseContent = "";
             try
             {
@@ -938,7 +938,7 @@ public class ExternalUser
     public string Id { get; set; } = string.Empty;
 }
     
-// 内部类：authlib-injector最新版本信息
+// 内部类：authlib-injector 最新版本信息
 internal class AuthlibInjectorLatestInfo
 {
     public int build_number { get; set; }

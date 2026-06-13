@@ -104,7 +104,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         [ObservableProperty]
         private bool _isPublisherListDialogOpen = false;
 
-        private string? _modTeamId; // 保存Modrinth Team ID用于懒加载
+        private string? _modTeamId; // 保存 Modrinth Team ID 用于懒加载
         private bool _isBackgroundPublisherLoading;
 
         private void WriteDebugLog(string message) => _logger.LogDebug("{Message}", message);

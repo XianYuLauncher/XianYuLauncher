@@ -617,7 +617,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         private async void Skin3DPreviewWebView_NavigationCompleted(object sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e)
         {
             // 使用 WebView2.Source 获取当前 URI
-            string currentUri = Skin3DPreviewWebView.Source?.ToString() ?? "未知URI";
+            string currentUri = Skin3DPreviewWebView.Source?.ToString() ?? "未知 URI";
             
             if (e.IsSuccess)
             {
@@ -1103,7 +1103,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
 
             string baseUrl = authServer.TrimEnd('/') + "/";
-            string uuid = ViewModel.CurrentProfile.Id.Replace("-", ""); // 移除UUID中的连字符
+            string uuid = ViewModel.CurrentProfile.Id.Replace("-", ""); // 移除 UUID 中的连字符
             string apiUrl = $"{baseUrl}api/user/profile/{uuid}/skin";
             var request = new HttpRequestMessage(HttpMethod.Put, apiUrl);
             
@@ -1346,7 +1346,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
 
             string baseUrl = authServer.TrimEnd('/') + "/";
-            string uuid = ViewModel.CurrentProfile.Id.Replace("-", ""); // 移除UUID中的连字符
+            string uuid = ViewModel.CurrentProfile.Id.Replace("-", ""); // 移除 UUID 中的连字符
             string apiUrl = $"{baseUrl}api/user/profile/{uuid}/cape";
             var request = new HttpRequestMessage(HttpMethod.Put, apiUrl);
             

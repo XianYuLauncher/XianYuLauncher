@@ -9,7 +9,7 @@ using XianYuLauncher.Core.Helpers;
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-/// Quilt服务类，用于获取Quilt版本列表
+/// Quilt 服务类，用于获取 Quilt 版本列表
 /// </summary>
 public class QuiltService
 {
@@ -31,10 +31,10 @@ public class QuiltService
     }
 
     /// <summary>
-    /// 获取指定Minecraft版本的Quilt加载器版本列表
+    /// 获取指定 Minecraft 版本的 Quilt 加载器版本列表
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <returns>Quilt加载器版本列表</returns>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <returns>Quilt 加载器版本列表</returns>
     public async Task<List<QuiltLoaderVersion>> GetQuiltLoaderVersionsAsync(string minecraftVersion)
     {
         try
@@ -65,7 +65,7 @@ public class QuiltService
                 }
                 else
                 {
-                    throw new Exception($"获取Quilt版本列表失败: {result.ErrorMessage}");
+                    throw new Exception($"获取 Quilt 版本列表失败: {result.ErrorMessage}");
                 }
             }
             
@@ -75,21 +75,21 @@ public class QuiltService
         catch (HttpRequestException ex)
         {
             System.Diagnostics.Debug.WriteLine($"[QuiltService] 获取 Quilt 版本列表失败: {ex.Message}");
-            throw new Exception($"获取Quilt版本列表失败: {ex.Message}");
+            throw new Exception($"获取 Quilt 版本列表失败: {ex.Message}");
         }
         catch (JsonException ex)
         {
             System.Diagnostics.Debug.WriteLine($"[QuiltService] 解析 Quilt 版本列表失败: {ex.Message}");
-            throw new Exception($"解析Quilt版本列表失败: {ex.Message}");
+            throw new Exception($"解析 Quilt 版本列表失败: {ex.Message}");
         }
-        catch (Exception ex) when (ex.Message.StartsWith("获取Quilt") || ex.Message.StartsWith("解析Quilt"))
+        catch (Exception ex) when (ex.Message.StartsWith("获取 Quilt") || ex.Message.StartsWith("解析 Quilt"))
         {
             throw; // 重新抛出已处理的异常
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[QuiltService] 获取 Quilt 版本列表时发生错误: {ex.Message}");
-            throw new Exception($"获取Quilt版本列表时发生错误: {ex.Message}");
+            throw new Exception($"获取 Quilt 版本列表时发生错误: {ex.Message}");
         }
     }
     
@@ -101,7 +101,7 @@ public class QuiltService
         // 使用 Quilt 专用下载源
         var downloadSource = _downloadSourceFactory.GetQuiltSource();
         
-        // 使用下载源获取Quilt版本列表URL
+        // 使用下载源获取 Quilt 版本列表 URL
         string url = downloadSource.GetQuiltVersionsUrl(minecraftVersion);
         
         System.Diagnostics.Debug.WriteLine($"[QuiltService] 使用原有逻辑，下载源: {downloadSource.Name}，URL: {url}");
@@ -113,10 +113,10 @@ public class QuiltService
             request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
         }
         
-        // 发送HTTP请求
+        // 发送 HTTP 请求
         HttpResponseMessage response = await _httpClient.SendAsync(request);
         
-        // 检查是否为 BMCLAPI 类型的源且返回404
+        // 检查是否为 BMCLAPI 类型的源且返回 404
         if (downloadSource.RequiresBmclapiUserAgent(url) && response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
             System.Diagnostics.Debug.WriteLine($"[QuiltService] BMCLAPI 类型源返回 404，切换到官方源");

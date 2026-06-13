@@ -66,12 +66,12 @@ public class DownloadProgressInfo
 public class UpdatePackageInfo
 {
     /// <summary>
-    /// 包ID
+    /// 包 ID
     /// </summary>
     public string PackageId { get; set; } = string.Empty;
     
     /// <summary>
-    /// MSIX包路径
+    /// MSIX 包路径
     /// </summary>
     public string MsixPath { get; set; } = string.Empty;
     

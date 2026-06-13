@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace XianYuLauncher.Core.Models;
 
 /// <summary>
-/// Quilt加载器版本信息
+/// Quilt 加载器版本信息
 /// </summary>
 public class QuiltLoaderVersion
 {
@@ -14,7 +14,7 @@ public class QuiltLoaderVersion
     public QuiltComponent Loader { get; set; } = null!;
 
     /// <summary>
-    /// Hashed信息
+    /// Hashed 信息
     /// </summary>
     [JsonPropertyName("hashed")]
     public QuiltComponent Hashed { get; set; } = null!;
@@ -33,7 +33,7 @@ public class QuiltLoaderVersion
 }
 
 /// <summary>
-/// Quilt组件信息
+/// Quilt 组件信息
 /// </summary>
 public class QuiltComponent
 {
@@ -50,7 +50,7 @@ public class QuiltComponent
     public int Build { get; set; }
 
     /// <summary>
-    /// Maven坐标
+    /// Maven 坐标
     /// </summary>
     [JsonPropertyName("maven")]
     public string Maven { get; set; } = null!;
@@ -69,7 +69,7 @@ public class QuiltComponent
 }
 
 /// <summary>
-/// Quilt启动器元数据
+/// Quilt 启动器元数据
 /// </summary>
 public class QuiltLauncherMeta
 {
@@ -80,7 +80,7 @@ public class QuiltLauncherMeta
     public int Version { get; set; }
 
     /// <summary>
-    /// 最小Java版本要求
+    /// 最小 Java 版本要求
     /// </summary>
     [JsonPropertyName("min_java_version")]
     public int MinJavaVersion { get; set; }
@@ -99,7 +99,7 @@ public class QuiltLauncherMeta
 }
 
 /// <summary>
-/// Quilt依赖库集合
+/// Quilt 依赖库集合
 /// </summary>
 public class QuiltLibraries
 {
@@ -129,42 +129,42 @@ public class QuiltLibraries
 }
 
 /// <summary>
-/// Quilt依赖库信息
+/// Quilt 依赖库信息
 /// </summary>
 public class QuiltLibrary
 {
     /// <summary>
-    /// Maven坐标
+    /// Maven 坐标
     /// </summary>
     [JsonPropertyName("name")]
     public string Name { get; set; } = null!;
 
     /// <summary>
-    /// 下载URL
+    /// 下载 URL
     /// </summary>
     [JsonPropertyName("url")]
     public string Url { get; set; } = null!;
 
     /// <summary>
-    /// MD5哈希值
+    /// MD5 哈希值
     /// </summary>
     [JsonPropertyName("md5")]
     public string Md5 { get; set; } = null!;
 
     /// <summary>
-    /// SHA1哈希值
+    /// SHA1 哈希值
     /// </summary>
     [JsonPropertyName("sha1")]
     public string Sha1 { get; set; } = null!;
 
     /// <summary>
-    /// SHA256哈希值
+    /// SHA256 哈希值
     /// </summary>
     [JsonPropertyName("sha256")]
     public string Sha256 { get; set; } = null!;
 
     /// <summary>
-    /// SHA512哈希值
+    /// SHA512 哈希值
     /// </summary>
     [JsonPropertyName("sha512")]
     public string Sha512 { get; set; } = null!;
@@ -177,7 +177,7 @@ public class QuiltLibrary
 }
 
 /// <summary>
-/// Quilt主类信息
+/// Quilt 主类信息
 /// </summary>
 public class QuiltMainClass
 {

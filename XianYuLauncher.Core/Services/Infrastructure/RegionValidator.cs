@@ -23,7 +23,7 @@ public class RegionValidator : IRegionValidator
         }
         catch (Exception ex)
         {
-            // 添加Debug输出，显示异常信息
+            // 添加 Debug 输出，显示异常信息
             System.Diagnostics.Debug.WriteLine($"[地区检测] 检测失败，异常: {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"[地区检测] 默认不允许离线登录");
             // 如果检测失败，默认不允许离线登录

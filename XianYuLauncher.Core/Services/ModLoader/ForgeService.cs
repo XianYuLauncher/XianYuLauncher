@@ -11,7 +11,7 @@ using XianYuLauncher.Core.Helpers;
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-/// BMCLAPI Forge版本列表项
+/// BMCLAPI Forge 版本列表项
 /// </summary>
 public class BmclapiForgeVersion
 {
@@ -27,7 +27,7 @@ public class BmclapiForgeVersion
 
 
 /// <summary>
-/// Forge服务类，用于获取指定Minecraft版本的Forge加载器版本列表
+/// Forge 服务类，用于获取指定 Minecraft 版本的 Forge 加载器版本列表
 /// </summary>
 public class ForgeService
 {
@@ -49,10 +49,10 @@ public class ForgeService
     }
 
     /// <summary>
-    /// 获取指定Minecraft版本的Forge加载器版本列表
+    /// 获取指定 Minecraft 版本的 Forge 加载器版本列表
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <returns>Forge加载器版本列表</returns>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <returns>Forge 加载器版本列表</returns>
     public async Task<List<string>> GetForgeVersionsAsync(string minecraftVersion)
     {
         try
@@ -104,7 +104,7 @@ public class ForgeService
                 }
                 else
                 {
-                    throw new Exception($"获取Forge版本列表失败: {result.ErrorMessage}");
+                    throw new Exception($"获取 Forge 版本列表失败: {result.ErrorMessage}");
                 }
             }
             
@@ -114,26 +114,26 @@ public class ForgeService
         catch (HttpRequestException ex)
         {
             System.Diagnostics.Debug.WriteLine($"[ForgeService] 获取 Forge 版本列表失败: {ex.Message}");
-            throw new Exception($"获取Forge版本列表失败: {ex.Message}");
+            throw new Exception($"获取 Forge 版本列表失败: {ex.Message}");
         }
         catch (JsonException ex)
         {
             System.Diagnostics.Debug.WriteLine($"[ForgeService] 解析 Forge 版本列表失败: {ex.Message}");
-            throw new Exception($"解析Forge版本列表失败: {ex.Message}");
+            throw new Exception($"解析 Forge 版本列表失败: {ex.Message}");
         }
-        catch (Exception ex) when (ex.Message.StartsWith("获取Forge") || ex.Message.StartsWith("解析Forge"))
+        catch (Exception ex) when (ex.Message.StartsWith("获取 Forge") || ex.Message.StartsWith("解析 Forge"))
         {
             throw; // 重新抛出已处理的异常
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"[ForgeService] 获取 Forge 版本列表时发生错误: {ex.Message}");
-            throw new Exception($"获取Forge版本列表时发生错误: {ex.Message}");
+            throw new Exception($"获取 Forge 版本列表时发生错误: {ex.Message}");
         }
     }
     
     /// <summary>
-    /// 解析 BMCLAPI Forge 响应（JSON格式）
+    /// 解析 BMCLAPI Forge 响应（JSON 格式）
     /// </summary>
     private List<string> ParseBmclapiForgeResponse(string json)
     {
@@ -143,7 +143,7 @@ public class ForgeService
     }
     
     /// <summary>
-    /// 解析官方源 Forge 响应（XML格式）
+    /// 解析官方源 Forge 响应（XML 格式）
     /// </summary>
     private List<string> ParseOfficialForgeResponse(string xml, string minecraftVersion)
     {
@@ -160,7 +160,7 @@ public class ForgeService
         // 使用 Forge 专用下载源
         var downloadSource = _downloadSourceFactory.GetForgeSource();
         
-        // 获取Forge版本列表URL
+        // 获取 Forge 版本列表 URL
         string url = downloadSource.GetForgeVersionsUrl(minecraftVersion);
         
         System.Diagnostics.Debug.WriteLine($"[ForgeService] 使用原有逻辑，下载源: {downloadSource.Name}，URL: {url}");
@@ -172,7 +172,7 @@ public class ForgeService
             request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
         }
         
-        // 发送HTTP请求
+        // 发送 HTTP 请求
         HttpResponseMessage response = await _httpClient.SendAsync(request);
         
         // 确保响应成功
@@ -195,19 +195,19 @@ public class ForgeService
     }
     
     /// <summary>
-    /// 处理BMCLAPI返回的JSON响应
+    /// 处理 BMCLAPI 返回的 JSON 响应
     /// </summary>
-    /// <param name="response">HTTP响应</param>
-    /// <returns>Forge版本列表</returns>
+    /// <param name="response">HTTP 响应</param>
+    /// <returns>Forge 版本列表</returns>
     private async Task<List<string>> HandleBmclapiResponseAsync(HttpResponseMessage response)
     {
         // 读取响应内容
         string json = await response.Content.ReadAsStringAsync();
         
-        // 解析JSON数据
+        // 解析 JSON 数据
         var versions = JsonSerializer.Deserialize<List<BmclapiForgeVersion>>(json) ?? new List<BmclapiForgeVersion>();
         
-        // 提取version字段，确保不包含重复值
+        // 提取 version 字段，确保不包含重复值
         var versionList = versions.Select(v => v.version).Distinct().ToList();
         
         // 对版本列表进行排序（从新到旧）
@@ -215,20 +215,20 @@ public class ForgeService
     }
     
     /// <summary>
-    /// 处理官方源返回的XML响应
+    /// 处理官方源返回的 XML 响应
     /// </summary>
-    /// <param name="response">HTTP响应</param>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <returns>Forge版本列表</returns>
+    /// <param name="response">HTTP 响应</param>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <returns>Forge 版本列表</returns>
     private async Task<List<string>> HandleOfficialResponseAsync(HttpResponseMessage response, string minecraftVersion)
     {
         // 读取响应内容
         string xml = await response.Content.ReadAsStringAsync();
         
-        // 解析XML数据，提取所有版本号
+        // 解析 XML 数据，提取所有版本号
         List<string> allVersions = ParseForgeVersionsFromXml(xml);
         
-        // 根据Minecraft版本匹配对应的Forge版本
+        // 根据 Minecraft 版本匹配对应的 Forge 版本
         List<string> matchedVersions = MatchForgeVersions(allVersions, minecraftVersion);
         
         // 对版本列表进行排序（从新到旧）
@@ -236,16 +236,16 @@ public class ForgeService
     }
     
     /// <summary>
-    /// 解析Forge API返回的XML数据，提取版本列表
+    /// 解析 Forge API 返回的 XML 数据，提取版本列表
     /// </summary>
-    /// <param name="xml">XML数据</param>
-    /// <returns>Forge版本列表</returns>
+    /// <param name="xml">XML 数据</param>
+    /// <returns>Forge 版本列表</returns>
     private List<string> ParseForgeVersionsFromXml(string xml)
     {
         var versionList = new List<string>();
         XDocument doc = XDocument.Parse(xml);
         
-        // 提取所有version元素的值
+        // 提取所有 version 元素的值
         var versionElements = doc.Descendants("version");
         foreach (var element in versionElements)
         {
@@ -256,25 +256,25 @@ public class ForgeService
     }
     
     /// <summary>
-    /// 匹配对应Minecraft版本的Forge版本
+    /// 匹配对应 Minecraft 版本的 Forge 版本
     /// </summary>
-    /// <param name="allVersions">所有Forge版本</param>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <returns>匹配的Forge版本列表</returns>
+    /// <param name="allVersions">所有 Forge 版本</param>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <returns>匹配的 Forge 版本列表</returns>
     private List<string> MatchForgeVersions(List<string> allVersions, string minecraftVersion)
     {
         var matchedVersions = new List<string>();
         
         foreach (var fullVersion in allVersions)
         {
-            // 分割版本号，格式为：minecraftVersion-forgeVersion（如1.21.11-61.0.2）
+            // 分割版本号，格式为：minecraftVersion-forgeVersion（如 1.21.11-61.0.2）
             int separatorIndex = fullVersion.IndexOf('-');
             if (separatorIndex > 0)
             {
                 string mcVersionPart = fullVersion.Substring(0, separatorIndex);
                 string forgeVersionPart = fullVersion.Substring(separatorIndex + 1);
                 
-                // 如果Minecraft版本匹配，添加Forge版本到列表
+                // 如果 Minecraft 版本匹配，添加 Forge 版本到列表
                 if (mcVersionPart == minecraftVersion)
                 {
                     matchedVersions.Add(forgeVersionPart);
@@ -289,8 +289,8 @@ public class ForgeService
     /// <summary>
     /// 按版本号从新到旧排序
     /// </summary>
-    /// <param name="versions">Forge版本列表</param>
-    /// <returns>排序后的Forge版本列表</returns>
+    /// <param name="versions">Forge 版本列表</param>
+    /// <returns>排序后的 Forge 版本列表</returns>
     private List<string> SortForgeVersions(List<string> versions)
     {
         // 使用版本比较器排序，从新到旧

@@ -200,7 +200,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             {
                 NewUsername = value.Name;
                 NewUUID = value.Id;
-                _originalUUID = value.Id; // 保存原始UUID用于后续更新
+                _originalUUID = value.Id; // 保存原始 UUID 用于后续更新
             }
             
             // 通知 UI IsCapeSelectionEnabled 和 IsCapeApplyEnabled 属性可能发生变化
@@ -251,7 +251,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                     PixelArtRenderHelper.DrawNearestNeighbor(
                         ds,
                         canvasBitmap,
-                        new Windows.Foundation.Rect(0, 0, 128, 128), // 目标位置和大小（固定128x128显示）
+                        new Windows.Foundation.Rect(0, 0, 128, 128), // 目标位置和大小（固定 128x128 显示）
                         new Windows.Foundation.Rect(0, 0, canvasBitmap.SizeInPixels.Width, canvasBitmap.SizeInPixels.Height)); // 源位置和大小
                 }
 
@@ -667,7 +667,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             
             // 4. 添加 variant 参数
             // variant: classic 为 Steve 模型，slim 为 Alex 模型
-            string variant = "classic"; // 默认Steve模型
+            string variant = "classic"; // 默认 Steve 模型
             if (!string.IsNullOrWhiteSpace(model) && (model.Equals("slim", StringComparison.OrdinalIgnoreCase) || model.Equals("SLIM", StringComparison.OrdinalIgnoreCase)))
             {
                 variant = "slim";
@@ -814,7 +814,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                     PixelArtRenderHelper.DrawNearestNeighbor(
                         ds,
                         canvasBitmap,
-                        new Windows.Foundation.Rect(1, 1, 10, 16), // 目标位置和大小（放大到16x16显示）
+                        new Windows.Foundation.Rect(1, 1, 10, 16), // 目标位置和大小（放大到 16x16 显示）
                         new Windows.Foundation.Rect(1, 1, 10, 16)); // 源位置和大小（1,1-10,17）
                 }
                 
@@ -1140,7 +1140,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                     PixelArtRenderHelper.DrawNearestNeighbor(
                         ds,
                         canvasBitmap,
-                        new Windows.Foundation.Rect(0, 0, 128, 128), // 目标位置和大小（固定128x128显示）
+                        new Windows.Foundation.Rect(0, 0, 128, 128), // 目标位置和大小（固定 128x128 显示）
                         new Windows.Foundation.Rect(0, 0, canvasBitmap.SizeInPixels.Width, canvasBitmap.SizeInPixels.Height)); // 源位置和大小
                 }
 

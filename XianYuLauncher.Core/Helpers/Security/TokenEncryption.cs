@@ -7,18 +7,18 @@ using XianYuLauncher.Core.Models;
 namespace XianYuLauncher.Core.Helpers;
 
 /// <summary>
-/// Token加密工具类
-/// 使用Windows DPAPI加密，绑定到当前用户
+/// Token 加密工具类
+/// 使用 Windows DPAPI 加密，绑定到当前用户
 /// </summary>
 public static class TokenEncryption
 {
     private const string EncryptionPrefix = "ENC:";
     
     /// <summary>
-    /// 加密token
+    /// 加密 token
     /// </summary>
-    /// <param name="plainText">明文token</param>
-    /// <returns>加密后的token，格式：ENC:base64</returns>
+    /// <param name="plainText">明文 token</param>
+    /// <returns>加密后的 token，格式：ENC:base64</returns>
     public static string Encrypt(string? plainText)
     {
         if (string.IsNullOrEmpty(plainText))
@@ -49,10 +49,10 @@ public static class TokenEncryption
     }
     
     /// <summary>
-    /// 解密token
+    /// 解密 token
     /// </summary>
-    /// <param name="encryptedText">加密的token</param>
-    /// <returns>明文token</returns>
+    /// <param name="encryptedText">加密的 token</param>
+    /// <returns>明文 token</returns>
     public static string Decrypt(string? encryptedText)
     {
         if (string.IsNullOrEmpty(encryptedText))
@@ -87,10 +87,10 @@ public static class TokenEncryption
     }
     
     /// <summary>
-    /// 检查token是否已加密
+    /// 检查 token 是否已加密
     /// </summary>
     /// <param name="text">要检查的文本</param>
-    /// <returns>true表示已加密，false表示明文</returns>
+    /// <returns>true 表示已加密，false 表示明文</returns>
     public static bool IsEncrypted(string? text)
     {
         if (string.IsNullOrEmpty(text))
@@ -102,28 +102,28 @@ public static class TokenEncryption
     }
     
     /// <summary>
-    /// 批量加密token（用于迁移）
+    /// 批量加密 token（用于迁移）
     /// </summary>
-    /// <param name="tokens">token列表</param>
-    /// <returns>加密后的token列表</returns>
+    /// <param name="tokens">token 列表</param>
+    /// <returns>加密后的 token 列表</returns>
     public static List<string> EncryptBatch(List<string> tokens)
     {
         return tokens.Select(Encrypt).ToList();
     }
     
     /// <summary>
-    /// 批量解密token
+    /// 批量解密 token
     /// </summary>
-    /// <param name="encryptedTokens">加密的token列表</param>
-    /// <returns>明文token列表</returns>
+    /// <param name="encryptedTokens">加密的 token 列表</param>
+    /// <returns>明文 token 列表</returns>
     public static List<string> DecryptBatch(List<string> encryptedTokens)
     {
         return encryptedTokens.Select(Decrypt).ToList();
     }
     
     /// <summary>
-    /// 🔒 安全读取 accounts.json（自动解密token）
-    /// 这是一个临时兼容方法，建议使用AccountManager
+    /// 🔒 安全读取 accounts.json（自动解密 token）
+    /// 这是一个临时兼容方法，建议使用 AccountManager
     /// </summary>
     public static List<MinecraftAccount> LoadAccountsSecurely(string accountsFilePath)
     {
@@ -138,7 +138,7 @@ public static class TokenEncryption
             string json = File.ReadAllText(sourcePath);
             var profiles = JsonConvert.DeserializeObject<List<MinecraftAccount>>(json) ?? new List<MinecraftAccount>();
             
-            // 自动解密所有token
+            // 自动解密所有 token
             foreach (var profile in profiles)
             {
                 if (!string.IsNullOrEmpty(profile.AccessToken))

@@ -16,7 +16,7 @@ using XianYuLauncher.Core.Models;
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-/// 依赖库管理器实现，负责Minecraft依赖库的下载、验证和管理
+/// 依赖库管理器实现，负责 Minecraft 依赖库的下载、验证和管理
 /// </summary>
 public class LibraryManager : ILibraryManager
 {
@@ -161,7 +161,7 @@ public class LibraryManager : ILibraryManager
         string nativesDirectory,
         CancellationToken cancellationToken = default)
     {
-        // 创建natives目录
+        // 创建 natives 目录
         Directory.CreateDirectory(nativesDirectory);
 
         if (versionInfo?.Libraries == null || versionInfo.Libraries.Count == 0)
@@ -182,7 +182,7 @@ public class LibraryManager : ILibraryManager
                 continue;
             }
 
-            // 第一种原生库格式：库名称中包含classifier（如：com.mojang:jtracy:1.0.36:natives-windows）
+            // 第一种原生库格式：库名称中包含 classifier（如：com.mojang:jtracy:1.0.36:natives-windows）
             var libraryNameParts = library.Name.Split(':');
             if (libraryNameParts.Length >= 4)
             {
@@ -197,7 +197,7 @@ public class LibraryManager : ILibraryManager
                 }
             }
 
-            // 第二种原生库格式：通过Natives属性和Classifiers指定（提取时仅当前架构，避免覆盖错误二进制）
+            // 第二种原生库格式：通过 Natives 属性和 Classifiers 指定（提取时仅当前架构，避免覆盖错误二进制）
             if (library.Natives != null && library.Downloads?.Classifiers != null)
             {
                 var classifiers = GetNativeClassifiersForCurrentOs(library.Downloads.Classifiers.Keys).ToList();
@@ -234,7 +234,7 @@ public class LibraryManager : ILibraryManager
                 return false;
             }
 
-            // 如果有SHA1，验证文件完整性
+            // 如果有 SHA1，验证文件完整性
             if (!string.IsNullOrEmpty(library.Downloads.Artifact.Sha1))
             {
                 var actualSha1 = ComputeFileSha1(libraryPath);
@@ -287,7 +287,7 @@ public class LibraryManager : ILibraryManager
         string? detectedClassifier = null;
         string? detectedExtension = null;
 
-        // 检查版本号是否包含@符号（extension信息）
+        // 检查版本号是否包含@符号（extension 信息）
         if (version.Contains('@'))
         {
             var versionParts = version.Split('@');
@@ -298,7 +298,7 @@ public class LibraryManager : ILibraryManager
             }
         }
 
-        // 如果库名称中包含分类器（即有4个或更多部分）
+        // 如果库名称中包含分类器（即有 4 个或更多部分）
         if (parts.Length >= 4)
         {
             detectedClassifier = parts[3];
@@ -317,7 +317,7 @@ public class LibraryManager : ILibraryManager
             }
         }
 
-        // 将groupId中的点替换为目录分隔符
+        // 将 groupId 中的点替换为目录分隔符
         var groupPath = groupId.Replace('.', Path.DirectorySeparatorChar);
 
         // 构建文件名
@@ -477,7 +477,7 @@ public class LibraryManager : ILibraryManager
     }
 
     /// <summary>
-    /// 从JAR文件中提取原生库文件
+    /// 从 JAR 文件中提取原生库文件
     /// </summary>
     private async Task<int> ExtractNativeFilesFromJarAsync(string jarPath, string nativesDirectory)
     {
@@ -535,19 +535,19 @@ public class LibraryManager : ILibraryManager
     /// </summary>
     private static string DetermineFileExtension(string artifactId, string? detectedExtension, string fileName)
     {
-        // 特殊处理neoform文件
+        // 特殊处理 neoform 文件
         if (artifactId.Equals("neoform", StringComparison.OrdinalIgnoreCase))
         {
             return detectedExtension != null ? $".{detectedExtension}" : ".zip";
         }
 
-        // 特殊处理mcp_config文件
+        // 特殊处理 mcp_config 文件
         if (artifactId.Equals("mcp_config", StringComparison.OrdinalIgnoreCase))
         {
             return ".zip";
         }
 
-        // 如果从版本号中提取到了extension，使用它
+        // 如果从版本号中提取到了 extension，使用它
         if (detectedExtension != null)
         {
             return $".{detectedExtension}";
@@ -567,7 +567,7 @@ public class LibraryManager : ILibraryManager
     }
 
     /// <summary>
-    /// 计算文件的SHA1哈希值
+    /// 计算文件的 SHA1 哈希值
     /// </summary>
     private static string ComputeFileSha1(string filePath)
     {

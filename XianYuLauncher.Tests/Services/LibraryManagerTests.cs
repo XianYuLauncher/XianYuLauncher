@@ -167,8 +167,8 @@ public class LibraryManagerTests : IDisposable
         // Act
         var result = _libraryManager.IsLibraryApplicable(library);
 
-        // Assert - 在Windows上应该返回true
-        // 注意：这个测试假设在Windows上运行
+        // Assert - 在 Windows 上应该返回 true
+        // 注意：这个测试假设在 Windows 上运行
         if (OperatingSystem.IsWindows())
         {
             Assert.True(result);
@@ -196,7 +196,7 @@ public class LibraryManagerTests : IDisposable
         // Act
         var result = _libraryManager.IsLibraryApplicable(library);
 
-        // Assert - 在Windows上应该返回false
+        // Assert - 在 Windows 上应该返回 false
         if (OperatingSystem.IsWindows())
         {
             Assert.False(result);
@@ -257,7 +257,7 @@ public class LibraryManagerTests : IDisposable
                 Artifact = new DownloadFile
                 {
                     Url = "https://example.com/library.jar"
-                    // 没有SHA1，所以只检查文件存在
+                    // 没有 SHA1，所以只检查文件存在
                 }
             }
         };
@@ -295,7 +295,7 @@ public class LibraryManagerTests : IDisposable
     [Fact]
     public void IsLibraryDownloaded_NotApplicable_ReturnsTrue()
     {
-        // Arrange - 创建一个只在Linux上适用的库（在Windows上不适用）
+        // Arrange - 创建一个只在 Linux 上适用的库（在 Windows 上不适用）
         var library = new Library
         {
             Name = "test:linux-only:1.0",
@@ -303,7 +303,7 @@ public class LibraryManagerTests : IDisposable
             {
                 // 默认禁止所有
                 new LibraryRules { Action = "disallow" },
-                // 只在Linux上允许
+                // 只在 Linux 上允许
                 new LibraryRules
                 {
                     Action = "allow",
@@ -322,7 +322,7 @@ public class LibraryManagerTests : IDisposable
         // Act
         var result = _libraryManager.IsLibraryDownloaded(library, _testDirectory);
 
-        // Assert - 在Windows上，不适用的库应该返回true（因为不需要下载）
+        // Assert - 在 Windows 上，不适用的库应该返回 true（因为不需要下载）
         if (OperatingSystem.IsWindows())
         {
             Assert.True(result);
@@ -712,7 +712,7 @@ public class LibraryManagerTests : IDisposable
         // Act
         await _libraryManager.ExtractNativeLibrariesAsync(versionInfo, _testDirectory, nativesDir);
 
-        // Assert - 应该创建natives目录
+        // Assert - 应该创建 natives 目录
         Assert.True(Directory.Exists(nativesDir));
     }
 

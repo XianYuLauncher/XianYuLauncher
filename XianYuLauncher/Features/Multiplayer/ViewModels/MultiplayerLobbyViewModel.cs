@@ -114,7 +114,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
         // 初始化玩家列表计时器
         _playerListTimer = new DispatcherTimer
         {
-            Interval = TimeSpan.FromSeconds(2) // 每2秒获取一次玩家列表
+            Interval = TimeSpan.FromSeconds(2) // 每 2 秒获取一次玩家列表
         };
         _playerListTimer.Tick += OnPlayerListTimerTick;
         
@@ -452,7 +452,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
                 try
                 {
                     process.Kill();
-                    process.WaitForExit(5000); // 等待最多5秒
+                    process.WaitForExit(5000); // 等待最多 5 秒
                     process.Dispose();
                 }
                 catch (Exception ex)
