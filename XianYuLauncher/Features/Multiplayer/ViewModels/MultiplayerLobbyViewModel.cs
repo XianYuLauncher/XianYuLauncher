@@ -393,7 +393,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
         }
         catch (Exception ex)
         {
-            Log.Error(ex, $"获取meta数据失败: {ex.Message}");
+            Log.Error(ex, $"获取 meta 数据失败: {ex.Message}");
         }
     }
     
@@ -422,25 +422,25 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
                     // 首先尝试使用peaceful=true优雅退出
                     string panicUrl = $"http://localhost:{port}/panic?peaceful=true";
                     HttpResponseMessage response = await _httpClient.GetAsync(panicUrl, CancellationToken.None);
-                    Log.Information($"调用terracotta /panic接口结果：{response.StatusCode}");
+                    Log.Information($"调用 terracotta /panic 接口结果：{response.StatusCode}");
                     
                     // 等待短暂时间，让进程有时间优雅退出
                     await Task.Delay(2000);
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, $"调用terracotta /panic接口时发生错误：{ex.Message}");
+                    Log.Error(ex, $"调用 terracotta /panic 接口时发生错误：{ex.Message}");
                     // 可以尝试使用peaceful=false强制退出
                     try
                     {
                         string panicUrl = $"http://localhost:{port}/panic?peaceful=false";
                         HttpResponseMessage response = await _httpClient.GetAsync(panicUrl, CancellationToken.None);
-                        Log.Information($"调用terracotta /panic?peaceful=false接口结果：{response.StatusCode}");
+                        Log.Information($"调用 terracotta /panic?peaceful=false 接口结果：{response.StatusCode}");
                         await Task.Delay(2000);
                     }
                     catch (Exception ex2)
                     {
-                        Log.Error(ex2, $"调用terracotta强制退出接口时发生错误：{ex2.Message}");
+                        Log.Error(ex2, $"调用 terracotta 强制退出接口时发生错误：{ex2.Message}");
                     }
                 }
             }
@@ -463,7 +463,7 @@ public partial class MultiplayerLobbyViewModel : ObservableRecipient, INavigatio
         }
         catch (Exception ex)
         {
-            Log.Error(ex, $"停止terracotta进程时发生错误：{ex.Message}");
+            Log.Error(ex, $"停止 terracotta 进程时发生错误：{ex.Message}");
         }
     }
 }

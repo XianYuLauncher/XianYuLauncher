@@ -201,7 +201,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
             {
                 // 🔒 使用 AccountManager 安全保存（自动加密token）
                 await _accountManager.SaveAccountsAsync(Profiles.ToList());
-                System.Diagnostics.Debug.WriteLine($"[Character] 角色列表已保存（token已加密），共 {Profiles.Count} 个角色");
+                System.Diagnostics.Debug.WriteLine($"[Character] 角色列表已保存（token 已加密），共 {Profiles.Count} 个角色");
             }
             catch (Exception ex)
             {

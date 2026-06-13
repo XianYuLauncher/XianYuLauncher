@@ -290,7 +290,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
                 }
             }
 
-            System.Diagnostics.Debug.WriteLine($"转移Mod到目标版本: {targetVersion}");
+            System.Diagnostics.Debug.WriteLine($"转移 Mod 到目标版本: {targetVersion}");
             System.Diagnostics.Debug.WriteLine($"目标版本信息：ModLoader={modLoader}, GameVersion={gameVersion}");
 
             var existingProjects = await _modrinthService.GetExistingProjectIdsByPathAsync(targetVersionPath);
@@ -308,7 +308,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
 
                 try
                 {
-                    System.Diagnostics.Debug.WriteLine($"正在处理Mod: {mod.Name}");
+                    System.Diagnostics.Debug.WriteLine($"正在处理 Mod: {mod.Name}");
 
                     if (shouldRefreshExistingProjects)
                     {
@@ -360,7 +360,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
                 {
                     result.Status = MoveModStatus.Failed;
                     result.ErrorMessage = ex.Message;
-                    System.Diagnostics.Debug.WriteLine($"转移Mod失败: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"转移 Mod 失败: {ex.Message}");
                 }
 
                 moveResults.Add(result);
@@ -377,7 +377,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"转移Mod失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"转移 Mod 失败: {ex.Message}");
             _context.StatusMessage = $"转移 Mod 失败: {ex.Message}";
         }
         finally
@@ -442,7 +442,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"转移Mod失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"转移 Mod 失败: {ex.Message}");
             _context.StatusMessage = $"转移 Mod 失败: {ex.Message}";
         }
     }
@@ -541,7 +541,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
 
                 result.Status = MoveModStatus.Success;
                 result.TargetPath = targetFilePath;
-                System.Diagnostics.Debug.WriteLine($"[Modrinth] 成功转移Mod: {mod.Name}");
+                System.Diagnostics.Debug.WriteLine($"[Modrinth] 成功转移 Mod: {mod.Name}");
                 return true;
             }
             else
@@ -582,7 +582,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
                             result.Status = MoveModStatus.Updated;
                             result.TargetPath = finalFilePath;
                             result.NewVersion = latestCompatibleVersion.VersionNumber;
-                            System.Diagnostics.Debug.WriteLine($"[Modrinth] 成功更新并转移Mod: {mod.Name}");
+                            System.Diagnostics.Debug.WriteLine($"[Modrinth] 成功更新并转移 Mod: {mod.Name}");
                             return true;
                         }
                     }
@@ -593,7 +593,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Modrinth] 转移Mod失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Modrinth] 转移 Mod 失败: {ex.Message}");
             return false;
         }
     }
@@ -637,7 +637,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
 
                 result.Status = MoveModStatus.Success;
                 result.TargetPath = targetFilePath;
-                System.Diagnostics.Debug.WriteLine($"[CurseForge MoveMod] 成功转移Mod: {mod.Name}");
+                System.Diagnostics.Debug.WriteLine($"[CurseForge MoveMod] 成功转移 Mod: {mod.Name}");
                 return true;
             }
 
@@ -673,7 +673,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
                         result.Status = MoveModStatus.Updated;
                         result.TargetPath = finalFilePath;
                         result.NewVersion = latestFile.DisplayName;
-                        System.Diagnostics.Debug.WriteLine($"[CurseForge MoveMod] 成功更新并转移Mod: {mod.Name}");
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge MoveMod] 成功更新并转移 Mod: {mod.Name}");
                         return true;
                     }
                 }
@@ -683,7 +683,7 @@ public partial class ModsViewModel : ResourceManagementViewModelBase<ModInfo>
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[CurseForge MoveMod] 转移Mod失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge MoveMod] 转移 Mod 失败: {ex.Message}");
             return false;
         }
     }

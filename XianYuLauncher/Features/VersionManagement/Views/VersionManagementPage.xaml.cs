@@ -996,7 +996,7 @@ public sealed partial class VersionManagementPage : Page
     /// </summary>
     private void PreviewCanvas_Draw(CanvasControl sender, Microsoft.Graphics.Canvas.UI.Xaml.CanvasDrawEventArgs args)
     {
-        System.Diagnostics.Debug.WriteLine($"[预览] Draw 被调用, Bitmap数量: {_previewBitmaps.Count}");
+        System.Diagnostics.Debug.WriteLine($"[预览] Draw 被调用, Bitmap 数量: {_previewBitmaps.Count}");
         
         if (_previewBitmaps.Count == 0)
             return;

@@ -148,70 +148,70 @@ public class NetworkSettingsDomainService : INetworkSettingsDomainService
             {
                 await _settingsRepository.SaveAsync(ModrinthResourceSourceKey, selection.CommunitySourceKey);
                 _downloadSourceFactory.SetModrinthSource(selection.CommunitySourceKey);
-                Log.Information("[Settings] 自动选择最快Modrinth源: {Source}", selection.CommunitySourceKey);
+                Log.Information("[Settings] 自动选择最快 Modrinth 源: {Source}", selection.CommunitySourceKey);
             }
 
             if (!string.IsNullOrWhiteSpace(selection.CurseForgeSourceKey))
             {
                 await _settingsRepository.SaveAsync(CurseForgeResourceSourceKey, selection.CurseForgeSourceKey);
                 _downloadSourceFactory.SetCurseForgeSource(selection.CurseForgeSourceKey);
-                Log.Information("[Settings] 自动选择最快CurseForge源: {Source}", selection.CurseForgeSourceKey);
+                Log.Information("[Settings] 自动选择最快 CurseForge 源: {Source}", selection.CurseForgeSourceKey);
             }
 
             if (!string.IsNullOrWhiteSpace(selection.ForgeSourceKey))
             {
                 await _settingsRepository.SaveAsync(ForgeSourceKey, selection.ForgeSourceKey);
                 _downloadSourceFactory.SetForgeSource(selection.ForgeSourceKey);
-                Log.Information("[Settings] 自动选择最快Forge源: {Source}", selection.ForgeSourceKey);
+                Log.Information("[Settings] 自动选择最快 Forge 源: {Source}", selection.ForgeSourceKey);
             }
 
             if (!string.IsNullOrWhiteSpace(selection.FabricSourceKey))
             {
                 await _settingsRepository.SaveAsync(FabricSourceKey, selection.FabricSourceKey);
                 _downloadSourceFactory.SetFabricSource(selection.FabricSourceKey);
-                Log.Information("[Settings] 自动选择最快Fabric源: {Source}", selection.FabricSourceKey);
+                Log.Information("[Settings] 自动选择最快 Fabric 源: {Source}", selection.FabricSourceKey);
             }
 
             if (!string.IsNullOrWhiteSpace(selection.NeoForgeSourceKey))
             {
                 await _settingsRepository.SaveAsync(NeoForgeSourceKey, selection.NeoForgeSourceKey);
                 _downloadSourceFactory.SetNeoForgeSource(selection.NeoForgeSourceKey);
-                Log.Information("[Settings] 自动选择最快NeoForge源: {Source}", selection.NeoForgeSourceKey);
+                Log.Information("[Settings] 自动选择最快 NeoForge 源: {Source}", selection.NeoForgeSourceKey);
             }
 
             if (!string.IsNullOrWhiteSpace(selection.LiteLoaderSourceKey))
             {
                 await _settingsRepository.SaveAsync(LiteLoaderSourceKey, selection.LiteLoaderSourceKey);
                 _downloadSourceFactory.SetLiteLoaderSource(selection.LiteLoaderSourceKey);
-                Log.Information("[Settings] 自动选择最快LiteLoader源: {Source}", selection.LiteLoaderSourceKey);
+                Log.Information("[Settings] 自动选择最快 LiteLoader 源: {Source}", selection.LiteLoaderSourceKey);
             }
 
             if (!string.IsNullOrWhiteSpace(selection.QuiltSourceKey))
             {
                 await _settingsRepository.SaveAsync(QuiltSourceKey, selection.QuiltSourceKey);
                 _downloadSourceFactory.SetQuiltSource(selection.QuiltSourceKey);
-                Log.Information("[Settings] 自动选择最快Quilt源: {Source}", selection.QuiltSourceKey);
+                Log.Information("[Settings] 自动选择最快 Quilt 源: {Source}", selection.QuiltSourceKey);
             }
 
             if (!string.IsNullOrWhiteSpace(selection.LegacyFabricSourceKey))
             {
                 await _settingsRepository.SaveAsync(LegacyFabricSourceKey, selection.LegacyFabricSourceKey);
                 _downloadSourceFactory.SetLegacyFabricSource(selection.LegacyFabricSourceKey);
-                Log.Information("[Settings] 自动选择最快LegacyFabric源: {Source}", selection.LegacyFabricSourceKey);
+                Log.Information("[Settings] 自动选择最快 LegacyFabric 源: {Source}", selection.LegacyFabricSourceKey);
             }
 
             if (!string.IsNullOrWhiteSpace(selection.CleanroomSourceKey))
             {
                 await _settingsRepository.SaveAsync(CleanroomSourceKey, selection.CleanroomSourceKey);
                 _downloadSourceFactory.SetCleanroomSource(selection.CleanroomSourceKey);
-                Log.Information("[Settings] 自动选择最快Cleanroom源: {Source}", selection.CleanroomSourceKey);
+                Log.Information("[Settings] 自动选择最快 Cleanroom 源: {Source}", selection.CleanroomSourceKey);
             }
 
             if (!string.IsNullOrWhiteSpace(selection.OptifineSourceKey))
             {
                 await _settingsRepository.SaveAsync(OptifineSourceKey, selection.OptifineSourceKey);
                 _downloadSourceFactory.SetOptifineSource(selection.OptifineSourceKey);
-                Log.Information("[Settings] 自动选择最快Optifine源: {Source}", selection.OptifineSourceKey);
+                Log.Information("[Settings] 自动选择最快 Optifine 源: {Source}", selection.OptifineSourceKey);
             }
         }
         catch (Exception ex)

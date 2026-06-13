@@ -891,7 +891,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Mod推荐加载] 失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Mod 推荐加载] 失败: {ex.Message}");
             RecommendedModTitle = "Msg_LoadFailed".GetLocalized();
         }
     }
@@ -1150,7 +1150,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
             // 🔒 使用 AccountManager 安全保存（自动加密token）
             var accountManager = App.GetService<IAccountManager>();
             await accountManager.SaveAccountsAsync(Profiles.ToList());
-            System.Diagnostics.Debug.WriteLine($"[Launch] 角色列表已保存（token已加密），共 {Profiles.Count} 个角色");
+            System.Diagnostics.Debug.WriteLine($"[Launch] 角色列表已保存（token 已加密），共 {Profiles.Count} 个角色");
         }
         catch (Exception ex)
         {

@@ -98,22 +98,22 @@ public class ModrinthRecommendationService
                     if (timeSinceCache < CacheExpiration)
                     {
                         var remainingTime = CacheExpiration - timeSinceCache;
-                        System.Diagnostics.Debug.WriteLine($"[Modrinth推荐] 缓存命中，剩余 {remainingTime.TotalMinutes:F1} 分钟刷新");
+                        System.Diagnostics.Debug.WriteLine($"[Modrinth 推荐] 缓存命中，剩余 {remainingTime.TotalMinutes:F1} 分钟刷新");
                         return cacheData.Project;
                     }
-                    System.Diagnostics.Debug.WriteLine($"[Modrinth推荐] 缓存已过期（已过 {timeSinceCache.TotalMinutes:F1} 分钟）");
+                    System.Diagnostics.Debug.WriteLine($"[Modrinth 推荐] 缓存已过期（已过 {timeSinceCache.TotalMinutes:F1} 分钟）");
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[Modrinth推荐] 读取缓存失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[Modrinth 推荐] 读取缓存失败: {ex.Message}");
             }
         }
         
         // 从 API 获取（通过 FallbackDownloadManager 自动回退）
         try
         {
-            System.Diagnostics.Debug.WriteLine($"[Modrinth推荐] 正在从 API 获取（官方URL: {OfficialApiUrl}）");
+            System.Diagnostics.Debug.WriteLine($"[Modrinth 推荐] 正在从 API 获取（官方 URL: {OfficialApiUrl}）");
             
             HttpResponseMessage httpResponse;
             
@@ -128,7 +128,7 @@ public class ModrinthRecommendationService
                     throw new HttpRequestException($"所有源请求失败: {result.ErrorMessage}");
                 
                 httpResponse = result.Response!;
-                System.Diagnostics.Debug.WriteLine($"[Modrinth推荐] 使用源: {result.UsedSourceKey}");
+                System.Diagnostics.Debug.WriteLine($"[Modrinth 推荐] 使用源: {result.UsedSourceKey}");
             }
             else
             {
@@ -161,13 +161,13 @@ public class ModrinthRecommendationService
                 }
                 await File.WriteAllTextAsync(cacheFilePath, cacheJson);
                 
-                System.Diagnostics.Debug.WriteLine($"[Modrinth推荐] 获取成功: {project.Title}，下次刷新: {DateTime.Now.Add(CacheExpiration):yyyy-MM-dd HH:mm:ss}");
+                System.Diagnostics.Debug.WriteLine($"[Modrinth 推荐] 获取成功: {project.Title}，下次刷新: {DateTime.Now.Add(CacheExpiration):yyyy-MM-dd HH:mm:ss}");
                 return project;
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Modrinth推荐] API 请求失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Modrinth 推荐] API 请求失败: {ex.Message}");
             
             // API 失败时尝试返回过期的缓存
             if (File.Exists(cacheFilePath))
@@ -178,7 +178,7 @@ public class ModrinthRecommendationService
                     var cacheData = JsonConvert.DeserializeObject<ModrinthRecommendationCache>(json);
                     if (cacheData?.Project != null)
                     {
-                        System.Diagnostics.Debug.WriteLine("[Modrinth推荐] 使用过期缓存作为备用");
+                        System.Diagnostics.Debug.WriteLine("[Modrinth 推荐] 使用过期缓存作为备用");
                         return cacheData.Project;
                     }
                 }

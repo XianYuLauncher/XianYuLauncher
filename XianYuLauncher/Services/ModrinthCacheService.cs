@@ -86,7 +86,7 @@ public class ModrinthCacheService
             
             if (!File.Exists(cacheFilePath))
             {
-                System.Diagnostics.Debug.WriteLine($"[Modrinth缓存] {resourceType} 缓存不存在");
+                System.Diagnostics.Debug.WriteLine($"[Modrinth 缓存] {resourceType} 缓存不存在");
                 return null;
             }
             
@@ -95,7 +95,7 @@ public class ModrinthCacheService
             
             if (cacheData == null)
             {
-                System.Diagnostics.Debug.WriteLine($"[Modrinth缓存] {resourceType} 缓存数据无效");
+                System.Diagnostics.Debug.WriteLine($"[Modrinth 缓存] {resourceType} 缓存数据无效");
                 return null;
             }
             
@@ -103,12 +103,12 @@ public class ModrinthCacheService
             var timeSinceCache = DateTime.Now - cacheData.CacheTime;
             if (timeSinceCache > CacheExpiration)
             {
-                System.Diagnostics.Debug.WriteLine($"[Modrinth缓存] {resourceType} 缓存已过期（已过 {timeSinceCache.TotalHours:F1} 小时）");
+                System.Diagnostics.Debug.WriteLine($"[Modrinth 缓存] {resourceType} 缓存已过期（已过 {timeSinceCache.TotalHours:F1} 小时）");
                 return null;
             }
             
             var remainingTime = CacheExpiration - timeSinceCache;
-            System.Diagnostics.Debug.WriteLine($"[Modrinth缓存] {resourceType} 缓存命中，剩余 {remainingTime.TotalHours:F1} 小时刷新，共 {cacheData.Items.Count} 项");
+            System.Diagnostics.Debug.WriteLine($"[Modrinth 缓存] {resourceType} 缓存命中，剩余 {remainingTime.TotalHours:F1} 小时刷新，共 {cacheData.Items.Count} 项");
             
             // 应用本地图片缓存
             ApplyLocalImageCache(cacheData.Items);
@@ -117,7 +117,7 @@ public class ModrinthCacheService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Modrinth缓存] 读取缓存失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Modrinth 缓存] 读取缓存失败: {ex.Message}");
             return null;
         }
     }
@@ -179,14 +179,14 @@ public class ModrinthCacheService
             var json = JsonConvert.SerializeObject(cacheData, Formatting.None);
             await File.WriteAllTextAsync(cacheFilePath, json);
             
-            System.Diagnostics.Debug.WriteLine($"[Modrinth缓存] {resourceType} 缓存已保存，共 {items.Count} 项，下次刷新: {DateTime.Now.Add(CacheExpiration):yyyy-MM-dd HH:mm:ss}");
+            System.Diagnostics.Debug.WriteLine($"[Modrinth 缓存] {resourceType} 缓存已保存，共 {items.Count} 项，下次刷新: {DateTime.Now.Add(CacheExpiration):yyyy-MM-dd HH:mm:ss}");
             
             // 异步缓存图片（不阻塞主流程）
             _ = CacheImagesAsync(items);
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Modrinth缓存] 保存缓存失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Modrinth 缓存] 保存缓存失败: {ex.Message}");
         }
     }
 
@@ -252,14 +252,14 @@ public class ModrinthCacheService
             var newJson = JsonConvert.SerializeObject(cacheData, Formatting.None);
             await File.WriteAllTextAsync(cacheFilePath, newJson);
             
-            System.Diagnostics.Debug.WriteLine($"[Modrinth缓存] {resourceType} 缓存已追加 {newItems.Count} 项，总计 {cacheData.Items.Count} 项");
+            System.Diagnostics.Debug.WriteLine($"[Modrinth 缓存] {resourceType} 缓存已追加 {newItems.Count} 项，总计 {cacheData.Items.Count} 项");
             
             // 异步缓存新图片
             _ = CacheImagesAsync(newItems);
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Modrinth缓存] 追加缓存失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Modrinth 缓存] 追加缓存失败: {ex.Message}");
         }
     }
     
@@ -276,12 +276,12 @@ public class ModrinthCacheService
             if (File.Exists(cacheFilePath))
             {
                 File.Delete(cacheFilePath);
-                System.Diagnostics.Debug.WriteLine($"[Modrinth缓存] {resourceType} 缓存已清除");
+                System.Diagnostics.Debug.WriteLine($"[Modrinth 缓存] {resourceType} 缓存已清除");
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Modrinth缓存] 清除缓存失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Modrinth 缓存] 清除缓存失败: {ex.Message}");
         }
     }
     
@@ -374,11 +374,11 @@ public class ModrinthCacheService
                 }
             }
             
-            System.Diagnostics.Debug.WriteLine($"[Modrinth缓存] 已清理过期图片缓存");
+            System.Diagnostics.Debug.WriteLine($"[Modrinth 缓存] 已清理过期图片缓存");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Modrinth缓存] 清理图片缓存失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Modrinth 缓存] 清理图片缓存失败: {ex.Message}");
         }
     }
     

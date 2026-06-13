@@ -996,7 +996,7 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                     {
                         // 计算文件SHA1哈希
                         string sha1Hash = await CalculateFileSHA1Async(fullFilePath);
-                        System.Diagnostics.Debug.WriteLine($"文件: {filePath}, SHA1哈希: {sha1Hash}");
+                        System.Diagnostics.Debug.WriteLine($"文件: {filePath}, SHA1 哈希: {sha1Hash}");
                         
                         // 添加到映射和哈希列表
                         filePathToHashMap.Add(filePath, sha1Hash);
@@ -1030,13 +1030,13 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                 
                 if (hashToVersionMap.TryGetValue(sha1Hash, out var versionInfo))
                 {
-                    System.Diagnostics.Debug.WriteLine($"文件: {filePath}, 成功获取Modrinth版本信息: {versionInfo.Name} (版本号: {versionInfo.VersionNumber})");
+                    System.Diagnostics.Debug.WriteLine($"文件: {filePath}, 成功获取 Modrinth 版本信息: {versionInfo.Name} (版本号: {versionInfo.VersionNumber})");
                     
                     // 如果有文件信息，输出文件URL
                     if (versionInfo.Files != null && versionInfo.Files.Count > 0)
                     {
                         var primaryFile = versionInfo.Files.FirstOrDefault(f => f.Primary) ?? versionInfo.Files[0];
-                        System.Diagnostics.Debug.WriteLine($"文件: {filePath}, Modrinth文件URL: {primaryFile.Url}");
+                        System.Diagnostics.Debug.WriteLine($"文件: {filePath}, Modrinth 文件 URL: {primaryFile.Url}");
                     }
                     
                     // 添加到结果字典
@@ -1044,13 +1044,13 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"文件: {filePath}, 无法通过哈希 {sha1Hash} 获取Modrinth信息");
+                    System.Diagnostics.Debug.WriteLine($"文件: {filePath}, 无法通过哈希 {sha1Hash} 获取 Modrinth 信息");
                 }
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"搜索Modrinth失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"搜索 Modrinth 失败: {ex.Message}");
         }
         
         return fileResults;

@@ -188,11 +188,11 @@ public partial class App : Application
             {
                 var accountManager = App.GetService<IAccountManager>();
                 await accountManager.LoadAccountsAsync(); // 加载时会自动检测并迁移
-                Log.Information("Token安全检查完成");
+                Log.Information("Token 安全检查完成");
             }
             catch (Exception ex)
             {
-                Log.Warning($"Token安全检查失败: {ex.Message}");
+                Log.Warning($"Token 安全检查失败: {ex.Message}");
             }
         });
         
@@ -245,18 +245,18 @@ public partial class App : Application
                     {
                         await File.WriteAllBytesAsync(localDataPath, remoteData);
                         await translationService.InitializeNameTranslationAsync(localDataPath);
-                        Log.Information("Mod名称数据已更新并重载");
+                        Log.Information("Mod 名称数据已更新并重载");
                     }
                 }
                 catch (Exception updateEx)
                 {
-                    Log.Warning($"Mod名称数据更新检查失败: {updateEx.Message}");
+                    Log.Warning($"Mod 名称数据更新检查失败: {updateEx.Message}");
                     // 网络问题不影响旧数据使用
                 }
             }
             catch (Exception ex)
             {
-                Log.Warning($"Mod名称翻译服务初始化失败: {ex.Message}");
+                Log.Warning($"Mod 名称翻译服务初始化失败: {ex.Message}");
             }
         });
         

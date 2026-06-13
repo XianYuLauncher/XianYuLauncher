@@ -786,7 +786,7 @@ public sealed partial class VersionListRootPage : Page
                 {
                     _uiDispatcher.TryEnqueue(() =>
                     {
-                        System.Diagnostics.Debug.WriteLine("开始搜索Modrinth获取文件信息...");
+                        System.Diagnostics.Debug.WriteLine("开始搜索 Modrinth 获取文件信息...");
                         UpdateLoadingDialog("VersionListPage_ExportModpackLoading_FetchingModrinth".GetLocalized(), 10.0);
                     });
 
@@ -794,7 +794,7 @@ public sealed partial class VersionListRootPage : Page
 
                     _uiDispatcher.TryEnqueue(() =>
                     {
-                        System.Diagnostics.Debug.WriteLine($"Modrinth搜索完成，找到 {fileResults.Count} 个匹配结果");
+                        System.Diagnostics.Debug.WriteLine($"Modrinth 搜索完成，找到 {fileResults.Count} 个匹配结果");
                     });
 
                     if (isServerOnly)
@@ -896,7 +896,7 @@ public sealed partial class VersionListRootPage : Page
                 {
                     _uiDispatcher.TryEnqueue(() =>
                     {
-                        System.Diagnostics.Debug.WriteLine("非联网模式且不导出服务端，跳过Modrinth搜索");
+                        System.Diagnostics.Debug.WriteLine("非联网模式且不导出服务端，跳过 Modrinth 搜索");
                         UpdateLoadingDialog("VersionListPage_LoadingDialog_PreparingSaveStatus".GetLocalized(), 20.0);
                     });
                 }

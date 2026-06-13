@@ -196,7 +196,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色管理Page] 释放 WebView2 资源失败: {ex.Message}");
+                Debug.WriteLine($"[角色管理 Page] 释放 WebView2 资源失败: {ex.Message}");
             }
         }
 
@@ -207,18 +207,18 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                Debug.WriteLine($"[角色管理Page] 开始初始化WebView2");
+                Debug.WriteLine($"[角色管理 Page] 开始初始化 WebView2");
                 
                 // 确保CoreWebView2初始化
                 await Skin3DPreviewWebView.EnsureCoreWebView2Async();
                 
-                Debug.WriteLine($"[角色管理Page] CoreWebView2初始化完成");
+                Debug.WriteLine($"[角色管理 Page] CoreWebView2 初始化完成");
                 
                 // 禁用开发者工具，防止按下F12打开开发者模式
                 if (Skin3DPreviewWebView.CoreWebView2 != null)
                 {
                     Skin3DPreviewWebView.CoreWebView2.Settings.AreDevToolsEnabled = false;
-                    Debug.WriteLine($"[角色管理Page] 已禁用WebView2开发者工具");
+                    Debug.WriteLine($"[角色管理 Page] 已禁用 WebView2 开发者工具");
                 }
                 
                 // 将HTML文件复制到应用数据目录，然后从那里加载
@@ -228,7 +228,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 {
                     // 从应用数据目录加载HTML文件
                     Skin3DPreviewWebView.Source = new Uri(htmlPath);
-                    Debug.WriteLine($"[角色管理Page] 已设置WebView2 Source为: {htmlPath}");
+                    Debug.WriteLine($"[角色管理 Page] 已设置 WebView2 Source 为: {htmlPath}");
                     
                     // 初始化完成后，延迟加载当前皮肤，确保WebView2已完全加载
                     await Task.Delay(1000);
@@ -236,12 +236,12 @@ namespace XianYuLauncher.Features.Accounts.Views
                 }
                 else
                 {
-                    Debug.WriteLine($"[角色管理Page] 无法获取HTML文件路径");
+                    Debug.WriteLine($"[角色管理 Page] 无法获取 HTML 文件路径");
                 }
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色管理Page] 初始化WebView2失败: {ex.Message}");
+                Debug.WriteLine($"[角色管理 Page] 初始化 WebView2 失败: {ex.Message}");
             }
         }
 
@@ -266,20 +266,20 @@ namespace XianYuLauncher.Features.Accounts.Views
                 string destHtmlPath = Path.Combine(htmlFolderPath, "Skin3DPreview.html");
                 string sourceHtmlPath = AppAssetResolver.ToAbsolutePath(AppAssetResolver.Skin3DPreviewHtmlAssetPath);
                 File.Copy(sourceHtmlPath, destHtmlPath, true);
-                Debug.WriteLine($"[角色管理Page] 已将HTML文件复制到应用数据目录");
+                Debug.WriteLine($"[角色管理 Page] 已将 HTML 文件复制到应用数据目录");
                 
                 // 复制skinview3d.bundle.js文件
                 string destLibPath = Path.Combine(libsFolderPath, "skinview3d.bundle.js");
                 string sourceLibPath = AppAssetResolver.ToAbsolutePath("Assets/Libs/skinview3d.bundle.js");
                 File.Copy(sourceLibPath, destLibPath, true);
-                Debug.WriteLine($"[角色管理Page] 已将skinview3d.bundle.js文件复制到应用数据目录");
+                Debug.WriteLine($"[角色管理 Page] 已将 skinview3d.bundle.js 文件复制到应用数据目录");
                 
                 // 返回file://协议的URL
                 return new Uri(destHtmlPath).AbsoluteUri;
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色管理Page] 复制文件失败: {ex.Message}");
+                Debug.WriteLine($"[角色管理 Page] 复制文件失败: {ex.Message}");
                 return string.Empty;
             }
         }
@@ -315,7 +315,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 await InitializeWebView2Async();
                 if (Skin3DPreviewWebView.CoreWebView2 == null)
                 {
-                    Debug.WriteLine($"[角色管理Page] WebView2未初始化，无法更新皮肤");
+                    Debug.WriteLine($"[角色管理 Page] WebView2 未初始化，无法更新皮肤");
                     return;
                 }
             }
@@ -331,61 +331,61 @@ namespace XianYuLauncher.Features.Accounts.Views
                     if (ViewModel.CurrentProfile.IsOffline)
                     {
                         // 离线角色：使用本地Steve默认皮肤
-                        Debug.WriteLine($"[角色管理Page] 当前是离线角色，使用本地Steve默认皮肤");
+                        Debug.WriteLine($"[角色管理 Page] 当前是离线角色，使用本地 Steve 默认皮肤");
                         // 使用本地资源文件作为默认皮肤
                         string defaultSkinPath = AppAssetResolver.DefaultSkinTextureAssetPath;
                         // 从本地资源加载并转换为base64
                         skinUrl = await LoadLocalImageAsBase64Async(defaultSkinPath);
                         capeUrl = string.Empty;
-                        Debug.WriteLine($"[角色管理Page] 已加载默认Steve皮肤: {skinUrl}");
+                        Debug.WriteLine($"[角色管理 Page] 已加载默认 Steve 皮肤: {skinUrl}");
                     }
                     else
                     {
                         if (ViewModel.CurrentProfile.TokenType == "external")
                         {
                             // 外置登录角色：从profile.properties中获取皮肤和披风，需要解决CORS问题
-                            Debug.WriteLine($"[角色管理Page] 当前是外置登录角色，尝试获取皮肤和披风");
+                            Debug.WriteLine($"[角色管理 Page] 当前是外置登录角色，尝试获取皮肤和披风");
                             var textures = await GetExternalLoginTexturesAsync();
                             string originalSkinUrl = textures.Item1;
                             string originalCapeUrl = textures.Item2;
-                            Debug.WriteLine($"[角色管理Page] 已获取外置登录皮肤: {originalSkinUrl}, 披风: {originalCapeUrl}");
+                            Debug.WriteLine($"[角色管理 Page] 已获取外置登录皮肤: {originalSkinUrl}, 披风: {originalCapeUrl}");
                             
                             // 解决CORS问题：使用HttpClient下载图片并转换为base64
                             if (!string.IsNullOrEmpty(originalSkinUrl))
                             {
-                                Debug.WriteLine($"[角色管理Page] 尝试下载皮肤图片: {originalSkinUrl}");
+                                Debug.WriteLine($"[角色管理 Page] 尝试下载皮肤图片: {originalSkinUrl}");
                                 skinUrl = await DownloadImageAsBase64Async(originalSkinUrl);
-                                Debug.WriteLine($"[角色管理Page] 皮肤图片已转换为base64，长度: {skinUrl.Length}");
+                                Debug.WriteLine($"[角色管理 Page] 皮肤图片已转换为 base64，长度: {skinUrl.Length}");
                             }
 
                             if (!string.IsNullOrEmpty(originalCapeUrl))
                             {
-                                Debug.WriteLine($"[角色管理Page] 尝试下载披风图片: {originalCapeUrl}");
+                                Debug.WriteLine($"[角色管理 Page] 尝试下载披风图片: {originalCapeUrl}");
                                 capeUrl = await DownloadImageAsBase64Async(originalCapeUrl);
-                                Debug.WriteLine($"[角色管理Page] 披风图片已转换为base64，长度: {capeUrl.Length}");
+                                Debug.WriteLine($"[角色管理 Page] 披风图片已转换为 base64，长度: {capeUrl.Length}");
                             }
                         }
                         else
                         {
                             // 微软账户：从ViewModel获取皮肤和披风URL，下载并转换为base64以解决CORS问题
-                            Debug.WriteLine($"[角色管理Page] 当前是微软账户，获取皮肤和披风URL");
+                            Debug.WriteLine($"[角色管理 Page] 当前是微软账户，获取皮肤和披风 URL");
                             string originalSkinUrl = CleanUrl(ViewModel.CurrentSkin?.Url);
                             string originalCapeUrl = CleanUrl(ViewModel.SelectedCape?.Url);
-                            Debug.WriteLine($"[角色管理Page] 已获取微软账户皮肤: {originalSkinUrl}, 披风: {originalCapeUrl}");
+                            Debug.WriteLine($"[角色管理 Page] 已获取微软账户皮肤: {originalSkinUrl}, 披风: {originalCapeUrl}");
                             
                             // 解决CORS问题：使用HttpClient下载图片并转换为base64
                             if (!string.IsNullOrEmpty(originalSkinUrl))
                             {
-                                Debug.WriteLine($"[角色管理Page] 尝试下载皮肤图片: {originalSkinUrl}");
+                                Debug.WriteLine($"[角色管理 Page] 尝试下载皮肤图片: {originalSkinUrl}");
                                 skinUrl = await DownloadImageAsBase64Async(originalSkinUrl);
-                                Debug.WriteLine($"[角色管理Page] 皮肤图片已转换为base64，长度: {skinUrl.Length}");
+                                Debug.WriteLine($"[角色管理 Page] 皮肤图片已转换为 base64，长度: {skinUrl.Length}");
                             }
 
                             if (!string.IsNullOrEmpty(originalCapeUrl))
                             {
-                                Debug.WriteLine($"[角色管理Page] 尝试下载披风图片: {originalCapeUrl}");
+                                Debug.WriteLine($"[角色管理 Page] 尝试下载披风图片: {originalCapeUrl}");
                                 capeUrl = await DownloadImageAsBase64Async(originalCapeUrl);
-                                Debug.WriteLine($"[角色管理Page] 披风图片已转换为base64，长度: {capeUrl.Length}");
+                                Debug.WriteLine($"[角色管理 Page] 披风图片已转换为 base64，长度: {capeUrl.Length}");
                             }
                         }
                     }
@@ -393,11 +393,11 @@ namespace XianYuLauncher.Features.Accounts.Views
 
                 // 调用JavaScript方法更新皮肤和披风，使用JSON.stringify确保URL格式正确
                 await Skin3DPreviewWebView.CoreWebView2.ExecuteScriptAsync($"window.setSkinTexture({JsonSerializer.Serialize(skinUrl)}, {JsonSerializer.Serialize(capeUrl)});");
-                Debug.WriteLine($"[角色管理Page] 已更新WebView2皮肤: {skinUrl}, 披风: {capeUrl}");
+                Debug.WriteLine($"[角色管理 Page] 已更新 WebView2 皮肤: {skinUrl}, 披风: {capeUrl}");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色管理Page] 更新WebView2皮肤失败: {ex.Message}");
+                Debug.WriteLine($"[角色管理 Page] 更新 WebView2 皮肤失败: {ex.Message}");
             }
         }
 
@@ -417,17 +417,17 @@ namespace XianYuLauncher.Features.Accounts.Views
                     var response = await httpClient.GetAsync(imageUrl);
                     if (!response.IsSuccessStatusCode)
                     {
-                        Debug.WriteLine($"[角色管理Page] 下载图片失败，状态码: {response.StatusCode}, URL: {imageUrl}");
+                        Debug.WriteLine($"[角色管理 Page] 下载图片失败，状态码: {response.StatusCode}, URL: {imageUrl}");
                         return string.Empty;
                     }
 
                     // 读取图片数据
                     var imageBytes = await response.Content.ReadAsByteArrayAsync();
-                    Debug.WriteLine($"[角色管理Page] 图片下载成功，大小: {imageBytes.Length}字节");
+                    Debug.WriteLine($"[角色管理 Page] 图片下载成功，大小: {imageBytes.Length}字节");
 
                     // 转换为base64编码
                     var base64String = Convert.ToBase64String(imageBytes);
-                    Debug.WriteLine($"[角色管理Page] 图片转换为base64成功");
+                    Debug.WriteLine($"[角色管理 Page] 图片转换为 base64 成功");
 
                     // 返回完整的base64图片URL
                     return $"data:image/png;base64,{base64String}";
@@ -435,7 +435,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色管理Page] 下载并转换图片失败: {ex.Message}, URL: {imageUrl}");
+                Debug.WriteLine($"[角色管理 Page] 下载并转换图片失败: {ex.Message}, URL: {imageUrl}");
                 return string.Empty;
             }
         }
@@ -449,7 +449,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-            Debug.WriteLine($"[角色管理Page] 尝试加载本地图片: {assetPath}");
+            Debug.WriteLine($"[角色管理 Page] 尝试加载本地图片: {assetPath}");
                 
                 // 获取本地资源文件
             var file = await AppAssetResolver.GetStorageFileAsync(assetPath);
@@ -466,11 +466,11 @@ namespace XianYuLauncher.Features.Accounts.Views
                     var imageBytes = new byte[buffer.Length];
                     dataReader.ReadBytes(imageBytes);
                     
-                    Debug.WriteLine($"[角色管理Page] 本地图片加载成功，大小: {imageBytes.Length}字节");
+                    Debug.WriteLine($"[角色管理 Page] 本地图片加载成功，大小: {imageBytes.Length}字节");
                     
                     // 转换为base64编码
                     var base64String = Convert.ToBase64String(imageBytes);
-                    Debug.WriteLine($"[角色管理Page] 本地图片转换为base64成功");
+                    Debug.WriteLine($"[角色管理 Page] 本地图片转换为 base64 成功");
                     
                     // 返回完整的base64图片URL
                     return $"data:image/png;base64,{base64String}";
@@ -478,7 +478,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色管理Page] 加载本地图片失败: {ex.Message}, 路径: {assetPath}");
+                Debug.WriteLine($"[角色管理 Page] 加载本地图片失败: {ex.Message}, 路径: {assetPath}");
                 return string.Empty;
             }
         }
@@ -598,7 +598,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             // 移除首尾空格和换行符
             cleanedUrl = cleanedUrl.Trim(' ', '\t', '\r', '\n');
             
-            Debug.WriteLine($"[角色管理Page] URL清理前: {url}, 清理后: {cleanedUrl}");
+            Debug.WriteLine($"[角色管理 Page] URL 清理前: {url}, 清理后: {cleanedUrl}");
             
             return cleanedUrl;
         }
@@ -608,7 +608,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         /// </summary>
         private void Skin3DPreviewWebView_NavigationStarting(object sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationStartingEventArgs e)
         {
-            Debug.WriteLine($"[角色管理Page] 导航开始: {e.Uri}");
+            Debug.WriteLine($"[角色管理 Page] 导航开始: {e.Uri}");
         }
 
         /// <summary>
@@ -621,27 +621,27 @@ namespace XianYuLauncher.Features.Accounts.Views
             
             if (e.IsSuccess)
             {
-                Debug.WriteLine($"[角色管理Page] 导航完成: {currentUri}");
+                Debug.WriteLine($"[角色管理 Page] 导航完成: {currentUri}");
                 
                 // 导航完成后检查CoreWebView2是否可用
                 if (Skin3DPreviewWebView.CoreWebView2 != null)
                 {
-                    Debug.WriteLine($"[角色管理Page] CoreWebView2可用");
+                    Debug.WriteLine($"[角色管理 Page] CoreWebView2 可用");
                     
                     // 获取当前主题并传递给WebView2
                     var currentTheme = this.ActualTheme;
                     string theme = currentTheme.ToString().ToLower();
                     await Skin3DPreviewWebView.CoreWebView2.ExecuteScriptAsync($"window.setTheme('{theme}');");
-                    Debug.WriteLine($"[角色管理Page] 已设置WebView2主题: {theme}");
+                    Debug.WriteLine($"[角色管理 Page] 已设置 WebView2 主题: {theme}");
                 }
                 else
                 {
-                    Debug.WriteLine($"[角色管理Page] CoreWebView2不可用");
+                    Debug.WriteLine($"[角色管理 Page] CoreWebView2 不可用");
                 }
             }
             else
             {
-                Debug.WriteLine($"[角色管理Page] 导航失败: {currentUri}, 错误代码: {e.WebErrorStatus}");
+                Debug.WriteLine($"[角色管理 Page] 导航失败: {currentUri}, 错误代码: {e.WebErrorStatus}");
             }
         }
 
@@ -679,7 +679,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 // 1. 离线玩家使用Steve头像
                 if (ViewModel.CurrentProfile.IsOffline)
                 {
-                    Debug.WriteLine($"[角色管理Page] 角色 {ViewModel.CurrentProfile.Name} 是离线角色，使用Steve头像");
+                    Debug.WriteLine($"[角色管理 Page] 角色 {ViewModel.CurrentProfile.Name} 是离线角色，使用 Steve 头像");
                     var steveAvatar = await ProcessSteveAvatarAsync();
                     if (steveAvatar != null)
                     {
@@ -698,18 +698,18 @@ namespace XianYuLauncher.Features.Accounts.Views
                     // 只有在不强制刷新时才尝试从缓存加载
                     if (!forceRefresh)
                     {
-                        Debug.WriteLine($"[角色管理Page] 尝试从缓存加载角色 {ViewModel.CurrentProfile.Name} 的头像");
+                        Debug.WriteLine($"[角色管理 Page] 尝试从缓存加载角色 {ViewModel.CurrentProfile.Name} 的头像");
                         cachedAvatar = await LoadAvatarFromCacheAsync(ViewModel.CurrentProfile.Id);
                     }
                     
                     if (cachedAvatar != null)
                     {
-                        Debug.WriteLine($"[角色管理Page] 成功从缓存加载角色 {ViewModel.CurrentProfile.Name} 的头像");
+                        Debug.WriteLine($"[角色管理 Page] 成功从缓存加载角色 {ViewModel.CurrentProfile.Name} 的头像");
                         ProfileAvatar.Source = cachedAvatar;
                     }
                     else
                     {
-                        Debug.WriteLine($"[角色管理Page] {(forceRefresh ? "强制刷新" : "缓存中不存在")}角色 {ViewModel.CurrentProfile.Name} 的头像，从网络加载");
+                        Debug.WriteLine($"[角色管理 Page] {(forceRefresh ? "强制刷新" : "缓存中不存在")}角色 {ViewModel.CurrentProfile.Name} 的头像，从网络加载");
                         
                         // 尝试优先使用 ViewModel 中已有的 URL（如果有），因为这通常是最新的，且可能已经包含在 CurrentSkin 中
                         // 如果 ViewModel.CurrentSkin 尚未更新（例如上传后尚未触发刷新），这可能会拿到旧的。
@@ -747,7 +747,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色管理Page] 加载角色 {ViewModel.CurrentProfile.Name} 头像失败: {ex.Message}");
+                Debug.WriteLine($"[角色管理 Page] 加载角色 {ViewModel.CurrentProfile.Name} 头像失败: {ex.Message}");
                 ProfileAvatar.Source = CreateDefaultAvatarBitmap();
             }
         }
@@ -773,7 +773,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色管理Page] 从缓存加载头像失败: {ex.Message}");
+                Debug.WriteLine($"[角色管理 Page] 从缓存加载头像失败: {ex.Message}");
             }
             return null;
         }
@@ -878,7 +878,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色管理Page] 裁剪头像失败: {ex.Message}");
+                Debug.WriteLine($"[角色管理 Page] 裁剪头像失败: {ex.Message}");
                 return null;
             }
         }
@@ -894,7 +894,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[角色管理Page] 处理史蒂夫头像失败: {ex.Message}");
+                Debug.WriteLine($"[角色管理 Page] 处理史蒂夫头像失败: {ex.Message}");
                 return null;
             }
         }
@@ -1078,7 +1078,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (HttpRequestException ex)
             {
-                Debug.WriteLine($"[AccountManagementPage] 皮肤上传API请求失败: {ex.Message}");
+                Debug.WriteLine($"[AccountManagementPage] 皮肤上传 API 请求失败: {ex.Message}");
                 await ShowMessageAsync("Msg_UploadFailed".GetLocalized(), "Msg_ApiRequestFailed".GetLocalized(ex.Message));
             }
             catch (Exception ex)
@@ -1115,11 +1115,11 @@ namespace XianYuLauncher.Features.Accounts.Views
                 request.Headers.Authorization = new AuthenticationHeaderValue(
                     "Bearer",
                     ViewModel.CurrentProfile.AccessToken);
-                Debug.WriteLine($"[AccountManagementPage] 添加Authorization头");
+                Debug.WriteLine($"[AccountManagementPage] 添加 Authorization 头");
             }
             else
             {
-                Debug.WriteLine($"[AccountManagementPage] 未添加Authorization头: AccessToken为空");
+                Debug.WriteLine($"[AccountManagementPage] 未添加 Authorization 头: AccessToken 为空");
             }
             
             // 3. 准备multipart/form-data请求体
@@ -1322,7 +1322,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (HttpRequestException ex)
             {
-                Debug.WriteLine($"[AccountManagementPage] 披风上传API请求失败: {ex.Message}");
+                Debug.WriteLine($"[AccountManagementPage] 披风上传 API 请求失败: {ex.Message}");
                 await ShowMessageAsync("Msg_UploadFailed".GetLocalized(), "Msg_ApiRequestFailed".GetLocalized(ex.Message));
             }
             catch (Exception ex)
@@ -1358,11 +1358,11 @@ namespace XianYuLauncher.Features.Accounts.Views
                 request.Headers.Authorization = new AuthenticationHeaderValue(
                     "Bearer",
                     ViewModel.CurrentProfile.AccessToken);
-                Debug.WriteLine($"[AccountManagementPage] 添加Authorization头");
+                Debug.WriteLine($"[AccountManagementPage] 添加 Authorization 头");
             }
             else
             {
-                Debug.WriteLine($"[AccountManagementPage] 未添加Authorization头: AccessToken为空");
+                Debug.WriteLine($"[AccountManagementPage] 未添加 Authorization 头: AccessToken 为空");
             }
             
             // 3. 准备multipart/form-data请求体

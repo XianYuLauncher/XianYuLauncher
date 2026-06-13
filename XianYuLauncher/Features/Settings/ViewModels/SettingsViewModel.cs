@@ -1542,7 +1542,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[CurseForge缓存统计] 获取缓存大小失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存统计] 获取缓存大小失败: {ex.Message}");
         }
         
         return info;
@@ -2229,16 +2229,16 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
         IsLoadingJavaVersions = true;
         try
         {
-            Console.WriteLine("刷新Java版本列表...");
+            Console.WriteLine("刷新 Java 版本列表...");
             
             // 保存当前列表（包含用户手动添加的）
             var existingVersions = JavaVersions.ToList();
-            Console.WriteLine($"当前列表中有 {existingVersions.Count} 个Java版本");
+            Console.WriteLine($"当前列表中有 {existingVersions.Count} 个 Java 版本");
             cancellationToken.ThrowIfCancellationRequested();
             
             // 使用JavaRuntimeService扫描系统中的Java版本
             var scannedJavaVersions = await _javaRuntimeService.DetectJavaVersionsAsync(forceRefresh: true);
-            Console.WriteLine($"系统扫描到 {scannedJavaVersions.Count} 个Java版本");
+            Console.WriteLine($"系统扫描到 {scannedJavaVersions.Count} 个 Java 版本");
             cancellationToken.ThrowIfCancellationRequested();
             
             // 清空当前列表
@@ -2266,22 +2266,22 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
                 if (!scannedJavaVersions.Any(s => string.Equals(s.Path, existing.Path, StringComparison.OrdinalIgnoreCase)))
                 {
                     JavaVersions.Add(existing);
-                    Console.WriteLine("保留用户手动添加的Java");
+                    Console.WriteLine("保留用户手动添加的 Java");
                 }
             }
             
-            Console.WriteLine($"合并后列表中有 {JavaVersions.Count} 个Java版本");
+            Console.WriteLine($"合并后列表中有 {JavaVersions.Count} 个 Java 版本");
             
             // 保存更新后的列表
             await SaveJavaVersionsAsync();
         }
         catch (OperationCanceledException)
         {
-            Console.WriteLine("刷新Java版本列表已取消");
+            Console.WriteLine("刷新 Java 版本列表已取消");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"刷新Java版本列表失败: {ex.Message}");
+            Console.WriteLine($"刷新 Java 版本列表失败: {ex.Message}");
         }
         finally
         {
@@ -2297,18 +2297,18 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
     {
         try
         {
-            Console.WriteLine("清除所有Java版本...");
+            Console.WriteLine("清除所有 Java 版本...");
             JavaVersions.Clear();
             SelectedJavaVersion = null;
             
             // 保存空列表
             await SaveJavaVersionsAsync();
             
-            Console.WriteLine("Java版本列表已清空");
+            Console.WriteLine("Java 版本列表已清空");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"清除Java版本列表失败: {ex.Message}");
+            Console.WriteLine($"清除 Java 版本列表失败: {ex.Message}");
         }
     }
     
@@ -2565,7 +2565,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
             bool shouldSave = false;
             try
             {
-                Console.WriteLine($"正在解析Java可执行文件: {selectedPath}");
+                Console.WriteLine($"正在解析 Java 可执行文件: {selectedPath}");
                 // 使用JavaRuntimeService解析Java版本信息
                 var javaVersion = await _javaRuntimeService.GetJavaVersionInfoAsync(selectedPath);
                 if (javaVersion != null)
@@ -2586,21 +2586,21 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
                         };
                         JavaVersions.Add(newVersion);
                         shouldSave = true;
-                        Console.WriteLine("已添加到Java版本列表");
+                        Console.WriteLine("已添加到 Java 版本列表");
                         
                         // 自动选择刚添加的版本
                         SelectedJavaVersion = newVersion;
                     }
                     else
                     {
-                        Console.WriteLine("该Java版本已存在于列表中");
+                        Console.WriteLine("该 Java 版本已存在于列表中");
                         // 如果已存在，自动选择它
                         SelectedJavaVersion = existingVersion;
                     }
                 }
                 else
                 {
-                    Console.WriteLine("无法解析Java版本信息");
+                    Console.WriteLine("无法解析 Java 版本信息");
                 }
             }
             finally

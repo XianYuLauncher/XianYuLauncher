@@ -512,7 +512,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                 var cleanroomItem = new ModLoaderItem("Cleanroom");
                 AddPropertyChangedHandler(cleanroomItem);
                 ModLoaderItems.Add(cleanroomItem);
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 已添加Cleanroom选项（Minecraft {SelectedMinecraftVersion}）");
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 已添加 Cleanroom 选项（Minecraft {SelectedMinecraftVersion}）");
             }
             
             // Legacy Fabric 支持逻辑：大部分版本小于 1.14 (精确地说是 <= 1.13.2)
@@ -520,7 +520,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             if (IsLegacyFabricSupported(SelectedMinecraftVersion))
             {
                 ModLoaderItems.Add(legacyFabricItem);
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 已添加LegacyFabric选项（Minecraft {SelectedMinecraftVersion}）");
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 已添加 LegacyFabric 选项（Minecraft {SelectedMinecraftVersion}）");
             }
         
         // 不默认选择任何ModLoader

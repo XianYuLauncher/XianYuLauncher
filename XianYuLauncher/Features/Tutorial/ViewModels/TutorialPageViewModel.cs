@@ -315,11 +315,11 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                         {
                             // 创建目录及其所有父目录
                             System.IO.Directory.CreateDirectory(MinecraftPath);
-                            System.Diagnostics.Debug.WriteLine($"[Minecraft目录] 已创建目录: {MinecraftPath}");
+                            System.Diagnostics.Debug.WriteLine($"[Minecraft 目录] 已创建目录: {MinecraftPath}");
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"[Minecraft目录] 创建目录失败: {ex.Message}");
+                            System.Diagnostics.Debug.WriteLine($"[Minecraft 目录] 创建目录失败: {ex.Message}");
                         }
                     }
                 }
@@ -451,7 +451,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             System.Diagnostics.Debug.WriteLine($"[角色保存] 角色列表保存完成");
             
             // 标记教程已完成
-            System.Diagnostics.Debug.WriteLine($"[首次启动检查] 教程完成，保存TutorialCompleted=true");
+            System.Diagnostics.Debug.WriteLine($"[首次启动检查] 教程完成，保存 TutorialCompleted=true");
             await _localSettingsService.SaveSettingAsync("TutorialCompleted", true);
             // 导航到启动页面
             _navigationService.NavigateTo(typeof(LaunchViewModel).FullName!);
@@ -514,11 +514,11 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                     });
                 }
                 
-                System.Diagnostics.Debug.WriteLine($"刷新Java版本列表完成，找到 {JavaVersions.Count} 个版本");
+                System.Diagnostics.Debug.WriteLine($"刷新 Java 版本列表完成，找到 {JavaVersions.Count} 个版本");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"刷新Java版本列表失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"刷新 Java 版本列表失败: {ex.Message}");
             }
             finally
             {
@@ -548,7 +548,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                 IsLoadingJavaVersions = true;
                 try
                 {
-                    Console.WriteLine($"正在解析Java可执行文件: {file.Path}");
+                    Console.WriteLine($"正在解析 Java 可执行文件: {file.Path}");
                     // 使用JavaRuntimeService解析Java版本信息
                     var javaVersion = await _javaRuntimeService.GetJavaVersionInfoAsync(file.Path);
                     if (javaVersion != null)
@@ -568,21 +568,21 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                                 IsJDK = javaVersion.IsJDK
                             };
                             JavaVersions.Add(newVersion);
-                            Console.WriteLine("已添加到Java版本列表");
+                            Console.WriteLine("已添加到 Java 版本列表");
                             
                             // 自动选择刚添加的版本
                             SelectedJavaVersion = newVersion;
                         }
                         else
                         {
-                            Console.WriteLine("该Java版本已存在于列表中");
+                            Console.WriteLine("该 Java 版本已存在于列表中");
                             // 如果已存在，自动选择它
                             SelectedJavaVersion = existingVersion;
                         }
                     }
                     else
                     {
-                        Console.WriteLine("无法解析Java版本信息");
+                        Console.WriteLine("无法解析 Java 版本信息");
                     }
                 }
                 finally

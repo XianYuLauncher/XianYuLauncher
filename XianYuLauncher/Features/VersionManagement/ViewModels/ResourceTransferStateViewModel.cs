@@ -66,7 +66,7 @@ public partial class ResourceTransferStateViewModel : ObservableObject
         try
         {
             var modName = Path.GetFileName(destinationPath);
-            System.Diagnostics.Debug.WriteLine($"开始下载Mod: {downloadUrl} 到 {destinationPath}");
+            System.Diagnostics.Debug.WriteLine($"开始下载 Mod: {downloadUrl} 到 {destinationPath}");
 
             CurrentDownloadItem = modName;
 
@@ -83,16 +83,16 @@ public partial class ResourceTransferStateViewModel : ObservableObject
 
             if (success)
             {
-                System.Diagnostics.Debug.WriteLine($"Mod下载完成: {destinationPath}");
+                System.Diagnostics.Debug.WriteLine($"Mod 下载完成: {destinationPath}");
                 return true;
             }
 
-            System.Diagnostics.Debug.WriteLine("下载Mod失败: 服务返回失败");
+            System.Diagnostics.Debug.WriteLine("下载 Mod 失败: 服务返回失败");
             return false;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"下载Mod失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"下载 Mod 失败: {ex.Message}");
             return false;
         }
     }

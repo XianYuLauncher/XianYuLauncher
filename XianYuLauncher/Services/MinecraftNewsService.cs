@@ -56,15 +56,15 @@ public class MinecraftNewsService
                     if (timeSinceCache < CacheExpiration)
                     {
                         var remainingTime = CacheExpiration - timeSinceCache;
-                        System.Diagnostics.Debug.WriteLine($"[Minecraft新闻] 缓存命中，剩余 {remainingTime.TotalHours:F1} 小时刷新");
+                        System.Diagnostics.Debug.WriteLine($"[Minecraft 新闻] 缓存命中，剩余 {remainingTime.TotalHours:F1} 小时刷新");
                         return cacheData.Data;
                     }
-                    System.Diagnostics.Debug.WriteLine($"[Minecraft新闻] 缓存已过期（已过 {timeSinceCache.TotalHours:F1} 小时）");
+                    System.Diagnostics.Debug.WriteLine($"[Minecraft 新闻] 缓存已过期（已过 {timeSinceCache.TotalHours:F1} 小时）");
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[Minecraft新闻] 读取缓存失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[Minecraft 新闻] 读取缓存失败: {ex.Message}");
             }
         }
 
@@ -87,13 +87,13 @@ public class MinecraftNewsService
                 }
                 await File.WriteAllTextAsync(cacheFilePath, cacheJson);
 
-                System.Diagnostics.Debug.WriteLine($"[Minecraft新闻] 获取成功（双源合并），共 {merged.Entries?.Count ?? 0} 条，下次刷新: {DateTime.Now.Add(CacheExpiration):yyyy-MM-dd HH:mm:ss}");
+                System.Diagnostics.Debug.WriteLine($"[Minecraft 新闻] 获取成功（双源合并），共 {merged.Entries?.Count ?? 0} 条，下次刷新: {DateTime.Now.Add(CacheExpiration):yyyy-MM-dd HH:mm:ss}");
                 return merged;
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Minecraft新闻] API 请求失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Minecraft 新闻] API 请求失败: {ex.Message}");
         }
 
         if (File.Exists(cacheFilePath))
@@ -104,7 +104,7 @@ public class MinecraftNewsService
                 var cacheData = JsonConvert.DeserializeObject<MinecraftNewsCacheData>(json);
                 if (cacheData?.Data != null)
                 {
-                    System.Diagnostics.Debug.WriteLine("[Minecraft新闻] 使用过期缓存作为备用");
+                    System.Diagnostics.Debug.WriteLine("[Minecraft 新闻] 使用过期缓存作为备用");
                     return cacheData.Data;
                 }
             }
@@ -147,7 +147,7 @@ public class MinecraftNewsService
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine($"[Minecraft新闻] 拉取 Patch 源: {JavaPatchNotesApiUrl}");
+            System.Diagnostics.Debug.WriteLine($"[Minecraft 新闻] 拉取 Patch 源: {JavaPatchNotesApiUrl}");
             var response = await _httpClient.GetStringAsync(JavaPatchNotesApiUrl);
             var data = JsonConvert.DeserializeObject<MinecraftNewsData>(response);
             if (data?.Entries == null)
@@ -164,7 +164,7 @@ public class MinecraftNewsService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Minecraft新闻] Patch 源失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Minecraft 新闻] Patch 源失败: {ex.Message}");
             return new List<MinecraftNewsEntry>();
         }
     }
@@ -173,7 +173,7 @@ public class MinecraftNewsService
     {
         try
         {
-            System.Diagnostics.Debug.WriteLine($"[Minecraft新闻] 拉取活动源: {ActivityNewsApiUrl}");
+            System.Diagnostics.Debug.WriteLine($"[Minecraft 新闻] 拉取活动源: {ActivityNewsApiUrl}");
             var response = await _httpClient.GetStringAsync(ActivityNewsApiUrl);
             var data = JsonConvert.DeserializeObject<MinecraftActivityNewsData>(response);
             if (data?.Entries == null)
@@ -185,7 +185,7 @@ public class MinecraftNewsService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Minecraft新闻] 活动源失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Minecraft 新闻] 活动源失败: {ex.Message}");
             return new List<MinecraftNewsEntry>();
         }
     }

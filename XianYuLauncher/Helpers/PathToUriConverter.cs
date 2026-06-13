@@ -1,4 +1,4 @@
-﻿using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Data;
 using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Helpers;
@@ -87,7 +87,7 @@ public class PathToUriConverter : IValueConverter
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Uri转换失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Uri 转换失败: {ex.Message}");
                 return null;
             }
         }

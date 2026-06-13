@@ -197,7 +197,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 // 确保目录存在
                 Directory.CreateDirectory(realTempDir);
                 
-                Log.Information($"[Multiplayer] Terracotta目录: {realTerracottaDir}");
+                Log.Information($"[Multiplayer] Terracotta 目录: {realTerracottaDir}");
                 Log.Information($"[Multiplayer] 临时文件目录: {realTempDir}");
                 
                 // 生成时间戳
@@ -221,10 +221,10 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
 
                 var processStartInfo = CreateTerracottaProcessStartInfo(realTerracottaDir, terracottaPath, tempFilePath);
                 
-                Log.Information($"[Multiplayer] 准备启动 Terracotta (通过CMD)");
+                Log.Information($"[Multiplayer] 准备启动 Terracotta (通过 CMD)");
                 Log.Information($"[Multiplayer] 真实可执行文件: {realExePath}");
                 Log.Information($"[Multiplayer] 真实工作目录: {realTerracottaDir}");
-                Log.Information($"[Multiplayer] CMD命令: {processStartInfo.Arguments}");
+                Log.Information($"[Multiplayer] CMD 命令: {processStartInfo.Arguments}");
                 Log.Information($"[Multiplayer] 真实临时文件路径: {tempFilePath}");
                 
                 // 启动进程并保存引用
@@ -531,7 +531,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                         catch (System.Text.Json.JsonException ex)
                         {
                             // JSON解析错误，忽略
-                            Log.Error(ex, $"解析轮询结果JSON错误: {ex.Message}");
+                            Log.Error(ex, $"解析轮询结果 JSON 错误: {ex.Message}");
                         }                        
                     }                        
                     else
@@ -604,25 +604,25 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     // 首先尝试使用peaceful=true优雅退出
                     string panicUrl = $"http://localhost:{_terracottaPort}/panic?peaceful=true";
                     HttpResponseMessage response = await _httpClient.GetAsync(panicUrl, CancellationToken.None);
-                    Log.Information($"调用terracotta /panic接口结果：{response.StatusCode}");
+                    Log.Information($"调用 terracotta /panic 接口结果：{response.StatusCode}");
                     
                     // 等待短暂时间，让进程有时间优雅退出
                     await Task.Delay(2000);
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, $"调用terracotta /panic接口时发生错误：{ex.Message}");
+                    Log.Error(ex, $"调用 terracotta /panic 接口时发生错误：{ex.Message}");
                     // 可以尝试使用peaceful=false强制退出
                     try
                     {
                         string panicUrl = $"http://localhost:{_terracottaPort}/panic?peaceful=false";
                         HttpResponseMessage response = await _httpClient.GetAsync(panicUrl, CancellationToken.None);
-                        Log.Information($"调用terracotta /panic?peaceful=false接口结果：{response.StatusCode}");
+                        Log.Information($"调用 terracotta /panic?peaceful=false 接口结果：{response.StatusCode}");
                         await Task.Delay(2000);
                     }
                     catch (Exception ex2)
                     {
-                        Log.Error(ex2, $"调用terracotta强制退出接口时发生错误：{ex2.Message}");
+                        Log.Error(ex2, $"调用 terracotta 强制退出接口时发生错误：{ex2.Message}");
                     }
                 }
             }
@@ -665,7 +665,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
         catch (Exception ex)
         {
             // 这里可以添加日志记录，但不显示给用户，避免影响体验
-            Log.Error(ex, $"停止terracotta进程时发生错误：{ex.Message}");
+            Log.Error(ex, $"停止 terracotta 进程时发生错误：{ex.Message}");
         }
     }
     
@@ -781,7 +781,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     var processStartInfo = CreateTerracottaProcessStartInfo(realTerracottaDir, terracottaPath, tempFilePath);
 
                     Log.Information($"[Multiplayer-Join] 准备启动 Terracotta 本地服务");
-                    Log.Information($"[Multiplayer-Join] CMD命令: {processStartInfo.Arguments}");
+                    Log.Information($"[Multiplayer-Join] CMD 命令: {processStartInfo.Arguments}");
                     
                     // 启动进程并保存引用
                     _terracottaProcess = Process.Start(processStartInfo);
@@ -834,7 +834,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     }
                     else
                     {
-                        Log.Warning($"[Multiplayer-Join] 临时文件未找到或未在1秒内生成: {tempFilePath}");
+                        Log.Warning($"[Multiplayer-Join] 临时文件未找到或未在 1 秒内生成: {tempFilePath}");
                     }
                 }
                 else
@@ -864,7 +864,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     // 构建包含玩家名的URL
                     string guestingUrl = $"http://localhost:{port}/state/guesting?room={roomId}&player={Uri.EscapeDataString(playerName)}";
                     
-                    Log.Information($"[Multiplayer-Join] 发送Guesting请求: {guestingUrl}");
+                    Log.Information($"[Multiplayer-Join] 发送 Guesting 请求: {guestingUrl}");
                     HttpResponseMessage response = await _httpClient.GetAsync(guestingUrl, cancellationToken);
                     
                     if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)

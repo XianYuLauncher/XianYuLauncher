@@ -527,7 +527,7 @@ namespace XianYuLauncher.Features.Accounts.ViewModels
                 // 保存回文件（自动加密）
                 await _accountManager.SaveAccountsAsync(profiles);
                 
-                System.Diagnostics.Debug.WriteLine($"[CharacterManagement] 角色已保存（token已加密）: {CurrentProfile.Name}");
+                System.Diagnostics.Debug.WriteLine($"[CharacterManagement] 角色已保存（token 已加密）: {CurrentProfile.Name}");
             }
             catch (Exception ex)
             {

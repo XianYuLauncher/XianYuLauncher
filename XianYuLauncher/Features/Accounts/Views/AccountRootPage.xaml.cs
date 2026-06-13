@@ -428,7 +428,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             if (profile == null)
             {
-                Debug.WriteLine("[AccountRootPage] 角色信息为null，跳过头像加载");
+                Debug.WriteLine("[AccountRootPage] 角色信息为 null，跳过头像加载");
                 return;
             }
             
@@ -438,18 +438,18 @@ namespace XianYuLauncher.Features.Accounts.Views
             // 1. 离线玩家使用Steve头像
             if (profile.IsOffline)
             {
-                Debug.WriteLine($"[AccountRootPage] 角色 {profile.Name} 是离线角色，使用Steve头像");
+                Debug.WriteLine($"[AccountRootPage] 角色 {profile.Name} 是离线角色，使用 Steve 头像");
                 // 使用处理过的Steve头像
                 var steveAvatar = _processedSteveAvatar ?? await ProcessSteveAvatarAsync();
                 if (steveAvatar != null)
                 {
-                    Debug.WriteLine($"[AccountRootPage] 成功获取处理后的Steve头像，更新角色 {profile.Name} (索引: {profileIndex}) 的头像");
+                    Debug.WriteLine($"[AccountRootPage] 成功获取处理后的 Steve 头像，更新角色 {profile.Name} (索引: {profileIndex}) 的头像");
                     // 更新ItemsControl中的对应头像
                     UpdateAvatarInList(profile, steveAvatar, profileIndex);
                 }
                 else
                 {
-                    Debug.WriteLine($"[AccountRootPage] 获取处理后的Steve头像失败");
+                    Debug.WriteLine($"[AccountRootPage] 获取处理后的 Steve 头像失败");
                     UpdateAvatarInList(profile, CreateDefaultAvatarBitmap(), profileIndex);
                 }
                 return;
@@ -583,7 +583,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 var bitmap = await GetAvatarFromMojangApiAsync(sessionServerUri, profile.Id);
                 if (bitmap != null)
                 {
-                    Debug.WriteLine($"[AccountRootPage] 成功获取角色 {profile.Name} 的头像，更新UI");
+                    Debug.WriteLine($"[AccountRootPage] 成功获取角色 {profile.Name} 的头像，更新 UI");
                     UpdateAvatarInList(profile, bitmap, profileIndex);
                 }
                 else
@@ -622,14 +622,14 @@ namespace XianYuLauncher.Features.Accounts.Views
                     }
                     // 构建会话服务器URL
                     sessionServerUri = new Uri($"{authServer}sessionserver/session/minecraft/profile/{profile.Id}");
-                    Debug.WriteLine($"[AccountRootPage] 后台刷新构建的外置登录会话服务器URL: {sessionServerUri}");
+                    Debug.WriteLine($"[AccountRootPage] 后台刷新构建的外置登录会话服务器 URL: {sessionServerUri}");
                 }
                 else
                 {
                     // 微软登录角色，使用Mojang API
-                    Debug.WriteLine($"[AccountRootPage] 后台刷新微软登录角色 {profile.Name} 的头像，使用Mojang API");
+                    Debug.WriteLine($"[AccountRootPage] 后台刷新微软登录角色 {profile.Name} 的头像，使用 Mojang API");
                     sessionServerUri = new Uri($"https://sessionserver.mojang.com/session/minecraft/profile/{profile.Id}");
-                    Debug.WriteLine($"[AccountRootPage] 后台刷新Mojang API请求URL: {sessionServerUri}");
+                    Debug.WriteLine($"[AccountRootPage] 后台刷新 Mojang API 请求 URL: {sessionServerUri}");
                 }
                 
                 var bitmap = await GetAvatarFromMojangApiAsync(sessionServerUri, profile.Id);
@@ -685,12 +685,12 @@ namespace XianYuLauncher.Features.Accounts.Views
 
                 if (!string.IsNullOrEmpty(texturesBase64))
                 {
-                    Debug.WriteLine($"[AccountRootPage] 提取到textures的base64数据: {texturesBase64.Substring(0, Math.Min(50, texturesBase64.Length))}...");
+                    Debug.WriteLine($"[AccountRootPage] 提取到 textures 的 base64 数据: {texturesBase64.Substring(0, Math.Min(50, texturesBase64.Length))}...");
                 }
 
                 if (string.IsNullOrEmpty(texturesBase64))
                 {
-                    Debug.WriteLine($"[AccountRootPage] 未找到textures属性，使用默认史蒂夫图标");
+                    Debug.WriteLine($"[AccountRootPage] 未找到 textures 属性，使用默认史蒂夫图标");
                     return await GetDefaultSteveAvatarAsync();
                 }
                 
@@ -726,7 +726,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                     Debug.WriteLine($"[AccountRootPage] 裁剪头像失败，使用默认史蒂夫图标");
                     return await GetDefaultSteveAvatarAsync();
                 }
-                Debug.WriteLine($"[AccountRootPage] 成功生成头像BitmapImage");
+                Debug.WriteLine($"[AccountRootPage] 成功生成头像 BitmapImage");
                 return avatarBitmap;
             }
             catch (Exception ex)
@@ -793,7 +793,7 @@ namespace XianYuLauncher.Features.Accounts.Views
         {
             try
             {
-                Debug.WriteLine($"[AccountRootPage] 开始从皮肤URL裁剪头像: {skinUrl}");
+                Debug.WriteLine($"[AccountRootPage] 开始从皮肤 URL 裁剪头像: {skinUrl}");
                 // 1. 创建CanvasDevice
                 var device = CanvasDevice.GetSharedDevice();
                 CanvasBitmap canvasBitmap;
@@ -848,7 +848,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             {
                 Debug.WriteLine("[AccountRootPage] 开始处理史蒂夫头像");
                 var bitmapImage = await AccountAvatarImageHelper.CreateDefaultAccountAvatarAsync(48);
-                Debug.WriteLine("[AccountRootPage] 成功创建处理后的史蒂夫头像BitmapImage");
+                Debug.WriteLine("[AccountRootPage] 成功创建处理后的史蒂夫头像 BitmapImage");
                 return bitmapImage;
             }
             catch (Exception ex)
@@ -889,40 +889,40 @@ namespace XianYuLauncher.Features.Accounts.Views
                 var profileCardBorder = FindChild<Border>(container, "ProfileCard");
                 if (profileCardBorder != null)
                 {
-                    Debug.WriteLine($"[AccountRootPage] 找到角色 {profile.Name} 对应的卡片Border");
+                    Debug.WriteLine($"[AccountRootPage] 找到角色 {profile.Name} 对应的卡片 Border");
                     
                     // 查找头像Border
                     var avatarBorder = FindChild<Border>(profileCardBorder, null, b => b.Width == 32 && b.Height == 32);
                     if (avatarBorder != null)
                     {
-                        Debug.WriteLine($"[AccountRootPage] 找到角色 {profile.Name} 对应的头像Border");
+                        Debug.WriteLine($"[AccountRootPage] 找到角色 {profile.Name} 对应的头像 Border");
                         
                         // 查找Image控件
                         var image = FindChild<Image>(avatarBorder, "ProfileAvatar");
                         if (image != null)
                         {
-                            Debug.WriteLine($"[AccountRootPage] 找到角色 {profile.Name} 对应的头像Image，更新Source");
+                            Debug.WriteLine($"[AccountRootPage] 找到角色 {profile.Name} 对应的头像 Image，更新 Source");
                             image.Source = bitmap;
                             return;
                         }
                         else
                         {
-                            Debug.WriteLine($"[AccountRootPage] 角色 {profile.Name} 对应的头像Image不存在");
+                            Debug.WriteLine($"[AccountRootPage] 角色 {profile.Name} 对应的头像 Image 不存在");
                         }
                     }
                     else
                     {
-                        Debug.WriteLine($"[AccountRootPage] 角色 {profile.Name} 对应的头像Border不存在");
+                        Debug.WriteLine($"[AccountRootPage] 角色 {profile.Name} 对应的头像 Border 不存在");
                     }
                 }
                 else
                 {
-                    Debug.WriteLine($"[AccountRootPage] 未找到角色 {profile.Name} 对应的卡片Border");
+                    Debug.WriteLine($"[AccountRootPage] 未找到角色 {profile.Name} 对应的卡片 Border");
                 }
             }
             else
             {
-                Debug.WriteLine($"[AccountRootPage] 未能使用索引 {profileIndex} 获取项容器，尝试方案2");
+                Debug.WriteLine($"[AccountRootPage] 未能使用索引 {profileIndex} 获取项容器，尝试方案 2");
                 
                 // 方案2: 通过ID查找匹配的角色项
                 bool found = false;
@@ -943,36 +943,36 @@ namespace XianYuLauncher.Features.Accounts.Views
                             var profileCardBorder = FindChild<Border>(container, "ProfileCard");
                             if (profileCardBorder != null)
                             {
-                                Debug.WriteLine($"[AccountRootPage] 找到角色 {profile.Name} 对应的卡片Border");
+                                Debug.WriteLine($"[AccountRootPage] 找到角色 {profile.Name} 对应的卡片 Border");
                                 
                                 // 查找头像Border
                                 var avatarBorder = FindChild<Border>(profileCardBorder, null, b => b.Width == 32 && b.Height == 32);
                                 if (avatarBorder != null)
                                 {
-                                    Debug.WriteLine($"[AccountRootPage] 找到角色 {profile.Name} 对应的头像Border");
+                                    Debug.WriteLine($"[AccountRootPage] 找到角色 {profile.Name} 对应的头像 Border");
                                     
                                     // 查找Image控件
                                     var image = FindChild<Image>(avatarBorder, "ProfileAvatar");
                                     if (image != null)
                                     {
-                                        Debug.WriteLine($"[AccountRootPage] 找到角色 {profile.Name} 对应的头像Image，更新Source");
+                                        Debug.WriteLine($"[AccountRootPage] 找到角色 {profile.Name} 对应的头像 Image，更新 Source");
                                         image.Source = bitmap;
                                         found = true;
                                         return;
                                     }
                                     else
                                     {
-                                        Debug.WriteLine($"[AccountRootPage] 角色 {profile.Name} 对应的头像Image不存在");
+                                        Debug.WriteLine($"[AccountRootPage] 角色 {profile.Name} 对应的头像 Image 不存在");
                                     }
                                 }
                                 else
                                 {
-                                    Debug.WriteLine($"[AccountRootPage] 角色 {profile.Name} 对应的头像Border不存在");
+                                    Debug.WriteLine($"[AccountRootPage] 角色 {profile.Name} 对应的头像 Border 不存在");
                                 }
                             }
                             else
                             {
-                                Debug.WriteLine($"[AccountRootPage] 未找到角色 {profile.Name} 对应的卡片Border");
+                                Debug.WriteLine($"[AccountRootPage] 未找到角色 {profile.Name} 对应的卡片 Border");
                             }
                         }
                         break;
@@ -982,11 +982,11 @@ namespace XianYuLauncher.Features.Accounts.Views
                 // 方案3: 如果方案2失败，直接遍历所有ProfileCard Border，通过Tag匹配
                 if (!found)
                 {
-                    Debug.WriteLine($"[AccountRootPage] 尝试方案3: 遍历所有ProfileCard Border");
+                    Debug.WriteLine($"[AccountRootPage] 尝试方案 3: 遍历所有 ProfileCard Border");
                     
                     // 查找所有ProfileCard Border
                     var allProfileCards = FindAllChildren<Border>(itemsControl, "ProfileCard");
-                    Debug.WriteLine($"[AccountRootPage] 找到 {allProfileCards.Count} 个ProfileCard Border");
+                    Debug.WriteLine($"[AccountRootPage] 找到 {allProfileCards.Count} 个 ProfileCard Border");
                     
                     // 遍历所有卡片，找到对应的角色卡片
                     for (int i = 0; i < allProfileCards.Count; i++)
@@ -1008,30 +1008,30 @@ namespace XianYuLauncher.Features.Accounts.Views
                                         actualIndex++;
                                         if (actualIndex == profileIndex)
                                         {
-                                            Debug.WriteLine($"[AccountRootPage] 通过索引匹配找到角色 {profile.Name} 对应的卡片Border");
+                                            Debug.WriteLine($"[AccountRootPage] 通过索引匹配找到角色 {profile.Name} 对应的卡片 Border");
                                             
                                             // 查找头像Border
                                             var avatarBorder = FindChild<Border>(profileCardBorder, null, b => b.Width == 32 && b.Height == 32);
                                             if (avatarBorder != null)
                                             {
-                                                Debug.WriteLine($"[AccountRootPage] 找到角色 {profile.Name} 对应的头像Border");
+                                                Debug.WriteLine($"[AccountRootPage] 找到角色 {profile.Name} 对应的头像 Border");
                                                 
                                                 // 查找Image控件
                                                 var image = FindChild<Image>(avatarBorder, "ProfileAvatar");
                                                 if (image != null)
                                                 {
-                                                    Debug.WriteLine($"[AccountRootPage] 找到角色 {profile.Name} 对应的头像Image，更新Source");
+                                                    Debug.WriteLine($"[AccountRootPage] 找到角色 {profile.Name} 对应的头像 Image，更新 Source");
                                                     image.Source = bitmap;
                                                     return;
                                                 }
                                                 else
                                                 {
-                                                    Debug.WriteLine($"[AccountRootPage] 角色 {profile.Name} 对应的头像Image不存在");
+                                                    Debug.WriteLine($"[AccountRootPage] 角色 {profile.Name} 对应的头像 Image 不存在");
                                                 }
                                             }
                                             else
                                             {
-                                                Debug.WriteLine($"[AccountRootPage] 角色 {profile.Name} 对应的头像Border不存在");
+                                                Debug.WriteLine($"[AccountRootPage] 角色 {profile.Name} 对应的头像 Border 不存在");
                                             }
                                             break;
                                         }
@@ -1359,7 +1359,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                 if (!resolvedUrl.StartsWith("http://") && !resolvedUrl.StartsWith("https://"))
                 {
                     resolvedUrl = $"https://{resolvedUrl}";
-                    Debug.WriteLine($"[AccountRootPage] 自动补全HTTPS协议: {inputUrl} -> {resolvedUrl}");
+                    Debug.WriteLine($"[AccountRootPage] 自动补全 HTTPS 协议: {inputUrl} -> {resolvedUrl}");
                 }
 
                 const int maxRedirects = 10;
@@ -1409,7 +1409,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                             // 如果ALI指向不同的URL，则使用ALIURL
                             if (aliUrl != resolvedUrl)
                             {
-                                Debug.WriteLine($"[AccountRootPage] 处理ALI头: {aliUrl}");
+                                Debug.WriteLine($"[AccountRootPage] 处理 ALI 头: {aliUrl}");
                                 resolvedUrl = aliUrl;
                             }
                         }
@@ -1428,7 +1428,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[AccountRootPage] 解析API地址失败: {ex.Message}");
+                Debug.WriteLine($"[AccountRootPage] 解析 API 地址失败: {ex.Message}");
                 
                 // 如果解析失败，返回原始URL（已补全HTTPS）
                 if (!inputUrl.StartsWith("http://") && !inputUrl.StartsWith("https://"))
@@ -1805,7 +1805,7 @@ namespace XianYuLauncher.Features.Accounts.Views
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[AccountRootPage] Yggdrasil认证异常: {ex.Message}");
+                Debug.WriteLine($"[AccountRootPage] Yggdrasil 认证异常: {ex.Message}");
                 return null;
             }
         }
@@ -2087,7 +2087,7 @@ namespace XianYuLauncher.Features.Accounts.Views
                     // 提取API地址
                     string encodedApiUrl = draggedText.Substring("authlib-injector:yggdrasil-server:".Length);
                     string apiUrl = Uri.UnescapeDataString(encodedApiUrl);
-                    Debug.WriteLine($"[AccountRootPage] 解析出API地址: {apiUrl}");
+                    Debug.WriteLine($"[AccountRootPage] 解析出 API 地址: {apiUrl}");
 
                     var result = await _dialogService.ShowCustomDialogAsync(
                         "添加验证服务器",
