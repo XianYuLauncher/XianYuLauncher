@@ -1,5 +1,3 @@
-using System;
-
 namespace XianYuLauncher.Shared.Models;
 
 public sealed record BreadcrumbNavigationRoot
