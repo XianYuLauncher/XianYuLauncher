@@ -94,12 +94,12 @@ public class GameLaunchService : IGameLaunchService
             // 4. 检查必要文件
             if (!File.Exists(jarPath))
             {
-                throw new FileNotFoundException($"游戏JAR文件不存在: {jarPath}");
+                throw new FileNotFoundException($"游戏 JAR 文件不存在: {jarPath}");
             }
             
             if (!File.Exists(jsonPath))
             {
-                throw new FileNotFoundException($"游戏JSON文件不存在: {jsonPath}");
+                throw new FileNotFoundException($"游戏 JSON 文件不存在: {jsonPath}");
             }
             
             // 5. 读取统一解析后的版本信息
@@ -130,7 +130,7 @@ public class GameLaunchService : IGameLaunchService
             
             if (string.IsNullOrEmpty(javaPath))
             {
-                throw new InvalidOperationException("未找到Java运行时环境，请先安装Java");
+                throw new InvalidOperationException("未找到 Java 运行时环境，请先安装 Java");
             }
             string resolvedJavaPath = javaPath;
             
@@ -254,14 +254,14 @@ public class GameLaunchService : IGameLaunchService
             if (!File.Exists(jarPath))
             {
                 _logger.LogError("游戏 JAR 文件不存在: {JarPath}", jarPath);
-                return new GameLaunchResult { Success = false, ErrorMessage = $"游戏JAR文件不存在: {jarPath}" };
+                return new GameLaunchResult { Success = false, ErrorMessage = $"游戏 JAR 文件不存在: {jarPath}" };
             }
             _logger.LogInformation("JAR 文件存在");
             
             if (!File.Exists(jsonPath))
             {
                 _logger.LogError("游戏 JSON 文件不存在: {JsonPath}", jsonPath);
-                return new GameLaunchResult { Success = false, ErrorMessage = $"游戏JSON文件不存在: {jsonPath}" };
+                return new GameLaunchResult { Success = false, ErrorMessage = $"游戏 JSON 文件不存在: {jsonPath}" };
             }
             _logger.LogInformation("JSON 文件存在");
             
@@ -297,7 +297,7 @@ public class GameLaunchService : IGameLaunchService
             
             // 9. 选择 Java 运行时（优先使用临时覆盖路径）
             _logger.LogInformation("步骤 9: 选择 Java 运行时");
-            statusCallback?.Invoke("正在查找Java运行时环境...");
+            statusCallback?.Invoke("正在查找 Java 运行时环境...");
             
             string? javaPath;
             if (!string.IsNullOrEmpty(overrideJavaPath) && File.Exists(overrideJavaPath))
@@ -314,7 +314,7 @@ public class GameLaunchService : IGameLaunchService
             if (string.IsNullOrEmpty(javaPath))
             {
                 _logger.LogError("未找到 Java 运行时环境");
-                return new GameLaunchResult { Success = false, ErrorMessage = "未找到Java运行时环境，请先安装Java" };
+                return new GameLaunchResult { Success = false, ErrorMessage = "未找到 Java 运行时环境，请先安装 Java" };
             }
             string resolvedJavaPath = javaPath;
             _logger.LogInformation("选中 Java 路径: {JavaPath}", javaPath);

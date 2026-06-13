@@ -292,7 +292,7 @@ public class ModpackInstallationService : IModpackInstallationService
         var indexData = JObject.Parse(indexJson);
 
         string minecraftVersion = indexData["dependencies"]?["minecraft"]?.ToString()
-            ?? throw new Exception("整合包中缺少Minecraft版本依赖信息");
+            ?? throw new Exception("整合包中缺少 Minecraft 版本依赖信息");
 
         var (modLoaderType, _, modLoaderVersion) = ParseModrinthDependencies(indexData);
 
@@ -370,7 +370,7 @@ public class ModpackInstallationService : IModpackInstallationService
 
         // 提取依赖信息
         string minecraftVersion = indexData["dependencies"]?["minecraft"]?.ToString()
-            ?? throw new Exception("整合包中缺少Minecraft版本依赖信息");
+            ?? throw new Exception("整合包中缺少 Minecraft 版本依赖信息");
 
         var (modLoaderType, _, modLoaderVersion) = ParseModrinthDependencies(indexData);
 
