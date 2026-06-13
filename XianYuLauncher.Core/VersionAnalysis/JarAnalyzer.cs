@@ -77,7 +77,7 @@ namespace XianYuLauncher.Core.VersionAnalysis
                 {
                     if (_logger != null)
                     {
-                        _logger.LogError(ex, "[JarAnalyzer] 分析 .jar 失败，版本目录: {VersionDirectory}，版本ID: {VersionId}，JAR 路径: {JarPath}", versionDirectory, versionId, jarPath);
+                        _logger.LogError(ex, "[JarAnalyzer] 分析 .jar 失败，版本目录: {VersionDirectory}，版本 ID: {VersionId}，JAR 路径: {JarPath}", versionDirectory, versionId, jarPath);
                     }
                     else
                     {

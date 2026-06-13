@@ -133,7 +133,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             var officialUrl = GetNeoForgeInstallerUrl(modLoaderVersion);
             
             Logger.LogInformation("使用下载源 {DownloadSource} 下载NeoForge安装器: {Url}", downloadSource.Name, neoforgeInstallerUrl);
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载NeoForge安装器: {neoforgeInstallerUrl}");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载 NeoForge 安装器: {neoforgeInstallerUrl}");
             
             var downloadResult = await DownloadManager.DownloadFileAsync(
                 neoforgeInstallerUrl,

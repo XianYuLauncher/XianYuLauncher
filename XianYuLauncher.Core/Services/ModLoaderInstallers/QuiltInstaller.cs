@@ -198,7 +198,7 @@ public class QuiltInstaller : ModLoaderInstallerBase
         var officialUrl = $"{QuiltMetaApiUrl}/versions/loader/{minecraftVersionId}/{quiltVersion}/profile/json";
         
         Logger.LogInformation("使用下载源 {DownloadSource} 获取Quilt Profile: {Url}", downloadSource.Name, url);
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 获取Quilt Profile: {url}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 获取 Quilt Profile: {url}");
 
         try
         {

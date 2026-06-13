@@ -48,7 +48,7 @@ public class AccountManager : IAccountManager
             // 🔓 解密所有token供内存使用
             DecryptAccountTokens(accounts);
             
-            System.Diagnostics.Debug.WriteLine($"[AccountManager] 成功加载 {accounts.Count} 个角色{(needsMigration ? "（已自动加密明文token）" : "")}");
+            System.Diagnostics.Debug.WriteLine($"[AccountManager] 成功加载 {accounts.Count} 个角色{(needsMigration ? "（已自动加密明文 token）" : "")}");
             return accounts;
         }
         catch (Exception ex)
@@ -74,7 +74,7 @@ public class AccountManager : IAccountManager
             var json = JsonConvert.SerializeObject(profilesToSave, Formatting.Indented);
             await File.WriteAllTextAsync(accountsPath, json);
             
-            System.Diagnostics.Debug.WriteLine($"[AccountManager] 成功保存 {profiles.Count} 个角色（token已加密）");
+            System.Diagnostics.Debug.WriteLine($"[AccountManager] 成功保存 {profiles.Count} 个角色（token 已加密）");
         }
         catch (Exception ex)
         {
@@ -142,7 +142,7 @@ public class AccountManager : IAccountManager
             // 检查AccessToken
             if (!string.IsNullOrEmpty(profile.AccessToken) && !TokenEncryption.IsEncrypted(profile.AccessToken))
             {
-                System.Diagnostics.Debug.WriteLine($"[AccountManager] ⚠️ 检测到明文AccessToken: {profile.Name}");
+                System.Diagnostics.Debug.WriteLine($"[AccountManager] ⚠️ 检测到明文 AccessToken: {profile.Name}");
                 needsMigration = true;
             }
 
@@ -156,20 +156,20 @@ public class AccountManager : IAccountManager
             // 检查RefreshToken
             if (!string.IsNullOrEmpty(profile.RefreshToken) && !TokenEncryption.IsEncrypted(profile.RefreshToken))
             {
-                System.Diagnostics.Debug.WriteLine($"[AccountManager] ⚠️ 检测到明文RefreshToken: {profile.Name}");
+                System.Diagnostics.Debug.WriteLine($"[AccountManager] ⚠️ 检测到明文 RefreshToken: {profile.Name}");
                 needsMigration = true;
             }
 
             if (!string.IsNullOrEmpty(profile.ClientToken) && !TokenEncryption.IsEncrypted(profile.ClientToken))
             {
-                System.Diagnostics.Debug.WriteLine($"[AccountManager] ⚠️ 检测到明文ClientToken: {profile.Name}");
+                System.Diagnostics.Debug.WriteLine($"[AccountManager] ⚠️ 检测到明文 ClientToken: {profile.Name}");
                 needsMigration = true;
             }
         }
         
         if (needsMigration)
         {
-            System.Diagnostics.Debug.WriteLine("[AccountManager] 🔒 开始自动迁移明文token...");
+            System.Diagnostics.Debug.WriteLine("[AccountManager] 🔒 开始自动迁移明文 token...");
             
             // 加密所有明文token
             var encryptedProfiles = EncryptAccountsForSave(profiles);
@@ -178,7 +178,7 @@ public class AccountManager : IAccountManager
             var json = JsonConvert.SerializeObject(encryptedProfiles, Formatting.Indented);
             await File.WriteAllTextAsync(profilesPath, json);
             
-            System.Diagnostics.Debug.WriteLine("[AccountManager] ✅ 明文token迁移完成，已加密保存");
+            System.Diagnostics.Debug.WriteLine("[AccountManager] ✅ 明文 token 迁移完成，已加密保存");
         }
         
         return needsMigration;

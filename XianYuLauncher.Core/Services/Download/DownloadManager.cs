@@ -294,7 +294,7 @@ public class DownloadManager : IDownloadManager
             }
             catch (HashVerificationException ex)
             {
-                _logger.LogError(ex, $"SHA1验证失败: {url}");
+                _logger.LogError(ex, $"SHA1 验证失败: {url}");
                 lastException = ex;
 
                 if (attempt < maxAttempts)

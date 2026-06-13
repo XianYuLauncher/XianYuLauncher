@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Text.Json;
 using XianYuLauncher.Core.Contracts.Services;
 using XianYuLauncher.Core.Models;
@@ -954,16 +954,16 @@ public class CurseForgeService
             try
             {
                 // 获取依赖Mod的详情
-                System.Diagnostics.Debug.WriteLine($"  - 正在获取Mod详情：{dependency.ModId}");
+                System.Diagnostics.Debug.WriteLine($"  - 正在获取 Mod 详情：{dependency.ModId}");
                 var depMod = await GetModDetailAsync(dependency.ModId);
                 
                 if (depMod == null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"  - 失败：获取Mod详情返回null");
+                    System.Diagnostics.Debug.WriteLine($"  - 失败：获取 Mod 详情返回 null");
                     continue;
                 }
                 
-                System.Diagnostics.Debug.WriteLine($"  - 成功获取Mod详情：{depMod.Name}");
+                System.Diagnostics.Debug.WriteLine($"  - 成功获取 Mod 详情：{depMod.Name}");
 
                 // 解析依赖的目标目录（按依赖项目类型）
                 string dependencyDestinationPath = destinationPath;
@@ -1065,7 +1065,7 @@ public class CurseForgeService
                 
                 if (File.Exists(filePath))
                 {
-                    System.Diagnostics.Debug.WriteLine($"  - 文件已存在，检查SHA1");
+                    System.Diagnostics.Debug.WriteLine($"  - 文件已存在，检查 SHA1");
                     var sha1Hash = depFile.Hashes?.FirstOrDefault(h => h.Algo == 1); // 1 = SHA1
                     if (sha1Hash != null && !string.IsNullOrEmpty(sha1Hash.Value))
                     {
@@ -1074,22 +1074,22 @@ public class CurseForgeService
                         
                         if (alreadyExists)
                         {
-                            System.Diagnostics.Debug.WriteLine($"  - 跳过：SHA1匹配，文件已存在");
-                            System.Diagnostics.Debug.WriteLine($"    - 期望SHA1: {sha1Hash.Value}");
-                            System.Diagnostics.Debug.WriteLine($"    - 实际SHA1: {existingSha1}");
+                            System.Diagnostics.Debug.WriteLine($"  - 跳过：SHA1 匹配，文件已存在");
+                            System.Diagnostics.Debug.WriteLine($"    - 期望 SHA1: {sha1Hash.Value}");
+                            System.Diagnostics.Debug.WriteLine($"    - 实际 SHA1: {existingSha1}");
                             processedCount++;
                             continue;
                         }
                         else
                         {
-                            System.Diagnostics.Debug.WriteLine($"  - 需要重新下载：SHA1不匹配");
-                            System.Diagnostics.Debug.WriteLine($"    - 期望SHA1: {sha1Hash.Value}");
-                            System.Diagnostics.Debug.WriteLine($"    - 实际SHA1: {existingSha1}");
+                            System.Diagnostics.Debug.WriteLine($"  - 需要重新下载：SHA1 不匹配");
+                            System.Diagnostics.Debug.WriteLine($"    - 期望 SHA1: {sha1Hash.Value}");
+                            System.Diagnostics.Debug.WriteLine($"    - 实际 SHA1: {existingSha1}");
                         }
                     }
                     else
                     {
-                        System.Diagnostics.Debug.WriteLine($"  - 需要重新下载：没有期望的SHA1值");
+                        System.Diagnostics.Debug.WriteLine($"  - 需要重新下载：没有期望的 SHA1 值");
                     }
                 }
                 else
@@ -1162,7 +1162,7 @@ public class CurseForgeService
             }
             
             var jarFiles = Directory.GetFiles(destinationPath, "*.jar");
-            System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 扫描现有文件：找到{jarFiles.Length}个jar文件");
+            System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 扫描现有文件：找到{jarFiles.Length}个 jar 文件");
             
             // 注意：CurseForge没有像Modrinth那样在文件中嵌入项目ID
             // 这里我们只能通过文件名或其他方式来识别，暂时返回空字典
@@ -1193,7 +1193,7 @@ public class CurseForgeService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 计算SHA1失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[CurseForgeService] 计算 SHA1 失败: {ex.Message}");
             return string.Empty;
         }
     }

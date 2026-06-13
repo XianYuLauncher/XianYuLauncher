@@ -199,7 +199,7 @@ public class LegacyFabricInstaller : ModLoaderInstallerBase
         var officialUrl = $"{LegacyFabricMetaApiUrl}/versions/loader/{minecraftVersionId}/{fabricVersion}/profile/json";
         
         Logger.LogInformation("使用下载源 {DownloadSource} 获取Legacy Fabric Profile: {Url}", downloadSource.Name, url);
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 获取Legacy Fabric Profile: {url}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 获取 Legacy Fabric Profile: {url}");
 
         try
         {

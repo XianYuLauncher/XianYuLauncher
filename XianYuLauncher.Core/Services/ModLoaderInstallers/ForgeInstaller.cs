@@ -134,7 +134,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
             var officialUrl = GetForgeInstallerUrl(minecraftVersionId, modLoaderVersion);
             
             Logger.LogInformation("使用下载源 {DownloadSource} 下载Forge安装器: {Url}", downloadSource.Name, forgeInstallerUrl);
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载Forge安装器: {forgeInstallerUrl}");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载 Forge 安装器: {forgeInstallerUrl}");
             
             var downloadResult = await DownloadManager.DownloadFileAsync(
                 forgeInstallerUrl,

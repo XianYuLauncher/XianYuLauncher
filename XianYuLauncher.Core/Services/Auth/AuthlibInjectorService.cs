@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using Newtonsoft.Json;
 using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
@@ -611,7 +611,7 @@ public sealed class AuthlibInjectorService
         }
         catch (TaskCanceledException)
         {
-            _logger.LogWarning("[AuthlibInjector] ⚠️ 令牌验证超时（10秒），假设令牌有效");
+            _logger.LogWarning("[AuthlibInjector] ⚠️ 令牌验证超时（10 秒），假设令牌有效");
             _logger.LogInformation("[AuthlibInjector] ========== 验证完成 ==========");
             return true;
         }
@@ -736,7 +736,7 @@ public sealed class AuthlibInjectorService
         }
         catch (TaskCanceledException)
         {
-            _logger.LogWarning("[AuthlibInjector] ⚠️ 皮肤上传超时（30秒）");
+            _logger.LogWarning("[AuthlibInjector] ⚠️ 皮肤上传超时（30 秒）");
             _logger.LogInformation("[AuthlibInjector] ========== 上传完成 ==========");
             return (false, false);
         }
@@ -877,7 +877,7 @@ public sealed class AuthlibInjectorService
         }
         catch (TaskCanceledException)
         {
-            _logger.LogWarning("[AuthlibInjector] ⚠️ 令牌刷新超时（15秒）");
+            _logger.LogWarning("[AuthlibInjector] ⚠️ 令牌刷新超时（15 秒）");
             _logger.LogInformation("[AuthlibInjector] ========== 刷新完成 ==========");
             return null;
         }

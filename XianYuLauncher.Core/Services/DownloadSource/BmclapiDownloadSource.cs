@@ -167,7 +167,7 @@ public class BmclapiDownloadSource : IDownloadSource
     {
         // BMCLAPI支持与官方源相同的路径结构，只需替换域名
         string convertedUrl = ConvertToBmclapiUrl(originalUrl);
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: {Name}, 资源类型: {resourceType}, 原始URL: {originalUrl}, 转换后URL: {convertedUrl}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: {Name}, 资源类型: {resourceType}, 原始 URL: {originalUrl}, 转换后 URL: {convertedUrl}");
         return convertedUrl;
     }
     
@@ -214,7 +214,7 @@ public class BmclapiDownloadSource : IDownloadSource
                 .Replace("https://maven.quiltmc.org/repository/release", "https://bmclapi2.bangbang93.com/maven")
                 .Replace("https://maven.fabricmc.net", "https://bmclapi2.bangbang93.com/maven");
             
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 将原始URL {originalUrl} 转换为BMCLAPI URL {bmclapiUrl}");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 将原始 URL {originalUrl} 转换为 BMCLAPI URL {bmclapiUrl}");
             return bmclapiUrl;
         }
         
@@ -255,7 +255,7 @@ public class BmclapiDownloadSource : IDownloadSource
         string baseUrl = "https://bmclapi2.bangbang93.com/maven";
         string fullUrl = $"{baseUrl}/{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";
         
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为库 {libraryName} 构建BMCLAPI下载URL: {fullUrl}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为库 {libraryName} 构建 BMCLAPI 下载 URL: {fullUrl}");
         return fullUrl;
     }
     
@@ -269,7 +269,7 @@ public class BmclapiDownloadSource : IDownloadSource
     {
         // 构建BMCLAPI的客户端JAR下载URL
         string bmclapiUrl = $"https://bmclapi2.bangbang93.com/version/{versionId}/client";
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: {Name}, 转换前URL: {originalUrl}, 转换后客户端JAR下载URL: {bmclapiUrl}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: {Name}, 转换前 URL: {originalUrl}, 转换后客户端 JAR 下载 URL: {bmclapiUrl}");
         return bmclapiUrl;
     }
     
@@ -283,7 +283,7 @@ public class BmclapiDownloadSource : IDownloadSource
     {
         // 构建BMCLAPI的客户端JSON下载URL
         string bmclapiUrl = $"https://bmclapi2.bangbang93.com/version/{versionId}/json";
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: {Name}, 转换前URL: {originalUrl}, 转换后客户端JSON下载URL: {bmclapiUrl}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: {Name}, 转换前 URL: {originalUrl}, 转换后客户端 JSON 下载 URL: {bmclapiUrl}");
         return bmclapiUrl;
     }
     
@@ -318,7 +318,7 @@ public class BmclapiDownloadSource : IDownloadSource
     {
         // BMCLAPI Forge版本列表URL格式：https://bmclapi2.bangbang93.com/forge/minecraft/{minecraftVersion}
         string url = $"https://bmclapi2.bangbang93.com/forge/minecraft/{minecraftVersion}";
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取BMCLAPI Forge版本列表URL: {url}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为 Minecraft {minecraftVersion} 获取 BMCLAPI Forge 版本列表 URL: {url}");
         return url;
     }
     
@@ -332,7 +332,7 @@ public class BmclapiDownloadSource : IDownloadSource
     {
         // BMCLAPI Forge安装包URL格式：https://bmclapi2.bangbang93.com/maven/net/minecraftforge/forge/{minecraftVersion}-{forgeVersion}/forge-{minecraftVersion}-{forgeVersion}-installer.jar
         string url = $"https://bmclapi2.bangbang93.com/maven/net/minecraftforge/forge/{minecraftVersion}-{forgeVersion}/forge-{minecraftVersion}-{forgeVersion}-installer.jar";
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取BMCLAPI Forge {forgeVersion} 安装包URL: {url}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为 Minecraft {minecraftVersion} 获取 BMCLAPI Forge {forgeVersion} 安装包 URL: {url}");
         return url;
     }
     
@@ -345,7 +345,7 @@ public class BmclapiDownloadSource : IDownloadSource
     {
         // BMCLAPI Fabric版本列表URL格式：https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader/{minecraftVersion}
         string url = $"https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader/{minecraftVersion}";
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取BMCLAPI Fabric版本列表URL: {url}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为 Minecraft {minecraftVersion} 获取 BMCLAPI Fabric 版本列表 URL: {url}");
         return url;
     }
     
@@ -359,7 +359,7 @@ public class BmclapiDownloadSource : IDownloadSource
     {
         // BMCLAPI Fabric完整配置URL格式：https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader/{minecraftVersion}/{fabricVersion}/profile/json
         string url = $"https://bmclapi2.bangbang93.com/fabric-meta/v2/versions/loader/{minecraftVersion}/{fabricVersion}/profile/json";
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取BMCLAPI Fabric {fabricVersion} 完整配置URL: {url}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为 Minecraft {minecraftVersion} 获取 BMCLAPI Fabric {fabricVersion} 完整配置 URL: {url}");
         return url;
     }
     
@@ -372,7 +372,7 @@ public class BmclapiDownloadSource : IDownloadSource
     {
         // BMCLAPI Quilt版本列表URL格式：https://bmclapi2.bangbang93.com/quilt-meta/v3/versions/loader/{minecraftVersion}
         string url = $"https://bmclapi2.bangbang93.com/quilt-meta/v3/versions/loader/{minecraftVersion}";
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取BMCLAPI Quilt版本列表URL: {url}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为 Minecraft {minecraftVersion} 获取 BMCLAPI Quilt 版本列表 URL: {url}");
         return url;
     }
     
@@ -386,7 +386,7 @@ public class BmclapiDownloadSource : IDownloadSource
     {
         // BMCLAPI Quilt完整配置URL格式：https://bmclapi2.bangbang93.com/quilt-meta/v3/versions/loader/{minecraftVersion}/{quiltVersion}/profile/json
         string url = $"https://bmclapi2.bangbang93.com/quilt-meta/v3/versions/loader/{minecraftVersion}/{quiltVersion}/profile/json";
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取BMCLAPI Quilt {quiltVersion} 完整配置URL: {url}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为 Minecraft {minecraftVersion} 获取 BMCLAPI Quilt {quiltVersion} 完整配置 URL: {url}");
         return url;
     }
 

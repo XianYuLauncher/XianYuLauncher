@@ -199,7 +199,7 @@ public class FabricInstaller : ModLoaderInstallerBase
         var officialUrl = $"{FabricMetaApiUrl}/versions/loader/{minecraftVersionId}/{fabricVersion}/profile/json";
         
         Logger.LogInformation("使用下载源 {DownloadSource} 获取Fabric Profile: {Url}", downloadSource.Name, url);
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 获取Fabric Profile: {url}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 获取 Fabric Profile: {url}");
 
         try
         {

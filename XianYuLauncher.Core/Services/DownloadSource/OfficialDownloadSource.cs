@@ -164,7 +164,7 @@ public class OfficialDownloadSource : IDownloadSource
     public string GetResourceUrl(string resourceType, string originalUrl)
     {
         // 官方源直接使用原始URL
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: {Name}, 资源类型: {resourceType}, 原始URL: {originalUrl}, 转换后URL: {originalUrl}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: {Name}, 资源类型: {resourceType}, 原始 URL: {originalUrl}, 转换后 URL: {originalUrl}");
         return originalUrl;
     }
     
@@ -241,7 +241,7 @@ public class OfficialDownloadSource : IDownloadSource
         string baseUrl = "https://repo1.maven.org/maven2";
         string fullUrl = $"{baseUrl}/{groupId.Replace('.', '/')}/{artifactId}/{version}/{fileName}";
         
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为库 {libraryName} 构建官方下载URL: {fullUrl}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为库 {libraryName} 构建官方下载 URL: {fullUrl}");
         return fullUrl;
     }
     
@@ -254,7 +254,7 @@ public class OfficialDownloadSource : IDownloadSource
     public string GetClientJarUrl(string versionId, string originalUrl)
     {
         // 官方源直接使用原始URL
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: Official, 客户端JAR下载URL: {originalUrl}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: Official, 客户端 JAR 下载 URL: {originalUrl}");
         return originalUrl;
         }
 
@@ -267,7 +267,7 @@ public class OfficialDownloadSource : IDownloadSource
     public string GetClientJsonUrl(string versionId, string originalUrl)
     {
         // 官方源直接使用原始URL
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: Official, 客户端JSON下载URL: {originalUrl}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 当前下载源: Official, 客户端 JSON 下载 URL: {originalUrl}");
         return originalUrl;
     }
     
@@ -280,7 +280,7 @@ public class OfficialDownloadSource : IDownloadSource
     {
         // 官方Forge版本列表URL改为maven-metadata.xml
         string url = "https://maven.minecraftforge.net/net/minecraftforge/forge/maven-metadata.xml";
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取官方Forge版本列表URL: {url}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为 Minecraft {minecraftVersion} 获取官方 Forge 版本列表 URL: {url}");
         return url;
     }
     
@@ -294,7 +294,7 @@ public class OfficialDownloadSource : IDownloadSource
     {
         // 构建官方Forge安装包URL，格式为：https://files.minecraftforge.net/maven/net/minecraftforge/forge/{mcVersion}-{forgeVersion}/forge-{mcVersion}-{forgeVersion}-installer.jar
         string url = $"https://files.minecraftforge.net/maven/net/minecraftforge/forge/{minecraftVersion}-{forgeVersion}/forge-{minecraftVersion}-{forgeVersion}-installer.jar";
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取官方Forge {forgeVersion} 安装包URL: {url}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为 Minecraft {minecraftVersion} 获取官方 Forge {forgeVersion} 安装包 URL: {url}");
         return url;
     }
     
@@ -306,7 +306,7 @@ public class OfficialDownloadSource : IDownloadSource
     public string GetFabricVersionsUrl(string minecraftVersion)
     {
         string url = $"https://meta.fabricmc.net/v2/versions/loader/{minecraftVersion}";
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取官方Fabric版本列表URL: {url}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为 Minecraft {minecraftVersion} 获取官方 Fabric 版本列表 URL: {url}");
         return url;
     }
     
@@ -319,7 +319,7 @@ public class OfficialDownloadSource : IDownloadSource
     public string GetFabricProfileUrl(string minecraftVersion, string fabricVersion)
     {
         string url = $"https://meta.fabricmc.net/v2/versions/loader/{minecraftVersion}/{fabricVersion}/profile/json";
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取官方Fabric {fabricVersion} 完整配置URL: {url}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为 Minecraft {minecraftVersion} 获取官方 Fabric {fabricVersion} 完整配置 URL: {url}");
         return url;
     }
     
@@ -331,7 +331,7 @@ public class OfficialDownloadSource : IDownloadSource
     public string GetQuiltVersionsUrl(string minecraftVersion)
     {
         string url = $"https://meta.quiltmc.org/v3/versions/loader/{minecraftVersion}";
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取官方Quilt版本列表URL: {url}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为 Minecraft {minecraftVersion} 获取官方 Quilt 版本列表 URL: {url}");
         return url;
     }
     
@@ -344,7 +344,7 @@ public class OfficialDownloadSource : IDownloadSource
     public string GetQuiltProfileUrl(string minecraftVersion, string quiltVersion)
     {
         string url = $"https://meta.quiltmc.org/v3/versions/loader/{minecraftVersion}/{quiltVersion}/profile/json";
-        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为Minecraft {minecraftVersion} 获取官方Quilt {quiltVersion} 完整配置URL: {url}");
+        System.Diagnostics.Debug.WriteLine($"[DEBUG] 为 Minecraft {minecraftVersion} 获取官方 Quilt {quiltVersion} 完整配置 URL: {url}");
         return url;
     }
 

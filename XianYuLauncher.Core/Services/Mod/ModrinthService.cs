@@ -123,7 +123,7 @@ public class ModrinthService
     private async Task<HttpResponseMessage> SendWithFallbackAsync(string originalUrl, string resourceType = "modrinth_api")
     {
         System.Diagnostics.Debug.WriteLine($"[ModrinthService] SendWithFallbackAsync 开始");
-        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 原始URL: {originalUrl}");
+        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 原始 URL: {originalUrl}");
         System.Diagnostics.Debug.WriteLine($"[ModrinthService] 资源类型: {resourceType}");
         System.Diagnostics.Debug.WriteLine($"[ModrinthService] FallbackDownloadManager 是否可用: {_fallbackDownloadManager != null}");
         
@@ -138,7 +138,7 @@ public class ModrinthService
             System.Diagnostics.Debug.WriteLine($"[ModrinthService] Fallback 结果: Success={result.Success}, UsedSource={result.UsedSourceKey}");
             if (result.Success && result.UsedUrl != null)
             {
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 实际请求URL: {result.UsedUrl}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 实际请求 URL: {result.UsedUrl}");
             }
             
             if (!result.Success)
@@ -153,7 +153,7 @@ public class ModrinthService
         var transformedUrl = resourceType == "modrinth_cdn"
             ? source.TransformModrinthCdnUrl(originalUrl)
             : source.TransformModrinthApiUrl(originalUrl);
-        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 转换后URL: {transformedUrl}");
+        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 转换后 URL: {transformedUrl}");
         using var request = CreateRequest(HttpMethod.Get, transformedUrl, source);
         return await _httpClient.SendAsync(request);
     }
@@ -312,11 +312,11 @@ public class ModrinthService
             if (_tagCache.TryGetValue(cacheKey, out var cacheEntry) && cacheEntry.ExpiresAt > now)
             {
                 var remaining = cacheEntry.ExpiresAt - now;
-                System.Diagnostics.Debug.WriteLine($"[ModrinthTag缓存] 命中 {cacheKey}，剩余 {remaining.TotalHours:F1} 小时刷新");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthTag 缓存] 命中 {cacheKey}，剩余 {remaining.TotalHours:F1} 小时刷新");
                 return cacheEntry.Items.ToList();
             }
 
-            System.Diagnostics.Debug.WriteLine($"[ModrinthTag缓存] 未命中 {cacheKey}，将请求远端");
+            System.Diagnostics.Debug.WriteLine($"[ModrinthTag 缓存] 未命中 {cacheKey}，将请求远端");
         }
         finally
         {
@@ -389,12 +389,12 @@ public class ModrinthService
                     }
                 }
 
-                System.Diagnostics.Debug.WriteLine($"[ModrinthTag缓存] 已加载磁盘缓存，共 {_tagCache.Count} 项");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthTag 缓存] 已加载磁盘缓存，共 {_tagCache.Count} 项");
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ModrinthTag缓存] 加载磁盘缓存失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ModrinthTag 缓存] 加载磁盘缓存失败: {ex.Message}");
         }
 
         _tagCacheLoaded = true;
@@ -421,7 +421,7 @@ public class ModrinthService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ModrinthTag缓存] 持久化失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ModrinthTag 缓存] 持久化失败: {ex.Message}");
         }
     }
 
@@ -678,7 +678,7 @@ public class ModrinthService
                 if (versionInfo != null && versionInfo.Files != null && versionInfo.Files.Count > 0)
                 {
                     var primaryFile = versionInfo.Files.FirstOrDefault(f => f.Primary) ?? versionInfo.Files[0];
-                    System.Diagnostics.Debug.WriteLine($"获取到的Mod文件URL: {primaryFile.Url}");
+                    System.Diagnostics.Debug.WriteLine($"获取到的 Mod 文件 URL: {primaryFile.Url}");
                 }
                 return versionInfo;
             }
@@ -698,13 +698,13 @@ public class ModrinthService
         }
         catch (JsonException ex)
         {
-            System.Diagnostics.Debug.WriteLine($"解析Mod文件信息失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"解析 Mod 文件信息失败: {ex.Message}");
             throw new Exception($"解析Mod文件信息失败: {ex.Message}");
         }
         catch (Exception ex)
         {
             // 处理其他异常
-            System.Diagnostics.Debug.WriteLine($"通过哈希获取Mod文件时发生错误: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"通过哈希获取 Mod 文件时发生错误: {ex.Message}");
             throw new Exception($"通过哈希获取Mod文件时发生错误: {ex.Message}");
         }
     }
@@ -798,13 +798,13 @@ public class ModrinthService
             }
             catch (JsonException ex)
             {
-                System.Diagnostics.Debug.WriteLine($"解析Mod文件信息失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"解析 Mod 文件信息失败: {ex.Message}");
                 throw new Exception($"解析Mod文件信息失败: {ex.Message}");
             }
             catch (Exception ex)
             {
                 // 处理其他异常
-                System.Diagnostics.Debug.WriteLine($"通过哈希批量获取Mod文件时发生错误: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"通过哈希批量获取 Mod 文件时发生错误: {ex.Message}");
                 throw new Exception($"通过哈希批量获取Mod文件时发生错误: {ex.Message}");
             }
         }
@@ -953,14 +953,14 @@ public class ModrinthService
             }
             catch (HttpRequestException ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] HTTP请求异常: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] HTTP 请求异常: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"[ModrinthService] 状态码: {ex.StatusCode}");
                 System.Diagnostics.Debug.WriteLine($"[ModrinthService] 异常堆栈: {ex.StackTrace}");
                 throw new Exception($"获取版本信息失败: {ex.Message}");
             }
             catch (JsonException ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] JSON解析异常: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] JSON 解析异常: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"[ModrinthService] 异常堆栈: {ex.StackTrace}");
                 throw new Exception($"解析版本信息失败: {ex.Message}");
             }
@@ -1023,15 +1023,15 @@ public class ModrinthService
             // 输出当前Mod版本信息，用于调试
             if (currentModVersion != null)
             {
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 当前Mod版本信息：");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 当前 Mod 版本信息：");
                 System.Diagnostics.Debug.WriteLine($"  - 版本号: {currentModVersion.VersionNumber}");
-                System.Diagnostics.Debug.WriteLine($"  - 项目ID: {currentModVersion.ProjectId}");
+                System.Diagnostics.Debug.WriteLine($"  - 项目 ID: {currentModVersion.ProjectId}");
                 System.Diagnostics.Debug.WriteLine($"  - 支持的游戏版本: {string.Join(", ", currentModVersion.GameVersions)}");
                 System.Diagnostics.Debug.WriteLine($"  - 支持的加载器: {string.Join(", ", currentModVersion.Loaders)}");
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 未提供当前Mod版本信息");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 未提供当前 Mod 版本信息");
             }
             
             System.Diagnostics.Debug.WriteLine($"[ModrinthService] 开始处理{dependencies.Count}个依赖");
@@ -1073,7 +1073,7 @@ public class ModrinthService
                         
                         if (depVersionInfo == null)
                         {
-                            System.Diagnostics.Debug.WriteLine($"  - 失败：获取版本信息返回null");
+                            System.Diagnostics.Debug.WriteLine($"  - 失败：获取版本信息返回 null");
                             continue;
                         }
                         
@@ -1082,7 +1082,7 @@ public class ModrinthService
                     else if (!string.IsNullOrEmpty(dependency.ProjectId))
                     {
                         // 情况2：VersionId为空，但有ProjectId，需要获取合适的版本
-                        System.Diagnostics.Debug.WriteLine($"  - VersionId为空，尝试通过ProjectId获取合适版本");
+                        System.Diagnostics.Debug.WriteLine($"  - VersionId 为空，尝试通过 ProjectId 获取合适版本");
                         
                         // 获取项目的兼容版本，直接通过API筛选
                         System.Diagnostics.Debug.WriteLine($"  - 正在获取项目兼容版本：{dependency.ProjectId}");
@@ -1092,7 +1092,7 @@ public class ModrinthService
                         if (currentModVersion != null)
                         {
                             // 使用当前Mod的游戏版本和加载器进行API筛选
-                            System.Diagnostics.Debug.WriteLine($"  - 通过API筛选兼容版本");
+                            System.Diagnostics.Debug.WriteLine($"  - 通过 API 筛选兼容版本");
                             System.Diagnostics.Debug.WriteLine($"  - 筛选条件：");
                             System.Diagnostics.Debug.WriteLine($"    - 游戏版本: {string.Join(", ", currentModVersion.GameVersions)}");
                             System.Diagnostics.Debug.WriteLine($"    - 加载器: {string.Join(", ", currentModVersion.Loaders)}");
@@ -1102,12 +1102,12 @@ public class ModrinthService
                                 currentModVersion.Loaders,
                                 currentModVersion.GameVersions);
                             
-                            System.Diagnostics.Debug.WriteLine($"  - API返回{compatibleVersions.Count}个兼容版本");
+                            System.Diagnostics.Debug.WriteLine($"  - API 返回{compatibleVersions.Count}个兼容版本");
                         }
                         else
                         {
                             // 没有当前Mod版本信息，获取所有版本
-                            System.Diagnostics.Debug.WriteLine($"  - 没有当前Mod版本信息，获取所有版本");
+                            System.Diagnostics.Debug.WriteLine($"  - 没有当前 Mod 版本信息，获取所有版本");
                             compatibleVersions = await GetProjectVersionsAsync(dependency.ProjectId);
                             System.Diagnostics.Debug.WriteLine($"  - 成功获取{compatibleVersions.Count}个版本");
                         }
@@ -1125,7 +1125,7 @@ public class ModrinthService
                     else
                     {
                         // 情况3：没有VersionId和ProjectId，无法处理
-                        System.Diagnostics.Debug.WriteLine($"  - 跳过：没有VersionId和ProjectId");
+                        System.Diagnostics.Debug.WriteLine($"  - 跳过：没有 VersionId 和 ProjectId");
                         continue;
                     }
                     
@@ -1175,7 +1175,7 @@ public class ModrinthService
                         }
                         else
                         {
-                            System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] ProjectID 未命中，将继续走文件/SHA1检测: 依赖项目={depVersionInfo.ProjectId}");
+                            System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] ProjectID 未命中，将继续走文件/SHA1 检测: 依赖项目={depVersionInfo.ProjectId}");
                         }
                     }
                     
@@ -1185,7 +1185,7 @@ public class ModrinthService
                     
                     if (primaryFile.Url == null)
                     {
-                        System.Diagnostics.Debug.WriteLine($"  - 跳过：文件URL为空");
+                        System.Diagnostics.Debug.WriteLine($"  - 跳过：文件 URL 为空");
                         continue;
                     }
                     
@@ -1231,7 +1231,7 @@ public class ModrinthService
                     
                     if (File.Exists(filePath))
                     {
-                        System.Diagnostics.Debug.WriteLine($"  - 文件已存在，检查SHA1");
+                        System.Diagnostics.Debug.WriteLine($"  - 文件已存在，检查 SHA1");
                         if (primaryFile.Hashes.TryGetValue("sha1", out string? expectedSha1) &&
                             !string.IsNullOrEmpty(expectedSha1))
                         {
@@ -1240,22 +1240,22 @@ public class ModrinthService
                             
                             if (alreadyExists)
                             {
-                                System.Diagnostics.Debug.WriteLine($"  - 跳过：SHA1匹配，文件已存在");
-                                System.Diagnostics.Debug.WriteLine($"    - 期望SHA1: {expectedSha1}");
-                                System.Diagnostics.Debug.WriteLine($"    - 实际SHA1: {existingSha1}");
+                                System.Diagnostics.Debug.WriteLine($"  - 跳过：SHA1 匹配，文件已存在");
+                                System.Diagnostics.Debug.WriteLine($"    - 期望 SHA1: {expectedSha1}");
+                                System.Diagnostics.Debug.WriteLine($"    - 实际 SHA1: {existingSha1}");
                                 processedCount++;
                                 continue;
                             }
                             else
                             {
-                                System.Diagnostics.Debug.WriteLine($"  - 需要重新下载：SHA1不匹配");
-                                System.Diagnostics.Debug.WriteLine($"    - 期望SHA1: {expectedSha1}");
-                                System.Diagnostics.Debug.WriteLine($"    - 实际SHA1: {existingSha1}");
+                                System.Diagnostics.Debug.WriteLine($"  - 需要重新下载：SHA1 不匹配");
+                                System.Diagnostics.Debug.WriteLine($"    - 期望 SHA1: {expectedSha1}");
+                                System.Diagnostics.Debug.WriteLine($"    - 实际 SHA1: {existingSha1}");
                             }
                         }
                         else
                         {
-                            System.Diagnostics.Debug.WriteLine($"  - 需要重新下载：没有期望的SHA1值");
+                            System.Diagnostics.Debug.WriteLine($"  - 需要重新下载：没有期望的 SHA1 值");
                         }
                     }
                     else
@@ -1376,11 +1376,11 @@ public class ModrinthService
                 }
             }
 
-            System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 哈希计算完成: 唯一Hash数={hashes.Count}");
+            System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 哈希计算完成: 唯一 Hash 数={hashes.Count}");
 
             if (hashes.Count == 0)
             {
-                System.Diagnostics.Debug.WriteLine("[ModrinthService][Dedup] 无可用Hash，返回空索引");
+                System.Diagnostics.Debug.WriteLine("[ModrinthService][Dedup] 无可用 Hash，返回空索引");
                 return null;
             }
 
@@ -1406,11 +1406,11 @@ public class ModrinthService
                     }
                 }
 
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 批量反查完成: 命中项目={batchResolvedCount}, 待补查Hash={unresolvedHashes.Count}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 批量反查完成: 命中项目={batchResolvedCount}, 待补查 Hash={unresolvedHashes.Count}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"批量获取项目ID失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"批量获取项目 ID 失败: {ex.Message}");
             }
 
             int singleResolvedCount = 0;
@@ -1431,7 +1431,7 @@ public class ModrinthService
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"单文件获取项目ID失败: {hash}, {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"单文件获取项目 ID 失败: {hash}, {ex.Message}");
                 }
             }
 

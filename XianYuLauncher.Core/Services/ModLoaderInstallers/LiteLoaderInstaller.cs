@@ -191,7 +191,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
         // 6. 下载原版Minecraft JAR（如果是独立模式）
         if (!isAddonMode)
         {
-            System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 下载原版Minecraft JAR");
+            System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 下载原版 Minecraft JAR");
             await EnsureMinecraftJarAsync(
                 versionDirectory,
                 versionId,
@@ -266,7 +266,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
         progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 80));
 
         // 9. 生成/合并版本JSON
-        System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 生成版本JSON");
+        System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 生成版本 JSON");
         var mergedVersionInfo = ResolveVersionInfo(baseVersionInfo, artifact, versionId, isAddonMode);
         
         var versionJsonPath = Path.Combine(versionDirectory, $"{versionId}.json");
@@ -296,7 +296,7 @@ public class LiteLoaderInstaller : ModLoaderInstallerBase
                 LibraryRepositoryProfile = LibraryRepositoryProfile.LiteLoader
             });
 
-        System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 通过ManifestPatch解析后总依赖库数量: {resolutionResult.ResolvedManifest.Libraries?.Count ?? 0}");
+        System.Diagnostics.Debug.WriteLine($"[LiteLoaderInstaller] 通过 ManifestPatch 解析后总依赖库数量: {resolutionResult.ResolvedManifest.Libraries?.Count ?? 0}");
 
         return resolutionResult.ResolvedManifest;
     }

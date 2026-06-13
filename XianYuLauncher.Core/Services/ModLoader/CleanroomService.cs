@@ -39,7 +39,7 @@ public class CleanroomService
         // Cleanroom仅支持Minecraft 1.12.2
         if (minecraftVersion != "1.12.2")
         {
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] Cleanroom仅支持Minecraft 1.12.2，当前版本: {minecraftVersion}");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] Cleanroom 仅支持 Minecraft 1.12.2，当前版本: {minecraftVersion}");
             return new List<string>();
         }
 
@@ -66,7 +66,7 @@ public class CleanroomService
                     result.Response.EnsureSuccessStatusCode();
                     string xml = await result.Response.Content.ReadAsStringAsync();
                     var versions = ParseCleanroomVersionsFromXml(xml);
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 成功获取 {versions.Count} 个Cleanroom版本 (使用源: {result.UsedSourceKey})");
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 成功获取 {versions.Count} 个 Cleanroom 版本 (使用源: {result.UsedSourceKey})");
                     return versions;
                 }
 
@@ -81,7 +81,7 @@ public class CleanroomService
             }
 
             var url = source.GetCleanroomMetadataUrl();
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在加载Cleanroom版本列表，请求URL: {url}");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在加载 Cleanroom 版本列表，请求 URL: {url}");
 
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             if (source.RequiresBmclapiUserAgent())
@@ -93,17 +93,17 @@ public class CleanroomService
             response.EnsureSuccessStatusCode();
             string xmlContent = await response.Content.ReadAsStringAsync();
             var versionList = ParseCleanroomVersionsFromXml(xmlContent);
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 成功获取 {versionList.Count} 个Cleanroom版本");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 成功获取 {versionList.Count} 个 Cleanroom 版本");
             return versionList;
         }
         catch (HttpRequestException ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ERROR] 获取Cleanroom版本列表失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ERROR] 获取 Cleanroom 版本列表失败: {ex.Message}");
             throw new Exception($"获取Cleanroom版本列表失败: {ex.Message}");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ERROR] 获取Cleanroom版本列表时发生错误: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ERROR] 获取 Cleanroom 版本列表时发生错误: {ex.Message}");
             throw new Exception($"获取Cleanroom版本列表时发生错误: {ex.Message}");
         }
     }
@@ -144,11 +144,11 @@ public class CleanroomService
             // 反转列表，使最新版本在前
             versionList.Reverse();
             
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 解析到 {versionList.Count} 个Cleanroom版本");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 解析到 {versionList.Count} 个 Cleanroom 版本");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ERROR] 解析Cleanroom版本XML失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ERROR] 解析 Cleanroom 版本 XML 失败: {ex.Message}");
             throw new Exception($"解析Cleanroom版本列表失败: {ex.Message}");
         }
         

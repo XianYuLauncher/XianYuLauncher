@@ -128,7 +128,7 @@ public class AssetManager : IAssetManager
         var assetIndexId = await GetAssetIndexIdFromVersionAsync(versionId, minecraftDirectory);
         if (string.IsNullOrEmpty(assetIndexId))
         {
-            _logger.LogWarning("无法确定版本 {VersionId} 的资源索引ID", versionId);
+            _logger.LogWarning("无法确定版本 {VersionId} 的资源索引 ID", versionId);
             progressCallback?.Invoke(100);
             return;
         }
@@ -317,7 +317,7 @@ public class AssetManager : IAssetManager
                 var actualSha1 = ComputeFileSha1(indexFilePath);
                 if (!string.Equals(actualSha1, expectedSha1, StringComparison.OrdinalIgnoreCase))
                 {
-                    _logger.LogWarning("资源索引文件SHA1不匹配: {IndexFilePath}", indexFilePath);
+                    _logger.LogWarning("资源索引文件 SHA1 不匹配: {IndexFilePath}", indexFilePath);
                     return false;
                 }
             }
@@ -361,7 +361,7 @@ public class AssetManager : IAssetManager
         
         if (!File.Exists(versionJsonPath))
         {
-            _logger.LogWarning("版本JSON文件不存在: {VersionJsonPath}", versionJsonPath);
+            _logger.LogWarning("版本 JSON 文件不存在: {VersionJsonPath}", versionJsonPath);
             return null;
         }
 
@@ -375,7 +375,7 @@ public class AssetManager : IAssetManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "解析版本JSON文件失败: {VersionJsonPath}", versionJsonPath);
+            _logger.LogError(ex, "解析版本 JSON 文件失败: {VersionJsonPath}", versionJsonPath);
             return null;
         }
     }

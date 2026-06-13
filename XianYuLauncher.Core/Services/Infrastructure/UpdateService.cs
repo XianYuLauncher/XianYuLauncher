@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -263,13 +263,13 @@ public class UpdateService
                 if (mirror.arch_urls != null && mirror.arch_urls.TryGetValue(currentArchitecture, out string? archUrl) && !string.IsNullOrWhiteSpace(archUrl))
                 {
                     downloadUrl = archUrl;
-                    _logger.LogInformation("使用架构特定URL: {ArchUrl} (架构: {CurrentArchitecture})", downloadUrl, currentArchitecture);
-                    Debug.WriteLine($"[DEBUG] 使用架构特定URL: {downloadUrl} (架构: {currentArchitecture})");
+                    _logger.LogInformation("使用架构特定 URL: {ArchUrl} (架构: {CurrentArchitecture})", downloadUrl, currentArchitecture);
+                    Debug.WriteLine($"[DEBUG] 使用架构特定 URL: {downloadUrl} (架构: {currentArchitecture})");
                 }
                 else if (mirror.arch_urls != null)
                 {
-                    _logger.LogWarning("未找到当前架构的特定URL，使用默认URL: {Url} (架构: {CurrentArchitecture})", downloadUrl, currentArchitecture);
-                    Debug.WriteLine($"[DEBUG] 未找到当前架构的特定URL，使用默认URL: {downloadUrl} (架构: {currentArchitecture})");
+                    _logger.LogWarning("未找到当前架构的特定 URL，使用默认 URL: {Url} (架构: {CurrentArchitecture})", downloadUrl, currentArchitecture);
+                    Debug.WriteLine($"[DEBUG] 未找到当前架构的特定 URL，使用默认 URL: {downloadUrl} (架构: {currentArchitecture})");
                 }
                 
                 _logger.LogInformation("尝试从镜像下载: {MirrorName}, URL: {Url}", mirror.name, downloadUrl);
@@ -468,14 +468,14 @@ public class UpdateService
             string? msixFilePath = FindFileByPattern(extractDirectory, "*.msix");
             if (string.IsNullOrEmpty(msixFilePath))
             {
-                _logger.LogError("在解压目录中未找到MSIX文件 (*.msix): {ExtractDirectory}", extractDirectory);
-                Debug.WriteLine($"[DEBUG] 在解压目录中未找到MSIX文件 (*.msix): {extractDirectory}");
+                _logger.LogError("在解压目录中未找到 MSIX 文件 (*.msix): {ExtractDirectory}", extractDirectory);
+                Debug.WriteLine($"[DEBUG] 在解压目录中未找到 MSIX 文件 (*.msix): {extractDirectory}");
                 throw new Exception("在解压目录中未找到MSIX文件 (*.msix)");
             }
             else
             {
-                _logger.LogInformation("找到MSIX文件: {MsixFilePath}", msixFilePath);
-                Debug.WriteLine($"[DEBUG] 找到MSIX文件: {msixFilePath}");
+                _logger.LogInformation("找到 MSIX 文件: {MsixFilePath}", msixFilePath);
+                Debug.WriteLine($"[DEBUG] 找到 MSIX 文件: {msixFilePath}");
             }
             
             return (extractDirectory, certificateFilePath, msixFilePath);
@@ -787,9 +787,9 @@ try {{
 Stop-Transcript
 ";
             
-            _logger.LogInformation("PowerShell命令长度: {Len}", finalScript.Length);
+            _logger.LogInformation("PowerShell 命令长度: {Len}", finalScript.Length);
             // 记录完整脚本以便排查（注意脱敏）
-            _logger.LogDebug("PowerShell脚本内容: {Script}", finalScript);
+            _logger.LogDebug("PowerShell 脚本内容: {Script}", finalScript);
 
             // 4. 执行 PowerShell (Fire and Forget)
             using (var process = new Process())

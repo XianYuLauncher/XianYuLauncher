@@ -572,7 +572,7 @@ public class JavaRuntimeService : IJavaRuntimeService
                             var javaVersion = await GetJavaVersionInfoAsync(javaPath);
                             if (javaVersion != null)
                             {
-                                System.Diagnostics.Debug.WriteLine($"[JavaRuntimeService] 从PATH检测到 Java: {javaVersion.MajorVersion} ({javaVersion.FullVersion}) - {javaPath}");
+                                System.Diagnostics.Debug.WriteLine($"[JavaRuntimeService] 从 PATH 检测到 Java: {javaVersion.MajorVersion} ({javaVersion.FullVersion}) - {javaPath}");
                                 javaVersions.Add(javaVersion);
                             }
                         }
@@ -586,7 +586,7 @@ public class JavaRuntimeService : IJavaRuntimeService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[JavaRuntimeService] 扫描PATH环境变量失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[JavaRuntimeService] 扫描 PATH 环境变量失败: {ex.Message}");
         }
     }
 

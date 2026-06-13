@@ -74,12 +74,12 @@ public class LegacyFabricService
         }
         catch (HttpRequestException ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[LegacyFabricService] 获取Legacy Fabric版本列表失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[LegacyFabricService] 获取 Legacy Fabric 版本列表失败: {ex.Message}");
             throw new Exception($"获取Legacy Fabric版本列表失败: {ex.Message}");
         }
         catch (JsonException ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[LegacyFabricService] 解析Legacy Fabric版本列表失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[LegacyFabricService] 解析 Legacy Fabric 版本列表失败: {ex.Message}");
             throw new Exception($"解析Legacy Fabric版本列表失败: {ex.Message}");
         }
         catch (Exception ex) when (ex.Message.StartsWith("获取Legacy Fabric") || ex.Message.StartsWith("解析Legacy Fabric"))
@@ -88,7 +88,7 @@ public class LegacyFabricService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[LegacyFabricService] 获取Legacy Fabric版本列表时发生错误: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[LegacyFabricService] 获取 Legacy Fabric 版本列表时发生错误: {ex.Message}");
             throw new Exception($"获取Legacy Fabric版本列表时发生错误: {ex.Message}");
         }
     }
@@ -119,7 +119,7 @@ public class LegacyFabricService
         // 检查是否为 BMCLAPI 类型的源且返回404
         if (downloadSource.RequiresBmclapiUserAgent(url) && response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            System.Diagnostics.Debug.WriteLine($"[LegacyFabricService] BMCLAPI 类型源返回404，切换到官方源");
+            System.Diagnostics.Debug.WriteLine($"[LegacyFabricService] BMCLAPI 类型源返回 404，切换到官方源");
             
             var officialSource = _downloadSourceFactory.GetSource("official");
             string officialUrl = officialSource.GetLegacyFabricVersionsUrl(minecraftVersion);

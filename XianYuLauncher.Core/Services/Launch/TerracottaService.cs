@@ -43,7 +43,7 @@ namespace XianYuLauncher.Core.Services
                 // 2. 获取地区信息，选择合适的API
                 progressCallback?.Invoke(10); // 10% - 开始获取API信息
                 string apiUrl = await GetAppropriateApiUrlAsync();
-                Log.Information($"[TerracottaService] 使用API URL: {apiUrl}");
+                Log.Information($"[TerracottaService] 使用 API URL: {apiUrl}");
                 
                 // 3. 获取最新版本信息
                 progressCallback?.Invoke(20); // 20% - 开始获取版本信息
@@ -178,15 +178,15 @@ namespace XianYuLauncher.Core.Services
                 // 使用 DownloadManager 下载字符串来检测，虽然不是最佳实践但可以复用
                 await _downloadManager.DownloadStringAsync(GiteeApiUrl);
                 
-                Log.Information("[TerracottaService] 使用Gitee API（中国大陆地区）");
+                Log.Information("[TerracottaService] 使用 Gitee API（中国大陆地区）");
                 return GiteeApiUrl;
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"[TerracottaService] Gitee API访问失败: {ex.Message}");
+                Log.Error(ex, $"[TerracottaService] Gitee API 访问失败: {ex.Message}");
             }
             
-            Log.Information("[TerracottaService] 使用GitHub API（非中国大陆地区或未知）");
+            Log.Information("[TerracottaService] 使用 GitHub API（非中国大陆地区或未知）");
             return GithubApiUrl;
         }
         
@@ -282,7 +282,7 @@ namespace XianYuLauncher.Core.Services
                     if (File.Exists(vcruntimePath))
                     {
                         File.Delete(vcruntimePath);
-                        Log.Information($"[TerracottaService] 删除旧VCRUNTIME140.DLL: {vcruntimePath}");
+                        Log.Information($"[TerracottaService] 删除旧 VCRUNTIME140.DLL: {vcruntimePath}");
                     }
                 }
             }

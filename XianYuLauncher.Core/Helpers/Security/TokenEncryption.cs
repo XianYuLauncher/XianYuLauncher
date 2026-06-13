@@ -38,7 +38,7 @@ public static class TokenEncryption
             byte[] encrypted = ProtectedData.Protect(data, null, DataProtectionScope.CurrentUser);
             string base64 = Convert.ToBase64String(encrypted);
             
-            System.Diagnostics.Debug.WriteLine($"[TokenEncryption] Token已加密，长度: {plainText.Length} -> {base64.Length}");
+            System.Diagnostics.Debug.WriteLine($"[TokenEncryption] Token 已加密，长度: {plainText.Length} -> {base64.Length}");
             return EncryptionPrefix + base64;
         }
         catch (Exception ex)
@@ -63,7 +63,7 @@ public static class TokenEncryption
         // 如果不是加密格式，直接返回（可能是明文，用于兼容旧数据）
         if (!IsEncrypted(encryptedText))
         {
-            System.Diagnostics.Debug.WriteLine($"[TokenEncryption] 检测到明文token，需要迁移");
+            System.Diagnostics.Debug.WriteLine($"[TokenEncryption] 检测到明文 token，需要迁移");
             return encryptedText;
         }
         
@@ -75,7 +75,7 @@ public static class TokenEncryption
             byte[] decrypted = ProtectedData.Unprotect(data, null, DataProtectionScope.CurrentUser);
             string plainText = Encoding.UTF8.GetString(decrypted);
             
-            System.Diagnostics.Debug.WriteLine($"[TokenEncryption] Token已解密，长度: {base64.Length} -> {plainText.Length}");
+            System.Diagnostics.Debug.WriteLine($"[TokenEncryption] Token 已解密，长度: {base64.Length} -> {plainText.Length}");
             return plainText;
         }
         catch (Exception ex)

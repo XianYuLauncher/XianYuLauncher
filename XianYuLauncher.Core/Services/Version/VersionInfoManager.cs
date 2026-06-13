@@ -61,7 +61,7 @@ public class VersionInfoManager : IVersionInfoManager
             return _cachedManifest;
         }
 
-        _logger.LogInformation("正在获取Minecraft版本清单");
+        _logger.LogInformation("正在获取 Minecraft 版本清单");
 
         try
         {
@@ -186,7 +186,7 @@ public class VersionInfoManager : IVersionInfoManager
 
         if (string.IsNullOrEmpty(minecraftDirectory))
         {
-            _logger.LogWarning("Minecraft目录未指定，返回空列表");
+            _logger.LogWarning("Minecraft 目录未指定，返回空列表");
             return Task.FromResult(installedVersions);
         }
 
@@ -289,7 +289,7 @@ public class VersionInfoManager : IVersionInfoManager
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "解析本地版本JSON失败: {JsonPath}", jsonPath);
+            _logger.LogWarning(ex, "解析本地版本 JSON 失败: {JsonPath}", jsonPath);
             return null;
         }
     }

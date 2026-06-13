@@ -146,7 +146,7 @@ public class DownloadSourceFactory
         }
         
         _modrinthSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Modrinth下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Modrinth 下载源已设置为: {key}");
     }
     
     /// <summary>
@@ -180,7 +180,7 @@ public class DownloadSourceFactory
         }
 
         _curseforgeSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] CurseForge下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] CurseForge 下载源已设置为: {key}");
     }
 
     /// <summary>
@@ -208,7 +208,7 @@ public class DownloadSourceFactory
             throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
 
         _forgeSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Forge下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Forge 下载源已设置为: {key}");
     }
 
     /// <summary>
@@ -236,7 +236,7 @@ public class DownloadSourceFactory
             throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
 
         _fabricSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Fabric下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Fabric 下载源已设置为: {key}");
     }
 
     /// <summary>
@@ -264,7 +264,7 @@ public class DownloadSourceFactory
             throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
 
         _neoforgeSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] NeoForge下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] NeoForge 下载源已设置为: {key}");
     }
 
     /// <summary>
@@ -292,7 +292,7 @@ public class DownloadSourceFactory
             throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
 
         _quiltSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Quilt下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Quilt 下载源已设置为: {key}");
     }
 
     /// <summary>
@@ -333,7 +333,7 @@ public class DownloadSourceFactory
             throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
 
         _optifineSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] OptiFine下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] OptiFine 下载源已设置为: {key}");
     }
 
     /// <summary>
@@ -417,7 +417,7 @@ public class DownloadSourceFactory
             throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
 
         _liteLoaderSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] LiteLoader下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] LiteLoader 下载源已设置为: {key}");
     }
 
     /// <summary>
@@ -457,7 +457,7 @@ public class DownloadSourceFactory
         }
 
         _legacyFabricSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] LegacyFabric下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] LegacyFabric 下载源已设置为: {key}");
     }
 
     /// <summary>
@@ -490,7 +490,7 @@ public class DownloadSourceFactory
             throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
 
         _cleanroomSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Cleanroom下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Cleanroom 下载源已设置为: {key}");
     }
 
     /// <summary>

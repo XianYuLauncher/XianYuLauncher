@@ -240,7 +240,7 @@ public class LibraryManager : ILibraryManager
                 var actualSha1 = ComputeFileSha1(libraryPath);
                 if (!string.Equals(actualSha1, library.Downloads.Artifact.Sha1, StringComparison.OrdinalIgnoreCase))
                 {
-                    _logger.LogWarning("库文件SHA1不匹配: {LibraryName}", library.Name);
+                    _logger.LogWarning("库文件 SHA1 不匹配: {LibraryName}", library.Name);
                     return false;
                 }
             }
@@ -261,7 +261,7 @@ public class LibraryManager : ILibraryManager
                     var actualSha1 = ComputeFileSha1(nativePath);
                     if (!string.Equals(actualSha1, nativeDownload.Sha1, StringComparison.OrdinalIgnoreCase))
                     {
-                        _logger.LogWarning("原生库文件SHA1不匹配: {LibraryName} ({Classifier})", library.Name, nativeClassifier);
+                        _logger.LogWarning("原生库文件 SHA1 不匹配: {LibraryName} ({Classifier})", library.Name, nativeClassifier);
                         return false;
                     }
                 }

@@ -74,12 +74,12 @@ public class QuiltService
         }
         catch (HttpRequestException ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[QuiltService] 获取Quilt版本列表失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[QuiltService] 获取 Quilt 版本列表失败: {ex.Message}");
             throw new Exception($"获取Quilt版本列表失败: {ex.Message}");
         }
         catch (JsonException ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[QuiltService] 解析Quilt版本列表失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[QuiltService] 解析 Quilt 版本列表失败: {ex.Message}");
             throw new Exception($"解析Quilt版本列表失败: {ex.Message}");
         }
         catch (Exception ex) when (ex.Message.StartsWith("获取Quilt") || ex.Message.StartsWith("解析Quilt"))
@@ -88,7 +88,7 @@ public class QuiltService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[QuiltService] 获取Quilt版本列表时发生错误: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[QuiltService] 获取 Quilt 版本列表时发生错误: {ex.Message}");
             throw new Exception($"获取Quilt版本列表时发生错误: {ex.Message}");
         }
     }
@@ -119,7 +119,7 @@ public class QuiltService
         // 检查是否为 BMCLAPI 类型的源且返回404
         if (downloadSource.RequiresBmclapiUserAgent(url) && response.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            System.Diagnostics.Debug.WriteLine($"[QuiltService] BMCLAPI 类型源返回404，切换到官方源");
+            System.Diagnostics.Debug.WriteLine($"[QuiltService] BMCLAPI 类型源返回 404，切换到官方源");
             
             var officialSource = _downloadSourceFactory.GetSource("official");
             string officialUrl = officialSource.GetQuiltVersionsUrl(minecraftVersion);

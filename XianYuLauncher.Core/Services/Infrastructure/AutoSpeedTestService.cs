@@ -105,7 +105,7 @@ public class AutoSpeedTestService : IAutoSpeedTestService
 
             await _speedTestService.SaveCacheAsync(cache);
 
-            Log.Information("[AutoSpeedTest] 自动测速完成，版本清单源: {VersionManifestCount}, 文件下载源: {FileDownloadCount}, 社区源: {CommunityCount}, CurseForge源: {CurseForgeCount}, Forge源: {ForgeCount}, Fabric源: {FabricCount}, NeoForge源: {NeoForgeCount}, LiteLoader源: {LiteLoaderCount}, Quilt源: {QuiltCount}, LegacyFabric源: {LegacyFabricCount}, Cleanroom源: {CleanroomCount}, OptiFine源: {OptifineCount}",
+            Log.Information("[AutoSpeedTest] 自动测速完成，版本清单源: {VersionManifestCount}, 文件下载源: {FileDownloadCount}, 社区源: {CommunityCount}, CurseForge 源: {CurseForgeCount}, Forge 源: {ForgeCount}, Fabric 源: {FabricCount}, NeoForge 源: {NeoForgeCount}, LiteLoader 源: {LiteLoaderCount}, Quilt 源: {QuiltCount}, LegacyFabric 源: {LegacyFabricCount}, Cleanroom 源: {CleanroomCount}, OptiFine 源: {OptifineCount}",
                 versionManifestResults.Count,
                 fileDownloadResults.Count,
                 communityResults.Count,

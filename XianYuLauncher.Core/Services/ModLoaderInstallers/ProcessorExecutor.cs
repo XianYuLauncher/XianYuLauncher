@@ -180,7 +180,7 @@ public class ProcessorExecutor : IProcessorExecutor
             var classpath = processor["classpath"] as JArray ?? throw new ProcessorExecutionException("处理器缺少classpath字段", jar);
             var args = processor["args"] as JArray ?? throw new ProcessorExecutionException("处理器缺少args字段", jar);
 
-            _logger.LogDebug("处理器jar: {Jar}", jar);
+            _logger.LogDebug("处理器 jar: {Jar}", jar);
 
             // 下载installer tools
             string installerToolsPath = await DownloadInstallerToolsAsync(jar, librariesDirectory, cancellationToken);
@@ -461,7 +461,7 @@ public class ProcessorExecutor : IProcessorExecutor
             }
             else
             {
-                _logger.LogWarning("classpath文件不存在: {LibraryPath}", libraryPath);
+                _logger.LogWarning("classpath 文件不存在: {LibraryPath}", libraryPath);
             }
         }
 
@@ -475,7 +475,7 @@ public class ProcessorExecutor : IProcessorExecutor
 
         if (File.Exists(libraryPath))
         {
-            _logger.LogDebug("installertools已存在: {LibraryPath}", libraryPath);
+            _logger.LogDebug("installertools 已存在: {LibraryPath}", libraryPath);
             return libraryPath;
         }
 

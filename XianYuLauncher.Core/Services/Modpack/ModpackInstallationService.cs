@@ -116,14 +116,14 @@ public class ModpackInstallationService : IModpackInstallationService
 
             if (File.Exists(curseForgeManifestPath))
             {
-                Debug.WriteLine("[整合包安装] 检测到CurseForge整合包格式");
+                Debug.WriteLine("[整合包安装] 检测到 CurseForge 整合包格式");
                 return await InstallCurseForgeModpackCoreAsync(
                     extractDir, curseForgeManifestPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, contentFileProgress, cancellationToken);
             }
 
             if (File.Exists(modrinthIndexPath))
             {
-                Debug.WriteLine("[整合包安装] 检测到Modrinth整合包格式");
+                Debug.WriteLine("[整合包安装] 检测到 Modrinth 整合包格式");
                 return await InstallModrinthModpackCoreAsync(
                     extractDir, modrinthIndexPath, modpackDisplayName, validatedTargetVersionName, minecraftPath, progress, resolvedVersionIconPath, sourceProjectId, sourceVersionId, contentFileProgress, cancellationToken);
             }
@@ -489,7 +489,7 @@ public class ModpackInstallationService : IModpackInstallationService
 
         int downloadedFiles = 0;
         int parallelism = await ResolveContentDownloadParallelismAsync(cancellationToken).ConfigureAwait(false);
-        Debug.WriteLine($"[Modrinth整合包] 开始按下载线程配置并发下载，文件总数: {totalFiles}，并发数: {parallelism}");
+        Debug.WriteLine($"[Modrinth 整合包] 开始按下载线程配置并发下载，文件总数: {totalFiles}，并发数: {parallelism}");
 
         ReportQueuedContentFiles(
             contentFileProgress,
@@ -507,7 +507,7 @@ public class ModpackInstallationService : IModpackInstallationService
                 try
                 {
                     token.ThrowIfCancellationRequested();
-                    Debug.WriteLine($"[Modrinth整合包] 开始下载: {file.FileDisplayName}");
+                    Debug.WriteLine($"[Modrinth 整合包] 开始下载: {file.FileDisplayName}");
                     ReportContentFileDownloading(
                         contentFileProgress,
                         file.FileKey,
@@ -553,7 +553,7 @@ public class ModpackInstallationService : IModpackInstallationService
                 }
             }).ConfigureAwait(false);
 
-        Debug.WriteLine($"[Modrinth整合包] 所有文件下载完成，共 {downloadedFiles} 个");
+        Debug.WriteLine($"[Modrinth 整合包] 所有文件下载完成，共 {downloadedFiles} 个");
     }
 
     #endregion
@@ -657,7 +657,7 @@ public class ModpackInstallationService : IModpackInstallationService
             new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true })
             ?? throw new Exception("无法解析CurseForge整合包manifest.json");
 
-        Debug.WriteLine($"[CurseForge整合包] 名称: {manifest.Name}, 版本: {manifest.Version}");
+        Debug.WriteLine($"[CurseForge 整合包] 名称: {manifest.Name}, 版本: {manifest.Version}");
 
         string minecraftVersion = manifest.Minecraft?.Version
             ?? throw new Exception("整合包中缺少Minecraft版本信息");
@@ -997,11 +997,11 @@ public class ModpackInstallationService : IModpackInstallationService
                 if (mod.ClassId.HasValue)
                     projectClassIdMap[mod.Id] = mod.ClassId.Value;
             }
-            Debug.WriteLine($"[CurseForge整合包] 获取到 {projectClassIdMap.Count} 个项目的classId信息");
+            Debug.WriteLine($"[CurseForge 整合包] 获取到 {projectClassIdMap.Count} 个项目的 classId 信息");
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[CurseForge整合包] 获取项目classId失败: {ex.Message}");
+            Debug.WriteLine($"[CurseForge 整合包] 获取项目 classId 失败: {ex.Message}");
         }
 
         // 获取文件详情
@@ -1073,7 +1073,7 @@ public class ModpackInstallationService : IModpackInstallationService
 
         int downloadedFiles = 0;
         int parallelism = await ResolveContentDownloadParallelismAsync(cancellationToken).ConfigureAwait(false);
-        Debug.WriteLine($"[CurseForge整合包] 开始按下载线程配置并发下载，文件总数: {totalFiles}，并发数: {parallelism}");
+        Debug.WriteLine($"[CurseForge 整合包] 开始按下载线程配置并发下载，文件总数: {totalFiles}，并发数: {parallelism}");
 
         ReportQueuedContentFiles(
             contentFileProgress,
@@ -1091,7 +1091,7 @@ public class ModpackInstallationService : IModpackInstallationService
                 try
                 {
                     token.ThrowIfCancellationRequested();
-                    Debug.WriteLine($"[CurseForge整合包] 开始下载: {file.FileDisplayName}");
+                    Debug.WriteLine($"[CurseForge 整合包] 开始下载: {file.FileDisplayName}");
                     ReportContentFileDownloading(
                         contentFileProgress,
                         file.FileKey,
@@ -1142,7 +1142,7 @@ public class ModpackInstallationService : IModpackInstallationService
                 }
             }).ConfigureAwait(false);
 
-        Debug.WriteLine($"[CurseForge整合包] 所有文件下载完成，共 {downloadedFiles} 个");
+        Debug.WriteLine($"[CurseForge 整合包] 所有文件下载完成，共 {downloadedFiles} 个");
     }
 
     private static string ResolveTargetDir(

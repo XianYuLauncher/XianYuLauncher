@@ -543,7 +543,7 @@ public class GameLaunchService : IGameLaunchService
         bool isExternalLogin = !string.IsNullOrEmpty(resolvedProfile.AuthServer) && resolvedProfile.TokenType == "external";
         if (isExternalLogin && _authlibCallback != null)
         {
-            System.Diagnostics.Debug.WriteLine("[GameLaunchService] 检测到外置登录角色，添加authlib-injector参数");
+            System.Diagnostics.Debug.WriteLine("[GameLaunchService] 检测到外置登录角色，添加 authlib-injector 参数");
             var externalJvmArgs = await _authlibCallback.GetJvmArgumentsAsync(resolvedProfile.AuthServer!);
             args.InsertRange(0, externalJvmArgs);
         }

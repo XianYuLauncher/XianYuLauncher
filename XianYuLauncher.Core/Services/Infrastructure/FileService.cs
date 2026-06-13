@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
 using XianYuLauncher.Core.Contracts.Services;
@@ -130,7 +130,7 @@ public class FileService : IFileService
                     if (jObject.TryGetValue(MinecraftPathKey, out var jToken))
                     {
                         _customMinecraftDataPath = jToken.ToString();
-                        System.Diagnostics.Debug.WriteLine($"成功加载Minecraft路径: {_customMinecraftDataPath}");
+                        System.Diagnostics.Debug.WriteLine($"成功加载 Minecraft 路径: {_customMinecraftDataPath}");
                     }
                 }
                 else
@@ -145,7 +145,7 @@ public class FileService : IFileService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"加载Minecraft路径失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"加载 Minecraft 路径失败: {ex.Message}");
         }
     }
     
@@ -170,7 +170,7 @@ public class FileService : IFileService
                 
                 // 更新Minecraft路径
                 jObject[MinecraftPathKey] = path;
-                System.Diagnostics.Debug.WriteLine($"成功保存Minecraft路径: {path} 到 {settingsPath}");
+                System.Diagnostics.Debug.WriteLine($"成功保存 Minecraft 路径: {path} 到 {settingsPath}");
                 
                 // 确保目录存在
                 Directory.CreateDirectory(_applicationDataFolder);
@@ -185,7 +185,7 @@ public class FileService : IFileService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"保存Minecraft路径失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"保存 Minecraft 路径失败: {ex.Message}");
         }
     }
 

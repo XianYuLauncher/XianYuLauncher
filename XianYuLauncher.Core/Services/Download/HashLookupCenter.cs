@@ -204,7 +204,7 @@ public sealed class HashLookupCenter : IHashLookupCenter
             {
                 fetched = await fetchBatchAsync(missingHashes)
                     ?? new Dictionary<string, ModrinthVersion>(StringComparer.OrdinalIgnoreCase);
-                System.Diagnostics.Debug.WriteLine($"[HashLookupCenter][Modrinth] 远端返回: scope={scope}, 请求hash={missingHashes.Count}, 命中版本={fetched.Count}");
+                System.Diagnostics.Debug.WriteLine($"[HashLookupCenter][Modrinth] 远端返回: scope={scope}, 请求 hash={missingHashes.Count}, 命中版本={fetched.Count}");
             }
             catch (Exception ex)
             {
@@ -292,7 +292,7 @@ public sealed class HashLookupCenter : IHashLookupCenter
             try
             {
                 fetched = NormalizeCurseForgeResult(await fetchBatchAsync(missingFingerprints));
-                System.Diagnostics.Debug.WriteLine($"[HashLookupCenter][CurseForge] 远端返回: scope={scope}, 请求fingerprint={missingFingerprints.Count}, 精确命中={fetched.ExactMatches.Count}, 未匹配={fetched.UnmatchedFingerprints.Count}");
+                System.Diagnostics.Debug.WriteLine($"[HashLookupCenter][CurseForge] 远端返回: scope={scope}, 请求 fingerprint={missingFingerprints.Count}, 精确命中={fetched.ExactMatches.Count}, 未匹配={fetched.UnmatchedFingerprints.Count}");
             }
             catch (Exception ex)
             {

@@ -79,7 +79,7 @@ public class ForgeService
                     result.Response.EnsureSuccessStatusCode();
                     string content = await result.Response.Content.ReadAsStringAsync();
                     System.Diagnostics.Debug.WriteLine($"[ForgeService] 成功获取 Forge 版本列表 (使用源: {result.UsedSourceKey} -> {result.UsedDomain})");
-                    System.Diagnostics.Debug.WriteLine($"[ForgeService] 响应内容前100字符: {(content.Length > 100 ? content.Substring(0, 100) : content)}");
+                    System.Diagnostics.Debug.WriteLine($"[ForgeService] 响应内容前 100 字符: {(content.Length > 100 ? content.Substring(0, 100) : content)}");
                     
                     // 根据响应内容格式判断如何解析（而不是根据源类型）
                     // JSON 格式以 [ 或 { 开头，XML 格式以 < 开头
@@ -113,12 +113,12 @@ public class ForgeService
         }
         catch (HttpRequestException ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ForgeService] 获取Forge版本列表失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ForgeService] 获取 Forge 版本列表失败: {ex.Message}");
             throw new Exception($"获取Forge版本列表失败: {ex.Message}");
         }
         catch (JsonException ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ForgeService] 解析Forge版本列表失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ForgeService] 解析 Forge 版本列表失败: {ex.Message}");
             throw new Exception($"解析Forge版本列表失败: {ex.Message}");
         }
         catch (Exception ex) when (ex.Message.StartsWith("获取Forge") || ex.Message.StartsWith("解析Forge"))
@@ -127,7 +127,7 @@ public class ForgeService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ForgeService] 获取Forge版本列表时发生错误: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ForgeService] 获取 Forge 版本列表时发生错误: {ex.Message}");
             throw new Exception($"获取Forge版本列表时发生错误: {ex.Message}");
         }
     }
