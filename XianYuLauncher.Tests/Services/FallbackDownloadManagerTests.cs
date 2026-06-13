@@ -192,7 +192,7 @@ public class FallbackDownloadManagerTests : IDisposable
         _innerManagerMock
             .Setup(m => m.DownloadFileAsync(
                 It.IsAny<string>(), targetPath, null, null, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(DownloadResult.Failed(originalUrl, "SHA1验证失败：文件哈希不匹配"));
+            .ReturnsAsync(DownloadResult.Failed(originalUrl, "SHA1 验证失败：文件哈希不匹配"));
 
         // Act
         var result = await _fallbackManager.DownloadFileWithFallbackAsync(
