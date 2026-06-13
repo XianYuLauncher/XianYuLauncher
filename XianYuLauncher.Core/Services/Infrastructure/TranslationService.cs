@@ -14,7 +14,7 @@ using XianYuLauncher.Core.Models;
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-/// MCIM翻译服务实现
+/// MCIM 翻译服务实现
 /// </summary>
 public class TranslationService : ITranslationService
 {
@@ -44,7 +44,7 @@ public class TranslationService : ITranslationService
     }
     
     /// <summary>
-    /// 翻译服务单例实例（用于Models中访问）
+    /// 翻译服务单例实例（用于 Models 中访问）
     /// </summary>
     public static TranslationService Instance { get; private set; } = null!;
 
@@ -52,7 +52,7 @@ public class TranslationService : ITranslationService
     private static string _currentLanguage = "zh-CN";
     
     /// <summary>
-    /// 设置当前语言（由LanguageSelectorService调用）
+    /// 设置当前语言（由 LanguageSelectorService 调用）
     /// </summary>
     public static void SetCurrentLanguage(string language)
     {
@@ -98,7 +98,7 @@ public class TranslationService : ITranslationService
     }
     
     /// <summary>
-    /// 获取Modrinth项目的中文翻译
+    /// 获取 Modrinth 项目的中文翻译
     /// </summary>
     public async Task<McimTranslationResponse?> GetModrinthTranslationAsync(string projectId)
     {
@@ -120,14 +120,14 @@ public class TranslationService : ITranslationService
         try
         {
             var url = $"{ModrinthTranslationApiUrl}?project_id={projectId}";
-            System.Diagnostics.Debug.WriteLine($"[翻译服务] 请求Modrinth翻译: {projectId}");
+            System.Diagnostics.Debug.WriteLine($"[翻译服务] 请求 Modrinth 翻译: {projectId}");
 
-            // 使用GET请求而不是POST
+            // 使用 GET 请求而不是 POST
             var response = await _httpClient.GetAsync(url);
 
             if (!response.IsSuccessStatusCode)
             {
-                System.Diagnostics.Debug.WriteLine($"[翻译服务] Modrinth翻译失败: {response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"[翻译服务] Modrinth 翻译失败: {response.StatusCode}");
                 return null;
             }
 
@@ -138,22 +138,22 @@ public class TranslationService : ITranslationService
             {
                 // 缓存翻译结果
                 await SaveTranslationCacheAsync(cacheKey, translation);
-                System.Diagnostics.Debug.WriteLine($"[翻译服务] Modrinth翻译成功: {projectId}");
+                System.Diagnostics.Debug.WriteLine($"[翻译服务] Modrinth 翻译成功: {projectId}");
                 return translation;
             }
 
-            System.Diagnostics.Debug.WriteLine($"[翻译服务] Modrinth翻译无结果: {projectId}");
+            System.Diagnostics.Debug.WriteLine($"[翻译服务] Modrinth 翻译无结果: {projectId}");
             return null;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[翻译服务] Modrinth翻译异常: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[翻译服务] Modrinth 翻译异常: {ex.Message}");
             return null;
         }
     }
     
     /// <summary>
-    /// 获取CurseForge Mod的中文翻译
+    /// 获取 CurseForge Mod 的中文翻译
     /// </summary>
     public async Task<McimTranslationResponse?> GetCurseForgeTranslationAsync(int modId)
     {
@@ -175,14 +175,14 @@ public class TranslationService : ITranslationService
         try
         {
             var url = $"{CurseForgeTranslationApiUrl}?modId={modId}";
-            System.Diagnostics.Debug.WriteLine($"[翻译服务] 请求CurseForge翻译: {modId}");
+            System.Diagnostics.Debug.WriteLine($"[翻译服务] 请求 CurseForge 翻译: {modId}");
 
-            // 使用GET请求而不是POST
+            // 使用 GET 请求而不是 POST
             var response = await _httpClient.GetAsync(url);
 
             if (!response.IsSuccessStatusCode)
             {
-                System.Diagnostics.Debug.WriteLine($"[翻译服务] CurseForge翻译失败: {response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"[翻译服务] CurseForge 翻译失败: {response.StatusCode}");
                 return null;
             }
 
@@ -193,22 +193,22 @@ public class TranslationService : ITranslationService
             {
                 // 缓存翻译结果
                 await SaveTranslationCacheAsync(cacheKey, translation);
-                System.Diagnostics.Debug.WriteLine($"[翻译服务] CurseForge翻译成功: {modId}");
+                System.Diagnostics.Debug.WriteLine($"[翻译服务] CurseForge 翻译成功: {modId}");
                 return translation;
             }
 
-            System.Diagnostics.Debug.WriteLine($"[翻译服务] CurseForge翻译无结果: {modId}");
+            System.Diagnostics.Debug.WriteLine($"[翻译服务] CurseForge 翻译无结果: {modId}");
             return null;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[翻译服务] CurseForge翻译异常: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[翻译服务] CurseForge 翻译异常: {ex.Message}");
             return null;
         }
     }
 
     /// <summary>
-    /// 初始化Mod名称翻译数据
+    /// 初始化 Mod 名称翻译数据
     /// </summary>
     public async Task InitializeNameTranslationAsync(string dataFilePath)
     {
@@ -281,7 +281,7 @@ public class TranslationService : ITranslationService
     }
 
     /// <summary>
-    /// 获取Mod翻译名称
+    /// 获取 Mod 翻译名称
     /// </summary>
     public string GetTranslatedName(string slug, string originalName)
     {
@@ -316,7 +316,7 @@ public class TranslationService : ITranslationService
         }
 
         // 2. 如果包含中文，尝试模糊匹配 (O(N))
-        // 只有当找不到精确匹配时才遍历，1.5万条数据遍历很快 (<5ms)，不会造成卡顿
+        // 只有当找不到精确匹配时才遍历，1.5 万条数据遍历很快 (<5ms)，不会造成卡顿
         if (HasChinese(keyword))
         {
             // 优先匹配以关键词开头的

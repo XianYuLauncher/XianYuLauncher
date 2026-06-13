@@ -20,7 +20,7 @@ namespace XianYuLauncher.Helpers
         {
             bool boolValue = value is bool && (bool)value;
             
-            // 解析参数，获取true和false对应的画刷名称
+            // 解析参数，获取 true 和 false 对应的画刷名称
             string trueBrushName = "CardBackgroundFillColorSelectedBrush";
             string falseBrushName = "CardBackgroundFillColorDefaultBrush";
             
@@ -44,7 +44,7 @@ namespace XianYuLauncher.Helpers
                     }
                     else
                     {
-                        // 只有一个参数时，同时用作true和false的画刷
+                        // 只有一个参数时，同时用作 true 和 false 的画刷
                         trueBrushName = paramStr.Trim();
                         falseBrushName = paramStr.Trim();
                     }

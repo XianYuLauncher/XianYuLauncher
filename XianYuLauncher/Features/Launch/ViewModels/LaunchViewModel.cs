@@ -288,19 +288,19 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     }
 
     /// <summary>
-    /// 启动成功消息，用于InfoBar显示
+    /// 启动成功消息，用于 InfoBar 显示
     /// </summary>
     [ObservableProperty]
     private string _launchSuccessMessage = string.Empty;
     
     /// <summary>
-    /// 当前下载项信息，用于InfoBar显示
+    /// 当前下载项信息，用于 InfoBar 显示
     /// </summary>
     [ObservableProperty]
     private string _currentDownloadItem = string.Empty;
     
     /// <summary>
-    /// 启动成功InfoBar是否打开
+    /// 启动成功 InfoBar 是否打开
     /// </summary>
     [ObservableProperty]
     private bool _isLaunchSuccessInfoBarOpen = false;
@@ -318,7 +318,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     private bool _isViewLogsButtonVisible = false;
     
     /// <summary>
-    /// InfoBar是否应该显示（准备阶段或游戏运行中）
+    /// InfoBar 是否应该显示（准备阶段或游戏运行中）
     /// </summary>
     [ObservableProperty]
     private bool _isInfoBarOpen = false;
@@ -327,7 +327,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     private bool _isDevBuildInfoBarOpen;
     
     /// <summary>
-    /// 更新InfoBar显示状态
+    /// 更新 InfoBar 显示状态
     /// </summary>
     private void UpdateInfoBarOpenState()
     {
@@ -359,7 +359,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     private string _recommendedModTitle = "Msg_Loading".GetLocalized();
 
     /// <summary>
-    /// 启动页新闻卡片动态展示集合（最终展示最多3条）
+    /// 启动页新闻卡片动态展示集合（最终展示最多 3 条）
     /// </summary>
     [ObservableProperty]
     private ObservableCollection<LaunchNewsCardDisplayItem> _newsCardItems = new();
@@ -489,7 +489,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
         // 设置令牌刷新回调
         _tokenRefreshService.SetCallback(new TokenRefreshCallbackImpl(this));
         
-        // 订阅Minecraft路径变化事件
+        // 订阅 Minecraft 路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
         
         InitializeAsync().ConfigureAwait(false);
@@ -669,7 +669,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
 
         await _uiDispatcher.RunOnUiThreadAsync(() =>
         {
-            LaunchStatus += $"\n游戏进程已退出，退出代码: {e.ExitCode}";
+            LaunchStatus += $"\n 游戏进程已退出，退出代码: {e.ExitCode}";
             IsGameRunning = false;
             _currentGameProcess = null;
         });
@@ -702,7 +702,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     }
     
     /// <summary>
-    /// 当Minecraft路径变化时触发
+    /// 当 Minecraft 路径变化时触发
     /// </summary>
     private async void OnMinecraftPathChanged(object? sender, string newPath)
     {
@@ -759,7 +759,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
         var mergedItems = BuildBuiltInNewsItems();
         NewsCardItems = new ObservableCollection<LaunchNewsCardDisplayItem>(GetTop3NewsItems(mergedItems));
 
-        // Phase 3: 合并云端条目并最终按优先级截断为3条
+        // Phase 3: 合并云端条目并最终按优先级截断为 3 条
         var remoteItems = await _launchNewsCardService.GetRemoteNewsItemsAsync();
         foreach (var remote in remoteItems)
         {
@@ -891,7 +891,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Mod推荐加载] 失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Mod 推荐加载] 失败: {ex.Message}");
             RecommendedModTitle = "Msg_LoadFailed".GetLocalized();
         }
     }
@@ -1147,10 +1147,10 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     {
         try
         {
-            // 🔒 使用 AccountManager 安全保存（自动加密token）
+            // 🔒 使用 AccountManager 安全保存（自动加密 token）
             var accountManager = App.GetService<IAccountManager>();
             await accountManager.SaveAccountsAsync(Profiles.ToList());
-            System.Diagnostics.Debug.WriteLine($"[Launch] 角色列表已保存（token已加密），共 {Profiles.Count} 个角色");
+            System.Diagnostics.Debug.WriteLine($"[Launch] 角色列表已保存（token 已加密），共 {Profiles.Count} 个角色");
         }
         catch (Exception ex)
         {
@@ -1164,7 +1164,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     [RelayCommand]
     private void NavigateToCharactersPage()
     {
-        // 这里将在UI层实现导航逻辑
+        // 这里将在 UI 层实现导航逻辑
     }
     
     /// <summary>
@@ -1181,7 +1181,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     {
         try
         {
-            // 获取正确的Minecraft游戏文件夹路径
+            // 获取正确的 Minecraft 游戏文件夹路径
             var minecraftPath = _fileService.GetMinecraftDataPath();
             var versionsPath = Path.Combine(minecraftPath, MinecraftPathConsts.Versions);
             if (Directory.Exists(versionsPath))
@@ -1192,7 +1192,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
                 foreach (var dir in directories)
                 {
                     var versionName = Path.GetFileName(dir);
-                    // 检查版本文件夹中是否存在jar文件和json文件
+                    // 检查版本文件夹中是否存在 jar 文件和 json 文件
                     if (File.Exists(Path.Combine(dir, $"{versionName}.jar")) &&
                         File.Exists(Path.Combine(dir, $"{versionName}.json")))
                     {
@@ -1228,7 +1228,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
         }
     }
 
-    // 显示Minecraft版本路径信息
+    // 显示 Minecraft 版本路径信息
     private void ShowMinecraftPathInfo()
     {
         try
@@ -1237,7 +1237,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
             var versionsPath = Path.Combine(minecraftPath, MinecraftPathConsts.Versions);
             
             // 更新启动状态显示路径信息
-            SetLaunchStatusThreadSafe($"当前Minecraft版本路径: {versionsPath}");
+            SetLaunchStatusThreadSafe($"当前 Minecraft 版本路径: {versionsPath}");
         }
         catch (Exception ex)
         {
@@ -1268,7 +1268,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
         // 保存选中的版本到本地设置
         _localSettingsService.SaveSettingAsync(SelectedVersionKey, value).ConfigureAwait(false);
         ShowMinecraftPathInfo();
-        // 通知UI更新版本显示文本、页面标题和字体大小
+        // 通知 UI 更新版本显示文本、页面标题和字体大小
         OnPropertyChanged(nameof(SelectedVersionDisplay));
         OnPropertyChanged(nameof(PageTitle));
         OnPropertyChanged(nameof(PageTitleFontSize));
@@ -1293,7 +1293,7 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     {
         System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] IsGameRunning changed to: {value}");
         
-        // 更新InfoBar显示状态
+        // 更新 InfoBar 显示状态
         UpdateInfoBarOpenState();
         
         // 当游戏运行状态变为 false（游戏被关闭）
@@ -1331,20 +1331,20 @@ public partial class LaunchViewModel : ObservableRecipient, IPageHeaderAware
     }
     
     /// <summary>
-    /// 当临时InfoBar状态变化时的处理
+    /// 当临时 InfoBar 状态变化时的处理
     /// </summary>
     partial void OnIsLaunchSuccessInfoBarOpenChanged(bool value)
     {
         System.Diagnostics.Debug.WriteLine($"[LaunchViewModel] IsLaunchSuccessInfoBarOpen changed to: {value}");
         
-        // 更新InfoBar显示状态
+        // 更新 InfoBar 显示状态
         UpdateInfoBarOpenState();
     }
 
     /// <summary>
     /// 检测当前地区是否为中国大陆
     /// </summary>
-    /// <returns>如果是中国大陆地区返回true，否则返回false</returns>
+    /// <returns>如果是中国大陆地区返回 true，否则返回 false</returns>
     private bool IsChinaMainland()
     {
         // 使用 RegionValidator 服务

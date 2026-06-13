@@ -48,7 +48,7 @@ public class FallbackDownloadManager
     /// </summary>
     /// <param name="innerManager">内部下载管理器</param>
     /// <param name="sourceFactory">下载源工厂</param>
-    /// <param name="httpClient">HTTP客户端</param>
+    /// <param name="httpClient">HTTP 客户端</param>
     /// <param name="logger">日志记录器（可选）</param>
     public FallbackDownloadManager(
         IDownloadManager innerManager,
@@ -68,10 +68,10 @@ public class FallbackDownloadManager
     /// <summary>
     /// 下载文件，支持自动回退到备用源
     /// </summary>
-    /// <param name="originalUrl">原始下载URL</param>
+    /// <param name="originalUrl">原始下载 URL</param>
     /// <param name="targetPath">目标文件路径</param>
-    /// <param name="resourceType">资源类型（用于URL转换）</param>
-    /// <param name="expectedSha1">预期的SHA1哈希值（可选）</param>
+    /// <param name="resourceType">资源类型（用于 URL 转换）</param>
+    /// <param name="expectedSha1">预期的 SHA1 哈希值（可选）</param>
     /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>下载结果，包含使用的源和尝试过的源</returns>
@@ -100,7 +100,7 @@ public class FallbackDownloadManager
             var source = _sourceFactory.GetSource(sourceKey);
             attemptedSources.Add(sourceKey);
 
-            // 转换URL
+            // 转换 URL
             var transformedUrl = TransformUrl(originalUrl, source, resourceType);
             _logger?.LogDebug("尝试源 {Source}: {Url}", sourceKey, transformedUrl);
 
@@ -234,8 +234,8 @@ public class FallbackDownloadManager
     /// <summary>
     /// 发送 HTTP GET 请求，支持自动回退到备用源
     /// </summary>
-    /// <param name="originalUrl">原始请求URL</param>
-    /// <param name="resourceType">资源类型（用于URL转换）</param>
+    /// <param name="originalUrl">原始请求 URL</param>
+    /// <param name="resourceType">资源类型（用于 URL 转换）</param>
     /// <param name="configureRequest">配置请求的回调（可选，用于设置 Headers 等）</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>HTTP 响应结果</returns>
@@ -268,7 +268,7 @@ public class FallbackDownloadManager
     {
         // 根据 resourceType 获取主源
         var primarySource = GetPrimarySourceByResourceType(resourceType);
-        _logger?.LogDebug("[Func版本] 使用主源: {Source} (类型: {ResourceType})", primarySource.Key, resourceType);
+        _logger?.LogDebug("[Func 版本] 使用主源: {Source} (类型: {ResourceType})", primarySource.Key, resourceType);
 
         return await SendGetWithFallbackCoreAsync(
             urlGenerator, configureRequest, GetSourceOrder(primarySource.Key), cancellationToken);
@@ -322,7 +322,7 @@ public class FallbackDownloadManager
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "源 {Source} URL生成失败", sourceKey);
+                _logger?.LogWarning(ex, "源 {Source} URL 生成失败", sourceKey);
                 continue;
             }
 
@@ -335,7 +335,7 @@ public class FallbackDownloadManager
 
             attemptedSources.Add(sourceKey);
             _logger?.LogDebug("尝试 {Source}: {Url}", sourceKey, url);
-            _logger?.LogInformation("[社区资源] 实际请求URL: {Url} (源: {Source})", url, sourceKey);
+            _logger?.LogInformation("[社区资源] 实际请求 URL: {Url} (源: {Source})", url, sourceKey);
 
             try
             {
@@ -540,7 +540,7 @@ public class FallbackDownloadManager
             $"resourceType={resourceType}, url={SummarizeUrl(originalUrl)}, targetPath={targetPath}, sourceOrder={string.Join(" -> ", sourcesToTry)}");
 
         _logger?.LogDebug("社区资源下载 {Url}，回退顺序: {Sources}", originalUrl, string.Join(" -> ", sourcesToTry));
-        _logger?.LogWarning("[社区资源回退] 开始下载, 类型={ResourceType}, 原始URL={Url}, 尝试顺序={Sources}",
+        _logger?.LogWarning("[社区资源回退] 开始下载, 类型={ResourceType}, 原始 URL={Url}, 尝试顺序={Sources}",
             resourceType, originalUrl, string.Join(" -> ", sourcesToTry));
 
         for (int index = 0; index < sourcesToTry.Count; index++)
@@ -786,7 +786,7 @@ public class FallbackDownloadManager
     }
 
     /// <summary>
-    /// 根据资源类型转换URL
+    /// 根据资源类型转换 URL
     /// </summary>
     private string TransformUrl(string originalUrl, IDownloadSource source, string resourceType)
     {
@@ -802,10 +802,10 @@ public class FallbackDownloadManager
             "asset" => source.GetResourceUrl("asset", originalUrl),
             "quilt_meta" => TransformQuiltMetaUrl(originalUrl, source),
             "fabric_meta" => TransformFabricMetaUrl(originalUrl, source),
-            _ => originalUrl // 不支持的类型，使用原始URL
+            _ => originalUrl // 不支持的类型，使用原始 URL
         };
         
-        _logger?.LogDebug("[URL转换] 源={Source}, 类型={Type}, 原始={Original}, 转换后={Transformed}", 
+        _logger?.LogDebug("[URL 转换] 源={Source}, 类型={Type}, 原始={Original}, 转换后={Transformed}", 
             source.Key, resourceType, originalUrl, transformed);
         
         return transformed;
@@ -891,18 +891,18 @@ public class FallbackDownloadManager
                 return lastResult;
             }
 
-            // SHA1验证失败不重试
+            // SHA1 验证失败不重试
             if (lastResult.ErrorMessage?.Contains("SHA1", StringComparison.OrdinalIgnoreCase) == true ||
                 lastResult.ErrorMessage?.Contains("hash", StringComparison.OrdinalIgnoreCase) == true)
             {
-                _logger?.LogDebug("SHA1验证失败，不重试");
+                _logger?.LogDebug("SHA1 验证失败，不重试");
                 return lastResult;
             }
 
             // 非瞬时 HTTP 状态不在当前源重试（例如 404），应尽快切换到下一个源
             if (IsNonRetriableHttpStatus(lastResult))
             {
-                _logger?.LogDebug("检测到非瞬时HTTP状态，不在当前源重试，直接切换回退源");
+                _logger?.LogDebug("检测到非瞬时 HTTP 状态，不在当前源重试，直接切换回退源");
                 return lastResult;
             }
         }
@@ -1064,7 +1064,7 @@ public class FallbackDownloadResult
     public string? FilePath { get; init; }
 
     /// <summary>
-    /// 原始URL
+    /// 原始 URL
     /// </summary>
     public string? OriginalUrl { get; init; }
 

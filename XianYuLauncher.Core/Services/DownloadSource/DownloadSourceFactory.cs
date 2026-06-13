@@ -9,18 +9,18 @@ public class DownloadSourceFactory
 {
     private readonly Dictionary<string, IDownloadSource> _sources = new();
     private string _defaultSourceKey = "official";
-    private string _modrinthSourceKey = "official"; // Modrinth专用下载源
-    private string _curseforgeSourceKey = "official"; // CurseForge专用下载源
+    private string _modrinthSourceKey = "official"; // Modrinth 专用下载源
+    private string _curseforgeSourceKey = "official"; // CurseForge 专用下载源
     private string _versionManifestSourceKey = "official"; // 版本清单专用下载源
     private string _fileDownloadSourceKey = "official"; // 文件下载专用下载源
-    private string _forgeSourceKey = "official"; // Forge专用下载源
-    private string _fabricSourceKey = "official"; // Fabric专用下载源
-    private string _neoforgeSourceKey = "official"; // NeoForge专用下载源
-    private string _quiltSourceKey = "official"; // Quilt专用下载源
-    private string _liteLoaderSourceKey = "official"; // LiteLoader专用下载源
-    private string _legacyFabricSourceKey = "official"; // LegacyFabric专用下载源
-    private string _cleanroomSourceKey = "official"; // Cleanroom专用下载源
-    private string _optifineSourceKey = "official"; // OptiFine专用下载源
+    private string _forgeSourceKey = "official"; // Forge 专用下载源
+    private string _fabricSourceKey = "official"; // Fabric 专用下载源
+    private string _neoforgeSourceKey = "official"; // NeoForge 专用下载源
+    private string _quiltSourceKey = "official"; // Quilt 专用下载源
+    private string _liteLoaderSourceKey = "official"; // LiteLoader 专用下载源
+    private string _legacyFabricSourceKey = "official"; // LegacyFabric 专用下载源
+    private string _cleanroomSourceKey = "official"; // Cleanroom 专用下载源
+    private string _optifineSourceKey = "official"; // OptiFine 专用下载源
     
     /// <summary>
     /// 初始化下载源工厂
@@ -121,16 +121,16 @@ public class DownloadSourceFactory
     }
     
     /// <summary>
-    /// 获取Modrinth专用下载源
+    /// 获取 Modrinth 专用下载源
     /// </summary>
-    /// <returns>Modrinth下载源实例</returns>
+    /// <returns>Modrinth 下载源实例</returns>
     public IDownloadSource GetModrinthSource()
     {
         return _sources.TryGetValue(_modrinthSourceKey, out var source) ? source : GetDefaultSource();
     }
     
     /// <summary>
-    /// 设置Modrinth专用下载源
+    /// 设置 Modrinth 专用下载源
     /// </summary>
     /// <param name="key">下载源标识（official/mcim）</param>
     public void SetModrinthSource(string key)
@@ -146,25 +146,25 @@ public class DownloadSourceFactory
         }
         
         _modrinthSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Modrinth下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Modrinth 下载源已设置为: {key}");
     }
     
     /// <summary>
-    /// 获取当前Modrinth下载源标识
+    /// 获取当前 Modrinth 下载源标识
     /// </summary>
     public string GetModrinthSourceKey() => _modrinthSourceKey;
 
     /// <summary>
-    /// 获取CurseForge专用下载源
+    /// 获取 CurseForge 专用下载源
     /// </summary>
-    /// <returns>CurseForge下载源实例</returns>
+    /// <returns>CurseForge 下载源实例</returns>
     public IDownloadSource GetCurseForgeSource()
     {
         return _sources.TryGetValue(_curseforgeSourceKey, out var source) ? source : GetDefaultSource();
     }
 
     /// <summary>
-    /// 设置CurseForge专用下载源
+    /// 设置 CurseForge 专用下载源
     /// </summary>
     /// <param name="key">下载源标识（任意已注册的下载源，例如 official/bmclapi/mcim 或自定义源）</param>
     public void SetCurseForgeSource(string key)
@@ -180,16 +180,16 @@ public class DownloadSourceFactory
         }
 
         _curseforgeSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] CurseForge下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] CurseForge 下载源已设置为: {key}");
     }
 
     /// <summary>
-    /// 获取当前CurseForge下载源标识
+    /// 获取当前 CurseForge 下载源标识
     /// </summary>
     public string GetCurseForgeSourceKey() => _curseforgeSourceKey;
 
     /// <summary>
-    /// 获取Forge专用下载源
+    /// 获取 Forge 专用下载源
     /// </summary>
     public IDownloadSource GetForgeSource()
     {
@@ -197,7 +197,7 @@ public class DownloadSourceFactory
     }
 
     /// <summary>
-    /// 设置Forge专用下载源
+    /// 设置 Forge 专用下载源
     /// </summary>
     public void SetForgeSource(string key)
     {
@@ -208,16 +208,16 @@ public class DownloadSourceFactory
             throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
 
         _forgeSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Forge下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Forge 下载源已设置为: {key}");
     }
 
     /// <summary>
-    /// 获取当前Forge下载源标识
+    /// 获取当前 Forge 下载源标识
     /// </summary>
     public string GetForgeSourceKey() => _forgeSourceKey;
 
     /// <summary>
-    /// 获取Fabric专用下载源
+    /// 获取 Fabric 专用下载源
     /// </summary>
     public IDownloadSource GetFabricSource()
     {
@@ -225,7 +225,7 @@ public class DownloadSourceFactory
     }
 
     /// <summary>
-    /// 设置Fabric专用下载源
+    /// 设置 Fabric 专用下载源
     /// </summary>
     public void SetFabricSource(string key)
     {
@@ -236,16 +236,16 @@ public class DownloadSourceFactory
             throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
 
         _fabricSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Fabric下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Fabric 下载源已设置为: {key}");
     }
 
     /// <summary>
-    /// 获取当前Fabric下载源标识
+    /// 获取当前 Fabric 下载源标识
     /// </summary>
     public string GetFabricSourceKey() => _fabricSourceKey;
 
     /// <summary>
-    /// 获取NeoForge专用下载源
+    /// 获取 NeoForge 专用下载源
     /// </summary>
     public IDownloadSource GetNeoForgeSource()
     {
@@ -253,7 +253,7 @@ public class DownloadSourceFactory
     }
 
     /// <summary>
-    /// 设置NeoForge专用下载源
+    /// 设置 NeoForge 专用下载源
     /// </summary>
     public void SetNeoForgeSource(string key)
     {
@@ -264,16 +264,16 @@ public class DownloadSourceFactory
             throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
 
         _neoforgeSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] NeoForge下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] NeoForge 下载源已设置为: {key}");
     }
 
     /// <summary>
-    /// 获取当前NeoForge下载源标识
+    /// 获取当前 NeoForge 下载源标识
     /// </summary>
     public string GetNeoForgeSourceKey() => _neoforgeSourceKey;
 
     /// <summary>
-    /// 获取Quilt专用下载源
+    /// 获取 Quilt 专用下载源
     /// </summary>
     public IDownloadSource GetQuiltSource()
     {
@@ -281,7 +281,7 @@ public class DownloadSourceFactory
     }
 
     /// <summary>
-    /// 设置Quilt专用下载源
+    /// 设置 Quilt 专用下载源
     /// </summary>
     public void SetQuiltSource(string key)
     {
@@ -292,16 +292,16 @@ public class DownloadSourceFactory
             throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
 
         _quiltSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Quilt下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Quilt 下载源已设置为: {key}");
     }
 
     /// <summary>
-    /// 获取当前Quilt下载源标识
+    /// 获取当前 Quilt 下载源标识
     /// </summary>
     public string GetQuiltSourceKey() => _quiltSourceKey;
 
     /// <summary>
-    /// 获取OptiFine专用下载源
+    /// 获取 OptiFine 专用下载源
     /// </summary>
     public IDownloadSource GetOptifineSource()
     {
@@ -322,7 +322,7 @@ public class DownloadSourceFactory
     }
 
     /// <summary>
-    /// 设置OptiFine专用下载源
+    /// 设置 OptiFine 专用下载源
     /// </summary>
     public void SetOptifineSource(string key)
     {
@@ -333,11 +333,11 @@ public class DownloadSourceFactory
             throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
 
         _optifineSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] OptiFine下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] OptiFine 下载源已设置为: {key}");
     }
 
     /// <summary>
-    /// 获取当前OptiFine下载源标识
+    /// 获取当前 OptiFine 下载源标识
     /// </summary>
     public string GetOptifineSourceKey() => _optifineSourceKey;
 
@@ -398,7 +398,7 @@ public class DownloadSourceFactory
     public string GetFileDownloadSourceKey() => _fileDownloadSourceKey;
 
     /// <summary>
-    /// 获取LiteLoader专用下载源
+    /// 获取 LiteLoader 专用下载源
     /// </summary>
     public IDownloadSource GetLiteLoaderSource()
     {
@@ -406,7 +406,7 @@ public class DownloadSourceFactory
     }
 
     /// <summary>
-    /// 设置LiteLoader专用下载源
+    /// 设置 LiteLoader 专用下载源
     /// </summary>
     public void SetLiteLoaderSource(string key)
     {
@@ -417,16 +417,16 @@ public class DownloadSourceFactory
             throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
 
         _liteLoaderSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] LiteLoader下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] LiteLoader 下载源已设置为: {key}");
     }
 
     /// <summary>
-    /// 获取当前LiteLoader下载源标识
+    /// 获取当前 LiteLoader 下载源标识
     /// </summary>
     public string GetLiteLoaderSourceKey() => _liteLoaderSourceKey;
 
     /// <summary>
-    /// 获取LegacyFabric专用下载源
+    /// 获取 LegacyFabric 专用下载源
     /// </summary>
     public IDownloadSource GetLegacyFabricSource()
     {
@@ -439,7 +439,7 @@ public class DownloadSourceFactory
     }
 
     /// <summary>
-    /// 设置LegacyFabric专用下载源
+    /// 设置 LegacyFabric 专用下载源
     /// </summary>
     public void SetLegacyFabricSource(string key)
     {
@@ -457,11 +457,11 @@ public class DownloadSourceFactory
         }
 
         _legacyFabricSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] LegacyFabric下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] LegacyFabric 下载源已设置为: {key}");
     }
 
     /// <summary>
-    /// 获取当前LegacyFabric下载源标识
+    /// 获取当前 LegacyFabric 下载源标识
     /// </summary>
     public string GetLegacyFabricSourceKey()
     {
@@ -471,7 +471,7 @@ public class DownloadSourceFactory
     }
 
     /// <summary>
-    /// 获取Cleanroom专用下载源
+    /// 获取 Cleanroom 专用下载源
     /// </summary>
     public IDownloadSource GetCleanroomSource()
     {
@@ -479,7 +479,7 @@ public class DownloadSourceFactory
     }
 
     /// <summary>
-    /// 设置Cleanroom专用下载源
+    /// 设置 Cleanroom 专用下载源
     /// </summary>
     public void SetCleanroomSource(string key)
     {
@@ -490,11 +490,11 @@ public class DownloadSourceFactory
             throw new ArgumentException($"不存在标识为{key}的下载源", nameof(key));
 
         _cleanroomSourceKey = key;
-        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Cleanroom下载源已设置为: {key}");
+        System.Diagnostics.Debug.WriteLine($"[DownloadSourceFactory] Cleanroom 下载源已设置为: {key}");
     }
 
     /// <summary>
-    /// 获取当前Cleanroom下载源标识
+    /// 获取当前 Cleanroom 下载源标识
     /// </summary>
     public string GetCleanroomSourceKey() => _cleanroomSourceKey;
 
@@ -511,7 +511,7 @@ public class DownloadSourceFactory
     /// 获取指定类型的下载源
     /// </summary>
     /// <typeparam name="TSource">下载源类型</typeparam>
-    /// <returns>下载源实例，如果不存在则返回null</returns>
+    /// <returns>下载源实例，如果不存在则返回 null</returns>
     public TSource? GetSourceByType<TSource>() where TSource : IDownloadSource
     {
         return _sources.Values.OfType<TSource>().FirstOrDefault();

@@ -866,7 +866,7 @@ public class DownloadTaskManager : IDownloadTaskManager
     }
 
     /// <summary>
-    /// 启动世界下载（下载zip并解压到saves目录）
+    /// 启动世界下载（下载 zip 并解压到 saves 目录）
     /// </summary>
     public Task StartWorldDownloadAsync(
         string worldName,
@@ -1704,7 +1704,7 @@ public class DownloadTaskManager : IDownloadTaskManager
     }
 
     /// <summary>
-    /// 执行世界下载（下载zip并解压）
+    /// 执行世界下载（下载 zip 并解压）
     /// </summary>
     private async Task ExecuteWorldDownloadAsync(
         string worldName,

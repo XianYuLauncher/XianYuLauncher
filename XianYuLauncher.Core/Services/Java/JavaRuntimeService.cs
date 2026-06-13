@@ -281,7 +281,7 @@ public class JavaRuntimeService : IJavaRuntimeService
                     return new JavaVersion
                     {
                         Path = javaPath,
-                        FullVersion = fullVersion, // 如果提取失败，可能是 Unknown，ViewModel需要处理
+                        FullVersion = fullVersion, // 如果提取失败，可能是 Unknown，ViewModel 需要处理
                         MajorVersion = majorVersion,
                         IsJDK = isJDK,
                         Is64Bit = is64Bit
@@ -311,7 +311,7 @@ public class JavaRuntimeService : IJavaRuntimeService
         
         try
         {
-            // 格式1: 1.8.0_301 (旧版本格式)
+            // 格式 1: 1.8.0_301 (旧版本格式)
             if (versionString.StartsWith("1."))
             {
                 var parts = versionString.Split('.');
@@ -322,7 +322,7 @@ public class JavaRuntimeService : IJavaRuntimeService
                     return success;
                 }
             }
-            // 格式2: 17.0.1 或 17 (新版本格式)
+            // 格式 2: 17.0.1 或 17 (新版本格式)
             else
             {
                 var parts = versionString.Split('.');
@@ -455,11 +455,11 @@ public class JavaRuntimeService : IJavaRuntimeService
     {
         var commonBasePaths = new[]
         {
-            // 标准Java安装路径
+            // 标准 Java 安装路径
             @"C:\Program Files\Java",
             @"C:\Program Files (x86)\Java",
             
-            // Eclipse Adoptium (原AdoptOpenJDK)
+            // Eclipse Adoptium (原 AdoptOpenJDK)
             @"C:\Program Files\Eclipse Adoptium",
             @"C:\Program Files (x86)\Eclipse Adoptium",
             @"C:\Program Files\Eclipse Foundation",
@@ -473,14 +473,14 @@ public class JavaRuntimeService : IJavaRuntimeService
             // Microsoft OpenJDK
             @"C:\Program Files\Microsoft",
             
-            // IDE自带的JDK
+            // IDE 自带的 JDK
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".jdks"), // IntelliJ IDEA
             
             // 包管理器安装路径
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "scoop", "apps"), // Scoop
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs"), // 用户本地程序
             
-            // 官方Minecraft启动器的Java runtime
+            // 官方 Minecraft 启动器的 Java runtime
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), MinecraftPathConsts.MinecraftFolder, MinecraftPathConsts.Runtime), // %AppData%\.minecraft\runtime
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Packages", "Microsoft.4297127D64EC6_8wekyb3d8bbwe", "LocalCache", "Local", MinecraftPathConsts.Runtime), // 微软商店版
         };
@@ -491,7 +491,7 @@ public class JavaRuntimeService : IJavaRuntimeService
             
             try
             {
-                // 递归搜索，最多4层深度 (适应 runtime/component/os/bin/java.exe 的结构)
+                // 递归搜索，最多 4 层深度 (适应 runtime/component/os/bin/java.exe 的结构)
                 await ScanDirectoryForJavaAsync(javaVersions, basePath, maxDepth: 4, currentDepth: 0);
             }
             catch (Exception ex)
@@ -500,12 +500,12 @@ public class JavaRuntimeService : IJavaRuntimeService
             }
         }
         
-        // 扫描PATH环境变量
+        // 扫描 PATH 环境变量
         await ScanPathEnvironmentVariableAsync(javaVersions);
     }
     
     /// <summary>
-    /// 递归扫描目录查找java.exe
+    /// 递归扫描目录查找 java.exe
     /// </summary>
     private async Task ScanDirectoryForJavaAsync(List<JavaVersion> javaVersions, string directory, int maxDepth, int currentDepth)
     {
@@ -516,7 +516,7 @@ public class JavaRuntimeService : IJavaRuntimeService
         
         try
         {
-            // 查找bin\java.exe
+            // 查找 bin\java.exe
             var javaPath = Path.Combine(directory, "bin", "java.exe");
             if (File.Exists(javaPath))
             {
@@ -546,7 +546,7 @@ public class JavaRuntimeService : IJavaRuntimeService
     }
     
     /// <summary>
-    /// 扫描PATH环境变量中的java.exe
+    /// 扫描 PATH 环境变量中的 java.exe
     /// </summary>
     private async Task ScanPathEnvironmentVariableAsync(List<JavaVersion> javaVersions)
     {
@@ -572,7 +572,7 @@ public class JavaRuntimeService : IJavaRuntimeService
                             var javaVersion = await GetJavaVersionInfoAsync(javaPath);
                             if (javaVersion != null)
                             {
-                                System.Diagnostics.Debug.WriteLine($"[JavaRuntimeService] 从PATH检测到 Java: {javaVersion.MajorVersion} ({javaVersion.FullVersion}) - {javaPath}");
+                                System.Diagnostics.Debug.WriteLine($"[JavaRuntimeService] 从 PATH 检测到 Java: {javaVersion.MajorVersion} ({javaVersion.FullVersion}) - {javaPath}");
                                 javaVersions.Add(javaVersion);
                             }
                         }
@@ -586,7 +586,7 @@ public class JavaRuntimeService : IJavaRuntimeService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[JavaRuntimeService] 扫描PATH环境变量失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[JavaRuntimeService] 扫描 PATH 环境变量失败: {ex.Message}");
         }
     }
 

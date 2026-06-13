@@ -46,7 +46,7 @@ public sealed class CommunityResourceInstallService : ICommunityResourceInstallS
                 WriteDownloadTrace(
                     "StartInstallAsync.ResolveDownloadUrlFailed",
                     $"resource={descriptor.ResourceName}, elapsedMs={stopwatch.ElapsedMilliseconds}");
-                throw new InvalidOperationException("无法获取文件的下载链接，这可能是由于CurseForge API限制或网络问题。请尝试手动下载或稍后重试。");
+                throw new InvalidOperationException("无法获取文件的下载链接，这可能是由于 CurseForge API 限制或网络问题。请尝试手动下载或稍后重试。");
             }
 
             descriptor.DownloadUrl = resolvedDownloadUrl;

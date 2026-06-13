@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 namespace XianYuLauncher.Features.ModDownloadDetail.Models
 {
     /// <summary>
-    /// Minecraft版本比较器，支持语义化版本排序
+    /// Minecraft 版本比较器，支持语义化版本排序
     /// </summary>
     internal class MinecraftVersionComparer : IComparer<string>
     {

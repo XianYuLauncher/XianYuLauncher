@@ -14,7 +14,7 @@ public class BoolToGlyphConverter : IValueConverter
     /// <param name="targetType">目标类型</param>
     /// <param name="parameter">参数</param>
     /// <param name="language">语言</param>
-    /// <returns>对应的Glyph字符串</returns>
+    /// <returns>对应的 Glyph 字符串</returns>
     public object Convert(object value, Type targetType, object parameter, string language)
     {
         if (value is bool isExpanded)

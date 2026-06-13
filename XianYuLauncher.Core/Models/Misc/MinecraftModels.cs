@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 namespace XianYuLauncher.Core.Models;
 
 /// <summary>
-/// Minecraft版本清单
+/// Minecraft 版本清单
 /// </summary>
 public class VersionManifest
 {
@@ -103,7 +103,7 @@ public class AssetIndex
 }
 
 /// <summary>
-/// 资源索引JSON模型
+/// 资源索引 JSON 模型
 /// </summary>
 public class AssetIndexJson
 {
@@ -263,7 +263,7 @@ public class DownloadFile
 }
 
 /// <summary>
-/// Minecraft Java版本需求
+/// Minecraft Java 版本需求
 /// </summary>
 public class MinecraftJavaVersion
 {

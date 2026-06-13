@@ -21,7 +21,7 @@ public class EffectiveLaunchSettings
     public double MaximumHeapMemory { get; set; } = 12.0;
     
     /// <summary>
-    /// Java路径（已解析，可直接使用）
+    /// Java 路径（已解析，可直接使用）
     /// </summary>
     public string JavaPath { get; set; } = string.Empty;
     

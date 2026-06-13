@@ -4,18 +4,18 @@ using CommunityToolkit.Mvvm.ComponentModel;
 namespace XianYuLauncher.Models.VersionManagement;
 
 /// <summary>
-/// Mod信息类
+/// Mod 信息类
 /// </summary>
 public partial class ModInfo : ObservableObject, IVersionManagementResourceInfo
 {
     /// <summary>
-    /// Mod文件名
+    /// Mod 文件名
     /// </summary>
     [ObservableProperty]
     private string _fileName;
     
     /// <summary>
-    /// Mod文件完整路径
+    /// Mod 文件完整路径
     /// </summary>
     public string FilePath { get; set; }
     
@@ -36,7 +36,7 @@ public partial class ModInfo : ObservableObject, IVersionManagementResourceInfo
     }
     
     /// <summary>
-    /// 项目ID (Modrinth Project ID 或 CurseForge Project ID)
+    /// 项目 ID (Modrinth Project ID 或 CurseForge Project ID)
     /// </summary>
     [ObservableProperty]
     private string? _projectId;
@@ -54,13 +54,13 @@ public partial class ModInfo : ObservableObject, IVersionManagementResourceInfo
     private string? _source;
 
     /// <summary>
-    /// Mod图标
+    /// Mod 图标
     /// </summary>
     [ObservableProperty]
     private string _icon = string.Empty;
     
     /// <summary>
-    /// Mod描述（已翻译）
+    /// Mod 描述（已翻译）
     /// </summary>
     [ObservableProperty]
     private string? _description;
@@ -90,15 +90,15 @@ public partial class ModInfo : ObservableObject, IVersionManagementResourceInfo
     private string _latestVersion = string.Empty;
     
     /// <summary>
-    /// Mod显示名称
+    /// Mod 显示名称
     /// </summary>
     public string Name
     {
         get
         {
-            // 提取显示名称（去掉.jar扩展名）
+            // 提取显示名称（去掉.jar 扩展名）
             string displayName = Path.GetFileNameWithoutExtension(FileName);
-            // 去掉.disabled后缀（如果存在）
+            // 去掉.disabled 后缀（如果存在）
             if (displayName.EndsWith(FileExtensionConsts.Disabled))
             {
                 displayName = displayName.Substring(0, displayName.Length - FileExtensionConsts.Disabled.Length);

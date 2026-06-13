@@ -111,13 +111,13 @@ public class LocalSettingsService : ILocalSettingsService
                         return directValue;
                     }
                     
-                    // 调试：检查读取的Java版本数据
+                    // 调试：检查读取的 Java 版本数据
                     if (key == "JavaVersions")
                     {
-                        Console.WriteLine($"读取Java版本列表，类型: {obj.GetType().Name}");
+                        Console.WriteLine($"读取 Java 版本列表，类型: {obj.GetType().Name}");
                         if (obj is Newtonsoft.Json.Linq.JArray jArray)
                         {
-                            Console.WriteLine($"  JArray元素数量: {jArray.Count}");
+                            Console.WriteLine($"  JArray 元素数量: {jArray.Count}");
                             foreach (var item in jArray)
                             {
                                 Console.WriteLine($"  - JObject: {item}");
@@ -125,7 +125,7 @@ public class LocalSettingsService : ILocalSettingsService
                         }
                         else if (obj is List<object> list)
                         {
-                            Console.WriteLine($"  List元素数量: {list.Count}");
+                            Console.WriteLine($"  List 元素数量: {list.Count}");
                             foreach (var item in list)
                             {
                                 Console.WriteLine($"  - {item.GetType().Name}: {item}");
@@ -133,7 +133,7 @@ public class LocalSettingsService : ILocalSettingsService
                         }
                         else if (obj is List<JavaVersionInfo> typedList)
                         {
-                            Console.WriteLine($"  类型化List元素数量: {typedList.Count}");
+                            Console.WriteLine($"  类型化 List 元素数量: {typedList.Count}");
                             foreach (var item in typedList)
                             {
                                 Console.WriteLine($"  - {item}");
@@ -219,10 +219,10 @@ public class LocalSettingsService : ILocalSettingsService
 
                 _settings[key] = value!;
                 
-                // 调试：检查保存的Java版本数量
+                // 调试：检查保存的 Java 版本数量
                 if (key == "JavaVersions" && value is List<object> javaList)
                 {
-                    Console.WriteLine($"保存Java版本列表，数量: {javaList.Count}");
+                    Console.WriteLine($"保存 Java 版本列表，数量: {javaList.Count}");
                     foreach (var item in javaList)
                     {
                         Console.WriteLine($"  - {item.GetType().Name}: {item}");
@@ -230,7 +230,7 @@ public class LocalSettingsService : ILocalSettingsService
                 }
                 else if (key == "JavaVersions" && value is List<JavaVersionInfo> typedList)
                 {
-                    Console.WriteLine($"保存Java版本列表，数量: {typedList.Count}");
+                    Console.WriteLine($"保存 Java 版本列表，数量: {typedList.Count}");
                     foreach (var item in typedList)
                     {
                         Console.WriteLine($"  - {item}");

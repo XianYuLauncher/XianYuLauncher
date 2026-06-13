@@ -65,7 +65,7 @@ public partial class MapInfo : ObservableObject
         FileName = Path.GetFileName(filePath);
         IsEnabled = !FileName.EndsWith(FileExtensionConsts.Disabled);
         
-        // 提取显示名称（去掉.disabled后缀）
+        // 提取显示名称（去掉.disabled 后缀）
         string displayName = FileName;
         if (displayName.EndsWith(FileExtensionConsts.Disabled))
         {

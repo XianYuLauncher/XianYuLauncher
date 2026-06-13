@@ -31,7 +31,7 @@
                 <StackPanel Spacing="16">
                     <TextBlock 
                         x:Uid="MultiplayerPage_PollingContent"
-                        Text="请启动Minecraft,选择 对局域网开放 选项，然后运行联机服务即可" 
+                        Text="请启动 Minecraft，选择「对局域网开放」选项，然后运行联机服务即可" 
                         Style="{ThemeResource BodyTextBlockStyle}" />
                     <StackPanel Spacing="8">
                         <TextBlock 

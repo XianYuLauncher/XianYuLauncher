@@ -11,7 +11,7 @@ namespace XianYuLauncher.Core.Contracts.Services;
 /// <param name="DownloadedBytes">已下载字节数</param>
 /// <param name="TotalBytes">总字节数</param>
 /// <param name="Percent">完成百分比</param>
-/// <param name="BytesPerSecond">下载速度（字节/秒），0表示未计算</param>
+/// <param name="BytesPerSecond">下载速度（字节/秒），0 表示未计算</param>
 public readonly record struct DownloadProgressStatus(long DownloadedBytes, long TotalBytes, double Percent, double BytesPerSecond = 0)
 {
     /// <summary>
@@ -57,9 +57,9 @@ public interface IDownloadManager
     /// <summary>
     /// 下载单个文件到指定路径
     /// </summary>
-    /// <param name="url">下载URL</param>
+    /// <param name="url">下载 URL</param>
     /// <param name="targetPath">目标文件路径</param>
-    /// <param name="expectedSha1">预期的SHA1哈希值（可选，用于验证）</param>
+    /// <param name="expectedSha1">预期的 SHA1 哈希值（可选，用于验证）</param>
     /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
     /// <returns>下载结果</returns>
@@ -84,9 +84,9 @@ public interface IDownloadManager
     /// <summary>
     /// 下载单个文件到指定路径，并可显式控制是否允许分片下载。
     /// </summary>
-    /// <param name="url">下载URL</param>
+    /// <param name="url">下载 URL</param>
     /// <param name="targetPath">目标文件路径</param>
-    /// <param name="expectedSha1">预期的SHA1哈希值（可选，用于验证）</param>
+    /// <param name="expectedSha1">预期的 SHA1 哈希值（可选，用于验证）</param>
     /// <param name="progressCallback">进度回调</param>
     /// <param name="allowShardedDownload">是否允许在大文件场景下使用分片下载</param>
     /// <param name="cancellationToken">取消令牌</param>

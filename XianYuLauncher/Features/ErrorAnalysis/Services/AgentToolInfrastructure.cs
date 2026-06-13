@@ -280,7 +280,7 @@ public sealed class AgentToolDispatcher : IAgentToolDispatcher
             catch (JsonException ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[AI Tool Error] {toolCall.FunctionName} 参数解析失败: {ex}");
-                return AgentToolExecutionResult.FromMessage($"工具参数格式无效: {toolCall.FunctionName}。请重试。\n原始参数需要是合法 JSON。");
+                return AgentToolExecutionResult.FromMessage($"工具参数格式无效: {toolCall.FunctionName}。请重试。\n 原始参数需要是合法 JSON。");
             }
 
             return await handler.ExecuteAsync(_sessionState.Context, args, cancellationToken);

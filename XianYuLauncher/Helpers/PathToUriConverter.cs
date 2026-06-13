@@ -1,21 +1,21 @@
-﻿using Microsoft.UI.Xaml.Data;
+using Microsoft.UI.Xaml.Data;
 using XianYuLauncher.Core.Helpers;
 
 namespace XianYuLauncher.Helpers;
 
 /// <summary>
-/// 将本地文件路径转换为Uri格式，用于Image控件的Source属性
+/// 将本地文件路径转换为 Uri 格式，用于 Image 控件的 Source 属性
 /// </summary>
 public class PathToUriConverter : IValueConverter
 {
     /// <summary>
-    /// 将本地文件路径转换为Uri
+    /// 将本地文件路径转换为 Uri
     /// </summary>
     /// <param name="value">输入值（本地文件路径）</param>
     /// <param name="targetType">目标类型</param>
     /// <param name="parameter">转换器参数</param>
     /// <param name="language">语言</param>
-    /// <returns>转换后的Uri，如果输入为空则返回null</returns>
+    /// <returns>转换后的 Uri，如果输入为空则返回 null</returns>
     public object? Convert(object? value, Type targetType, object? parameter, string language)
     {
         if (value is string path && !string.IsNullOrEmpty(path))
@@ -27,7 +27,7 @@ public class PathToUriConverter : IValueConverter
                     return AppAssetResolver.ToUri(path);
                 }
 
-                // 检查路径是否已经是Uri格式
+                // 检查路径是否已经是 Uri 格式
                 if (Uri.TryCreate(path, UriKind.Absolute, out var uriResult) &&
                     uriResult is not null &&
                     (uriResult.Scheme == Uri.UriSchemeHttp || 
@@ -38,7 +38,7 @@ public class PathToUriConverter : IValueConverter
                     return uriResult;
                 }
                     
-                // 将本地文件路径转换为Uri（添加file:///协议）
+                // 将本地文件路径转换为 Uri（添加 file:///协议）
                 if (System.IO.Path.IsPathRooted(path))
                 {
                     // 添加时间戳参数以防止缓存
@@ -63,31 +63,31 @@ public class PathToUriConverter : IValueConverter
     }
 
     /// <summary>
-    /// 将Uri转换回本地文件路径
+    /// 将 Uri 转换回本地文件路径
     /// </summary>
     /// <param name="value">输入值（Uri）</param>
     /// <param name="targetType">目标类型</param>
     /// <param name="parameter">转换器参数</param>
     /// <param name="language">语言</param>
-    /// <returns>转换后的本地文件路径，如果输入为空则返回null</returns>
+    /// <returns>转换后的本地文件路径，如果输入为空则返回 null</returns>
     public object? ConvertBack(object? value, Type targetType, object? parameter, string language)
     {
         if (value is Uri uri)
         {
             try
             {
-                // 如果是本地文件Uri，返回本地路径
+                // 如果是本地文件 Uri，返回本地路径
                 if (uri.Scheme == Uri.UriSchemeFile)
                 {
                     return uri.LocalPath;
                 }
                     
-                // 其他情况返回Uri字符串
+                // 其他情况返回 Uri 字符串
                 return uri.ToString();
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Uri转换失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"Uri 转换失败: {ex.Message}");
                 return null;
             }
         }

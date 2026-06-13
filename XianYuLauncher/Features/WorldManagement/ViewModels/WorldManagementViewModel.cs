@@ -426,7 +426,7 @@ public partial class WorldManagementViewModel : ObservableRecipient, IPageHeader
                             double days = worldData.Time / 24000.0;
                             mcDays = $"{days:F1} {ResourceExtensions.GetLocalized("WorldManagement_Days")}";
                             
-                            System.Diagnostics.Debug.WriteLine($"[WorldManagement] 后台线程 - 游玩时长: {playTime}, MC天数: {mcDays}");
+                            System.Diagnostics.Debug.WriteLine($"[WorldManagement] 后台线程 - 游玩时长: {playTime}, MC 天数: {mcDays}");
                         }
                         
                         // 设置允许命令状态
@@ -489,20 +489,20 @@ public partial class WorldManagementViewModel : ObservableRecipient, IPageHeader
             // 在 UI 线程更新所有属性
             _uiDispatcher.TryEnqueue(() =>
             {
-                System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程 - 开始更新属性");
+                System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI 线程 - 开始更新属性");
                 
                 try
                 {
                     // 再次检查是否已取消
                     if (cancellationToken.IsCancellationRequested)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程 - 操作已取消");
+                        System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI 线程 - 操作已取消");
                         return;
                     }
                     
                     if (data.IconPath != null)
                     {
-                        System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程 - 设置图标: {data.IconPath}");
+                        System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI 线程 - 设置图标: {data.IconPath}");
                         try
                         {
                             var bitmap = new BitmapImage();
@@ -511,40 +511,40 @@ public partial class WorldManagementViewModel : ObservableRecipient, IPageHeader
                         }
                         catch (Exception iconEx)
                         {
-                            System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程 - 加载图标失败: {iconEx.Message}");
+                            System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI 线程 - 加载图标失败: {iconEx.Message}");
                         }
                     }
                     
-                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程 - 设置种子: {data.Seed}");
+                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI 线程 - 设置种子: {data.Seed}");
                     Seed = data.Seed;
                     
-                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程 - 设置难度: {data.Difficulty}");
+                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI 线程 - 设置难度: {data.Difficulty}");
                     Difficulty = data.Difficulty;
                     
-                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程 - 设置游戏模式: {data.GameMode}");
+                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI 线程 - 设置游戏模式: {data.GameMode}");
                     GameMode = data.GameMode;
                     
-                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程 - 设置创建时间: {data.CreationTime}");
+                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI 线程 - 设置创建时间: {data.CreationTime}");
                     CreationTime = data.CreationTime;
                     
-                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程 - 设置最后游玩时间: {data.LastPlayedTime}");
+                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI 线程 - 设置最后游玩时间: {data.LastPlayedTime}");
                     LastPlayedTime = data.LastPlayedTime;
                     
-                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程 - 设置游玩时长: {data.PlayTime}");
+                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI 线程 - 设置游玩时长: {data.PlayTime}");
                     PlayTime = data.PlayTime;
                     
-                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程 - 设置MC天数: {data.McDays}");
+                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI 线程 - 设置 MC 天数: {data.McDays}");
                     McDays = data.McDays;
                     
-                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程 - 设置允许命令: {data.AllowCommands}");
+                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI 线程 - 设置允许命令: {data.AllowCommands}");
                     AllowCommands = data.AllowCommands;
                     
-                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程 - 世界数据加载完成: {WorldName}");
+                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI 线程 - 世界数据加载完成: {WorldName}");
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程异常: {ex.Message}");
-                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI线程堆栈: {ex.StackTrace}");
+                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI 线程异常: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"[WorldManagement] UI 线程堆栈: {ex.StackTrace}");
                 }
             });
 

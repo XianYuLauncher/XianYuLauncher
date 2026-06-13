@@ -138,15 +138,15 @@ public sealed record SystemRegionContext(
 
     public void WriteDebugDiagnostics(string prefix)
     {
-        Debug.WriteLine($"{prefix} 系统HomeGeographicRegion: {FormatValue(HomeGeographicRegion)}");
-        Debug.WriteLine($"{prefix} 当前CultureInfo: {FormatPair(CurrentCultureName, CurrentCultureDisplayName)}");
-        Debug.WriteLine($"{prefix} 当前UICulture: {FormatPair(CurrentUICultureName, CurrentUICultureDisplayName)}");
-        Debug.WriteLine($"{prefix} 当前RegionInfo: {FormatPair(CurrentRegionName, CurrentRegionDisplayName)}");
-        Debug.WriteLine($"{prefix} 两字母ISO代码: {FormatValue(CurrentRegionTwoLetterIso)}");
+        Debug.WriteLine($"{prefix} 系统 HomeGeographicRegion: {FormatValue(HomeGeographicRegion)}");
+        Debug.WriteLine($"{prefix} 当前 CultureInfo: {FormatPair(CurrentCultureName, CurrentCultureDisplayName)}");
+        Debug.WriteLine($"{prefix} 当前 UICulture: {FormatPair(CurrentUICultureName, CurrentUICultureDisplayName)}");
+        Debug.WriteLine($"{prefix} 当前 RegionInfo: {FormatPair(CurrentRegionName, CurrentRegionDisplayName)}");
+        Debug.WriteLine($"{prefix} 两字母 ISO 代码: {FormatValue(CurrentRegionTwoLetterIso)}");
 
         if (!string.IsNullOrWhiteSpace(CurrentRegionThreeLetterIso))
         {
-            Debug.WriteLine($"{prefix} 三字母ISO代码: {CurrentRegionThreeLetterIso}");
+            Debug.WriteLine($"{prefix} 三字母 ISO 代码: {CurrentRegionThreeLetterIso}");
         }
 
         if (!string.IsNullOrWhiteSpace(CurrentRegionEnglishName))

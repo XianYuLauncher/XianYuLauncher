@@ -101,7 +101,7 @@ public class CurseForgeCacheService
             
             if (!File.Exists(cacheFilePath))
             {
-                System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] {resourceType} 缓存不存在");
+                System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存] {resourceType} 缓存不存在");
                 return null;
             }
             
@@ -110,7 +110,7 @@ public class CurseForgeCacheService
             
             if (cacheData == null)
             {
-                System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] {resourceType} 缓存数据无效");
+                System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存] {resourceType} 缓存数据无效");
                 return null;
             }
             
@@ -118,12 +118,12 @@ public class CurseForgeCacheService
             var timeSinceCache = DateTime.Now - cacheData.CacheTime;
             if (timeSinceCache > CacheExpiration)
             {
-                System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] {resourceType} 缓存已过期（已过 {timeSinceCache.TotalHours:F1} 小时）");
+                System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存] {resourceType} 缓存已过期（已过 {timeSinceCache.TotalHours:F1} 小时）");
                 return null;
             }
             
             var remainingTime = CacheExpiration - timeSinceCache;
-            System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] {resourceType} 缓存命中，剩余 {remainingTime.TotalHours:F1} 小时刷新，共 {cacheData.Items.Count} 项");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存] {resourceType} 缓存命中，剩余 {remainingTime.TotalHours:F1} 小时刷新，共 {cacheData.Items.Count} 项");
             
             // 应用本地图片缓存
             ApplyLocalImageCache(cacheData.Items);
@@ -132,7 +132,7 @@ public class CurseForgeCacheService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] 读取缓存失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存] 读取缓存失败: {ex.Message}");
             return null;
         }
     }
@@ -192,14 +192,14 @@ public class CurseForgeCacheService
             var json = JsonConvert.SerializeObject(cacheData, Formatting.None);
             await File.WriteAllTextAsync(cacheFilePath, json);
             
-            System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] {resourceType} 缓存已保存，共 {items.Count} 项，下次刷新: {DateTime.Now.Add(CacheExpiration):yyyy-MM-dd HH:mm:ss}");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存] {resourceType} 缓存已保存，共 {items.Count} 项，下次刷新: {DateTime.Now.Add(CacheExpiration):yyyy-MM-dd HH:mm:ss}");
             
             // 异步缓存图片（不阻塞主流程）
             _ = CacheImagesAsync(items);
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] 保存缓存失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存] 保存缓存失败: {ex.Message}");
         }
     }
 
@@ -265,14 +265,14 @@ public class CurseForgeCacheService
             var newJson = JsonConvert.SerializeObject(cacheData, Formatting.None);
             await File.WriteAllTextAsync(cacheFilePath, newJson);
             
-            System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] {resourceType} 缓存已追加 {newItems.Count} 项，总计 {cacheData.Items.Count} 项");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存] {resourceType} 缓存已追加 {newItems.Count} 项，总计 {cacheData.Items.Count} 项");
             
             // 异步缓存新图片
             _ = CacheImagesAsync(newItems);
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] 追加缓存失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存] 追加缓存失败: {ex.Message}");
         }
     }
     
@@ -289,12 +289,12 @@ public class CurseForgeCacheService
             if (File.Exists(cacheFilePath))
             {
                 File.Delete(cacheFilePath);
-                System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] {resourceType} 缓存已清除");
+                System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存] {resourceType} 缓存已清除");
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] 清除缓存失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存] 清除缓存失败: {ex.Message}");
         }
     }
 
@@ -337,17 +337,17 @@ public class CurseForgeCacheService
             var age = DateTime.Now - cacheData.CacheTime;
             if (age > CategoryCacheExpiration)
             {
-                System.Diagnostics.Debug.WriteLine($"[CurseForge类别缓存] classId={classId} 已过期（{age.TotalHours:F1}h）");
+                System.Diagnostics.Debug.WriteLine($"[CurseForge 类别缓存] classId={classId} 已过期（{age.TotalHours:F1}h）");
                 return null;
             }
 
             var remaining = CategoryCacheExpiration - age;
-            System.Diagnostics.Debug.WriteLine($"[CurseForge类别缓存] classId={classId} 命中，剩余 {remaining.TotalHours:F1} 小时刷新，共 {cacheData.Items.Count} 个");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge 类别缓存] classId={classId} 命中，剩余 {remaining.TotalHours:F1} 小时刷新，共 {cacheData.Items.Count} 个");
             return cacheData.Items;
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[CurseForge类别缓存] 读取失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge 类别缓存] 读取失败: {ex.Message}");
             return null;
         }
     }
@@ -369,11 +369,11 @@ public class CurseForgeCacheService
 
             var json = JsonConvert.SerializeObject(cacheData, Formatting.None);
             await File.WriteAllTextAsync(cacheFilePath, json);
-            System.Diagnostics.Debug.WriteLine($"[CurseForge类别缓存] classId={classId} 已保存，共 {cacheData.Items.Count} 个，下次刷新: {DateTime.Now.Add(CategoryCacheExpiration):yyyy-MM-dd HH:mm:ss}");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge 类别缓存] classId={classId} 已保存，共 {cacheData.Items.Count} 个，下次刷新: {DateTime.Now.Add(CategoryCacheExpiration):yyyy-MM-dd HH:mm:ss}");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[CurseForge类别缓存] 保存失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge 类别缓存] 保存失败: {ex.Message}");
         }
     }
     
@@ -466,11 +466,11 @@ public class CurseForgeCacheService
                 }
             }
             
-            System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] 已清理过期图片缓存");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存] 已清理过期图片缓存");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] 清理图片缓存失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存] 清理图片缓存失败: {ex.Message}");
         }
     }
     
@@ -503,11 +503,11 @@ public class CurseForgeCacheService
                 Directory.Delete(categoryCachePath, true);
             }
             
-            System.Diagnostics.Debug.WriteLine("[CurseForge缓存清理] 所有缓存已清理");
+            System.Diagnostics.Debug.WriteLine("[CurseForge 缓存清理] 所有缓存已清理");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[CurseForge缓存清理] 清理缓存失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存清理] 清理缓存失败: {ex.Message}");
             throw;
         }
     }
@@ -523,12 +523,12 @@ public class CurseForgeCacheService
             if (Directory.Exists(imageCachePath))
             {
                 Directory.Delete(imageCachePath, true);
-                System.Diagnostics.Debug.WriteLine("[CurseForge缓存清理] 图片缓存已清理");
+                System.Diagnostics.Debug.WriteLine("[CurseForge 缓存清理] 图片缓存已清理");
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[CurseForge缓存清理] 清理图片缓存失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存清理] 清理图片缓存失败: {ex.Message}");
         }
     }
     
@@ -544,11 +544,11 @@ public class CurseForgeCacheService
             {
                 File.Delete(file);
             }
-            System.Diagnostics.Debug.WriteLine("[CurseForge缓存清理] 搜索结果缓存已清理");
+            System.Diagnostics.Debug.WriteLine("[CurseForge 缓存清理] 搜索结果缓存已清理");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[CurseForge缓存清理] 清理搜索缓存失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存清理] 清理搜索缓存失败: {ex.Message}");
         }
     }
 }

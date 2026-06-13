@@ -301,7 +301,7 @@
                         </controls:SettingsCard>
                         <controls:SettingsCard x:Uid="Settings_JavaPathLabel" Header="Java 路径" Description="手动指定 Java 可执行文件路径" Background="Transparent" BorderThickness="0" Padding="16,12,0,12">
                             <StackPanel Orientation="Horizontal" Spacing="8">
-                                <TextBox x:Uid="Settings_JavaPathTextBox" Text="{x:Bind ViewModel.JavaPath, Mode=TwoWay}" PlaceholderText="请选择Java可执行文件路径" Width="280" IsReadOnly="True" />
+                                <TextBox x:Uid="Settings_JavaPathTextBox" Text="{x:Bind ViewModel.JavaPath, Mode=TwoWay}" PlaceholderText="请选择 Java 可执行文件路径" Width="280" IsReadOnly="True" />
                                 <Button x:Uid="Settings_JavaBrowseButton" Content="浏览..." Command="{x:Bind ViewModel.BrowseJavaPathCommand}" />
                                 <Button x:Uid="Settings_JavaClearButton" Content="清除" Command="{x:Bind ViewModel.ClearJavaPathCommand}" />
                             </StackPanel>
@@ -808,8 +808,8 @@
                     </controls:SettingsCard.ActionIcon>
                 </controls:SettingsCard>
 
-                <!-- 下载前置Mod -->
-                <controls:SettingsCard x:Uid="Settings_DownloadDependencies" Header="下载前置Mod" Description="自动下载所需的前置Mod">
+                <!-- 下载前置 Mod -->
+                <controls:SettingsCard x:Uid="Settings_DownloadDependencies" Header="下载前置 Mod" Description="自动下载所需的前置 Mod">
                     <controls:SettingsCard.HeaderIcon>
                         <FontIcon Glyph="&#xE74E;" />
                     </controls:SettingsCard.HeaderIcon>
@@ -817,7 +817,7 @@
                 </controls:SettingsCard>
 
                 <!-- 隐藏快照版本 -->
-                <controls:SettingsCard x:Uid="Settings_HideSnapshotVersions" Header="Mod隐藏快照版本" Description="隐藏Mod下载页快照、预发布版和候选版本">
+                <controls:SettingsCard x:Uid="Settings_HideSnapshotVersions" Header="Mod 隐藏快照版本" Description="隐藏 Mod 下载页快照、预发布版和候选版本">
                     <controls:SettingsCard.HeaderIcon>
                         <FontIcon Glyph="&#xE7B3;" />
                     </controls:SettingsCard.HeaderIcon>

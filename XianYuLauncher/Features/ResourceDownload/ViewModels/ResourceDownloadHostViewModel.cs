@@ -864,7 +864,7 @@ public partial class ResourceDownloadHostViewModel : ObservableRecipient, IPageH
     {
         if (!TryGetCurseForgeId(project.ProjectId, out int modId))
         {
-            return (false, "无法解析CurseForge ID");
+            return (false, "无法解析 CurseForge ID");
         }
 
         int? modLoaderType = gameVersion.LoaderType?.ToLower() switch
@@ -961,7 +961,7 @@ public partial class ResourceDownloadHostViewModel : ObservableRecipient, IPageH
             {
                 if (!TryGetCurseForgeId(project.ProjectId, out int modId))
                 {
-                    return (false, "无法解析CurseForge ID");
+                    return (false, "无法解析 CurseForge ID");
                 }
 
                 var files = await _curseForgeService.GetModFilesAsync(
@@ -1099,7 +1099,7 @@ public partial class ResourceDownloadHostViewModel : ObservableRecipient, IPageH
 
     private async Task ExtractWorldZipAsync(string zipPath, string savesDirectory)
     {
-        // 确保saves目录存在
+        // 确保 saves 目录存在
         if (!Directory.Exists(savesDirectory))
         {
             Directory.CreateDirectory(savesDirectory);
@@ -1426,7 +1426,7 @@ public partial class ResourceDownloadHostViewModel : ObservableRecipient, IPageH
         // 加载保存的平台选择
         LoadPlatformSelection();
         
-        // 移除自动加载，改为完全由SelectionChanged事件控制
+        // 移除自动加载，改为完全由 SelectionChanged 事件控制
         // 这样可以避免版本列表被加载两次
     }
     
@@ -1748,16 +1748,16 @@ public partial class ResourceDownloadHostViewModel : ObservableRecipient, IPageH
     }
     
     /// <summary>
-    /// 重置ViewModel状态
+    /// 重置 ViewModel 状态
     /// </summary>
     public void Reset()
     {
-        // 保留SelectedTabIndex不变，这样可以在导航时保持之前的选中状态
+        // 保留 SelectedTabIndex 不变，这样可以在导航时保持之前的选中状态
         // 或者根据需要重置为默认值
         // SelectedTabIndex = 0;
     }
     
-    // 移除InitializeAsync方法，不再自动加载版本列表
+    // 移除 InitializeAsync 方法，不再自动加载版本列表
     
     /// <summary>
     /// 从已获取的版本列表更新可用版本，避免重复网络请求
@@ -1775,7 +1775,7 @@ public partial class ResourceDownloadHostViewModel : ObservableRecipient, IPageH
             // 保存当前选中的版本
             var currentSelectedVersions = SelectedVersions.ToList();
             
-            // 使用一次性替换集合的方式更新AvailableVersions，减少UI更新次数
+            // 使用一次性替换集合的方式更新 AvailableVersions，减少 UI 更新次数
             AvailableVersions = new ObservableCollection<string>(versions);
             
             // 重新验证选中的版本是否有效（如果不可用则移除，除非是 "all"）
@@ -1806,10 +1806,10 @@ public partial class ResourceDownloadHostViewModel : ObservableRecipient, IPageH
                 McimTranslationResponse? translation = null;
                 Task<McimTranslationResponse?> task;
 
-                // 根据项目ID判断是Modrinth还是CurseForge
+                // 根据项目 ID 判断是 Modrinth 还是 CurseForge
                 if (project.ProjectId.StartsWith("curseforge-"))
                 {
-                    // CurseForge项目
+                    // CurseForge 项目
                     if (int.TryParse(project.ProjectId.Replace("curseforge-", ""), out int modId))
                     {
                         task = _translationService.GetCurseForgeTranslationAsync(modId);
@@ -1821,11 +1821,11 @@ public partial class ResourceDownloadHostViewModel : ObservableRecipient, IPageH
                 }
                 else
                 {
-                    // Modrinth项目
+                    // Modrinth 项目
                     task = _translationService.GetModrinthTranslationAsync(project.ProjectId);
                 }
                 
-                // 增加超时控制：如果3秒内未获取到翻译，则放弃（直接跳过，显示原文）
+                // 增加超时控制：如果 3 秒内未获取到翻译，则放弃（直接跳过，显示原文）
                 // 这里的源有时候比较慢
                 translation = await task.WaitAsync(TimeSpan.FromSeconds(3));
 
@@ -1851,7 +1851,7 @@ public partial class ResourceDownloadHostViewModel : ObservableRecipient, IPageH
     }
     
     /// <summary>
-    /// 转换CurseForge Mod为Modrinth格式
+    /// 转换 CurseForge Mod 为 Modrinth 格式
     /// </summary>
     protected ModrinthProject ConvertCurseForgeToModrinth(CurseForgeMod curseForgeMod)
     {
@@ -1869,7 +1869,7 @@ public partial class ResourceDownloadHostViewModel : ObservableRecipient, IPageH
             Categories = new List<string>()
         };
         
-        // 设置图标URL
+        // 设置图标 URL
         if (!string.IsNullOrEmpty(curseForgeMod.Logo?.Url))
         {
             if (Uri.TryCreate(curseForgeMod.Logo.Url, UriKind.Absolute, out var iconUri))
@@ -1889,7 +1889,7 @@ public partial class ResourceDownloadHostViewModel : ObservableRecipient, IPageH
                     project.Versions.Add(fileIndex.GameVersion);
                 }
                 
-                // 添加加载器类型（ModLoader是int类型，需要映射）
+                // 添加加载器类型（ModLoader 是 int 类型，需要映射）
                 if (fileIndex.ModLoader.HasValue)
                 {
                     var loaderName = fileIndex.ModLoader.Value switch

@@ -354,7 +354,7 @@ public class GameLaunchServiceTests : IDisposable
         var result = await service.LaunchGameAsync(versionName, profile);
 
         Assert.False(result.Success);
-        Assert.Equal("未找到Java运行时环境，请先安装Java", result.ErrorMessage);
+        Assert.Equal("未找到 Java 运行时环境，请先安装 Java", result.ErrorMessage);
         minecraftVersionServiceMock.Verify(
             svc => svc.GetVersionInfoAsync(versionName, minecraftPath, false),
             Times.Once);

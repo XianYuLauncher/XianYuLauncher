@@ -170,7 +170,7 @@ public sealed partial class MainWindow : WindowEx
             // 这样可以确保 XAML 解析错误能正常报告，而不会被字体修改掩盖
             if (Content is Microsoft.UI.Xaml.Controls.Control rootControl)
             {
-                // 创建FontFamily对象或使用null（默认字体）
+                // 创建 FontFamily 对象或使用 null（默认字体）
                 Microsoft.UI.Xaml.Media.FontFamily? fontFamily = null;
                 if (!string.IsNullOrEmpty(fontFamilyName) && fontFamilyName != "默认")
                 {
@@ -195,7 +195,7 @@ public sealed partial class MainWindow : WindowEx
     /// </summary>
     private void ApplyFontToVisualTree(Microsoft.UI.Xaml.DependencyObject root, Microsoft.UI.Xaml.Media.FontFamily? fontFamily)
     {
-        // 应用到当前元素（如果是Control类型）
+        // 应用到当前元素（如果是 Control 类型）
         if (root is Microsoft.UI.Xaml.Controls.Control control)
         {
             control.FontFamily = fontFamily;

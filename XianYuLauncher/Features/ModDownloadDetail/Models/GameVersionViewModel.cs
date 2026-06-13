@@ -31,7 +31,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Models
         }
 
         /// <summary>
-        /// 通知版本数量已更新（供子级LoaderViewModel调用）
+        /// 通知版本数量已更新（供子级 LoaderViewModel 调用）
         /// </summary>
         public void NotifyTotalModVersionsCountChanged()
         {

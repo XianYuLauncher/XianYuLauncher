@@ -543,7 +543,7 @@ public sealed class GetInstanceCommunityResourcesToolHandler : IAgentToolHandler
         List<string>? resourceTypes = CommunityResourceToolArgumentParser.ParseStringArray(arguments["resource_types"]);
         if (resourceTypes == null && arguments["resource_types"] != null)
         {
-            return AgentToolExecutionResult.FromMessage("resource_types 必须是字符串数组。\n可选值：mod、shader、resourcepack、world、datapack。");
+            return AgentToolExecutionResult.FromMessage("resource_types 必须是字符串数组。\n 可选值：mod、shader、resourcepack、world、datapack。");
         }
 
         string message = await _communityResourceService.GetInstanceCommunityResourcesAsync(

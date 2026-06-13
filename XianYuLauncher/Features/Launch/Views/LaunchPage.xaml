@@ -218,7 +218,7 @@
                                 Click="ViewMoreNews_Click" />
                         </Grid>
                         
-                        <!-- 新闻列表（动态，最多展示3条） -->
+                        <!-- 新闻列表（动态，最多展示 3 条） -->
                         <ItemsControl ItemsSource="{x:Bind ViewModel.NewsCardItems, Mode=OneWay}">
                             <ItemsControl.ItemsPanel>
                                 <ItemsPanelTemplate>

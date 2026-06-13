@@ -134,7 +134,7 @@ public class SpeedTestCache
     public DateTime LastUpdated { get; set; }
 
     /// <summary>
-    /// 缓存是否过期（12小时）
+    /// 缓存是否过期（12 小时）
     /// </summary>
     [JsonIgnore]
     public bool IsExpired => (DateTime.UtcNow - LastUpdated).TotalHours >= 12;

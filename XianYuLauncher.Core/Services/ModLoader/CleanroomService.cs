@@ -9,8 +9,8 @@ using XianYuLauncher.Core.Services.DownloadSource;
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-/// Cleanroom服务类，用于获取Cleanroom加载器版本列表
-/// Cleanroom是基于Forge 1.12.2的增强版本，仅支持Minecraft 1.12.2
+/// Cleanroom 服务类，用于获取 Cleanroom 加载器版本列表
+/// Cleanroom 是基于 Forge 1.12.2 的增强版本，仅支持 Minecraft 1.12.2
 /// </summary>
 public class CleanroomService
 {
@@ -29,17 +29,17 @@ public class CleanroomService
     }
 
     /// <summary>
-    /// 获取Cleanroom加载器版本列表
-    /// 注意：Cleanroom仅支持Minecraft 1.12.2
+    /// 获取 Cleanroom 加载器版本列表
+    /// 注意：Cleanroom 仅支持 Minecraft 1.12.2
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本（必须是1.12.2）</param>
-    /// <returns>Cleanroom版本列表</returns>
+    /// <param name="minecraftVersion">Minecraft 版本（必须是 1.12.2）</param>
+    /// <returns>Cleanroom 版本列表</returns>
     public async Task<List<string>> GetCleanroomVersionsAsync(string minecraftVersion)
     {
-        // Cleanroom仅支持Minecraft 1.12.2
+        // Cleanroom 仅支持 Minecraft 1.12.2
         if (minecraftVersion != "1.12.2")
         {
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] Cleanroom仅支持Minecraft 1.12.2，当前版本: {minecraftVersion}");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] Cleanroom 仅支持 Minecraft 1.12.2，当前版本: {minecraftVersion}");
             return new List<string>();
         }
 
@@ -66,11 +66,11 @@ public class CleanroomService
                     result.Response.EnsureSuccessStatusCode();
                     string xml = await result.Response.Content.ReadAsStringAsync();
                     var versions = ParseCleanroomVersionsFromXml(xml);
-                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 成功获取 {versions.Count} 个Cleanroom版本 (使用源: {result.UsedSourceKey})");
+                    System.Diagnostics.Debug.WriteLine($"[DEBUG] 成功获取 {versions.Count} 个 Cleanroom 版本 (使用源: {result.UsedSourceKey})");
                     return versions;
                 }
 
-                throw new Exception($"获取Cleanroom版本列表失败: {result.ErrorMessage}");
+                throw new Exception($"获取 Cleanroom 版本列表失败: {result.ErrorMessage}");
             }
 
             // 无 FallbackDownloadManager 时，使用下载源接口获取 URL
@@ -81,7 +81,7 @@ public class CleanroomService
             }
 
             var url = source.GetCleanroomMetadataUrl();
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在加载Cleanroom版本列表，请求URL: {url}");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 正在加载 Cleanroom 版本列表，请求 URL: {url}");
 
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
             if (source.RequiresBmclapiUserAgent())
@@ -93,26 +93,26 @@ public class CleanroomService
             response.EnsureSuccessStatusCode();
             string xmlContent = await response.Content.ReadAsStringAsync();
             var versionList = ParseCleanroomVersionsFromXml(xmlContent);
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 成功获取 {versionList.Count} 个Cleanroom版本");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 成功获取 {versionList.Count} 个 Cleanroom 版本");
             return versionList;
         }
         catch (HttpRequestException ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ERROR] 获取Cleanroom版本列表失败: {ex.Message}");
-            throw new Exception($"获取Cleanroom版本列表失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ERROR] 获取 Cleanroom 版本列表失败: {ex.Message}");
+            throw new Exception($"获取 Cleanroom 版本列表失败: {ex.Message}");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ERROR] 获取Cleanroom版本列表时发生错误: {ex.Message}");
-            throw new Exception($"获取Cleanroom版本列表时发生错误: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ERROR] 获取 Cleanroom 版本列表时发生错误: {ex.Message}");
+            throw new Exception($"获取 Cleanroom 版本列表时发生错误: {ex.Message}");
         }
     }
     
     /// <summary>
-    /// 解析Maven metadata XML，提取Cleanroom版本列表
+    /// 解析 Maven metadata XML，提取 Cleanroom 版本列表
     /// </summary>
-    /// <param name="xml">XML数据</param>
-    /// <returns>Cleanroom版本列表</returns>
+    /// <param name="xml">XML 数据</param>
+    /// <returns>Cleanroom 版本列表</returns>
     private List<string> ParseCleanroomVersionsFromXml(string xml)
     {
         var versionList = new List<string>();
@@ -121,7 +121,7 @@ public class CleanroomService
         {
             XDocument doc = XDocument.Parse(xml);
             
-            // Maven metadata格式：
+            // Maven metadata 格式：
             // <metadata>
             //   <versioning>
             //     <versions>
@@ -144,22 +144,22 @@ public class CleanroomService
             // 反转列表，使最新版本在前
             versionList.Reverse();
             
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 解析到 {versionList.Count} 个Cleanroom版本");
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 解析到 {versionList.Count} 个 Cleanroom 版本");
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ERROR] 解析Cleanroom版本XML失败: {ex.Message}");
-            throw new Exception($"解析Cleanroom版本列表失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ERROR] 解析 Cleanroom 版本 XML 失败: {ex.Message}");
+            throw new Exception($"解析 Cleanroom 版本列表失败: {ex.Message}");
         }
         
         return versionList;
     }
     
     /// <summary>
-    /// 检查指定的Minecraft版本是否支持Cleanroom
+    /// 检查指定的 Minecraft 版本是否支持 Cleanroom
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <returns>是否支持Cleanroom</returns>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <returns>是否支持 Cleanroom</returns>
     public static bool IsCleanroomSupported(string minecraftVersion)
     {
         return minecraftVersion == "1.12.2";

@@ -104,7 +104,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         [ObservableProperty]
         private bool _isPublisherListDialogOpen = false;
 
-        private string? _modTeamId; // 保存Modrinth Team ID用于懒加载
+        private string? _modTeamId; // 保存 Modrinth Team ID 用于懒加载
         private bool _isBackgroundPublisherLoading;
 
         private void WriteDebugLog(string message) => _logger.LogDebug("{Message}", message);
@@ -136,7 +136,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         [RelayCommand]
         public async Task ShowPublishers()
         {
-            // 如果列表为空且有Modrinth Team ID，尝试懒加载
+            // 如果列表为空且有 Modrinth Team ID，尝试懒加载
             if (PublisherList.Count == 0 && !string.IsNullOrEmpty(_modTeamId) && !_isBackgroundPublisherLoading)
             {
                 // 使用 ProgressRing 指示加载，但不阻塞 UI (可选：使用专门的 IsLoadingPublishers 属性)
@@ -177,7 +177,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         }
 
         /// <summary>
-        /// 显示的Mod描述（根据当前语言返回翻译或原始描述）
+        /// 显示的 Mod 描述（根据当前语言返回翻译或原始描述）
         /// </summary>
         public string DisplayModDescription
         {
@@ -251,7 +251,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         [ObservableProperty]
         private string _installSpeed = "";
         
-        // 导航到依赖Mod的命令
+        // 导航到依赖 Mod 的命令
         [RelayCommand]
         public void NavigateToDependency(string projectId)
         {
@@ -299,7 +299,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         }
 
         /// <summary>
-        /// 加载CurseForge依赖详情
+        /// 加载 CurseForge 依赖详情
         /// </summary>
         public async Task LoadCurseForgeDependencyDetailsAsync(CurseForgeFile curseForgeFile)
         {
@@ -327,7 +327,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
             }
         }
 
-        // CurseForge文件加载取消令牌源
+        // CurseForge 文件加载取消令牌源
         private CancellationTokenSource? _curseForgeLoadCancellationTokenSource;
 
         // 图标预取取消令牌源（每次加载时重建，支持快速切换 Mod 时取消旧请求）
@@ -341,7 +341,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         [ObservableProperty]
         private string _supportedLoadersText = "ModDownloadDetailPage_SupportedLoadersText_Mod".GetLocalized();
         
-        // 显示文本：根据项目类型动态显示"Mod下载"或"资源包下载"
+        // 显示文本：根据项目类型动态显示"Mod 下载"或"资源包下载"
         [ObservableProperty]
         private string _downloadSectionText = "ModDownloadDetailPage_DownloadSectionText_Mod".GetLocalized();
         
@@ -349,7 +349,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         [ObservableProperty]
         private string _versionSelectionTip = "ModDownloadDetailPage_VersionSelectionTip_Mod".GetLocalized();
         
-        // 重写ProjectType的setter，当项目类型变化时更新显示文本
+        // 重写 ProjectType 的 setter，当项目类型变化时更新显示文本
         partial void OnProjectTypeChanged(string value)
         {
             // 根据项目类型设置显示文本
@@ -595,12 +595,12 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
             _logger = logger;
         }
         
-        // 保存从列表页传递过来的Mod信息，用于优先显示作者
+        // 保存从列表页传递过来的 Mod 信息，用于优先显示作者
         private ModrinthProject? _passedModInfo;
         // 保存来源类型，用于过滤版本
         private string? _sourceType;
 
-        // 接受ModrinthProject对象和来源类型的重载
+        // 接受 ModrinthProject 对象和来源类型的重载
         public async Task LoadModDetailsAsync(ModrinthProject mod, string? sourceType)
         {
             ApplyNavigationContext(new ModDownloadDetailNavigationParameter
@@ -647,12 +647,12 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
             IsLoading = true;
             ErrorMessage = string.Empty;
             
-            // 清空版本列表，避免加载新Mod时显示旧数据
+            // 清空版本列表，避免加载新 Mod 时显示旧数据
             SupportedGameVersions.Clear();
             
             try
             {
-                // 判断是否为CurseForge的Mod（ProjectId以"curseforge-"开头）
+                // 判断是否为 CurseForge 的 Mod（ProjectId 以"curseforge-"开头）
                 if (modId.StartsWith("curseforge-"))
                 {
                     await LoadCurseForgeModDetailsAsync(modId, iconCt);
@@ -664,7 +664,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"加载Mod详情失败: {ex.Message}";
+                ErrorMessage = $"加载 Mod 详情失败: {ex.Message}";
                 WriteErrorLog(ex, "加载 Mod 详情失败");
             }
             finally
@@ -765,7 +765,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         }
         
         /// <summary>
-        /// 加载CurseForge Mod详情
+        /// 加载 CurseForge Mod 详情
         /// </summary>
         private async Task LoadCurseForgeModDetailsAsync(string modId, CancellationToken iconCt)
         {
@@ -1055,7 +1055,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         }
         
         /// <summary>
-        /// 处理并显示CurseForge文件列表（增量更新，避免闪烁）
+        /// 处理并显示 CurseForge 文件列表（增量更新，避免闪烁）
         /// </summary>
         private void ProcessAndDisplayCurseForgeFiles(List<CurseForgeFile> allFiles, bool hideSnapshots)
         {
@@ -1124,7 +1124,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         }
         
         /// <summary>
-        /// 创建GameVersionViewModel
+        /// 创建 GameVersionViewModel
         /// </summary>
         private GameVersionViewModel CreateGameVersionViewModel(ModDetailGameVersionGroup gameVersionGroup)
         {
@@ -1150,7 +1150,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         }
         
         /// <summary>
-        /// 更新已存在的GameVersionViewModel
+        /// 更新已存在的 GameVersionViewModel
         /// </summary>
         private void UpdateGameVersionViewModel(GameVersionViewModel existingViewModel, ModDetailGameVersionGroup gameVersionGroup)
         {
@@ -1365,7 +1365,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
             WinRT.Interop.InitializeWithWindow.Initialize(filePicker, windowHandle);
             
             filePicker.SuggestedFileName = selectedModVersion.FileName;
-            filePicker.FileTypeChoices.Add("Mod文件", new[] { FileExtensionConsts.Jar });
+            filePicker.FileTypeChoices.Add("Mod 文件", new[] { FileExtensionConsts.Jar });
             
             var file = await filePicker.PickSaveFileAsync();
             
@@ -1377,7 +1377,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
             }
         }
         
-        // 保存当前正在下载的Mod版本，用于存档选择后继续下载
+        // 保存当前正在下载的 Mod 版本，用于存档选择后继续下载
         private ModVersionViewModel? _currentDownloadingModVersion;
         
         // 依赖相关属性
@@ -1489,7 +1489,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
                 var currentDownloadingModVersion = _currentDownloadingModVersion;
                 if (currentDownloadingModVersion == null)
                 {
-                    throw new Exception("未找到正在下载的Mod版本");
+                    throw new Exception("未找到正在下载的 Mod 版本");
                 }
                 
                 string? selectedSaveName = SelectedSaveName;
@@ -1664,11 +1664,11 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
                 // 获取实际已安装的游戏版本
                 var installedVersions = await _minecraftVersionService.GetInstalledVersionsAsync();
                 
-                // 提取用户当前选择的Mod版本所支持的游戏版本，而不是所有Mod支持的版本
-                // 注意：这里我们直接使用modVersion.GameVersion，因为每个ModVersionViewModel现在都知道它支持的游戏版本
+                // 提取用户当前选择的 Mod 版本所支持的游戏版本，而不是所有 Mod 支持的版本
+                // 注意：这里我们直接使用 modVersion.GameVersion，因为每个 ModVersionViewModel 现在都知道它支持的游戏版本
                 var supportedGameVersionIds = new HashSet<string> { modVersion.GameVersion };
                 
-                // 获取Minecraft数据路径
+                // 获取 Minecraft 数据路径
                 string minecraftPath = _fileService.GetMinecraftDataPath();
                 
                 // 处理每个已安装版本
@@ -1697,7 +1697,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
                         string[] versionParts = installedVersion.Split('-');
                         foreach (var part in versionParts)
                         {
-                            // 检查是否为有效的游戏版本格式（如1.21, 1.20.6, 1.21.10等）
+                            // 检查是否为有效的游戏版本格式（如 1.21, 1.20.6, 1.21.10 等）
                             if (System.Text.RegularExpressions.Regex.IsMatch(part, @"^\d+\.\d+(\.\d+)?$"))
                             {
                                 gameVersion = part;
@@ -1921,8 +1921,8 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
             UseCustomDownloadPath = false;
             CustomDownloadPath = null;
             
-            // 这里将通过UI层打开文件保存对话框，用户选择路径后会调用SetCustomDownloadPath
-            // 然后UI层会触发实际的下载操作
+            // 这里将通过 UI 层打开文件保存对话框，用户选择路径后会调用 SetCustomDownloadPath
+            // 然后 UI 层会触发实际的下载操作
         }
         
         // 设置自定义下载路径的方法
@@ -2012,7 +2012,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
                     throw new Exception("未选择要安装的游戏版本");
                 }
                 
-                // 检查是否为数据包：根据ProjectType或ModVersion的Loaders属性
+                // 检查是否为数据包：根据 ProjectType 或 ModVersion 的 Loaders 属性
                 bool isDatapack = ProjectType == "datapack" || 
                                  (modVersion.Loaders != null && modVersion.Loaders.Any(l => l.Equals("Datapack", StringComparison.OrdinalIgnoreCase)));
                 
@@ -2020,7 +2020,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
                 {
                     if (!UseCustomDownloadPath || string.IsNullOrWhiteSpace(CustomDownloadPath))
                     {
-                        // 保存当前正在下载的Mod版本
+                        // 保存当前正在下载的 Mod 版本
                         _currentDownloadingModVersion = modVersion;
                         _currentDownloadingGameVersion = targetVersion;
 
@@ -2028,7 +2028,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
                         // 打开存档选择弹窗
                         await ShowSaveSelectionDialog();
 
-                        // 注意：存档选择后的下载逻辑在CompleteDatapackDownloadAsync方法中处理
+                        // 注意：存档选择后的下载逻辑在 CompleteDatapackDownloadAsync 方法中处理
                         // 这里直接返回，等待用户选择存档后再继续
                         return;
                     }
@@ -2362,7 +2362,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
                 _iconLoadCancellationTokenSource = null;
             }
 
-            // 取消CurseForge后台加载任务
+            // 取消 CurseForge 后台加载任务
             if (_curseForgeLoadCancellationTokenSource != null)
             {
                 _curseForgeLoadCancellationTokenSource.Cancel();
@@ -2401,7 +2401,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         }
         
         /// <summary>
-        /// 打开MC百科搜索命令
+        /// 打开 MC 百科搜索命令
         /// </summary>
         [RelayCommand]
         private async Task OpenMcmodAsync()
@@ -2506,7 +2506,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
                 var installedVersions = await _minecraftVersionService.GetInstalledVersionsAsync();
                 WriteDebugLog($"QuickInstall 找到 {installedVersions.Count} 个已安装的游戏版本");
                 
-                // 获取当前Mod支持的所有游戏版本和加载器
+                // 获取当前 Mod 支持的所有游戏版本和加载器
                 var supportedGameVersions = new HashSet<string>();
                 var supportedLoaders = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 
@@ -2528,7 +2528,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
                 WriteDebugLog($"QuickInstall 支持的游戏版本集合: {string.Join(", ", supportedGameVersions)}");
                 WriteDebugLog($"QuickInstall 支持的加载器集合: {string.Join(", ", supportedLoaders)}");
                 
-                // 获取Minecraft目录
+                // 获取 Minecraft 目录
                 string minecraftDirectory = _fileService.GetMinecraftDataPath();
                 
                 foreach (var version in installedVersions)
@@ -2566,7 +2566,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
                     }
                     else
                     {
-                        // 配置文件不存在，尝试从version.json解析
+                        // 配置文件不存在，尝试从 version.json 解析
                         WriteDebugLog("QuickInstall 配置文件不存在，尝试从 version.json 解析");
                         
                         var versionInfo = await _minecraftVersionService.GetVersionInfoAsync(version);
@@ -2581,7 +2581,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
                         WriteDebugLog($"QuickInstall 版本 ID: {versionInfo.Id}");
                         WriteDebugLog($"QuickInstall InheritsFrom: {versionInfo.InheritsFrom ?? "null"}");
                         
-                        // 检测加载器类型（从版本ID字符串）
+                        // 检测加载器类型（从版本 ID 字符串）
                         if (versionInfo.Id.Contains("fabric", StringComparison.OrdinalIgnoreCase))
                         {
                             loaderType = "fabric";
@@ -2619,7 +2619,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
                     // 定义通用加载器类型列表
                     // 资源通用类型：这些类型的资源兼容所有游戏版本
                     var resourceUniversalTypes = new[] { "generic", "通用", "optifine", "iris", "minecraft", "datapack" };
-                    // 游戏通用类型：这些类型的游戏版本只兼容通用资源，不兼容特定加载器的Mod
+                    // 游戏通用类型：这些类型的游戏版本只兼容通用资源，不兼容特定加载器的 Mod
                     var gameUniversalTypes = new[] { "vanilla", "minecraft" };
                     
                     // 收集当前游戏版本的所有加载器（主加载器 + 附加加载器）
@@ -2691,7 +2691,7 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         }
         
         /// <summary>
-        /// 显示Mod版本选择弹窗
+        /// 显示 Mod 版本选择弹窗
         /// </summary>
         public async Task ShowQuickInstallModVersionSelectionAsync(IReadOnlyList<ModVersionViewModel>? compatibleModVersions = null)
         {
@@ -2750,12 +2750,12 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
             catch (Exception ex)
             {
                 WriteErrorLog(ex, "显示 Mod 版本选择失败");
-                await ShowMessageAsync($"显示Mod版本选择失败: {ex.Message}");
+                await ShowMessageAsync($"显示 Mod 版本选择失败: {ex.Message}");
             }
         }
         
         /// <summary>
-        /// 加载兼容的Mod版本列表
+        /// 加载兼容的 Mod 版本列表
         /// </summary>
         private void LoadQuickInstallModVersions(IReadOnlyCollection<ModVersionViewModel>? compatibleModVersions = null)
         {
@@ -2857,9 +2857,9 @@ namespace XianYuLauncher.Features.ModDownloadDetail.ViewModels
         }
         
         /// <summary>
-        /// 下载Mod版本到指定游戏版本
+        /// 下载 Mod 版本到指定游戏版本
         /// <summary>
-        /// 下载Mod版本到指定游戏版本（一键安装）
+        /// 下载 Mod 版本到指定游戏版本（一键安装）
         /// </summary>
         public async Task DownloadModVersionToGameAsync(ModVersionViewModel modVersion, InstalledGameVersionViewModel gameVersion)
         {

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -67,7 +67,7 @@ public class UpdateService
     /// <summary>
     /// 检查是否有新版本可用
     /// </summary>
-    /// <returns>更新信息，如果没有更新则返回null</returns>    
+    /// <returns>更新信息，如果没有更新则返回 null</returns>    
     public async Task<UpdateInfo?> CheckForUpdatesAsync(CancellationToken cancellationToken = default)
     {
         return await CheckForManifestUpdateAsync(DistributionChannel.SideLoad, cancellationToken);
@@ -215,7 +215,7 @@ public class UpdateService
     /// <summary>
     /// 获取当前系统架构
     /// </summary>
-    /// <returns>当前架构，如x64、arm64等</returns>
+    /// <returns>当前架构，如 x64、arm64 等</returns>
     private string GetCurrentArchitecture()
     {
         switch (System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture)
@@ -240,7 +240,7 @@ public class UpdateService
     /// <param name="downloadPath">下载保存路径</param>
     /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>下载结果，成功返回true，失败返回false</returns>
+    /// <returns>下载结果，成功返回 true，失败返回 false</returns>
     public async Task<bool> DownloadUpdatePackageAsync(UpdateInfo updateInfo, string downloadPath, Action<DownloadProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
     {
         _logger.LogInformation("开始下载更新包，版本: {Version}", updateInfo.version);
@@ -256,20 +256,20 @@ public class UpdateService
         {
             try
             {
-                // 选择合适的下载URL
-                string downloadUrl = mirror.url; // 默认使用旧版本URL（兼容旧版客户端）
+                // 选择合适的下载 URL
+                string downloadUrl = mirror.url; // 默认使用旧版本 URL（兼容旧版客户端）
                 
-                // 如果有arch_urls字段，根据当前架构选择URL
+                // 如果有 arch_urls 字段，根据当前架构选择 URL
                 if (mirror.arch_urls != null && mirror.arch_urls.TryGetValue(currentArchitecture, out string? archUrl) && !string.IsNullOrWhiteSpace(archUrl))
                 {
                     downloadUrl = archUrl;
-                    _logger.LogInformation("使用架构特定URL: {ArchUrl} (架构: {CurrentArchitecture})", downloadUrl, currentArchitecture);
-                    Debug.WriteLine($"[DEBUG] 使用架构特定URL: {downloadUrl} (架构: {currentArchitecture})");
+                    _logger.LogInformation("使用架构特定 URL: {ArchUrl} (架构: {CurrentArchitecture})", downloadUrl, currentArchitecture);
+                    Debug.WriteLine($"[DEBUG] 使用架构特定 URL: {downloadUrl} (架构: {currentArchitecture})");
                 }
                 else if (mirror.arch_urls != null)
                 {
-                    _logger.LogWarning("未找到当前架构的特定URL，使用默认URL: {Url} (架构: {CurrentArchitecture})", downloadUrl, currentArchitecture);
-                    Debug.WriteLine($"[DEBUG] 未找到当前架构的特定URL，使用默认URL: {downloadUrl} (架构: {currentArchitecture})");
+                    _logger.LogWarning("未找到当前架构的特定 URL，使用默认 URL: {Url} (架构: {CurrentArchitecture})", downloadUrl, currentArchitecture);
+                    Debug.WriteLine($"[DEBUG] 未找到当前架构的特定 URL，使用默认 URL: {downloadUrl} (架构: {currentArchitecture})");
                 }
                 
                 _logger.LogInformation("尝试从镜像下载: {MirrorName}, URL: {Url}", mirror.name, downloadUrl);
@@ -300,11 +300,11 @@ public class UpdateService
     /// <summary>
     /// 下载单个文件
     /// </summary>
-    /// <param name="url">下载URL</param>
+    /// <param name="url">下载 URL</param>
     /// <param name="savePath">保存路径</param>
     /// <param name="progressCallback">进度回调</param>
     /// <param name="cancellationToken">取消令牌</param>
-    /// <returns>下载结果，成功返回true，失败返回false</returns>
+    /// <returns>下载结果，成功返回 true，失败返回 false</returns>
     private async Task<bool> DownloadFileAsync(string url, string savePath, Action<DownloadProgressInfo>? progressCallback = null, CancellationToken cancellationToken = default)
     {
         // 创建目录
@@ -348,7 +348,7 @@ public class UpdateService
     /// 比较版本号，判断是否有新版本可用
     /// </summary>
     /// <param name="latestVersion">最新版本号</param>
-    /// <returns>如果有新版本返回true，否则返回false</returns>
+    /// <returns>如果有新版本返回 true，否则返回 false</returns>
     private bool IsNewVersionAvailable(string latestVersion)
     {
         try
@@ -427,10 +427,10 @@ public class UpdateService
     }
     
     /// <summary>
-    /// 解压更新包ZIP文件到临时目录
+    /// 解压更新包 ZIP 文件到临时目录
     /// </summary>
-    /// <param name="zipFilePath">ZIP文件路径</param>
-    /// <returns>包含解压目录、证书文件路径和MSIX文件路径的元组</returns>
+    /// <param name="zipFilePath">ZIP 文件路径</param>
+    /// <returns>包含解压目录、证书文件路径和 MSIX 文件路径的元组</returns>
     public async Task<(string ExtractDirectory, string? CertificateFilePath, string MsixFilePath)> ExtractUpdatePackageAsync(string zipFilePath)
     {
         _logger.LogInformation("开始解压更新包: {ZipFilePath}", zipFilePath);
@@ -443,7 +443,7 @@ public class UpdateService
         
         try
         {
-            // 解压ZIP文件
+            // 解压 ZIP 文件
             await Task.Run(() =>
             {
                 ZipFile.ExtractToDirectory(zipFilePath, extractDirectory, true);
@@ -464,18 +464,18 @@ public class UpdateService
                 Debug.WriteLine($"[DEBUG] 找到证书文件: {certificateFilePath}");
             }
             
-            // 查找MSIX文件 (*.msix)
+            // 查找 MSIX 文件 (*.msix)
             string? msixFilePath = FindFileByPattern(extractDirectory, "*.msix");
             if (string.IsNullOrEmpty(msixFilePath))
             {
-                _logger.LogError("在解压目录中未找到MSIX文件 (*.msix): {ExtractDirectory}", extractDirectory);
-                Debug.WriteLine($"[DEBUG] 在解压目录中未找到MSIX文件 (*.msix): {extractDirectory}");
-                throw new Exception("在解压目录中未找到MSIX文件 (*.msix)");
+                _logger.LogError("在解压目录中未找到 MSIX 文件 (*.msix): {ExtractDirectory}", extractDirectory);
+                Debug.WriteLine($"[DEBUG] 在解压目录中未找到 MSIX 文件 (*.msix): {extractDirectory}");
+                throw new Exception("在解压目录中未找到 MSIX 文件 (*.msix)");
             }
             else
             {
-                _logger.LogInformation("找到MSIX文件: {MsixFilePath}", msixFilePath);
-                Debug.WriteLine($"[DEBUG] 找到MSIX文件: {msixFilePath}");
+                _logger.LogInformation("找到 MSIX 文件: {MsixFilePath}", msixFilePath);
+                Debug.WriteLine($"[DEBUG] 找到 MSIX 文件: {msixFilePath}");
             }
             
             return (extractDirectory, certificateFilePath, msixFilePath);
@@ -501,7 +501,7 @@ public class UpdateService
     /// </summary>
     /// <param name="directory">要搜索的目录</param>
     /// <param name="searchPattern">搜索模式，如"*.cer"</param>
-    /// <returns>找到的第一个文件路径，如果没有找到则返回null</returns>
+    /// <returns>找到的第一个文件路径，如果没有找到则返回 null</returns>
     private string? FindFileByPattern(string directory, string searchPattern)
     {
         _logger.LogInformation("在目录中查找文件: {Directory}, 模式: {SearchPattern}", directory, searchPattern);
@@ -533,7 +533,7 @@ public class UpdateService
     /// 检查系统是否已安装指定证书
     /// </summary>
     /// <param name="certificateFilePath">证书文件路径</param>
-    /// <returns>如果证书已安装返回true，否则返回false</returns>
+    /// <returns>如果证书已安装返回 true，否则返回 false</returns>
     public bool IsCertificateInstalled(string certificateFilePath)
     {
         if (string.IsNullOrEmpty(certificateFilePath))
@@ -594,7 +594,7 @@ public class UpdateService
         
         try
         {
-            // 使用Process.Start打开证书文件属性页
+            // 使用 Process.Start 打开证书文件属性页
             Process.Start(new ProcessStartInfo
             {
                 FileName = certificateFilePath,
@@ -648,12 +648,12 @@ public class UpdateService
     }
     
     /// <summary>
-    ///  安装MSIX包 (Hybrid模式：C#解析路径 + PowerShell执行安装与重启)
-    ///  原生API (AddPackageAsync) 会强制杀死当前进程，导致无法执行重启逻辑。
+    ///  安装 MSIX 包 (Hybrid 模式：C#解析路径 + PowerShell 执行安装与重启)
+    ///  原生 API (AddPackageAsync) 会强制杀死当前进程，导致无法执行重启逻辑。
     ///  因此这里使用 PowerShell 脚本来执行最后的安装和重启操作。
     /// </summary>
     /// <param name="extractDirectory">解压目录路径</param>
-    /// <param name="msixFilePath">MSIX包文件路径</param>
+    /// <param name="msixFilePath">MSIX 包文件路径</param>
     /// <returns>操作是否成功启动</returns>
     public async Task<bool> InstallMsixPackageAsync(string extractDirectory, string msixFilePath)
     {
@@ -769,7 +769,7 @@ $ErrorActionPreference = 'Stop'
 Start-Transcript -Path '{logPath}' -Force
 try {{
     Write-Output 'XianYu Launcher 自我更新程序启动'
-    Write-Output '等待主程序退出 (2秒)...'
+    Write-Output '等待主程序退出 (2 秒)...'
     Start-Sleep -Seconds 2
     
     Write-Output '正在执行安装命令: {mainPackagePath}'
@@ -787,9 +787,9 @@ try {{
 Stop-Transcript
 ";
             
-            _logger.LogInformation("PowerShell命令长度: {Len}", finalScript.Length);
+            _logger.LogInformation("PowerShell 命令长度: {Len}", finalScript.Length);
             // 记录完整脚本以便排查（注意脱敏）
-            _logger.LogDebug("PowerShell脚本内容: {Script}", finalScript);
+            _logger.LogDebug("PowerShell 脚本内容: {Script}", finalScript);
 
             // 4. 执行 PowerShell (Fire and Forget)
             using (var process = new Process())

@@ -4,18 +4,18 @@ using XianYuLauncher.Core.Helpers;
 namespace XianYuLauncher.Helpers;
 
 /// <summary>
-/// 转换器：根据ModLoader名称返回对应的图标URL
+/// 转换器：根据 ModLoader 名称返回对应的图标 URL
 /// </summary>
 public class ModLoaderToIconConverter : IValueConverter
 {
     /// <summary>
-    /// 将ModLoader名称转换为图标URL
+    /// 将 ModLoader 名称转换为图标 URL
     /// </summary>
-    /// <param name="value">ModLoader名称</param>
+    /// <param name="value">ModLoader 名称</param>
     /// <param name="targetType">目标类型</param>
     /// <param name="parameter">参数</param>
     /// <param name="language">语言</param>
-    /// <returns>图标URL</returns>
+    /// <returns>图标 URL</returns>
     public object Convert(object value, Type targetType, object parameter, string language)
     {
         if (value is string modLoaderName)

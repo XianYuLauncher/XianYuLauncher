@@ -25,7 +25,7 @@ public class VersionInfoManager : IVersionInfoManager
     private readonly ILogger<VersionInfoManager> _logger;
 
     /// <summary>
-    /// 官方版本清单URL
+    /// 官方版本清单 URL
     /// </summary>
     private const string OfficialVersionManifestUrl = "https://piston-meta.mojang.com/mc/game/version_manifest_v2.json";
 
@@ -61,7 +61,7 @@ public class VersionInfoManager : IVersionInfoManager
             return _cachedManifest;
         }
 
-        _logger.LogInformation("正在获取Minecraft版本清单");
+        _logger.LogInformation("正在获取 Minecraft 版本清单");
 
         try
         {
@@ -104,7 +104,7 @@ public class VersionInfoManager : IVersionInfoManager
     {
         if (string.IsNullOrEmpty(versionId))
         {
-            throw new ArgumentException("版本ID不能为空", nameof(versionId));
+            throw new ArgumentException("版本 ID 不能为空", nameof(versionId));
         }
 
         _logger.LogInformation("正在获取版本 {VersionId} 的详细信息", versionId);
@@ -150,7 +150,7 @@ public class VersionInfoManager : IVersionInfoManager
     {
         if (string.IsNullOrEmpty(versionId))
         {
-            throw new ArgumentException("版本ID不能为空", nameof(versionId));
+            throw new ArgumentException("版本 ID 不能为空", nameof(versionId));
         }
 
         // 1. 尝试从本地读取
@@ -176,7 +176,7 @@ public class VersionInfoManager : IVersionInfoManager
             return await _downloadManager.DownloadStringAsync(versionEntry.Url, cancellationToken);
         }
 
-        throw new VersionNotFoundException($"本地未找到版本 {versionId} 的JSON文件，且不允许网络请求");
+        throw new VersionNotFoundException($"本地未找到版本 {versionId} 的 JSON 文件，且不允许网络请求");
     }
 
     /// <inheritdoc/>
@@ -186,7 +186,7 @@ public class VersionInfoManager : IVersionInfoManager
 
         if (string.IsNullOrEmpty(minecraftDirectory))
         {
-            _logger.LogWarning("Minecraft目录未指定，返回空列表");
+            _logger.LogWarning("Minecraft 目录未指定，返回空列表");
             return Task.FromResult(installedVersions);
         }
 
@@ -262,7 +262,7 @@ public class VersionInfoManager : IVersionInfoManager
     #region 私有辅助方法
 
     /// <summary>
-    /// 获取版本JSON文件路径
+    /// 获取版本 JSON 文件路径
     /// </summary>
     private static string GetVersionJsonPath(string versionId, string minecraftDirectory)
     {
@@ -289,7 +289,7 @@ public class VersionInfoManager : IVersionInfoManager
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "解析本地版本JSON失败: {JsonPath}", jsonPath);
+            _logger.LogWarning(ex, "解析本地版本 JSON 失败: {JsonPath}", jsonPath);
             return null;
         }
     }

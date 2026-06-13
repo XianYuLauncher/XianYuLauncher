@@ -19,7 +19,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- 固定悬浮条 - 居中块(最大1064) + 块内居左 -->
+        <!-- 固定悬浮条 - 居中块(最大 1064) + 块内居左 -->
         <Grid Grid.Row="0" HorizontalAlignment="Stretch">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
@@ -94,7 +94,7 @@
                 <StackPanel.ChildrenTransitions>
                     <RepositionThemeTransition IsStaggeringEnabled="False" />
                 </StackPanel.ChildrenTransitions>
-                <!-- 皮肤3D预览卡片 -->
+                <!-- 皮肤 3D 预览卡片 -->
                 <Border
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -110,13 +110,13 @@
                             <StackPanel Spacing="8">
                                 <TextBlock
                                     x:Uid="AccountManagementPage_Skin3DPreviewTitle"
-                                    Text="皮肤3D预览"
+                                    Text="皮肤 3D 预览"
                                     Style="{StaticResource TitleTextBlockStyle}"
                                     FontSize="18"
                                     FontWeight="SemiBold" />
                                 <TextBlock
                                     x:Uid="AccountManagementPage_Skin3DPreviewNote"
-                                    Text="3D皮肤模型预览，支持旋转和缩放"
+                                    Text="3D 皮肤模型预览，支持旋转和缩放"
                                     Style="{StaticResource CaptionTextBlockStyle}"
                                     Foreground="{ThemeResource TextFillColorSecondary}" />
                             </StackPanel>
@@ -142,7 +142,7 @@
                             </Button>
                         </Grid>
                         
-                        <!-- 3D预览区域 -->
+                        <!-- 3D 预览区域 -->
                         <Border
                             Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                             BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -208,7 +208,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- 修改UUID功能卡片 -->
+                <!-- 修改 UUID 功能卡片 -->
                 <Border
                     Background="{ThemeResource CardBackgroundFillColorDefaultBrush}"
                     BorderBrush="{ThemeResource CardStrokeColorDefaultBrush}"
@@ -219,7 +219,7 @@
                         <StackPanel Spacing="8">
                             <TextBlock
                                 x:Uid="AccountManagementPage_ChangeUuidTitle"
-                                Text="修改UUID"
+                                Text="修改 UUID"
                                 Style="{StaticResource TitleTextBlockStyle}"
                                 FontSize="18"
                                 FontWeight="SemiBold" />
@@ -240,7 +240,7 @@
                                 x:Uid="AccountManagementPage_NewUuidTextBox"
                                 Grid.Column="0"
                                 Text="{x:Bind ViewModel.NewUUID, Mode=TwoWay}"
-                                PlaceholderText="输入新UUID"
+                                PlaceholderText="输入新 UUID"
                                 IsEnabled="{x:Bind ViewModel.CurrentProfile.IsOffline, Mode=OneWay}"
                                 Margin="0,0,12,0" />
                             

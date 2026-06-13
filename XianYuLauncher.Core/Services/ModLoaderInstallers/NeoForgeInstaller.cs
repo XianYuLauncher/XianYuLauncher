@@ -17,7 +17,7 @@ using XianYuLauncher.Core.Services.DownloadSource;
 namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 
 /// <summary>
-/// NeoForge ModLoader安装器
+/// NeoForge ModLoader 安装器
 /// </summary>
 public class NeoForgeInstaller : ModLoaderInstallerBase
 {
@@ -27,7 +27,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
     private readonly IUnifiedVersionManifestResolver _manifestResolver;
     
     /// <summary>
-    /// NeoForge Maven仓库URL（官方源备用）
+    /// NeoForge Maven 仓库 URL（官方源备用）
     /// </summary>
     private const string NeoForgeMavenUrl = "https://maven.neoforged.net/releases";
     
@@ -79,7 +79,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
         Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
-        Logger.LogInformation("开始安装NeoForge: {NeoForgeVersion} for Minecraft {MinecraftVersion}, SkipJarDownload={SkipJar}",
+        Logger.LogInformation("开始安装 NeoForge: {NeoForgeVersion} for Minecraft {MinecraftVersion}, SkipJarDownload={SkipJar}",
             modLoaderVersion, minecraftVersionId, options.SkipJarDownload);
 
         string? cacheDirectory = null;
@@ -88,7 +88,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
 
         try
         {
-            // 1. 生成版本ID和创建目录
+            // 1. 生成版本 ID 和创建目录
             var versionId = GetVersionId(minecraftVersionId, modLoaderVersion, options.CustomVersionName);
             var versionDirectory = CreateVersionDirectory(minecraftDirectory, versionId);
             var librariesDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Libraries);
@@ -98,8 +98,8 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             // 2. 保存版本配置
             await SaveVersionConfigAsync(versionDirectory, minecraftVersionId, modLoaderVersion);
 
-            // 3. 获取原版Minecraft版本信息
-            Logger.LogInformation("获取原版Minecraft版本信息: {MinecraftVersion}", minecraftVersionId);
+            // 3. 获取原版 Minecraft 版本信息
+            Logger.LogInformation("获取原版 Minecraft 版本信息: {MinecraftVersion}", minecraftVersionId);
             var originalVersionInfo = await VersionInfoManager.GetVersionInfoAsync(
                 minecraftVersionId,
                 minecraftDirectory,
@@ -108,8 +108,8 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 10));
 
-            // 4. 下载原版Minecraft JAR（支持跳过）
-            Logger.LogInformation("处理Minecraft JAR, SkipJarDownload={SkipJar}", options.SkipJarDownload);
+            // 4. 下载原版 Minecraft JAR（支持跳过）
+            Logger.LogInformation("处理 Minecraft JAR, SkipJarDownload={SkipJar}", options.SkipJarDownload);
             await EnsureMinecraftJarAsync(
                 versionDirectory,
                 versionId,
@@ -120,8 +120,8 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 35));
 
-            // 5. 下载NeoForge Installer
-            Logger.LogInformation("下载NeoForge Installer");
+            // 5. 下载 NeoForge Installer
+            Logger.LogInformation("下载 NeoForge Installer");
             cacheDirectory = Path.Combine(Path.GetTempPath(), "XianYuLauncher", "cache", "neoforge");
             Directory.CreateDirectory(cacheDirectory);
 
@@ -132,8 +132,8 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             var neoforgeInstallerUrl = downloadSource.GetNeoForgeInstallerUrl(modLoaderVersion);
             var officialUrl = GetNeoForgeInstallerUrl(modLoaderVersion);
             
-            Logger.LogInformation("使用下载源 {DownloadSource} 下载NeoForge安装器: {Url}", downloadSource.Name, neoforgeInstallerUrl);
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载NeoForge安装器: {neoforgeInstallerUrl}");
+            Logger.LogInformation("使用下载源 {DownloadSource} 下载 NeoForge 安装器: {Url}", downloadSource.Name, neoforgeInstallerUrl);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载 NeoForge 安装器: {neoforgeInstallerUrl}");
             
             var downloadResult = await DownloadManager.DownloadFileAsync(
                 neoforgeInstallerUrl,
@@ -159,25 +159,25 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             if (!downloadResult.Success)
             {
                 throw new ModLoaderInstallException(
-                    $"下载NeoForge Installer失败: {downloadResult.ErrorMessage}",
+                    $"下载 NeoForge Installer 失败: {downloadResult.ErrorMessage}",
                     ModLoaderType,
                     modLoaderVersion,
                     minecraftVersionId,
-                    "下载Installer",
+                    "下载 Installer",
                     downloadResult.Exception);
             }
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 55));
 
-            // 6. 解压NeoForge Installer
-            Logger.LogInformation("解压NeoForge Installer");
+            // 6. 解压 NeoForge Installer
+            Logger.LogInformation("解压 NeoForge Installer");
             extractedPath = Path.Combine(cacheDirectory, $"extracted-{modLoaderVersion}");
             Directory.CreateDirectory(extractedPath);
             
             await ExtractInstallerAsync(neoforgeInstallerPath, extractedPath, cancellationToken);
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 65));
 
-            // 7. 读取install_profile.json
+            // 7. 读取 install_profile.json
             var installProfilePath = Path.Combine(extractedPath, MinecraftFileConsts.InstallProfileJson);
             if (!File.Exists(installProfilePath))
             {
@@ -193,7 +193,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             var installProfile = JObject.Parse(installProfileContent);
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 70));
 
-            // 8. 下载install_profile中的依赖库
+            // 8. 下载 install_profile 中的依赖库
             var installProfileLibraries = ParseInstallProfileLibraries(installProfile);
             await DownloadInstallProfileLibrariesAsync(
                 installProfileLibraries,
@@ -203,12 +203,12 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 85));
 
-            // 9. 读取version.json
+            // 9. 读取 version.json
             var versionJsonPath = Path.Combine(extractedPath, "version.json");
             if (!File.Exists(versionJsonPath))
             {
                 throw new ModLoaderInstallException(
-                    "version.json文件不存在",
+                    "version.json 文件不存在",
                     ModLoaderType,
                     modLoaderVersion,
                     minecraftVersionId,
@@ -218,12 +218,12 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             var versionJsonContent = await File.ReadAllTextAsync(versionJsonPath, cancellationToken);
             var neoforgeVersionInfo = VersionManifestJsonHelper.DeserializeVersionInfo(versionJsonContent);
 
-            // 补全version.json中库的下载链接并下载
+            // 补全 version.json 中库的下载链接并下载
             if (neoforgeVersionInfo?.Libraries != null)
             {
                 EnsureLibraryUrls(neoforgeVersionInfo.Libraries);
                 
-                Logger.LogInformation("正在下载version.json中的依赖库...");
+                Logger.LogInformation("正在下载 version.json 中的依赖库...");
                 await DownloadInstallProfileLibrariesAsync(
                     neoforgeVersionInfo.Libraries,
                     librariesDirectory,
@@ -237,7 +237,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
             var processors = installProfile["processors"] as JArray;
             if (processors != null && processors.Count > 0)
             {
-                Logger.LogInformation("开始执行NeoForge处理器");
+                Logger.LogInformation("开始执行 NeoForge 处理器");
                 var versionConfig = new VersionConfig
                 {
                     ModLoaderType = "neoforge",
@@ -260,26 +260,26 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 98));
 
-            // 11. 合并版本JSON并保存
+            // 11. 合并版本 JSON 并保存
             var mergedVersionInfo = ResolveVersionInfo(originalVersionInfo, neoforgeVersionInfo, installProfileLibraries);
             mergedVersionInfo.Id = versionId;
             
             await SaveVersionJsonAsync(versionDirectory, versionId, mergedVersionInfo);
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
 
-            Logger.LogInformation("NeoForge安装完成: {VersionId}", versionId);
+            Logger.LogInformation("NeoForge 安装完成: {VersionId}", versionId);
             return versionId;
         }
         catch (OperationCanceledException)
         {
-            Logger.LogWarning("NeoForge安装已取消");
+            Logger.LogWarning("NeoForge 安装已取消");
             throw;
         }
         catch (Exception ex) when (ex is not ModLoaderInstallException)
         {
-            Logger.LogError(ex, "NeoForge安装失败");
+            Logger.LogError(ex, "NeoForge 安装失败");
             throw new ModLoaderInstallException(
-                $"NeoForge安装失败: {ex.Message}",
+                $"NeoForge 安装失败: {ex.Message}",
                 ModLoaderType,
                 modLoaderVersion,
                 minecraftVersionId,
@@ -298,16 +298,16 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
     {
         try
         {
-            // NeoForge版本列表API
+            // NeoForge 版本列表 API
             var url = $"https://maven.neoforged.net/api/maven/versions/releases/net/neoforged/neoforge";
             var response = await DownloadManager.DownloadStringAsync(url, cancellationToken);
             var versionData = JsonConvert.DeserializeObject<NeoForgeVersionList>(response);
 
-            // 过滤出匹配Minecraft版本的NeoForge版本
+            // 过滤出匹配 Minecraft 版本的 NeoForge 版本
             var versions = new List<string>();
             if (versionData?.Versions != null)
             {
-                // NeoForge版本格式: 20.4.xxx 对应 MC 1.20.4
+                // NeoForge 版本格式: 20.4.xxx 对应 MC 1.20.4
                 var mcVersionParts = minecraftVersionId.Split('.');
                 if (mcVersionParts.Length >= 2)
                 {
@@ -325,7 +325,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "获取NeoForge版本列表失败: {MinecraftVersion}", minecraftVersionId);
+            Logger.LogError(ex, "获取 NeoForge 版本列表失败: {MinecraftVersion}", minecraftVersionId);
             return new List<string>();
         }
     }
@@ -431,13 +431,13 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
 
     internal VersionInfo ResolveVersionInfo(VersionInfo original, VersionInfo? neoforge, List<Library> additionalLibraries)
     {
-        // 确保输入参数不为null
+        // 确保输入参数不为 null
         if (original == null)
         {
             throw new ArgumentNullException(nameof(original));
         }
 
-        Logger.LogDebug("安装期额外依赖库不会写入最终manifest: {Count}", additionalLibraries?.Count ?? 0);
+        Logger.LogDebug("安装期额外依赖库不会写入最终 manifest: {Count}", additionalLibraries?.Count ?? 0);
 
         var manifestPatch = CreateManifestPatch(original, neoforge);
         var resolutionResult = _manifestResolver.ResolvePatch(
@@ -449,7 +449,7 @@ public class NeoForgeInstaller : ModLoaderInstallerBase
                 legacyArgumentMergeMode: LegacyArgumentMergeMode.PreferAnyWithLoaderPriority,
                 modernArgumentMergeMode: ModernArgumentMergeMode.OverrideSections));
 
-        Logger.LogInformation("通过ManifestPatch解析了 {LibraryCount} 个NeoForge依赖库", manifestPatch.Libraries?.Count ?? 0);
+        Logger.LogInformation("通过 ManifestPatch 解析了 {LibraryCount} 个 NeoForge 依赖库", manifestPatch.Libraries?.Count ?? 0);
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", resolutionResult.ResolvedManifest.Libraries?.Count ?? 0);
 
         return resolutionResult.ResolvedManifest;

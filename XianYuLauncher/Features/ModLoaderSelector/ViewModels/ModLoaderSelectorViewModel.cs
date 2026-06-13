@@ -60,13 +60,13 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     private ModLoaderItem? _selectedModLoaderItem;
     
     /// <summary>
-    /// 是否同时选择了Optifine
+    /// 是否同时选择了 Optifine
     /// </summary>
     [ObservableProperty]
     private bool _isOptifineSelected = false;
     
     /// <summary>
-    /// 选中的Optifine版本
+    /// 选中的 Optifine 版本
     /// </summary>
     [ObservableProperty]
     private string? _selectedOptifineVersion;
@@ -102,7 +102,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     private bool _isLiteLoaderLoading = false;
 
     /// <summary>
-    /// 当SelectedModLoaderItem变化时触发
+    /// 当 SelectedModLoaderItem 变化时触发
     /// </summary>
     partial void OnSelectedModLoaderItemChanged(ModLoaderItem? oldValue, ModLoaderItem? newValue)
     {
@@ -169,15 +169,15 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         RefreshCurrentBreadcrumbItem();
     }
 
-    // 计算属性：当前选中的ModLoader名称
+    // 计算属性：当前选中的 ModLoader 名称
     public string? SelectedModLoader => SelectedModLoaderItem?.Name;
 
-    // 计算属性：当前选中的ModLoader版本
+    // 计算属性：当前选中的 ModLoader 版本
     public string? SelectedModLoaderVersion => SelectedModLoaderItem?.SelectedVersion;
 
-    // 计算属性：是否选择了NeoForge
+    // 计算属性：是否选择了 NeoForge
     public bool IsNeoForgeSelected => SelectedModLoader == "NeoForge";
-    // 计算属性：是否选择了非NeoForge
+    // 计算属性：是否选择了非 NeoForge
     public bool IsNotNeoForgeSelected => !string.IsNullOrEmpty(SelectedModLoader) && SelectedModLoader != "NeoForge";
 
     // 自定义版本名称
@@ -224,7 +224,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         VersionNameErrorMessage = result.ErrorMessage;
     }
     
-    // 用于管理异步加载任务的CancellationTokenSource
+    // 用于管理异步加载任务的 CancellationTokenSource
     private Dictionary<string, CancellationTokenSource> _ctsMap = new();
 
     public ModLoaderSelectorViewModel()
@@ -240,7 +240,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     }
     
     /// <summary>
-    /// 取消选择ModLoader命令
+    /// 取消选择 ModLoader 命令
     /// </summary>
     [RelayCommand]
     private void ClearSelection(ModLoaderItem modLoaderItem)
@@ -277,21 +277,21 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     }
     
     /// <summary>
-    /// 移除ModLoader命令
+    /// 移除 ModLoader 命令
     /// </summary>
     [RelayCommand]
     private void RemoveModLoader(ModLoaderItem modLoaderItem)
     {
-        // 如果是当前选中的ModLoader，需要重新选择一个
+        // 如果是当前选中的 ModLoader，需要重新选择一个
         if (SelectedModLoaderItem == modLoaderItem)
         {
-            // 找到当前ModLoader在列表中的索引
+            // 找到当前 ModLoader 在列表中的索引
             int index = ModLoaderItems.IndexOf(modLoaderItem);
             
-            // 移除当前ModLoader
+            // 移除当前 ModLoader
             ModLoaderItems.Remove(modLoaderItem);
             
-            // 如果列表中还有其他ModLoader，选择下一个或最后一个
+            // 如果列表中还有其他 ModLoader，选择下一个或最后一个
             if (ModLoaderItems.Count > 0)
             {
                 // 选择下一个，如果是最后一个则选择前一个
@@ -473,7 +473,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         LiteLoaderVersions.Clear();
         IsLiteLoaderSelected = false;
         
-        // 检查LiteLoader支持（实际上应该使用更高效的同步检查，这里暂且使用 Service 调用）
+        // 检查 LiteLoader 支持（实际上应该使用更高效的同步检查，这里暂且使用 Service 调用）
         // 更好的方式是 LiteLoaderService 提供 IsSupported(mcVersion) 方法
         // 这里我们假设 Service 已经注册
         var liteLoaderService = App.GetService<LiteLoaderService>();
@@ -483,7 +483,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             // 不再自动加载，改为在展开时加载 (Lazy Loading)
         }
 
-        // 创建mod loader项并添加到列表
+        // 创建 mod loader 项并添加到列表
             var forgeItem = new ModLoaderItem("Forge");
             var fabricItem = new ModLoaderItem("Fabric");
             var neoForgeItem = new ModLoaderItem("NeoForge");
@@ -491,7 +491,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             var optifineItem = new ModLoaderItem("Optifine");
             var legacyFabricItem = new ModLoaderItem("LegacyFabric");
             
-            // 为每个项添加PropertyChanged事件监听
+            // 为每个项添加 PropertyChanged 事件监听
             AddPropertyChangedHandler(forgeItem);
             AddPropertyChangedHandler(fabricItem);
             AddPropertyChangedHandler(neoForgeItem);
@@ -506,13 +506,13 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             ModLoaderItems.Add(quiltItem);
             ModLoaderItems.Add(optifineItem);
             
-            // 如果是Minecraft 1.12.2，添加Cleanroom选项
+            // 如果是 Minecraft 1.12.2，添加 Cleanroom 选项
             if (CleanroomService.IsCleanroomSupported(SelectedMinecraftVersion))
             {
                 var cleanroomItem = new ModLoaderItem("Cleanroom");
                 AddPropertyChangedHandler(cleanroomItem);
                 ModLoaderItems.Add(cleanroomItem);
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 已添加Cleanroom选项（Minecraft {SelectedMinecraftVersion}）");
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 已添加 Cleanroom 选项（Minecraft {SelectedMinecraftVersion}）");
             }
             
             // Legacy Fabric 支持逻辑：大部分版本小于 1.14 (精确地说是 <= 1.13.2)
@@ -520,10 +520,10 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             if (IsLegacyFabricSupported(SelectedMinecraftVersion))
             {
                 ModLoaderItems.Add(legacyFabricItem);
-                System.Diagnostics.Debug.WriteLine($"[DEBUG] 已添加LegacyFabric选项（Minecraft {SelectedMinecraftVersion}）");
+                System.Diagnostics.Debug.WriteLine($"[DEBUG] 已添加 LegacyFabric 选项（Minecraft {SelectedMinecraftVersion}）");
             }
         
-        // 不默认选择任何ModLoader
+        // 不默认选择任何 ModLoader
         SelectedModLoaderItem = null;
     }
     
@@ -586,9 +586,9 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     }
 
     /// <summary>
-    /// 为ModLoaderItem添加PropertyChanged事件处理程序
+    /// 为 ModLoaderItem 添加 PropertyChanged 事件处理程序
     /// </summary>
-    /// <param name="modLoaderItem">ModLoaderItem实例</param>
+    /// <param name="modLoaderItem">ModLoaderItem 实例</param>
     private void AddPropertyChangedHandler(ModLoaderItem modLoaderItem)
     {
         modLoaderItem.PropertyChanged += async (sender, e) =>
@@ -668,18 +668,18 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
     [RelayCommand]
     public async Task SelectModLoaderAsync(ModLoaderItem modLoaderItem)
     {
-        // 处理Optifine的特殊情况：可以与Forge同时选择
+        // 处理 Optifine 的特殊情况：可以与 Forge 同时选择
         if (modLoaderItem.Name == "Optifine")
         {
-            // 切换Optifine选择状态
+            // 切换 Optifine 选择状态
             IsOptifineSelected = !IsOptifineSelected;
             modLoaderItem.IsSelected = IsOptifineSelected;
 
-            // 如果选择了Optifine，检查当前选中的ModLoader是否兼容
-            // 目前逻辑：Optifine只能独立安装，或者作为Forge的组件安装
+            // 如果选择了 Optifine，检查当前选中的 ModLoader 是否兼容
+            // 目前逻辑：Optifine 只能独立安装，或者作为 Forge 的组件安装
             if (IsOptifineSelected && SelectedModLoaderItem != null && SelectedModLoaderItem.Name != "Forge")
             {
-                // 如果当前选中的是Fabric/Quilt等不兼容的，则取消选中它们
+                // 如果当前选中的是 Fabric/Quilt 等不兼容的，则取消选中它们
                 SelectedModLoaderItem.IsSelected = false;
                 SelectedModLoaderItem = null;
                 
@@ -688,7 +688,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                 OnPropertyChanged(nameof(IsNotNeoForgeSelected));
             }
             
-            // 如果选中了Optifine，保存选中的版本
+            // 如果选中了 Optifine，保存选中的版本
             if (IsOptifineSelected)
             {
                 SelectedOptifineVersion = modLoaderItem.SelectedVersion;
@@ -721,7 +721,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                 }
             }
             
-            // 选择当前mod loader
+            // 选择当前 mod loader
             modLoaderItem.IsSelected = true;
             SelectedModLoaderItem = modLoaderItem;
             
@@ -733,7 +733,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             await ExpandModLoaderAsync(modLoaderItem);
         }
         
-        // 直接调用UpdateVersionName，确保版本名称更新
+        // 直接调用 UpdateVersionName，确保版本名称更新
         UpdateVersionName();
     }
     
@@ -777,14 +777,14 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             return;
         }
         
-        // 取消该mod loader之前的加载任务
+        // 取消该 mod loader 之前的加载任务
         if (_ctsMap.TryGetValue(modLoaderItem.Name, out var existingCts))
         {
             existingCts.Cancel();
             existingCts.Dispose();
         }
         
-        // 创建新的CancellationTokenSource
+        // 创建新的 CancellationTokenSource
         var cts = new CancellationTokenSource();
         _ctsMap[modLoaderItem.Name] = cts;
         
@@ -821,10 +821,10 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
         }
         catch (Exception ex)
         {
-            // 检查是否是404错误，如果是则只输出debug信息，不弹窗
+            // 检查是否是 404 错误，如果是则只输出 debug 信息，不弹窗
             if (ex.Message.Contains("404") || ex.Message.Contains("NotFound") || ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase))
             {
-                // 输出debug信息
+                // 输出 debug 信息
                 System.Diagnostics.Debug.WriteLine($"[DEBUG] 加载{modLoaderItem.Name}版本失败 (404): {ex.Message}");
             }
             else
@@ -861,7 +861,7 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
             // 下载逻辑 - 使用 DownloadTaskManager
             if (string.IsNullOrEmpty(SelectedModLoader) && !IsOptifineSelected && !IsLiteLoaderSelected)
             {
-                // 下载原版Minecraft（没有选择任何加载器）
+                // 下载原版 Minecraft（没有选择任何加载器）
                 await _downloadTaskManager.StartVanillaDownloadAsync(SelectedMinecraftVersion, VersionName, SelectedIconPath, showInTeachingTip: true);
             }
             else
@@ -873,13 +873,13 @@ public partial class ModLoaderSelectorViewModel : ObservableRecipient, INavigati
                 if (IsOptifineSelected && string.IsNullOrEmpty(SelectedModLoader))
                 {
                     modLoaderToDownload = "Optifine";
-                    // 查找当前选择的Optifine版本对应的完整信息
+                    // 查找当前选择的 Optifine 版本对应的完整信息
                     if (!string.IsNullOrEmpty(SelectedOptifineVersion))
                     {
                         var optifineInfo = _versionLoaderService.GetOptifineVersionInfo(SelectedOptifineVersion);
                         if (optifineInfo != null && optifineInfo.FullVersion != null)
                         {
-                            // 使用特殊格式传递type和patch值，格式为"type:patch"
+                            // 使用特殊格式传递 type 和 patch 值，格式为"type:patch"
                             modLoaderVersionToDownload = $"{optifineInfo.FullVersion.Type}:{optifineInfo.FullVersion.Patch}";
                         }
                     }

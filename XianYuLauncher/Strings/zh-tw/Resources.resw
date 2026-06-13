@@ -292,7 +292,7 @@
     <value>正在更新例項核心檔案（Minecraft {0} / {1} {2}）...</value>
   </data>
   <data name="DownloadQueue_Status_ModpackDownloadingCoreVersion" xml:space="preserve">
-    <value>正在下載Minecraft {0} 和 {1} {2}...</value>
+    <value>正在下載 Minecraft {0} 和 {1} {2}...</value>
   </data>
   <data name="DownloadQueue_Status_ModpackCleaningFiles" xml:space="preserve">
     <value>正在清理舊整合包檔案...</value>
@@ -1427,7 +1427,7 @@
     <value>安裝</value>
   </data>
   <data name="ModDownloadDetailPage_McmodButton.Text" xml:space="preserve">
-    <value>MC百科</value>
+    <value>MC 百科</value>
   </data>
   <data name="ModDownloadDetailPage_QuickInstall_HasActiveTask" xml:space="preserve">
     <value>當前有下載或安裝任務正在進行，請等待完成或取消後再試。</value>
@@ -2857,10 +2857,10 @@
     <value>聯絡作者</value>
   </data>
   <data name="AccountManagementPage_Skin3DPreviewTitle.Text" xml:space="preserve">
-    <value>皮膚3D預覽</value>
+    <value>皮膚 3D 預覽</value>
   </data>
   <data name="AccountManagementPage_Skin3DPreviewNote.Text" xml:space="preserve">
-    <value>3D皮膚模型預覽，支援旋轉和縮放</value>
+    <value>3D 皮膚模型預覽，支援旋轉和縮放</value>
   </data>
   <data name="AccountManagementPage_DefaultSkinTitle.Text" xml:space="preserve">
     <value>預設皮膚</value>
@@ -3151,7 +3151,7 @@
     <value>多選模式</value>
   </data>
   <data name="Settings_McModName" xml:space="preserve">
-    <value>MC百科</value>
+    <value>MC 百科</value>
   </data>
   <data name="Settings_McModSupportText" xml:space="preserve">
     <value>提供 Mod 資料翻譯</value>
@@ -3993,7 +3993,7 @@
   </data>
   <!-- SettingsPage new keys -->
   <data name="Settings_JavaPathTextBox.PlaceholderText" xml:space="preserve">
-    <value>請選擇Java可執行檔案路徑</value>
+    <value>請選擇 Java 可執行檔案路徑</value>
   </data>
   <data name="Settings_JavaBrowseButton.Content" xml:space="preserve">
     <value>瀏覽...</value>
@@ -4069,10 +4069,10 @@
     <value>收藏夾為空，無法匯入。</value>
   </data>
   <data name="Msg_NoModVersionSelected" xml:space="preserve">
-    <value>未選擇要下載的Mod版本</value>
+    <value>未選擇要下載的 Mod 版本</value>
   </data>
   <data name="Msg_SelectModVersion" xml:space="preserve">
-    <value>請先選擇要下載的Mod版本</value>
+    <value>請先選擇要下載的 Mod 版本</value>
   </data>
   <data name="Msg_NoSaveFound" xml:space="preserve">
     <value>未找到存檔，請先啟動遊戲建立一個世界。</value>
@@ -4114,22 +4114,22 @@
     <value>皮膚已成功上傳</value>
   </data>
   <data name="Msg_ApiRequestFailed" xml:space="preserve">
-    <value>API請求失敗: {0}</value>
+    <value>API 請求失敗: {0}</value>
   </data>
   <data name="Msg_SkinUploadError" xml:space="preserve">
     <value>上傳皮膚時發生錯誤: {0}</value>
   </data>
   <data name="Msg_SkinMustBePng" xml:space="preserve">
-    <value>皮膚檔案必須是PNG格式</value>
+    <value>皮膚檔案必須是 PNG 格式</value>
   </data>
   <data name="Msg_SkinMustBe64x64" xml:space="preserve">
-    <value>皮膚檔案必須是64x64尺寸</value>
+    <value>皮膚檔案必須是 64x64 尺寸</value>
   </data>
   <data name="Msg_SkinValidationError" xml:space="preserve">
     <value>無法驗證皮膚檔案: {0}</value>
   </data>
   <data name="Msg_CapeMustBePng" xml:space="preserve">
-    <value>披風檔案必須是PNG格式</value>
+    <value>披風檔案必須是 PNG 格式</value>
   </data>
   <data name="Msg_CapeValidationError" xml:space="preserve">
     <value>無法驗證披風檔案: {0}</value>
@@ -4253,10 +4253,10 @@
     <value>請選擇此皮膚適用的人物模型</value>
   </data>
   <data name="Dialog_JavaNotFound_Title" xml:space="preserve">
-    <value>Java執行時環境未找到</value>
+    <value>Java 執行時環境未找到</value>
   </data>
   <data name="Dialog_JavaNotFound_Content" xml:space="preserve">
-    <value>未找到適用於當前遊戲版本的Java執行時環境。
+    <value>未找到適用於當前遊戲版本的 Java 執行時環境。
 
 遊戲版本需要: Java {0}
 
@@ -4431,7 +4431,7 @@
     <value>證書安裝超時，請手動安裝證書後重試</value>
   </data>
   <data name="Dialog_Update_CertificateSuccess" xml:space="preserve">
-    <value>證書安裝成功，準備安裝MSIX包...</value>
+    <value>證書安裝成功，準備安裝 MSIX 包...</value>
   </data>
   <data name="Dialog_Update_InstallingMsix" xml:space="preserve">
     <value>正在請求系統更新，應用即將自動關閉...</value>
@@ -4678,13 +4678,13 @@
     <value>匯出失敗: {0}</value>
   </data>
   <data name="Dialog_Account_NotPurchased_Title" xml:space="preserve">
-    <value>賬戶未購買Minecraft</value>
+    <value>賬戶未購買 Minecraft</value>
   </data>
   <data name="Dialog_Account_NotPurchased_Content" xml:space="preserve">
-    <value>當前微軟賬戶沒有購買Minecraft，請先購買遊戲後再嘗試登入。</value>
+    <value>當前微軟賬戶沒有購買 Minecraft，請先購買遊戲後再嘗試登入。</value>
   </data>
   <data name="Dialog_Account_PurchaseButton" xml:space="preserve">
-    <value>購買Minecraft</value>
+    <value>購買 Minecraft</value>
   </data>
   <data name="Dialog_Account_OpenLinkFailed_Title" xml:space="preserve">
     <value>開啟連結失敗</value>
@@ -4696,7 +4696,7 @@
     <value>獲取玩家資訊失敗</value>
   </data>
   <data name="Dialog_Account_ProfileError_Content" xml:space="preserve">
-    <value>當前微軟賬戶已購買Minecraft，但可能未建立玩家檔案。</value>
+    <value>當前微軟賬戶已購買 Minecraft，但可能未建立玩家檔案。</value>
   </data>
   <data name="Dialog_Account_CreateProfileButton" xml:space="preserve">
     <value>建立檔案</value>
@@ -4914,7 +4914,7 @@
     <value>匯入分享碼</value>
   </data>
   <data name="Dialog_ResourceDownload_ImportShareCode_Prompt" xml:space="preserve">
-    <value>請貼上分享碼（支援JSON陣列或換行分隔）：</value>
+    <value>請貼上分享碼（支援 JSON 陣列或換行分隔）：</value>
   </data>
   <data name="Dialog_ResourceDownload_FavoritesDownload_Title" xml:space="preserve">
     <value>收藏夾下載中</value>

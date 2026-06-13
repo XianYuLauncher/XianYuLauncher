@@ -119,7 +119,7 @@ public sealed partial class LaunchPage : Page
             StatusTextBlock.Visibility = Microsoft.UI.Xaml.Visibility.Visible;
         }
         
-        // InfoBar状态会自动根据 IsGameRunning 恢复，无需手动设置
+        // InfoBar 状态会自动根据 IsGameRunning 恢复，无需手动设置
         
         // 每次导航到该页面时都加载头像
         // 对于正版玩家，会先显示缓存头像，然后后台静默刷新
@@ -128,7 +128,7 @@ public sealed partial class LaunchPage : Page
         
         // 预热完毕（已移除无效的预热逻辑）
 
-        // 订阅SelectedProfile变化事件，确保头像在角色切换时自动更新
+        // 订阅 SelectedProfile 变化事件，确保头像在角色切换时自动更新
         ViewModel.PropertyChanged += ViewModel_PropertyChanged;
     }
     
@@ -141,11 +141,11 @@ public sealed partial class LaunchPage : Page
     }
     
     /// <summary>
-    /// 当ViewModel属性变化时触发
+    /// 当 ViewModel 属性变化时触发
     /// </summary>
     private void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
-        // 当SelectedProfile变化时，重新加载头像
+        // 当 SelectedProfile 变化时，重新加载头像
         if (e.PropertyName == nameof(ViewModel.SelectedProfile))
         {
             LoadAvatar();
@@ -221,7 +221,7 @@ public sealed partial class LaunchPage : Page
     /// </summary>
     private void VersionMenuFlyout_Opening(object sender, object e)
     {
-        // 清空现有菜单项（保留最后的分隔线和添加版本选项，共2个固定项）
+        // 清空现有菜单项（保留最后的分隔线和添加版本选项，共 2 个固定项）
         while (VersionMenuFlyout.Items.Count > 2)
         {
             VersionMenuFlyout.Items.RemoveAt(0);
@@ -331,7 +331,7 @@ public sealed partial class LaunchPage : Page
     }
     
     /// <summary>
-    /// InfoBar关闭事件处理
+    /// InfoBar 关闭事件处理
     /// </summary>
     private void LaunchSuccessInfoBar_Closed(InfoBar sender, InfoBarClosedEventArgs args)
     {
@@ -339,10 +339,10 @@ public sealed partial class LaunchPage : Page
         System.Diagnostics.Debug.WriteLine($"[LaunchPage] IsGameRunning={ViewModel.IsGameRunning}");
         System.Diagnostics.Debug.WriteLine($"[LaunchPage] IsLaunchSuccessInfoBarOpen={ViewModel.IsLaunchSuccessInfoBarOpen}");
         
-        // 用户手动关闭InfoBar时，需要同时重置 IsLaunchSuccessInfoBarOpen
+        // 用户手动关闭 InfoBar 时，需要同时重置 IsLaunchSuccessInfoBarOpen
         ViewModel.IsLaunchSuccessInfoBarOpen = false;
         
-        // 如果游戏正在运行，关闭InfoBar意味着终止游戏
+        // 如果游戏正在运行，关闭 InfoBar 意味着终止游戏
         if (ViewModel.IsGameRunning)
         {
             System.Diagnostics.Debug.WriteLine($"[LaunchPage] Closing InfoBar while game is running, will terminate game");
@@ -380,7 +380,7 @@ public sealed partial class LaunchPage : Page
             return;
         }
 
-        // 1. 离线玩家使用Steve头像
+        // 1. 离线玩家使用 Steve 头像
         if (ViewModel.SelectedProfile.IsOffline)
         {
             // 使用预加载的处理过的 Steve 头像
@@ -390,10 +390,10 @@ public sealed partial class LaunchPage : Page
             }
             else
             {
-                // 先显示原始Steve头像
+                // 先显示原始 Steve 头像
                 ProfileAvatar.Source = new BitmapImage(DefaultAvatarUri);
                 
-                // 异步处理Steve头像，确保清晰显示
+                // 异步处理 Steve 头像，确保清晰显示
                 var steveAvatar = await ProcessSteveAvatarAsync();
                 if (steveAvatar != null)
                 {
@@ -497,7 +497,7 @@ public sealed partial class LaunchPage : Page
             if (bitmap != null)
             {
                 ProfileAvatar.Source = bitmap;
-                // 缓存已在CropAvatarFromSkinAsync方法中保存
+                // 缓存已在 CropAvatarFromSkinAsync 方法中保存
             }
             else
             {
@@ -537,7 +537,7 @@ public sealed partial class LaunchPage : Page
             var bitmap = await GetAvatarFromMojangApiAsync(sessionServerUri);
             if (bitmap != null)
             {
-                // 刷新成功，更新UI
+                // 刷新成功，更新 UI
                 _uiDispatcher.TryEnqueue(() =>
                 {
                     if (ProfileAvatar != null)
@@ -582,13 +582,13 @@ public sealed partial class LaunchPage : Page
         }
         catch (Exception)
         {
-            // 加载失败，返回null
+            // 加载失败，返回 null
         }
         return null;
     }
 
     /// <summary>
-    /// 从Mojang API获取头像
+    /// 从 Mojang API 获取头像
     /// </summary>
     private async Task<BitmapImage> GetAvatarFromMojangApiAsync(Uri mojangUri)
     {
@@ -611,7 +611,7 @@ public sealed partial class LaunchPage : Page
                 return await ProcessSteveAvatarAsync();
             }
 
-            // 3. 提取base64编码的textures数据
+            // 3. 提取 base64 编码的 textures 数据
             string? texturesBase64 = properties
                 .OfType<JObject>()
                 .FirstOrDefault(property => string.Equals(property["name"]?.ToString(), "textures", StringComparison.Ordinal))?
@@ -619,16 +619,16 @@ public sealed partial class LaunchPage : Page
 
             if (string.IsNullOrEmpty(texturesBase64))
             {
-                // 未找到textures属性，使用默认史蒂夫头像
+                // 未找到 textures 属性，使用默认史蒂夫头像
                 return await ProcessSteveAvatarAsync();
             }
 
-            // 4. 解码base64数据
+            // 4. 解码 base64 数据
             byte[] texturesBytes = Convert.FromBase64String(texturesBase64);
             string texturesJson = System.Text.Encoding.UTF8.GetString(texturesBytes);
             var texturesData = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(texturesJson);
 
-            // 5. 提取皮肤URL
+            // 5. 提取皮肤 URL
             string? skinUrl = texturesData?["textures"]?["SKIN"]?["url"]?.ToString();
 
             if (string.IsNullOrEmpty(skinUrl))
@@ -644,8 +644,8 @@ public sealed partial class LaunchPage : Page
                 return await ProcessSteveAvatarAsync();
             }
 
-            // 7. 使用Win2D裁剪头像区域
-            // 提取UUID从mojangUri
+            // 7. 使用 Win2D 裁剪头像区域
+            // 提取 UUID 从 mojangUri
             string uuid = Path.GetFileName(mojangUri.ToString());
             var avatarBitmap = await CropAvatarFromSkinAsync(skinUrl, uuid);
             if (avatarBitmap == null)
@@ -665,14 +665,14 @@ public sealed partial class LaunchPage : Page
     /// <summary>
     /// 从皮肤纹理中裁剪头像区域
     /// </summary>
-    /// <param name="skinUrl">皮肤URL或本地资源URI</param>
-    /// <param name="uuid">玩家UUID，用于保存头像到缓存</param>
+    /// <param name="skinUrl">皮肤 URL 或本地资源 URI</param>
+    /// <param name="uuid">玩家 UUID，用于保存头像到缓存</param>
     /// <returns>裁剪后的头像</returns>
     private async Task<BitmapImage?> CropAvatarFromSkinAsync(string skinUrl, string? uuid = null)
     {
         try
         {
-            // 1. 创建CanvasDevice
+            // 1. 创建 CanvasDevice
             var device = CanvasDevice.GetSharedDevice();
             CanvasBitmap canvasBitmap;
 
@@ -708,20 +708,20 @@ public sealed partial class LaunchPage : Page
         }
         catch (Exception)
         {
-            // 裁剪失败时返回null，让调用者处理
+            // 裁剪失败时返回 null，让调用者处理
             return null;
         }
     }
 
     /// <summary>
-    /// 处理史蒂夫头像，使用Win2D确保清晰显示
+    /// 处理史蒂夫头像，使用 Win2D 确保清晰显示
     /// </summary>
     /// <returns>处理后的史蒂夫头像</returns>
     private async Task<BitmapImage> ProcessSteveAvatarAsync()
     {
         try
         {
-            // 1. 创建CanvasDevice
+            // 1. 创建 CanvasDevice
             var device = CanvasDevice.GetSharedDevice();
             
             // 2. 加载史蒂夫头像图片
@@ -752,7 +752,7 @@ public sealed partial class LaunchPage : Page
                     new Windows.Foundation.Rect(0, 0, canvasBitmap.Size.Width, canvasBitmap.Size.Height)); // 源位置和大小
             }
 
-            // 5. 转换为BitmapImage
+            // 5. 转换为 BitmapImage
             using (var outputStream = new InMemoryRandomAccessStream())
             {
                 await renderTarget.SaveAsync(outputStream, CanvasBitmapFileFormat.Png);

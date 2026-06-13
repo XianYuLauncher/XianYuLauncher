@@ -40,7 +40,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Views
             this.InitializeComponent();
             Unloaded += ErrorAnalysisPage_Unloaded;
             
-            // 订阅LogLines集合变化事件，实现自动滚动到底部
+            // 订阅 LogLines 集合变化事件，实现自动滚动到底部
             ViewModel.LogLines.CollectionChanged += LogLines_CollectionChanged;
 
             // 添加键盘快捷键支持
@@ -114,12 +114,12 @@ namespace XianYuLauncher.Features.ErrorAnalysis.Views
             // 只在添加新项时滚动
             if (e.Action == NotifyCollectionChangedAction.Add)
             {
-                // 使用防抖机制减少频繁滚动导致的UI卡顿
+                // 使用防抖机制减少频繁滚动导致的 UI 卡顿
                 if (!_isScrollPending)
                 {
                     _isScrollPending = true;
 
-                    // 使用延迟执行滚动操作，避免频繁滚动导致UI卡顿
+                    // 使用延迟执行滚动操作，避免频繁滚动导致 UI 卡顿
                     _ = ScrollLogToBottomAsync();
                 }
             }

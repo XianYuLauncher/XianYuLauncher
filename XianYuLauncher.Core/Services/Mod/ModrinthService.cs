@@ -16,7 +16,7 @@ using XianYuLauncher.Core.Services.DownloadSource;
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-/// Modrinth服务类，用于调用Modrinth API
+/// Modrinth 服务类，用于调用 Modrinth API
 /// </summary>
 public class ModrinthService
 {
@@ -48,17 +48,17 @@ public class ModrinthService
     }
     
     /// <summary>
-    /// Modrinth官方API基础URL
+    /// Modrinth 官方 API 基础 URL
     /// </summary>
     private const string OfficialApiBaseUrl = "https://api.modrinth.com";
     
     /// <summary>
-    /// Modrinth官方CDN基础URL
+    /// Modrinth 官方 CDN 基础 URL
     /// </summary>
     private const string OfficialCdnBaseUrl = "https://cdn.modrinth.com";
     
     /// <summary>
-    /// 默认User-Agent（用于官方Modrinth API）
+    /// 默认 User-Agent（用于官方 Modrinth API）
     /// </summary>
     private const string DefaultUserAgent = "XianYuLauncher";
 
@@ -78,16 +78,16 @@ public class ModrinthService
         _downloadSourceFactory = downloadSourceFactory ?? new DownloadSourceFactory();
         _fallbackDownloadManager = fallbackDownloadManager;
         _hashLookupCenter = hashLookupCenter;
-        // 不在构造函数中设置默认UA，而是在每次请求时动态设置
+        // 不在构造函数中设置默认 UA，而是在每次请求时动态设置
     }
     
     /// <summary>
-    /// 获取当前Modrinth下载源
+    /// 获取当前 Modrinth 下载源
     /// </summary>
     private IDownloadSource GetModrinthSource() => _downloadSourceFactory.GetModrinthSource();
     
     /// <summary>
-    /// 获取指定下载源对应的User-Agent
+    /// 获取指定下载源对应的 User-Agent
     /// </summary>
     private string GetUserAgent(IDownloadSource? source = null)
     {
@@ -100,12 +100,12 @@ public class ModrinthService
                 return ua;
             }
         }
-        // 默认使用带版本号的UA
+        // 默认使用带版本号的 UA
         return VersionHelper.GetUserAgent();
     }
     
     /// <summary>
-    /// 创建带有正确User-Agent的HttpRequestMessage
+    /// 创建带有正确 User-Agent 的 HttpRequestMessage
     /// </summary>
     private HttpRequestMessage CreateRequest(HttpMethod method, string url, IDownloadSource? source = null)
     {
@@ -123,7 +123,7 @@ public class ModrinthService
     private async Task<HttpResponseMessage> SendWithFallbackAsync(string originalUrl, string resourceType = "modrinth_api")
     {
         System.Diagnostics.Debug.WriteLine($"[ModrinthService] SendWithFallbackAsync 开始");
-        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 原始URL: {originalUrl}");
+        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 原始 URL: {originalUrl}");
         System.Diagnostics.Debug.WriteLine($"[ModrinthService] 资源类型: {resourceType}");
         System.Diagnostics.Debug.WriteLine($"[ModrinthService] FallbackDownloadManager 是否可用: {_fallbackDownloadManager != null}");
         
@@ -138,7 +138,7 @@ public class ModrinthService
             System.Diagnostics.Debug.WriteLine($"[ModrinthService] Fallback 结果: Success={result.Success}, UsedSource={result.UsedSourceKey}");
             if (result.Success && result.UsedUrl != null)
             {
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 实际请求URL: {result.UsedUrl}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 实际请求 URL: {result.UsedUrl}");
             }
             
             if (!result.Success)
@@ -153,7 +153,7 @@ public class ModrinthService
         var transformedUrl = resourceType == "modrinth_cdn"
             ? source.TransformModrinthCdnUrl(originalUrl)
             : source.TransformModrinthApiUrl(originalUrl);
-        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 转换后URL: {transformedUrl}");
+        System.Diagnostics.Debug.WriteLine($"[ModrinthService] 转换后 URL: {transformedUrl}");
         using var request = CreateRequest(HttpMethod.Get, transformedUrl, source);
         return await _httpClient.SendAsync(request);
     }
@@ -172,7 +172,7 @@ public class ModrinthService
                 ConfigureModrinthRequest);
 
             if (!result.Success)
-                throw new HttpRequestException($"所有源POST请求失败: {result.ErrorMessage}");
+                throw new HttpRequestException($"所有源 POST 请求失败: {result.ErrorMessage}");
 
             return result.Response!;
         }
@@ -199,14 +199,14 @@ public class ModrinthService
     }
 
     /// <summary>
-    /// 搜索Mod或资源包
+    /// 搜索 Mod 或资源包
     /// </summary>
     /// <param name="query">搜索关键词</param>
     /// <param name="facets">搜索条件</param>
     /// <param name="index">排序方式</param>
     /// <param name="offset">偏移量</param>
     /// <param name="limit">返回数量</param>
-    /// <param name="projectType">项目类型，默认为mod，资源包为resourcepack</param>
+    /// <param name="projectType">项目类型，默认为 mod，资源包为 resourcepack</param>
     /// <returns>搜索结果</returns>
     public async Task<ModrinthSearchResult> SearchModsAsync(
         string query = "",
@@ -221,19 +221,19 @@ public class ModrinthService
         
         try
         {
-            // 构建基础facets
+            // 构建基础 facets
             allFacets = new List<List<string>> { new List<string> { $"project_type:{projectType}" } };
             
-            // 如果有额外的筛选条件，添加到facets中
+            // 如果有额外的筛选条件，添加到 facets 中
             if (facets != null && facets.Count > 0)
             {
                 allFacets.AddRange(facets);
             }
             
-            // 将facets转换为JSON字符串
+            // 将 facets 转换为 JSON 字符串
             string facetsJson = JsonSerializer.Serialize(allFacets);
             
-            // 构建API URL（使用官方URL，然后转换）
+            // 构建 API URL（使用官方 URL，然后转换）
             url = $"{OfficialApiBaseUrl}/v2/search?query={Uri.EscapeDataString(query)}";
             url += $"&facets={Uri.EscapeDataString(facetsJson)}";
             
@@ -250,13 +250,13 @@ public class ModrinthService
             // 确保响应成功
             response.EnsureSuccessStatusCode();
             
-            // 解析JSON到对象
+            // 解析 JSON 到对象
             return JsonSerializer.Deserialize<ModrinthSearchResult>(json) ?? new ModrinthSearchResult();
         }
         catch (HttpRequestException ex)
         {
-            // 处理HTTP请求异常
-            string errorMsg = $"搜索Mod失败: {ex.Message}";
+            // 处理 HTTP 请求异常
+            string errorMsg = $"搜索 Mod 失败: {ex.Message}";
             if (ex.StatusCode.HasValue)
             {
                 errorMsg += $" (状态码: {ex.StatusCode})";
@@ -270,7 +270,7 @@ public class ModrinthService
         catch (Exception ex)
         {
             // 处理其他异常
-            throw new Exception($"搜索Mod时发生错误: {ex.Message}");
+            throw new Exception($"搜索 Mod 时发生错误: {ex.Message}");
         }
     }
 
@@ -312,11 +312,11 @@ public class ModrinthService
             if (_tagCache.TryGetValue(cacheKey, out var cacheEntry) && cacheEntry.ExpiresAt > now)
             {
                 var remaining = cacheEntry.ExpiresAt - now;
-                System.Diagnostics.Debug.WriteLine($"[ModrinthTag缓存] 命中 {cacheKey}，剩余 {remaining.TotalHours:F1} 小时刷新");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthTag 缓存] 命中 {cacheKey}，剩余 {remaining.TotalHours:F1} 小时刷新");
                 return cacheEntry.Items.ToList();
             }
 
-            System.Diagnostics.Debug.WriteLine($"[ModrinthTag缓存] 未命中 {cacheKey}，将请求远端");
+            System.Diagnostics.Debug.WriteLine($"[ModrinthTag 缓存] 未命中 {cacheKey}，将请求远端");
         }
         finally
         {
@@ -389,12 +389,12 @@ public class ModrinthService
                     }
                 }
 
-                System.Diagnostics.Debug.WriteLine($"[ModrinthTag缓存] 已加载磁盘缓存，共 {_tagCache.Count} 项");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthTag 缓存] 已加载磁盘缓存，共 {_tagCache.Count} 项");
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ModrinthTag缓存] 加载磁盘缓存失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ModrinthTag 缓存] 加载磁盘缓存失败: {ex.Message}");
         }
 
         _tagCacheLoaded = true;
@@ -421,7 +421,7 @@ public class ModrinthService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[ModrinthTag缓存] 持久化失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[ModrinthTag 缓存] 持久化失败: {ex.Message}");
         }
     }
 
@@ -431,9 +431,9 @@ public class ModrinthService
     }
 
     /// <summary>
-    /// 通过搜索API按项目ID获取项目（用于显示作者信息）
+    /// 通过搜索 API 按项目 ID 获取项目（用于显示作者信息）
     /// </summary>
-    /// <param name="projectId">项目ID</param>
+    /// <param name="projectId">项目 ID</param>
     /// <returns>项目详情（搜索结果格式）</returns>
     public async Task<ModrinthProject?> GetProjectByIdFromSearchAsync(string projectId)
     {
@@ -481,7 +481,7 @@ public class ModrinthService
     /// <summary>
     /// 获取项目详情
     /// </summary>
-    /// <param name="projectIdOrSlug">项目ID或Slug</param>
+    /// <param name="projectIdOrSlug">项目 ID 或 Slug</param>
     /// <returns>项目详情；当远端无结果或反序列化失败时可能返回 null</returns>
     /// <exception cref="ArgumentException">projectIdOrSlug 为空或全空白</exception>
     public async Task<ModrinthProjectDetail?> GetProjectDetailAsync(string projectIdOrSlug)
@@ -511,7 +511,7 @@ public class ModrinthService
         string responseContent = string.Empty;
         try
         {
-            // 构建请求URL
+            // 构建请求 URL
             url = $"{OfficialApiBaseUrl}/v2/project/{Uri.EscapeDataString(projectIdOrSlug)}";
 
             // 使用带回退的请求
@@ -528,8 +528,8 @@ public class ModrinthService
           }
           catch (HttpRequestException ex)
           {
-              // 处理HTTP请求异常，包含状态码
-              string errorMsg = $"获取Mod详情失败: {ex.Message}";
+              // 处理 HTTP 请求异常，包含状态码
+              string errorMsg = $"获取 Mod 详情失败: {ex.Message}";
               if (ex.StatusCode.HasValue)
               {
                   errorMsg += $" (状态码: {ex.StatusCode})";
@@ -538,19 +538,19 @@ public class ModrinthService
           }
           catch (JsonException ex)
           {
-              throw new Exception($"解析Mod详情失败: {ex.Message}");
+              throw new Exception($"解析 Mod 详情失败: {ex.Message}");
           }
           catch (Exception ex)
           {
               // 处理其他异常
-              throw new Exception($"获取Mod详情时发生错误: {ex.Message}");
+              throw new Exception($"获取 Mod 详情时发生错误: {ex.Message}");
           }
       }
 
       /// <summary>
       /// 获取项目团队成员
       /// </summary>
-      /// <param name="teamId">团队ID</param>
+      /// <param name="teamId">团队 ID</param>
       /// <returns>团队成员列表</returns>
       public async Task<List<ModrinthTeamMember>> GetProjectTeamMembersAsync(string teamId)
       {
@@ -575,7 +575,7 @@ public class ModrinthService
     /// <summary>
     /// 获取项目版本列表
     /// </summary>
-    /// <param name="projectIdOrSlug">项目ID或Slug</param>
+    /// <param name="projectIdOrSlug">项目 ID 或 Slug</param>
     /// <param name="loaders">加载器类型筛选</param>
     /// <param name="gameVersions">游戏版本筛选</param>
     /// <returns>版本列表</returns>
@@ -588,7 +588,7 @@ public class ModrinthService
         string responseContent = string.Empty;
         try
         {
-            // 构建请求URL（使用官方URL，然后转换）
+            // 构建请求 URL（使用官方 URL，然后转换）
             url = $"{OfficialApiBaseUrl}/v2/project/{Uri.EscapeDataString(projectIdOrSlug)}/version";
             
             // 添加筛选条件
@@ -632,8 +632,8 @@ public class ModrinthService
         }
         catch (HttpRequestException ex)
         {
-            // 处理HTTP请求异常，包含状态码
-            string errorMsg = $"获取Mod版本列表失败: {ex.Message}";
+            // 处理 HTTP 请求异常，包含状态码
+            string errorMsg = $"获取 Mod 版本列表失败: {ex.Message}";
             System.Diagnostics.Debug.WriteLine($"[ModrinthService] HTTP Error in GetProjectVersionsAsync: {ex}");
             if (ex.StatusCode.HasValue)
             {
@@ -644,22 +644,22 @@ public class ModrinthService
         catch (JsonException ex)
         {
             System.Diagnostics.Debug.WriteLine($"[ModrinthService] JSON Error in GetProjectVersionsAsync: {ex}");
-            throw new Exception($"解析Mod版本列表失败: {ex.Message}");
+            throw new Exception($"解析 Mod 版本列表失败: {ex.Message}");
         }
         catch (Exception ex)
         {
             // 处理其他异常
             System.Diagnostics.Debug.WriteLine($"[ModrinthService] General Error in GetProjectVersionsAsync: {ex}");
-            throw new Exception($"获取Mod版本列表时发生错误: {ex.Message}");
+            throw new Exception($"获取 Mod 版本列表时发生错误: {ex.Message}");
         }
     }
 
     /// <summary>
-    /// 通过文件哈希获取Modrinth版本文件信息
+    /// 通过文件哈希获取 Modrinth 版本文件信息
     /// </summary>
     /// <param name="hash">文件哈希值</param>
-    /// <param name="algorithm">哈希算法，默认为sha1</param>
-    /// <returns>Modrinth版本信息</returns>
+    /// <param name="algorithm">哈希算法，默认为 sha1</param>
+    /// <returns>Modrinth 版本信息</returns>
     public async Task<ModrinthVersion?> GetVersionFileByHashAsync(string hash, string algorithm = "sha1")
     {
         if (string.IsNullOrWhiteSpace(hash))
@@ -671,14 +671,14 @@ public class ModrinthService
         {
             var versionMap = await GetVersionFilesByHashesAsync(new List<string> { hash }, algorithm);
             
-            // 如果找到对应的版本信息，则返回，否则返回null
+            // 如果找到对应的版本信息，则返回，否则返回 null
             if (versionMap != null && versionMap.TryGetValue(hash, out var versionInfo))
             {
-                // 输出调试信息，显示获取到的文件URL
+                // 输出调试信息，显示获取到的文件 URL
                 if (versionInfo != null && versionInfo.Files != null && versionInfo.Files.Count > 0)
                 {
                     var primaryFile = versionInfo.Files.FirstOrDefault(f => f.Primary) ?? versionInfo.Files[0];
-                    System.Diagnostics.Debug.WriteLine($"获取到的Mod文件URL: {primaryFile.Url}");
+                    System.Diagnostics.Debug.WriteLine($"获取到的 Mod 文件 URL: {primaryFile.Url}");
                 }
                 return versionInfo;
             }
@@ -687,8 +687,8 @@ public class ModrinthService
         }
         catch (HttpRequestException ex)
         {
-            // 处理HTTP请求异常，包含状态码
-            string errorMsg = $"通过哈希获取Mod文件失败: {ex.Message}";
+            // 处理 HTTP 请求异常，包含状态码
+            string errorMsg = $"通过哈希获取 Mod 文件失败: {ex.Message}";
             if (ex.StatusCode.HasValue)
             {
                 errorMsg += $" (状态码: {ex.StatusCode})";
@@ -698,23 +698,23 @@ public class ModrinthService
         }
         catch (JsonException ex)
         {
-            System.Diagnostics.Debug.WriteLine($"解析Mod文件信息失败: {ex.Message}");
-            throw new Exception($"解析Mod文件信息失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"解析 Mod 文件信息失败: {ex.Message}");
+            throw new Exception($"解析 Mod 文件信息失败: {ex.Message}");
         }
         catch (Exception ex)
         {
             // 处理其他异常
-            System.Diagnostics.Debug.WriteLine($"通过哈希获取Mod文件时发生错误: {ex.Message}");
-            throw new Exception($"通过哈希获取Mod文件时发生错误: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"通过哈希获取 Mod 文件时发生错误: {ex.Message}");
+            throw new Exception($"通过哈希获取 Mod 文件时发生错误: {ex.Message}");
         }
     }
 
     /// <summary>
-        /// 通过多个文件哈希批量获取Modrinth版本文件信息
+        /// 通过多个文件哈希批量获取 Modrinth 版本文件信息
         /// </summary>
         /// <param name="hashes">文件哈希值列表</param>
-        /// <param name="algorithm">哈希算法，默认为sha1</param>
-        /// <returns>哈希值到Modrinth版本信息的映射</returns>
+        /// <param name="algorithm">哈希算法，默认为 sha1</param>
+        /// <returns>哈希值到 Modrinth 版本信息的映射</returns>
         public async Task<Dictionary<string, ModrinthVersion>> GetVersionFilesByHashesAsync(List<string> hashes, string algorithm = "sha1")
         {
             if (hashes == null || hashes.Count == 0)
@@ -752,7 +752,7 @@ public class ModrinthService
             string responseContent = string.Empty;
             try
             {
-                // 构建请求URL
+                // 构建请求 URL
                 url = $"{OfficialApiBaseUrl}/v2/version_files";
 
                 // 构建请求体
@@ -762,14 +762,14 @@ public class ModrinthService
                     algorithm = algorithm
                 };
 
-                // 将请求体转换为JSON字符串
+                // 将请求体转换为 JSON 字符串
                 string jsonBody = JsonSerializer.Serialize(requestBody);
 
                 // 输出调试信息
                 System.Diagnostics.Debug.WriteLine($"Modrinth API Request: {url}");
                 System.Diagnostics.Debug.WriteLine($"Modrinth API Request Body: {jsonBody}");
 
-                // 使用带回退的POST请求
+                // 使用带回退的 POST 请求
                 var response = await PostWithFallbackAsync(url, () => new StringContent(jsonBody, Encoding.UTF8, "application/json"));
                 
                 // 获取完整响应内容
@@ -787,8 +787,8 @@ public class ModrinthService
             }
             catch (HttpRequestException ex)
             {
-                // 处理HTTP请求异常，包含状态码
-                string errorMsg = $"通过哈希批量获取Mod文件失败: {ex.Message}";
+                // 处理 HTTP 请求异常，包含状态码
+                string errorMsg = $"通过哈希批量获取 Mod 文件失败: {ex.Message}";
                 if (ex.StatusCode.HasValue)
                 {
                     errorMsg += $" (状态码: {ex.StatusCode})";
@@ -798,14 +798,14 @@ public class ModrinthService
             }
             catch (JsonException ex)
             {
-                System.Diagnostics.Debug.WriteLine($"解析Mod文件信息失败: {ex.Message}");
-                throw new Exception($"解析Mod文件信息失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"解析 Mod 文件信息失败: {ex.Message}");
+                throw new Exception($"解析 Mod 文件信息失败: {ex.Message}");
             }
             catch (Exception ex)
             {
                 // 处理其他异常
-                System.Diagnostics.Debug.WriteLine($"通过哈希批量获取Mod文件时发生错误: {ex.Message}");
-                throw new Exception($"通过哈希批量获取Mod文件时发生错误: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"通过哈希批量获取 Mod 文件时发生错误: {ex.Message}");
+                throw new Exception($"通过哈希批量获取 Mod 文件时发生错误: {ex.Message}");
             }
         }
 
@@ -815,7 +815,7 @@ public class ModrinthService
         /// <param name="hashes">当前文件的哈希值列表</param>
         /// <param name="loaders">加载器类型列表</param>
         /// <param name="gameVersions">游戏版本列表</param>
-        /// <param name="algorithm">哈希算法，默认为sha1</param>
+        /// <param name="algorithm">哈希算法，默认为 sha1</param>
         /// <returns>哈希值到最新版本信息的映射</returns>
         public async Task<Dictionary<string, ModrinthVersion>?> UpdateVersionFilesAsync(
             List<string> hashes,
@@ -917,9 +917,9 @@ public class ModrinthService
         }
         
         /// <summary>
-        /// 获取指定版本ID的详细信息
+        /// 获取指定版本 ID 的详细信息
         /// </summary>
-        /// <param name="versionId">版本ID</param>
+        /// <param name="versionId">版本 ID</param>
         /// <returns>版本详细信息</returns>
         public async Task<ModrinthVersion?> GetVersionByIdAsync(string versionId)
         {
@@ -927,7 +927,7 @@ public class ModrinthService
             {
                 System.Diagnostics.Debug.WriteLine($"[ModrinthService] 开始获取版本信息: {versionId}");
                 
-                // 构建请求URL
+                // 构建请求 URL
                 string apiUrl = $"{OfficialApiBaseUrl}/v2/version/{Uri.EscapeDataString(versionId)}";
                 
                 // 使用带回退的请求
@@ -953,14 +953,14 @@ public class ModrinthService
             }
             catch (HttpRequestException ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] HTTP请求异常: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] HTTP 请求异常: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"[ModrinthService] 状态码: {ex.StatusCode}");
                 System.Diagnostics.Debug.WriteLine($"[ModrinthService] 异常堆栈: {ex.StackTrace}");
                 throw new Exception($"获取版本信息失败: {ex.Message}");
             }
             catch (JsonException ex)
             {
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] JSON解析异常: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] JSON 解析异常: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"[ModrinthService] 异常堆栈: {ex.StackTrace}");
                 throw new Exception($"解析版本信息失败: {ex.Message}");
             }
@@ -973,14 +973,14 @@ public class ModrinthService
         }
         
         /// <summary>
-        /// 处理Mod依赖关系
+        /// 处理 Mod 依赖关系
         /// </summary>
         /// <param name="dependencies">依赖列表</param>
         /// <param name="destinationPath">保存路径</param>
-        /// <param name="currentModVersion">当前Mod的版本信息，用于筛选兼容的依赖版本</param>
+        /// <param name="currentModVersion">当前 Mod 的版本信息，用于筛选兼容的依赖版本</param>
         /// <param name="progressCallback">进度回调</param>
         /// <param name="cancellationToken">取消令牌</param>
-        /// <param name="checkProjectId">是否检查项目ID，避免重复下载同一项目的不同版本</param>
+        /// <param name="checkProjectId">是否检查项目 ID，避免重复下载同一项目的不同版本</param>
         /// <returns>成功处理的依赖数量</returns>
         public async Task<int> ProcessDependenciesAsync(
             List<Dependency> dependencies, 
@@ -1020,18 +1020,18 @@ public class ModrinthService
                 return processedCount;
             }
             
-            // 输出当前Mod版本信息，用于调试
+            // 输出当前 Mod 版本信息，用于调试
             if (currentModVersion != null)
             {
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 当前Mod版本信息：");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 当前 Mod 版本信息：");
                 System.Diagnostics.Debug.WriteLine($"  - 版本号: {currentModVersion.VersionNumber}");
-                System.Diagnostics.Debug.WriteLine($"  - 项目ID: {currentModVersion.ProjectId}");
+                System.Diagnostics.Debug.WriteLine($"  - 项目 ID: {currentModVersion.ProjectId}");
                 System.Diagnostics.Debug.WriteLine($"  - 支持的游戏版本: {string.Join(", ", currentModVersion.GameVersions)}");
                 System.Diagnostics.Debug.WriteLine($"  - 支持的加载器: {string.Join(", ", currentModVersion.Loaders)}");
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 未提供当前Mod版本信息");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService] 未提供当前 Mod 版本信息");
             }
             
             System.Diagnostics.Debug.WriteLine($"[ModrinthService] 开始处理{dependencies.Count}个依赖");
@@ -1067,13 +1067,13 @@ public class ModrinthService
                 {
                     if (!string.IsNullOrEmpty(dependency.VersionId))
                     {
-                        // 情况1：有VersionId，直接获取版本信息
+                        // 情况 1：有 VersionId，直接获取版本信息
                         System.Diagnostics.Debug.WriteLine($"  - 正在获取版本信息：{dependency.VersionId}");
                         depVersionInfo = await GetVersionByIdAsync(dependency.VersionId);
                         
                         if (depVersionInfo == null)
                         {
-                            System.Diagnostics.Debug.WriteLine($"  - 失败：获取版本信息返回null");
+                            System.Diagnostics.Debug.WriteLine($"  - 失败：获取版本信息返回 null");
                             continue;
                         }
                         
@@ -1081,18 +1081,18 @@ public class ModrinthService
                     }
                     else if (!string.IsNullOrEmpty(dependency.ProjectId))
                     {
-                        // 情况2：VersionId为空，但有ProjectId，需要获取合适的版本
-                        System.Diagnostics.Debug.WriteLine($"  - VersionId为空，尝试通过ProjectId获取合适版本");
+                        // 情况 2：VersionId 为空，但有 ProjectId，需要获取合适的版本
+                        System.Diagnostics.Debug.WriteLine($"  - VersionId 为空，尝试通过 ProjectId 获取合适版本");
                         
-                        // 获取项目的兼容版本，直接通过API筛选
+                        // 获取项目的兼容版本，直接通过 API 筛选
                         System.Diagnostics.Debug.WriteLine($"  - 正在获取项目兼容版本：{dependency.ProjectId}");
                         
                         List<ModrinthVersion> compatibleVersions;
                         
                         if (currentModVersion != null)
                         {
-                            // 使用当前Mod的游戏版本和加载器进行API筛选
-                            System.Diagnostics.Debug.WriteLine($"  - 通过API筛选兼容版本");
+                            // 使用当前 Mod 的游戏版本和加载器进行 API 筛选
+                            System.Diagnostics.Debug.WriteLine($"  - 通过 API 筛选兼容版本");
                             System.Diagnostics.Debug.WriteLine($"  - 筛选条件：");
                             System.Diagnostics.Debug.WriteLine($"    - 游戏版本: {string.Join(", ", currentModVersion.GameVersions)}");
                             System.Diagnostics.Debug.WriteLine($"    - 加载器: {string.Join(", ", currentModVersion.Loaders)}");
@@ -1102,12 +1102,12 @@ public class ModrinthService
                                 currentModVersion.Loaders,
                                 currentModVersion.GameVersions);
                             
-                            System.Diagnostics.Debug.WriteLine($"  - API返回{compatibleVersions.Count}个兼容版本");
+                            System.Diagnostics.Debug.WriteLine($"  - API 返回{compatibleVersions.Count}个兼容版本");
                         }
                         else
                         {
-                            // 没有当前Mod版本信息，获取所有版本
-                            System.Diagnostics.Debug.WriteLine($"  - 没有当前Mod版本信息，获取所有版本");
+                            // 没有当前 Mod 版本信息，获取所有版本
+                            System.Diagnostics.Debug.WriteLine($"  - 没有当前 Mod 版本信息，获取所有版本");
                             compatibleVersions = await GetProjectVersionsAsync(dependency.ProjectId);
                             System.Diagnostics.Debug.WriteLine($"  - 成功获取{compatibleVersions.Count}个版本");
                         }
@@ -1124,8 +1124,8 @@ public class ModrinthService
                     }
                     else
                     {
-                        // 情况3：没有VersionId和ProjectId，无法处理
-                        System.Diagnostics.Debug.WriteLine($"  - 跳过：没有VersionId和ProjectId");
+                        // 情况 3：没有 VersionId 和 ProjectId，无法处理
+                        System.Diagnostics.Debug.WriteLine($"  - 跳过：没有 VersionId 和 ProjectId");
                         continue;
                     }
                     
@@ -1148,7 +1148,7 @@ public class ModrinthService
                         dependencyDestinationPath = await resolveDestinationPathAsync(depVersionInfo.ProjectId);
                     }
 
-                    // 获取目标目录下已存在的项目ID映射
+                    // 获取目标目录下已存在的项目 ID 映射
                     Dictionary<string, string>? existingProjectIds = null;
                     if (checkProjectId)
                     {
@@ -1164,7 +1164,7 @@ public class ModrinthService
                     string? existingProjectFilePath = null;
                     bool skipByProjectHashMatch = false;
 
-                    // 新增：检查项目ID是否已存在（命中后比较 hash，一致跳过；不一致走替换）
+                    // 新增：检查项目 ID 是否已存在（命中后比较 hash，一致跳过；不一致走替换）
                     if (existingProjectIds != null && !string.IsNullOrEmpty(depVersionInfo.ProjectId))
                     {
                             if (existingProjectIds.TryGetValue(depVersionInfo.ProjectId, out string? localFilePath) &&
@@ -1175,7 +1175,7 @@ public class ModrinthService
                         }
                         else
                         {
-                            System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] ProjectID 未命中，将继续走文件/SHA1检测: 依赖项目={depVersionInfo.ProjectId}");
+                            System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] ProjectID 未命中，将继续走文件/SHA1 检测: 依赖项目={depVersionInfo.ProjectId}");
                         }
                     }
                     
@@ -1185,7 +1185,7 @@ public class ModrinthService
                     
                     if (primaryFile.Url == null)
                     {
-                        System.Diagnostics.Debug.WriteLine($"  - 跳过：文件URL为空");
+                        System.Diagnostics.Debug.WriteLine($"  - 跳过：文件 URL 为空");
                         continue;
                     }
                     
@@ -1224,14 +1224,14 @@ public class ModrinthService
                         continue;
                     }
                     
-                    // 检查是否已存在相同SHA1的Mod
+                    // 检查是否已存在相同 SHA1 的 Mod
                     bool alreadyExists = false;
                     string filePath = Path.Combine(dependencyDestinationPath, primaryFile.Filename);
                     System.Diagnostics.Debug.WriteLine($"  - 目标路径：{filePath}");
                     
                     if (File.Exists(filePath))
                     {
-                        System.Diagnostics.Debug.WriteLine($"  - 文件已存在，检查SHA1");
+                        System.Diagnostics.Debug.WriteLine($"  - 文件已存在，检查 SHA1");
                         if (primaryFile.Hashes.TryGetValue("sha1", out string? expectedSha1) &&
                             !string.IsNullOrEmpty(expectedSha1))
                         {
@@ -1240,22 +1240,22 @@ public class ModrinthService
                             
                             if (alreadyExists)
                             {
-                                System.Diagnostics.Debug.WriteLine($"  - 跳过：SHA1匹配，文件已存在");
-                                System.Diagnostics.Debug.WriteLine($"    - 期望SHA1: {expectedSha1}");
-                                System.Diagnostics.Debug.WriteLine($"    - 实际SHA1: {existingSha1}");
+                                System.Diagnostics.Debug.WriteLine($"  - 跳过：SHA1 匹配，文件已存在");
+                                System.Diagnostics.Debug.WriteLine($"    - 期望 SHA1: {expectedSha1}");
+                                System.Diagnostics.Debug.WriteLine($"    - 实际 SHA1: {existingSha1}");
                                 processedCount++;
                                 continue;
                             }
                             else
                             {
-                                System.Diagnostics.Debug.WriteLine($"  - 需要重新下载：SHA1不匹配");
-                                System.Diagnostics.Debug.WriteLine($"    - 期望SHA1: {expectedSha1}");
-                                System.Diagnostics.Debug.WriteLine($"    - 实际SHA1: {existingSha1}");
+                                System.Diagnostics.Debug.WriteLine($"  - 需要重新下载：SHA1 不匹配");
+                                System.Diagnostics.Debug.WriteLine($"    - 期望 SHA1: {expectedSha1}");
+                                System.Diagnostics.Debug.WriteLine($"    - 实际 SHA1: {existingSha1}");
                             }
                         }
                         else
                         {
-                            System.Diagnostics.Debug.WriteLine($"  - 需要重新下载：没有期望的SHA1值");
+                            System.Diagnostics.Debug.WriteLine($"  - 需要重新下载：没有期望的 SHA1 值");
                         }
                     }
                     else
@@ -1331,11 +1331,11 @@ public class ModrinthService
         }
         
         /// <summary>
-        /// 获取现有mod的项目ID映射
+        /// 获取现有 mod 的项目 ID 映射
         /// </summary>
         /// <param name="destinationPath">目标路径</param>
         /// <param name="cancellationToken">取消令牌</param>
-        /// <returns>项目ID到文件路径的映射</returns>
+        /// <returns>项目 ID 到文件路径的映射</returns>
         private async Task<Dictionary<string, string>?> GetExistingModProjectIdsAsync(string destinationPath, CancellationToken cancellationToken = default)
         {
             if (!Directory.Exists(destinationPath))
@@ -1376,11 +1376,11 @@ public class ModrinthService
                 }
             }
 
-            System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 哈希计算完成: 唯一Hash数={hashes.Count}");
+            System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 哈希计算完成: 唯一 Hash 数={hashes.Count}");
 
             if (hashes.Count == 0)
             {
-                System.Diagnostics.Debug.WriteLine("[ModrinthService][Dedup] 无可用Hash，返回空索引");
+                System.Diagnostics.Debug.WriteLine("[ModrinthService][Dedup] 无可用 Hash，返回空索引");
                 return null;
             }
 
@@ -1406,11 +1406,11 @@ public class ModrinthService
                     }
                 }
 
-                System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 批量反查完成: 命中项目={batchResolvedCount}, 待补查Hash={unresolvedHashes.Count}");
+                System.Diagnostics.Debug.WriteLine($"[ModrinthService][Dedup] 批量反查完成: 命中项目={batchResolvedCount}, 待补查 Hash={unresolvedHashes.Count}");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"批量获取项目ID失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"批量获取项目 ID 失败: {ex.Message}");
             }
 
             int singleResolvedCount = 0;
@@ -1431,7 +1431,7 @@ public class ModrinthService
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"单文件获取项目ID失败: {hash}, {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"单文件获取项目 ID 失败: {hash}, {ex.Message}");
                 }
             }
 
@@ -1447,7 +1447,7 @@ public class ModrinthService
         }
 
         /// <summary>
-        /// 下载Modrinth版本文件（对CDN URL自动应用镜像与回退）
+        /// 下载 Modrinth 版本文件（对 CDN URL 自动应用镜像与回退）
         /// </summary>
         /// <param name="file">版本文件信息</param>
         /// <param name="destinationPath">保存路径</param>
@@ -1472,7 +1472,7 @@ public class ModrinthService
         /// <summary>
         /// 下载文件（通过 FallbackDownloadManager 自动回退）
         /// </summary>
-        /// <param name="downloadUrl">下载URL（官方CDN URL 或已转换的镜像URL）</param>
+        /// <param name="downloadUrl">下载 URL（官方 CDN URL 或已转换的镜像 URL）</param>
         /// <param name="destinationPath">保存路径</param>
         /// <param name="progressCallback">进度回调</param>
         /// <param name="cancellationToken">取消令牌</param>
@@ -1497,7 +1497,7 @@ public class ModrinthService
                     Directory.CreateDirectory(parentDir);
                 }
                 
-                // 还原为官方CDN URL（FallbackDownloadManager 会自动转换到合适的源）
+                // 还原为官方 CDN URL（FallbackDownloadManager 会自动转换到合适的源）
                 string originalUrl = downloadUrl;
                 if (downloadUrl.Contains("mcimirror.top"))
                 {
@@ -1525,7 +1525,7 @@ public class ModrinthService
                     }
                 }
                 
-                // 无 FallbackDownloadManager 时直接请求官方CDN
+                // 无 FallbackDownloadManager 时直接请求官方 CDN
                 using var request = CreateRequest(HttpMethod.Get, originalUrl);
                 var response = await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
                 response.EnsureSuccessStatusCode();
@@ -1570,10 +1570,10 @@ public class ModrinthService
 
         
         /// <summary>
-        /// 计算文件的SHA1哈希值
+        /// 计算文件的 SHA1 哈希值
         /// </summary>
         /// <param name="filePath">文件路径</param>
-        /// <returns>SHA1哈希值</returns>
+        /// <returns>SHA1 哈希值</returns>
         private string CalculateSHA1(string filePath)
         {
             using (var sha1 = System.Security.Cryptography.SHA1.Create())

@@ -377,10 +377,10 @@ public sealed class ReadModInfoToolHandler : IAgentToolHandler
             cancellationToken.ThrowIfCancellationRequested();
             if (!string.IsNullOrEmpty(modId))
             {
-                return AgentToolExecutionResult.FromMessage($"Mod文件: {fileName}\nFabric Mod ID: {modId}\n(完整元数据需解压 jar 读取 fabric.mod.json)");
+                return AgentToolExecutionResult.FromMessage($"Mod 文件: {fileName}\nFabric Mod ID: {modId}\n(完整元数据需解压 jar 读取 fabric.mod.json)");
             }
 
-            return AgentToolExecutionResult.FromMessage($"Mod文件: {fileName}\n无法解析元数据（可能不是 Fabric mod，或 jar 格式异常）");
+            return AgentToolExecutionResult.FromMessage($"Mod 文件: {fileName}\n 无法解析元数据（可能不是 Fabric mod，或 jar 格式异常）");
         }
         catch (Exception ex)
         {

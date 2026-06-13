@@ -94,12 +94,12 @@ public class GameLaunchService : IGameLaunchService
             // 4. 检查必要文件
             if (!File.Exists(jarPath))
             {
-                throw new FileNotFoundException($"游戏JAR文件不存在: {jarPath}");
+                throw new FileNotFoundException($"游戏 JAR 文件不存在: {jarPath}");
             }
             
             if (!File.Exists(jsonPath))
             {
-                throw new FileNotFoundException($"游戏JSON文件不存在: {jsonPath}");
+                throw new FileNotFoundException($"游戏 JSON 文件不存在: {jsonPath}");
             }
             
             // 5. 读取统一解析后的版本信息
@@ -130,7 +130,7 @@ public class GameLaunchService : IGameLaunchService
             
             if (string.IsNullOrEmpty(javaPath))
             {
-                throw new InvalidOperationException("未找到Java运行时环境，请先安装Java");
+                throw new InvalidOperationException("未找到 Java 运行时环境，请先安装 Java");
             }
             string resolvedJavaPath = javaPath;
             
@@ -254,14 +254,14 @@ public class GameLaunchService : IGameLaunchService
             if (!File.Exists(jarPath))
             {
                 _logger.LogError("游戏 JAR 文件不存在: {JarPath}", jarPath);
-                return new GameLaunchResult { Success = false, ErrorMessage = $"游戏JAR文件不存在: {jarPath}" };
+                return new GameLaunchResult { Success = false, ErrorMessage = $"游戏 JAR 文件不存在: {jarPath}" };
             }
             _logger.LogInformation("JAR 文件存在");
             
             if (!File.Exists(jsonPath))
             {
                 _logger.LogError("游戏 JSON 文件不存在: {JsonPath}", jsonPath);
-                return new GameLaunchResult { Success = false, ErrorMessage = $"游戏JSON文件不存在: {jsonPath}" };
+                return new GameLaunchResult { Success = false, ErrorMessage = $"游戏 JSON 文件不存在: {jsonPath}" };
             }
             _logger.LogInformation("JSON 文件存在");
             
@@ -297,7 +297,7 @@ public class GameLaunchService : IGameLaunchService
             
             // 9. 选择 Java 运行时（优先使用临时覆盖路径）
             _logger.LogInformation("步骤 9: 选择 Java 运行时");
-            statusCallback?.Invoke("正在查找Java运行时环境...");
+            statusCallback?.Invoke("正在查找 Java 运行时环境...");
             
             string? javaPath;
             if (!string.IsNullOrEmpty(overrideJavaPath) && File.Exists(overrideJavaPath))
@@ -314,7 +314,7 @@ public class GameLaunchService : IGameLaunchService
             if (string.IsNullOrEmpty(javaPath))
             {
                 _logger.LogError("未找到 Java 运行时环境");
-                return new GameLaunchResult { Success = false, ErrorMessage = "未找到Java运行时环境，请先安装Java" };
+                return new GameLaunchResult { Success = false, ErrorMessage = "未找到 Java 运行时环境，请先安装 Java" };
             }
             string resolvedJavaPath = javaPath;
             _logger.LogInformation("选中 Java 路径: {JavaPath}", javaPath);
@@ -500,7 +500,7 @@ public class GameLaunchService : IGameLaunchService
         
         // 处理 JVM 参数（带状态机支持 -p 参数）
         bool hasClasspath = false;
-        bool isNextArgPValue = false; // 状态变量：标记下一个参数是否是-p的值
+        bool isNextArgPValue = false; // 状态变量：标记下一个参数是否是-p 的值
         
         if (versionInfo.Arguments?.Jvm != null)
         {
@@ -543,7 +543,7 @@ public class GameLaunchService : IGameLaunchService
         bool isExternalLogin = !string.IsNullOrEmpty(resolvedProfile.AuthServer) && resolvedProfile.TokenType == "external";
         if (isExternalLogin && _authlibCallback != null)
         {
-            System.Diagnostics.Debug.WriteLine("[GameLaunchService] 检测到外置登录角色，添加authlib-injector参数");
+            System.Diagnostics.Debug.WriteLine("[GameLaunchService] 检测到外置登录角色，添加 authlib-injector 参数");
             var externalJvmArgs = await _authlibCallback.GetJvmArgumentsAsync(resolvedProfile.AuthServer!);
             args.InsertRange(0, externalJvmArgs);
         }
@@ -611,7 +611,7 @@ public class GameLaunchService : IGameLaunchService
         args.Add("--versionType");
         args.Add("XianYuLauncher");
 
-        // 获取真实的原版版本号 (从Config或InheritsFrom)
+        // 获取真实的原版版本号 (从 Config 或 InheritsFrom)
         string realVersion = versionName;
         if (config != null && !string.IsNullOrEmpty(config.MinecraftVersion))
         {
@@ -749,8 +749,8 @@ public class GameLaunchService : IGameLaunchService
                     // 检查是否为已手动添加的基本参数
                     if (IsBasicGameArgument(argStr))
                     {
-                        // 如果是基本参数的Key，且下一个元素也是字符串且不是参数Key，则认为是Value，一并跳过
-                        // 注意：IsBasicGameArgument 中列出的所有参数(--version, --username等)实际上都是必须带值的
+                        // 如果是基本参数的 Key，且下一个元素也是字符串且不是参数 Key，则认为是 Value，一并跳过
+                        // 注意：IsBasicGameArgument 中列出的所有参数(--version, --username 等)实际上都是必须带值的
                         // 所以这里跳过下一个元素是安全的逻辑
                         if (i + 1 < gameArgs.Count && gameArgs[i + 1] is string nextArg && !nextArg.StartsWith("--"))
                         {
@@ -947,18 +947,18 @@ public class GameLaunchService : IGameLaunchService
             .Replace("${classpath_separator}", ";")
             .Replace("${version_name}", versionName);
         
-        // 检查是否是-p参数的标记
+        // 检查是否是-p 参数的标记
         if (processedArg == "-p")
         {
-            // 这是-p参数标记，下一个参数是路径值
+            // 这是-p 参数标记，下一个参数是路径值
             isNextArgPValue = true;
-            return processedArg; // 直接返回-p参数
+            return processedArg; // 直接返回-p 参数
         }
         
-        // 检查是否是-p参数的值
+        // 检查是否是-p 参数的值
         if (isNextArgPValue)
         {
-            // 这是-p参数的值，如"${library_directory}/path/to/file.jar;..."
+            // 这是-p 参数的值，如"${library_directory}/path/to/file.jar;..."
             // 替换${library_directory}为实际路径
             processedArg = processedArg.Replace("${library_directory}", librariesPath);
             
@@ -973,7 +973,7 @@ public class GameLaunchService : IGameLaunchService
             return processedArg;
         }
         
-        // 处理-D参数（如-DlibraryDirectory）
+        // 处理-D 参数（如-DlibraryDirectory）
         if (processedArg.StartsWith("-D"))
         {
             // 检查是否包含=${library_directory}
@@ -989,7 +989,7 @@ public class GameLaunchService : IGameLaunchService
             // 替换${library_directory}为实际路径
             processedArg = processedArg.Replace("${library_directory}", librariesPath);
             
-            // 只在路径中替换/为\，不在JVM模块参数中替换
+            // 只在路径中替换/为\，不在 JVM 模块参数中替换
             if (processedArg.Contains(FileExtensionConsts.Jar) || processedArg.Contains(FileExtensionConsts.Zip))
             {
                 processedArg = processedArg.Replace("/", Path.DirectorySeparatorChar.ToString());
@@ -1036,7 +1036,7 @@ public class GameLaunchService : IGameLaunchService
         string? detectedClassifier = null;
         string? detectedExtension = null;
         
-        // 检查版本号是否包含@符号（extension信息）
+        // 检查版本号是否包含@符号（extension 信息）
         if (version.Contains('@'))
         {
             string[] versionParts = version.Split('@');
@@ -1047,7 +1047,7 @@ public class GameLaunchService : IGameLaunchService
             }
         }
 
-        // 如果库名称中包含分类器（4个或更多部分）
+        // 如果库名称中包含分类器（4 个或更多部分）
         if (parts.Length >= 4)
         {
             detectedClassifier = parts[3];
@@ -1167,7 +1167,7 @@ public class GameLaunchService : IGameLaunchService
     {
         if (string.IsNullOrEmpty(versionName)) return false;
         
-        // 简单判断：检查版本号是否以1.0到1.8开头
+        // 简单判断：检查版本号是否以 1.0 到 1.8 开头
         if (versionName.StartsWith("1.0") || versionName.StartsWith("1.1") || versionName.StartsWith("1.2") ||
             versionName.StartsWith("1.3") || versionName.StartsWith("1.4") || versionName.StartsWith("1.5") ||
             versionName.StartsWith("1.6") || versionName.StartsWith("1.7") || versionName.StartsWith("1.8"))
@@ -1175,7 +1175,7 @@ public class GameLaunchService : IGameLaunchService
             return true;
         }
         
-        // 对于其他可能的版本格式，使用Version类进行比较
+        // 对于其他可能的版本格式，使用 Version 类进行比较
         try
         {
             // 处理"1.8.9"这样的格式
@@ -1191,7 +1191,7 @@ public class GameLaunchService : IGameLaunchService
         }
         catch (Exception)
         {
-            // 如果版本号格式无法解析，默认返回false
+            // 如果版本号格式无法解析，默认返回 false
             return false;
         }
     }
@@ -1203,7 +1203,7 @@ public class GameLaunchService : IGameLaunchService
     {
         if (string.IsNullOrEmpty(versionName)) return false;
         
-        // 需要添加--tweakClass参数的特定版本列表
+        // 需要添加--tweakClass 参数的特定版本列表
         string[] versionsNeedingTweaker = {
             "c0.0.11a",
             "c0.0.13a_03",

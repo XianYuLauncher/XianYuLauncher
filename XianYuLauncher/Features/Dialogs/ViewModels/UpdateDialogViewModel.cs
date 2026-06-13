@@ -13,7 +13,7 @@ using XianYuLauncher.Helpers;
 namespace XianYuLauncher.Features.Dialogs.ViewModels;
 
 /// <summary>
-/// 更新弹窗的ViewModel
+/// 更新弹窗的 ViewModel
 /// </summary>
 public partial class UpdateDialogViewModel : ObservableRecipient
 {
@@ -166,8 +166,8 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                         }
                     }
 
-                    _logger.LogInformation("开始安装MSIX包: {MsixFilePath}", extractResult.MsixFilePath);
-                    Debug.WriteLine($"[DEBUG] 开始安装MSIX包: {extractResult.MsixFilePath}");
+                    _logger.LogInformation("开始安装 MSIX 包: {MsixFilePath}", extractResult.MsixFilePath);
+                    Debug.WriteLine($"[DEBUG] 开始安装 MSIX 包: {extractResult.MsixFilePath}");
                     DownloadStatusText = "Dialog_Update_InstallingMsix".GetLocalized();
                     await Task.Delay(500);
 
@@ -175,8 +175,8 @@ public partial class UpdateDialogViewModel : ObservableRecipient
 
                     if (installSuccess)
                     {
-                        _logger.LogInformation("MSIX包安装请求成功");
-                        Debug.WriteLine("[DEBUG] MSIX包安装请求成功");
+                        _logger.LogInformation("MSIX 包安装请求成功");
+                        Debug.WriteLine("[DEBUG] MSIX 包安装请求成功");
                         DownloadStatusText = "Dialog_Update_Submitted".GetLocalized();
 
                         await Task.Delay(1000);
@@ -184,8 +184,8 @@ public partial class UpdateDialogViewModel : ObservableRecipient
                     }
                     else
                     {
-                        _logger.LogError("MSIX包安装失败");
-                        Debug.WriteLine("[DEBUG] MSIX包安装失败");
+                        _logger.LogError("MSIX 包安装失败");
+                        Debug.WriteLine("[DEBUG] MSIX 包安装失败");
                         DownloadStatusText = "Dialog_Update_InstallRequestFailed".GetLocalized();
                         IsDownloading = false;
                         _updateService.CleanupTempFiles(extractResult.ExtractDirectory);
@@ -234,8 +234,8 @@ public partial class UpdateDialogViewModel : ObservableRecipient
         DownloadSpeedText = "Dialog_Update_Speed_Format".GetLocalized(0, "B/s");
         EstimatedTimeText = "Dialog_Update_RemainingCalculating".GetLocalized();
 
-        _logger.LogInformation("初始化更新弹窗ViewModel，版本: {Version}, 重要更新: {ImportantUpdate}", updateInfo.version, updateInfo.important_update);
-        Debug.WriteLine($"[DEBUG] 初始化更新弹窗ViewModel，版本: {updateInfo.version}, 重要更新: {updateInfo.important_update}");
+        _logger.LogInformation("初始化更新弹窗 ViewModel，版本: {Version}, 重要更新: {ImportantUpdate}", updateInfo.version, updateInfo.important_update);
+        Debug.WriteLine($"[DEBUG] 初始化更新弹窗 ViewModel，版本: {updateInfo.version}, 重要更新: {updateInfo.important_update}");
     }
 
     private void OnDownloadProgress(DownloadProgressInfo progressInfo)

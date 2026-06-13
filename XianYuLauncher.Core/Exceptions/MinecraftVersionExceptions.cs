@@ -3,7 +3,7 @@ using System;
 namespace XianYuLauncher.Core.Exceptions;
 
 /// <summary>
-/// Minecraft版本服务相关异常的基类
+/// Minecraft 版本服务相关异常的基类
 /// </summary>
 public class MinecraftVersionException : Exception
 {
@@ -19,7 +19,7 @@ public class MinecraftVersionException : Exception
 public class DownloadException : MinecraftVersionException
 {
     /// <summary>
-    /// 下载URL
+    /// 下载 URL
     /// </summary>
     public string? Url { get; init; }
     
@@ -29,7 +29,7 @@ public class DownloadException : MinecraftVersionException
     public int RetryCount { get; init; }
     
     /// <summary>
-    /// HTTP状态码（如果适用）
+    /// HTTP 状态码（如果适用）
     /// </summary>
     public int? HttpStatusCode { get; init; }
     
@@ -78,7 +78,7 @@ public class HashVerificationException : DownloadException
 public class LibraryNotFoundException : MinecraftVersionException
 {
     /// <summary>
-    /// 库名称（Maven坐标格式）
+    /// 库名称（Maven 坐标格式）
     /// </summary>
     public string? LibraryName { get; init; }
     
@@ -109,7 +109,7 @@ public class LibraryNotFoundException : MinecraftVersionException
 public class VersionNotFoundException : MinecraftVersionException
 {
     /// <summary>
-    /// 版本ID
+    /// 版本 ID
     /// </summary>
     public string? VersionId { get; init; }
     
@@ -132,22 +132,22 @@ public class VersionNotFoundException : MinecraftVersionException
 }
 
 /// <summary>
-/// ModLoader安装异常
+/// ModLoader 安装异常
 /// </summary>
 public class ModLoaderInstallException : MinecraftVersionException
 {
     /// <summary>
-    /// ModLoader类型（如 Fabric, Forge, NeoForge）
+    /// ModLoader 类型（如 Fabric, Forge, NeoForge）
     /// </summary>
     public string? ModLoaderType { get; init; }
     
     /// <summary>
-    /// ModLoader版本
+    /// ModLoader 版本
     /// </summary>
     public string? ModLoaderVersion { get; init; }
     
     /// <summary>
-    /// Minecraft版本
+    /// Minecraft 版本
     /// </summary>
     public string? MinecraftVersion { get; init; }
     
@@ -183,7 +183,7 @@ public class ModLoaderInstallException : MinecraftVersionException
 public class AssetDownloadException : MinecraftVersionException
 {
     /// <summary>
-    /// 资源索引ID
+    /// 资源索引 ID
     /// </summary>
     public string? AssetIndexId { get; init; }
     
@@ -226,7 +226,7 @@ public class ProcessorExecutionException : MinecraftVersionException
     public string? ProcessorName { get; init; }
     
     /// <summary>
-    /// 处理器JAR路径
+    /// 处理器 JAR 路径
     /// </summary>
     public string? ProcessorJarPath { get; init; }
     

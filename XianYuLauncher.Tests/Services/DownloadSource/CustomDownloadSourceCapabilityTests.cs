@@ -9,7 +9,7 @@ public class CustomDownloadSourceCapabilityTests
     {
         var source = new CustomDownloadSource(
             key: "custom_official",
-            name: "自定义Official",
+            name: "自定义 Official",
             baseUrl: "https://xx",
             template: new BmclapiTemplate());
 
@@ -21,7 +21,7 @@ public class CustomDownloadSourceCapabilityTests
     {
         var source = new CustomDownloadSource(
             key: "custom_official",
-            name: "自定义Official",
+            name: "自定义 Official",
             baseUrl: "https://xx",
             template: new BmclapiTemplate());
 
@@ -33,7 +33,7 @@ public class CustomDownloadSourceCapabilityTests
     {
         var source = new CustomDownloadSource(
             key: "custom_official",
-            name: "自定义Official",
+            name: "自定义 Official",
             baseUrl: "https://xx",
             template: new BmclapiTemplate(),
             overrides: new Dictionary<string, string>
@@ -52,7 +52,7 @@ public class CustomDownloadSourceCapabilityTests
             "custom_official",
             new CustomDownloadSource(
                 key: "custom_official",
-                name: "自定义Official",
+                name: "自定义 Official",
                 baseUrl: "https://xx",
                 template: new BmclapiTemplate()));
 

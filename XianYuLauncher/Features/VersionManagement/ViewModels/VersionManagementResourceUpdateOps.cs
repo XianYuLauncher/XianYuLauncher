@@ -99,7 +99,7 @@ internal static class VersionManagementResourceUpdateOps
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[Modrinth] RP更新检查失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[Modrinth] RP 更新检查失败: {ex.Message}");
         }
 
         return result;
@@ -206,7 +206,7 @@ internal static class VersionManagementResourceUpdateOps
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[CurseForge] RP更新检查失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge] RP 更新检查失败: {ex.Message}");
         }
 
         return result;

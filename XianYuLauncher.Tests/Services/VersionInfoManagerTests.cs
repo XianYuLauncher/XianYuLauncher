@@ -84,7 +84,7 @@ public class VersionInfoManagerTests : IDisposable
         Directory.CreateDirectory(version2Dir);
         await File.WriteAllTextAsync(Path.Combine(version2Dir, "1.19.4.json"), "{}");
         
-        // 创建无效版本（没有JSON文件）
+        // 创建无效版本（没有 JSON 文件）
         var invalidDir = Path.Combine(versionsDir, "invalid");
         Directory.CreateDirectory(invalidDir);
 

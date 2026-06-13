@@ -53,7 +53,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
         [ObservableProperty]
         private bool _isLastPage = false;
 
-        // Minecraft路径设置
+        // Minecraft 路径设置
         [ObservableProperty]
         private string _minecraftPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), ".minecraft");
 
@@ -185,7 +185,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             }
         }
 
-        // Java设置相关属性
+        // Java 设置相关属性
         [ObservableProperty]
         private ObservableCollection<JavaVersionInfo> _javaVersions = new ObservableCollection<JavaVersionInfo>();
 
@@ -253,7 +253,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
         
         public string? PendingAccountId => _pendingMicrosoftProfile?.Id;
         
-        // 计算属性：是否未在登录中（用于x:Bind绑定）
+        // 计算属性：是否未在登录中（用于 x:Bind 绑定）
         public bool IsNotLoggingIn => !IsLoggingIn;
         
         // 计算属性：是否允许离线登录（仅中国大陆用户）
@@ -262,7 +262,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
         /// <summary>
         /// 检测当前地区是否为中国大陆
         /// </summary>
-        /// <returns>如果是中国大陆地区返回true，否则返回false</returns>
+        /// <returns>如果是中国大陆地区返回 true，否则返回 false</returns>
         private bool IsChinaMainland()
         {
             try
@@ -273,7 +273,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             }
             catch (Exception ex)
             {
-                // 添加Debug输出，显示异常信息
+                // 添加 Debug 输出，显示异常信息
                 System.Diagnostics.Debug.WriteLine($"[地区检测] 检测失败，异常: {ex.Message}");
                 System.Diagnostics.Debug.WriteLine($"[地区检测] 默认不允许离线登录");
                 // 如果检测失败，默认不允许离线登录
@@ -302,24 +302,24 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
         [RelayCommand]
         private async Task Next()
         {
-            if (CurrentPageIndex < 2) // 三个页面，索引0-2
+            if (CurrentPageIndex < 2) // 三个页面，索引 0-2
             {
                 // 移除了空格检查限制，允许用户使用带空格的路径
                 
                 if (CurrentPageIndex == 0)
                 {
-                    // 创建Minecraft目录
+                    // 创建 Minecraft 目录
                     if (!string.IsNullOrEmpty(MinecraftPath))
                     {
                         try
                         {
                             // 创建目录及其所有父目录
                             System.IO.Directory.CreateDirectory(MinecraftPath);
-                            System.Diagnostics.Debug.WriteLine($"[Minecraft目录] 已创建目录: {MinecraftPath}");
+                            System.Diagnostics.Debug.WriteLine($"[Minecraft 目录] 已创建目录: {MinecraftPath}");
                         }
                         catch (Exception ex)
                         {
-                            System.Diagnostics.Debug.WriteLine($"[Minecraft目录] 创建目录失败: {ex.Message}");
+                            System.Diagnostics.Debug.WriteLine($"[Minecraft 目录] 创建目录失败: {ex.Message}");
                         }
                     }
                 }
@@ -353,11 +353,11 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             // 保存设置
             SaveSettings();
             
-            // 设置正确的Minecraft数据路径
+            // 设置正确的 Minecraft 数据路径
             var fileService = App.GetService<IFileService>();
             fileService.SetMinecraftDataPath(MinecraftPath);
             
-            // 确保Profiles.json所在的目录存在
+            // 确保 Profiles.json 所在的目录存在
             try
             {
                 string profilesFilePath = Path.Combine(MinecraftPath, MinecraftFileConsts.AccountsJson);
@@ -451,7 +451,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             System.Diagnostics.Debug.WriteLine($"[角色保存] 角色列表保存完成");
             
             // 标记教程已完成
-            System.Diagnostics.Debug.WriteLine($"[首次启动检查] 教程完成，保存TutorialCompleted=true");
+            System.Diagnostics.Debug.WriteLine($"[首次启动检查] 教程完成，保存 TutorialCompleted=true");
             await _localSettingsService.SaveSettingAsync("TutorialCompleted", true);
             // 导航到启动页面
             _navigationService.NavigateTo(typeof(LaunchViewModel).FullName!);
@@ -471,7 +471,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
         [RelayCommand]
         private async Task BrowseMinecraftPath()
         {
-            // 使用文件选择器选择Minecraft路径
+            // 使用文件选择器选择 Minecraft 路径
             var folderPicker = new Windows.Storage.Pickers.FolderPicker();
             folderPicker.FileTypeFilter.Add("*");
             folderPicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
@@ -487,7 +487,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             }
         }
 
-        // Java设置相关命令
+        // Java 设置相关命令
         [RelayCommand]
         private async Task RefreshJavaVersions()
         {
@@ -499,10 +499,10 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                 // 清空当前列表
                 JavaVersions.Clear();
                 
-                // 使用JavaRuntimeService扫描系统中的Java版本
+                // 使用 JavaRuntimeService 扫描系统中的 Java 版本
                 var javaVersions = await _javaRuntimeService.DetectJavaVersionsAsync(forceRefresh: true);
                 
-                // 转换为JavaVersionInfo并添加到列表
+                // 转换为 JavaVersionInfo 并添加到列表
                 foreach (var jv in javaVersions)
                 {
                     JavaVersions.Add(new JavaVersionInfo
@@ -514,11 +514,11 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                     });
                 }
                 
-                System.Diagnostics.Debug.WriteLine($"刷新Java版本列表完成，找到 {JavaVersions.Count} 个版本");
+                System.Diagnostics.Debug.WriteLine($"刷新 Java 版本列表完成，找到 {JavaVersions.Count} 个版本");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"刷新Java版本列表失败: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"刷新 Java 版本列表失败: {ex.Message}");
             }
             finally
             {
@@ -530,7 +530,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
         [RelayCommand]
         private async Task AddJavaVersion()
         {
-            // 使用文件选择器让用户选择Java可执行文件
+            // 使用文件选择器让用户选择 Java 可执行文件
             var filePicker = new Windows.Storage.Pickers.FileOpenPicker();
             filePicker.FileTypeFilter.Add(".exe");
             filePicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.ComputerFolder;
@@ -548,8 +548,8 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                 IsLoadingJavaVersions = true;
                 try
                 {
-                    Console.WriteLine($"正在解析Java可执行文件: {file.Path}");
-                    // 使用JavaRuntimeService解析Java版本信息
+                    Console.WriteLine($"正在解析 Java 可执行文件: {file.Path}");
+                    // 使用 JavaRuntimeService 解析 Java 版本信息
                     var javaVersion = await _javaRuntimeService.GetJavaVersionInfoAsync(file.Path);
                     if (javaVersion != null)
                     {
@@ -568,21 +568,21 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                                 IsJDK = javaVersion.IsJDK
                             };
                             JavaVersions.Add(newVersion);
-                            Console.WriteLine("已添加到Java版本列表");
+                            Console.WriteLine("已添加到 Java 版本列表");
                             
                             // 自动选择刚添加的版本
                             SelectedJavaVersion = newVersion;
                         }
                         else
                         {
-                            Console.WriteLine("该Java版本已存在于列表中");
+                            Console.WriteLine("该 Java 版本已存在于列表中");
                             // 如果已存在，自动选择它
                             SelectedJavaVersion = existingVersion;
                         }
                     }
                     else
                     {
-                        Console.WriteLine("无法解析Java版本信息");
+                        Console.WriteLine("无法解析 Java 版本信息");
                     }
                 }
                 finally
@@ -671,7 +671,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
         [RelayCommand]
         private async Task BrowseJavaPath()
         {
-            // 使用文件选择器选择Java路径
+            // 使用文件选择器选择 Java 路径
             var filePicker = new Windows.Storage.Pickers.FileOpenPicker();
             filePicker.FileTypeFilter.Add(".exe");
             filePicker.SuggestedStartLocation = Windows.Storage.Pickers.PickerLocationId.DocumentsLibrary;
@@ -734,7 +734,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             // 确保更新导航状态
             UpdateNavigationState();
             
-            // 更新UI可见性
+            // 更新 UI 可见性
             OnPropertyChanged(nameof(IsExternalFormVisible));
         }
 
@@ -772,12 +772,12 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                         }
                     }
 
-                    // 如果仍然没有选中的角色（例如AvailableProfiles为空，或者用户取消了选择），则使用User信息（如果有）作为后备
+                    // 如果仍然没有选中的角色（例如 AvailableProfiles 为空，或者用户取消了选择），则使用 User 信息（如果有）作为后备
                     if (selectedProfile == null)
                     {
                         if (result.User != null)
                         {
-                            // 如果只有User信息，使用User ID作为ID，Name暂时使用用户名（邮箱）
+                            // 如果只有 User 信息，使用 User ID 作为 ID，Name 暂时使用用户名（邮箱）
                             // 某些非标准实现可能会这样
                             selectedProfile = new ExternalProfile { Id = result.User.Id, Name = ExternalUsername };
                         }
@@ -810,7 +810,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                     _pendingMicrosoftProfile = externalProfile; // 复用此字段
                     ProfileName = externalProfile.Name;
                     
-                     // 设置登录成功状态，切换UI
+                     // 设置登录成功状态，切换 UI
                     IsExternalLoggedIn = true; 
                     OnPropertyChanged(nameof(IsExternalFormVisible)); 
                     OnPropertyChanged(nameof(IsExternalLoginButtonEnabled));
@@ -880,7 +880,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                     var uri = new Uri(session.DeviceCode.VerificationUri);
                     await Windows.System.Launcher.LaunchUriAsync(uri);
 
-                    // 复制8位ID到剪贴板
+                    // 复制 8 位 ID 到剪贴板
                     var dataPackage = new Windows.ApplicationModel.DataTransfer.DataPackage();
                     dataPackage.SetText(session.DeviceCode.UserCode);
                     Windows.ApplicationModel.DataTransfer.Clipboard.SetContent(dataPackage);
@@ -931,8 +931,8 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
             }
             else
             {
-                // 检查是否是账户没有购买Minecraft的错误
-                if (!string.IsNullOrEmpty(result.ErrorMessage) && result.ErrorMessage.Contains("该账号没有购买Minecraft"))
+                // 检查是否是账户没有购买 Minecraft 的错误
+                if (!string.IsNullOrEmpty(result.ErrorMessage) && result.ErrorMessage.Contains("该账号没有购买 Minecraft"))
                 {
                     // 显示购买提示弹窗
                     await ShowMinecraftPurchaseDialogAsync();
@@ -956,7 +956,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
         }
 
         /// <summary>
-        /// 显示Minecraft购买提示对话框
+        /// 显示 Minecraft 购买提示对话框
         /// </summary>
         private async Task ShowMinecraftPurchaseDialogAsync()
         {
@@ -998,10 +998,10 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
 
         private void SaveSettings()
         {
-            // 保存Minecraft路径
+            // 保存 Minecraft 路径
             _localSettingsService.SaveSettingAsync("MinecraftPath", MinecraftPath);
             
-            // 保存Java版本列表（映射回 Core.Models.JavaVersion 格式，与 SettingsViewModel 保持一致）
+            // 保存 Java 版本列表（映射回 Core.Models.JavaVersion 格式，与 SettingsViewModel 保持一致）
             if (JavaVersions.Count > 0)
             {
                 var coreVersions = JavaVersions.Select(info => new XianYuLauncher.Core.Models.JavaVersion
@@ -1014,7 +1014,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                 _localSettingsService.SaveSettingAsync("JavaVersions", coreVersions);
             }
             
-            // 保存Java设置 - 与设置页保持一致，统一使用字符串枚举名
+            // 保存 Java 设置 - 与设置页保持一致，统一使用字符串枚举名
             _localSettingsService.SaveSettingAsync("JavaSelectionMode", JavaSelectionMode.ToString());
             if (SelectedJavaVersion != null)
             {
@@ -1040,7 +1040,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
         {
             try
             {
-                // 异步加载Minecraft路径 - 仅在有值时更新，否则保留默认值
+                // 异步加载 Minecraft 路径 - 仅在有值时更新，否则保留默认值
                 var savedMinecraftPath = await _localSettingsService.ReadSettingAsync<string>("MinecraftPath");
                 if (!string.IsNullOrEmpty(savedMinecraftPath))
                 {
@@ -1051,7 +1051,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
                 var isolationValue = await _localSettingsService.ReadSettingAsync<bool?>("EnableVersionIsolation");
                 EnableVersionIsolation = isolationValue ?? true;
                 
-                // 异步加载Java设置
+                // 异步加载 Java 设置
                 var javaSelectionModeStr = await _localSettingsService.ReadSettingAsync<string>("JavaSelectionMode");
                 JavaSelectionMode = (JavaSelectionMode)System.Enum.Parse(typeof(JavaSelectionMode), javaSelectionModeStr ?? "Auto");
                 JavaPath = await _localSettingsService.ReadSettingAsync<string>("JavaPath") ?? string.Empty;
@@ -1131,10 +1131,10 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
 
             // 异步加载材质设置
             _ = LoadMaterialTypeAsync();
-            // 异步加载现有设置，避免阻塞UI线程
+            // 异步加载现有设置，避免阻塞 UI 线程
             _ = LoadSettingsAsync();
             
-            // 页面加载时自动刷新Java版本列表
+            // 页面加载时自动刷新 Java 版本列表
             _ = RefreshJavaVersionsCommand.ExecuteAsync(null);
             
             // 初始化导航状态
@@ -1142,7 +1142,7 @@ namespace XianYuLauncher.Features.Tutorial.ViewModels
         }
     }
 
-    // Java选择模式枚举
+    // Java 选择模式枚举
     public enum JavaSelectionMode
     {
         Auto,

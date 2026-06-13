@@ -7,7 +7,7 @@ using XianYuLauncher.Core.Models;
 namespace XianYuLauncher.Core.Contracts.Services;
 
 /// <summary>
-/// 依赖库管理器接口，负责Minecraft依赖库的下载、验证和管理
+/// 依赖库管理器接口，负责 Minecraft 依赖库的下载、验证和管理
 /// </summary>
 public interface ILibraryManager
 {
@@ -48,7 +48,7 @@ public interface ILibraryManager
     /// <summary>
     /// 获取依赖库的本地文件路径
     /// </summary>
-    /// <param name="libraryName">库名称（Maven坐标格式）</param>
+    /// <param name="libraryName">库名称（Maven 坐标格式）</param>
     /// <param name="librariesDirectory">库文件目录</param>
     /// <param name="classifier">分类器（可选，用于原生库）</param>
     /// <returns>本地文件路径</returns>

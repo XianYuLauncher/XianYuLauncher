@@ -86,7 +86,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels
         }
 
         /// <summary>
-        /// 加入QQ群进行反馈
+        /// 加入 QQ 群进行反馈
         /// </summary>
         [RelayCommand]
         private async Task JoinQQGroup()
@@ -503,7 +503,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels
         }
         else
         {
-            System.Diagnostics.Debug.WriteLine("AI分析: 游戏正常退出，不触发AI分析");
+            System.Diagnostics.Debug.WriteLine("AI 分析: 游戏正常退出，不触发 AI 分析");
         }
     }
 
@@ -670,7 +670,7 @@ namespace XianYuLauncher.Features.ErrorAnalysis.ViewModels
     public void SetVersionInfo(string versionId, string minecraftPath)
     {
         _sessionCoordinator.SetVersionInfo(versionId, minecraftPath);
-        System.Diagnostics.Debug.WriteLine($"ErrorAnalysisViewModel: 设置版本信息，版本ID: {versionId}");
+        System.Diagnostics.Debug.WriteLine($"ErrorAnalysisViewModel: 设置版本信息，版本 ID: {versionId}");
     }
     
     /// <summary>

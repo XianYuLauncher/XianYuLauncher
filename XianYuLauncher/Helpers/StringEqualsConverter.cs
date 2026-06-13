@@ -14,7 +14,7 @@ namespace XianYuLauncher.Helpers
         /// <param name="targetType">目标类型</param>
         /// <param name="parameter">比较参数</param>
         /// <param name="language">语言信息</param>
-        /// <returns>如果字符串相等则返回Visible，否则返回Collapsed</returns>
+        /// <returns>如果字符串相等则返回 Visible，否则返回 Collapsed</returns>
         public object Convert(object value, Type targetType, object parameter, string language)
         {
             if (value is string strValue && parameter is string strParameter)

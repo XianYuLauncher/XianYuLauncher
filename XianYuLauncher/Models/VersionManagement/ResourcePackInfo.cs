@@ -54,7 +54,7 @@ public partial class ResourcePackInfo : ObservableObject, IVersionManagementReso
     private bool _isSelected;
 
     /// <summary>
-    /// 项目ID (Modrinth Project ID 或 CurseForge Project ID)
+    /// 项目 ID (Modrinth Project ID 或 CurseForge Project ID)
     /// </summary>
     [ObservableProperty]
     private string? _projectId;
@@ -102,7 +102,7 @@ public partial class ResourcePackInfo : ObservableObject, IVersionManagementReso
     private bool _isLoadingPreview;
     
     /// <summary>
-    /// 预览纹理路径列表（2x2 网格，共4个）
+    /// 预览纹理路径列表（2x2 网格，共 4 个）
     /// </summary>
     public List<string> PreviewTextures { get; set; } = new List<string>();
     
@@ -125,7 +125,7 @@ public partial class ResourcePackInfo : ObservableObject, IVersionManagementReso
         FileName = Path.GetFileName(filePath);
         IsEnabled = !FileName.EndsWith(FileExtensionConsts.Disabled);
         
-        // 提取显示名称（去掉.disabled后缀）
+        // 提取显示名称（去掉.disabled 后缀）
         string displayName = FileName;
         if (displayName.EndsWith(FileExtensionConsts.Disabled))
         {

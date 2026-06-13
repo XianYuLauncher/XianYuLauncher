@@ -226,7 +226,7 @@ public sealed partial class VersionManagementPage : Page
         // 立即标记为卸载中，阻止所有异步操作
         _isUnloading = true;
         
-        // 极速清理策略：在后台线程清理，不阻塞UI
+        // 极速清理策略：在后台线程清理，不阻塞 UI
         ThreadPool.QueueUserWorkItem(_ =>
         {
             try
@@ -256,7 +256,7 @@ public sealed partial class VersionManagementPage : Page
     }
     
     /// <summary>
-        /// 监听ViewModel属性变化，显示或隐藏弹窗
+        /// 监听 ViewModel 属性变化，显示或隐藏弹窗
         /// </summary>
         private async void ViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
@@ -344,7 +344,7 @@ public sealed partial class VersionManagementPage : Page
             }
             catch (Exception ex)
             {
-                // 处理Dialog显示异常
+                // 处理 Dialog 显示异常
                 System.Diagnostics.Debug.WriteLine($"显示弹窗失败: {ex.Message}");
             }
         }
@@ -539,7 +539,7 @@ public sealed partial class VersionManagementPage : Page
             var items = await e.DataView.GetStorageItemsAsync();
             if (items != null && items.Count > 0)
             {
-                // 调用ViewModel的拖放处理方法
+                // 调用 ViewModel 的拖放处理方法
                 await ViewModel.HandleDragDropFilesAsync(items);
             }
         }
@@ -577,24 +577,24 @@ public sealed partial class VersionManagementPage : Page
     
     #endregion
     
-    #region Mod开关事件处理
+    #region Mod 开关事件处理
     
     /// <summary>
-    /// 处理Mod启用/禁用开关的Toggled事件
+    /// 处理 Mod 启用/禁用开关的 Toggled 事件
     /// </summary>
-    /// <param name="sender">发送事件的ToggleSwitch控件</param>
+    /// <param name="sender">发送事件的 ToggleSwitch 控件</param>
     /// <param name="e">事件参数</param>
     private async void ModToggleSwitch_Toggled(object sender, RoutedEventArgs e)
     {
         if (sender is ToggleSwitch toggleSwitch)
         {
-            // 获取ToggleSwitch的IsOn值
+            // 获取 ToggleSwitch 的 IsOn 值
             bool isOn = toggleSwitch.IsOn;
             
-            // 直接从父级Grid获取DataContext
+            // 直接从父级 Grid 获取 DataContext
             if (VisualTreeHelper.GetParent(toggleSwitch) is FrameworkElement parentElement && parentElement.DataContext is XianYuLauncher.Models.VersionManagement.ModInfo modInfo)
             {
-                // 直接调用ViewModel的方法来处理开关状态变化，传递当前IsOn值
+                // 直接调用 ViewModel 的方法来处理开关状态变化，传递当前 IsOn 值
                 await ViewModel.ModsModule.ToggleModEnabledAsync(modInfo, isOn);
             }
         }
@@ -602,10 +602,10 @@ public sealed partial class VersionManagementPage : Page
     
     #endregion
     
-    #region 扩展Tab事件处理
+    #region 扩展 Tab 事件处理
     
     /// <summary>
-    /// 处理加载器Expander展开事件，加载版本列表
+    /// 处理加载器 Expander 展开事件，加载版本列表
     /// </summary>
     private async void LoaderExpander_Expanding(Expander sender, ExpanderExpandingEventArgs args)
     {
@@ -698,7 +698,7 @@ public sealed partial class VersionManagementPage : Page
         {
             System.Diagnostics.Debug.WriteLine($"[DEBUG] 准备卸载加载器: {loader.Name}");
             
-            // 调用ViewModel的卸载加载器命令
+            // 调用 ViewModel 的卸载加载器命令
             await ViewModel.UninstallLoaderCommand.ExecuteAsync(loader);
         }
     }
@@ -996,7 +996,7 @@ public sealed partial class VersionManagementPage : Page
     /// </summary>
     private void PreviewCanvas_Draw(CanvasControl sender, Microsoft.Graphics.Canvas.UI.Xaml.CanvasDrawEventArgs args)
     {
-        System.Diagnostics.Debug.WriteLine($"[预览] Draw 被调用, Bitmap数量: {_previewBitmaps.Count}");
+        System.Diagnostics.Debug.WriteLine($"[预览] Draw 被调用, Bitmap 数量: {_previewBitmaps.Count}");
         
         if (_previewBitmaps.Count == 0)
             return;
@@ -1021,7 +1021,7 @@ public sealed partial class VersionManagementPage : Page
         float drawableWidth = canvasWidth - padding * 2;   // 300
         float drawableHeight = canvasHeight - padding * 2; // 300
         
-        // 2行2列网格
+        // 2 行 2 列网格
         int rows = 2;
         int cols = 2;
         float cellWidth = drawableWidth / cols;   // 150

@@ -29,21 +29,21 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
     private readonly INavigationService _navigationService;
     private readonly TerracottaService _terracottaService;
     
-    // 保存启动的terracotta进程引用
+    // 保存启动的 terracotta 进程引用
     private Process? _terracottaProcess;
     
     // 保存临时文件路径，用于进程终止后清理
     private string? _tempFilePath;
     
-    // HttpClient用于发送HTTP请求
+    // HttpClient 用于发送 HTTP 请求
     private readonly HttpClient _httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
     
-    // CancellationTokenSource用于控制轮询的取消
+    // CancellationTokenSource 用于控制轮询的取消
     private CancellationTokenSource? _pollingCts;
-    // 用于JoinGame方法的CancellationTokenSource
+    // 用于 JoinGame 方法的 CancellationTokenSource
     private CancellationTokenSource? _joinGameCts;
     
-    // 保存陶瓦联机进程的端口号，用于发送HTTP请求
+    // 保存陶瓦联机进程的端口号，用于发送 HTTP 请求
     private string? _terracottaPort;
     
     // 保存弹窗引用，用于在检测到房间时关闭
@@ -59,7 +59,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
         set => SetProperty(ref _pollingResult, value);
     }
     
-    // FileService用于获取文件路径
+    // FileService 用于获取文件路径
     private readonly IFileService _fileService;
     private readonly ICommonDialogService _dialogService;
     private readonly IProgressDialogService _progressDialogService;
@@ -115,7 +115,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             // 获取角色数据文件路径
             string profilesFilePath = Path.Combine(_fileService.GetMinecraftDataPath(), MinecraftFileConsts.AccountsJson);
 
-            // 🔒 使用安全方法读取（自动解密token）
+            // 🔒 使用安全方法读取（自动解密 token）
             var profiles = XianYuLauncher.Core.Helpers.TokenEncryption.LoadAccountsSecurely(profilesFilePath);
             
             // 查找活跃角色
@@ -197,7 +197,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 // 确保目录存在
                 Directory.CreateDirectory(realTempDir);
                 
-                Log.Information($"[Multiplayer] Terracotta目录: {realTerracottaDir}");
+                Log.Information($"[Multiplayer] Terracotta 目录: {realTerracottaDir}");
                 Log.Information($"[Multiplayer] 临时文件目录: {realTempDir}");
                 
                 // 生成时间戳
@@ -209,22 +209,22 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 
                 Log.Information($"[Multiplayer] 临时文件完整路径: {tempFilePath}");
                 
-                // 创建空的json文件
+                // 创建空的 json 文件
                 File.WriteAllText(tempFilePath, "{}");
                 
                 // 保存临时文件路径
                 _tempFilePath = tempFilePath;
                 
-                // 启动联机服务，添加--hmcl参数
+                // 启动联机服务，添加--hmcl 参数
                 // 使用真实物理路径启动
                 string realExePath = Path.Combine(realTerracottaDir, Path.GetFileName(terracottaPath));
 
                 var processStartInfo = CreateTerracottaProcessStartInfo(realTerracottaDir, terracottaPath, tempFilePath);
                 
-                Log.Information($"[Multiplayer] 准备启动 Terracotta (通过CMD)");
+                Log.Information($"[Multiplayer] 准备启动 Terracotta (通过 CMD)");
                 Log.Information($"[Multiplayer] 真实可执行文件: {realExePath}");
                 Log.Information($"[Multiplayer] 真实工作目录: {realTerracottaDir}");
-                Log.Information($"[Multiplayer] CMD命令: {processStartInfo.Arguments}");
+                Log.Information($"[Multiplayer] CMD 命令: {processStartInfo.Arguments}");
                 Log.Information($"[Multiplayer] 真实临时文件路径: {tempFilePath}");
                 
                 // 启动进程并保存引用
@@ -263,10 +263,10 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 // 我们只需要等待文件被写入即可
                 
                 // 等待并多次尝试读取端口信息
-                int maxRetries = 20; // 增加到20次
+                int maxRetries = 20; // 增加到 20 次
                 for (int i = 0; i < maxRetries; i++)
                 {
-                    await Task.Delay(500); // 每次等待500ms
+                    await Task.Delay(500); // 每次等待 500ms
                     
                     // 尝试读取临时文件
                     if (File.Exists(tempFilePath))
@@ -301,7 +301,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                                 continue;
                             }
                             
-                            // 解析json，获取port字段
+                            // 解析 json，获取 port 字段
                             using (JsonDocument doc = JsonDocument.Parse(jsonContent))
                             {
                                 JsonElement root = doc.RootElement;
@@ -389,7 +389,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 // 初始化轮询结果
                 PollingResult = "MultiplayerPage_GettingStatusText".GetLocalized();
                 
-                // 创建CancellationTokenSource
+                // 创建 CancellationTokenSource
                 _pollingCts = new CancellationTokenSource();
                 
                 // 启动轮询
@@ -400,7 +400,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             _statusDialog = new Microsoft.UI.Xaml.Controls.ContentDialog
             {
                 Title = "MultiplayerPage_FindingRoomTitle".GetLocalized(),
-                Content = this, // 绑定到当前ViewModel，以便显示PollingResult
+                Content = this, // 绑定到当前 ViewModel，以便显示 PollingResult
                 ContentTemplate = (DataTemplate)Microsoft.UI.Xaml.Application.Current.Resources["PollingContentTemplate"],
                 PrimaryButtonText = "MultiplayerPage_StopButton".GetLocalized(),
                 Style = Application.Current.Resources["DefaultContentDialogStyle"] as Style,
@@ -444,7 +444,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             string playerName = GetCurrentProfileName();
             
             string stateUrl = $"http://localhost:{port}/state";
-            // 在扫描URL后面加上?player={当前角色名}
+            // 在扫描 URL 后面加上?player={当前角色名}
             string scanningUrl = $"http://localhost:{port}/state/scanning?player={Uri.EscapeDataString(playerName)}";
             
             // 首先发送一次请求到/scanning，用于设置当前为查询状态
@@ -476,7 +476,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             {
                 try
                 {
-                    // 发送GET请求
+                    // 发送 GET 请求
                     HttpResponseMessage response = await _httpClient.GetAsync(stateUrl, cancellationToken);
                     if (response.IsSuccessStatusCode)
                     {
@@ -485,7 +485,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                         // 更新轮询结果
                         PollingResult = content;
                         
-                        // 解析JSON，检查index是否为3
+                        // 解析 JSON，检查 index 是否为 3
                         try
                         {
                             using (JsonDocument doc = JsonDocument.Parse(content))
@@ -495,7 +495,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                                     indexElement.ValueKind == JsonValueKind.Number && 
                                     indexElement.GetInt32() == 3)
                                 {
-                                    // 检测到index为3，检查是否有room字段
+                                    // 检测到 index 为 3，检查是否有 room 字段
                                     if (root.TryGetProperty("room", out JsonElement roomElement) && 
                                         roomElement.ValueKind == JsonValueKind.String)
                                     {
@@ -514,7 +514,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                                                 _statusDialog = null;
                                             }
                                             
-                                            // 导航到联机大厅页面，传递端口和房间ID信息
+                                            // 导航到联机大厅页面，传递端口和房间 ID 信息
                                             RequestLobbyNavigation(CreateLobbyNavigationParameter(
                                                 roomId,
                                                 port,
@@ -530,8 +530,8 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                         }
                         catch (System.Text.Json.JsonException ex)
                         {
-                            // JSON解析错误，忽略
-                            Log.Error(ex, $"解析轮询结果JSON错误: {ex.Message}");
+                            // JSON 解析错误，忽略
+                            Log.Error(ex, $"解析轮询结果 JSON 错误: {ex.Message}");
                         }                        
                     }                        
                     else
@@ -551,7 +551,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     PollingResult = "MultiplayerPage_ErrorText".GetLocalized(ex.Message);
                 }
                 
-                // 等待1秒后再次轮询
+                // 等待 1 秒后再次轮询
                 await Task.Delay(1000, cancellationToken);
             }
         }
@@ -579,7 +579,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
     }
     
     /// <summary>
-    /// 停止terracotta进程
+    /// 停止 terracotta 进程
     /// </summary>
     private async void StopTerracottaProcess()
     {
@@ -588,7 +588,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             // 首先停止轮询
             StopPolling();
             
-            // 取消JoinGame方法中的异步操作
+            // 取消 JoinGame 方法中的异步操作
             if (_joinGameCts != null)
             {
                 _joinGameCts.Cancel();
@@ -596,33 +596,33 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 _joinGameCts = null;
             }
             
-            // 尝试使用terracotta官方HTTP接口优雅关闭进程
+            // 尝试使用 terracotta 官方 HTTP 接口优雅关闭进程
             if (!string.IsNullOrEmpty(_terracottaPort))
             {
                 try
                 {
-                    // 首先尝试使用peaceful=true优雅退出
+                    // 首先尝试使用 peaceful=true 优雅退出
                     string panicUrl = $"http://localhost:{_terracottaPort}/panic?peaceful=true";
                     HttpResponseMessage response = await _httpClient.GetAsync(panicUrl, CancellationToken.None);
-                    Log.Information($"调用terracotta /panic接口结果：{response.StatusCode}");
+                    Log.Information($"调用 terracotta /panic 接口结果：{response.StatusCode}");
                     
                     // 等待短暂时间，让进程有时间优雅退出
                     await Task.Delay(2000);
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, $"调用terracotta /panic接口时发生错误：{ex.Message}");
-                    // 可以尝试使用peaceful=false强制退出
+                    Log.Error(ex, $"调用 terracotta /panic 接口时发生错误：{ex.Message}");
+                    // 可以尝试使用 peaceful=false 强制退出
                     try
                     {
                         string panicUrl = $"http://localhost:{_terracottaPort}/panic?peaceful=false";
                         HttpResponseMessage response = await _httpClient.GetAsync(panicUrl, CancellationToken.None);
-                        Log.Information($"调用terracotta /panic?peaceful=false接口结果：{response.StatusCode}");
+                        Log.Information($"调用 terracotta /panic?peaceful=false 接口结果：{response.StatusCode}");
                         await Task.Delay(2000);
                     }
                     catch (Exception ex2)
                     {
-                        Log.Error(ex2, $"调用terracotta强制退出接口时发生错误：{ex2.Message}");
+                        Log.Error(ex2, $"调用 terracotta 强制退出接口时发生错误：{ex2.Message}");
                     }
                 }
             }
@@ -631,12 +631,12 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             if (_terracottaProcess != null && !_terracottaProcess.HasExited)
             {
                 _terracottaProcess.Kill();
-                _terracottaProcess.WaitForExit(5000); // 等待最多5秒
+                _terracottaProcess.WaitForExit(5000); // 等待最多 5 秒
                 _terracottaProcess.Dispose();
                 _terracottaProcess = null;
             }
             
-            // 检查是否还有剩余的terracotta进程，如果有则终止
+            // 检查是否还有剩余的 terracotta 进程，如果有则终止
             Process[] terracottaProcesses = Process.GetProcessesByName("terracotta-windows-x86_64");
             foreach (Process process in terracottaProcesses)
             {
@@ -665,7 +665,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
         catch (Exception ex)
         {
             // 这里可以添加日志记录，但不显示给用户，避免影响体验
-            Log.Error(ex, $"停止terracotta进程时发生错误：{ex.Message}");
+            Log.Error(ex, $"停止 terracotta 进程时发生错误：{ex.Message}");
         }
     }
     
@@ -696,7 +696,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 // 检查陶瓦插件是否成功获取
                 if (!string.IsNullOrEmpty(terracottaPath) && File.Exists(terracottaPath))
                 {
-                    // 获取真实的物理路径（与HostGame相同的逻辑）
+                    // 获取真实的物理路径（与 HostGame 相同的逻辑）
                     string terracottaDir = Path.GetDirectoryName(terracottaPath) ?? AppEnvironment.SafeAppDataPath;
                     string realTerracottaDir = terracottaDir;
                     string realTempDir;
@@ -771,7 +771,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     string tempFileName = $"terracotta-{timestamp}-Port.json";
                     string tempFilePath = Path.Combine(realTempDir, tempFileName);
                     
-                    // 创建空的json文件
+                    // 创建空的 json 文件
                     File.WriteAllText(tempFilePath, "{}");
                     
                     // 保存临时文件路径，用于进程终止后清理
@@ -781,7 +781,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     var processStartInfo = CreateTerracottaProcessStartInfo(realTerracottaDir, terracottaPath, tempFilePath);
 
                     Log.Information($"[Multiplayer-Join] 准备启动 Terracotta 本地服务");
-                    Log.Information($"[Multiplayer-Join] CMD命令: {processStartInfo.Arguments}");
+                    Log.Information($"[Multiplayer-Join] CMD 命令: {processStartInfo.Arguments}");
                     
                     // 启动进程并保存引用
                     _terracottaProcess = Process.Start(processStartInfo);
@@ -820,7 +820,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     if (File.Exists(tempFilePath))
                     {
                         string jsonContent = File.ReadAllText(tempFilePath);
-                        // 解析json，获取port字段
+                        // 解析 json，获取 port 字段
                         using (JsonDocument doc = JsonDocument.Parse(jsonContent))
                         {
                             JsonElement root = doc.RootElement;
@@ -834,7 +834,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                     }
                     else
                     {
-                        Log.Warning($"[Multiplayer-Join] 临时文件未找到或未在1秒内生成: {tempFilePath}");
+                        Log.Warning($"[Multiplayer-Join] 临时文件未找到或未在 1 秒内生成: {tempFilePath}");
                     }
                 }
                 else
@@ -852,35 +852,35 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
             
             if (isSuccess && !string.IsNullOrEmpty(port))
             {
-                // 3. 访问http://localhost:{端口}/state/guesting?room=房间号&player=角色名
+                // 3. 访问 http://localhost:{端口}/state/guesting?room=房间号&player=角色名
                 try
                 {
-                    // 初始化JoinGame的CancellationTokenSource
+                    // 初始化 JoinGame 的 CancellationTokenSource
                     _joinGameCts = new CancellationTokenSource();
                     CancellationToken cancellationToken = _joinGameCts.Token;
                     
                     // 获取当前启动器内选择的角色名
                     string playerName = GetCurrentProfileName();
-                    // 构建包含玩家名的URL
+                    // 构建包含玩家名的 URL
                     string guestingUrl = $"http://localhost:{port}/state/guesting?room={roomId}&player={Uri.EscapeDataString(playerName)}";
                     
-                    Log.Information($"[Multiplayer-Join] 发送Guesting请求: {guestingUrl}");
+                    Log.Information($"[Multiplayer-Join] 发送 Guesting 请求: {guestingUrl}");
                     HttpResponseMessage response = await _httpClient.GetAsync(guestingUrl, cancellationToken);
                     
                     if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
                     {
                         Log.Warning("[Multiplayer-Join] 房间不存在 (400 Bad Request)");
-                        // 400表示错误，通知玩家房间不存在
+                        // 400 表示错误，通知玩家房间不存在
                         await ShowErrorDialogAsync("MultiplayerPage_RoomNotFoundError".GetLocalized());
                         // 停止进程
                         StopTerracottaProcess();
                         return;
                     }
                     
-                    // 4. 轮询访问http://localhost:{端口}/state，直到state为guest-ok
+                    // 4. 轮询访问 http://localhost:{端口}/state，直到 state 为 guest-ok
                     string url = string.Empty;
                     
-                    for (int i = 0; i < 30 && !cancellationToken.IsCancellationRequested; i++) // 最多尝试30次，每次间隔1秒
+                    for (int i = 0; i < 30 && !cancellationToken.IsCancellationRequested; i++) // 最多尝试 30 次，每次间隔 1 秒
                     {
                         try
                         {
@@ -891,7 +891,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                             {
                                 string content = await stateResponse.Content.ReadAsStringAsync(cancellationToken);
                                 
-                                // 解析JSON
+                                // 解析 JSON
                                 using (JsonDocument doc = JsonDocument.Parse(content))
                                 {
                                     JsonElement root = doc.RootElement;
@@ -899,7 +899,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                                         stateElement.ValueKind == JsonValueKind.String &&
                                         stateElement.GetString() == "guest-ok")
                                     {
-                                        // 获取url字段
+                                        // 获取 url 字段
                                         if (root.TryGetProperty("url", out JsonElement urlElement) &&
                                             urlElement.ValueKind == JsonValueKind.String)
                                         {
@@ -925,7 +925,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                             Log.Error(ex, $"获取状态失败: {ex.Message}");
                         }
                         
-                        // 等待1秒后再次尝试，支持取消
+                        // 等待 1 秒后再次尝试，支持取消
                         await Task.Delay(1000, cancellationToken);
                     }
                     
@@ -958,7 +958,7 @@ public partial class MultiplayerViewModel : ObservableRecipient, INavigationAwar
                 }
                 finally
                 {
-                    // 清理CancellationTokenSource
+                    // 清理 CancellationTokenSource
                     if (_joinGameCts != null)
                     {
                         _joinGameCts.Dispose();

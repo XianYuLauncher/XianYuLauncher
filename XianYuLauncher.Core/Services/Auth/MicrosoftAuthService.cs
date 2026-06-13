@@ -468,7 +468,7 @@ public class MicrosoftAuthService
         var entitlementsResponse = await CheckEntitlementsAsync(minecraftToken).ConfigureAwait(false);
         if (entitlementsResponse == null || entitlementsResponse.Items.Length == 0)
         {
-            return CreateFailedLoginResult("该账号没有购买Minecraft");
+            return CreateFailedLoginResult("该账号没有购买 Minecraft");
         }
 
         var profileResponse = await GetProfileAsync(minecraftToken).ConfigureAwait(false);

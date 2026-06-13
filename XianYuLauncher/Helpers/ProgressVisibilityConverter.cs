@@ -9,7 +9,7 @@ public class ProgressVisibilityConverter : IValueConverter
     {
         if (value is double progressValue)
         {
-            // 当进度值大于0且小于100时显示进度条，否则隐藏
+            // 当进度值大于 0 且小于 100 时显示进度条，否则隐藏
             return progressValue > 0 && progressValue < 100 ? Visibility.Visible : Visibility.Collapsed;
         }
         return Visibility.Collapsed;

@@ -14,7 +14,7 @@ public enum ResourceMoveType
 }
 
 /// <summary>
-/// 转移Mod结果状态
+/// 转移 Mod 结果状态
 /// </summary>
 public enum MoveModStatus
 {
@@ -26,7 +26,7 @@ public enum MoveModStatus
 }
 
 /// <summary>
-/// 转移Mod结果
+/// 转移 Mod 结果
 /// </summary>
 public partial class MoveModResult : ObservableObject
 {

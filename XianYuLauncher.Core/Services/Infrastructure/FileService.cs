@@ -1,4 +1,4 @@
-﻿using System.Collections.Concurrent;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Text;
 using XianYuLauncher.Core.Contracts.Services;
@@ -37,7 +37,7 @@ public class FileService : IFileService
             Directory.CreateDirectory(_applicationDataFolder);
         }
         
-        // 在构造函数中从本地设置加载保存的Minecraft路径
+        // 在构造函数中从本地设置加载保存的 Minecraft 路径
         LoadMinecraftPathFromSettings();
     }
     
@@ -97,7 +97,7 @@ public class FileService : IFileService
             return _customMinecraftDataPath;
         }
         
-        // 默认返回桌面的.minecraft文件夹路径
+        // 默认返回桌面的.minecraft 文件夹路径
         return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), ".minecraft");
     }
     
@@ -130,7 +130,7 @@ public class FileService : IFileService
                     if (jObject.TryGetValue(MinecraftPathKey, out var jToken))
                     {
                         _customMinecraftDataPath = jToken.ToString();
-                        System.Diagnostics.Debug.WriteLine($"成功加载Minecraft路径: {_customMinecraftDataPath}");
+                        System.Diagnostics.Debug.WriteLine($"成功加载 Minecraft 路径: {_customMinecraftDataPath}");
                     }
                 }
                 else
@@ -145,7 +145,7 @@ public class FileService : IFileService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"加载Minecraft路径失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"加载 Minecraft 路径失败: {ex.Message}");
         }
     }
     
@@ -168,9 +168,9 @@ public class FileService : IFileService
                     jObject = Newtonsoft.Json.Linq.JObject.Parse(json);
                 }
                 
-                // 更新Minecraft路径
+                // 更新 Minecraft 路径
                 jObject[MinecraftPathKey] = path;
-                System.Diagnostics.Debug.WriteLine($"成功保存Minecraft路径: {path} 到 {settingsPath}");
+                System.Diagnostics.Debug.WriteLine($"成功保存 Minecraft 路径: {path} 到 {settingsPath}");
                 
                 // 确保目录存在
                 Directory.CreateDirectory(_applicationDataFolder);
@@ -185,7 +185,7 @@ public class FileService : IFileService
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"保存Minecraft路径失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"保存 Minecraft 路径失败: {ex.Message}");
         }
     }
 

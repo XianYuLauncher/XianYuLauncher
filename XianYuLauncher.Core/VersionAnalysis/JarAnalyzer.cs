@@ -66,7 +66,7 @@ namespace XianYuLauncher.Core.VersionAnalysis
                                 // 'name' 字段 (如 "26.1 Snapshot 1") 大多是显示用途，包含空格等非标准字符，不可用于逻辑判断
                                 if (!string.IsNullOrEmpty(info?.Id))
                                 {
-                                    _logger?.LogInformation($"[JarAnalyzer] 从 .jar/version.json 提取到ID: {info.Id}");
+                                    _logger?.LogInformation($"[JarAnalyzer] 从 .jar/version.json 提取到 ID: {info.Id}");
                                     return info.Id;
                                 }
                             }
@@ -77,7 +77,7 @@ namespace XianYuLauncher.Core.VersionAnalysis
                 {
                     if (_logger != null)
                     {
-                        _logger.LogError(ex, "[JarAnalyzer] 分析 .jar 失败，版本目录: {VersionDirectory}，版本ID: {VersionId}，JAR 路径: {JarPath}", versionDirectory, versionId, jarPath);
+                        _logger.LogError(ex, "[JarAnalyzer] 分析 .jar 失败，版本目录: {VersionDirectory}，版本 ID: {VersionId}，JAR 路径: {JarPath}", versionDirectory, versionId, jarPath);
                     }
                     else
                     {

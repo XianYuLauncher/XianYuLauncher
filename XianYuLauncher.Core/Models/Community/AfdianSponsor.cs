@@ -6,7 +6,7 @@ namespace XianYuLauncher.Core.Models;
 public class AfdianSponsor
 {
     /// <summary>
-    /// 用户ID
+    /// 用户 ID
     /// </summary>
     public string UserId { get; set; } = string.Empty;
     
@@ -16,7 +16,7 @@ public class AfdianSponsor
     public string Name { get; set; } = string.Empty;
     
     /// <summary>
-    /// 头像URL
+    /// 头像 URL
     /// </summary>
     public string Avatar { get; set; } = string.Empty;
     
@@ -52,7 +52,7 @@ public class AfdianSponsorCache
     public DateTime CachedAt { get; set; }
     
     /// <summary>
-    /// 是否已过期（24小时）
+    /// 是否已过期（24 小时）
     /// </summary>
     public bool IsExpired => DateTime.UtcNow - CachedAt > TimeSpan.FromHours(24);
 }

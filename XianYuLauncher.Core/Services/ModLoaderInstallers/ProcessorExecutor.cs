@@ -40,7 +40,7 @@ public interface IProcessorExecutor
 }
 
 /// <summary>
-/// ModLoader处理器执行器
+/// ModLoader 处理器执行器
 /// </summary>
 public class ProcessorExecutor : IProcessorExecutor
 {
@@ -135,12 +135,12 @@ public class ProcessorExecutor : IProcessorExecutor
 
             bool isServerProcessor = false;
 
-            // 检查server字段
+            // 检查 server 字段
             if (processor.ContainsKey("server"))
             {
                 isServerProcessor = processor["server"]?.Value<bool>() ?? false;
             }
-            // 检查sides字段
+            // 检查 sides 字段
             else if (processor.ContainsKey("sides"))
             {
                 var sides = processor["sides"] as JArray;
@@ -176,20 +176,20 @@ public class ProcessorExecutor : IProcessorExecutor
         try
         {
             // 获取处理器信息
-            jar = processor["jar"]?.ToString() ?? throw new ProcessorExecutionException("处理器缺少jar字段", "jar", null);
-            var classpath = processor["classpath"] as JArray ?? throw new ProcessorExecutionException("处理器缺少classpath字段", jar);
-            var args = processor["args"] as JArray ?? throw new ProcessorExecutionException("处理器缺少args字段", jar);
+            jar = processor["jar"]?.ToString() ?? throw new ProcessorExecutionException("处理器缺少 jar 字段", "jar", null);
+            var classpath = processor["classpath"] as JArray ?? throw new ProcessorExecutionException("处理器缺少 classpath 字段", jar);
+            var args = processor["args"] as JArray ?? throw new ProcessorExecutionException("处理器缺少 args 字段", jar);
 
-            _logger.LogDebug("处理器jar: {Jar}", jar);
+            _logger.LogDebug("处理器 jar: {Jar}", jar);
 
-            // 下载installer tools
+            // 下载 installer tools
             string installerToolsPath = await DownloadInstallerToolsAsync(jar, librariesDirectory, cancellationToken);
 
             // 获取主类
             mainClass = GetMainClassFromJar(installerToolsPath);
             _logger.LogDebug("处理器主类: {MainClass}", mainClass);
 
-            // 读取install_profile.json中的data字段
+            // 读取 install_profile.json 中的 data 字段
             var installProfile = JObject.Parse(await File.ReadAllTextAsync(installProfilePath, cancellationToken));
             var data = installProfile["data"] as JObject ?? new JObject();
 
@@ -198,10 +198,10 @@ public class ProcessorExecutor : IProcessorExecutor
                 args, data, installerPath, versionDirectory, librariesDirectory,
                 extractDirectory, modLoaderType, versionConfig);
 
-            // 构建classpath
+            // 构建 classpath
             var fullClassPath = BuildClassPath(installerToolsPath, classpath, librariesDirectory);
 
-            // 执行Java命令
+            // 执行 Java 命令
             await ExecuteJavaCommandAsync(
                 mainClass, fullClassPath, processedArgs, librariesDirectory, modLoaderType, jar, versionConfig, cancellationToken);
         }
@@ -261,7 +261,7 @@ public class ProcessorExecutor : IProcessorExecutor
             // 处理通用占位符
             paramValue = ProcessDataPlaceholders(paramValue, data, librariesDirectory);
 
-            // 处理Minecraft JAR路径
+            // 处理 Minecraft JAR 路径
             if (!string.IsNullOrEmpty(minecraftVersion))
             {
                 var versionDirName = Path.GetFileName(versionDirectory);
@@ -271,26 +271,26 @@ public class ProcessorExecutor : IProcessorExecutor
                     Path.Combine(librariesDirectory, "net", "minecraft", "client", minecraftVersion, $"client-{minecraftVersion}-mappings.txt"));
             }
 
-            // 处理PATCHED占位符
+            // 处理 PATCHED 占位符
             paramValue = ProcessPatchedPlaceholder(paramValue, data, librariesDirectory, modLoaderType, minecraftVersion, modLoaderVersion);
 
-            // 处理BINPATCH占位符
+            // 处理 BINPATCH 占位符
             paramValue = ProcessBinpatchPlaceholder(paramValue, extractDirectory, librariesDirectory, modLoaderType, modLoaderVersion);
 
-            // 处理Maven坐标格式的参数
+            // 处理 Maven 坐标格式的参数
             if (paramValue.StartsWith("[") && paramValue.EndsWith("]"))
             {
                 paramValue = ResolveMavenCoordinate(paramValue, librariesDirectory);
             }
 
-            // 处理--optional参数值
+            // 处理--optional 参数值
             if (isNextArgOptional)
             {
                 paramValue = File.Exists(paramValue) ? "1" : "0";
                 isNextArgOptional = false;
             }
 
-            // Windows路径格式修正
+            // Windows 路径格式修正
             if (paramValue.Contains("/") || paramValue.Contains("\\"))
             {
                 paramValue = paramValue.Replace("/", "\\");
@@ -347,7 +347,7 @@ public class ProcessorExecutor : IProcessorExecutor
                     "minecraft-client-patched", modLoaderVersion, $"minecraft-client-patched-{modLoaderVersion}.jar"));
         }
 
-        // Forge: 优先从data字段获取
+        // Forge: 优先从 data 字段获取
         var patched = data["PATCHED"] as JObject;
         string patchedClient = patched?["client"]?.ToString() ?? string.Empty;
 
@@ -383,7 +383,7 @@ public class ProcessorExecutor : IProcessorExecutor
         if (clientLzmaPath == null)
         {
             throw new ProcessorExecutionException(
-                $"client.lzma文件不存在，尝试了以下路径: {string.Join(", ", possiblePaths)}",
+                $"client.lzma 文件不存在，尝试了以下路径: {string.Join(", ", possiblePaths)}",
                 "BINPATCH");
         }
 
@@ -419,7 +419,7 @@ public class ProcessorExecutor : IProcessorExecutor
             extension = versionParts[1];
         }
 
-        // 处理classifier中的@符号
+        // 处理 classifier 中的@符号
         if (!string.IsNullOrEmpty(classifier) && classifier.Contains('@'))
         {
             var classifierParts = classifier.Split('@');
@@ -427,7 +427,7 @@ public class ProcessorExecutor : IProcessorExecutor
             extension = classifierParts[1];
         }
 
-        // 处理$extension占位符
+        // 处理$extension 占位符
         if (extension.Equals("$extension", StringComparison.OrdinalIgnoreCase))
         {
             extension = artifactId.Equals("mcp_config", StringComparison.OrdinalIgnoreCase) ? "zip" : "jar";
@@ -461,7 +461,7 @@ public class ProcessorExecutor : IProcessorExecutor
             }
             else
             {
-                _logger.LogWarning("classpath文件不存在: {LibraryPath}", libraryPath);
+                _logger.LogWarning("classpath 文件不存在: {LibraryPath}", libraryPath);
             }
         }
 
@@ -475,15 +475,15 @@ public class ProcessorExecutor : IProcessorExecutor
 
         if (File.Exists(libraryPath))
         {
-            _logger.LogDebug("installertools已存在: {LibraryPath}", libraryPath);
+            _logger.LogDebug("installertools 已存在: {LibraryPath}", libraryPath);
             return libraryPath;
         }
 
-        // 构建下载URL
+        // 构建下载 URL
         string[] parts = processedJarName.Split(':');
         if (parts.Length < 3)
         {
-            throw new ProcessorExecutionException($"无效的jar名称格式: {processedJarName}", jarName);
+            throw new ProcessorExecutionException($"无效的 jar 名称格式: {processedJarName}", jarName);
         }
 
         string groupId = parts[0];
@@ -504,7 +504,7 @@ public class ProcessorExecutor : IProcessorExecutor
         string officialUrl = LibraryDownloadUrlHelper.ResolveArtifactUrl(processedJarName, null, repositoryProfile)
             ?? throw new ProcessorExecutionException($"无法构建处理器库下载地址: {processedJarName}", jarName);
         
-        // 使用下载源获取URL
+        // 使用下载源获取 URL
         string downloadUrl = downloadSource.GetLibraryUrl(processedJarName, officialUrl);
         
         _logger.LogInformation("使用下载源 {DownloadSource} 下载处理器库: {Url}", downloadSource.Name, downloadUrl);
@@ -523,7 +523,7 @@ public class ProcessorExecutor : IProcessorExecutor
         
         if (!result.Success)
         {
-            throw new ProcessorExecutionException($"下载installertools失败: {result.ErrorMessage}", jarName, null, null, result.Exception);
+            throw new ProcessorExecutionException($"下载 installertools 失败: {result.ErrorMessage}", jarName, null, null, result.Exception);
         }
 
         return libraryPath;
@@ -535,7 +535,7 @@ public class ProcessorExecutor : IProcessorExecutor
         var manifestEntry = archive.GetEntry("META-INF/MANIFEST.MF");
         if (manifestEntry == null)
         {
-            throw new ProcessorExecutionException($"jar文件中未找到META-INF/MANIFEST.MF: {jarPath}", jarPath);
+            throw new ProcessorExecutionException($"jar 文件中未找到 META-INF/MANIFEST.MF: {jarPath}", jarPath);
         }
 
         using var stream = manifestEntry.Open();
@@ -550,7 +550,7 @@ public class ProcessorExecutor : IProcessorExecutor
             }
         }
 
-        throw new ProcessorExecutionException($"jar文件的MANIFEST.MF中未找到Main-Class字段: {jarPath}", jarPath);
+        throw new ProcessorExecutionException($"jar 文件的 MANIFEST.MF 中未找到 Main-Class 字段: {jarPath}", jarPath);
     }
 
     private async Task ExecuteJavaCommandAsync(
@@ -569,7 +569,7 @@ public class ProcessorExecutor : IProcessorExecutor
         var javaArgs = new List<string> { "-cp", combinedClassPath, mainClass };
         javaArgs.AddRange(args);
 
-        // 查找Java可执行文件
+        // 查找 Java 可执行文件
         string javaPath = await FindJavaPathAsync(versionConfig);
 
         var processStartInfo = new ProcessStartInfo
@@ -616,7 +616,7 @@ public class ProcessorExecutor : IProcessorExecutor
         {
             string fullCommand = $"\"{javaPath}\" {processStartInfo.Arguments}";
             throw new ProcessorExecutionException(
-                $"Java命令执行失败，退出代码: {process.ExitCode}\n错误信息: {errorBuilder}",
+                $"Java 命令执行失败，退出代码: {process.ExitCode}\n 错误信息: {errorBuilder}",
                 processorJar, null, process.ExitCode);
         }
 

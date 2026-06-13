@@ -66,7 +66,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
     [ObservableProperty]
     private int _modOffset = 0;
     
-    // 为每个平台单独维护offset
+    // 为每个平台单独维护 offset
     private int _modrinthModOffset = 0;
     private int _curseForgeModOffset = 0;
     // 使用复合 key：(classId, categoryId, loaderType, gameVersion)，支持多选分页
@@ -196,7 +196,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
             var loaderKey = modSearchQuery.LoaderCacheKey;
             var versionKey = modSearchQuery.VersionCacheKey;
             var categoryCacheKey = modSearchQuery.CategoryCacheKey;
-            System.Diagnostics.Debug.WriteLine($"[Mod搜索] 缓存 key: loader={loaderKey}, version={versionKey}, category={categoryCacheKey}");
+            System.Diagnostics.Debug.WriteLine($"[Mod 搜索] 缓存 key: loader={loaderKey}, version={versionKey}, category={categoryCacheKey}");
 
             // 如果两个平台都未启用，直接返回
             if (!_host.IsModrinthEnabled() && !_host.IsCurseForgeEnabled())
@@ -210,7 +210,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
             int modrinthTotalHits = 0;
             int curseForgeTotalHits = 0;
 
-            // 从Modrinth搜索或缓存加载
+            // 从 Modrinth 搜索或缓存加载
             if (_host.IsModrinthEnabled())
             {
                 var cachedData = await _modrinthCacheService.GetCachedSearchResultAsync(
@@ -221,7 +221,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
                     modrinthMods.AddRange(cachedData.Items);
                     _modrinthModOffset = cachedData.Items.Count;
                     modrinthTotalHits = cachedData.TotalHits;
-                    System.Diagnostics.Debug.WriteLine($"[Modrinth缓存] 从缓存加载 {cachedData.Items.Count} 个Mod");
+                    System.Diagnostics.Debug.WriteLine($"[Modrinth 缓存] 从缓存加载 {cachedData.Items.Count} 个 Mod");
                 }
                 else
                 {
@@ -238,7 +238,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
                     modrinthMods.AddRange(modrinthResult.Hits);
                     _modrinthModOffset = modrinthResult.Hits.Count;
                     modrinthTotalHits = modrinthResult.TotalHits;
-                    System.Diagnostics.Debug.WriteLine($"[Modrinth] 搜索到 {modrinthResult.Hits.Count} 个Mod，总计 {modrinthTotalHits} 个");
+                    System.Diagnostics.Debug.WriteLine($"[Modrinth] 搜索到 {modrinthResult.Hits.Count} 个 Mod，总计 {modrinthTotalHits} 个");
                     
                     // 保存到缓存
                     await _modrinthCacheService.SaveSearchResultAsync(
@@ -247,7 +247,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
                 }
             }
 
-            // 从CurseForge搜索或缓存加载
+            // 从 CurseForge 搜索或缓存加载
             if (_host.IsCurseForgeEnabled())
             {
                 var cachedData = await _curseForgeCacheService.GetCachedSearchResultAsync(
@@ -258,7 +258,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
                     curseForgeMods.AddRange(cachedData.Items);
                     _curseForgeModOffset = cachedData.Items.Count;
                     curseForgeTotalHits = cachedData.TotalHits;
-                    System.Diagnostics.Debug.WriteLine($"[CurseForge缓存] 从缓存加载 {cachedData.Items.Count} 个Mod");
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge 缓存] 从缓存加载 {cachedData.Items.Count} 个 Mod");
                 }
                 else
                 {
@@ -283,7 +283,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
                         curseForgeMods.AddRange(searchResults);
                         _curseForgeModOffset = searchResults.Count;
                         curseForgeTotalHits = searchResults.Count;
-                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索到 {searchResults.Count} 个Mod（多选加载器/版本）");
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 搜索到 {searchResults.Count} 个 Mod（多选加载器/版本）");
                     }
                     catch (Exception ex)
                     {
@@ -306,7 +306,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
             // 翻译描述（如果当前语言是中文）
             await _host.TranslateProjectDescriptionsAsync(allMods);
 
-            // 更新Mod列表
+            // 更新 Mod 列表
             Mods.Clear();
             foreach (var mod in allMods)
             {
@@ -358,7 +358,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
             int modrinthTotalHits = 0;
             int curseForgeTotalHits = 0;
 
-            // 从Modrinth加载更多
+            // 从 Modrinth 加载更多
             if (_host.IsModrinthEnabled())
             {
                 var facets = ToModrinthFacetLists(modSearchQuery.ModrinthFacets);
@@ -374,7 +374,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
                 modrinthMods.AddRange(result.Hits);
                 _modrinthModOffset += result.Hits.Count;
                 modrinthTotalHits = result.TotalHits;
-                System.Diagnostics.Debug.WriteLine($"[Modrinth] 加载更多 {result.Hits.Count} 个Mod，当前offset: {_modrinthModOffset}，总数: {modrinthTotalHits}");
+                System.Diagnostics.Debug.WriteLine($"[Modrinth] 加载更多 {result.Hits.Count} 个 Mod，当前 offset: {_modrinthModOffset}，总数: {modrinthTotalHits}");
 
                 // 追加到缓存
                 if (modrinthMods.Count > 0)
@@ -385,7 +385,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
                 }
             }
 
-            // 从CurseForge加载更多
+            // 从 CurseForge 加载更多
             if (_host.IsCurseForgeEnabled())
             {
                 try
@@ -530,7 +530,7 @@ public sealed partial class ModResourceTabViewModel : ObservableObject
 
                         _curseForgeModOffset += deduplicatedMods.Count;
                         curseForgeTotalHits = _curseForgeModOffset;
-                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 加载更多 {curseForgeMods.Count} 个Mod（多选加载器/版本），当前offset: {_curseForgeModOffset}");
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 加载更多 {curseForgeMods.Count} 个 Mod（多选加载器/版本），当前 offset: {_curseForgeModOffset}");
                     }
 
                     // 追加到缓存

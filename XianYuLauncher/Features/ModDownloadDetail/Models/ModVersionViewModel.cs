@@ -5,7 +5,7 @@ using XianYuLauncher.Core.Models;
 
 namespace XianYuLauncher.Features.ModDownloadDetail.Models
 {
-    // Mod版本视图模型
+    // Mod 版本视图模型
     public partial class ModVersionViewModel : ObservableObject
     {
         [ObservableProperty]
@@ -29,28 +29,28 @@ namespace XianYuLauncher.Features.ModDownloadDetail.Models
         [ObservableProperty]
         private string _versionType = string.Empty;
 
-        // 添加游戏版本属性，用于记录该Mod版本支持的游戏版本
+        // 添加游戏版本属性，用于记录该 Mod 版本支持的游戏版本
         [ObservableProperty]
         private string _gameVersion = string.Empty;
 
-        // 图标URL属性
+        // 图标 URL 属性
         [ObservableProperty]
         private string _iconUrl = string.Empty;
 
-        // 资源类型标签（用于非Mod资源，如 IRIS、OPTIFINE、MINECRAFT、DATAPACK）
+        // 资源类型标签（用于非 Mod 资源，如 IRIS、OPTIFINE、MINECRAFT、DATAPACK）
         [ObservableProperty]
         private string? _resourceTypeTag;
 
         [ObservableProperty]
         private DateTimeOffset _publishedAt = DateTimeOffset.MinValue;
 
-        // Modrinth原始版本信息，用于获取依赖项
+        // Modrinth 原始版本信息，用于获取依赖项
         public ModrinthVersion? OriginalVersion { get; set; }
 
-        // CurseForge原始文件信息，用于获取依赖项
+        // CurseForge 原始文件信息，用于获取依赖项
         public CurseForgeFile? OriginalCurseForgeFile { get; set; }
 
-        // 是否来自CurseForge
+        // 是否来自 CurseForge
         public bool IsCurseForge => OriginalCurseForgeFile is not null;
     }
 }

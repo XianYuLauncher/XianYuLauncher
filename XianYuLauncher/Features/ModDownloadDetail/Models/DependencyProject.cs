@@ -2,7 +2,7 @@ using System;
 
 namespace XianYuLauncher.Features.ModDownloadDetail.Models
 {
-    // 依赖项目类，用于存储前置Mod的详细信息
+    // 依赖项目类，用于存储前置 Mod 的详细信息
     public class DependencyProject
     {
         public string ProjectId { get; set; } = string.Empty;

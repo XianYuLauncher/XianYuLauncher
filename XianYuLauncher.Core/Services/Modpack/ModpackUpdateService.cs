@@ -64,7 +64,7 @@ public class ModpackUpdateService : IModpackUpdateService
             || string.IsNullOrWhiteSpace(currentVersionId))
         {
             return ModpackUpdateCheckResult.Failure(
-                "平台、项目ID和当前版本号不能为空",
+                "平台、项目 ID 和当前版本号不能为空",
                 platform,
                 projectId,
                 currentVersionId);

@@ -76,7 +76,7 @@ public partial class App : Application
         // 执行缓存迁移（从旧的虚拟化路径迁移到新的安全路径）
         XianYuLauncher.Core.Services.CacheMigrationService.MigrateIfNeeded();
 
-        // 配置Serilog
+        // 配置 Serilog
         // 使用统一的安全日志路径
         string logDirectory = AppEnvironment.SafeLogPath;
         System.Diagnostics.Debug.WriteLine($"[App] Check IsMSIX: {AppEnvironment.IsMSIX}");
@@ -97,7 +97,7 @@ public partial class App : Application
         Host = Microsoft.Extensions.Hosting.Host.
         CreateDefaultBuilder().
         UseContentRoot(AppContext.BaseDirectory).
-        UseSerilog() // 使用Serilog作为日志提供程序
+        UseSerilog() // 使用 Serilog 作为日志提供程序
         .ConfigureServices((context, services) =>
         {
             services.AddHttpClient();
@@ -181,18 +181,18 @@ public partial class App : Application
             }
         });
         
-        // 🔒 启动时自动检测并迁移明文token（异步，不阻塞启动）
+        // 🔒 启动时自动检测并迁移明文 token（异步，不阻塞启动）
         _ = Task.Run(async () =>
         {
             try
             {
                 var accountManager = App.GetService<IAccountManager>();
                 await accountManager.LoadAccountsAsync(); // 加载时会自动检测并迁移
-                Log.Information("Token安全检查完成");
+                Log.Information("Token 安全检查完成");
             }
             catch (Exception ex)
             {
-                Log.Warning($"Token安全检查失败: {ex.Message}");
+                Log.Warning($"Token 安全检查失败: {ex.Message}");
             }
         });
         
@@ -201,7 +201,7 @@ public partial class App : Application
         {
             try
             {
-                // 初始化Mod名称翻译服务
+                // 初始化 Mod 名称翻译服务
                 var translationService = App.GetService<ITranslationService>();
                 // 使用 AppData 本地缓存路径
                 var localDataPath = AppEnvironment.ResolveAppDataPath(AppDataFileConsts.ModDataFileName);
@@ -218,7 +218,7 @@ public partial class App : Application
                     using var client = new System.Net.Http.HttpClient();
                     var dataUrl = "https://gist.githubusercontent.com/N123999/a6f6a20901a25cb3ba3b1248c8b0ff42/raw/mod_data.txt"; 
                     
-                    // 下载数据 (对于15k行文本，直接下载开销很小，比单独维护Hash API更简单)
+                    // 下载数据 (对于 15k 行文本，直接下载开销很小，比单独维护 Hash API 更简单)
                     var remoteData = await client.GetByteArrayAsync(dataUrl);
                     
                     bool shouldUpdate = false;
@@ -228,13 +228,13 @@ public partial class App : Application
                     }
                     else
                     {
-                        // 计算Hash比对
+                        // 计算 Hash 比对
                         using var sha256 = System.Security.Cryptography.SHA256.Create();
                         var localBytes = await File.ReadAllBytesAsync(localDataPath);
                         var localHash = sha256.ComputeHash(localBytes);
                         var remoteHash = sha256.ComputeHash(remoteData);
                         
-                        // SequenceEqual用于比较两个byte数组内容是否一致
+                        // SequenceEqual 用于比较两个 byte 数组内容是否一致
                         if (!System.Linq.Enumerable.SequenceEqual(localHash, remoteHash))
                         {
                             shouldUpdate = true;
@@ -245,18 +245,18 @@ public partial class App : Application
                     {
                         await File.WriteAllBytesAsync(localDataPath, remoteData);
                         await translationService.InitializeNameTranslationAsync(localDataPath);
-                        Log.Information("Mod名称数据已更新并重载");
+                        Log.Information("Mod 名称数据已更新并重载");
                     }
                 }
                 catch (Exception updateEx)
                 {
-                    Log.Warning($"Mod名称数据更新检查失败: {updateEx.Message}");
+                    Log.Warning($"Mod 名称数据更新检查失败: {updateEx.Message}");
                     // 网络问题不影响旧数据使用
                 }
             }
             catch (Exception ex)
             {
-                Log.Warning($"Mod名称翻译服务初始化失败: {ex.Message}");
+                Log.Warning($"Mod 名称翻译服务初始化失败: {ex.Message}");
             }
         });
         

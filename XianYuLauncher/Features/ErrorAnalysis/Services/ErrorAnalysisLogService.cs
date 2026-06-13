@@ -284,7 +284,7 @@ public class ErrorAnalysisLogService : IErrorAnalysisLogService
         if (ContainsKeywordWithContext(gameError, "java.lang.Exception", "[ERROR]", "[FATAL]") ||
             ContainsKeywordWithContext(gameOutput, "java.lang.Exception", "[ERROR]", "[FATAL]"))
         {
-            return "Java异常导致崩溃";
+            return "Java 异常导致崩溃";
         }
 
         if (ContainsKeyword(gameError, "OutOfMemoryError") || ContainsKeyword(gameOutput, "OutOfMemoryError"))

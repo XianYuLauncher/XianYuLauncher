@@ -287,7 +287,7 @@ public abstract partial class ResourceManagementViewModelBase<T> : ObservableObj
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"{logPrefix} Fingerprint计算失败: {item.Name}, {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"{logPrefix} Fingerprint 计算失败: {item.Name}, {ex.Message}");
             }
         }
 

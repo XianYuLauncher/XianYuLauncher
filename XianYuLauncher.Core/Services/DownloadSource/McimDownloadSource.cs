@@ -4,11 +4,11 @@ using XianYuLauncher.Core.Helpers;
 
 /// <summary>
 /// MCIM (mcimirror.top) 下载源实现
-/// 主要用于Modrinth资源的镜像加速
-/// URL映射规则：
+/// 主要用于 Modrinth 资源的镜像加速
+/// URL 映射规则：
 /// - api.modrinth.com -> mod.mcimirror.top/modrinth
 /// - cdn.modrinth.com -> mod.mcimirror.top
-/// 注意：访问MCIM镜像时必须设置User-Agent为 XianYuLauncher/{version}，符合中国MC启动器社区规范
+/// 注意：访问 MCIM 镜像时必须设置 User-Agent 为 XianYuLauncher/{version}，符合中国 MC 启动器社区规范
 /// </summary>
 public class McimDownloadSource : IDownloadSource
 {
@@ -69,7 +69,7 @@ public class McimDownloadSource : IDownloadSource
     #endregion
 
     /// <summary>
-    /// 获取Minecraft版本清单URL（MCIM不支持MC资源，使用官方源）
+    /// 获取 Minecraft 版本清单 URL（MCIM 不支持 MC 资源，使用官方源）
     /// </summary>
     public string GetVersionManifestUrl()
     {
@@ -79,17 +79,17 @@ public class McimDownloadSource : IDownloadSource
     #region Modrinth API
     
     /// <summary>
-    /// 获取Modrinth API基础URL
+    /// 获取 Modrinth API 基础 URL
     /// </summary>
     public string GetModrinthApiBaseUrl() => "https://mod.mcimirror.top/modrinth";
     
     /// <summary>
-    /// 获取Modrinth CDN基础URL
+    /// 获取 Modrinth CDN 基础 URL
     /// </summary>
     public string GetModrinthCdnBaseUrl() => "https://mod.mcimirror.top";
     
     /// <summary>
-    /// 转换Modrinth API URL
+    /// 转换 Modrinth API URL
     /// </summary>
     public string TransformModrinthApiUrl(string originalUrl)
     {
@@ -100,7 +100,7 @@ public class McimDownloadSource : IDownloadSource
     }
     
     /// <summary>
-    /// 转换Modrinth CDN URL
+    /// 转换 Modrinth CDN URL
     /// </summary>
     public string TransformModrinthCdnUrl(string originalUrl)
     {
@@ -111,13 +111,13 @@ public class McimDownloadSource : IDownloadSource
     }
     
     /// <summary>
-    /// 获取Modrinth请求的User-Agent
-    /// MCIM镜像要求设置User-Agent，符合中国MC启动器社区规范
+    /// 获取 Modrinth 请求的 User-Agent
+    /// MCIM 镜像要求设置 User-Agent，符合中国 MC 启动器社区规范
     /// </summary>
     public string? GetModrinthUserAgent() => VersionHelper.GetUserAgent();
     
     /// <summary>
-    /// 是否需要为Modrinth请求设置特殊User-Agent（MCIM需要）
+    /// 是否需要为 Modrinth 请求设置特殊 User-Agent（MCIM 需要）
     /// </summary>
     public bool RequiresModrinthUserAgent => true;
     
@@ -126,20 +126,20 @@ public class McimDownloadSource : IDownloadSource
     #region CurseForge API
     
     /// <summary>
-    /// 获取CurseForge API基础URL
-    /// URL映射：api.curseforge.com -> mod.mcimirror.top/curseforge
+    /// 获取 CurseForge API 基础 URL
+    /// URL 映射：api.curseforge.com -> mod.mcimirror.top/curseforge
     /// </summary>
     public string GetCurseForgeApiBaseUrl() => "https://mod.mcimirror.top/curseforge";
     
     /// <summary>
-    /// 获取CurseForge CDN基础URL
-    /// URL映射：edge.forgecdn.net -> mod.mcimirror.top
+    /// 获取 CurseForge CDN 基础 URL
+    /// URL 映射：edge.forgecdn.net -> mod.mcimirror.top
     /// 注意：mediafilez.forgecdn.net 不应被映射
     /// </summary>
     public string GetCurseForgeCdnBaseUrl() => "https://mod.mcimirror.top";
     
     /// <summary>
-    /// 转换CurseForge API URL
+    /// 转换 CurseForge API URL
     /// </summary>
     public string TransformCurseForgeApiUrl(string originalUrl)
     {
@@ -150,7 +150,7 @@ public class McimDownloadSource : IDownloadSource
     }
     
     /// <summary>
-    /// 转换CurseForge CDN URL
+    /// 转换 CurseForge CDN URL
     /// 注意：只转换 edge.forgecdn.net，不转换 mediafilez.forgecdn.net
     /// </summary>
     public string TransformCurseForgeCdnUrl(string originalUrl)
@@ -166,24 +166,24 @@ public class McimDownloadSource : IDownloadSource
     }
     
     /// <summary>
-    /// 获取CurseForge请求的User-Agent
-    /// MCIM镜像要求设置User-Agent，符合中国MC启动器社区规范
+    /// 获取 CurseForge 请求的 User-Agent
+    /// MCIM 镜像要求设置 User-Agent，符合中国 MC 启动器社区规范
     /// </summary>
     public string? GetCurseForgeUserAgent() => VersionHelper.GetUserAgent();
     
     /// <summary>
-    /// 是否需要为CurseForge请求设置特殊User-Agent（MCIM需要）
+    /// 是否需要为 CurseForge 请求设置特殊 User-Agent（MCIM 需要）
     /// </summary>
     public bool RequiresCurseForgeUserAgent => true;
     
     /// <summary>
-    /// 是否应在CurseForge请求中包含API Key（MCIM镜像严禁包含API Key！）
+    /// 是否应在 CurseForge 请求中包含 API Key（MCIM 镜像严禁包含 API Key！）
     /// </summary>
     public bool ShouldIncludeCurseForgeApiKey => false;
     
     #endregion
     
-    #region Minecraft资源（MCIM不支持，返回官方URL）
+    #region Minecraft 资源（MCIM 不支持，返回官方 URL）
     
     public string GetVersionInfoUrl(string versionId, string originalUrl) => originalUrl;
     

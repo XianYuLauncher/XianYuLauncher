@@ -77,7 +77,7 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
         public string Path { get; set; } = string.Empty;
 
         /// <summary>
-        /// 是否为有效版本（包含json文件）
+        /// 是否为有效版本（包含 json 文件）
         /// </summary>
         public bool IsValid { get; set; } = true;
     }
@@ -206,7 +206,7 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
         HeaderMetadata.Title = "VersionListPage_HeaderTitle".GetLocalized();
         HeaderMetadata.Subtitle = "VersionListPage_HeaderSubtitle".GetLocalized();
         
-        // 订阅Minecraft路径变化事件
+        // 订阅 Minecraft 路径变化事件
         _fileService.MinecraftPathChanged += OnMinecraftPathChanged;
         
         // 初始化导出数据选项
@@ -249,7 +249,7 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
     }
     
     /// <summary>
-    /// 当Minecraft路径变化时触发
+    /// 当 Minecraft 路径变化时触发
     /// </summary>
     private async void OnMinecraftPathChanged(object? sender, string newPath)
     {
@@ -490,7 +490,7 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                     }
                 }
 
-                // 使用ModDownloadDetailViewModel的InstallModpackAsync逻辑
+                // 使用 ModDownloadDetailViewModel 的 InstallModpackAsync 逻辑
                 var modDownloadViewModel = App.GetService<ModDownloadDetailViewModel>();
                 
                 // 设置整合包名称
@@ -498,11 +498,11 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                 modDownloadViewModel.ModIconUrl = string.Empty;
                 modDownloadViewModel.ModId = string.Empty;
                 
-                // 创建ModVersionViewModel实例
+                // 创建 ModVersionViewModel 实例
                 var modVersion = new ModVersionViewModel
                 {
                     FileName = modpackFileName,
-                    DownloadUrl = modpackFilePath // 本地文件路径作为DownloadUrl
+                    DownloadUrl = modpackFilePath // 本地文件路径作为 DownloadUrl
                 };
                 
                 // 调用安装方法，直接使用现有的安装逻辑和弹窗
@@ -921,10 +921,10 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
     }
     
     /// <summary>
-    /// 计算文件的SHA1哈希值
+    /// 计算文件的 SHA1 哈希值
     /// </summary>
     /// <param name="filePath">文件路径</param>
-    /// <returns>SHA1哈希值</returns>
+    /// <returns>SHA1 哈希值</returns>
     private async Task<string> CalculateFileSHA1Async(string filePath)
     {
         if (!File.Exists(filePath))
@@ -939,11 +939,11 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
     }
     
     /// <summary>
-    /// 搜索Modrinth获取文件信息（支持mod和其他文件）
+    /// 搜索 Modrinth 获取文件信息（支持 mod 和其他文件）
     /// </summary>
     /// <param name="version">版本信息</param>
     /// <param name="selectedExportOptions">用户选择的导出选项</param>
-    /// <returns>搜索结果字典，key为文件相对路径，value为Modrinth版本信息</returns>
+    /// <returns>搜索结果字典，key 为文件相对路径，value 为 Modrinth 版本信息</returns>
     public async Task<Dictionary<string, Core.Models.ModrinthVersion>> SearchModrinthForFilesAsync(VersionInfoItem version, List<string> selectedExportOptions)
     {
         Dictionary<string, Core.Models.ModrinthVersion> fileResults = new Dictionary<string, Core.Models.ModrinthVersion>();
@@ -981,7 +981,7 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                 return fileResults;
             }
             
-            // 计算所有文件的SHA1哈希，并建立文件路径到哈希的映射
+            // 计算所有文件的 SHA1 哈希，并建立文件路径到哈希的映射
             Dictionary<string, string> filePathToHashMap = new Dictionary<string, string>();
             List<string> allHashes = new List<string>();
             
@@ -994,9 +994,9 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                 {
                     try
                     {
-                        // 计算文件SHA1哈希
+                        // 计算文件 SHA1 哈希
                         string sha1Hash = await CalculateFileSHA1Async(fullFilePath);
-                        System.Diagnostics.Debug.WriteLine($"文件: {filePath}, SHA1哈希: {sha1Hash}");
+                        System.Diagnostics.Debug.WriteLine($"文件: {filePath}, SHA1 哈希: {sha1Hash}");
                         
                         // 添加到映射和哈希列表
                         filePathToHashMap.Add(filePath, sha1Hash);
@@ -1019,10 +1019,10 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                 return fileResults;
             }
             
-            // 使用批量API获取所有文件的信息
+            // 使用批量 API 获取所有文件的信息
             var hashToVersionMap = await _modrinthService.GetVersionFilesByHashesAsync(allHashes);
             
-            // 处理批量API返回的结果
+            // 处理批量 API 返回的结果
             foreach (var kvp in filePathToHashMap)
             {
                 string filePath = kvp.Key;
@@ -1030,13 +1030,13 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                 
                 if (hashToVersionMap.TryGetValue(sha1Hash, out var versionInfo))
                 {
-                    System.Diagnostics.Debug.WriteLine($"文件: {filePath}, 成功获取Modrinth版本信息: {versionInfo.Name} (版本号: {versionInfo.VersionNumber})");
+                    System.Diagnostics.Debug.WriteLine($"文件: {filePath}, 成功获取 Modrinth 版本信息: {versionInfo.Name} (版本号: {versionInfo.VersionNumber})");
                     
-                    // 如果有文件信息，输出文件URL
+                    // 如果有文件信息，输出文件 URL
                     if (versionInfo.Files != null && versionInfo.Files.Count > 0)
                     {
                         var primaryFile = versionInfo.Files.FirstOrDefault(f => f.Primary) ?? versionInfo.Files[0];
-                        System.Diagnostics.Debug.WriteLine($"文件: {filePath}, Modrinth文件URL: {primaryFile.Url}");
+                        System.Diagnostics.Debug.WriteLine($"文件: {filePath}, Modrinth 文件 URL: {primaryFile.Url}");
                     }
                     
                     // 添加到结果字典
@@ -1044,13 +1044,13 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                 }
                 else
                 {
-                    System.Diagnostics.Debug.WriteLine($"文件: {filePath}, 无法通过哈希 {sha1Hash} 获取Modrinth信息");
+                    System.Diagnostics.Debug.WriteLine($"文件: {filePath}, 无法通过哈希 {sha1Hash} 获取 Modrinth 信息");
                 }
             }
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"搜索Modrinth失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"搜索 Modrinth 失败: {ex.Message}");
         }
         
         return fileResults;
@@ -1174,7 +1174,7 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                 {
                     IsSelected = true;
                 }
-                // 如果是部分选中，不修改IsSelected的值，保持当前状态
+                // 如果是部分选中，不修改 IsSelected 的值，保持当前状态
             }
             
             // 触发选中状态变化事件，通知父项更新状态
@@ -1219,7 +1219,7 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
         
         if (Directory.Exists(version.Path))
         {
-            // 获取版本名对应的jar和json文件，这些文件需要被排除
+            // 获取版本名对应的 jar 和 json 文件，这些文件需要被排除
             string versionName = Path.GetFileName(version.Path);
             
             // 允许的文件和目录列表（版本根目录仅显示这些）
@@ -1336,7 +1336,7 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
     /// <summary>
     /// 检测当前地区是否为中国大陆
     /// </summary>
-    /// <returns>如果是中国大陆地区返回true，否则返回false</returns>
+    /// <returns>如果是中国大陆地区返回 true，否则返回 false</returns>
     private bool IsChinaMainland()
     {
         try
@@ -1347,7 +1347,7 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
         }
         catch (Exception ex)
         {
-            // 添加Debug输出，显示异常信息
+            // 添加 Debug 输出，显示异常信息
             System.Diagnostics.Debug.WriteLine($"[地区检测-VersionList] 检测失败，异常: {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"[地区检测-VersionList] 默认不允许导出");
             // 如果检测失败，默认不允许导出
@@ -1358,7 +1358,7 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
     /// <summary>
     /// 获取当前活跃角色
     /// </summary>
-    /// <returns>当前活跃角色，如果没有则返回null</returns>
+    /// <returns>当前活跃角色，如果没有则返回 null</returns>
     private MinecraftAccount? GetActiveAccount()
     {
         try
@@ -1618,7 +1618,7 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
             // 重命名版本目录
             Directory.Move(oldVersionPath, newVersionPath);
             
-            // 重命名.jar文件
+            // 重命名.jar 文件
             string oldJarPath = Path.Combine(newVersionPath, $"{SelectedVersion.Name}.jar");
             string newJarPath = Path.Combine(newVersionPath, $"{NewVersionName}.jar");
             if (File.Exists(oldJarPath))
@@ -1626,7 +1626,7 @@ public partial class VersionListViewModel : ObservableRecipient, IPageHeaderAwar
                 File.Move(oldJarPath, newJarPath);
             }
             
-            // 重命名.json文件
+            // 重命名.json 文件
             string oldJsonPath = Path.Combine(newVersionPath, $"{SelectedVersion.Name}.json");
             string newJsonPath = Path.Combine(newVersionPath, $"{NewVersionName}.json");
             if (File.Exists(oldJsonPath))

@@ -27,7 +27,7 @@ internal static class VersionManagementModUpdateOps
 
         try
         {
-            System.Diagnostics.Debug.WriteLine($"[Modrinth] 请求更新信息，Mod数量: {modHashes.Count}");
+            System.Diagnostics.Debug.WriteLine($"[Modrinth] 请求更新信息，Mod 数量: {modHashes.Count}");
 
             var updateInfo = await modrinthService.UpdateVersionFilesAsync(
                 modHashes,
@@ -36,7 +36,7 @@ internal static class VersionManagementModUpdateOps
 
             if (updateInfo != null && updateInfo.Count > 0)
             {
-                System.Diagnostics.Debug.WriteLine($"[Modrinth] 找到 {updateInfo.Count} 个Mod的更新信息");
+                System.Diagnostics.Debug.WriteLine($"[Modrinth] 找到 {updateInfo.Count} 个 Mod 的更新信息");
 
                 foreach (var kvp in updateInfo)
                 {
@@ -101,7 +101,7 @@ internal static class VersionManagementModUpdateOps
                     if (File.Exists(modFilePath))
                     {
                         File.Delete(modFilePath);
-                        System.Diagnostics.Debug.WriteLine($"[Modrinth] 已删除旧Mod文件: {modFilePath}");
+                        System.Diagnostics.Debug.WriteLine($"[Modrinth] 已删除旧 Mod 文件: {modFilePath}");
                     }
 
                     if (File.Exists(finalFilePath))
@@ -111,13 +111,13 @@ internal static class VersionManagementModUpdateOps
                     }
 
                     File.Move(tempFilePath, finalFilePath);
-                    System.Diagnostics.Debug.WriteLine($"[Modrinth] 已更新Mod: {finalFilePath}");
+                    System.Diagnostics.Debug.WriteLine($"[Modrinth] 已更新 Mod: {finalFilePath}");
                     result.UpdatedCount++;
                 }
             }
             else
             {
-                System.Diagnostics.Debug.WriteLine("[Modrinth] 没有找到任何Mod的更新信息");
+                System.Diagnostics.Debug.WriteLine("[Modrinth] 没有找到任何 Mod 的更新信息");
             }
         }
         catch (Exception ex)
@@ -150,21 +150,21 @@ internal static class VersionManagementModUpdateOps
                     var fingerprint = CurseForgeFingerprintHelper.ComputeFingerprint(mod.FilePath);
                     fingerprints.Add(fingerprint);
                     fingerprintMap[fingerprint] = mod.FilePath;
-                    System.Diagnostics.Debug.WriteLine($"[CurseForge] Mod {mod.Name} 的Fingerprint: {fingerprint}");
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] Mod {mod.Name} 的 Fingerprint: {fingerprint}");
                 }
                 catch (Exception ex)
                 {
-                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 计算Fingerprint失败: {mod.Name}, 错误: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 计算 Fingerprint 失败: {mod.Name}, 错误: {ex.Message}");
                 }
             }
 
             if (fingerprints.Count == 0)
             {
-                System.Diagnostics.Debug.WriteLine("[CurseForge] 没有可查询的Fingerprint");
+                System.Diagnostics.Debug.WriteLine("[CurseForge] 没有可查询的 Fingerprint");
                 return result;
             }
 
-            System.Diagnostics.Debug.WriteLine($"[CurseForge] 查询 {fingerprints.Count} 个Mod的Fingerprint");
+            System.Diagnostics.Debug.WriteLine($"[CurseForge] 查询 {fingerprints.Count} 个 Mod 的 Fingerprint");
             var matchResult = await curseForgeService.GetFingerprintMatchesAsync(fingerprints);
 
             if (matchResult.ExactMatches != null && matchResult.ExactMatches.Count > 0)
@@ -193,7 +193,7 @@ internal static class VersionManagementModUpdateOps
                     }
 
                     result.ProcessedMods.Add(modFilePath);
-                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 处理Mod: {Path.GetFileName(modFilePath)}");
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 处理 Mod: {Path.GetFileName(modFilePath)}");
 
                     CurseForgeFile? latestFile = null;
                     if (match.LatestFiles != null && match.LatestFiles.Count > 0)
@@ -284,7 +284,7 @@ internal static class VersionManagementModUpdateOps
                     if (File.Exists(modFilePath))
                     {
                         File.Delete(modFilePath);
-                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 已删除旧Mod文件: {modFilePath}");
+                        System.Diagnostics.Debug.WriteLine($"[CurseForge] 已删除旧 Mod 文件: {modFilePath}");
                     }
 
                     if (File.Exists(finalFilePath))
@@ -294,7 +294,7 @@ internal static class VersionManagementModUpdateOps
                     }
 
                     File.Move(tempFilePath, finalFilePath);
-                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 已更新Mod: {finalFilePath}");
+                    System.Diagnostics.Debug.WriteLine($"[CurseForge] 已更新 Mod: {finalFilePath}");
                     result.UpdatedCount++;
                 }
             }

@@ -11,7 +11,7 @@ public class StringNullOrEmptyToBoolConverter : IValueConverter
         bool result;
         if (value is string strValue)
         {
-            // 如果字符串不为空或null，返回true（启用按钮）
+            // 如果字符串不为空或 null，返回 true（启用按钮）
             result = !string.IsNullOrEmpty(strValue);
         }
         else
@@ -22,7 +22,7 @@ public class StringNullOrEmptyToBoolConverter : IValueConverter
         // 检查目标类型以确定返回值类型
         if (targetType == typeof(Visibility))
         {
-            // 如果是inverse模式，反转可见性逻辑
+            // 如果是 inverse 模式，反转可见性逻辑
             bool isInverse = parameter is string param && param.Equals("inverse", StringComparison.OrdinalIgnoreCase);
             bool shouldBeVisible = isInverse ? !result : result;
             return shouldBeVisible ? Visibility.Visible : Visibility.Collapsed;

@@ -75,7 +75,7 @@ public class LogSanitizerService : ILogSanitizerService
             var sb = new StringBuilder(sanitizedContent);
             foreach (var word in sensitiveWords)
             {
-                // 确保关键词只含有敏感信息，不包含常见短词以避免误伤（虽然后台token一般很长）
+                // 确保关键词只含有敏感信息，不包含常见短词以避免误伤（虽然后台 token 一般很长）
                 if (word.Length < 3) continue;
 
                 sb.Replace(word, "[REDACTED]");

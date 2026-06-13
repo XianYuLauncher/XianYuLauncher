@@ -18,7 +18,7 @@ using XianYuLauncher.Core.Services.DownloadSource;
 namespace XianYuLauncher.Core.Services.ModLoaderInstallers;
 
 /// <summary>
-/// Forge ModLoader安装器
+/// Forge ModLoader 安装器
 /// </summary>
 public class ForgeInstaller : ModLoaderInstallerBase
 {
@@ -28,7 +28,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
     private readonly IUnifiedVersionManifestResolver _manifestResolver;
     
     /// <summary>
-    /// Forge Maven仓库URL（官方源备用）
+    /// Forge Maven 仓库 URL（官方源备用）
     /// </summary>
     private const string ForgeMavenUrl = "https://maven.minecraftforge.net";
     
@@ -80,7 +80,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
         Action<DownloadProgressStatus>? progressCallback = null,
         CancellationToken cancellationToken = default)
     {
-        Logger.LogInformation("开始安装Forge: {ForgeVersion} for Minecraft {MinecraftVersion}, SkipJarDownload={SkipJar}",
+        Logger.LogInformation("开始安装 Forge: {ForgeVersion} for Minecraft {MinecraftVersion}, SkipJarDownload={SkipJar}",
             modLoaderVersion, minecraftVersionId, options.SkipJarDownload);
 
         string? cacheDirectory = null;
@@ -89,7 +89,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
 
         try
         {
-            // 1. 生成版本ID和创建目录
+            // 1. 生成版本 ID 和创建目录
             var versionId = GetVersionId(minecraftVersionId, modLoaderVersion, options.CustomVersionName);
             var versionDirectory = CreateVersionDirectory(minecraftDirectory, versionId);
             var librariesDirectory = Path.Combine(minecraftDirectory, MinecraftPathConsts.Libraries);
@@ -99,8 +99,8 @@ public class ForgeInstaller : ModLoaderInstallerBase
             // 2. 保存版本配置（提前保存，确保处理器执行前能获取正确的版本信息）
             await SaveVersionConfigAsync(versionDirectory, minecraftVersionId, modLoaderVersion);
 
-            // 3. 获取原版Minecraft版本信息
-            Logger.LogInformation("获取原版Minecraft版本信息: {MinecraftVersion}", minecraftVersionId);
+            // 3. 获取原版 Minecraft 版本信息
+            Logger.LogInformation("获取原版 Minecraft 版本信息: {MinecraftVersion}", minecraftVersionId);
             var originalVersionInfo = await VersionInfoManager.GetVersionInfoAsync(
                 minecraftVersionId,
                 minecraftDirectory,
@@ -109,8 +109,8 @@ public class ForgeInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 10));
 
-            // 4. 下载原版Minecraft JAR（支持跳过）
-            Logger.LogInformation("处理Minecraft JAR, SkipJarDownload={SkipJar}", options.SkipJarDownload);
+            // 4. 下载原版 Minecraft JAR（支持跳过）
+            Logger.LogInformation("处理 Minecraft JAR, SkipJarDownload={SkipJar}", options.SkipJarDownload);
             await EnsureMinecraftJarAsync(
                 versionDirectory,
                 versionId,
@@ -121,8 +121,8 @@ public class ForgeInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 35));
 
-            // 5. 下载Forge Installer
-            Logger.LogInformation("下载Forge Installer");
+            // 5. 下载 Forge Installer
+            Logger.LogInformation("下载 Forge Installer");
             cacheDirectory = Path.Combine(Path.GetTempPath(), "XianYuLauncher", "cache", "forge");
             Directory.CreateDirectory(cacheDirectory);
 
@@ -133,8 +133,8 @@ public class ForgeInstaller : ModLoaderInstallerBase
             var forgeInstallerUrl = downloadSource.GetForgeInstallerUrl(minecraftVersionId, modLoaderVersion);
             var officialUrl = GetForgeInstallerUrl(minecraftVersionId, modLoaderVersion);
             
-            Logger.LogInformation("使用下载源 {DownloadSource} 下载Forge安装器: {Url}", downloadSource.Name, forgeInstallerUrl);
-            System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载Forge安装器: {forgeInstallerUrl}");
+            Logger.LogInformation("使用下载源 {DownloadSource} 下载 Forge 安装器: {Url}", downloadSource.Name, forgeInstallerUrl);
+            System.Diagnostics.Debug.WriteLine($"[DEBUG] 使用下载源 {downloadSource.Name} 下载 Forge 安装器: {forgeInstallerUrl}");
             
             var downloadResult = await DownloadManager.DownloadFileAsync(
                 forgeInstallerUrl,
@@ -160,25 +160,25 @@ public class ForgeInstaller : ModLoaderInstallerBase
             if (!downloadResult.Success)
             {
                 throw new ModLoaderInstallException(
-                    $"下载Forge Installer失败: {downloadResult.ErrorMessage}",
+                    $"下载 Forge Installer 失败: {downloadResult.ErrorMessage}",
                     ModLoaderType,
                     modLoaderVersion,
                     minecraftVersionId,
-                    "下载Installer",
+                    "下载 Installer",
                     downloadResult.Exception);
             }
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 55));
 
-            // 6. 解压Forge Installer
-            Logger.LogInformation("解压Forge Installer");
+            // 6. 解压 Forge Installer
+            Logger.LogInformation("解压 Forge Installer");
             extractedPath = Path.Combine(cacheDirectory, $"extracted-{minecraftVersionId}-{modLoaderVersion}");
             Directory.CreateDirectory(extractedPath);
             
             await ExtractForgeInstallerAsync(forgeInstallerPath, extractedPath, cancellationToken);
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 65));
 
-            // 7. 读取install_profile.json判断Forge版本类型
+            // 7. 读取 install_profile.json 判断 Forge 版本类型
             var installProfilePath = Path.Combine(extractedPath, MinecraftFileConsts.InstallProfileJson);
             if (!File.Exists(installProfilePath))
             {
@@ -194,10 +194,10 @@ public class ForgeInstaller : ModLoaderInstallerBase
             var installProfile = JObject.Parse(installProfileContent);
             var forgeVersionType = DetermineForgeVersionType(installProfile);
             
-            Logger.LogInformation("Forge版本类型: {VersionType}", forgeVersionType);
+            Logger.LogInformation("Forge 版本类型: {VersionType}", forgeVersionType);
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 70));
 
-            // 8. 下载install_profile中的依赖库
+            // 8. 下载 install_profile 中的依赖库
             var installProfileLibraries = ParseInstallProfileLibraries(installProfile);
             await DownloadInstallProfileLibrariesAsync(
                 installProfileLibraries,
@@ -222,11 +222,11 @@ public class ForgeInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 90));
 
-            // 11. 执行处理器（仅新版Forge需要）
+            // 11. 执行处理器（仅新版 Forge 需要）
             var processors = installProfile["processors"] as JArray;
             if (forgeVersionType == ForgeVersionType.New && processors != null && processors.Count > 0)
             {
-                Logger.LogInformation("开始执行Forge处理器");
+                Logger.LogInformation("开始执行 Forge 处理器");
                 var versionConfig = new VersionConfig
                 {
                     ModLoaderType = "forge",
@@ -249,26 +249,26 @@ public class ForgeInstaller : ModLoaderInstallerBase
 
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 98));
 
-            // 12. 合并版本JSON并保存
+            // 12. 合并版本 JSON 并保存
             var mergedVersionInfo = ResolveVersionInfo(originalVersionInfo, forgeVersionInfo, installProfileLibraries);
             mergedVersionInfo.Id = versionId;
             
             await SaveVersionJsonAsync(versionDirectory, versionId, mergedVersionInfo);
             progressCallback?.Invoke(new DownloadProgressStatus(0, 100, 100));
 
-            Logger.LogInformation("Forge安装完成: {VersionId}", versionId);
+            Logger.LogInformation("Forge 安装完成: {VersionId}", versionId);
             return versionId;
         }
         catch (OperationCanceledException)
         {
-            Logger.LogWarning("Forge安装已取消");
+            Logger.LogWarning("Forge 安装已取消");
             throw;
         }
         catch (Exception ex) when (ex is not ModLoaderInstallException)
         {
-            Logger.LogError(ex, "Forge安装失败");
+            Logger.LogError(ex, "Forge 安装失败");
             throw new ModLoaderInstallException(
-                $"Forge安装失败: {ex.Message}",
+                $"Forge 安装失败: {ex.Message}",
                 ModLoaderType,
                 modLoaderVersion,
                 minecraftVersionId,
@@ -288,7 +288,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
     {
         try
         {
-            // Forge版本列表API
+            // Forge 版本列表 API
             var url = $"https://files.minecraftforge.net/net/minecraftforge/forge/promotions_slim.json";
             var response = await DownloadManager.DownloadStringAsync(url, cancellationToken);
             var promotions = JsonConvert.DeserializeObject<ForgePromotions>(response);
@@ -309,7 +309,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "获取Forge版本列表失败: {MinecraftVersion}", minecraftVersionId);
+            Logger.LogError(ex, "获取 Forge 版本列表失败: {MinecraftVersion}", minecraftVersionId);
             return new List<string>();
         }
     }
@@ -364,20 +364,20 @@ public class ForgeInstaller : ModLoaderInstallerBase
         // 特殊规则仅适用于 1.7.x 和 1.8.x 版本（major 必须为 1）
         if (major == 1)
         {
-            // 规则1：如果 minor=8 且 build=8 或为空，使用 {mc}-{forge}
+            // 规则 1：如果 minor=8 且 build=8 或为空，使用 {mc}-{forge}
             if (minor == 8 && (build == 8 || build == null))
             {
                 return $"{minecraftVersion}-{forgeVersion}";
             }
             
-            // 规则2：如果 minor=7 或 8（但不满足规则1），使用 {mc}-{forge}-{mc}
+            // 规则 2：如果 minor=7 或 8（但不满足规则 1），使用 {mc}-{forge}-{mc}
             if (minor == 7 || minor == 8)
             {
                 return $"{minecraftVersion}-{forgeVersion}-{minecraftVersion}";
             }
         }
         
-        // 规则3：其他情况（包括新版本命名格式如 25.1, 26.1），使用 {mc}-{forge}
+        // 规则 3：其他情况（包括新版本命名格式如 25.1, 26.1），使用 {mc}-{forge}
         return $"{minecraftVersion}-{forgeVersion}";
     }
 
@@ -405,13 +405,13 @@ public class ForgeInstaller : ModLoaderInstallerBase
 
     private ForgeVersionType DetermineForgeVersionType(JObject installProfile)
     {
-        // 旧版Forge：存在"install"字段
+        // 旧版 Forge：存在"install"字段
         if (installProfile.ContainsKey("install"))
         {
             return ForgeVersionType.Old;
         }
         
-        // 微旧版Forge：processors列表为空
+        // 微旧版 Forge：processors 列表为空
         if (installProfile.ContainsKey("processors"))
         {
             var processors = installProfile["processors"] as JArray;
@@ -469,7 +469,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
 
             if (string.IsNullOrEmpty(originalUrl)) continue;
 
-            // 使用下载源转换URL
+            // 使用下载源转换 URL
             var downloadUrl = downloadSource.GetLibraryUrl(library.Name, originalUrl);
             
             Logger.LogInformation("使用下载源 {DownloadSource} 下载库文件: {LibraryName}", downloadSource.Name, library.Name);
@@ -500,18 +500,18 @@ public class ForgeInstaller : ModLoaderInstallerBase
         string librariesDirectory,
         CancellationToken cancellationToken)
     {
-        // 从install_profile.json中获取versionInfo
+        // 从 install_profile.json 中获取 versionInfo
         var versionInfoObj = installProfile["versionInfo"] as JObject;
         if (versionInfoObj == null)
         {
             throw new ModLoaderInstallException(
-                "旧版Forge的install_profile.json中缺少versionInfo字段",
+                "旧版 Forge 的 install_profile.json 中缺少 versionInfo 字段",
                 ModLoaderType, "", "", "解析版本信息");
         }
 
         var forgeVersionInfo = versionInfoObj.ToObject<VersionInfo>() ?? new VersionInfo();
 
-        // 处理universal包
+        // 处理 universal 包
         var installObj = installProfile["install"] as JObject;
         if (installObj != null)
         {
@@ -544,7 +544,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
         JObject installProfile,
         CancellationToken cancellationToken)
     {
-        // 读取version.json
+        // 读取 version.json
         var versionJsonPath = Path.Combine(extractedPath, "version.json");
         if (!File.Exists(versionJsonPath))
         {
@@ -564,7 +564,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
         if (!File.Exists(versionJsonPath))
         {
             throw new ModLoaderInstallException(
-                "在Forge安装包中未找到version.json文件",
+                "在 Forge 安装包中未找到 version.json 文件",
                 ModLoaderType, "", "", "解析版本信息");
         }
 
@@ -574,13 +574,13 @@ public class ForgeInstaller : ModLoaderInstallerBase
 
     private VersionInfo ResolveVersionInfo(VersionInfo original, VersionInfo? forge, List<Library> additionalLibraries)
     {
-        // 确保输入参数不为null
+        // 确保输入参数不为 null
         if (original == null)
         {
             throw new ArgumentNullException(nameof(original));
         }
 
-        Logger.LogDebug("安装期额外依赖库不会写入最终manifest: {Count}", additionalLibraries?.Count ?? 0);
+        Logger.LogDebug("安装期额外依赖库不会写入最终 manifest: {Count}", additionalLibraries?.Count ?? 0);
 
         var manifestPatch = CreateManifestPatch(original, forge);
         var resolutionResult = _manifestResolver.ResolvePatch(
@@ -592,7 +592,7 @@ public class ForgeInstaller : ModLoaderInstallerBase
                 legacyArgumentMergeMode: LegacyArgumentMergeMode.PreferAnyWithLoaderPriority,
                 modernArgumentMergeMode: ModernArgumentMergeMode.OverrideSections));
 
-        Logger.LogInformation("通过ManifestPatch解析了 {LibraryCount} 个Forge依赖库", manifestPatch.Libraries?.Count ?? 0);
+        Logger.LogInformation("通过 ManifestPatch 解析了 {LibraryCount} 个 Forge 依赖库", manifestPatch.Libraries?.Count ?? 0);
         Logger.LogInformation("合并后总依赖库数量: {LibraryCount}", resolutionResult.ResolvedManifest.Libraries?.Count ?? 0);
 
         return resolutionResult.ResolvedManifest;
@@ -636,9 +636,9 @@ public class ForgeInstaller : ModLoaderInstallerBase
 
     private enum ForgeVersionType
     {
-        Old,      // 旧版Forge（有install字段）
-        SemiOld,  // 微旧版Forge（processors为空）
-        New       // 新版Forge（需要执行processors）
+        Old,      // 旧版 Forge（有 install 字段）
+        SemiOld,  // 微旧版 Forge（processors 为空）
+        New       // 新版 Forge（需要执行 processors）
     }
 
     private class ForgePromotions

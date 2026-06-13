@@ -11,7 +11,7 @@ using XianYuLauncher.Core.Helpers;
 namespace XianYuLauncher.Core.Services;
 
 /// <summary>
-/// BMCLAPI NeoForge版本列表项
+/// BMCLAPI NeoForge 版本列表项
 /// </summary>
 public class BmclapiNeoForgeVersion
 {
@@ -24,7 +24,7 @@ public class BmclapiNeoForgeVersion
 }
 
 /// <summary>
-/// NeoForge服务类，用于获取指定Minecraft版本的NeoForge加载器版本列表
+/// NeoForge 服务类，用于获取指定 Minecraft 版本的 NeoForge 加载器版本列表
 /// </summary>
 public class NeoForgeService
 {
@@ -46,10 +46,10 @@ public class NeoForgeService
     }
 
     /// <summary>
-    /// 获取指定Minecraft版本的NeoForge加载器版本列表
+    /// 获取指定 Minecraft 版本的 NeoForge 加载器版本列表
     /// </summary>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <returns>NeoForge加载器版本列表</returns>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <returns>NeoForge 加载器版本列表</returns>
     public async Task<List<string>> GetNeoForgeVersionsAsync(string minecraftVersion)
     {
         try
@@ -73,7 +73,7 @@ public class NeoForgeService
                     result.Response.EnsureSuccessStatusCode();
                     string content = await result.Response.Content.ReadAsStringAsync();
                     System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 成功获取 NeoForge 版本列表 (使用源: {result.UsedSourceKey} -> {result.UsedDomain})");
-                    System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 响应内容前100字符: {(content.Length > 100 ? content.Substring(0, 100) : content)}");
+                    System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 响应内容前 100 字符: {(content.Length > 100 ? content.Substring(0, 100) : content)}");
                     
                     // 根据响应内容格式判断如何解析（而不是根据源类型）
                     // JSON 格式以 [ 或 { 开头，XML 格式以 < 开头
@@ -98,7 +98,7 @@ public class NeoForgeService
                 }
                 else
                 {
-                    throw new Exception($"获取NeoForge版本列表失败: {result.ErrorMessage}");
+                    throw new Exception($"获取 NeoForge 版本列表失败: {result.ErrorMessage}");
                 }
             }
             
@@ -107,32 +107,32 @@ public class NeoForgeService
         }
         catch (HttpRequestException ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 获取NeoForge版本列表失败: {ex.Message}");
-            throw new Exception($"获取NeoForge版本列表失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 获取 NeoForge 版本列表失败: {ex.Message}");
+            throw new Exception($"获取 NeoForge 版本列表失败: {ex.Message}");
         }
         catch (JsonException ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 解析NeoForge版本列表失败: {ex.Message}");
-            throw new Exception($"解析NeoForge版本列表失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 解析 NeoForge 版本列表失败: {ex.Message}");
+            throw new Exception($"解析 NeoForge 版本列表失败: {ex.Message}");
         }
         catch (System.Xml.XmlException ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 解析NeoForge版本列表失败: {ex.Message}");
-            throw new Exception($"解析NeoForge版本列表失败: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 解析 NeoForge 版本列表失败: {ex.Message}");
+            throw new Exception($"解析 NeoForge 版本列表失败: {ex.Message}");
         }
-        catch (Exception ex) when (ex.Message.StartsWith("获取NeoForge") || ex.Message.StartsWith("解析NeoForge"))
+        catch (Exception ex) when (ex.Message.StartsWith("获取 NeoForge") || ex.Message.StartsWith("解析 NeoForge"))
         {
             throw; // 重新抛出已处理的异常
         }
         catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 获取NeoForge版本列表时发生错误: {ex.Message}");
-            throw new Exception($"获取NeoForge版本列表时发生错误: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 获取 NeoForge 版本列表时发生错误: {ex.Message}");
+            throw new Exception($"获取 NeoForge 版本列表时发生错误: {ex.Message}");
         }
     }
     
     /// <summary>
-    /// 解析 BMCLAPI NeoForge 响应（JSON格式）
+    /// 解析 BMCLAPI NeoForge 响应（JSON 格式）
     /// </summary>
     private List<string> ParseBmclapiNeoForgeResponse(string json, string minecraftVersion)
     {
@@ -146,7 +146,7 @@ public class NeoForgeService
     }
     
     /// <summary>
-    /// 解析官方源 NeoForge 响应（XML格式）
+    /// 解析官方源 NeoForge 响应（XML 格式）
     /// </summary>
     private List<string> ParseOfficialNeoForgeResponse(string xml, string minecraftVersion)
     {
@@ -163,7 +163,7 @@ public class NeoForgeService
         // 使用 NeoForge 专用下载源
         var downloadSource = _downloadSourceFactory.GetNeoForgeSource();
         
-        // 获取NeoForge版本列表URL
+        // 获取 NeoForge 版本列表 URL
         string url = downloadSource.GetNeoForgeVersionsUrl(minecraftVersion);
         
         System.Diagnostics.Debug.WriteLine($"[NeoForgeService] 使用原有逻辑，下载源: {downloadSource.Name}，URL: {url}");
@@ -175,7 +175,7 @@ public class NeoForgeService
             request.Headers.Add("User-Agent", VersionHelper.GetUserAgent());
         }
         
-        // 发送HTTP请求
+        // 发送 HTTP 请求
         HttpResponseMessage response = await _httpClient.SendAsync(request);
         
         // 确保响应成功
@@ -198,16 +198,16 @@ public class NeoForgeService
     }
     
     /// <summary>
-    /// 处理BMCLAPI返回的JSON响应
+    /// 处理 BMCLAPI 返回的 JSON 响应
     /// </summary>
-    /// <param name="response">HTTP响应</param>
-    /// <returns>NeoForge版本列表</returns>
+    /// <param name="response">HTTP 响应</param>
+    /// <returns>NeoForge 版本列表</returns>
     private async Task<List<string>> HandleBmclapiResponseAsync(HttpResponseMessage response)
     {
         // 读取响应内容
         string json = await response.Content.ReadAsStringAsync();
         
-        // 解析JSON数据
+        // 解析 JSON 数据
         var versions = JsonSerializer.Deserialize<List<BmclapiNeoForgeVersion>>(json) ?? new List<BmclapiNeoForgeVersion>();
         
         // 提取版本号列表
@@ -218,20 +218,20 @@ public class NeoForgeService
     }
     
     /// <summary>
-    /// 处理官方源返回的XML响应
+    /// 处理官方源返回的 XML 响应
     /// </summary>
-    /// <param name="response">HTTP响应</param>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <returns>NeoForge版本列表</returns>
+    /// <param name="response">HTTP 响应</param>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <returns>NeoForge 版本列表</returns>
     private async Task<List<string>> HandleOfficialResponseAsync(HttpResponseMessage response, string minecraftVersion)
     {
         // 读取响应内容
         string xml = await response.Content.ReadAsStringAsync();
         
-        // 解析XML数据，提取所有版本号
+        // 解析 XML 数据，提取所有版本号
         List<string> allVersions = ParseNeoForgeVersionsFromXml(xml);
         
-        // 根据Minecraft版本匹配对应的NeoForge版本
+        // 根据 Minecraft 版本匹配对应的 NeoForge 版本
         List<string> matchedVersions = MatchNeoForgeVersions(allVersions, minecraftVersion);
         
         // 对版本列表进行排序（从新到旧）
@@ -239,10 +239,10 @@ public class NeoForgeService
     }
 
     /// <summary>
-    /// 解析NeoForge API返回的XML数据，提取版本列表
+    /// 解析 NeoForge API 返回的 XML 数据，提取版本列表
     /// </summary>
-    /// <param name="xml">XML数据</param>
-    /// <returns>NeoForge版本列表</returns>
+    /// <param name="xml">XML 数据</param>
+    /// <returns>NeoForge 版本列表</returns>
     private List<string> ParseNeoForgeVersionsFromXml(string xml)
     {
         var versionList = new List<string>();
@@ -259,40 +259,40 @@ public class NeoForgeService
     }
 
     /// <summary>
-    /// 匹配对应Minecraft版本的NeoForge版本
+    /// 匹配对应 Minecraft 版本的 NeoForge 版本
     /// </summary>
-    /// <param name="allVersions">所有NeoForge版本</param>
-    /// <param name="minecraftVersion">Minecraft版本</param>
-    /// <returns>匹配的NeoForge版本列表</returns>
+    /// <param name="allVersions">所有 NeoForge 版本</param>
+    /// <param name="minecraftVersion">Minecraft 版本</param>
+    /// <returns>匹配的 NeoForge 版本列表</returns>
     private List<string> MatchNeoForgeVersions(List<string> allVersions, string minecraftVersion)
     {
-        // 从Minecraft版本中提取主版本号和次版本号
+        // 从 Minecraft 版本中提取主版本号和次版本号
         var parts = minecraftVersion.Split('.');
         if (parts.Length >= 3)
         {
-            // 处理格式如"1.20.2" -> 匹配NeoForge 20.2.x
+            // 处理格式如"1.20.2" -> 匹配 NeoForge 20.2.x
             string neoForgeMajor = parts[1];
             string neoForgeMinor = parts[2];
             string targetVersionPrefix = $"{neoForgeMajor}.{neoForgeMinor}";
-            // 过滤出与目标版本前缀精确匹配的NeoForge版本（如20.2.x）
+            // 过滤出与目标版本前缀精确匹配的 NeoForge 版本（如 20.2.x）
             return allVersions.Where(v => v.StartsWith(targetVersionPrefix + ".") || v.StartsWith(targetVersionPrefix + "-")).ToList();
         }
         else if (parts.Length == 2)
         {
-            // 处理格式如"1.21" -> 匹配NeoForge 21.0.x
+            // 处理格式如"1.21" -> 匹配 NeoForge 21.0.x
             string neoForgeMajor = parts[1];
             string targetVersionPrefix = $"{neoForgeMajor}.0";
-            // 过滤出与目标版本前缀精确匹配的NeoForge版本（如21.0.x）
+            // 过滤出与目标版本前缀精确匹配的 NeoForge 版本（如 21.0.x）
             return allVersions.Where(v => v.StartsWith(targetVersionPrefix + ".") || v.StartsWith(targetVersionPrefix + "-")).ToList();
         }
-        throw new Exception($"无效的Minecraft版本格式: {minecraftVersion}");
+        throw new Exception($"无效的 Minecraft 版本格式: {minecraftVersion}");
     }
 
     /// <summary>
     /// 按版本号从新到旧排序
     /// </summary>
-    /// <param name="versions">NeoForge版本列表</param>
-    /// <returns>排序后的NeoForge版本列表</returns>
+    /// <param name="versions">NeoForge 版本列表</param>
+    /// <returns>排序后的 NeoForge 版本列表</returns>
     private List<string> SortNeoForgeVersions(List<string> versions)
     {
         // 按版本号从新到旧排序
