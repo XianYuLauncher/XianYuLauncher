@@ -1,5 +1,4 @@
 using Microsoft.UI.Xaml.Data;
-using System;
 
 namespace XianYuLauncher.Helpers;
 

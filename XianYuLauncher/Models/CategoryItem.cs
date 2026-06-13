@@ -1,5 +1,3 @@
-using System;
-
 namespace XianYuLauncher.Models;
 
 /// <summary>

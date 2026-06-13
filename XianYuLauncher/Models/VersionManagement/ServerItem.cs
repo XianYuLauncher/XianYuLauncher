@@ -2,7 +2,6 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using Microsoft.UI.Xaml.Media.Imaging;
 using Windows.Storage.Streams;
 using XianYuLauncher.Contracts.Services;
-using System;
 using System.Threading.Tasks;
 using System.Runtime.InteropServices.WindowsRuntime;
 

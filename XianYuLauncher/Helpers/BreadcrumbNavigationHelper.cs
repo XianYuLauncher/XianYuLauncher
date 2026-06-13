@@ -1,5 +1,3 @@
-using System;
-
 using XianYuLauncher.Shared.Models;
 
 namespace XianYuLauncher.Helpers;

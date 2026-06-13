@@ -1,4 +1,3 @@
-using System;
 using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace XianYuLauncher.Models.VersionManagement;
