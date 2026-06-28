@@ -1769,7 +1769,7 @@ public partial class SettingsViewModel : ObservableRecipient, IDisposable, IPage
 
             // 移除设置页打开时的材质刷新，避免窗口闪烁
             // 材质在应用启动时已经由 MainWindow.ApplyMaterialSettings()应用
-            BackgroundImagePath = state.BackgroundImagePath;
+            BackgroundImagePath = state.BackgroundImagePath ?? string.Empty;
             BackgroundBlurAmount = state.BackgroundBlurAmount;
             Log.Information("[Material.Settings] LoadMaterialSettings applied to view model. MaterialType={MaterialType}; BackgroundImagePath={BackgroundImagePath}; BackgroundBlurAmount={BackgroundBlurAmount}; IsInitializingMaterial={IsInitializingMaterial}", MaterialType, BackgroundImagePath ?? string.Empty, BackgroundBlurAmount, _isInitializingMaterial);
         }
