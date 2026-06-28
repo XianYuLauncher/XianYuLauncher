@@ -43,7 +43,7 @@ If you are unsure whether it is a bug or a suggestion, choose the closer templat
 
 ## Code contributions (pull requests)
 
-When changing the codebase, follow **`.github/copilot-instructions.md`** for architecture rules (downloads, dialogs, etc.)—the same guidance maintainers and Copilot use.
+When changing the codebase, follow **`AGENTS.md`** for architecture rules (downloads, dialogs, etc.)—the same guidance maintainers and AI assistants use.
 
 ### Commit messages
 
